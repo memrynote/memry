@@ -45,4 +45,9 @@ extension VaultFilling {
     /// Does nothing, which is the honest default for a fake with no server to
     /// dereference against.
     func detachAttachment(noteId: String, attachmentId: String) async throws {}
+
+    /// Nothing to pull and nothing pushed: a fake has no server.
+    func syncNow() async throws -> SyncPassSummary {
+        SyncPassSummary(pulled: 0, deleted: 0, bodies: 0, pushed: 0, rejected: 0, pending: 0)
+    }
 }

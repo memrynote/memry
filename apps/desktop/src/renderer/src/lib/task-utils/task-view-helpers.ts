@@ -12,6 +12,14 @@ import {
   formatDateKey
 } from './task-date-utils'
 import { isTaskCompleted } from './task-status-helpers'
+import {
+  getCompletedTasks as getCompletedTasksAt,
+  getCompletedTasksInDueWindow as getCompletedTasksInDueWindowAt,
+  getCompletedTodayTasks as getCompletedTodayTasksAt,
+  getFilteredTasks as getFilteredTasksAt,
+  getTasksInDueWindow as getTasksInDueWindowAt,
+  type TaskDueWindow
+} from '@memry/domain-tasks/parsing'
 
 const hasStarted = (task: Task, today: Date): boolean =>
   !!task.startDate && !isAfter(startOfDay(task.startDate), today)
@@ -39,82 +47,7 @@ export const getFilteredTasks = (
   projects: Project[],
   _includeCompleted = false,
   now = new Date()
-): Task[] => {
-  const nonArchivedTasks = tasks.filter((t) => !t.archivedAt)
-
-  const isIncomplete = (task: Task): boolean => {
-    const project = projects.find((p) => p.id === task.projectId)
-    const status = project?.statuses.find((s) => s.id === task.statusId)
-    return status?.type !== 'done'
-  }
-
-  const isComplete = (task: Task): boolean => !isIncomplete(task)
-  const isSubtask = (task: Task): boolean => task.parentId !== null
-
-  const incompleteTopLevel = nonArchivedTasks.filter((t) => isIncomplete(t) && !isSubtask(t))
-  const completedTopLevel = nonArchivedTasks.filter((t) => isComplete(t) && !isSubtask(t))
-
-  if (selectedType === 'view') {
-    const today = startOfDay(now)
-    const weekFromNow = addDays(today, 7)
-
-    switch (selectedId) {
-      case 'all':
-        return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
-
-      case 'today': {
-        const matchingTopLevel = incompleteTopLevel.filter((task) => {
-          if (hasStarted(task, today)) return true
-          if (!task.dueDate) return false
-          const taskDate = startOfDay(task.dueDate)
-          return isSameDay(taskDate, today) || isBefore(taskDate, today)
-        })
-        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
-      }
-
-      case 'upcoming': {
-        const matchingTopLevel = incompleteTopLevel.filter((task) => {
-          if (!task.dueDate) return false
-          const taskDate = startOfDay(task.dueDate)
-          return isAfter(taskDate, today) && !isAfter(taskDate, weekFromNow)
-        })
-        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
-      }
-
-      case 'tomorrow': {
-        const tomorrow = addDays(today, 1)
-        const matchingTopLevel = incompleteTopLevel.filter((task) => {
-          if (!task.dueDate) return false
-          return isSameDay(startOfDay(task.dueDate), tomorrow)
-        })
-        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
-      }
-
-      case 'week': {
-        const weekEnd = endOfWeek(today)
-        const matchingTopLevel = incompleteTopLevel.filter((task) => {
-          if (!task.dueDate) return false
-          const taskDate = startOfDay(task.dueDate)
-          return !isBefore(taskDate, today) && !isAfter(taskDate, weekEnd)
-        })
-        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
-      }
-
-      case 'completed':
-        return includeSubtasksForMatchingParents(completedTopLevel, nonArchivedTasks)
-
-      default:
-        return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
-    }
-  }
-
-  if (selectedType === 'project') {
-    const projectTasks = nonArchivedTasks.filter((task) => task.projectId === selectedId)
-    return projectTasks
-  }
-
-  return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
-}
+): Task[] => getFilteredTasksAt(tasks, selectedId, selectedType, projects, now)
 
 // ============================================================================
 // WORKSPACE BADGE COUNTS (SINGLE PASS)
@@ -382,92 +315,22 @@ export const getTodayTasks = (tasks: Task[], projects: Project[]): TodayViewTask
   }
 }
 
-/**
- * The due-date windows the Tasks page can be scoped to. `all` is deliberately
- * not one of these: it is "no window at all", not a range.
- */
-export type TaskDueWindow = 'today' | 'tomorrow' | 'next7'
+export type { TaskDueWindow } from '@memry/domain-tasks/parsing'
 
-/** Inclusive day offsets from today, as [first day, last day]. */
-const DUE_WINDOW_DAYS: Record<TaskDueWindow, [number, number]> = {
-  today: [0, 0],
-  tomorrow: [1, 1],
-  next7: [0, 6]
-}
-
-/**
- * Flat, ordered task list for one due-date window, overdue work first.
- *
- * `today` and `next7` lead with overdue tasks — that work is still owed inside
- * the window, and `today` has always shown it. `tomorrow` is a preview of a
- * single day, so it stays strictly that day and carries no overdue backlog.
- */
+/** Flat, ordered task list for one due-date window, overdue work first. */
 export const getTasksInDueWindow = (
   tasks: Task[],
   projects: Project[],
   window: TaskDueWindow,
   now = new Date()
-): Task[] => {
-  const todayStart = startOfDay(now)
-  const [firstDay, lastDay] = DUE_WINDOW_DAYS[window]
-  const windowStart = addDays(todayStart, firstDay)
-  const windowEnd = endOfDay(addDays(todayStart, lastDay))
-  const includeOverdue = window !== 'tomorrow'
+): Task[] => getTasksInDueWindowAt(tasks, projects, window, now)
 
-  const overdue: Task[] = []
-  const inWindow: Task[] = []
-
-  tasks.forEach((task) => {
-    if (isTaskCompleted(task, projects)) return
-    if (task.parentId !== null) return
-    if (task.archivedAt) return
-    if (
-      window === 'today' &&
-      hasStarted(task, todayStart) &&
-      (!task.dueDate || !isBefore(startOfDay(task.dueDate), todayStart))
-    ) {
-      inWindow.push(task)
-      return
-    }
-    if (!task.dueDate) return
-
-    const dueDate = startOfDay(task.dueDate)
-
-    if (isBefore(dueDate, todayStart)) {
-      if (includeOverdue) overdue.push(task)
-    } else if (isWithinInterval(task.dueDate, { start: windowStart, end: windowEnd })) {
-      inWindow.push(task)
-    }
-  })
-
-  return [
-    ...includeSubtasksForMatchingParents(overdue, tasks),
-    ...includeSubtasksForMatchingParents(inWindow, tasks)
-  ]
-}
-
-/**
- * Done tasks to show under a due-date window.
- *
- * Scoped by due date, not by completion date — "what in this window is already
- * finished". `today` is the exception and keeps its own completed-today rule
- * (see `getCompletedTodayTasks`), which is what the day's progress celebrates.
- */
-export const getCompletedTasksInDueWindow = (tasks: Task[], window: TaskDueWindow): Task[] => {
-  const todayStart = startOfDay(new Date())
-  const [firstDay, lastDay] = DUE_WINDOW_DAYS[window]
-  const windowStart = addDays(todayStart, firstDay)
-  const windowEnd = endOfDay(addDays(todayStart, lastDay))
-
-  return tasks.filter(
-    (task) =>
-      task.completedAt !== null &&
-      task.archivedAt === null &&
-      task.parentId === null &&
-      task.dueDate !== null &&
-      isWithinInterval(task.dueDate, { start: windowStart, end: windowEnd })
-  )
-}
+/** Done tasks to show under a due-date window (scoped by due date). */
+export const getCompletedTasksInDueWindow = (
+  tasks: Task[],
+  window: TaskDueWindow,
+  now = new Date()
+): Task[] => getCompletedTasksInDueWindowAt(tasks, window, now)
 
 export interface TodayWithWeekTasks {
   overdue: Task[]
@@ -623,19 +486,7 @@ export const getDayHeaderText = (date: Date): DayHeaderText => {
 // COMPLETED VIEW HELPERS
 // ============================================================================
 
-export const getCompletedTasks = (tasks: Task[]): Task[] => {
-  return tasks.filter(
-    (task) => task.completedAt !== null && task.archivedAt === null && task.parentId === null
-  )
-}
+export const getCompletedTasks = (tasks: Task[]): Task[] => getCompletedTasksAt(tasks)
 
-export const getCompletedTodayTasks = (tasks: Task[]): Task[] => {
-  const today = new Date()
-  return tasks.filter(
-    (task) =>
-      task.completedAt !== null &&
-      task.archivedAt === null &&
-      task.parentId === null &&
-      isSameDay(task.completedAt, today)
-  )
-}
+export const getCompletedTodayTasks = (tasks: Task[], now = new Date()): Task[] =>
+  getCompletedTodayTasksAt(tasks, now)

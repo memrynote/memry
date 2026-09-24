@@ -221,6 +221,18 @@ pub enum StorageError {
 
     #[error("storage failure: {what}")]
     Failed { what: String },
+
+    /// The item a write names is not in this vault (any more): deleted here
+    /// or on another device, or never synced. Nothing was changed.
+    #[error("not found: {what}")]
+    NotFound { what: String },
+
+    /// A rule refused the write — an Inbox cannot be archived, a reminder
+    /// cannot be in the past, a project needs two statuses. Nothing was
+    /// changed, and retrying the same write will be refused again. `what` is
+    /// for the log, not for the user.
+    #[error("refused: {what}")]
+    Invalid { what: String },
 }
 
 /// Failures of the `Notifications` seam.

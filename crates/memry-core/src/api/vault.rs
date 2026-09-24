@@ -44,6 +44,7 @@ use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
 use crate::api::search::Search;
 use crate::api::sync::VaultSync;
+use crate::api::tasks::Tasks;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::{Db, open_data};
 
@@ -62,6 +63,15 @@ pub struct Vault {
     /// demand: the index is a cache of the vault (data-model §A.5) and a
     /// vault that is never searched must not pay for it at open.
     directory: String,
+}
+
+impl Vault {
+    /// The database handle, for integration tests that seed a peer's records
+    /// through the real apply path. Not on the FFI surface.
+    #[doc(hidden)]
+    pub fn db_handle(&self) -> Db {
+        self.db.clone()
+    }
 }
 
 #[uniffi::export]
@@ -131,6 +141,13 @@ impl Vault {
     /// written, so there is nothing for the shell to undo.
     pub fn notes_writer(&self, store: Arc<dyn SecureStore>) -> Result<Arc<NotesWriter>, AuthError> {
         Ok(Arc::new(NotesWriter::over(self.db.clone(), &store)?))
+    }
+
+    /// Every task, project, saved filter, reminder and activity read and write
+    /// over this vault (spec 004). Needs the keychain for the same reason
+    /// [`Vault::notes_writer`] does: a write ticks this device's clock.
+    pub fn tasks(&self, store: Arc<dyn SecureStore>) -> Result<Arc<Tasks>, AuthError> {
+        Ok(Arc::new(Tasks::over(self.db.clone(), &store)?))
     }
 
     /// The full-text search over this vault.

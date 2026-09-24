@@ -25,9 +25,11 @@ import Testing
 @Suite("ShellEvents")
 struct ShellEventsTests {
     /// Polls to a deadline. Never waits forever, and answers the condition one
-    /// last time so an expiry and a slow pass cannot be confused.
+    /// last time so an expiry and a slow pass cannot be confused. The default
+    /// is generous because the handler runs on the main actor, which a full
+    /// parallel Unit run keeps busy; the one negative wait passes its own.
     private func waitUntil(
-        _ seconds: Double = 3,
+        _ seconds: Double = 10,
         _ condition: @MainActor () -> Bool
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)

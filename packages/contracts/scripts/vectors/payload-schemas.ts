@@ -17,6 +17,7 @@ import type { ZodType } from 'zod'
 import { SettingsSyncPayloadSchema } from '../../src/settings-sync'
 import {
   CustomIconSyncPayloadSchema,
+  FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
   JournalSyncPayloadSchema,
   NoteSyncPayloadSchema,
@@ -303,6 +304,37 @@ const SPECS: TypeSpec[] = [
     boundary: { settings: {}, fieldClocks: {} },
     unknownKey: 'settings.experimental',
     unknownValue: null
+  },
+  {
+    // Saved task filters, subscribed since spec 004 TP022. `config` is
+    // `z.unknown()`, so a key inside it is never stripped; the unknown case is
+    // a top-level key desktop's own push carries (it serialises the whole row).
+    type: 'filter',
+    schema: FilterSyncPayloadSchema,
+    valid: {
+      name: 'Due this week',
+      config: {
+        filters: {
+          search: '',
+          projectIds: ['proj-1'],
+          priorities: ['high'],
+          tags: [],
+          dueDate: { type: 'this-week', customStart: null, customEnd: null },
+          statusIds: [],
+          completion: 'active',
+          repeatType: 'all',
+          hasTime: 'all'
+        },
+        sort: { field: 'dueDate', direction: 'asc' },
+        starred: true
+      },
+      position: 2,
+      clock: CLOCK,
+      createdAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { name: '', config: {}, position: 0, clock: {} },
+    unknownKey: 'syncedAt',
+    unknownValue: '2026-04-16T00:00:01.000Z'
   }
 ]
 

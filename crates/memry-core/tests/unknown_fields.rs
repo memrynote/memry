@@ -528,3 +528,44 @@ async fn a_page_of_nothing_but_an_unsubscribed_type_refuses_the_run_and_still_ad
     let recorded = row(&db, "canvas", "canvas1").expect("a row for the unsubscribed item");
     assert!(recorded.corrupt_reason.is_some());
 }
+
+/// A device that pulled under an older, narrower declaration starts the feed
+/// over once, so rows of a newly declared type (saved filters) that sit
+/// behind its cursor arrive; the next run keeps its cursor.
+#[tokio::test]
+async fn a_wider_declaration_restarts_the_feed_once() {
+    use memry_core::sync::first_sync_store::read_meta;
+    use memry_core::sync::pull::META_RECORD_DECLARATION;
+    use memry_core::sync::store::{RECORD_CURSOR_SCOPE, write_cursor};
+
+    let db = scratch_db("declaration");
+    db.call_blocking(|conn| write_cursor(conn, RECORD_CURSOR_SCOPE, Some("500"), 1))
+        .expect("an old cursor");
+
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[], "600", false)),
+        response(200, &changes_page(&[], "600", false)),
+    ]);
+    let cipher = ScriptedCipher::new(&[]);
+    let pull = pull_loop(&db, transport.clone(), cipher);
+    pull.run(5).await.expect("the restarted run");
+    pull.run(5).await.expect("the next run");
+
+    let urls: Vec<String> = transport
+        .calls()
+        .iter()
+        .map(|call| call.url.clone())
+        .collect();
+    assert!(
+        !urls[0].contains("cursor="),
+        "restarted from the start: {urls:?}"
+    );
+    assert!(
+        urls[1].contains("cursor=600"),
+        "then kept its place: {urls:?}"
+    );
+    let stored = db
+        .call_blocking(|conn| read_meta(conn, META_RECORD_DECLARATION))
+        .expect("meta");
+    assert_eq!(stored, Some(Declaration::subscribed().header_value()));
+}

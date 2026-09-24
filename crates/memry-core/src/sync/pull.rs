@@ -133,6 +133,9 @@ struct ChangesPage {
 }
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
+/// The declaration header value the record cursor was last advanced under.
+pub const META_RECORD_DECLARATION: &str = "sync.record_declaration";
+
 pub struct PullLoop {
     http: Arc<HttpClient>,
     db: Db,
@@ -177,6 +180,7 @@ impl PullLoop {
     /// that produced only corruption, and continuing would report a successful
     /// run that skipped it.
     pub async fn run(&self, max_pages: u32) -> Result<PullReport, PullError> {
+        self.restart_on_new_declaration().await?;
         let mut total = PullReport::default();
         for _ in 0..max_pages {
             let page = self.pull_page().await?;
@@ -198,6 +202,34 @@ impl PullLoop {
             }
         }
         Ok(total)
+    }
+
+    /// Starts the feed over once when the declared types grew.
+    ///
+    /// The record cursor is one position in one feed, and the server filters
+    /// that feed by the declaration. A type added to the declaration later
+    /// (saved filters, spec 004 TP022) has rows *behind* the stored cursor
+    /// that this device never saw, and no later page will carry them. The
+    /// declaration a device last pulled under is kept in `meta`; when the
+    /// current one differs, or a device that has pulled before never recorded
+    /// one, the cursor goes back to the start and the next pages re-read the
+    /// feed. Re-applying a known item is a no-op merge (its clocks dominate or
+    /// match), so the cost is one full pull, once.
+    async fn restart_on_new_declaration(&self) -> Result<(), PullError> {
+        let current = self.declaration.header_value();
+        self.db
+            .call(move |conn| {
+                let stored = super::first_sync_store::read_meta(conn, META_RECORD_DECLARATION)?;
+                if stored.as_deref() == Some(current.as_str()) {
+                    return Ok(());
+                }
+                if store::read_cursor(conn, RECORD_CURSOR_SCOPE)?.is_some() {
+                    store::write_cursor(conn, RECORD_CURSOR_SCOPE, None, now_ms())?;
+                }
+                super::first_sync_store::write_meta(conn, META_RECORD_DECLARATION, &current)
+            })
+            .await?;
+        Ok(())
     }
 
     /// One page: refs, bodies, apply, advance.

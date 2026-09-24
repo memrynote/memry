@@ -19,6 +19,9 @@ struct VaultSearchTests {
         /// in Rust against a real index, and a fake answering with rows would
         /// claim links this vault does not hold.
         func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
+        /// TP056. No task hits: the task half of a query is asserted in
+        /// `TasksNotesTests` against a real index.
+        func tasks(query: String, limit: UInt32) async throws -> [SearchResult] { [] }
 
         let queries = Mutex([String]())
         let reindexes = Mutex(0)

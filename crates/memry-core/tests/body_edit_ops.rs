@@ -581,6 +581,107 @@ fn a_moved_block_lands_after_its_anchor_and_leaves_the_rest_in_order() {
     assert_eq!(ids(&document), ["a", "b", "c"]);
 }
 
+/// A relocated block keeps its formatting and the order of its inline nodes
+/// (spec 004 TP026): moving away and back, or indenting and outdenting,
+/// leaves the document exactly as it was, bold run and mention included.
+#[test]
+fn a_moved_or_nested_block_keeps_its_marks_and_inline_nodes_in_place() {
+    let document = opened(&body(&[
+        ("z", "paragraph", "first"),
+        ("a", "paragraph", "hello big world"),
+        ("b", "paragraph", "after"),
+    ]));
+    apply(
+        &document,
+        &BlockEdit::SetMark {
+            block_id: "a".to_owned(),
+            start: 0,
+            end: 5,
+            mark: "bold".to_owned(),
+            value: None,
+        },
+    )
+    .expect("bold");
+    apply(
+        &document,
+        &BlockEdit::InsertInline {
+            block_id: "a".to_owned(),
+            start: 6,
+            end: 6,
+            kind: "dateMention".to_owned(),
+            text: "tomorrow".to_owned(),
+            attrs: inline_attrs(&[("date", "2026-09-23")]),
+        },
+    )
+    .expect("a mention mid-paragraph");
+    let original = canonical(&document);
+    assert!(original.contains("bold"), "{original}");
+
+    apply(
+        &document,
+        &BlockEdit::MoveBlock {
+            block_id: "a".to_owned(),
+            after_block_id: Some("b".to_owned()),
+        },
+    )
+    .expect("move away");
+    apply(
+        &document,
+        &BlockEdit::MoveBlock {
+            block_id: "a".to_owned(),
+            after_block_id: Some("z".to_owned()),
+        },
+    )
+    .expect("move back");
+    assert_eq!(
+        canonical(&document),
+        original,
+        "a move round trip changed the block"
+    );
+
+    apply(
+        &document,
+        &BlockEdit::Indent {
+            block_id: "a".to_owned(),
+        },
+    )
+    .expect("indent");
+    apply(
+        &document,
+        &BlockEdit::Outdent {
+            block_id: "a".to_owned(),
+        },
+    )
+    .expect("outdent");
+    assert_eq!(
+        canonical(&document),
+        original,
+        "an indent round trip changed the block"
+    );
+
+    apply(
+        &document,
+        &BlockEdit::Duplicate {
+            block_id: "a".to_owned(),
+            new_block_id: "a-copy".to_owned(),
+        },
+    )
+    .expect("duplicate");
+    let copied = canonical(&document);
+    let copy = copied
+        .split("blockContainer id=\"a-copy\"")
+        .nth(1)
+        .expect("the copy");
+    assert!(
+        copy.contains("text \"hello\" bold={}"),
+        "the copy lost its mark:\n{copied}"
+    );
+    assert!(
+        copy.contains("dateMention"),
+        "the copy lost its mention:\n{copied}"
+    );
+}
+
 /// A move carries the block's text and props, not just its id.
 #[test]
 fn a_moved_block_keeps_what_it_said() {

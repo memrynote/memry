@@ -164,3 +164,18 @@ file is the one place someone preparing a submission has to start.
 **None of the above is legal advice.** It is the reasoned position this project
 files under, with the facts it rests on written down so a reviewer can check
 them.
+
+## 9. Spec 004 status for FR-057..FR-062
+
+This file is otherwise the export-compliance record; spec 004 TP091 asked for
+the task requirements' status to be written here too. Evidence is in
+`specs/004-ios-tasks-parity/tasks.md` under the task ids named.
+
+| Requirement                               | Status after spec 004                                                                                                                                                                | Evidence            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| FR-057 task views                         | Superseded by spec 004 D4 (spec-defect #141): All / Today / Tomorrow / Next 7 / Archived with desktop's due-window rules, pinned by the `task-parsing` vectors on Rust and on device | TP019, TP040, TP080 |
+| FR-058 note checkbox ↔ task               | Met: ticking a task line on the phone completes the task and checks the line on desktop, and the reverse                                                                             | TP026, TP054, TP082 |
+| FR-059 concurrent field edits             | Met: desktop offline edits priority and tag while the phone moves the due date; both survive on both sides                                                                           | TP082               |
+| FR-060 projects read-only on phone        | Superseded by spec 004 D2: projects are created, edited, reordered, archived and deleted on the phone                                                                                | TP021, TP052, TP082 |
+| FR-061 reminders fire, tap opens the item | Met: a reminder fired with the app backgrounded and the tap opened the task; a task completed or deleted elsewhere opens its done or missing state                                   | TP053               |
+| FR-062 reminder window                    | Met in the shell rather than the core: the nearest 60 are scheduled, refilled on open, foreground, sync and every task change, and the limit is stated in the app and the docs       | TP053, TP090        |

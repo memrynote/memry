@@ -48,7 +48,8 @@ struct NoteReadView: View {
         writer: (any NotesWriting)? = nil,
         search: (any VaultSearching)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
-        openTag: ((String) -> Void)? = nil
+        openTag: ((String) -> Void)? = nil,
+        noteTasks: (any NoteTaskWriting)? = nil
     ) {
         self.open = open
         self.openTag = openTag
@@ -64,6 +65,7 @@ struct NoteReadView: View {
         _linkedTasks = State(
             initialValue: LinkedTasksViewModel(noteId: route.id, reader: reader)
         )
+        _taskActions = State(initialValue: NoteTaskActions(noteId: route.id, tasks: noteTasks))
         _model = State(
             initialValue: NoteReadViewModel(
                 route: route,
@@ -90,7 +92,8 @@ struct NoteReadView: View {
         writer: (any NotesWriting)? = nil,
         search: (any VaultSearching)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
-        openTag: ((String) -> Void)? = nil
+        openTag: ((String) -> Void)? = nil,
+        noteTasks: (any NoteTaskWriting)? = nil
     ) {
         self.open = open
         self.openTag = openTag
@@ -105,6 +108,9 @@ struct NoteReadView: View {
         )
         _linkedTasks = State(
             initialValue: LinkedTasksViewModel(noteId: model.route.id, reader: model.reader)
+        )
+        _taskActions = State(
+            initialValue: NoteTaskActions(noteId: model.route.id, tasks: noteTasks)
         )
         _model = State(initialValue: model)
         _composer = State(
@@ -156,6 +162,20 @@ struct NoteReadView: View {
 
     /// The tasks linked to this note (N807).
     @State private var linkedTasks: LinkedTasksViewModel
+
+    /// Ticking task lines and converting checklist items (TP054).
+    @State private var taskActions: NoteTaskActions
+    /// Opens a task in the Tasks tab. Absent outside the vault shell.
+    @Environment(TasksRouter.self) private var router: TasksRouter?
+    @Environment(\.requestVaultSync) private var requestVaultSync
+
+    private var taskBridge: NoteTaskBridge {
+        .note(tasks: taskActions, editor: editorModel, router: router) {
+            requestVaultSync?()
+            await model.reload()
+            await linkedTasks.load()
+        }
+    }
 
     /// The page menu's sheets and alert (N808).
     @State private var renaming = false
@@ -302,7 +322,7 @@ struct NoteReadView: View {
                     // N804, under the backlinks: both are about the note
                     // rather than in it.
                     NoteRemindersSection(model: reminders)
-                    LinkedTasksSection(model: linkedTasks)
+                    LinkedTasksSection(model: linkedTasks, open: taskBridge.open)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -312,6 +332,7 @@ struct NoteReadView: View {
         .background(Tokens.Canvas.background.color)
         .environment(\.noteTitleExists, model.titleExists)
         .environment(\.taskCards, model.taskCards)
+        .environment(\.noteTasks, taskBridge)
         .environment(
             \.reviewMarks,
             ReviewMarkStyle.unambiguous(model.comments, in: model.exportText)
@@ -342,55 +363,24 @@ struct NoteReadView: View {
                 )
             )
         )
-        // N808's three write actions. Each is a sheet or an alert rather
-        // than an inline control, because all three change the note as a
-        // whole and none of them should be one stray tap away.
-        .alert("Rename this note", isPresented: $renaming) {
-            TextField("Title", text: $renameDraft)
-            Button("Cancel", role: .cancel) {}
-            Button("Rename") {
-                Task {
-                    await actions.rename(to: renameDraft)
-                    await model.reload()
-                }
-            }
-        }
-        .alert("Delete this note?", isPresented: $confirmingDelete) {
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
-                Task { await actions.delete() }
-            }
-        } message: {
-            // What actually happens, rather than a vague warning: a delete
-            // travels to every device in the vault.
-            Text("It will be removed from every device signed in to this vault.")
-        }
-        .sheet(isPresented: $moving) {
-            NoteFolderPicker(current: model.folderPath) { folder in
-                moving = false
-                Task {
-                    await actions.move(to: folder)
-                    await model.reload()
-                }
-            }
-        }
+        .modifier(
+            NoteReadDialogs(
+                model: model,
+                actions: actions,
+                taskActions: taskActions,
+                renaming: $renaming,
+                renameDraft: $renameDraft,
+                moving: $moving,
+                confirmingDelete: $confirmingDelete,
+                brokenLink: $brokenLink
+            )
+        )
         .task {
             await model.loadIfNeeded()
             // After the body and its bindings are on screen, not before: the
             // placeholders are what FR-045 asks to be visible first, and a
             // fetch that finished early would still only re-render them.
             await model.fetchWaitingAttachments()
-        }
-        .alert(
-            "There is no note called \u{201c}\(brokenLink ?? "")\u{201d}",
-            isPresented: Binding(
-                get: { brokenLink != nil },
-                set: { if !$0 { brokenLink = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) { brokenLink = nil }
-        } message: {
-            Text("The link points at a note this vault does not hold. You can create it on your computer.")
         }
     }
 }

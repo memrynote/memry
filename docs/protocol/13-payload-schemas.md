@@ -7,22 +7,25 @@ The payload is the plaintext inside the record envelope of chapter 04: UTF-8
 JSON. This chapter specifies what it contains per type, and — more importantly —
 how a client is required to store it.
 
-## 13.1 The thirteen subscribed types
+## 13.1 The fourteen subscribed types
 
-**Normative.** This feature's client declares exactly these thirteen in
-`X-Memry-Sync-Types` (chapter 05 §5.3):
+**Normative.** This feature's client declares exactly these fourteen in
+`X-Memry-Sync-Types` (chapter 05 §5.3), in this order:
 
 `note`, `journal`, `folder_config`, `custom_icon`, `tag_definition`,
 `tag_category`, `property_definition`, `template`, `task`, `project`,
-`task_activity`, `reminder`, `settings`.
+`task_activity`, `reminder`, `settings`, `filter`.
 
-Twelve more **record types** are served by the server and **not** subscribed to
-here: `inbox`, `filter`, `calendar_event`, `calendar_source`, `calendar_binding`,
+`filter` (saved task filters, §13.7.14) was added by spec 004 TP022 and is
+appended last, so the first thirteen keep their order.
+
+Eleven more **record types** are served by the server and **not** subscribed to
+here: `inbox`, `calendar_event`, `calendar_source`, `calendar_binding`,
 `calendar_external_event`, `agent_conversation`, `agent_message`, `canvas`,
 `canvas_folder`, `bookmark`, `home_page`. **A conforming client omits them from
 the header and never sees them** (chapter 05 §5.3.1).
 
-Thirteen plus twelve is the **twenty-five record types**, which is the set
+Fourteen plus eleven is the **twenty-five record types**, which is the set
 chapter 05 §5.3 calls recognised. `attachment` is the twenty-sixth member of
 `SYNC_ITEM_TYPES` and is **not** one of them: it never travels as a record at
 all (§13.8), so it is neither subscribed nor declarable.
@@ -409,6 +412,20 @@ device that never displayed it. **Dismiss and snooze state does sync.**
 
 `{ settings, fieldClocks }` where `fieldClocks` is keyed by **dotted path**
 (`packages/contracts/src/settings-sync.ts:113-116`; chapter 06 §6.9).
+
+### 13.7.14 `filter` — `:69-75`
+
+`name`, `config`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
+`fieldClocks`: `filter` takes the document-level resolver (§13.9). Desktop's
+push is its whole `saved_filters` row serialised
+(`packages/sync-client/src/item-handlers/filter-handler.ts:94-103`), so `id` and
+`syncedAt` also arrive as unmodelled keys and are preserved like any other.
+
+`config` is `z.unknown()` on the wire. Desktop writes
+`{ filters, sort?, starred? }` (`packages/contracts/src/saved-filters-api.ts:76-80`);
+**a client treats it as opaque JSON and keeps keys it does not model**, so an
+edit merges into the stored `config` rather than replacing it (§13.2 rule 3).
+Starring writes `config.starred` as a boolean, `false` included.
 
 ## 13.8 `attachment` is not a record type
 

@@ -1,0 +1,11 @@
+	 Executed 8 tests, with 1 test skipped and 0 failures (0 unexpected) in 452.679 (452.699) seconds
+	 Executed 8 tests, with 1 test skipped and 0 failures (0 unexpected) in 452.679 (452.700) seconds
+** TEST SUCCEEDED **
+Test Case '-[MemryUITests.AgentDriverUITests testDrive]' skipped (0.457 seconds).
+Test Case '-[MemryUITests.EditorSmokeUITests testAppLaunches]' passed (3.962 seconds).
+Test Case '-[MemryUITests.TasksUITests testAFilterCanBeSavedClearedAndReapplied]' passed (90.006 seconds).
+Test Case '-[MemryUITests.TasksUITests testBulkCompletingThreeTasksIsOneUndo]' passed (86.488 seconds).
+Test Case '-[MemryUITests.TasksUITests testCompletingADailyRepeatingTaskCreatesTheNextOccurrence]' passed (61.288 seconds).
+Test Case '-[MemryUITests.TasksUITests testCompletingEverySubtaskAsksAboutTheParent]' passed (68.511 seconds).
+Test Case '-[MemryUITests.TasksUITests testDraggingAKanbanCardToAnotherColumnChangesItsStatus]' passed (76.061 seconds).
+Test Case '-[MemryUITests.TasksUITests testQuickAddReadsDateTimePriorityAndTag]' passed (65.908 seconds).

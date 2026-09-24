@@ -23,7 +23,7 @@ struct SearchResultsSection: View {
 
     var body: some View {
         switch search?.phase {
-        case let .results(hits) where !hits.isEmpty:
+        case let .results(hits) where !hits.isEmpty || !(search?.taskHits.isEmpty ?? true):
             ForEach(hits, id: \.id) { hit in
                 // Pushed by value, through the one registration on the stack
                 // root — the same route a browse row uses.
@@ -31,6 +31,9 @@ struct SearchResultsSection: View {
                     SearchHitLabel(hit: hit)
                 }
             }
+            // TP056: the tasks the query matched, in their own section and
+            // their own ranking, each opening in the Tasks tab.
+            TaskSearchResults(hits: search?.taskHits ?? [])
         case .results:
             // Nothing matched. Not an empty vault, and said as its own thing.
             ContentUnavailableView.search(text: query)
@@ -43,6 +46,56 @@ struct SearchResultsSection: View {
         case .failed:
             TitleMatches(outline: outline, query: query, sort: sort, model: model, toggle: toggle)
         }
+    }
+}
+
+/// The task hits of a search (TP056), after desktop's command palette: a
+/// "Tasks" group whose rows open the task's detail (`openTaskId`).
+struct TaskSearchResults: View {
+    let hits: [SearchResult]
+    /// Absent outside the vault shell; the rows then draw without an action.
+    @Environment(TasksRouter.self) private var router: TasksRouter?
+
+    var body: some View {
+        if !hits.isEmpty {
+            Section {
+                ForEach(hits, id: \.id) { hit in
+                    Button {
+                        router?.openTask(hit.id)
+                    } label: {
+                        TaskSearchHitLabel(hit: hit)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(router == nil)
+                    .accessibilityHint(TasksCopy.openInTasks)
+                    .accessibilityIdentifier("tasks.search.result")
+                }
+            } header: {
+                Text(TasksCopy.searchTasksSection)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        }
+    }
+}
+
+/// One task hit: the check mark says what kind of result it is.
+struct TaskSearchHitLabel: View {
+    let hit: SearchResult
+
+    var body: some View {
+        HStack(spacing: Tokens.Space.small) {
+            Image(systemName: "checkmark.circle")
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .accessibilityHidden(true)
+            Text(hit.title.isEmpty ? TasksCopy.untitledTask : hit.title)
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.primary.color)
+            Spacer(minLength: Tokens.Space.tight)
+        }
+        .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
     }
 }
 

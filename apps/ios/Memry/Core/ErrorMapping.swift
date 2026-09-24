@@ -435,6 +435,16 @@ extension ErrorMapping {
         case .Failed:
             copy("storage.failed", "Memry could not read or write its database.",
                  "Close Memry and open it again.", .retry)
+        // Another device deleted it, or it never synced here. Retrying cannot
+        // bring it back.
+        case .NotFound:
+            copy("storage.notFound", "That item is no longer in this vault.",
+                 "It may have been deleted on another device. Nothing was changed.")
+        // A rule refused the write (an Inbox cannot be archived, a reminder
+        // cannot be in the past). The same write would be refused again.
+        case .Invalid:
+            copy("storage.invalid", "Memry could not make that change.",
+                 "Nothing was changed. Check the value and try again.")
         }
     }
 

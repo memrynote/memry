@@ -3,14 +3,22 @@ import { getI18n } from 'react-i18next'
 import type { RepeatConfig, RepeatFrequency } from '@/data/task-model'
 import { getActiveLocale } from './active-locale'
 import {
-  addDays,
-  addWeeks,
-  addMonths,
-  startOfDay,
-  isAfter,
-  endOfMonth,
-  subDays
-} from './task-utils'
+  getWeekOfMonth,
+  isLastWeekdayOfMonth,
+  shouldCreateNextOccurrence as shouldCreateNextOccurrenceAt
+} from '@memry/domain-tasks/parsing'
+
+// The recurrence math lives in `@memry/domain-tasks/parsing` so the iOS core is
+// held to it by conformance vectors (spec 004 D3, D5).
+export {
+  addYears,
+  calculateNextOccurrence,
+  calculateNextOccurrences,
+  findNthWeekdayOfMonth,
+  getRepeatProgress,
+  getWeekOfMonth,
+  isLastWeekdayOfMonth
+} from '@memry/domain-tasks/parsing'
 
 /**
  * Translator function from the `common` namespace, used to localize
@@ -111,203 +119,6 @@ export const getOrdinalSuffix = (n: number): string => {
  */
 const daySuffixForActiveLocale = (day: number): string =>
   getActiveLocale() === 'en' ? getOrdinalSuffix(day) : ''
-
-// ============================================================================
-// HELPER: GET WEEK OF MONTH FOR DATE
-// ============================================================================
-
-export const getWeekOfMonth = (date: Date): number => {
-  const dayOfMonth = date.getDate()
-  return Math.ceil(dayOfMonth / 7)
-}
-
-// ============================================================================
-// HELPER: CHECK IF DATE IS LAST OCCURRENCE OF WEEKDAY IN MONTH
-// ============================================================================
-
-export const isLastWeekdayOfMonth = (date: Date): boolean => {
-  const nextWeek = addDays(date, 7)
-  return nextWeek.getMonth() !== date.getMonth()
-}
-
-// ============================================================================
-// HELPER: GET NTH WEEKDAY OF MONTH
-// ============================================================================
-
-export const findNthWeekdayOfMonth = (
-  year: number,
-  month: number,
-  nth: number, // 1-4 or 5 for last
-  dayOfWeek: number // 0-6
-): Date => {
-  if (nth === 5) {
-    // Last occurrence - start from end of month
-    const lastDay = endOfMonth(new Date(year, month, 1))
-    let current = lastDay
-
-    while (current.getDay() !== dayOfWeek) {
-      current = subDays(current, 1)
-    }
-
-    return startOfDay(current)
-  }
-
-  // Find first occurrence of day in month
-  let first = new Date(year, month, 1)
-  while (first.getDay() !== dayOfWeek) {
-    first = addDays(first, 1)
-  }
-
-  // Add weeks to get to nth
-  return startOfDay(addWeeks(first, nth - 1))
-}
-
-// ============================================================================
-// HELPER: ADD YEARS TO DATE
-// ============================================================================
-
-export const addYears = (date: Date, years: number): Date => {
-  const result = new Date(date)
-  result.setFullYear(result.getFullYear() + years)
-  return result
-}
-
-// ============================================================================
-// CALCULATE NEXT OCCURRENCE
-// ============================================================================
-
-export const calculateNextOccurrence = (fromDate: Date, config: RepeatConfig): Date | null => {
-  const {
-    frequency,
-    interval,
-    daysOfWeek,
-    monthlyType,
-    dayOfMonth,
-    weekOfMonth,
-    dayOfWeekForMonth
-  } = config
-
-  let next: Date
-
-  switch (frequency) {
-    case 'daily':
-      next = addDays(fromDate, interval)
-      break
-
-    case 'weekly':
-      if (daysOfWeek && daysOfWeek.length > 0) {
-        // Find next matching day
-        next = findNextWeekday(fromDate, daysOfWeek, interval)
-      } else {
-        next = addWeeks(fromDate, interval)
-      }
-      break
-
-    case 'monthly':
-      if (monthlyType === 'dayOfMonth' && dayOfMonth) {
-        next = addMonths(fromDate, interval)
-        // Clamp to valid day of month
-        const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
-        const targetDay = Math.min(dayOfMonth, daysInMonth)
-        next.setDate(targetDay)
-      } else if (monthlyType === 'weekPattern' && weekOfMonth && dayOfWeekForMonth !== undefined) {
-        // Find nth weekday of next month
-        const nextMonth = addMonths(fromDate, interval)
-        next = findNthWeekdayOfMonth(
-          nextMonth.getFullYear(),
-          nextMonth.getMonth(),
-          weekOfMonth,
-          dayOfWeekForMonth
-        )
-      } else {
-        next = addMonths(fromDate, interval)
-      }
-      break
-
-    case 'yearly':
-      next = addYears(fromDate, interval)
-      break
-
-    default:
-      return null
-  }
-
-  // Check end conditions
-  if (config.endType === 'date' && config.endDate && isAfter(next, config.endDate)) {
-    return null
-  }
-
-  if (config.endType === 'count' && config.endCount && config.completedCount >= config.endCount) {
-    return null
-  }
-
-  return startOfDay(next)
-}
-
-// ============================================================================
-// HELPER: FIND NEXT WEEKDAY
-// ============================================================================
-
-const findNextWeekday = (fromDate: Date, daysOfWeek: number[], interval: number): Date => {
-  const sortedDays = [...daysOfWeek].sort((a, b) => a - b)
-  const currentDay = fromDate.getDay()
-
-  // First, check if there's another day in the same week (for interval = 1)
-  if (interval === 1) {
-    const nextDayInWeek = sortedDays.find((d) => d > currentDay)
-    if (nextDayInWeek !== undefined) {
-      return addDays(fromDate, nextDayInWeek - currentDay)
-    }
-  }
-
-  // Move to the next interval week and pick the first day
-  const daysUntilEndOfWeek = 6 - currentDay
-  const daysToNextWeek = daysUntilEndOfWeek + 1 + (interval - 1) * 7
-  const startOfNextWeek = addDays(fromDate, daysToNextWeek)
-
-  // Find the first matching day in that week
-  const firstDay = sortedDays[0]
-  const targetDate = addDays(startOfNextWeek, firstDay)
-
-  return targetDate
-}
-
-// ============================================================================
-// CALCULATE NEXT N OCCURRENCES (FOR PREVIEW)
-// ============================================================================
-
-export const calculateNextOccurrences = (
-  startDate: Date,
-  config: RepeatConfig,
-  count: number = 5
-): Date[] => {
-  const occurrences: Date[] = []
-  let current = startOfDay(startDate)
-  let generated = 0
-
-  // Add the start date as the first occurrence
-  occurrences.push(current)
-  generated++
-
-  while (occurrences.length < count && generated < 100) {
-    // Check end conditions before calculating next
-    if (config.endType === 'date' && config.endDate && isAfter(current, config.endDate)) {
-      break
-    }
-    if (config.endType === 'count' && config.endCount && generated >= config.endCount) {
-      break
-    }
-
-    const next = calculateNextOccurrence(current, config)
-    if (!next) break
-
-    occurrences.push(next)
-    current = next
-    generated++
-  }
-
-  return occurrences
-}
 
 // ============================================================================
 // GET REPEAT DISPLAY TEXT
@@ -518,32 +329,5 @@ export const createDefaultRepeatConfig = (
 // CHECK IF SHOULD CREATE NEXT OCCURRENCE
 // ============================================================================
 
-export const shouldCreateNextOccurrence = (config: RepeatConfig): boolean => {
-  if (config.endType === 'never') return true
-
-  if (config.endType === 'count' && config.endCount) {
-    return config.completedCount < config.endCount
-  }
-
-  if (config.endType === 'date' && config.endDate) {
-    return !isAfter(new Date(), config.endDate)
-  }
-
-  return true
-}
-
-// ============================================================================
-// GET PROGRESS FOR COUNT-LIMITED REPEATS
-// ============================================================================
-
-export const getRepeatProgress = (
-  config: RepeatConfig
-): { current: number; total: number; percentage: number } | null => {
-  if (config.endType !== 'count' || !config.endCount) return null
-
-  return {
-    current: config.completedCount,
-    total: config.endCount,
-    percentage: Math.round((config.completedCount / config.endCount) * 100)
-  }
-}
+export const shouldCreateNextOccurrence = (config: RepeatConfig, now: Date = new Date()): boolean =>
+  shouldCreateNextOccurrenceAt(config, now)

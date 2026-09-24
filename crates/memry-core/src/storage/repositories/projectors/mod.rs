@@ -52,6 +52,7 @@
 //! `sync_items.payload`, which is what keeps it self-healing. Its reader still
 //! runs, so a malformed icon payload is recorded corrupt like any other.
 
+pub mod filters;
 pub mod notes;
 pub mod projects;
 pub mod reminders;
@@ -101,6 +102,7 @@ pub fn read(item_type: &str, parsed: &Object) -> Result<Object, ProjectionError>
         "task_activity" => tasks::read_task_activity(parsed),
         "reminder" => reminders::read_reminder(parsed),
         "settings" => settings::read_settings(parsed),
+        "filter" => filters::read_filter(parsed),
         other => Err(ProjectionError::UnknownType {
             item_type: other.to_owned(),
         }),
@@ -129,6 +131,7 @@ pub fn project(
         "task_activity" => tasks::project_task_activity(conn, item, view),
         "reminder" => reminders::project_reminder(conn, item, view),
         "settings" => settings::project_settings(conn, item, view),
+        "filter" => filters::project_filter(conn, item, view),
         // Unreachable: `read` refused the type before the caller got here.
         other => Err(StorageError::Failed {
             what: format!("no projector for item type `{other}`"),
@@ -214,6 +217,7 @@ fn delete_targets(item_type: &str) -> &'static [(&'static str, Option<&'static s
         "task_activity" => &[("task_activity", Some("id"))],
         "reminder" => &[("reminders", Some("id"))],
         "settings" => &[("settings", None)],
+        "filter" => &[("saved_filters", Some("id"))],
         _ => &[],
     }
 }

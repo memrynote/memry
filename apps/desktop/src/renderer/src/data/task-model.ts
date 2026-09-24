@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
 import { getI18n } from 'react-i18next'
+import type { Priority, RepeatAnchor, RepeatConfig } from '@memry/domain-tasks/parsing'
 
 const tasksT = (): TFunction<'tasks'> | null => {
   const i18n = getI18n()
@@ -10,48 +11,16 @@ const tasksT = (): TFunction<'tasks'> | null => {
 // TASK TYPES AND INTERFACES
 // ============================================================================
 
-export type Priority = 'none' | 'low' | 'medium' | 'high' | 'urgent'
-
-export type RepeatFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
-
-export type MonthlyType = 'dayOfMonth' | 'weekPattern'
-
-export type RepeatEndType = 'never' | 'date' | 'count'
-
-/**
- * Which date the next occurrence is measured from. `due` keeps a fixed cadence
- * (a daily task completed three days late is still due tomorrow); `completion`
- * restarts the interval on the day the task was actually finished, which is what
- * Obsidian writes as `when done` and what habit tracking wants. Null means `due`,
- * so rows written before this was honored keep their existing behavior.
- */
-export type RepeatAnchor = 'due' | 'completion'
-
-export interface RepeatConfig {
-  // Base frequency
-  frequency: RepeatFrequency
-
-  // Interval: every X days/weeks/months/years
-  interval: number // 1 = every, 2 = every other, 3 = every third, etc.
-
-  // Weekly: which days of the week
-  daysOfWeek?: number[] // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-
-  // Monthly: day of month OR week pattern
-  monthlyType?: MonthlyType
-  dayOfMonth?: number // 1-31, used when monthlyType = "dayOfMonth"
-  weekOfMonth?: number // 1-5 (5 = last), used when monthlyType = "weekPattern"
-  dayOfWeekForMonth?: number // 0-6, used with weekOfMonth
-
-  // End condition
-  endType: RepeatEndType
-  endDate?: Date | null // when endType = "date"
-  endCount?: number // when endType = "count" (after X occurrences)
-
-  // Tracking
-  completedCount: number // how many times completed
-  createdAt: Date
-}
+// The value types live in `@memry/domain-tasks/parsing` beside the pure logic
+// that consumes them (spec 004 Phase 1).
+export type {
+  MonthlyType,
+  Priority,
+  RepeatAnchor,
+  RepeatConfig,
+  RepeatEndType,
+  RepeatFrequency
+} from '@memry/domain-tasks/parsing'
 
 export interface Task {
   id: string

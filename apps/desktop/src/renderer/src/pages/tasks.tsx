@@ -35,9 +35,9 @@ import {
   getTasksInDueWindow,
   countActiveFilters,
   scopeTasksByProject,
-  applyFiltersAndSort,
-  type TaskDueWindow
+  applyFiltersAndSort
 } from '@/lib/task-utils'
+import { getTaskTabCounts } from '@memry/domain-tasks/parsing'
 import {
   type Project,
   type ViewMode,
@@ -512,21 +512,11 @@ export const TasksPage = ({
 
   // Derived: tab counts for TasksTabBar (scoped by dropdown project).
   // Parents only — subtasks ride along in the lists but are not counted.
-  const tabCounts = useMemo((): TasksTabCounts => {
-    const scopedTasks = scopeTasksByProject(tasks, selectedProjectId)
-    const countWindow = (window: TaskDueWindow): number =>
-      getTasksInDueWindow(scopedTasks, projects, window, currentDay).filter(
-        (t) => t.parentId === null
-      ).length
-
-    return {
-      all: getFilteredTasks(scopedTasks, 'all', 'view', projects).length,
-      archived: scopedTasks.filter((t) => t.archivedAt && t.parentId === null).length,
-      today: countWindow('today'),
-      tomorrow: countWindow('tomorrow'),
-      next7: countWindow('next7')
-    }
-  }, [tasks, projects, selectedProjectId, currentDay])
+  // `getTaskTabCounts` is pinned for the iOS core by vectors (spec 004 D4).
+  const tabCounts = useMemo(
+    (): TasksTabCounts => getTaskTabCounts(tasks, projects, selectedProjectId, currentDay),
+    [tasks, projects, selectedProjectId, currentDay]
+  )
 
   // Done section per scope. "Today" keeps its completed-today rule — that is the
   // day's progress, and it is what the celebration counts. The other windows

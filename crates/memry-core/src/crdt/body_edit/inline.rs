@@ -84,12 +84,10 @@ pub(super) fn insert_inline(
         let rebuilt = block.insert(txn, index + 2, XmlTextPrelim::new(""));
         let mut at = 0u32;
         for (chunk, chunk_attrs) in tail {
-            match chunk_attrs {
-                Some(chunk_attrs) => {
-                    rebuilt.insert_with_attributes(txn, at, &chunk, *chunk_attrs);
-                }
-                None => rebuilt.insert(txn, at, &chunk),
-            }
+            // An unmarked chunk gets an explicit empty set: a plain insert
+            // after a marked one would inherit its mark.
+            let attrs = chunk_attrs.map(|attrs| *attrs).unwrap_or_default();
+            rebuilt.insert_with_attributes(txn, at, &chunk, attrs);
             at += chunk.chars().count() as u32;
         }
     }

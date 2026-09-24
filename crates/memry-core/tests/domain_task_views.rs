@@ -1,21 +1,26 @@
-//! The four task views of FR-057, against real SQLite (T129).
+//! The task views of spec 004 D4 (superseding FR-057), against real SQLite.
+//!
+//! The rules themselves are pinned by the `dueWindows` vectors
+//! (`task_views_vectors.rs`); this file proves [`task_views::load`] feeds them
+//! the rows a real pull writes.
 //!
 //! Every fixture is seeded through the **real** apply path, so the rows these
 //! predicates read are the rows a pull would have written.
 //!
-//! | Test                                            | Rule                           |
-//! | ----------------------------------------------- | ------------------------------ |
-//! | today carries overdue and started tasks         | `getFilteredTasks` case today  |
-//! | today drops done, archived and undated tasks    | same                           |
-//! | upcoming is tomorrow through today+7            | case upcoming, `weekFromNow`   |
-//! | by-project keeps completed tasks and subtasks   | the project arm                |
-//! | completed keys on the status, not `completedAt` | `isComplete`                   |
-//! | a subtask rides along with a matching parent    | `includeSubtasksForMatching…`  |
-//! | a task whose status will not resolve is open    | `status?.type !== 'done'`      |
+//!
+//! | Test                                              | Rule                          |
+//! | ------------------------------------------------- | ----------------------------- |
+//! | today leads with overdue, admits started tasks    | `getTasksInDueWindow` today   |
+//! | next 7 is overdue then today..today+6             | `getTasksInDueWindow` next7   |
+//! | by-project keeps completed tasks and subtasks     | the project arm               |
+//! | completed view keys on the status; Done on stamp  | `isComplete` / `completedAt`  |
+//! | a subtask rides along with a matching parent      | `includeSubtasksForMatching…` |
+//! | a task whose status will not resolve is open      | `status?.type !== 'done'`     |
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use memry_core::domain::task_views::{self, UPCOMING_WINDOW_DAYS};
+use memry_core::domain::calendar::LocalDateTime;
+use memry_core::domain::task_views::{self, DueWindow, Selection, ViewTask};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
@@ -23,6 +28,10 @@ use serde_json::{Value, json};
 
 const NOW: i64 = 1_760_000_000_000;
 const TODAY: &str = "2026-04-16";
+
+fn now() -> LocalDateTime {
+    LocalDateTime::parse("2026-04-16T12:00:00").expect("a local instant")
+}
 
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
@@ -89,12 +98,12 @@ fn seed_task(conn: &Connection, id: &str, position: i64, extra: Value) {
     apply(conn, "task", id, payload);
 }
 
-fn ids(rows: Vec<task_views::TaskRow>) -> Vec<String> {
-    rows.into_iter().map(|row| row.id).collect()
+fn ids(rows: Vec<&ViewTask>) -> Vec<String> {
+    rows.into_iter().map(|row| row.id.clone()).collect()
 }
 
 #[test]
-fn today_carries_overdue_and_started_tasks_and_drops_done_archived_and_undated_ones() {
+fn today_leads_with_overdue_admits_started_tasks_and_drops_done_archived_and_undated_ones() {
     let db = open("views-today");
     db.call_blocking(|conn| {
         seed_project(conn);
@@ -125,11 +134,12 @@ fn today_carries_overdue_and_started_tasks_and_drops_done_archived_and_undated_o
             }),
         );
 
+        let tasks = task_views::load(conn)?;
         assert_eq!(
-            ids(task_views::today(conn, TODAY)?),
+            ids(task_views::in_due_window(&tasks, DueWindow::Today, now())),
             vec![
-                "due-today".to_owned(),
                 "overdue".to_owned(),
+                "due-today".to_owned(),
                 "started-far-due".to_owned()
             ]
         );
@@ -139,7 +149,7 @@ fn today_carries_overdue_and_started_tasks_and_drops_done_archived_and_undated_o
 }
 
 #[test]
-fn upcoming_starts_the_day_after_today_and_ends_seven_days_out() {
+fn next_seven_is_overdue_then_today_through_six_days_out() {
     let db = open("views-upcoming");
     db.call_blocking(|conn| {
         seed_project(conn);
@@ -147,8 +157,9 @@ fn upcoming_starts_the_day_after_today_and_ends_seven_days_out() {
         seed_task(conn, "due-today", 2, json!({"dueDate": TODAY}));
         seed_task(conn, "tomorrow", 3, json!({"dueDate": "2026-04-17"}));
         seed_task(conn, "last-day", 4, json!({"dueDate": "2026-04-23"}));
+        // today + 7 is the eighth day: outside Next 7.
         seed_task(conn, "past-the-window", 5, json!({"dueDate": "2026-04-24"}));
-        // A start date does not put an undated task into upcoming.
+        // A start date admits a task into Today only.
         seed_task(
             conn,
             "started-undated",
@@ -156,13 +167,26 @@ fn upcoming_starts_the_day_after_today_and_ends_seven_days_out() {
             json!({"startDate": "2026-04-10"}),
         );
 
+        let tasks = task_views::load(conn)?;
         assert_eq!(
-            ids(task_views::upcoming(conn, TODAY, UPCOMING_WINDOW_DAYS)?),
-            vec!["tomorrow".to_owned(), "last-day".to_owned()]
+            ids(task_views::in_due_window(&tasks, DueWindow::Next7, now())),
+            vec![
+                "overdue".to_owned(),
+                "due-today".to_owned(),
+                "tomorrow".to_owned()
+            ]
+        );
+        assert_eq!(
+            ids(task_views::in_due_window(
+                &tasks,
+                DueWindow::Tomorrow,
+                now()
+            )),
+            vec!["tomorrow".to_owned()]
         );
         Ok(())
     })
-    .expect("the upcoming view");
+    .expect("the next-7 window");
 }
 
 #[test]
@@ -182,7 +206,11 @@ fn by_project_keeps_completed_tasks_and_subtasks_and_drops_archived_ones() {
         seed_task(conn, "elsewhere", 5, json!({"projectId": "proj-2"}));
 
         assert_eq!(
-            ids(task_views::by_project(conn, "proj-1")?),
+            ids(task_views::filtered(
+                &task_views::load(conn)?,
+                &Selection::Project("proj-1".into()),
+                now()
+            )),
             vec!["open".to_owned(), "finished".to_owned(), "child".to_owned()]
         );
         Ok(())
@@ -191,7 +219,7 @@ fn by_project_keeps_completed_tasks_and_subtasks_and_drops_archived_ones() {
 }
 
 #[test]
-fn completed_keys_on_the_status_and_not_on_completed_at() {
+fn the_completed_view_keys_on_the_status_and_the_done_section_on_completed_at() {
     let db = open("views-completed");
     db.call_blocking(|conn| {
         seed_project(conn);
@@ -208,9 +236,20 @@ fn completed_keys_on_the_status_and_not_on_completed_at() {
         );
         seed_task(conn, "open", 3, json!({}));
 
+        let tasks = task_views::load(conn)?;
         assert_eq!(
-            ids(task_views::completed(conn)?),
+            ids(task_views::filtered(
+                &tasks,
+                &Selection::View("completed".into()),
+                now()
+            )),
             vec!["status-done".to_owned()]
+        );
+        // The Done section under the All tab is desktop's `getCompletedTasks`,
+        // which keys on the stamp.
+        assert_eq!(
+            ids(task_views::completed_all(&tasks)),
+            vec!["stamped-only".to_owned()]
         );
         Ok(())
     })
@@ -234,8 +273,9 @@ fn a_subtask_rides_along_with_its_matching_parent_and_never_on_its_own() {
         seed_task(conn, "other-parent", 3, json!({}));
         seed_task(conn, "other-child", 4, json!({"parentId": "other-parent"}));
 
+        let tasks = task_views::load(conn)?;
         assert_eq!(
-            ids(task_views::today(conn, TODAY)?),
+            ids(task_views::in_due_window(&tasks, DueWindow::Today, now())),
             vec!["parent".to_owned(), "child".to_owned()]
         );
         Ok(())
@@ -268,24 +308,39 @@ fn a_task_whose_status_will_not_resolve_reads_as_open() {
             }),
         );
 
+        let tasks = task_views::load(conn)?;
         assert_eq!(
-            ids(task_views::today(conn, TODAY)?),
+            ids(task_views::in_due_window(&tasks, DueWindow::Today, now())),
             vec!["foreign-status".to_owned(), "unpulled-project".to_owned()]
         );
-        assert!(task_views::completed(conn)?.is_empty());
+        assert!(
+            task_views::filtered(&tasks, &Selection::View("completed".into()), now()).is_empty()
+        );
         Ok(())
     })
     .expect("the unresolved status");
 }
 
 #[test]
-fn a_malformed_today_is_refused_rather_than_compared() {
+fn a_stored_due_date_that_will_not_read_puts_the_task_in_no_window() {
     let db = open("views-bad-date");
     db.call_blocking(|conn| {
         seed_project(conn);
-        assert!(task_views::today(conn, "16/04/2026").is_err());
-        assert!(task_views::upcoming(conn, "", UPCOMING_WINDOW_DAYS).is_err());
+        seed_task(conn, "garbled", 1, json!({"dueDate": "16/04/2026"}));
+        let tasks = task_views::load(conn)?;
+        assert_eq!(tasks.len(), 1, "the row still loads");
+        for window in [DueWindow::Today, DueWindow::Tomorrow, DueWindow::Next7] {
+            assert!(task_views::in_due_window(&tasks, window, now()).is_empty());
+        }
+        assert_eq!(
+            ids(task_views::filtered(
+                &tasks,
+                &Selection::View("all".into()),
+                now()
+            )),
+            vec!["garbled".to_owned()]
+        );
         Ok(())
     })
-    .expect("the refusal");
+    .expect("the unreadable date");
 }

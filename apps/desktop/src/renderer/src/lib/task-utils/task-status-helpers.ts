@@ -2,18 +2,15 @@ import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import { priorityConfig } from '@/data/task-model'
 import { startOfDay, differenceInDays } from './task-date-utils'
+import { isTaskCompleted as isTaskCompletedIn } from '@memry/domain-tasks/parsing'
 
 // ============================================================================
 // TASK STATUS HELPERS
 // ============================================================================
 
-export const isTaskCompleted = (task: Task, projects: Project[]): boolean => {
-  const project = projects.find((p) => p.id === task.projectId)
-  if (!project) return false
-
-  const status = project.statuses.find((s) => s.id === task.statusId)
-  return status?.type === 'done'
-}
+// Status-type completion is pinned for the iOS core by vectors (spec 004 D4).
+export const isTaskCompleted = (task: Task, projects: Project[]): boolean =>
+  isTaskCompletedIn(task, projects)
 
 export const getDefaultTodoStatus = (project: Project): Status | undefined => {
   return project.statuses.find((s) => s.type === 'todo')

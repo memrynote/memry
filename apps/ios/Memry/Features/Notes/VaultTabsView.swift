@@ -20,35 +20,51 @@ import SwiftUI
 // R15 requires; a second stack wrapped around it here would push its screens
 // into the wrong one.
 
-struct VaultTabsView<Notes: View>: View {
+struct VaultTabsView<Notes: View, Tasks: View>: View {
     @ViewBuilder let notes: () -> Notes
+    /// The Tasks tab (spec 004 TP031), built by the caller that holds the
+    /// vault, keychain and sync.
+    @ViewBuilder let tasks: () -> Tasks
+    /// Cross-tab navigation: search, note task blocks and reminder taps open a
+    /// task through it.
+    @State private var router = TasksRouter()
+    /// Reminder notification taps (TP053), handed over by the app delegate.
+    private let reminderTaps = ReminderTaps.shared
 
     var body: some View {
-        TabView {
-            Tab("Notes", systemImage: "doc.text") {
+        TabView(selection: $router.selectedTab) {
+            Tab("Notes", systemImage: "doc.text", value: VaultTab.notes) {
                 notes()
             }
-            Tab("Home", systemImage: "house") {
+            Tab("Home", systemImage: "house", value: VaultTab.home) {
                 ComingSoonTab(
                     title: "Home",
                     detail: "The home board with your widgets is on your computer for now."
                 )
             }
-            Tab("Tasks", systemImage: "checkmark.circle") {
-                ComingSoonTab(
-                    title: "Tasks",
-                    detail: "Tasks and projects are on your computer for now. Task blocks inside a note still show here."
-                )
+            Tab("Tasks", systemImage: "checkmark.circle", value: VaultTab.tasks) {
+                tasks()
             }
-            Tab("Journal", systemImage: "book") {
+            Tab("Journal", systemImage: "book", value: VaultTab.journal) {
                 ComingSoonTab(
                     title: "Journal",
                     detail: "The journal is on your computer for now. Journal entries sync and can be read as notes."
                 )
             }
-            Tab("More", systemImage: "ellipsis") {
+            Tab("More", systemImage: "ellipsis", value: VaultTab.more) {
                 MoreTab()
             }
+        }
+        .environment(router)
+        // A tapped reminder opens its task; a tap from a cold start waits in
+        // `ReminderTaps` until this shell exists, hence `initial: true`.
+        .onChange(of: reminderTaps.pending, initial: true) {
+            reminderTaps.take()?.open(in: router)
+        }
+        // The vault closed or the account signed out: no reminder text may
+        // outlive it on the lock screen. The next vault refills its own window.
+        .onDisappear {
+            Task { await ReminderScheduler.shared.clearAll() }
         }
         // The More tab holds the way out, so the shell stops drawing it over
         // every screen of the vault.
@@ -56,14 +72,16 @@ struct VaultTabsView<Notes: View>: View {
     }
 }
 
-/// The account's own page inside a vault: what is not on the phone yet, and
-/// the way out.
+/// The account's own page inside a vault: Settings > Tasks, what is not on
+/// the phone yet, and the way out.
 private struct MoreTab: View {
     @Environment(AccountViewModel.self) private var account: AccountViewModel?
+    @Environment(TasksRouter.self) private var router
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                tasksSettingsRow
                 ContentUnavailableView {
                     Label("More", systemImage: "hourglass")
                 } description: {
@@ -76,6 +94,41 @@ private struct MoreTab: View {
             .navigationTitle("More")
             .background(Tokens.Canvas.background.color)
         }
+    }
+
+    /// Settings > Tasks lives in the Tasks tab's stack (it needs the tasks
+    /// store), so this row switches there and shows it.
+    private var tasksSettingsRow: some View {
+        Button {
+            router.selectedTab = .tasks
+            router.path = [.settings]
+        } label: {
+            HStack(spacing: Tokens.Space.medium) {
+                Image(systemName: "checkmark.circle")
+                    .foregroundStyle(Tokens.Text.secondary.color)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                    Text(TasksCopy.reminderMoreTasksRow)
+                        .font(Tokens.Typography.body.font)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                    Text(TasksCopy.reminderMoreTasksDetail)
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                }
+                Spacer(minLength: Tokens.Space.small)
+                Image(systemName: "chevron.forward")
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+            .padding(.horizontal, Tokens.Space.inset)
+            .padding(.vertical, Tokens.Space.small)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("tasks.more.settings")
     }
 }
 

@@ -17,6 +17,7 @@ import type { ZodType } from 'zod'
 import { SettingsSyncPayloadSchema } from '../settings-sync'
 import {
   CustomIconSyncPayloadSchema,
+  FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
   JournalSyncPayloadSchema,
   NoteSyncPayloadSchema,
@@ -44,7 +45,8 @@ const SCHEMAS: Record<string, ZodType> = {
   project: ProjectSyncPayloadSchema,
   task_activity: TaskActivitySyncPayloadSchema,
   reminder: ReminderSyncPayloadSchema,
-  settings: SettingsSyncPayloadSchema
+  settings: SettingsSyncPayloadSchema,
+  filter: FilterSyncPayloadSchema
 }
 
 interface Case {
@@ -83,11 +85,11 @@ describe('payload-schemas vectors', () => {
   it('carries the recorded case count, four per subscribed type', () => {
     const total = vectors.groups.reduce((n, g) => n + g.cases.length, 0)
     expect(total).toBe(vectors.meta.caseCount)
-    expect(vectors.groups).toHaveLength(13)
+    expect(vectors.groups).toHaveLength(14)
     for (const group of vectors.groups) expect(group.cases).toHaveLength(4)
   })
 
-  it('covers exactly the thirteen subscribed types', () => {
+  it('covers exactly the fourteen subscribed types', () => {
     expect(vectors.groups.map((g) => g.type).sort()).toEqual(
       [...vectors.meta.subscribedTypes].sort()
     )

@@ -1,0 +1,7452 @@
+{
+  "meta": {
+    "spec": "004-ios-tasks-parity",
+    "source": "packages/domain-tasks/src/filtering",
+    "timeZone": "UTC",
+    "dates": "dueDate and custom range are YYYY-MM-DD local keys; instants local YYYY-MM-DDTHH:MM:SS",
+    "collation": "title/project/folder/note order uses String.prototype.localeCompare (ICU root)"
+  },
+  "nows": {
+    "wednesday": "2026-01-14T12:00:00",
+    "sunday": "2026-01-18T09:00:00",
+    "monthEnd": "2026-01-31T18:00:00"
+  },
+  "projects": [
+    {
+      "id": "p1",
+      "name": "Work",
+      "color": "#ef4444",
+      "statuses": [
+        {
+          "id": "p1-todo",
+          "type": "todo",
+          "color": "#6b7280",
+          "order": 0
+        },
+        {
+          "id": "p1-doing",
+          "type": "in_progress",
+          "color": "#F59E0B",
+          "order": 1
+        },
+        {
+          "id": "p1-review",
+          "type": "in_progress",
+          "color": "#8b5cf6",
+          "order": 2
+        },
+        {
+          "id": "p1-done",
+          "type": "done",
+          "color": "#22c55e",
+          "order": 3
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "alpha",
+      "color": "#3b82f6",
+      "statuses": [
+        {
+          "id": "p2-todo",
+          "type": "todo",
+          "color": "#111111",
+          "order": 0
+        },
+        {
+          "id": "p2-done",
+          "type": "done",
+          "color": "#222222",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "p3",
+      "name": "Éclair",
+      "color": "#10b981",
+      "statuses": [
+        {
+          "id": "p3-todo",
+          "type": "todo",
+          "color": "#333333",
+          "order": 0
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "id": "n-roadmap",
+      "title": "Roadmap",
+      "folderPath": "Acme/Planning"
+    },
+    {
+      "id": "n-standup",
+      "title": "standup",
+      "folderPath": "Acme"
+    },
+    {
+      "id": "n-loose",
+      "title": "Loose note",
+      "folderPath": ""
+    },
+    {
+      "id": "n-budget",
+      "title": "Budget",
+      "folderPath": "Acme/Planning"
+    },
+    {
+      "id": "n-zeta",
+      "title": "Zeta",
+      "folderPath": "beta"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "a",
+      "title": "Write report",
+      "description": "Quarterly numbers",
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": null,
+      "priority": "high",
+      "dueDate": "2026-01-14",
+      "dueTime": "09:00",
+      "createdAt": "2026-01-14T08:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [
+        "work",
+        "Writing"
+      ],
+      "sourceNoteId": "n-roadmap",
+      "linkedNoteIds": []
+    },
+    {
+      "id": "b",
+      "title": "banana bread",
+      "description": null,
+      "projectId": "p2",
+      "statusId": "p2-todo",
+      "parentId": null,
+      "priority": "low",
+      "dueDate": "2026-01-12",
+      "dueTime": null,
+      "createdAt": "2026-01-13T08:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [
+        "home"
+      ],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "c",
+      "title": "Apple pie",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-doing",
+      "parentId": null,
+      "priority": "urgent",
+      "dueDate": "2026-01-14",
+      "dueTime": "08:30",
+      "createdAt": "2026-01-07T08:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": [
+        "n-standup",
+        "n-roadmap"
+      ]
+    },
+    {
+      "id": "d",
+      "title": "draft email",
+      "description": "REPORT draft for review",
+      "projectId": "p1",
+      "statusId": "p1-review",
+      "parentId": null,
+      "priority": "medium",
+      "dueDate": "2026-01-15",
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": true,
+      "tags": [
+        "WORK"
+      ],
+      "sourceNoteId": "n-loose",
+      "linkedNoteIds": []
+    },
+    {
+      "id": "e",
+      "title": "Banana split",
+      "description": null,
+      "projectId": "p3",
+      "statusId": "p3-todo",
+      "parentId": null,
+      "priority": "none",
+      "dueDate": "2026-01-21",
+      "dueTime": null,
+      "createdAt": "2025-12-01T08:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": "n-missing",
+      "linkedNoteIds": []
+    },
+    {
+      "id": "f",
+      "title": "Éclair tasting",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": null,
+      "priority": "high",
+      "dueDate": "2026-01-19",
+      "dueTime": "14:00",
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": "n-zeta",
+      "linkedNoteIds": []
+    },
+    {
+      "id": "g",
+      "title": "done thing",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-done",
+      "parentId": null,
+      "priority": "none",
+      "dueDate": "2026-01-13",
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": "2026-01-13T10:00:00",
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": "n-budget",
+      "linkedNoteIds": []
+    },
+    {
+      "id": "h",
+      "title": "archived thing",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-done",
+      "parentId": null,
+      "priority": "none",
+      "dueDate": "2026-01-10",
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": "2026-01-10T10:00:00",
+      "archivedAt": "2026-01-11T10:00:00",
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "i",
+      "title": "orphan status",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "gone",
+      "parentId": null,
+      "priority": "none",
+      "dueDate": "2026-02-20",
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "j",
+      "title": "unknown project",
+      "description": null,
+      "projectId": "nope",
+      "statusId": "nope-todo",
+      "parentId": null,
+      "priority": "none",
+      "dueDate": null,
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "k",
+      "title": "report subtask",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": "a",
+      "priority": "urgent",
+      "dueDate": "2026-01-13",
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "l",
+      "title": "sub of b",
+      "description": null,
+      "projectId": "p2",
+      "statusId": "p2-todo",
+      "parentId": "b",
+      "priority": "none",
+      "dueDate": null,
+      "dueTime": null,
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "m",
+      "title": "monthly review",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": null,
+      "priority": "medium",
+      "dueDate": "2026-01-31",
+      "dueTime": null,
+      "createdAt": "2026-01-14T11:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": true,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "n",
+      "title": "next week plan",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": null,
+      "priority": "none",
+      "dueDate": "2026-01-26",
+      "dueTime": "10:00",
+      "createdAt": "2026-01-10T10:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    },
+    {
+      "id": "o",
+      "title": "write report",
+      "description": null,
+      "projectId": "p1",
+      "statusId": "p1-todo",
+      "parentId": null,
+      "priority": "high",
+      "dueDate": "2026-01-14",
+      "dueTime": "09:00",
+      "createdAt": "2026-01-14T08:00:00",
+      "completedAt": null,
+      "archivedAt": null,
+      "isRepeating": false,
+      "tags": [],
+      "sourceNoteId": null,
+      "linkedNoteIds": []
+    }
+  ],
+  "dimensions": {
+    "search": [
+      {
+        "query": "",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "query": "  ",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "query": "report",
+        "expected": [
+          "a",
+          "d",
+          "k",
+          "o"
+        ]
+      },
+      {
+        "query": "REPORT",
+        "expected": [
+          "a",
+          "d",
+          "k",
+          "o"
+        ]
+      },
+      {
+        "query": "draft",
+        "expected": [
+          "d"
+        ]
+      },
+      {
+        "query": "zzz",
+        "expected": []
+      },
+      {
+        "query": "Ünï",
+        "expected": []
+      }
+    ],
+    "projects": [
+      {
+        "projectIds": [],
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "projectIds": [
+          "p1"
+        ],
+        "expected": [
+          "a",
+          "c",
+          "d",
+          "f",
+          "g",
+          "h",
+          "i",
+          "k",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "projectIds": [
+          "p1",
+          "p2"
+        ],
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "f",
+          "g",
+          "h",
+          "i",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "projectIds": [
+          "nope"
+        ],
+        "expected": [
+          "j"
+        ]
+      }
+    ],
+    "priorities": [
+      {
+        "priorities": [],
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "priorities": [
+          "urgent"
+        ],
+        "expected": [
+          "c",
+          "k"
+        ]
+      },
+      {
+        "priorities": [
+          "high",
+          "none"
+        ],
+        "expected": [
+          "a",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "l",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "priorities": [
+          "low",
+          "medium"
+        ],
+        "expected": [
+          "b",
+          "d",
+          "m"
+        ]
+      }
+    ],
+    "tags": [
+      {
+        "tags": [],
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "tags": [
+          "work"
+        ],
+        "expected": [
+          "a",
+          "d"
+        ]
+      },
+      {
+        "tags": [
+          "WORK",
+          "home"
+        ],
+        "expected": [
+          "a",
+          "b",
+          "d"
+        ]
+      },
+      {
+        "tags": [
+          "missing"
+        ],
+        "expected": []
+      }
+    ],
+    "statuses": [
+      {
+        "statusIds": [],
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "statusIds": [
+          "p1-doing"
+        ],
+        "expected": [
+          "c"
+        ]
+      },
+      {
+        "statusIds": [
+          "p1-todo",
+          "p2-done"
+        ],
+        "expected": [
+          "a",
+          "f",
+          "k",
+          "m",
+          "n",
+          "o"
+        ]
+      }
+    ],
+    "completion": [
+      {
+        "completion": "active",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "completion": "completed",
+        "expected": [
+          "g"
+        ]
+      },
+      {
+        "completion": "all",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "completion": "archived",
+        "expected": [
+          "h"
+        ]
+      },
+      {
+        "completion": "bogus",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      }
+    ],
+    "repeatType": [
+      {
+        "repeatType": "all",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "repeatType": "repeating",
+        "expected": [
+          "d",
+          "m"
+        ]
+      },
+      {
+        "repeatType": "one-time",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "repeatType": "bogus",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      }
+    ],
+    "hasTime": [
+      {
+        "hasTime": "all",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "hasTime": "with-time",
+        "expected": [
+          "a",
+          "c",
+          "f",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "hasTime": "without-time",
+        "expected": [
+          "b",
+          "d",
+          "e",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m"
+        ]
+      },
+      {
+        "hasTime": "bogus",
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      }
+    ],
+    "dueDate": [
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "any"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "none"
+        },
+        "expected": [
+          "j",
+          "l"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "overdue"
+        },
+        "expected": [
+          "b",
+          "k"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "today"
+        },
+        "expected": [
+          "a",
+          "c",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "tomorrow"
+        },
+        "expected": [
+          "d"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "this-week"
+        },
+        "expected": [
+          "a",
+          "c",
+          "d",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "next-week"
+        },
+        "expected": [
+          "e",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "this-month"
+        },
+        "expected": [
+          "a",
+          "c",
+          "d",
+          "e",
+          "f",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": "2026-01-20"
+        },
+        "expected": [
+          "d",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": null
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "bogus"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "any"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "none"
+        },
+        "expected": [
+          "j",
+          "l"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "overdue"
+        },
+        "expected": [
+          "b",
+          "k"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "today"
+        },
+        "expected": [
+          "a",
+          "c",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "tomorrow"
+        },
+        "expected": [
+          "d"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "this-week"
+        },
+        "expected": [
+          "a",
+          "c",
+          "d",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "next-week"
+        },
+        "expected": [
+          "e",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "this-month"
+        },
+        "expected": [
+          "a",
+          "c",
+          "d",
+          "e",
+          "f",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": "2026-01-20"
+        },
+        "expected": [
+          "d",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": null
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-14T12:00:00",
+        "nowKey": "wednesday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "bogus"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "any"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "none"
+        },
+        "expected": [
+          "j",
+          "l"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "overdue"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "k",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "today"
+        },
+        "expected": []
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "tomorrow"
+        },
+        "expected": [
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "this-week"
+        },
+        "expected": [
+          "e",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "next-week"
+        },
+        "expected": [
+          "m",
+          "n"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "this-month"
+        },
+        "expected": [
+          "e",
+          "f",
+          "m",
+          "n"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": "2026-01-20"
+        },
+        "expected": [
+          "d",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": null
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "bogus"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "any"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "none"
+        },
+        "expected": [
+          "j",
+          "l"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "overdue"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "k",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "today"
+        },
+        "expected": []
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "tomorrow"
+        },
+        "expected": [
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "this-week"
+        },
+        "expected": []
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "next-week"
+        },
+        "expected": [
+          "e",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "this-month"
+        },
+        "expected": [
+          "e",
+          "f",
+          "m",
+          "n"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": "2026-01-20"
+        },
+        "expected": [
+          "d",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": null
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-18T09:00:00",
+        "nowKey": "sunday",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "bogus"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "any"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "none"
+        },
+        "expected": [
+          "j",
+          "l"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "overdue"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "k",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "today"
+        },
+        "expected": [
+          "m"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "tomorrow"
+        },
+        "expected": []
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "this-week"
+        },
+        "expected": [
+          "m"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "next-week"
+        },
+        "expected": []
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "this-month"
+        },
+        "expected": [
+          "i",
+          "m"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": "2026-01-20"
+        },
+        "expected": [
+          "d",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": null
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 0,
+        "filter": {
+          "type": "bogus"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "any"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "none"
+        },
+        "expected": [
+          "j",
+          "l"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "overdue"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "k",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "today"
+        },
+        "expected": [
+          "m"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "tomorrow"
+        },
+        "expected": []
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "this-week"
+        },
+        "expected": [
+          "m"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "next-week"
+        },
+        "expected": []
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "this-month"
+        },
+        "expected": [
+          "i",
+          "m"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": "2026-01-20"
+        },
+        "expected": [
+          "d",
+          "f"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "custom",
+          "customStart": "2026-01-15",
+          "customEnd": null
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      },
+      {
+        "now": "2026-01-31T18:00:00",
+        "nowKey": "monthEnd",
+        "weekStartsOn": 1,
+        "filter": {
+          "type": "bogus"
+        },
+        "expected": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i",
+          "j",
+          "k",
+          "l",
+          "m",
+          "n",
+          "o"
+        ]
+      }
+    ]
+  },
+  "sorts": [
+    {
+      "field": "dueDate",
+      "direction": "asc",
+      "expected": [
+        "h",
+        "b",
+        "g",
+        "k",
+        "c",
+        "a",
+        "o",
+        "d",
+        "f",
+        "e",
+        "n",
+        "m",
+        "i",
+        "j",
+        "l"
+      ]
+    },
+    {
+      "field": "dueDate",
+      "direction": "desc",
+      "expected": [
+        "j",
+        "l",
+        "i",
+        "m",
+        "n",
+        "e",
+        "f",
+        "d",
+        "a",
+        "o",
+        "c",
+        "g",
+        "k",
+        "b",
+        "h"
+      ]
+    },
+    {
+      "field": "priority",
+      "direction": "asc",
+      "expected": [
+        "c",
+        "k",
+        "a",
+        "f",
+        "o",
+        "d",
+        "m",
+        "b",
+        "e",
+        "g",
+        "h",
+        "i",
+        "j",
+        "l",
+        "n"
+      ]
+    },
+    {
+      "field": "priority",
+      "direction": "desc",
+      "expected": [
+        "e",
+        "g",
+        "h",
+        "i",
+        "j",
+        "l",
+        "n",
+        "b",
+        "d",
+        "m",
+        "a",
+        "f",
+        "o",
+        "c",
+        "k"
+      ]
+    },
+    {
+      "field": "status",
+      "direction": "asc",
+      "expected": [
+        "a",
+        "b",
+        "e",
+        "f",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "i",
+        "j",
+        "c",
+        "d",
+        "g",
+        "h"
+      ]
+    },
+    {
+      "field": "status",
+      "direction": "desc",
+      "expected": [
+        "g",
+        "h",
+        "d",
+        "c",
+        "i",
+        "j",
+        "a",
+        "b",
+        "e",
+        "f",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o"
+      ]
+    },
+    {
+      "field": "createdAt",
+      "direction": "asc",
+      "expected": [
+        "e",
+        "c",
+        "d",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "n",
+        "b",
+        "a",
+        "o",
+        "m"
+      ]
+    },
+    {
+      "field": "createdAt",
+      "direction": "desc",
+      "expected": [
+        "m",
+        "a",
+        "o",
+        "b",
+        "d",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "n",
+        "c",
+        "e"
+      ]
+    },
+    {
+      "field": "title",
+      "direction": "asc",
+      "expected": [
+        "c",
+        "h",
+        "b",
+        "e",
+        "g",
+        "d",
+        "f",
+        "m",
+        "n",
+        "i",
+        "k",
+        "l",
+        "j",
+        "o",
+        "a"
+      ]
+    },
+    {
+      "field": "title",
+      "direction": "desc",
+      "expected": [
+        "a",
+        "o",
+        "j",
+        "l",
+        "k",
+        "i",
+        "n",
+        "m",
+        "f",
+        "d",
+        "g",
+        "e",
+        "b",
+        "h",
+        "c"
+      ]
+    },
+    {
+      "field": "project",
+      "direction": "asc",
+      "expected": [
+        "j",
+        "b",
+        "l",
+        "e",
+        "a",
+        "c",
+        "d",
+        "f",
+        "g",
+        "h",
+        "i",
+        "k",
+        "m",
+        "n",
+        "o"
+      ]
+    },
+    {
+      "field": "project",
+      "direction": "desc",
+      "expected": [
+        "a",
+        "c",
+        "d",
+        "f",
+        "g",
+        "h",
+        "i",
+        "k",
+        "m",
+        "n",
+        "o",
+        "e",
+        "b",
+        "l",
+        "j"
+      ]
+    },
+    {
+      "field": "completedAt",
+      "direction": "asc",
+      "expected": [
+        "h",
+        "g",
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o"
+      ]
+    },
+    {
+      "field": "completedAt",
+      "direction": "desc",
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "g",
+        "h"
+      ]
+    },
+    {
+      "field": "folder",
+      "direction": "asc",
+      "expected": [
+        "h",
+        "b",
+        "g",
+        "k",
+        "c",
+        "a",
+        "o",
+        "d",
+        "f",
+        "e",
+        "n",
+        "m",
+        "i",
+        "j",
+        "l"
+      ]
+    },
+    {
+      "field": "folder",
+      "direction": "desc",
+      "expected": [
+        "j",
+        "l",
+        "i",
+        "m",
+        "n",
+        "e",
+        "f",
+        "d",
+        "a",
+        "o",
+        "c",
+        "g",
+        "k",
+        "b",
+        "h"
+      ]
+    },
+    {
+      "field": "note",
+      "direction": "asc",
+      "expected": [
+        "h",
+        "b",
+        "g",
+        "k",
+        "c",
+        "a",
+        "o",
+        "d",
+        "f",
+        "e",
+        "n",
+        "m",
+        "i",
+        "j",
+        "l"
+      ]
+    },
+    {
+      "field": "note",
+      "direction": "desc",
+      "expected": [
+        "j",
+        "l",
+        "i",
+        "m",
+        "n",
+        "e",
+        "f",
+        "d",
+        "a",
+        "o",
+        "c",
+        "g",
+        "k",
+        "b",
+        "h"
+      ]
+    },
+    {
+      "field": "bogus",
+      "direction": "asc",
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o"
+      ]
+    },
+    {
+      "field": "bogus",
+      "direction": "desc",
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o"
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "dueDate",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "b",
+            "g",
+            "h"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "dueDate.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "o"
+          ]
+        },
+        {
+          "key": "tomorrow",
+          "labelKey": "dueDate.tomorrow",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "upcoming",
+          "labelKey": "dueDate.upcoming",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "f"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "m",
+            "n"
+          ]
+        },
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "dueDate",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "b",
+            "g",
+            "h"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "dueDate.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "o"
+          ]
+        },
+        {
+          "key": "tomorrow",
+          "labelKey": "dueDate.tomorrow",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "upcoming",
+          "labelKey": "dueDate.upcoming",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "f"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "m",
+            "n"
+          ]
+        },
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "dueDate",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "m",
+            "n"
+          ]
+        },
+        {
+          "key": "upcoming",
+          "labelKey": "dueDate.upcoming",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "f"
+          ]
+        },
+        {
+          "key": "tomorrow",
+          "labelKey": "dueDate.tomorrow",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "dueDate.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "o"
+          ]
+        },
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "b",
+            "g",
+            "h"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "dueDate",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "m",
+            "n"
+          ]
+        },
+        {
+          "key": "upcoming",
+          "labelKey": "dueDate.upcoming",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "f"
+          ]
+        },
+        {
+          "key": "tomorrow",
+          "labelKey": "dueDate.tomorrow",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "dueDate.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "o"
+          ]
+        },
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "b",
+            "g",
+            "h"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "priority",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "priority",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "priority",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "priority",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "status",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "status",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "status",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "status",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "createdAt",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "today",
+          "labelKey": "createdAt.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "m",
+            "o"
+          ]
+        },
+        {
+          "key": "yesterday",
+          "labelKey": "createdAt.yesterday",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "thisWeek",
+          "labelKey": "createdAt.thisWeek",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "createdAt",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "today",
+          "labelKey": "createdAt.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "m",
+            "o"
+          ]
+        },
+        {
+          "key": "yesterday",
+          "labelKey": "createdAt.yesterday",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "thisWeek",
+          "labelKey": "createdAt.thisWeek",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "createdAt",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "thisWeek",
+          "labelKey": "createdAt.thisWeek",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "yesterday",
+          "labelKey": "createdAt.yesterday",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "createdAt.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "m",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "createdAt",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "thisWeek",
+          "labelKey": "createdAt.thisWeek",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "yesterday",
+          "labelKey": "createdAt.yesterday",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "createdAt.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "m",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "title",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "title",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "title",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "title",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "project",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "project",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "project",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "project",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "completedAt",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "completedAt",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "completedAt",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "completedAt",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "folder",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "folder-Acme",
+          "labelKey": null,
+          "name": "Acme",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "folder-Acme/Planning",
+          "labelKey": null,
+          "name": "Acme / Planning",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a",
+            "g"
+          ]
+        },
+        {
+          "key": "folder-beta",
+          "labelKey": null,
+          "name": "beta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "folder-vault-root",
+          "labelKey": "folder.vaultRoot",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "folder",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "folder",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "folder-vault-root",
+          "labelKey": "folder.vaultRoot",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "folder-beta",
+          "labelKey": null,
+          "name": "beta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "folder-Acme/Planning",
+          "labelKey": null,
+          "name": "Acme / Planning",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a",
+            "g"
+          ]
+        },
+        {
+          "key": "folder-Acme",
+          "labelKey": null,
+          "name": "Acme",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "folder",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "note",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "note-n-loose",
+          "labelKey": null,
+          "name": "Loose note",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "note-n-standup",
+          "labelKey": null,
+          "name": "standup",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "note-n-budget",
+          "labelKey": null,
+          "name": "Budget",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "g"
+          ]
+        },
+        {
+          "key": "note-n-roadmap",
+          "labelKey": null,
+          "name": "Roadmap",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a"
+          ]
+        },
+        {
+          "key": "note-n-zeta",
+          "labelKey": null,
+          "name": "Zeta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "note",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "note",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "note-n-zeta",
+          "labelKey": null,
+          "name": "Zeta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "note-n-roadmap",
+          "labelKey": null,
+          "name": "Roadmap",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a"
+          ]
+        },
+        {
+          "key": "note-n-budget",
+          "labelKey": null,
+          "name": "Budget",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "g"
+          ]
+        },
+        {
+          "key": "note-n-standup",
+          "labelKey": null,
+          "name": "standup",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "note-n-loose",
+          "labelKey": null,
+          "name": "Loose note",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "note",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "bogus",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "bogus",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "bogus",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-14T12:00:00",
+      "nowKey": "wednesday",
+      "field": "bogus",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "dueDate",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "g",
+            "h",
+            "o"
+          ]
+        },
+        {
+          "key": "tomorrow",
+          "labelKey": "dueDate.tomorrow",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "upcoming",
+          "labelKey": "dueDate.upcoming",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "m",
+            "n"
+          ]
+        },
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "dueDate",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "g",
+            "h",
+            "o"
+          ]
+        },
+        {
+          "key": "tomorrow",
+          "labelKey": "dueDate.tomorrow",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "upcoming",
+          "labelKey": "dueDate.upcoming",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "m",
+            "n"
+          ]
+        },
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "dueDate",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "m",
+            "n"
+          ]
+        },
+        {
+          "key": "upcoming",
+          "labelKey": "dueDate.upcoming",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "tomorrow",
+          "labelKey": "dueDate.tomorrow",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "g",
+            "h",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "dueDate",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "m",
+            "n"
+          ]
+        },
+        {
+          "key": "upcoming",
+          "labelKey": "dueDate.upcoming",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "tomorrow",
+          "labelKey": "dueDate.tomorrow",
+          "name": null,
+          "color": "#3B82F6",
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "g",
+            "h",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "priority",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "priority",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "priority",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "priority",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "status",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "status",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "status",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "status",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "createdAt",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "thisWeek",
+          "labelKey": "createdAt.thisWeek",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "m",
+            "o"
+          ]
+        },
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "createdAt",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "thisWeek",
+          "labelKey": "createdAt.thisWeek",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "m",
+            "o"
+          ]
+        },
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "createdAt",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "thisWeek",
+          "labelKey": "createdAt.thisWeek",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "m",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "createdAt",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "thisWeek",
+          "labelKey": "createdAt.thisWeek",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "m",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "title",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "title",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "title",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "title",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "project",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "project",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "project",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "project",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "completedAt",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "completedAt",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "completedAt",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "completedAt",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "folder",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "folder-Acme",
+          "labelKey": null,
+          "name": "Acme",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "folder-Acme/Planning",
+          "labelKey": null,
+          "name": "Acme / Planning",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a",
+            "g"
+          ]
+        },
+        {
+          "key": "folder-beta",
+          "labelKey": null,
+          "name": "beta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "folder-vault-root",
+          "labelKey": "folder.vaultRoot",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "folder",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "folder",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "folder-vault-root",
+          "labelKey": "folder.vaultRoot",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "folder-beta",
+          "labelKey": null,
+          "name": "beta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "folder-Acme/Planning",
+          "labelKey": null,
+          "name": "Acme / Planning",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a",
+            "g"
+          ]
+        },
+        {
+          "key": "folder-Acme",
+          "labelKey": null,
+          "name": "Acme",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "folder",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "note",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "note-n-loose",
+          "labelKey": null,
+          "name": "Loose note",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "note-n-standup",
+          "labelKey": null,
+          "name": "standup",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "note-n-budget",
+          "labelKey": null,
+          "name": "Budget",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "g"
+          ]
+        },
+        {
+          "key": "note-n-roadmap",
+          "labelKey": null,
+          "name": "Roadmap",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a"
+          ]
+        },
+        {
+          "key": "note-n-zeta",
+          "labelKey": null,
+          "name": "Zeta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "note",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "note",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "note-n-zeta",
+          "labelKey": null,
+          "name": "Zeta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "note-n-roadmap",
+          "labelKey": null,
+          "name": "Roadmap",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a"
+          ]
+        },
+        {
+          "key": "note-n-budget",
+          "labelKey": null,
+          "name": "Budget",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "g"
+          ]
+        },
+        {
+          "key": "note-n-standup",
+          "labelKey": null,
+          "name": "standup",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "note-n-loose",
+          "labelKey": null,
+          "name": "Loose note",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "note",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "bogus",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "bogus",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "bogus",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-18T09:00:00",
+      "nowKey": "sunday",
+      "field": "bogus",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "dueDate",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "dueDate.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "m"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i"
+          ]
+        },
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "dueDate",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "dueDate.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "m"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i"
+          ]
+        },
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "dueDate",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "dueDate.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "m"
+          ]
+        },
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "dueDate",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "noDueDate",
+          "labelKey": "dueDate.noDueDate",
+          "name": null,
+          "color": "#50505A",
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "later",
+          "labelKey": "dueDate.later",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i"
+          ]
+        },
+        {
+          "key": "today",
+          "labelKey": "dueDate.today",
+          "name": null,
+          "color": "#E5993E",
+          "variant": null,
+          "taskIds": [
+            "m"
+          ]
+        },
+        {
+          "key": "overdue",
+          "labelKey": "dueDate.overdue",
+          "name": null,
+          "color": "#ef4444",
+          "variant": "overdue",
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "priority",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "priority",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "priority",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "priority",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "none",
+          "labelKey": "priority.none",
+          "name": null,
+          "color": "var(--task-priority-none)",
+          "variant": null,
+          "taskIds": [
+            "e",
+            "g",
+            "h",
+            "i",
+            "j",
+            "n"
+          ]
+        },
+        {
+          "key": "low",
+          "labelKey": "priority.low",
+          "name": null,
+          "color": "var(--task-priority-low)",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "medium",
+          "labelKey": "priority.medium",
+          "name": null,
+          "color": "var(--task-priority-medium)",
+          "variant": null,
+          "taskIds": [
+            "d",
+            "m"
+          ]
+        },
+        {
+          "key": "high",
+          "labelKey": "priority.high",
+          "name": null,
+          "color": "var(--task-priority-high)",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "f",
+            "o"
+          ]
+        },
+        {
+          "key": "urgent",
+          "labelKey": "priority.urgent",
+          "name": null,
+          "color": "var(--task-priority-urgent)",
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "status",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "status",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "status",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "status",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "uncategorized",
+          "labelKey": "status.uncategorized",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "i",
+            "j"
+          ]
+        },
+        {
+          "key": "in_progress",
+          "labelKey": "status.in_progress",
+          "name": null,
+          "color": "#F59E0B",
+          "variant": null,
+          "taskIds": [
+            "c",
+            "d"
+          ]
+        },
+        {
+          "key": "todo",
+          "labelKey": "status.todo",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "createdAt",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "createdAt",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "createdAt",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "createdAt",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "earlier",
+          "labelKey": "createdAt.earlier",
+          "name": null,
+          "color": "#6b7280",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "title",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "title",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "title",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "title",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "project",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "project",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "project",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "project",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": [
+        {
+          "key": "no-project",
+          "labelKey": "project.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "j"
+          ]
+        },
+        {
+          "key": "p1",
+          "labelKey": null,
+          "name": "Work",
+          "color": "#ef4444",
+          "variant": null,
+          "taskIds": [
+            "a",
+            "c",
+            "d",
+            "f",
+            "g",
+            "h",
+            "i",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "p3",
+          "labelKey": null,
+          "name": "Éclair",
+          "color": "#10b981",
+          "variant": null,
+          "taskIds": [
+            "e"
+          ]
+        },
+        {
+          "key": "p2",
+          "labelKey": null,
+          "name": "alpha",
+          "color": "#3b82f6",
+          "variant": null,
+          "taskIds": [
+            "b"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "completedAt",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "completedAt",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "completedAt",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "completedAt",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "folder",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "folder-Acme",
+          "labelKey": null,
+          "name": "Acme",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "folder-Acme/Planning",
+          "labelKey": null,
+          "name": "Acme / Planning",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a",
+            "g"
+          ]
+        },
+        {
+          "key": "folder-beta",
+          "labelKey": null,
+          "name": "beta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "folder-vault-root",
+          "labelKey": "folder.vaultRoot",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "folder",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "folder",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "folder-vault-root",
+          "labelKey": "folder.vaultRoot",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "folder-beta",
+          "labelKey": null,
+          "name": "beta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "folder-Acme/Planning",
+          "labelKey": null,
+          "name": "Acme / Planning",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a",
+            "g"
+          ]
+        },
+        {
+          "key": "folder-Acme",
+          "labelKey": null,
+          "name": "Acme",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "folder",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "note",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "note-n-loose",
+          "labelKey": null,
+          "name": "Loose note",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        },
+        {
+          "key": "note-n-standup",
+          "labelKey": null,
+          "name": "standup",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "note-n-budget",
+          "labelKey": null,
+          "name": "Budget",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "g"
+          ]
+        },
+        {
+          "key": "note-n-roadmap",
+          "labelKey": null,
+          "name": "Roadmap",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a"
+          ]
+        },
+        {
+          "key": "note-n-zeta",
+          "labelKey": null,
+          "name": "Zeta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "note",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "note",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": [
+        {
+          "key": "no-source-note",
+          "labelKey": "note.none",
+          "name": null,
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "b",
+            "e",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o"
+          ]
+        },
+        {
+          "key": "note-n-zeta",
+          "labelKey": null,
+          "name": "Zeta",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "f"
+          ]
+        },
+        {
+          "key": "note-n-roadmap",
+          "labelKey": null,
+          "name": "Roadmap",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "a"
+          ]
+        },
+        {
+          "key": "note-n-budget",
+          "labelKey": null,
+          "name": "Budget",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "g"
+          ]
+        },
+        {
+          "key": "note-n-standup",
+          "labelKey": null,
+          "name": "standup",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "c"
+          ]
+        },
+        {
+          "key": "note-n-loose",
+          "labelKey": null,
+          "name": "Loose note",
+          "color": null,
+          "variant": null,
+          "taskIds": [
+            "d"
+          ]
+        }
+      ]
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "note",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "bogus",
+      "direction": "asc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "bogus",
+      "direction": "asc",
+      "withNotes": false,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "bogus",
+      "direction": "desc",
+      "withNotes": true,
+      "expected": []
+    },
+    {
+      "now": "2026-01-31T18:00:00",
+      "nowKey": "monthEnd",
+      "field": "bogus",
+      "direction": "desc",
+      "withNotes": false,
+      "expected": []
+    }
+  ],
+  "applied": [
+    {
+      "name": "defaults",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "dueDate",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "b",
+          "k",
+          "c",
+          "a",
+          "o",
+          "d",
+          "f",
+          "e",
+          "n",
+          "m",
+          "i",
+          "j",
+          "l"
+        ],
+        "hasActiveFilters": false,
+        "countActiveFilters": 0
+      }
+    },
+    {
+      "name": "overdue-high",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [
+          "urgent",
+          "high",
+          "low"
+        ],
+        "tags": [],
+        "dueDate": {
+          "type": "overdue"
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "priority",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "b",
+          "l"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 2
+      }
+    },
+    {
+      "name": "this-week-sunday-start",
+      "now": "sunday",
+      "weekStartsOn": 0,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "this-week"
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "title",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "e",
+          "f"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
+      }
+    },
+    {
+      "name": "this-week-monday-start",
+      "now": "sunday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "this-week"
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "title",
+        "direction": "desc"
+      },
+      "expected": {
+        "taskIds": [],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
+      }
+    },
+    {
+      "name": "repeating-all-completion",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "all",
+        "repeatType": "repeating",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "createdAt",
+        "direction": "desc"
+      },
+      "expected": {
+        "taskIds": [
+          "m",
+          "d"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 2
+      }
+    },
+    {
+      "name": "completed-with-subtask-parent",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "completed",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "completedAt",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "g"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
+      }
+    },
+    {
+      "name": "archived-scope",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "archived",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "status",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "h"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
+      }
+    },
+    {
+      "name": "search-tags-project",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "report",
+        "projectIds": [
+          "p1"
+        ],
+        "priorities": [],
+        "tags": [
+          "work"
+        ],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "project",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "a",
+          "d",
+          "k"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 3
+      }
+    },
+    {
+      "name": "status-and-time",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [
+          "p1-todo",
+          "p1-doing"
+        ],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "with-time"
+      },
+      "sort": {
+        "field": "dueDate",
+        "direction": "desc"
+      },
+      "expected": {
+        "taskIds": [
+          "n",
+          "f",
+          "a",
+          "o",
+          "c",
+          "k"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 2
+      }
+    },
+    {
+      "name": "no-due-without-time",
+      "now": "monthEnd",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "none"
+        },
+        "statusIds": [],
+        "completion": "all",
+        "repeatType": "all",
+        "hasTime": "without-time"
+      },
+      "sort": {
+        "field": "folder",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "j"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 3
+      }
+    },
+    {
+      "name": "custom-range",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "custom",
+          "customStart": "2026-01-12",
+          "customEnd": "2026-01-15"
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "note",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "b",
+          "k",
+          "c",
+          "a",
+          "o",
+          "d",
+          "l"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
+      }
+    },
+    {
+      "name": "unknown-sort-field",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "all",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "bogus",
+        "direction": "desc"
+      },
+      "expected": {
+        "taskIds": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "i",
+          "j",
+          "m",
+          "n",
+          "o",
+          "k",
+          "l"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
+      }
+    },
+    {
+      "name": "next-week-month",
+      "now": "monthEnd",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "this-month"
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all"
+      },
+      "sort": {
+        "field": "dueDate",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "m",
+          "i"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 1
+      }
+    }
+  ]
+}

@@ -253,6 +253,30 @@ impl AuthSession {
         Ok(secret.to_vec())
     }
 
+    /// The id the server registered this device under: the access token's
+    /// `device_id` claim (chapter 02 §2.2).
+    ///
+    /// **Not** [`Self::device_id`]. That one is derived locally from the
+    /// signing key and names this device in field clocks; the server never
+    /// sees it as a device. A pushed record is signed as its sender, and the
+    /// server looks the signer up among the account's registered devices, so
+    /// signing with the local id is refused as `AUTH_DEVICE_NOT_FOUND`.
+    pub(crate) fn registered_device_id(&self) -> Result<String, AuthError> {
+        let token = self
+            .tokens
+            .access_token_sync()?
+            .ok_or_else(|| AuthError::InvalidState {
+                action: "sign a push".to_string(),
+                state: "signed out".to_string(),
+            })?;
+        TokenClaims::parse(&token)?
+            .device_id
+            .filter(|id| !id.is_empty())
+            .ok_or_else(|| AuthError::MalformedToken {
+                what: "access token has no device_id claim".to_string(),
+            })
+    }
+
     /// This device's id, chapter 01 §1.5.
     ///
     /// Derived from the signing key rather than stored beside it, for the

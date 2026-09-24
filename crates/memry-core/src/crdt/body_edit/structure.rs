@@ -37,24 +37,12 @@ pub(super) fn duplicate(
     let parent = parent_of(&container).ok_or_else(|| missing(block_id))?;
     let index = child_index(txn, &parent, &container).ok_or_else(|| missing(block_id))?;
 
-    let kind = block.tag().clone();
-    let text = block_text(txn, &block);
-    let props: Vec<(String, Any)> = block
-        .attributes(txn)
-        .map(|(name, value)| (name.to_owned(), any_of(value, txn)))
-        .collect();
-
+    // The whole block, not its plain text: the original's props (a duplicate
+    // of a red heading is a red heading), its marks and its inline nodes.
+    let content = snapshot_subtree(txn, &block);
     let copy = parent.insert(txn, index + 1, XmlElementPrelim::empty("blockContainer"));
     copy.insert_attribute(txn, "id", new_block_id);
-    let rebuilt = copy.insert(txn, 0, XmlElementPrelim::empty(kind.as_ref()));
-    // The original's props, not the type's defaults: a duplicate of a red
-    // heading is a red heading.
-    for (name, value) in props {
-        rebuilt.insert_attribute(txn, name.as_str(), value);
-    }
-    if !text.is_empty() && node_shapes::holds_inline(kind.as_ref()) {
-        rebuilt.insert(txn, 0, XmlTextPrelim::new(&text));
-    }
+    restore_subtree(txn, &copy, 0, &content);
     Ok(())
 }
 
@@ -102,6 +90,7 @@ pub(super) fn move_block(
     };
     source_parent.remove_range(txn, source_index, 1);
     restore_subtree(txn, &target_parent, adjusted, &snapshot);
+    drop_if_empty(txn, &source_parent);
     Ok(())
 }
 
@@ -153,7 +142,24 @@ pub(super) fn outdent(txn: &mut TransactionMut, block_id: &str) -> Result<(), Cr
     let snapshot = snapshot_subtree(txn, &container);
     group.remove_range(txn, index, 1);
     restore_subtree(txn, &outer, anchor + 1, &snapshot);
+    drop_if_empty(txn, &group);
     Ok(())
+}
+
+/// Removes a nested `blockGroup` its last block just left. BlockNote's schema
+/// requires a group to hold at least one block, so an empty one is invalid
+/// for every reader. The document's own top-level group (whose parent is the
+/// fragment, not an element) always stays.
+fn drop_if_empty(txn: &mut TransactionMut, group: &XmlElementRef) {
+    if group.tag().as_ref() != "blockGroup" || group.len(txn) > 0 {
+        return;
+    }
+    let Some(container) = parent_of(group) else {
+        return;
+    };
+    if let Some(index) = child_index(txn, &container, group) {
+        container.remove_range(txn, index, 1);
+    }
 }
 
 /// A block's own `blockGroup` of children, if it has one.
@@ -175,32 +181,42 @@ pub(super) fn child_block_group(
 /// concurrent edit to the old contents merges into tombstones and disappears.
 /// This moves one subtree the user is holding, which is the operation they
 /// asked for, and leaves every other block's identity untouched.
+///
+/// Children are kept **in order and with their formatting**: a text run is
+/// its formatted chunks, not `get_string` (which renders marks as literal
+/// `<bold>` tags), and a run and an inline node beside it stay in the order
+/// they were in. Flattening either turned a moved block's bold text into tag
+/// text, or moved a mention to the end of its paragraph (spec 004 TP026).
 #[derive(Debug, Clone)]
 pub(super) struct Subtree {
     tag: String,
     props: Vec<(String, Any)>,
-    text: String,
-    children: Vec<Subtree>,
+    children: Vec<Piece>,
+}
+
+#[derive(Debug, Clone)]
+enum Piece {
+    /// One `XmlText`, as `(text, attributes)` chunks.
+    Text(Vec<(String, Option<Box<yrs::types::Attrs>>)>),
+    Element(Subtree),
 }
 
 pub(super) fn snapshot_subtree(txn: &TransactionMut, element: &XmlElementRef) -> Subtree {
     let tag = element.tag().clone();
-    let mut text = String::new();
-    let mut children = Vec::new();
-    for child in element.children(txn) {
-        match child {
-            XmlOut::Text(value) => text.push_str(&value.get_string(txn)),
-            XmlOut::Element(inner) => children.push(snapshot_subtree(txn, &inner)),
-            XmlOut::Fragment(_) => {}
-        }
-    }
+    let children = element
+        .children(txn)
+        .filter_map(|child| match child {
+            XmlOut::Text(run) => Some(Piece::Text(super::inline::formatted_tail(txn, &run, 0))),
+            XmlOut::Element(inner) => Some(Piece::Element(snapshot_subtree(txn, &inner))),
+            XmlOut::Fragment(_) => None,
+        })
+        .collect();
     Subtree {
         tag: tag.as_ref().to_owned(),
         props: element
             .attributes(txn)
             .map(|(name, value)| (name.to_owned(), any_of(value, txn)))
             .collect(),
-        text,
         children,
     }
 }
@@ -215,13 +231,27 @@ pub(super) fn restore_subtree(
     for (name, value) in &subtree.props {
         element.insert_attribute(txn, name.as_str(), value.clone());
     }
-    if !subtree.text.is_empty() {
-        element.insert(txn, 0, XmlTextPrelim::new(&subtree.text));
-    }
-    let mut at = element.len(txn);
-    for child in &subtree.children {
-        restore_subtree(txn, &element, at, child);
-        at = element.len(txn);
+    for piece in &subtree.children {
+        let at = element.len(txn);
+        match piece {
+            Piece::Text(chunks) => {
+                if chunks.is_empty() {
+                    continue;
+                }
+                let run = element.insert(txn, at, XmlTextPrelim::new(""));
+                for (chunk, attrs) in chunks {
+                    // Appended at the run's own length, in the document's
+                    // offset unit, so no character count can drift from it.
+                    let end = run.len(txn);
+                    // An unmarked chunk is written with an explicit empty set:
+                    // a plain insert would inherit the mark of the chunk
+                    // before it.
+                    let attrs = attrs.as_deref().cloned().unwrap_or_default();
+                    run.insert_with_attributes(txn, end, chunk, attrs);
+                }
+            }
+            Piece::Element(child) => restore_subtree(txn, &element, at, child),
+        }
     }
 }
 

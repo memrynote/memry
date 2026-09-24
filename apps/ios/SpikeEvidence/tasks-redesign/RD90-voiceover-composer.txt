@@ -1,0 +1,363 @@
+Attributes: Application, 0x106c14dc0, pid: 62193, label: 'Memry'
+Element subtree:
+ →Application, 0x106c14dc0, pid: 62193, label: 'Memry'
+    Window (Main), 0x106c15180, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x106c15900, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x106c15a40, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x106c157c0, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x106c14000, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x106c17ac0, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x106c17c00, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x106c14140, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x106c17200, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x106c170c0, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x106c17980, {{0.0, 0.0}, {402.0, 874.0}}
+                          Other, 0x106c17480, {{0.0, 0.0}, {402.0, 874.0}}
+                            NavigationBar, 0x106c16300, {{0.0, 62.0}, {402.0, 54.0}}, identifier: '_TtGC7SwiftUI32NavigationStackHosting'
+                              Other, 0x106c16080, {{286.3, 66.0}, {41.7, 36.0}}, identifier: 'tasks.filterButton', label: 'Filter'
+                                Other, 0x106c16a80, {{286.3, 66.0}, {41.7, 36.0}}
+                                  Button, 0x106c16bc0, {{286.3, 66.0}, {41.7, 36.0}}, identifier: 'tasks.filterButton', label: 'Filter'
+                              Other, 0x106c16d00, {{344.0, 66.0}, {38.0, 36.0}}, identifier: 'tasks.moreMenu', label: 'View options'
+                                Other, 0x106c16e40, {{344.0, 66.0}, {38.0, 36.0}}
+                                  Button, 0x106c15400, {{344.0, 66.0}, {38.0, 36.0}}, identifier: 'tasks.moreMenu', label: 'View options'
+                                    Button, 0x106c166c0, {{344.0, 66.0}, {38.0, 36.0}}
+                                      Image, 0x106c16800, {{351.0, 80.0}, {24.0, 8.3}}, identifier: 'ellipsis', label: 'View options'
+                            Other, 0x106c17340, {{0.0, 0.0}, {402.0, 874.0}}
+                              Other, 0x106c161c0, {{0.0, 0.0}, {402.0, 874.0}}
+                                Other, 0x106c14280, {{0.0, 0.0}, {402.0, 874.0}}
+                                  Other, 0x106c17700, {{0.0, 0.0}, {402.0, 874.0}}
+                                    Button, 0x106c17840, {{118.3, 317.3}, {165.7, 20.3}}, label: 'Select all visible tasks'
+                                      StaticText, 0x106c16f80, {{118.3, 317.3}, {165.7, 20.3}}, label: 'Select all visible tasks'
+                                    CollectionView, 0x106c175c0, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'tasks.list'
+                                      Other, 0x106c16580, {{0.0, -1632.0}, {402.0, 9675.0}}
+                                      Other, 0x106c17d40, {{0.0, 0.0}, {402.0, 874.0}}
+                                        Other, 0x106c15680, {{0.0, 0.0}, {402.0, 116.0}}
+                                        Other, 0x106c143c0, {{0.0, 539.0}, {402.0, 252.0}}
+                                      Other, 0x106c17e80, {{0.0, 0.0}, {402.0, 874.0}}
+                                        Other, 0x106c15b80, {{0.0, 0.0}, {402.0, 116.0}}
+                                          Other, 0x106c15cc0, {{0.0, 0.0}, {402.0, 116.0}}
+                                            Other, 0x106c15e00, {{0.0, 0.0}, {402.0, 116.0}}
+                                        Other, 0x106c15f40, {{0.0, 539.0}, {402.0, 252.0}}
+                                          Other, 0x106c16940, {{0.0, 539.0}, {402.0, 252.0}}
+                                            Other, 0x106c16440, {{0.0, 539.0}, {402.0, 252.0}}
+                                      Cell, 0x106c15540, {{0.0, 116.0}, {402.0, 72.7}}
+                                        Other, 0x106c14500, {{0.0, 116.0}, {402.0, 72.7}}
+                                          Other, 0x106c14640, {{0.0, 116.0}, {402.0, 72.7}}
+                                        Other, 0x103637840, {{0.0, 116.0}, {402.0, 72.7}}
+                                          Other, 0x103637980, {{0.0, 116.0}, {402.0, 72.7}}
+                                            Other, 0x103637ac0, {{0.0, 116.0}, {402.0, 72.7}}
+                                              Button, 0x103637c00, {{20.0, 120.0}, {68.3, 40.7}}, identifier: 'tasks.titleMenu', label: 'All'
+                                                Button, 0x103637d40, {{20.0, 120.0}, {68.3, 40.7}}
+                                                  StaticText, 0x103637e80, {{20.0, 120.0}, {68.3, 40.7}}, label: 'All'
+                                                  Image, 0x103634b40, {{71.3, 142.0}, {15.0, 9.0}}, identifier: 'chevron.down', label: 'Go Down'
+                                              StaticText, 0x103637200, {{20.0, 162.7}, {57.7, 18.0}}, identifier: 'tasks.subtitle', label: '78 tasks'
+                                      Cell, 0x103637340, {{0.0, 188.7}, {402.0, 44.0}}
+                                        Other, 0x103637480, {{0.0, 188.7}, {402.0, 44.0}}
+                                          Other, 0x1036375c0, {{0.0, 188.7}, {402.0, 44.0}}
+                                        Other, 0x1036357c0, {{0.0, 188.7}, {402.0, 44.0}}
+                                          Other, 0x103637700, {{0.0, 188.7}, {402.0, 44.0}}
+                                            Other, 0x103636e40, {{0.0, 188.7}, {402.0, 44.0}}
+                                              Button, 0x103636f80, {{0.0, 188.7}, {402.0, 44.0}}, identifier: 'tasks.group.overdue', label: 'Overdue, 5 tasks, expanded'
+                                                StaticText, 0x112ce8000, {{20.0, 202.8}, {53.7, 15.7}}, label: 'Overdue'
+                                                StaticText, 0x112ce8140, {{81.7, 202.8}, {8.3, 15.7}}, label: '5'
+                                      Cell, 0x112ce8280, {{0.0, 232.7}, {402.0, 70.0}}
+                                        Other, 0x112ce83c0, {{0.0, 232.7}, {402.0, 70.0}}
+                                          Other, 0x112ce8500, {{0.0, 232.7}, {402.0, 70.0}}
+                                        Other, 0x112ce8640, {{0.0, 232.7}, {402.0, 70.0}}
+                                          Other, 0x112ce8780, {{0.0, 232.7}, {402.0, 70.0}}
+                                            Other, 0x112ce88c0, {{0.0, 232.7}, {402.0, 70.0}}
+                                              Button, 0x112ce8a00, {{0.0, 232.7}, {402.0, 70.0}}, identifier: 'tasks.row.-kmGPh3x2MENey2KiraFo', label: 'File 2025 tax extension paperwork, Priority: High, Overdue, due Sep 20, Project: Inbox, Tags: admin'
+                                                Button, 0x112ce8b40, {{6.0, 235.7}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x112ce8c80, {{52.0, 247.7}, {334.0, 40.0}}, label: 'File 2025 tax extension paperwork, Overdue, due Sep 20, Priority: High'
+                                                  StaticText, 0x112ce8dc0, {{52.0, 247.7}, {261.0, 20.3}}, label: 'File 2025 tax extension paperwork'
+                                                  StaticText, 0x112ce8f00, {{52.0, 272.0}, {43.0, 15.7}}, label: 'Overdue, due Sep 20'
+                                                  Image, 0x112ce9040, {{367.0, 253.3}, {17.3, 11.7}}, identifier: 'cellularbars', label: 'Priority: High'
+                                      Cell, 0x112ce9180, {{0.0, 302.7}, {402.0, 70.0}}
+                                        Other, 0x112ce92c0, {{0.0, 302.7}, {402.0, 70.0}}
+                                          Other, 0x112ce9400, {{0.0, 302.7}, {402.0, 70.0}}
+                                        Other, 0x112ce9540, {{0.0, 302.7}, {402.0, 70.0}}
+                                          Other, 0x112ce9680, {{0.0, 302.7}, {402.0, 70.0}}
+                                            Other, 0x112ce97c0, {{0.0, 302.7}, {402.0, 70.0}}
+                                              Button, 0x112ce9900, {{0.0, 302.7}, {402.0, 70.0}}, identifier: 'tasks.row.7u1M8DAv5SE4uVTPMEhpo', label: 'Refill creatine, Overdue, due Sep 21, Project: Fitness 2026, Tags: fitness'
+                                                Button, 0x112ce9a40, {{6.0, 305.7}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x112ce9b80, {{52.0, 317.7}, {334.0, 40.0}}, label: 'Refill creatine, Overdue, due Sep 21, Project: Fitness 2026'
+                                                  StaticText, 0x112ce9cc0, {{52.0, 317.7}, {102.7, 20.3}}, label: 'Refill creatine'
+                                                  StaticText, 0x112ce9e00, {{52.0, 342.0}, {41.0, 15.7}}, label: 'Overdue, due Sep 21'
+                                                  Other, 0x112ce9f40, {{102.0, 342.0}, {94.3, 15.7}}, label: 'Project: Fitness 2026'
+                                                    Image, 0x112cea080, {{102.0, 344.7}, {10.3, 10.3}}, identifier: 'circle.fill', label: 'Circle'
+                                                    StaticText, 0x112cea1c0, {{117.3, 342.0}, {79.0, 15.7}}, label: 'Fitness 2026'
+                                      Other, 0x112cea300, {{52.0, 301.7}, {334.0, 1.0}}
+                                      Cell, 0x112cea440, {{0.0, 372.7}, {402.0, 70.0}}
+                                        Other, 0x112cea580, {{0.0, 372.7}, {402.0, 70.0}}
+                                          Other, 0x112cea6c0, {{0.0, 372.7}, {402.0, 70.0}}
+                                        Other, 0x112cea800, {{0.0, 372.7}, {402.0, 70.0}}
+                                          Other, 0x112cea940, {{0.0, 372.7}, {402.0, 70.0}}
+                                            Other, 0x112ceaa80, {{0.0, 372.7}, {402.0, 70.0}}
+                                              Button, 0x112ceabc0, {{0.0, 372.7}, {402.0, 70.0}}, identifier: 'tasks.row.8fTwAMTsPFZHEx5kfLB5A', label: 'Stabilize Playwright e2e suite in CI, Priority: Low, Overdue, due Sep 22, Project: memrynote Launch, Tags: projects/memry, tests'
+                                                Button, 0x112cead00, {{6.0, 375.7}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x112ceae40, {{52.0, 387.7}, {334.0, 40.0}}, label: 'Stabilize Playwright e2e suite in CI, Overdue, due Sep 22, Project: memrynote Launch, Priority: Low'
+                                                  StaticText, 0x112ceaf80, {{52.0, 387.7}, {259.7, 20.3}}, label: 'Stabilize Playwright e2e suite in CI'
+                                                  StaticText, 0x112ceb0c0, {{52.0, 412.0}, {42.7, 15.7}}, label: 'Overdue, due Sep 22'
+                                                  Other, 0x112ceb200, {{103.7, 412.0}, {132.0, 15.7}}, label: 'Project: memrynote Launch'
+                                                    Image, 0x112ceb340, {{103.7, 414.7}, {10.3, 10.3}}, identifier: 'circle.fill', label: 'Circle'
+                                                    StaticText, 0x112ceb480, {{119.0, 412.0}, {116.7, 15.7}}, label: 'memrynote Launch'
+                                                  Image, 0x112ceb5c0, {{367.0, 393.3}, {17.3, 11.7}}, identifier: 'cellularbars', label: 'Priority: Low'
+                                      Other, 0x112ceb700, {{52.0, 371.7}, {334.0, 1.0}}
+                                      Cell, 0x112ceb840, {{0.0, 442.7}, {402.0, 70.0}}
+                                        Other, 0x112ceb980, {{0.0, 442.7}, {402.0, 70.0}}
+                                          Other, 0x112cebac0, {{0.0, 442.7}, {402.0, 70.0}}
+                                        Other, 0x112cebc00, {{0.0, 442.7}, {402.0, 70.0}}
+                                          Other, 0x112cebd40, {{0.0, 442.7}, {402.0, 70.0}}
+                                            Other, 0x112cebe80, {{0.0, 442.7}, {402.0, 70.0}}
+                                              Button, 0x113540000, {{0.0, 442.7}, {402.0, 70.0}}, identifier: 'tasks.row.lY4eb5kE6k4Xsw73Wbo6T', label: 'Check weather and ferry times, Priority: Low, Overdue, due Yesterday 8:30, Linked note, Project: Istanbul Weekend, Tags: istanbul, recurring, travel'
+                                                Button, 0x113540140, {{6.0, 445.7}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x113540280, {{52.0, 457.7}, {334.0, 40.0}}, label: 'Check weather and ferry times, Overdue, due Yesterday 8:30, Repeats, Linked note, Project: Istanbul Weekend, Priority: Low'
+                                                  StaticText, 0x1135403c0, {{52.0, 457.7}, {233.0, 20.3}}, label: 'Check weather and ferry times'
+                                                  StaticText, 0x113540500, {{52.0, 482.0}, {91.7, 15.7}}, label: 'Overdue, due Yesterday 8:30'
+                                                  Other, 0x113540640, {{153.3, 484.0}, {13.7, 11.3}}, label: 'Repeats'
+                                                    Image, 0x113540780, {{153.3, 484.0}, {13.7, 11.3}}, identifier: 'repeat', label: 'Repeat 1'
+                                                  Other, 0x1135408c0, {{178.3, 483.0}, {11.0, 13.7}}, label: 'Linked note'
+                                                    Image, 0x113540a00, {{178.3, 483.0}, {11.0, 13.7}}, identifier: 'doc.text', label: 'Plain Text Document'
+                                                  Other, 0x113540b40, {{200.0, 482.0}, {123.0, 15.7}}, label: 'Project: Istanbul Weekend'
+                                                    Image, 0x113540c80, {{200.0, 484.7}, {10.3, 10.3}}, identifier: 'circle.fill', label: 'Circle'
+                                                    StaticText, 0x113540dc0, {{215.3, 482.0}, {107.7, 15.7}}, label: 'Istanbul Weekend'
+                                                  Image, 0x113540f00, {{367.0, 463.3}, {17.3, 11.7}}, identifier: 'cellularbars', label: 'Priority: Low'
+                                      Other, 0x113541040, {{52.0, 441.7}, {334.0, 1.0}}
+                                      Cell, 0x113541180, {{0.0, 512.7}, {402.0, 70.0}}
+                                        Other, 0x1135412c0, {{0.0, 512.7}, {402.0, 70.0}}
+                                          Other, 0x113541400, {{0.0, 512.7}, {402.0, 70.0}}
+                                        Other, 0x113541540, {{0.0, 512.7}, {402.0, 70.0}}
+                                          Other, 0x113541680, {{0.0, 512.7}, {402.0, 70.0}}
+                                            Other, 0x1135417c0, {{0.0, 512.7}, {402.0, 70.0}}
+                                              Button, 0x113541900, {{0.0, 512.7}, {402.0, 70.0}}, identifier: 'tasks.row.Fb90apoMwKLZ7t-dfNAWW', label: 'Share itinerary with Mina, Priority: Low, Overdue, due Yesterday 19:00, Project: Istanbul Weekend, Tags: friends, travel'
+                                                Button, 0x113541a40, {{6.0, 515.7}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x113541b80, {{52.0, 527.7}, {334.0, 40.0}}, label: 'Share itinerary with Mina, Overdue, due Yesterday 19:00, Project: Istanbul Weekend, Priority: Low'
+                                                  StaticText, 0x113541cc0, {{52.0, 527.7}, {187.7, 20.3}}, label: 'Share itinerary with Mina'
+                                                  StaticText, 0x113541e00, {{52.0, 552.0}, {97.7, 15.7}}, label: 'Overdue, due Yesterday 19:00'
+                                                  Other, 0x113541f40, {{158.7, 552.0}, {123.0, 15.7}}, label: 'Project: Istanbul Weekend'
+                                                    Image, 0x113542080, {{158.7, 554.7}, {10.3, 10.3}}, identifier: 'circle.fill', label: 'Circle'
+                                                    StaticText, 0x1135421c0, {{174.0, 552.0}, {107.7, 15.7}}, label: 'Istanbul Weekend'
+                                                  Image, 0x113542300, {{367.0, 533.3}, {17.3, 11.7}}, identifier: 'cellularbars', label: 'Priority: Low'
+                                      Other, 0x113542440, {{52.0, 511.7}, {334.0, 1.0}}
+                                      Cell, 0x113542580, {{0.0, 582.7}, {402.0, 44.0}}
+                                        Other, 0x1135426c0, {{0.0, 582.7}, {402.0, 44.0}}
+                                          Other, 0x113542800, {{0.0, 582.7}, {402.0, 44.0}}
+                                        Other, 0x113542940, {{0.0, 582.7}, {402.0, 44.0}}
+                                          Other, 0x113542a80, {{0.0, 582.7}, {402.0, 44.0}}
+                                            Other, 0x113542bc0, {{0.0, 582.7}, {402.0, 44.0}}
+                                              Button, 0x113542d00, {{0.0, 582.7}, {402.0, 44.0}}, identifier: 'tasks.group.today', label: 'Today, 11 tasks, expanded'
+                                                StaticText, 0x113542e40, {{20.0, 596.8}, {38.0, 15.7}}, label: 'Today'
+                                                StaticText, 0x113542f80, {{66.0, 596.8}, {16.3, 15.7}}, label: '11'
+                                      Cell, 0x1135430c0, {{0.0, 626.7}, {402.0, 70.0}}
+                                        Other, 0x113543200, {{0.0, 626.7}, {402.0, 70.0}}
+                                          Other, 0x113543340, {{0.0, 626.7}, {402.0, 70.0}}
+                                        Other, 0x113543480, {{0.0, 626.7}, {402.0, 70.0}}
+                                          Other, 0x1135435c0, {{0.0, 626.7}, {402.0, 70.0}}
+                                            Other, 0x113543700, {{0.0, 626.7}, {402.0, 70.0}}
+                                              Button, 0x113543840, {{0.0, 626.7}, {402.0, 70.0}}, identifier: 'tasks.row.1Rdwl1HmU8eC5ZKMCRFyY', label: 'Book airport transfer, Priority: Medium, Due Today 11:00, Project: Istanbul Weekend, Tags: istanbul, logistics, travel'
+                                                Button, 0x113543980, {{6.0, 629.7}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x113543ac0, {{52.0, 641.7}, {334.0, 40.0}}, label: 'Book airport transfer, Due 11:00, Project: Istanbul Weekend, Priority: Medium'
+                                                  StaticText, 0x113543c00, {{52.0, 641.7}, {157.3, 20.3}}, label: 'Book airport transfer'
+                                                  StaticText, 0x113543d40, {{52.0, 666.0}, {32.0, 15.7}}, label: 'Due 11:00'
+                                                  Other, 0x113543e80, {{93.0, 666.0}, {123.0, 15.7}}, label: 'Project: Istanbul Weekend'
+                                                    Image, 0x11355c000, {{93.0, 668.7}, {10.3, 10.3}}, identifier: 'circle.fill', label: 'Circle'
+                                                    StaticText, 0x11355c140, {{108.3, 666.0}, {107.7, 15.7}}, label: 'Istanbul Weekend'
+                                                  Image, 0x11355c280, {{367.0, 647.3}, {17.3, 11.7}}, identifier: 'cellularbars', label: 'Priority: Medium'
+                                      Cell, 0x11355c3c0, {{0.0, 696.7}, {402.0, 70.0}}
+                                        Other, 0x11355c500, {{0.0, 696.7}, {402.0, 70.0}}
+                                          Other, 0x11355c640, {{0.0, 696.7}, {402.0, 70.0}}
+                                        Other, 0x11355c780, {{0.0, 696.7}, {402.0, 70.0}}
+                                          Other, 0x11355c8c0, {{0.0, 696.7}, {402.0, 70.0}}
+                                            Other, 0x11355ca00, {{0.0, 696.7}, {402.0, 70.0}}
+                                              Button, 0x11355cb40, {{0.0, 696.7}, {402.0, 70.0}}, identifier: 'tasks.row.G-9YblnsZQ4w9tDZ9YorG', label: '[agent] ui-1bbc62 bulk 1, Due Today, Project: Agent Test Redesign'
+                                                Button, 0x11355cc80, {{6.0, 699.7}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x11355cdc0, {{52.0, 711.7}, {334.0, 40.0}}, label: '[agent] ui-1bbc62 bulk 1, Project: Agent Test Redesign'
+                                                  StaticText, 0x11355cf00, {{52.0, 711.7}, {186.0, 20.3}}, label: '[agent] ui-1bbc62 bulk 1'
+                                                  Other, 0x11355d040, {{53.0, 736.0}, {140.0, 15.7}}, label: 'Project: Agent Test Redesign'
+                                                    Image, 0x11355d180, {{53.0, 738.7}, {10.3, 10.3}}, identifier: 'circle.fill', label: 'Circle'
+                                                    StaticText, 0x11355d2c0, {{68.3, 736.0}, {124.7, 15.7}}, label: 'Agent Test Redesign'
+                                      Other, 0x11355d400, {{52.0, 695.7}, {334.0, 1.0}}
+                                      Cell, 0x11355d540, {{0.0, 766.7}, {402.0, 50.3}}
+                                        Other, 0x11355d680, {{0.0, 766.7}, {402.0, 50.3}}
+                                          Other, 0x11355d7c0, {{0.0, 766.7}, {402.0, 50.3}}
+                                        Other, 0x11355d900, {{0.0, 766.7}, {402.0, 50.3}}
+                                          Other, 0x11355da40, {{0.0, 766.7}, {402.0, 50.3}}
+                                            Other, 0x11355db80, {{0.0, 766.7}, {402.0, 50.3}}
+                                              Button, 0x11355dcc0, {{0.0, 766.7}, {402.0, 50.3}}, identifier: 'tasks.row.v1tMm90rcyZMvzF2AnOsG', label: 'Follow up with M. about coffee Saturday, Priority: Low, Due Today, Project: Inbox, Tags: friends'
+                                                Button, 0x11355de00, {{6.0, 769.7}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x11355df40, {{52.0, 781.7}, {334.0, 20.3}}, label: 'Follow up with M. about coffee Saturday, Priority: Low'
+                                                  StaticText, 0x11355e080, {{52.0, 781.7}, {305.0, 20.3}}, label: 'Follow up with M. about coffee Saturday'
+                                                  Image, 0x11355e1c0, {{367.0, 787.3}, {17.3, 11.7}}, identifier: 'cellularbars', label: 'Priority: Low'
+                                      Other, 0x11355e300, {{52.0, 765.7}, {334.0, 1.0}}
+                                      Cell, 0x11355e440, {{0.0, 817.0}, {402.0, 70.0}}
+                                        Other, 0x11355e580, {{0.0, 817.0}, {402.0, 70.0}}
+                                          Other, 0x11355e6c0, {{0.0, 817.0}, {402.0, 70.0}}
+                                        Other, 0x11355e800, {{0.0, 817.0}, {402.0, 70.0}}
+                                          Other, 0x11355e940, {{0.0, 817.0}, {402.0, 70.0}}
+                                            Other, 0x11355ea80, {{0.0, 817.0}, {402.0, 70.0}}
+                                              Button, 0x11355ebc0, {{0.0, 817.0}, {402.0, 70.0}}, identifier: 'tasks.row.OSstrxROICHbfP6UC0DQl', label: '[agent] ui-1bbc62 bulk 2, Due Today, Project: Agent Test Redesign'
+                                                Button, 0x11355ed00, {{6.0, 820.0}, {44.0, 44.3}}, identifier: 'tasks.row.status', label: 'Complete'
+                                                Button, 0x11355ee40, {{52.0, 832.0}, {334.0, 40.0}}, label: '[agent] ui-1bbc62 bulk 2, Project: Agent Test Redesign'
+                                                  StaticText, 0x11355ef80, {{52.0, 832.0}, {188.3, 20.3}}, label: '[agent] ui-1bbc62 bulk 2'
+                                                  Other, 0x11355f0c0, {{53.0, 856.3}, {140.0, 15.7}}, label: 'Project: Agent Test Redesign'
+                                                    Image, 0x11355f200, {{53.0, 859.0}, {10.3, 10.3}}, identifier: 'circle.fill', label: 'Circle'
+                                                    StaticText, 0x11355f340, {{68.3, 856.3}, {124.7, 15.7}}, label: 'Agent Test Redesign'
+                                      Other, 0x11355f480, {{52.0, 816.0}, {334.0, 1.0}}
+                                      Other, 0x11355f5c0, {{369.0, 116.0}, {30.0, 267.0}}, label: 'Vertical scroll bar, 24 pages', value: %0
+                                        Other, 0x11355f700, {{396.0, 119.0}, {3.0, 36.0}}
+                                      Other, 0x11355f840, {{369.0, 116.0}, {30.0, 267.0}}, label: 'Vertical scroll bar, 24 pages', value: %0
+                                        Other, 0x11355f980, {{396.0, 119.0}, {3.0, 36.0}}
+                                    Other, 0x11355fac0, {{0.0, 116.0}, {402.0, 267.0}}
+                                    Other, 0x11355fc00, {{7.5, 382.5}, {387.0, 149.0}}, identifier: 'tasks.composer', label: 'New task'
+                                      Button, 0x11355fd40, {{139.0, 451.0}, {124.0, 20.3}}, label: 'Close composer'
+                                        StaticText, 0x11355fe80, {{139.0, 451.0}, {124.0, 20.3}}, label: 'Close composer'
+                                      Image, 0x113568000, {{26.0, 406.3}, {21.7, 21.7}}, identifier: 'circle.dashed', label: 'To Do'
+                                      TextView, 0x113568140, {{61.7, 395.0}, {320.3, 44.0}}, identifier: 'tasks.composer.title', label: 'Quick add task', Keyboard Focused
+                                        Other, 0x113568280, {{61.7, 395.0}, {0.0, 0.0}}, identifier: '_UITextSelectionRangeAdjustmentContainerView'
+                                          Other, 0x1135683c0, {{61.7, 395.0}, {0.0, 0.0}}, identifier: 'com.apple.text.grabber.leading'
+                                            Other, 0x113568500, {{54.4, 381.5}, {16.5, 16.5}}
+                                            Other, 0x113568640, {{61.7, 395.0}, {2.0, 0.0}}
+                                          Other, 0x113568780, {{61.7, 395.0}, {0.0, 0.0}}, identifier: 'com.apple.text.grabber.leading'
+                                            Other, 0x1135688c0, {{54.4, 381.5}, {16.5, 16.5}}
+                                            Other, 0x113568a00, {{61.7, 395.0}, {2.0, 0.0}}
+                                        Other, 0x113568b40, {{349.0, 395.0}, {30.0, 44.0}}, label: 'Vertical scroll bar, 1 page', value: %0
+                                          Other, 0x113568c80, {{376.0, 398.0}, {3.0, 38.0}}
+                                        Other, 0x113568dc0, {{61.7, 414.0}, {320.3, 22.0}}, label: 'Horizontal scroll bar, 1 page', value: %0
+                                          Other, 0x113568f00, {{64.7, 433.0}, {314.3, 3.0}}
+                                      TextField, 0x113569040, {{60.0, 447.0}, {322.0, 20.0}}, identifier: 'tasks.composer.notes', placeholderValue: 'Notes'
+                                        Other, 0x113569180, {{60.0, 454.0}, {322.0, 10.0}}, label: 'Horizontal scroll bar, 1 page', value: %0
+                                          Other, 0x1135692c0, {{63.0, 461.0}, {316.0, 3.0}}
+                                      ScrollView, 0x113569400, {{24.0, 475.0}, {306.0, 44.0}}
+                                        Other, 0x113569540, {{24.0, 475.0}, {280.7, 44.0}}
+                                          Button, 0x113569680, {{24.0, 475.0}, {80.0, 44.0}}, identifier: 'tasks.composer.date', label: 'Date: none'
+                                            Button, 0x1135697c0, {{24.0, 475.0}, {80.0, 44.0}}
+                                              Image, 0x113569900, {{38.0, 490.0}, {15.0, 14.0}}, identifier: 'calendar', label: 'Calendar'
+                                              StaticText, 0x113569a40, {{24.0, 475.0}, {80.0, 44.0}}, label: 'Date'
+                                          Button, 0x113569b80, {{108.0, 475.0}, {39.3, 44.0}}, identifier: 'tasks.composer.priority', label: 'Priority: No Priority'
+                                            Button, 0x113569cc0, {{108.0, 475.0}, {39.3, 44.0}}
+                                              Image, 0x113569e00, {{108.0, 475.0}, {39.3, 44.0}}, identifier: 'cellularbars', label: 'cellularbars'
+                                          Button, 0x113569f40, {{151.3, 475.0}, {80.7, 44.0}}, identifier: 'tasks.composer.project', label: 'Project: Inbox'
+                                            Button, 0x11356a080, {{151.3, 475.0}, {80.7, 44.0}}
+                                              Image, 0x11356a1c0, {{164.3, 491.0}, {12.0, 12.0}}, identifier: 'circle.fill', label: 'Circle'
+                                              StaticText, 0x11356a300, {{151.3, 475.0}, {80.7, 44.0}}, label: 'Inbox'
+                                          Button, 0x11356a440, {{236.0, 475.0}, {32.0, 44.0}}, identifier: 'tasks.composer.tags', label: 'Tags: none'
+                                            Button, 0x11356a580, {{236.0, 475.0}, {32.0, 44.0}}
+                                              StaticText, 0x11356a6c0, {{236.0, 475.0}, {32.0, 44.0}}, label: '#'
+                                          Button, 0x11356a800, {{272.0, 475.0}, {32.7, 44.0}}, identifier: 'tasks.composer.more', label: 'More properties'
+                                            Button, 0x11356a940, {{272.0, 475.0}, {32.7, 44.0}}
+                                              Image, 0x11356aa80, {{272.0, 475.0}, {32.7, 44.0}}, identifier: 'ellipsis', label: 'More'
+                                      Button, 0x11356abc0, {{343.7, 480.7}, {32.7, 32.7}}, identifier: 'tasks.composer.send', label: 'Add task', Disabled
+                            Other, 0x11356ad00, {{0.0, 0.0}, {402.0, 874.0}}
+                              Other, 0x11356ae40, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x11356af80, {{0.0, 791.0}, {402.0, 83.0}}
+                  Other, 0x11356b0c0, {{0.0, 0.0}, {402.0, 874.0}}
+                    TabBar, 0x11356b200, {{0.0, 791.0}, {402.0, 83.0}}, label: 'Tab Bar'
+                      Other, 0x11356b340, {{21.0, 791.0}, {360.0, 62.0}}
+                        Other, 0x11356b480, {{21.0, 791.0}, {77.0, 54.0}}
+                        Other, 0x11356b5c0, {{21.0, 791.0}, {360.0, 62.0}}
+                          Button, 0x11356b700, {{25.0, 795.0}, {77.0, 54.0}}, identifier: 'doc.text', label: 'Notes'
+                            Image, 0x11356b840, {{51.0, 800.7}, {25.3, 28.7}}, identifier: 'text.document.fill', label: 'text.document.fill'
+                          Button, 0x11356b980, {{93.8, 795.0}, {77.0, 54.0}}, identifier: 'house', label: 'Home'
+                            Image, 0x11356bac0, {{115.8, 801.0}, {33.3, 28.0}}, identifier: 'house.fill', label: 'home'
+                          Button, 0x11356bc00, {{162.5, 795.0}, {77.0, 54.0}}, identifier: 'checkmark.circle', label: 'Tasks', Selected
+                            Image, 0x11356bd40, {{187.5, 801.3}, {27.3, 27.3}}, identifier: 'checkmark.circle.fill', label: 'selected'
+                          Button, 0x11356be80, {{231.2, 795.0}, {77.0, 54.0}}, identifier: 'book', label: 'Journal'
+                            Image, 0x113574000, {{253.2, 802.3}, {32.3, 25.0}}, identifier: 'book.fill', label: 'bookmark'
+                          Button, 0x113574140, {{300.0, 795.0}, {77.0, 54.0}}, identifier: 'ellipsis', label: 'More'
+                            Image, 0x113574280, {{326.0, 810.7}, {25.0, 8.7}}, identifier: 'ellipsis', label: 'More'
+                        Other, 0x1135743c0, {{162.5, 795.0}, {77.0, 54.0}}
+                          Other, 0x113574500, {{162.5, 795.0}, {77.0, 54.0}}
+                            Other, 0x113574640, {{162.5, 795.0}, {77.0, 54.0}}
+                            Other, 0x113574780, {{162.5, 795.0}, {77.0, 54.0}}
+                              Other, 0x1135748c0, {{162.5, 795.0}, {77.0, 54.0}}
+                                Other, 0x113574a00, {{162.5, 795.0}, {77.0, 54.0}}
+                                  Other, 0x113574b40, {{162.5, 795.0}, {77.0, 54.0}}
+                                Other, 0x113574c80, {{162.5, 795.0}, {77.0, 54.0}}
+                              Other, 0x113574dc0, {{162.5, 795.0}, {77.0, 54.0}}
+                  Other, 0x113574f00, {{0.0, 791.0}, {402.0, 83.0}}
+                    Other, 0x113575040, {{0.0, 791.0}, {402.0, 83.0}}
+                      Other, 0x113575180, {{0.0, 791.0}, {402.0, 83.0}}
+                        Other, 0x1135752c0, {{0.0, 791.0}, {402.0, 83.0}}
+                          Other, 0x113575400, {{0.0, 791.0}, {402.0, 83.0}}
+                            Other, 0x113575540, {{0.0, 791.0}, {402.0, 83.0}}
+                        Other, 0x113575680, {{0.0, 791.0}, {402.0, 83.0}}
+                          Other, 0x1135757c0, {{0.0, 791.0}, {402.0, 83.0}}
+    Window, 0x113575900, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x113575a40, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x113575b80, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x113575cc0, {{0.0, 539.0}, {402.0, 335.0}}
+          Other, 0x113575e00, {{0.0, 539.0}, {402.0, 335.0}}, identifier: 'inputView'
+    Window, 0x113575f40, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x113576080, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x1135761c0, {{0.0, 539.0}, {402.0, 335.0}}
+          Other, 0x113576300, {{0.0, 539.0}, {402.0, 44.0}}, identifier: 'SystemInputAssistantView'
+            Other, 0x113576440, {{0.0, 539.0}, {402.0, 44.0}}
+              Other, 0x113576580, {{0.0, 539.0}, {402.0, 44.0}}, identifier: 'CenterPageView'
+                Other, 0x1135766c0, {{0.0, -61.0}, {402.0, 1244.0}}
+                  ScrollView, 0x113576800, {{0.0, 539.0}, {402.0, 44.0}}
+                Other, 0x113576940, {{0.0, 539.0}, {402.0, 44.0}}
+                  Other, 0x113576a80, {{0.0, 539.0}, {402.0, 44.0}}, label: 'Typing Predictions'
+                    Other, 0x113576bc0, {{0.0, 539.0}, {402.0, 44.0}}
+                      Other, 0x113576d00, {{0.0, 539.0}, {402.0, 44.0}}
+                        Other, 0x113576e40, {{0.0, 539.0}, {134.0, 44.0}}, label: 'I'
+                        Other, 0x113576f80, {{134.0, 539.0}, {134.0, 44.0}}, label: 'The'
+                        Other, 0x1135770c0, {{268.0, 539.0}, {134.0, 44.0}}, label: 'I’m'
+          Other, 0x113577200, {{0.0, 539.0}, {402.0, 335.0}}
+            Other, 0x113577340, {{0.0, 539.0}, {402.0, 335.0}}
+              Other, 0x113577480, {{0.0, 539.0}, {402.0, 335.0}}
+          Other, 0x1135775c0, {{0.0, 583.0}, {402.0, 233.0}}
+            Keyboard, 0x113577700, {{0.0, 583.0}, {402.0, 233.0}}
+              Other, 0x113577840, {{0.0, 583.0}, {402.0, 233.0}}
+                Other, 0x113577980, {{0.0, 583.0}, {402.0, 233.0}}, identifier: 'UIKeyboardLayoutStar Preview'
+                  Key, 0x113577ac0, {{0.0, 583.0}, {0.0, 0.0}}, label: 'Padding-Left'
+                  Key, 0x113577c00, {{4.7, 590.0}, {39.3, 54.0}}, label: 'Q'
+                  Key, 0x113577d40, {{44.0, 590.0}, {39.7, 54.0}}, label: 'W'
+                  Key, 0x113577e80, {{83.7, 590.0}, {39.3, 54.0}}, label: 'E'
+                  Key, 0x11357c000, {{123.0, 590.0}, {39.7, 54.0}}, label: 'R'
+                  Key, 0x11357c140, {{162.7, 590.0}, {39.3, 54.0}}, label: 'T'
+                  Key, 0x11357c280, {{202.0, 590.0}, {39.7, 54.0}}, label: 'Y'
+                  Key, 0x11357c3c0, {{241.7, 590.0}, {39.3, 54.0}}, label: 'U'
+                  Key, 0x11357c500, {{281.0, 590.0}, {39.7, 54.0}}, label: 'I'
+                  Key, 0x11357c640, {{320.7, 590.0}, {39.3, 54.0}}, label: 'O'
+                  Key, 0x11357c780, {{360.0, 590.0}, {39.7, 54.0}}, label: 'P'
+                  Key, 0x11357c8c0, {{0.0, 583.0}, {0.0, 0.0}}, label: 'Padding-Right'
+                  Key, 0x11357ca00, {{0.0, 583.0}, {0.0, 0.0}}, label: 'Padding-Left'
+                  Key, 0x11357cb40, {{24.3, 644.0}, {39.3, 54.0}}, label: 'A'
+                  Key, 0x11357cc80, {{63.7, 644.0}, {39.7, 54.0}}, label: 'S'
+                  Key, 0x11357cdc0, {{103.3, 644.0}, {39.3, 54.0}}, label: 'D'
+                  Key, 0x11357cf00, {{142.7, 644.0}, {39.7, 54.0}}, label: 'F'
+                  Key, 0x11357d040, {{182.3, 644.0}, {39.3, 54.0}}, label: 'G'
+                  Key, 0x11357d180, {{221.7, 644.0}, {39.7, 54.0}}, label: 'H'
+                  Key, 0x11357d2c0, {{261.3, 644.0}, {39.3, 54.0}}, label: 'J'
+                  Key, 0x11357d400, {{300.7, 644.0}, {39.7, 54.0}}, label: 'K'
+                  Key, 0x11357d540, {{340.3, 644.0}, {39.3, 54.0}}, label: 'L'
+                  Key, 0x11357d680, {{0.0, 583.0}, {0.0, 0.0}}, label: 'Padding-Right'
+                  Button, 0x11357d7c0, {{4.7, 698.0}, {51.3, 54.0}}, identifier: 'shift', label: 'shift', Selected
+                  Key, 0x11357d900, {{0.0, 583.0}, {0.0, 0.0}}, label: 'Padding-Left'
+                  Key, 0x11357da40, {{63.7, 698.0}, {39.7, 54.0}}, label: 'Z'
+                  Key, 0x11357db80, {{103.3, 698.0}, {39.3, 54.0}}, label: 'X'
+                  Key, 0x11357dcc0, {{142.7, 698.0}, {39.7, 54.0}}, label: 'C'
+                  Key, 0x11357de00, {{182.3, 698.0}, {39.3, 54.0}}, label: 'V'
+                  Key, 0x11357df40, {{221.7, 698.0}, {39.7, 54.0}}, label: 'B'
+                  Key, 0x11357e080, {{261.3, 698.0}, {39.3, 54.0}}, label: 'N'
+                  Key, 0x11357e1c0, {{300.7, 698.0}, {39.7, 54.0}}, label: 'M'
+                  Key, 0x11357e300, {{0.0, 583.0}, {0.0, 0.0}}, label: 'Padding-Right'
+                  Key, 0x11357e440, {{348.0, 698.0}, {51.7, 54.0}}, identifier: 'delete', label: 'delete'
+                  Key, 0x11357e580, {{4.7, 752.0}, {49.3, 54.0}}, identifier: 'more', label: 'numbers'
+                  Button, 0x11357e6c0, {{54.0, 752.0}, {49.3, 54.0}}, identifier: 'emoji', label: 'Emoji'
+                  Key, 0x11357e800, {{103.3, 752.0}, {197.3, 54.0}}, identifier: 'space', label: ' '
+                  Button, 0x11357e940, {{300.7, 752.0}, {99.0, 54.0}}, identifier: 'Next:', label: 'next'
+          Other, 0x11357ea80, {{0.0, 583.0}, {402.0, 291.0}}
+            Button, 0x11357ebc0, {{8.5, 805.7}, {68.1, 68.7}}, label: 'Next keyboard', value: Türkçe
+              StaticText, 0x11357ed00, {{8.5, 805.7}, {0.0, 0.0}}
+            Button, 0x11357ee40, {{325.4, 805.4}, {68.1, 68.7}}, identifier: 'dictation', label: 'Dictate'
+              StaticText, 0x11357ef80, {{325.4, 805.4}, {0.0, 0.0}}
+            Button, 0x11357f0c0, {{325.4, 805.4}, {68.1, 68.7}}, identifier: 'dictation', label: 'Dictate'
+              StaticText, 0x11357f200, {{325.4, 805.4}, {0.0, 0.0}}
+Path to element:
+ →Application, 0x106c14dc0, pid: 62193, label: 'Memry'
+Query chain:
+ →Find: Target Application 'com.memry.app'
+  Output: {
+    Application, 0x11357f340, pid: 62193, label: 'Memry'
+  }
