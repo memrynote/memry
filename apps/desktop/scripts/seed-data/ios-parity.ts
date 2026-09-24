@@ -3,6 +3,7 @@ import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
 import type { NoteFile } from '../seed-vault/file-writer'
+import { CANVASES } from './canvas'
 import { seedDateOnly, seedISOAt, seedPastISOAt } from './date'
 import { NOTE_IDS } from './notes'
 import { taskIdForKey } from './tasks'
@@ -220,6 +221,8 @@ Below the divider.
 ![bookmark](https://github.com/memrynote/memry)
 
 ![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+
+![whiteboard](memry://canvas/${CANVASES[0].id})
 
 ## 13. Task block
 
