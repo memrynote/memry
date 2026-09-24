@@ -101,7 +101,7 @@ let activeSession: PageApplySession | null = null
  * orphan repair, recovered items) this is byte-for-byte the synchronous
  * tmp-write + rename the note handler always performed.
  */
-export function writeSyncedNoteFile(absolutePath: string, content: string): void {
+export function writeSyncedVaultFile(absolutePath: string, content: string): void {
   if (activeSession) {
     activeSession.deferWrite(absolutePath, content)
     return

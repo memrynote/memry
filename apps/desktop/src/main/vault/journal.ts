@@ -8,6 +8,7 @@
  * @module vault/journal
  */
 
+import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
@@ -235,28 +236,20 @@ export function extractJournalProperties(
 export async function readJournalEntry(date: string): Promise<JournalEntry | null> {
   const store = getContentStore()
   const rawContent = await store.read(store.getJournalRelativePath(date))
+  return rawContent ? toJournalEntry(parseJournalEntry(rawContent, date)) : null
+}
 
-  if (!rawContent) {
-    return null
-  }
-
-  const parsed = parseJournalEntry(rawContent, date)
-  const wordCount = countWords(parsed.content)
-  const characterCount = parsed.content.length
-
-  // Extract properties from frontmatter
-  const properties = extractJournalProperties(parsed.frontmatter)
-
+function toJournalEntry(parsed: ParsedJournalEntry): JournalEntry {
   return {
     id: parsed.id,
     date: parsed.date,
     content: parsed.content,
-    wordCount,
-    characterCount,
+    wordCount: countWords(parsed.content),
+    characterCount: parsed.content.length,
     tags: parsed.frontmatter.tags ?? [],
     createdAt: parsed.created,
     modifiedAt: parsed.modified,
-    properties
+    properties: extractJournalProperties(parsed.frontmatter)
   }
 }
 
@@ -278,15 +271,48 @@ export async function writeJournalEntryWithContent(
   existingEntry?: JournalEntry | null,
   properties?: Record<string, unknown>
 ): Promise<JournalWriteResult> {
-  const journalDir = getJournalDir()
   const store = getContentStore()
-  const relativePath = store.getJournalRelativePath(date)
-
-  // Ensure journal directory exists
-  await ensureDirectory(journalDir)
-
-  // Check if entry already exists
+  await ensureDirectory(getJournalDir())
   const existing = existingEntry ?? (await readJournalEntry(date))
+  const result = composeJournalEntry(date, content, tags, existing, properties)
+  await store.write(store.getJournalRelativePath(date), result.fileContent)
+  return result
+}
+
+/**
+ * Must stay synchronous: the sync apply path runs inside an open page
+ * transaction and hands the returned bytes to `writeSyncedVaultFile` (#2284).
+ *
+ * The body is a CRDT document (chapter 12 §12.2): a record carries `content`
+ * only on create and `null` on every update. An empty or missing `content`
+ * keeps the body the file already holds, so a tags-only update, or a create
+ * with `content: ''` landing after the CRDT write-back, never empties the file
+ * (spec 005-journal G0). A non-empty `content` is written as given.
+ */
+export function buildJournalEntryWrite(
+  date: string,
+  content: string | null | undefined,
+  tags?: string[],
+  properties?: Record<string, unknown>
+): JournalWriteResult & { absolutePath: string } {
+  const absolutePath = getJournalPath(date)
+  let existing: JournalEntry | null = null
+  try {
+    existing = toJournalEntry(parseJournalEntry(fs.readFileSync(absolutePath, 'utf-8'), date))
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  }
+  const body = content ? content : (existing?.content ?? '')
+  return { absolutePath, ...composeJournalEntry(date, body, tags, existing, properties) }
+}
+
+function composeJournalEntry(
+  date: string,
+  content: string,
+  tags: string[] | undefined,
+  existing: JournalEntry | null,
+  properties: Record<string, unknown> | undefined
+): JournalWriteResult {
   let frontmatter: JournalFrontmatter
 
   if (existing) {
@@ -318,31 +344,11 @@ export async function writeJournalEntryWithContent(
     }
   }
 
-  // Serialize and write
   const fileContent = serializeJournalEntry(frontmatter, content)
-  await store.write(relativePath, fileContent)
-
   const parsed = parseJournalEntry(fileContent, date)
-  const wordCount = countWords(parsed.content)
-  const characterCount = parsed.content.length
-
-  // Extract properties from the written frontmatter
-  const writtenProperties = extractJournalProperties(parsed.frontmatter)
-
-  const entry: JournalEntry = {
-    id: parsed.id,
-    date: parsed.date,
-    content: parsed.content,
-    wordCount,
-    characterCount,
-    tags: parsed.frontmatter.tags ?? [],
-    createdAt: existing?.createdAt ?? parsed.created,
-    modifiedAt: parsed.modified,
-    properties: writtenProperties
-  }
-
+  const written = toJournalEntry(parsed)
   return {
-    entry,
+    entry: { ...written, createdAt: existing?.createdAt ?? written.createdAt },
     fileContent,
     frontmatter: parsed.frontmatter
   }

@@ -23,7 +23,7 @@ vi.mock('../database/client', () => ({
 import {
   beginPageApply,
   replayBulkApplyJournal,
-  writeSyncedNoteFile,
+  writeSyncedVaultFile,
   _resetBulkApplyForTests
 } from './bulk-apply'
 import { getRawIndexDatabase, isIndexDatabaseInitialized } from '../database/client'
@@ -124,8 +124,8 @@ describe('bulk apply page session', () => {
       const fileB = path.join(userDataDir, 'note-b.md')
 
       const page = beginPageApply(db)
-      writeSyncedNoteFile(fileA, 'content-a')
-      writeSyncedNoteFile(fileB, 'content-b')
+      writeSyncedVaultFile(fileA, 'content-a')
+      writeSyncedVaultFile(fileB, 'content-b')
       page.commit()
 
       // Crash before flushFiles(): journal exists, files do not.
@@ -149,7 +149,7 @@ describe('bulk apply page session', () => {
       const fileA = path.join(userDataDir, 'note-c.md')
 
       const page = beginPageApply(db)
-      writeSyncedNoteFile(fileA, 'synced-content')
+      writeSyncedVaultFile(fileA, 'synced-content')
       page.commit()
 
       // A writeback or editor got there first with newer bytes, AFTER the
@@ -175,7 +175,7 @@ describe('bulk apply page session', () => {
       fs.writeFileSync(fileA, 'old-bytes', 'utf-8')
 
       const page = beginPageApply(db)
-      writeSyncedNoteFile(fileA, 'row-content')
+      writeSyncedVaultFile(fileA, 'row-content')
       page.commit()
       // Crash before flushFiles(): the row committed, the file still holds the
       // old bytes. Existence alone must not skip the heal.
@@ -193,7 +193,7 @@ describe('bulk apply page session', () => {
       const fileA = path.join(userDataDir, 'landed.md')
 
       const page = beginPageApply(db)
-      writeSyncedNoteFile(fileA, 'landed-content')
+      writeSyncedVaultFile(fileA, 'landed-content')
       page.commit()
       // The flush landed out-of-band before the crash.
       fs.writeFileSync(fileA, 'landed-content', 'utf-8')
@@ -232,8 +232,8 @@ describe('bulk apply page session', () => {
       const badFile = path.join(blocker, 'bad.md')
 
       const page1 = beginPageApply(db)
-      writeSyncedNoteFile(goodFile, 'g')
-      writeSyncedNoteFile(badFile, 'b')
+      writeSyncedVaultFile(goodFile, 'g')
+      writeSyncedVaultFile(badFile, 'b')
       page1.commit()
       await page1.flushFiles()
 
@@ -245,7 +245,7 @@ describe('bulk apply page session', () => {
       // Page 2 must not clobber page 1's unlanded entry.
       const page2 = beginPageApply(db)
       const otherFile = path.join(userDataDir, 'other.md')
-      writeSyncedNoteFile(otherFile, 'o')
+      writeSyncedVaultFile(otherFile, 'o')
       page2.commit()
       await page2.flushFiles()
 
@@ -288,7 +288,7 @@ describe('bulk apply page session', () => {
   describe('#given no active session', () => {
     it('#then note file writes stay synchronous tmp-write + rename', () => {
       const target = path.join(userDataDir, 'steady.md')
-      writeSyncedNoteFile(target, 'steady-state')
+      writeSyncedVaultFile(target, 'steady-state')
       expect(fs.existsSync(target + '.tmp')).toBe(false)
       expect(fs.readFileSync(target, 'utf-8')).toBe('steady-state')
     })
@@ -323,7 +323,7 @@ describe('bulk apply page session', () => {
 
       try {
         const page = beginPageApply(db)
-        writeSyncedNoteFile(path.join(userDataDir, 'durable.md'), 'durable-content')
+        writeSyncedVaultFile(path.join(userDataDir, 'durable.md'), 'durable-content')
         page.commit()
 
         const commitCall = execSpy.mock.calls.findIndex(([sql]) => sql === 'COMMIT')
@@ -426,7 +426,7 @@ describe('bulk apply page session', () => {
     it('#then a failed data COMMIT rolls back and leaves the data connection usable too', () => {
       const { db, raw } = makeDb()
       const page = beginPageApply(db)
-      writeSyncedNoteFile(path.join(userDataDir, 'doomed.md'), 'never-committed')
+      writeSyncedVaultFile(path.join(userDataDir, 'doomed.md'), 'never-committed')
 
       const origExec = raw.exec.bind(raw)
       const sqlLog: string[] = []

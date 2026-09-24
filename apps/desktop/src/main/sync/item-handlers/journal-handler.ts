@@ -16,48 +16,17 @@ import {
   getJournalPath,
   getJournalRelativePath,
   parseJournalEntry,
-  readJournalEntry,
-  writeJournalEntryWithContent
+  buildJournalEntryWrite
 } from '../../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getCrdtProvider } from '../crdt-provider'
+import { writeSyncedVaultFile } from '../bulk-apply'
 import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('JournalHandler')
-
-/**
- * Writes a remote journal record to its vault file without costing the body.
- *
- * The body is a CRDT document (chapter 12 §12.2); a record carries `content`
- * only on create, and `null` on every update. Writing `content ?? ''` emptied
- * the file whenever another device changed only tags or properties, or when a
- * create with `content: ''` landed after the CRDT write-back had already put
- * the body in the file. The Y.Doc kept the text, but the file, the index and
- * the heatmap lost it until the next body edit. An empty or missing `content`
- * now keeps the body the file already holds; a non-empty one is written as
- * before (a create seeded from a template).
- *
- * Known limitation: the read and the write are not under one lock, so a CRDT
- * write-back landing between them can be overwritten by the older body. The
- * Y.Doc keeps the text and the next body edit rewrites the file.
- */
-async function writeSyncedJournal(
-  date: string,
-  data: JournalSyncPayload
-): Promise<Awaited<ReturnType<typeof writeJournalEntryWithContent>>> {
-  const existing = data.content ? null : await readJournalEntry(date)
-  const content = data.content ? data.content : (existing?.content ?? '')
-  return writeJournalEntryWithContent(
-    date,
-    content,
-    data.tags,
-    existing,
-    data.properties ?? undefined
-  )
-}
 
 class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
   readonly type = 'journal' as const
@@ -85,6 +54,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     const existing = getNoteMetadataById(ctx.db, itemId)
     const indexDb = getIndexDatabase()
 
+    let mergedClock = remoteClock
+    let result: ApplyResult = 'applied'
     if (existing) {
       const resolution = this.resolveClock(existing.clock, remoteClock)
       if (resolution.action === 'skip') {
@@ -93,87 +64,58 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       }
       if (resolution.action === 'merge') {
         log.warn('Concurrent journal edit, applying (CRDT handles merge)', { itemId })
+        result = 'conflict'
       }
-
-      writeSyncedJournal(date, data)
-        .then(async ({ entry, fileContent, frontmatter }) => {
-          saveCanonicalNote(ctx.db, {
-            id: itemId,
-            path: getJournalRelativePath(entry.date),
-            title: entry.date,
-            journalDate: entry.date,
-            clock: resolution.mergedClock,
-            syncedAt: now,
-            createdAt: entry.createdAt,
-            modifiedAt: data.modifiedAt ?? entry.modifiedAt,
-            properties: data.properties
-          })
-
-          syncNoteToCache(
-            indexDb,
-            {
-              id: itemId,
-              path: getJournalRelativePath(entry.date),
-              fileContent,
-              frontmatter,
-              parsedContent: entry.content,
-              title: entry.date,
-              createdAt: entry.createdAt,
-              modifiedAt: data.modifiedAt ?? entry.modifiedAt
-            },
-            { isNew: false }
-          )
-          void flushProjectionEvents()
-        })
-        .catch((err) => {
-          log.error('Failed to write synced journal entry', { itemId, date, error: err })
-        })
-
-      ctx.emit(JournalChannels.events.ENTRY_UPDATED, { date, source: 'sync' })
-      return resolution.action === 'merge' ? 'conflict' : 'applied'
+      mergedClock = resolution.mergedClock
     }
 
-    writeSyncedJournal(date, data)
-      .then(async ({ entry, fileContent, frontmatter }) => {
-        saveCanonicalNote(ctx.db, {
-          id: itemId,
-          path: getJournalRelativePath(entry.date),
-          title: entry.date,
-          journalDate: entry.date,
-          clock: remoteClock,
-          syncedAt: now,
-          createdAt: entry.createdAt,
-          modifiedAt: entry.modifiedAt,
-          properties: data.properties
-        })
+    // Everything below stays synchronous: it runs inside the pull's page
+    // transaction (#2284).
+    const { absolutePath, entry, fileContent, frontmatter } = buildJournalEntryWrite(
+      date,
+      data.content,
+      data.tags,
+      data.properties ?? undefined
+    )
+    const path = getJournalRelativePath(entry.date)
+    const modifiedAt = existing ? (data.modifiedAt ?? entry.modifiedAt) : entry.modifiedAt
 
-        syncNoteToCache(
-          indexDb,
-          {
-            id: itemId,
-            path: getJournalRelativePath(entry.date),
-            fileContent,
-            frontmatter,
-            parsedContent: entry.content,
-            title: entry.date,
-            createdAt: entry.createdAt,
-            modifiedAt: entry.modifiedAt
-          },
-          { isNew: true }
-        )
-        void flushProjectionEvents()
+    saveCanonicalNote(ctx.db, {
+      id: itemId,
+      path,
+      title: entry.date,
+      journalDate: entry.date,
+      clock: mergedClock,
+      syncedAt: now,
+      createdAt: entry.createdAt,
+      modifiedAt,
+      properties: data.properties
+    })
+    syncNoteToCache(
+      indexDb,
+      {
+        id: itemId,
+        path,
+        fileContent,
+        frontmatter,
+        parsedContent: entry.content,
+        title: entry.date,
+        createdAt: entry.createdAt,
+        modifiedAt
+      },
+      { isNew: !existing }
+    )
+    writeSyncedVaultFile(absolutePath, fileContent)
+    void flushProjectionEvents()
 
-        ctx.emit(JournalChannels.events.ENTRY_CREATED, { date, source: 'sync' })
-      })
-      .catch((err) => {
-        log.error('Failed to write new synced journal entry', {
-          itemId,
-          date,
-          error: err
-        })
-      })
-
-    return 'applied'
+    ctx.emit(
+      existing ? JournalChannels.events.ENTRY_UPDATED : JournalChannels.events.ENTRY_CREATED,
+      {
+        date,
+        source: 'sync'
+      }
+    )
+    return result
   }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {

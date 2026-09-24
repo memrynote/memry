@@ -14,6 +14,7 @@ import {
   readJournalEntry,
   writeJournalEntry,
   writeJournalEntryWithContent,
+  buildJournalEntryWrite,
   deleteJournalEntryFile,
   journalEntryExists,
   getJournalPath,
@@ -507,6 +508,48 @@ Today I worked on tests.`
       expect(result.entry.createdAt).toBe(createdAt)
       expect(result.entry.modifiedAt).not.toBe(createdAt)
       expect(result.fileContent).not.toContain('created')
+    })
+  })
+
+  describe('buildJournalEntryWrite keeps the body a record does not carry (spec 005-journal G0)', () => {
+    const onDisk = `---
+id: j2099-06-01
+date: 2099-06-01
+created: 2099-06-01T09:00:00.000Z
+modified: 2099-06-01T09:00:00.000Z
+---
+
+Body the Y.Doc wrote back.`
+
+    function writeOnDisk(): void {
+      fs.writeFileSync(path.join(tempVault.path, 'journal', '2099-06-01.md'), onDisk)
+    }
+
+    it('a tags-only update with content: null keeps the file body', () => {
+      writeOnDisk()
+      const result = buildJournalEntryWrite('2099-06-01', null, ['g0'])
+
+      expect(result.entry.content).toBe('Body the Y.Doc wrote back.')
+      expect(result.entry.tags).toEqual(['g0'])
+      expect(result.fileContent).toContain('Body the Y.Doc wrote back.')
+    })
+
+    it('a create with content "" that lands after the write-back keeps the file body', () => {
+      writeOnDisk()
+      expect(buildJournalEntryWrite('2099-06-01', '').entry.content).toBe(
+        'Body the Y.Doc wrote back.'
+      )
+    })
+
+    it('a create with no file yet writes an empty body', () => {
+      expect(buildJournalEntryWrite('2099-06-02', '').entry.content).toBe('')
+    })
+
+    it('a non-empty body replaces the file body', () => {
+      writeOnDisk()
+      expect(buildJournalEntryWrite('2099-06-01', 'From a template').entry.content).toBe(
+        'From a template'
+      )
     })
   })
 

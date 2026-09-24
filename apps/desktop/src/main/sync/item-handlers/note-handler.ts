@@ -15,7 +15,7 @@ import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { getCrdtProvider } from '../crdt-provider'
-import { writeSyncedNoteFile } from '../bulk-apply'
+import { writeSyncedVaultFile } from '../bulk-apply'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -650,7 +650,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // During a bulk page apply this defers the write until after the page's DB
     // commit (see bulk-apply.ts for the crash-safety contract); outside one it
     // is the same synchronous tmp-write + rename as always.
-    writeSyncedNoteFile(absolutePath, fileContent)
+    writeSyncedVaultFile(absolutePath, fileContent)
 
     requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences, data.modifiedAt)
 
