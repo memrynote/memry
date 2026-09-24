@@ -49,6 +49,42 @@ providers made opposite choices, and both are coherent:
 enqueued. The `seedUnclocked` sweeps of the calendar source and external event handlers both
 filter on it, and a desktop test keeps the constant in step with the capability table.
 
+## ICS feeds
+
+A subscribed calendar is one `calendar_sources` row (`provider = 'ics'`, `remote_id` = the
+normalized URL, id = a hash of that URL so two devices converge on one row) plus a device-local
+mirror. `calendar/ics/` fetches and parses before anything is saved, then writes only the rows
+that changed.
+
+**Fetching** (`ics-fetch.ts`). Conditional GET with the last `ETag` / `Last-Modified`, one
+30-second deadline for the whole exchange, and a 20 MB cap. The cap is enforced on the bytes as
+they stream in, not on `Content-Length`: a chunked response has none and a hostile one can
+understate it, so the stream is cancelled the moment it crosses the cap. Redirects are followed
+by hand: at most five hops, and only to `http:` or `https:`. A loop is `too_many_redirects`, a hop
+to any other scheme is `unsupported_redirect`.
+
+**Private addresses are allowed.** There is no SSRF filter on loopback or private ranges. A
+source row only comes from the user's own vault, either pasted by them or synced from another of
+their devices, so no third party can aim the fetch at a LAN. A calendar on the home network
+(Radicale, Nextcloud, a NAS) is a real use for this audience, and blocking it would only break
+those users. `ics-fetch.test.ts` pins this behavior.
+
+**Plain `http://`** is accepted. The settings UI warns before subscribing and marks the
+subscription "Not encrypted", because a secret feed link sent in cleartext is a credential leak.
+
+**Window.** Instances from 90 days back to a year ahead are mirrored. An override that moves an
+instance from past the window's end into it is placed too, even though the series walk stops at
+the window's end.
+
+**Validators stay in memory**, per database. A restart downloads each feed once; with a handful of
+feeds that is not worth persisting state that must never travel with the synced row.
+
+**Name and colour** are fields on the synced source row, so a rename or recolour
+(`calendar:update-ics`) shows on every device, and a refresh never overwrites them. The colour is
+stored as `#rrggbb`, the format `calendar_sources.color` already carries for Google, so older
+builds paint it. There is no "clear colour": the source sync merge keeps the old value when the
+incoming one is null.
+
 ## CalDAV
 
 CalDAV (RFC 4791) reaches iCloud, Fastmail, Nextcloud, Radicale, Baïkal, mailbox.org, Posteo,

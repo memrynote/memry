@@ -16,6 +16,7 @@ import {
   SetDefaultProviderCalendarSchema,
   SubscribeIcsCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
+  UpdateIcsCalendarSchema,
   CalendarProviderRequestSchema,
   CheckProviderWriterCompatSchema,
   DiscoverProviderCalendarsSchema,
@@ -67,6 +68,7 @@ export type SetDefaultGoogleCalendarInput = z.input<typeof SetDefaultGoogleCalen
 export type RetryCalendarSourceSyncInput = z.input<typeof RetryCalendarSourceSyncSchema>
 export type SubscribeIcsCalendarInput = z.input<typeof SubscribeIcsCalendarSchema>
 export type IcsCalendarSourceRequest = z.input<typeof IcsCalendarSourceRequestSchema>
+export type UpdateIcsCalendarInput = z.input<typeof UpdateIcsCalendarSchema>
 export type ListProviderCalendarsInput = z.input<typeof ListProviderCalendarsSchema>
 export type SetDefaultProviderCalendarInput = z.input<typeof SetDefaultProviderCalendarSchema>
 export type CheckProviderWriterCompatInput = z.input<typeof CheckProviderWriterCompatSchema>
@@ -246,6 +248,12 @@ export const calendarRpc = defineDomain({
       (input: IcsCalendarSourceRequest) => Promise<IcsCalendarMutationResponse>
     >({
       channel: CalendarChannels.invoke.REFRESH_ICS_CALENDAR,
+      params: ['input']
+    }),
+    updateIcsCalendar: defineMethod<
+      (input: UpdateIcsCalendarInput) => Promise<IcsCalendarMutationResponse>
+    >({
+      channel: CalendarChannels.invoke.UPDATE_ICS_CALENDAR,
       params: ['input']
     })
   },

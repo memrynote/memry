@@ -1,8 +1,11 @@
-import { eq } from 'drizzle-orm'
+import { count, eq, max, min } from 'drizzle-orm'
 import {
   ICS_CALENDAR_PROVIDER,
-  type SubscribeIcsCalendarInput
+  type IcsCalendarFeedSummary,
+  type SubscribeIcsCalendarInput,
+  type UpdateIcsCalendarInput
 } from '@memry/contracts/calendar-api'
+import { calendarColorHex } from '@memry/contracts/calendar-colors'
 import { calendarSources, type CalendarSource } from '@memry/db-schema/schema/calendar-sources'
 import {
   calendarExternalEvents,
@@ -307,6 +310,54 @@ export async function subscribeIcsCalendar(
     events: result.feed.events.length
   })
   return getCalendarSourceById(db, id) ?? source
+}
+
+/**
+ * Rename or recolour a subscription. The source row syncs, so the new name
+ * and colour show on every device. A refresh never touches either: the feed's
+ * own name is only used when the subscription is created.
+ */
+export function updateIcsCalendar(
+  db: DataDb,
+  input: UpdateIcsCalendarInput,
+  deps: IcsDeps = {}
+): CalendarSource {
+  const source = requireIcsSource(db, input.sourceId)
+  if (source.archivedAt) throw new Error(`Subscribed calendar not found: ${input.sourceId}`)
+
+  const title = input.title ?? source.title
+  const color = input.color ? calendarColorHex(input.color) : source.color
+  if (title === source.title && color === source.color) return source
+
+  const updated = upsertCalendarSource(db, {
+    ...source,
+    title,
+    color,
+    modifiedAt: nowOf(deps).toISOString()
+  })
+  syncCalendarSourceUpdate(source.id)
+  emitCalendarChanged({ entityType: 'calendar_source', id: source.id })
+  // The name labels each event and the colour paints it.
+  emitCalendarProjectionChanged(`ics:${source.id}`)
+  return updated
+}
+
+/** How many events a subscription mirrored on this device, and the span they cover. */
+export function summarizeIcsCalendarEvents(db: DataDb, sourceId: string): IcsCalendarFeedSummary {
+  const row = db
+    .select({
+      eventCount: count(),
+      firstStartAt: min(calendarExternalEvents.startAt),
+      lastStartAt: max(calendarExternalEvents.startAt)
+    })
+    .from(calendarExternalEvents)
+    .where(eq(calendarExternalEvents.sourceId, sourceId))
+    .get()
+  return {
+    eventCount: row?.eventCount ?? 0,
+    firstStartAt: row?.firstStartAt ?? null,
+    lastStartAt: row?.lastStartAt ?? null
+  }
 }
 
 /** Tombstone the subscription (synced) and drop this device's mirrored events. */

@@ -173,6 +173,37 @@ function expandSeries(
   return instances
 }
 
+/**
+ * The walk in `expandSeries` stops at the window's end, so an override whose
+ * original date lies past the window never comes up, even when it moved the
+ * instance into the window (a meeting next year pulled forward to next week).
+ * Those overrides are placed on their own, keyed by their original date like
+ * every other instance. Overrides the walk already reached are skipped.
+ */
+function overridesMovedIntoWindow(
+  overrides: ICAL.Component[],
+  expanded: ICalEventInstance[],
+  context: EventContext,
+  window: ICalExpansionWindow
+): ICalEventInstance[] {
+  const placed = new Set(expanded.map((instance) => instance.remoteEventId))
+  const instances: ICalEventInstance[] = []
+  for (const override of overrides) {
+    const event = new ICAL.Event(override)
+    if (!override.hasProperty('dtstart') || !event.recurrenceId) continue
+    const recurrenceId = toInstant(event.recurrenceId, context.unresolvedZone)
+    if (recurrenceId < window.endAt) continue
+    const remoteEventId = context.keyFor(context.uid, recurrenceId)
+    if (placed.has(remoteEventId)) continue
+    const instance = toInstance(event, event.startDate, event.endDate, remoteEventId, context)
+    if (instance && overlapsWindow(instance, window)) {
+      placed.add(remoteEventId)
+      instances.push(instance)
+    }
+  }
+  return instances
+}
+
 /** Parse iCalendar text into its VCALENDAR component. */
 export function parseICalendar(text: string): ICAL.Component {
   let root: ICAL.Component
@@ -222,7 +253,8 @@ export function expandCalendarEvents(
         unresolvedZone: unresolvedZoneFor(master.component, calendarZone),
         keyFor
       }
-      events.push(...expandSeries(master, context, window))
+      const expanded = expandSeries(master, context, window)
+      events.push(...expanded, ...overridesMovedIntoWindow(overrides, expanded, context, window))
       continue
     }
 

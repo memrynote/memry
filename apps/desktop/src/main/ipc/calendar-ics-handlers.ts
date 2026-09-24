@@ -3,6 +3,7 @@ import { CalendarChannels } from '@memry/contracts/ipc-channels'
 import {
   IcsCalendarSourceRequestSchema,
   SubscribeIcsCalendarSchema,
+  UpdateIcsCalendarSchema,
   type IcsCalendarMutationResponse
 } from '@memry/contracts/calendar-api'
 import { createLogger } from '../lib/logger'
@@ -10,7 +11,9 @@ import { IcsFeedError } from '../calendar/ics/ics-feed'
 import {
   refreshIcsCalendarSource,
   subscribeIcsCalendar,
-  unsubscribeIcsCalendar
+  summarizeIcsCalendarEvents,
+  unsubscribeIcsCalendar,
+  updateIcsCalendar
 } from '../calendar/ics/ics-subscriptions'
 import { getCalendarSourceById } from '../calendar/repositories/calendar-sources-repository'
 import { mapCalendarSource } from '../calendar/calendar-source-record'
@@ -33,7 +36,11 @@ export function registerCalendarIcsHandlers(): void {
       withDb(async (db, input): Promise<IcsCalendarMutationResponse> => {
         try {
           const source = await subscribeIcsCalendar(db, input)
-          return { success: true, source: mapCalendarSource(source) }
+          return {
+            success: true,
+            source: mapCalendarSource(source),
+            summary: summarizeIcsCalendarEvents(db, source.id)
+          }
         } catch (error) {
           log.warn('Calendar feed subscribe failed', {
             code: error instanceof IcsFeedError ? error.code : 'unknown'
@@ -71,10 +78,22 @@ export function registerCalendarIcsHandlers(): void {
       }, 'errors:calendar.syncFailed')
     )
   )
+
+  ipcMain.handle(
+    CalendarChannels.invoke.UPDATE_ICS_CALENDAR,
+    createValidatedHandler(
+      UpdateIcsCalendarSchema,
+      withDb((db, input): IcsCalendarMutationResponse => {
+        const source = updateIcsCalendar(db, input)
+        return { success: true, source: mapCalendarSource(source) }
+      }, 'errors:calendar.updateSubscriptionFailed')
+    )
+  )
 }
 
 export function unregisterCalendarIcsHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR)
   ipcMain.removeHandler(CalendarChannels.invoke.UNSUBSCRIBE_ICS_CALENDAR)
   ipcMain.removeHandler(CalendarChannels.invoke.REFRESH_ICS_CALENDAR)
+  ipcMain.removeHandler(CalendarChannels.invoke.UPDATE_ICS_CALENDAR)
 }

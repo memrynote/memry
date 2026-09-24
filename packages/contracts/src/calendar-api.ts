@@ -298,7 +298,11 @@ export const IcsFeedErrorCodeSchema = z.enum([
   'unauthorized',
   'http_error',
   'too_large',
-  'not_a_calendar'
+  'not_a_calendar',
+  // #1397: added after the first release. An older renderer shows these as
+  // its generic "couldn't update ({code})" message.
+  'too_many_redirects',
+  'unsupported_redirect'
 ])
 
 export const SubscribeIcsCalendarSchema = z.object({
@@ -310,15 +314,39 @@ export const IcsCalendarSourceRequestSchema = z.object({
   sourceId: z.string().min(1)
 })
 
+/**
+ * #1398: rename or recolour a subscription. Both land on the synced source row,
+ * so every device shows them. `color` is stored as its `#rrggbb`, the format
+ * `calendar_sources.color` already carries for Google calendars, so older
+ * builds paint it without knowing the name. There is no "clear colour": the
+ * source sync merge keeps the old value when the incoming one is null.
+ */
+export const UpdateIcsCalendarSchema = z.object({
+  sourceId: z.string().min(1),
+  title: z.string().trim().min(1).max(200).optional(),
+  color: CalendarEventColorSchema.optional()
+})
+
 export type IcsFeedErrorCode = z.infer<typeof IcsFeedErrorCodeSchema>
 export type SubscribeIcsCalendarInput = z.infer<typeof SubscribeIcsCalendarSchema>
 export type IcsCalendarSourceRequest = z.infer<typeof IcsCalendarSourceRequestSchema>
+export type UpdateIcsCalendarInput = z.infer<typeof UpdateIcsCalendarSchema>
+
+/** #1398: what a subscription put on the calendar, for the confirmation after subscribing. */
+export interface IcsCalendarFeedSummary {
+  eventCount: number
+  /** Start of the earliest and latest mirrored instance; null when there are none. */
+  firstStartAt: string | null
+  lastStartAt: string | null
+}
 
 export interface IcsCalendarMutationResponse {
   success: boolean
   source: CalendarSourceRecord | null
   errorCode?: IcsFeedErrorCode
   error?: string
+  /** #1398: set by a successful subscribe. */
+  summary?: IcsCalendarFeedSummary
 }
 
 export interface RetryCalendarSourceSyncResponse {
