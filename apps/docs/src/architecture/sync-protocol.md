@@ -1625,9 +1625,16 @@ replaces it installs its own hook.
 ### The message contract, and the mobile client
 
 The socket's message names, the keepalive string, the close codes and a parser live in
-`packages/contracts/src/sync-socket.ts`. Desktop imports the name list; mobile parses against the
-same module. An unrecognised `type` parses successfully and is then ignored rather than failing the
-frame, so a server that starts sending a new message cannot break a client that shipped before it.
+`packages/contracts/src/sync-socket.ts`. Desktop parses every frame with its `parseSyncSocketFrame`;
+mobile parses against the same module. An unrecognised `type` parses successfully and is then
+ignored rather than failing the frame, so a server that starts sending a new message cannot break a
+client that shipped before it. Desktop drops an ignored frame with a debug log; only a frame that is
+not a `{ type, payload? }` envelope at all raises the socket's `error` event.
+
+The parser narrows `calendar_changes_available` (`sourceId`), `linking_request` (`sessionId`,
+`newDeviceName`, `newDevicePlatform`) and `linking_approved` (`sessionId`) alongside the older
+types. Unknown payload keys are stripped, and a frame missing a required field is ignored rather than
+forwarded, so a malformed linking frame no longer reaches the renderer.
 
 Mobile is a second implementation rather than a port, because React Native's WebSocket is not the
 same object as `ws`. It has no `terminate()`, no ping/pong events and no `unexpected-response`, so a
