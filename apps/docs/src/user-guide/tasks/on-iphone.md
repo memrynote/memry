@@ -67,7 +67,7 @@ Save the current filters under a name, star the ones you want in the project pic
 
 Add reminders from a task's details with the desktop presets (Later Today, Tomorrow, Next Week, In 1 Month) or a date and time you pick; a task can have several. The phone asks for notification permission the first time you add one.
 
-Reminders fire as ordinary iPhone notifications, even when the app is closed. Tapping one opens the task. If the task was completed or deleted on another device in the meantime, you see its done state or a "no longer in this vault" message.
+Reminders fire as ordinary iPhone notifications, even when the app is closed. Tapping one opens the task. The notification shows the task's title and a generic "Task reminder" line; a reminder's note stays in the app, because iOS keeps notification text outside your vault's encryption. If the task was completed or deleted on another device in the meantime, you see its done state or a "no longer in this vault" message.
 
 iOS limits how many notifications an app may schedule, so the phone keeps the nearest 60 reminders scheduled and refills the list whenever the app opens or syncs. A reminder whose time passed while nothing was scheduled stays in the list marked **Past due**, where you can snooze or dismiss it.
 

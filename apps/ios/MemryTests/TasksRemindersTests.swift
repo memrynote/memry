@@ -148,7 +148,8 @@ struct TasksRemindersTests {
         let center = FakeReminderCenter()
         let scheduler = ReminderScheduler(center: center)
         for task in [open, done, gone] {
-            await vault.store.addReminder(to: task, at: Self.future(hours: 5), note: nil, scheduler: scheduler)
+            let note = task == open ? "private note text" : nil
+            await vault.store.addReminder(to: task, at: Self.future(hours: 5), note: note, scheduler: scheduler)
         }
         let now = vault.store.localNow()
         await vault.store.perform(nil) { try $0.complete(id: done, localNow: now).change }
@@ -159,7 +160,9 @@ struct TasksRemindersTests {
         #expect(center.pending.values.map(\.targetId) == [open])
         let notification = try #require(center.pending.values.first)
         #expect(notification.title == "[agent] open")
+        // The note never reaches the system's plaintext notification store.
         #expect(notification.body == TasksCopy.reminderNotificationBody(targetType: "task"))
+        #expect(!notification.body.contains("private note text"))
         #expect(notification.userInfo["targetType"] == "task")
         #expect(notification.userInfo["targetId"] == open)
     }

@@ -60,8 +60,10 @@ struct ReminderSchedulePlan: Equatable, Sendable {
                 targetId: item.reminder.targetId,
                 title: nonEmpty(item.reminder.title) ?? nonEmpty(item.targetTitle)
                     ?? TasksCopy.reminderNotificationDefault,
-                body: nonEmpty(item.reminder.note)
-                    ?? TasksCopy.reminderNotificationBody(targetType: item.reminder.targetType),
+                // Never the reminder's note: iOS stores notification text in
+                // plaintext outside the vault (spec 002 research R12), so the
+                // body stays generic. The title names what the reminder is for.
+                body: TasksCopy.reminderNotificationBody(targetType: item.reminder.targetType),
                 fireAt: Date(timeIntervalSince1970: TimeInterval(item.fireAtMs) / 1000)
             )
         }
