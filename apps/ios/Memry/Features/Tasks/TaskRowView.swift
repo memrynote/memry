@@ -33,6 +33,8 @@ struct TaskRowView: View {
     var selection: TaskRowSelection?
 
     @Environment(TasksRouter.self) private var router: TasksRouter?
+    /// Accessibility sizes fit fewer words per line, so a title gets more lines.
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// Bumped on each completion, driving the success haptic.
     @State private var completions = 0
 
@@ -104,7 +106,7 @@ struct TaskRowView: View {
                     .strikethrough(task.isDone)
                     .foregroundStyle(task.isDone ? Tokens.Text.tertiary.color : Tokens.Text.primary.color)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(3)
+                    .lineLimit(typeSize.isAccessibilitySize ? 6 : 3)
                 TaskMetaLine(meta: store.meta(task, context: context))
             }
             .frame(maxWidth: .infinity, alignment: .leading)

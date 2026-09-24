@@ -39,8 +39,8 @@ struct QuickAddHelpSheet: View {
             .navigationTitle(TasksCopy.quickAddHelpTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(TasksCopy.done) { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(role: .close) { dismiss() }
                         .accessibilityIdentifier("tasks.quickAdd.helpDone")
                 }
             }

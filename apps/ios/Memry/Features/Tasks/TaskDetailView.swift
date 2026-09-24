@@ -88,22 +88,27 @@ struct TaskDetailContent: View {
 
     var body: some View {
         List {
-            if let failure = store.failure {
-                ErrorNotice(error: failure, code: nil)
+            Group {
+                if let failure = store.failure {
+                    ErrorNotice(error: failure, code: nil)
+                        .listRowSeparator(.hidden)
+                }
+                TaskDetailHeader(task: task, store: store)
                     .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(
+                        top: Tokens.Space.medium, leading: TaskLayout.edge, bottom: 0, trailing: TaskLayout.edge
+                    ))
+                TaskDetailPills(task: task, store: store)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(TaskDetailLayout.bodyInsets(top: Tokens.Space.small))
+                TaskDescriptionSection(task: task, store: store)
+                SubtasksSection(parent: task, store: store)
+                TaskRelatedSection(task: task, store: store, linked: linked)
+                TaskDetailFooter(task: task, store: store)
             }
-            TaskDetailHeader(task: task, store: store)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(
-                    top: Tokens.Space.medium, leading: TaskLayout.edge, bottom: 0, trailing: TaskLayout.edge
-                ))
-            TaskDetailPills(task: task, store: store)
-                .listRowSeparator(.hidden)
-                .listRowInsets(TaskDetailLayout.bodyInsets(top: Tokens.Space.small))
-            TaskDescriptionSection(task: task, store: store)
-            SubtasksSection(parent: task, store: store)
-            TaskRelatedSection(task: task, store: store, linked: linked)
-            TaskDetailFooter(task: task, store: store)
+            // Plain-list cells default to the system background (black in dark),
+            // not the canvas.
+            .listRowBackground(Tokens.Canvas.background.color)
         }
         .linkedItemsLoader(task: task, store: store, into: $linked)
         .listStyle(.plain)
@@ -131,13 +136,16 @@ struct TaskDetailHeader: View {
     let store: TasksStore
 
     @State private var completions = 0
+    /// Grows with the title's Dynamic Type so the circle stays on screen at
+    /// accessibility sizes.
+    @ScaledMetric(relativeTo: .title) private var lane = TaskDetailLayout.lane
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.medium) {
             Text(verbatim: "A")
                 .font(TaskDetailTitleField.font)
                 .hidden()
-                .frame(width: TaskDetailLayout.lane)
+                .frame(width: lane)
                 .overlay {
                     Button(action: toggle) {
                         TaskStatusIcon(

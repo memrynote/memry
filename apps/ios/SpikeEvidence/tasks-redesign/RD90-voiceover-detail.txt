@@ -1,0 +1,156 @@
+Attributes: Application, 0x114562e40, pid: 62193, label: 'Memry'
+Element subtree:
+ →Application, 0x114562e40, pid: 62193, label: 'Memry'
+    Window (Main), 0x114562f80, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x1145630c0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x114563200, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x114563340, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x114563480, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x1145635c0, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x114563700, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x114563840, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x114563980, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x114563ac0, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x114563c00, {{0.0, 0.0}, {402.0, 874.0}}
+                          Other, 0x114563d40, {{0.0, 0.0}, {402.0, 874.0}}
+                            NavigationBar, 0x114563e80, {{0.0, 62.0}, {402.0, 54.0}}, identifier: '_TtGC7SwiftUI32NavigationStackHosting'
+                              Button, 0x11357ea80, {{16.0, 62.0}, {44.0, 44.0}}, identifier: 'BackButton', label: 'Back'
+                              Other, 0x114564000, {{346.0, 66.0}, {36.0, 36.0}}, identifier: 'tasks.detail.more', label: 'More'
+                                Other, 0x114564140, {{346.0, 66.0}, {36.0, 36.0}}
+                                  Button, 0x114564280, {{350.0, 66.0}, {28.0, 36.0}}, identifier: 'tasks.detail.more', label: 'More'
+                                    Button, 0x1145643c0, {{350.0, 66.0}, {28.0, 36.0}}
+                                      Image, 0x114564500, {{352.0, 80.0}, {24.0, 8.3}}, identifier: 'ellipsis', label: 'More'
+                            Other, 0x114564640, {{0.0, 0.0}, {402.0, 874.0}}
+                              Other, 0x114564780, {{0.0, 0.0}, {402.0, 874.0}}
+                                Other, 0x1145648c0, {{0.0, 0.0}, {402.0, 874.0}}
+                                  Other, 0x114564a00, {{0.0, 0.0}, {402.0, 874.0}}
+                                    CollectionView, 0x114564b40, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'tasks.detail'
+                                      Other, 0x114564c80, {{0.0, -1632.0}, {402.0, 2028.0}}
+                                      Other, 0x114564dc0, {{0.0, 0.0}, {402.0, 874.0}}
+                                        Other, 0x114564f00, {{0.0, 0.0}, {402.0, 116.0}}
+                                        Other, 0x114565040, {{0.0, 791.0}, {402.0, 83.0}}
+                                      Other, 0x114565180, {{0.0, 0.0}, {402.0, 874.0}}
+                                        Other, 0x1145652c0, {{0.0, 0.0}, {402.0, 116.0}}
+                                          Other, 0x114565400, {{0.0, 0.0}, {402.0, 116.0}}
+                                            Other, 0x114565540, {{0.0, 0.0}, {402.0, 116.0}}
+                                        Other, 0x114565680, {{0.0, 791.0}, {402.0, 83.0}}
+                                          Other, 0x1145657c0, {{0.0, 791.0}, {402.0, 83.0}}
+                                            Other, 0x114565900, {{0.0, 791.0}, {402.0, 83.0}}
+                                      Cell, 0x114565a40, {{0.0, 116.0}, {402.0, 80.0}}
+                                        Other, 0x114565b80, {{0.0, 116.0}, {402.0, 80.0}}
+                                          Other, 0x114565cc0, {{0.0, 116.0}, {402.0, 80.0}}
+                                        Other, 0x114565e00, {{0.0, 116.0}, {402.0, 80.0}}
+                                          Other, 0x114565f40, {{0.0, 116.0}, {402.0, 80.0}}
+                                            Other, 0x114566080, {{0.0, 116.0}, {402.0, 80.0}}
+                                              Button, 0x1145661c0, {{12.0, 123.0}, {44.0, 44.0}}, identifier: 'tasks.detail.complete', label: 'Complete'
+                                              TextField, 0x114566300, {{60.0, 128.0}, {322.0, 68.0}}, identifier: 'tasks.detail.title', label: 'Task name', value: File 2025 tax exte...
+                                                Other, 0x114566440, {{60.0, 163.0}, {322.0, 30.0}}, label: 'Horizontal scroll bar, 1 page', value: %0
+                                                  Other, 0x114566580, {{63.0, 190.0}, {313.0, 3.0}}
+                                      Cell, 0x1145666c0, {{0.0, 196.0}, {402.0, 140.0}}
+                                        Other, 0x114566800, {{0.0, 196.0}, {402.0, 140.0}}
+                                          Other, 0x114566940, {{0.0, 196.0}, {402.0, 140.0}}
+                                        Other, 0x114566a80, {{0.0, 196.0}, {402.0, 140.0}}
+                                          Other, 0x114566bc0, {{0.0, 196.0}, {402.0, 140.0}}
+                                            Other, 0x114566d00, {{0.0, 196.0}, {402.0, 140.0}}
+                                              Other, 0x114566e40, {{60.0, 204.0}, {306.3, 132.0}}
+                                                Button, 0x114566f80, {{60.0, 204.0}, {83.7, 44.0}}, identifier: 'tasks.detail.status', label: 'Status: To Do'
+                                                  Button, 0x1145670c0, {{60.0, 204.0}, {83.7, 44.0}}
+                                                    Image, 0x114567200, {{73.0, 219.3}, {13.7, 13.7}}, identifier: 'circle.dashed', label: 'To Do'
+                                                    StaticText, 0x114567340, {{91.7, 217.0}, {40.0, 18.0}}, label: 'To Do'
+                                                Button, 0x114567480, {{151.7, 204.0}, {80.7, 44.0}}, identifier: 'tasks.detail.priority', label: 'Priority: High'
+                                                  Button, 0x1145675c0, {{151.7, 204.0}, {80.7, 44.0}}
+                                                    Image, 0x114567700, {{165.3, 220.3}, {17.3, 11.7}}, identifier: 'cellularbars', label: 'Priority: High'
+                                                    StaticText, 0x114567840, {{188.3, 217.0}, {32.0, 18.0}}, label: 'High'
+                                                Button, 0x114567980, {{240.3, 204.0}, {92.7, 44.0}}, identifier: 'tasks.detail.dueDate', label: 'Due Sep 20'
+                                                  Button, 0x114567ac0, {{240.3, 204.0}, {92.7, 44.0}}
+                                                    Image, 0x114567c00, {{254.0, 220.0}, {12.7, 12.0}}, identifier: 'calendar', label: 'Calendar'
+                                                    StaticText, 0x114567d40, {{240.3, 204.0}, {92.7, 44.0}}, label: 'Sep 20'
+                                                Button, 0x114567e80, {{60.0, 248.0}, {79.3, 44.0}}, identifier: 'tasks.detail.project', label: 'Project: Inbox'
+                                                  Button, 0x114568000, {{60.0, 248.0}, {79.3, 44.0}}
+                                                    Image, 0x114568140, {{73.0, 264.0}, {12.0, 12.0}}, identifier: 'circle.fill', label: 'Circle'
+                                                    StaticText, 0x114568280, {{60.0, 248.0}, {79.3, 44.0}}, label: 'Inbox'
+                                                Button, 0x1145683c0, {{147.3, 248.0}, {135.7, 44.0}}, identifier: 'tasks.detail.startDate', label: 'Starts Sep 14'
+                                                  Button, 0x114568500, {{147.3, 248.0}, {135.7, 44.0}}
+                                                    Image, 0x114568640, {{161.0, 263.0}, {16.3, 14.0}}, identifier: 'calendar.badge.clock', label: 'Date And Time'
+                                                    StaticText, 0x114568780, {{147.3, 248.0}, {135.7, 44.0}}, label: 'Starts Sep 14'
+                                                Button, 0x1145688c0, {{291.0, 248.0}, {75.3, 44.0}}, identifier: 'tasks.detail.tag.admin', label: 'Tag admin'
+                                                  Button, 0x114568a00, {{291.0, 248.0}, {75.3, 44.0}}
+                                                    StaticText, 0x114568b40, {{291.0, 248.0}, {75.3, 44.0}}, label: '#admin'
+                                                Button, 0x114568c80, {{60.0, 292.0}, {44.0, 44.0}}, identifier: 'tasks.detail.addProperty', label: 'Add a property'
+                                                  Button, 0x114568dc0, {{60.0, 292.0}, {44.0, 44.0}}
+                                                    Image, 0x114568f00, {{60.0, 292.0}, {44.0, 44.0}}, identifier: 'plus', label: 'Add'
+                                      Cell, 0x114569040, {{0.0, 336.0}, {402.0, 60.0}}
+                                        Other, 0x114569180, {{0.0, 336.0}, {402.0, 60.0}}
+                                          Other, 0x1145692c0, {{0.0, 336.0}, {402.0, 60.0}}
+                                        Other, 0x114569400, {{0.0, 336.0}, {402.0, 60.0}}
+                                          Other, 0x114569540, {{0.0, 336.0}, {402.0, 60.0}}
+                                            Other, 0x114569680, {{0.0, 336.0}, {402.0, 60.0}}
+                                              Button, 0x1145697c0, {{0.0, 336.0}, {402.0, 60.0}}, identifier: 'tasks.detail.description', label: 'Description'
+                                      Other, 0x114569900, {{0.0, 396.0}, {402.0, 44.0}}
+                                      Cell, 0x114569a40, {{0.0, 396.0}, {402.0, 44.0}}
+                                        Other, 0x114569b80, {{0.0, 396.0}, {402.0, 44.0}}
+                                          Other, 0x114569cc0, {{0.0, 396.0}, {402.0, 44.0}}
+                                        Other, 0x114569e00, {{0.0, 396.0}, {402.0, 44.0}}
+                                          Other, 0x114569f40, {{0.0, 396.0}, {402.0, 44.0}}
+                                            Other, 0x11456a080, {{0.0, 396.0}, {402.0, 44.0}}
+                                              Button, 0x11456a1c0, {{46.0, 395.3}, {44.0, 44.3}}, identifier: 'tasks.subtasks.add', label: 'Add sub-issue'
+                                              Button, 0x11456a300, {{92.0, 396.0}, {290.0, 44.0}}, identifier: 'tasks.subtasks.addRow', label: 'Add subtask'
+                                      Cell, 0x11456a440, {{0.0, 440.0}, {402.0, 52.0}}
+                                        Other, 0x11456a580, {{0.0, 440.0}, {402.0, 52.0}}
+                                          Other, 0x11456a6c0, {{0.0, 440.0}, {402.0, 52.0}}
+                                        Other, 0x11456a800, {{0.0, 440.0}, {402.0, 52.0}}
+                                          Other, 0x11456a940, {{0.0, 440.0}, {402.0, 52.0}}
+                                            Other, 0x11456aa80, {{0.0, 440.0}, {402.0, 52.0}}
+                                              Button, 0x11456abc0, {{0.0, 440.0}, {402.0, 52.0}}, identifier: 'tasks.detail.meta', label: 'Created Sep 23, 2026 · Edited 22 hr. ago'
+                                                StaticText, 0x11456ad00, {{60.0, 448.0}, {322.0, 44.0}}, label: 'Created Sep 23, 2026 · Edited 22 hr. ago'
+                                                Image, 0x11456ae40, {{313.7, 464.3}, {6.7, 11.7}}, identifier: 'chevron.forward', label: 'Forward'
+                                      Other, 0x11456af80, {{0.0, 440.0}, {402.0, 1800.0}}
+                                      Other, 0x11456b0c0, {{369.0, 116.0}, {30.0, 675.0}}, label: 'Vertical scroll bar, 1 page', value: %0
+                                        Other, 0x11456b200, {{396.0, 781.0}, {3.0, 7.0}}
+                                      Other, 0x11456b340, {{369.0, 116.0}, {30.0, 675.0}}, label: 'Vertical scroll bar, 1 page', value: %0
+                                        Other, 0x11456b480, {{396.0, 781.0}, {3.0, 7.0}}
+                            Other, 0x11456b5c0, {{0.0, 0.0}, {402.0, 874.0}}
+                              Other, 0x11456b700, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x11456b840, {{0.0, 791.0}, {402.0, 83.0}}
+                  Other, 0x11456b980, {{0.0, 0.0}, {402.0, 874.0}}
+                    TabBar, 0x11456bac0, {{0.0, 791.0}, {402.0, 83.0}}, label: 'Tab Bar'
+                      Other, 0x11456bc00, {{21.0, 791.0}, {360.0, 62.0}}
+                        Other, 0x11456bd40, {{21.0, 791.0}, {77.0, 54.0}}
+                        Other, 0x11456be80, {{21.0, 791.0}, {360.0, 62.0}}
+                          Button, 0x112ce8000, {{25.0, 795.0}, {77.0, 54.0}}, identifier: 'doc.text', label: 'Notes'
+                            Image, 0x112ce8140, {{51.0, 800.7}, {25.3, 28.7}}, identifier: 'text.document.fill', label: 'text.document.fill'
+                          Button, 0x112ce8280, {{93.8, 795.0}, {77.0, 54.0}}, identifier: 'house', label: 'Home'
+                            Image, 0x112ce83c0, {{115.8, 801.0}, {33.3, 28.0}}, identifier: 'house.fill', label: 'home'
+                          Button, 0x112ce8500, {{162.5, 795.0}, {77.0, 54.0}}, identifier: 'checkmark.circle', label: 'Tasks', Selected
+                            Image, 0x112ce8640, {{187.5, 801.3}, {27.3, 27.3}}, identifier: 'checkmark.circle.fill', label: 'selected'
+                          Button, 0x112ce8780, {{231.2, 795.0}, {77.0, 54.0}}, identifier: 'book', label: 'Journal'
+                            Image, 0x112ce88c0, {{253.2, 802.3}, {32.3, 25.0}}, identifier: 'book.fill', label: 'bookmark'
+                          Button, 0x112ce8a00, {{300.0, 795.0}, {77.0, 54.0}}, identifier: 'ellipsis', label: 'More'
+                            Image, 0x112ce8b40, {{326.0, 810.7}, {25.0, 8.7}}, identifier: 'ellipsis', label: 'More'
+                        Other, 0x112ce8c80, {{162.5, 795.0}, {77.0, 54.0}}
+                          Other, 0x112ce8dc0, {{162.5, 795.0}, {77.0, 54.0}}
+                            Other, 0x112ce8f00, {{162.5, 795.0}, {77.0, 54.0}}
+                            Other, 0x112ce9040, {{162.5, 795.0}, {77.0, 54.0}}
+                              Other, 0x112ce9180, {{162.5, 795.0}, {77.0, 54.0}}
+                                Other, 0x112ce92c0, {{162.5, 795.0}, {77.0, 54.0}}
+                                  Other, 0x112ce9400, {{162.5, 795.0}, {77.0, 54.0}}
+                                Other, 0x112ce9540, {{162.5, 795.0}, {77.0, 54.0}}
+                              Other, 0x112ce9680, {{162.5, 795.0}, {77.0, 54.0}}
+                  Other, 0x112ce97c0, {{0.0, 791.0}, {402.0, 83.0}}
+                    Other, 0x112ce9900, {{0.0, 791.0}, {402.0, 83.0}}
+                      Other, 0x112ce9a40, {{0.0, 791.0}, {402.0, 83.0}}
+                        Other, 0x112ce9b80, {{0.0, 791.0}, {402.0, 83.0}}
+                          Other, 0x112ce9cc0, {{0.0, 791.0}, {402.0, 83.0}}
+                            Other, 0x112ce9e00, {{0.0, 791.0}, {402.0, 83.0}}
+                        Other, 0x112ce9f40, {{0.0, 791.0}, {402.0, 83.0}}
+                          Other, 0x112cea080, {{0.0, 791.0}, {402.0, 83.0}}
+    Window, 0x112cea1c0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x112cea300, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x112cea440, {{0.0, 0.0}, {402.0, 874.0}}
+Path to element:
+ →Application, 0x114562e40, pid: 62193, label: 'Memry'
+Query chain:
+ →Find: Target Application 'com.memry.app'
+  Output: {
+    Application, 0x112cea580, pid: 62193, label: 'Memry'
+  }

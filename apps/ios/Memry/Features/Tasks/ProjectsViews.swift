@@ -24,24 +24,29 @@ struct ProjectsListView: View {
 
     var body: some View {
         List {
-            if let failure = store.failure {
-                ErrorNotice(error: failure, code: nil)
-            }
-            ForEach(store.activeProjects, id: \.id) { project in
-                row(project)
-            }
-            .onMove { source, destination in
-                Task { await store.moveProjects(from: source, to: destination) }
-            }
-            if !store.archivedProjects.isEmpty, !editMode.isEditing {
-                archivedHeader
-                if showsArchived {
-                    ForEach(store.archivedProjects, id: \.id) { project in
-                        row(project)
+            Group {
+                if let failure = store.failure {
+                    ErrorNotice(error: failure, code: nil)
+                }
+                ForEach(store.activeProjects, id: \.id) { project in
+                    row(project)
+                }
+                .onMove { source, destination in
+                    Task { await store.moveProjects(from: source, to: destination) }
+                }
+                if !store.archivedProjects.isEmpty, !editMode.isEditing {
+                    archivedHeader
+                    if showsArchived {
+                        ForEach(store.archivedProjects, id: \.id) { project in
+                            row(project)
+                        }
+                        .moveDisabled(true)
                     }
-                    .moveDisabled(true)
                 }
             }
+            // Plain-list cells default to the system background (black in dark),
+            // not the canvas.
+            .listRowBackground(Tokens.Canvas.background.color)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)

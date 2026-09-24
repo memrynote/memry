@@ -13,6 +13,8 @@ struct KanbanCardView: View {
     let column: KanbanColumn
     let allColumns: [KanbanColumn]
     let onMove: (KanbanColumn) -> Void
+    /// Accessibility sizes fit fewer words per line, so a title gets more lines.
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var isDone: Bool { task.isDone || column.isDoneColumn }
     private var otherColumns: [KanbanColumn] {
@@ -46,7 +48,7 @@ struct KanbanCardView: View {
             Text(task.title)
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(isDone ? Tokens.Text.tertiary.color : Tokens.Text.primary.color)
-                .lineLimit(3)
+                .lineLimit(typeSize.isAccessibilitySize ? 6 : 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
             KanbanCardMeta(store: store, task: task, isDone: isDone)
         }

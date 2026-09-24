@@ -59,8 +59,8 @@ struct TaskListScopeSheet: View {
             .navigationTitle(TasksCopy.projectScope)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(TasksCopy.done) { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(role: .close) { dismiss() }
                         .accessibilityIdentifier("tasks.scope.done")
                 }
             }

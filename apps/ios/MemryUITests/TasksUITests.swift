@@ -1,6 +1,9 @@
 import XCTest
 
-// Spec 004 TP081: the Tasks tab end to end on a real vault.
+// Spec 004 TP081, moved onto the spec 005 redesign (RD92): the Tasks tab end
+// to end on a real vault. Capture is the "+" composer, views and scope are in
+// the title menu, List / Board / Select in the "…" menu, saved views are
+// named in the title.
 //
 // **Precondition:** the simulator is signed in to the staging test account
 // with the MemryNote vault available (tasks.md §0.4). There is no sign-in in
@@ -9,7 +12,7 @@ import XCTest
 // means the flows ran.
 //
 // Every task a test writes is named `[agent] ui-<run>…` and filed under the
-// `Agent Test Parity` project; tasks.md TP094 deletes them. Each test narrows
+// `Agent Test Redesign` project (made on first use); spec 005 RD93 deletes them with it. Each test narrows
 // the list with the filter search so it only ever sees its own rows.
 @MainActor
 final class TasksUITests: XCTestCase {
@@ -26,7 +29,7 @@ final class TasksUITests: XCTestCase {
 
     func testQuickAddReadsDateTimePriorityAndTag() throws {
         try openTasks()
-        quickAdd("[agent] \(run) meeting @may 17 3pm !high #test +Agent-Test-Parity")
+        quickAdd("[agent] \(run) meeting @may 17 3pm !high #test +Agent-Test-Redesign")
         search(run)
         let row = row(containing: "\(run) meeting")
         XCTAssertTrue(row.waitForExistence(timeout: 10))
@@ -34,12 +37,12 @@ final class TasksUITests: XCTestCase {
         XCTAssertTrue(row.label.contains("May 17"), row.label)
         XCTAssertTrue(row.label.contains("15:00"), row.label)
         XCTAssertTrue(row.label.contains("Tags: test"), row.label)
-        XCTAssertTrue(row.label.contains("Agent Test Parity"), row.label)
+        XCTAssertTrue(row.label.contains("Agent Test Redesign"), row.label)
     }
 
     func testCompletingADailyRepeatingTaskCreatesTheNextOccurrence() throws {
         try openTasks()
-        quickAdd("[agent] \(run) daily every day @today +Agent-Test-Parity")
+        quickAdd("[agent] \(run) daily every day @today +Agent-Test-Redesign")
         search(run)
         let row = row(containing: "\(run) daily")
         XCTAssertTrue(row.waitForExistence(timeout: 10))
@@ -59,15 +62,15 @@ final class TasksUITests: XCTestCase {
     func testBulkCompletingThreeTasksIsOneUndo() throws {
         try openTasks()
         for index in 1 ... 3 {
-            quickAdd("[agent] \(run) bulk \(index) @today +Agent-Test-Parity")
+            quickAdd("[agent] \(run) bulk \(index) @today +Agent-Test-Redesign")
         }
         search(run)
         XCTAssertTrue(row(containing: "\(run) bulk 3").waitForExistence(timeout: 10))
-        app.buttons["tasks.editButton"].firstMatch.tap()
+        moreMenu("tasks.more.select")
         for index in 1 ... 3 {
             row(containing: "\(run) bulk \(index)").tap()
         }
-        XCTAssertEqual(app.buttons["tasks.selection.count"].label, "3 selected")
+        XCTAssertTrue(anything(labelled: "3 selected").waitForExistence(timeout: 5), "the title did not count 3")
         app.buttons["tasks.bulk.complete"].tap()
         let undo = app.buttons["tasks.toast.undo"]
         XCTAssertTrue(undo.waitForExistence(timeout: 5))
@@ -80,11 +83,12 @@ final class TasksUITests: XCTestCase {
             XCTAssertTrue(reopened.waitForExistence(timeout: 5))
             XCTAssertFalse(reopened.label.contains("completed"), reopened.label)
         }
+        app.buttons["tasks.editButton"].firstMatch.tap()
     }
 
     func testCompletingEverySubtaskAsksAboutTheParent() throws {
         try openTasks()
-        quickAdd("[agent] \(run) parent +Agent-Test-Parity")
+        quickAdd("[agent] \(run) parent +Agent-Test-Redesign")
         search(run)
         let parent = row(containing: "\(run) parent")
         XCTAssertTrue(parent.waitForExistence(timeout: 10))
@@ -117,38 +121,53 @@ final class TasksUITests: XCTestCase {
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
         nameField.typeText(name)
         app.buttons["tasks.filter.saveConfirm"].firstMatch.tap()
+        // The saved view is the applied one: the sheet's Saved views page
+        // marks it, and the title names it.
+        let savedViews = app.buttons["tasks.filter.savedViews"]
+        scroll(to: savedViews)
+        savedViews.tap()
         let saved = app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
         // Earlier runs leave saved filters behind; the new one may be below
-        // the sheet's fold, where a lazy list has not built its row yet.
+        // the fold, where a lazy list has not built its row yet.
         for _ in 0 ..< 6 where !saved.waitForExistence(timeout: 1) {
             app.swipeUp()
         }
         XCTAssertTrue(saved.waitForExistence(timeout: 5))
         XCTAssertTrue(saved.isSelected, "a just-saved filter is the applied one")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
 
-        app.buttons["tasks.filter.clearAll"].tap()
+        let clear = app.buttons["tasks.filter.clearAll"]
+        scroll(to: clear)
+        clear.tap()
+        savedViews.tap()
+        XCTAssertTrue(saved.waitForExistence(timeout: 5))
         XCTAssertTrue(waitUntil { !saved.isSelected }, "clearing left the saved filter applied")
         saved.tap()
         XCTAssertTrue(waitUntil { saved.isSelected }, "tapping the saved filter did not reapply it")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["tasks.filter.done"].tap()
-        XCTAssertTrue(app.buttons["tasks.scopePicker"].label.contains(name))
+        XCTAssertTrue(waitUntil { title.label.contains(name) }, title.label)
     }
 
     func testDraggingAKanbanCardToAnotherColumnChangesItsStatus() throws {
         try openTasks()
-        quickAdd("[agent] \(run) kanban +Agent-Test-Parity")
+        quickAdd("[agent] \(run) kanban +Agent-Test-Redesign")
         search(run)
         XCTAssertTrue(row(containing: "\(run) kanban").waitForExistence(timeout: 10))
-        app.buttons["Kanban view"].tap()
+        moreMenu("tasks.more.board")
         let card = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'tasks.kanban.card.' AND label CONTAINS %@", run))
             .firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 10))
-        let inProgress = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'In Progress column'")).firstMatch
+        // The next column peeks in at the trailing edge; the card is dropped
+        // on that visible part.
+        let inProgress = app.descendants(matching: .any)["tasks.kanban.column.in_progress"]
         XCTAssertTrue(inProgress.waitForExistence(timeout: 5))
-        card.press(forDuration: 1.0, thenDragTo: inProgress, withVelocity: .slow, thenHoldForDuration: 0.5)
+        let peek = inProgress.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.1))
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 1.0, thenDragTo: peek, withVelocity: .slow, thenHoldForDuration: 0.5)
         XCTAssertTrue(waitUntil { inProgress.label.hasPrefix("In Progress column, 1 task") }, inProgress.label)
-        app.buttons["List view"].tap()
+        moreMenu("tasks.more.list")
     }
 
     // MARK: Steps
@@ -172,33 +191,71 @@ final class TasksUITests: XCTestCase {
         XCTAssertTrue(tasksTab.waitForExistence(timeout: 5), "the vault did not open")
         tasksTab.tap()
         XCTAssertTrue(app.buttons["tasks.filterButton"].firstMatch.waitForExistence(timeout: 20))
-        if app.buttons["List view"].exists { app.buttons["List view"].tap() }
+        if app.descendants(matching: .any)["tasks.kanban.board"].exists { moreMenu("tasks.more.list") }
+        ensureTestProject()
         resetPage()
     }
 
-    /// No filter, All tab, all projects: whatever an earlier run left behind.
+    /// The `Agent Test Redesign` project every `+Agent-Test-Redesign` token
+    /// files into. RD93 deletes it after the last run, so the next run makes
+    /// it again from Title menu > Projects > New.
+    private func ensureTestProject() {
+        title.tap()
+        let projects = app.buttons["tasks.projectsLink"].firstMatch
+        XCTAssertTrue(projects.waitForExistence(timeout: 5))
+        projects.tap()
+        let newProject = app.buttons["tasks.projects.new"].firstMatch
+        XCTAssertTrue(newProject.waitForExistence(timeout: 10))
+        let existing = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'tasks.projects.row.' AND label BEGINSWITH %@", Self.project
+        )).firstMatch
+        if !existing.waitForExistence(timeout: 3) {
+            newProject.tap()
+            let name = app.textFields["tasks.projectEditor.name"].firstMatch
+            XCTAssertTrue(name.waitForExistence(timeout: 5))
+            name.tap()
+            name.typeText(Self.project)
+            app.buttons["tasks.projectEditor.save"].firstMatch.tap()
+            XCTAssertTrue(existing.waitForExistence(timeout: 10), "the test project was not created")
+        }
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["tasks.filterButton"].firstMatch.waitForExistence(timeout: 10))
+    }
+
+    private static let project = "Agent Test Redesign"
+
+    /// The large title (a menu of views and scope) at the top of the list.
+    private var title: XCUIElement { app.buttons["tasks.titleMenu"].firstMatch }
+
+    /// No filter, All view, all projects: whatever an earlier run left behind.
     private func resetPage() {
         app.buttons["tasks.filterButton"].firstMatch.tap()
         let clear = app.buttons["tasks.filter.clearAll"]
-        XCTAssertTrue(clear.waitForExistence(timeout: 5))
-        if clear.isEnabled { clear.tap() }
+        scroll(to: clear)
+        if clear.exists, clear.isEnabled { clear.tap() }
         app.buttons["tasks.filter.done"].tap()
-        let all = app.buttons["tasks.tab.all"]
-        if all.waitForExistence(timeout: 5), all.isHittable { all.tap() }
-        app.buttons["tasks.scopePicker"].tap()
-        let everything = app.buttons["tasks.scope.all"]
+        title.tap()
+        let all = app.descendants(matching: .any)["tasks.tab.all"]
+        XCTAssertTrue(all.waitForExistence(timeout: 5))
+        all.tap()
+        title.tap()
+        app.buttons["tasks.titleMenu.project"].firstMatch.tap()
+        let everything = app.buttons["All projects"].firstMatch
         XCTAssertTrue(everything.waitForExistence(timeout: 5))
         everything.tap()
-        let done = app.buttons["tasks.scope.done"]
-        if done.exists { done.tap() }
+        XCTAssertTrue(waitUntil { title.label.hasPrefix("All") }, title.label)
     }
 
+    /// Adds a task through the "+" composer and closes it again.
     private func quickAdd(_ text: String) {
-        let field = app.textViews["tasks.quickAdd.field"]
+        app.buttons["tasks.addButton"].firstMatch.tap()
+        let field = app.textViews["tasks.composer.title"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
-        field.tap()
         field.typeText(text + "\n")
-        XCTAssertTrue(waitUntil { (field.value as? String ?? "").isEmpty }, "quick add did not submit")
+        XCTAssertTrue(waitUntil { (field.value as? String ?? "").isEmpty }, "the composer did not submit")
+        // A tap outside the composer closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertTrue(waitUntil { !field.exists }, "the composer did not close")
     }
 
     /// Narrows the page to rows whose title contains `text`.
@@ -210,6 +267,23 @@ final class TasksUITests: XCTestCase {
         field.typeText(text)
         Thread.sleep(forTimeInterval: 0.6)
         app.buttons["tasks.filter.done"].tap()
+        // Folded groups stay folded between runs; open them so rows exist.
+        let folded = app.buttons.matching(NSPredicate(format: "label ENDSWITH ', collapsed'"))
+        for _ in 0 ..< 6 where folded.firstMatch.exists {
+            folded.firstMatch.tap()
+        }
+    }
+
+    /// Picks an item (List, Board, Select) from the "…" menu.
+    private func moreMenu(_ identifier: String) {
+        app.buttons["tasks.moreMenu"].firstMatch.tap()
+        let item = app.buttons[identifier].firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        item.tap()
+    }
+
+    private func anything(labelled label: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
     }
 
     private func row(containing text: String) -> XCUIElement {

@@ -40,22 +40,27 @@ struct ProjectHubView: View {
 
     private func content(_ project: ProjectItem) -> some View {
         List {
-            if let failure = store.failure {
-                ErrorNotice(error: failure, code: nil)
-            }
-            ProjectHubHeader(
-                project: project,
-                hub: hub,
-                onChooseHome: { picker = .homeNote },
-                onClearHome: {
-                    Task {
-                        await store.setHomeNote(nil, for: project.id)
-                        await reload()
-                    }
+            Group {
+                if let failure = store.failure {
+                    ErrorNotice(error: failure, code: nil)
                 }
-            )
-            ProjectHubTasks(store: store, result: hub.tasks, showsDone: $showsDone)
-            ProjectHubLinks(hub: hub) { action in Task { await perform(action, in: project.id) } }
+                ProjectHubHeader(
+                    project: project,
+                    hub: hub,
+                    onChooseHome: { picker = .homeNote },
+                    onClearHome: {
+                        Task {
+                            await store.setHomeNote(nil, for: project.id)
+                            await reload()
+                        }
+                    }
+                )
+                ProjectHubTasks(store: store, result: hub.tasks, showsDone: $showsDone)
+                ProjectHubLinks(hub: hub) { action in Task { await perform(action, in: project.id) } }
+            }
+            // Plain-list cells default to the system background (black in dark),
+            // not the canvas.
+            .listRowBackground(Tokens.Canvas.background.color)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)

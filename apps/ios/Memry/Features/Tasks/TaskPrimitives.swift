@@ -29,12 +29,15 @@ struct TaskStatusLane<Mark: View>: View {
     let label: String
     let identifier: String
     @ViewBuilder let mark: () -> Mark
+    /// The lane grows with Dynamic Type so the mark (a body-sized symbol)
+    /// never spills past the screen edge at accessibility sizes.
+    @ScaledMetric(relativeTo: .body) private var lane = TaskLayout.lane
 
     var body: some View {
         Text(verbatim: "A")
             .font(Tokens.Typography.body.font)
             .hidden()
-            .frame(width: TaskLayout.lane)
+            .frame(width: lane)
             .overlay {
                 Button(action: action) {
                     mark()

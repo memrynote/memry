@@ -122,40 +122,62 @@ struct KanbanColumnView: View {
     }
 }
 
-/// The column's mark, name, count and "+".
+/// The column's mark, name, count and "+". At accessibility sizes the name
+/// gets its own lines above the mark, count and "+".
 private struct KanbanColumnHeader: View {
     let column: KanbanColumn
     let count: Int
     let onAdd: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(spacing: Tokens.Space.small) {
-            mark
-            Text(column.title)
-                .font(Tokens.Typography.label.font.weight(.semibold))
-                .foregroundStyle(Tokens.Text.primary.color)
-                .lineLimit(1)
-            Text("\(count)")
-                .font(Tokens.Typography.label.font)
-                .monospacedDigit()
-                .foregroundStyle(Tokens.Text.tertiary.color)
-            Spacer(minLength: Tokens.Space.small)
-            if column.acceptsAdd {
-                Button(action: onAdd) {
-                    Image(systemName: "plus")
-                        .font(Tokens.Typography.label.font)
-                        .foregroundStyle(Tokens.Text.tertiary.color)
-                        .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
-                        .contentShape(.rect)
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                    title.lineLimit(3)
+                    HStack(spacing: Tokens.Space.small) { mark; countText; Spacer(minLength: 0); addButton }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(TasksCopy.kanbanAddTo(column.title))
-                .accessibilityIdentifier("tasks.kanban.add.\(column.id)")
+            } else {
+                HStack(spacing: Tokens.Space.small) {
+                    mark
+                    title.lineLimit(1)
+                    countText
+                    Spacer(minLength: Tokens.Space.small)
+                    addButton
+                }
             }
         }
         .padding(.leading, Tokens.Space.tight)
         .frame(minHeight: Tokens.Size.minimumHitArea)
         .accessibilityElement(children: .contain)
+    }
+
+    private var title: some View {
+        Text(column.title)
+            .font(Tokens.Typography.label.font.weight(.semibold))
+            .foregroundStyle(Tokens.Text.primary.color)
+    }
+
+    private var countText: some View {
+        Text("\(count)")
+            .font(Tokens.Typography.label.font)
+            .monospacedDigit()
+            .foregroundStyle(Tokens.Text.tertiary.color)
+    }
+
+    @ViewBuilder private var addButton: some View {
+        if column.acceptsAdd {
+            Button(action: onAdd) {
+                Image(systemName: "plus")
+                    .font(Tokens.Typography.label.font)
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+                    .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(TasksCopy.kanbanAddTo(column.title))
+            .accessibilityIdentifier("tasks.kanban.add.\(column.id)")
+        }
     }
 
     @ViewBuilder private var mark: some View {

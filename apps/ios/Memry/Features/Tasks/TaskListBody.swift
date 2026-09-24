@@ -30,29 +30,34 @@ struct TaskListBody<Header: View>: View {
     var body: some View {
         let sections = store.listSections().filter { $0.kind != .done || store.showsCompleted }
         List {
-            header()
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(
-                    top: Tokens.Space.tight, leading: TaskLayout.edge,
-                    bottom: Tokens.Space.small, trailing: TaskLayout.edge
-                ))
-                .moveDisabled(true)
-            if let failure = store.failure {
-                TaskListFailureRow(failure: failure) { store.clearFailure() }
+            Group {
+                header()
                     .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(
+                        top: Tokens.Space.tight, leading: TaskLayout.edge,
+                        bottom: Tokens.Space.small, trailing: TaskLayout.edge
+                    ))
+                    .moveDisabled(true)
+                if let failure = store.failure {
+                    TaskListFailureRow(failure: failure) { store.clearFailure() }
+                        .listRowSeparator(.hidden)
+                }
+                if let empty = store.listEmptyState {
+                    TaskListEmptyView(
+                        state: empty,
+                        next: store.listEmptyNext,
+                        addTask: { openComposer?(TaskComposerRequest(projectId: store.state.projectId, dueDate: store.emptyStateDue)) },
+                        show: { tab in Task { await store.selectTab(tab) } },
+                        clearFilters: { Task { await store.clearListFilters() } }
+                    )
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Tokens.Canvas.background.color)
+                }
+                rows(sections)
             }
-            if let empty = store.listEmptyState {
-                TaskListEmptyView(
-                    state: empty,
-                    next: store.listEmptyNext,
-                    addTask: { openComposer?(TaskComposerRequest(projectId: store.state.projectId, dueDate: store.emptyStateDue)) },
-                    show: { tab in Task { await store.selectTab(tab) } },
-                    clearFilters: { Task { await store.clearListFilters() } }
-                )
-                .listRowSeparator(.hidden)
-                .listRowBackground(Tokens.Canvas.background.color)
-            }
-            rows(sections)
+            // Plain-list cells default to the system background (black in dark),
+            // not the canvas.
+            .listRowBackground(Tokens.Canvas.background.color)
         }
         .listStyle(.plain)
         .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
