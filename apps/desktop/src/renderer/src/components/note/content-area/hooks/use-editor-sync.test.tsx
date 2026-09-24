@@ -26,6 +26,10 @@ vi.mock('@blocknote/core', async (importOriginal) => {
 vi.mock('y-prosemirror', () => ({
   yUndoPluginKey: {
     getState: yUndoMocks.getState
+  },
+  // These editors have no ySync plugin, so no change is a y-prosemirror render.
+  ySyncPluginKey: {
+    getState: () => undefined
   }
 }))
 
