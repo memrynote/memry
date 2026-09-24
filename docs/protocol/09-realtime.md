@@ -9,20 +9,52 @@ frame it delivers is a hint that the client should run its ordinary pull
 
 ## 9.1 Should a client open it at all — Q09.1
 
-**Normative — the socket is optional, and it is a foreground facility.** A client
-that never opens it is conforming and simply learns about remote changes on its
-next pull.
+**Normative — the socket is optional.** A client that never opens it is
+conforming and simply learns about remote changes on its next pull.
 
-There is **no server push infrastructure for a backgrounded application**: the
-Durable Object can only reach a socket that is currently open
-(`apps/sync-server/src/durable-objects/user-sync-state.ts:186-197` iterates live
+There is **no server push infrastructure for a suspended process**: the Durable
+Object can only reach a socket that is currently open
+(`apps/sync-server/src/durable-objects/user-sync-state.ts:217-228` iterates live
 sockets), and nothing in the tree sends a platform push notification.
 
-**A conforming client SHOULD open the socket while it is in the foreground and
-MUST close it when backgrounded**, because a frozen socket costs a wake per
-broadcast and cannot be serviced. On returning to the foreground it MUST run a
-full pull rather than assuming the socket told it everything: broadcasts sent
-while it was away are gone.
+**When the socket is open depends on the surface**, because "backgrounded"
+means different things for a process the OS suspends and for one that keeps
+running:
+
+- **A mobile surface MUST close the socket when the application is
+  backgrounded, and SHOULD open it while in the foreground.** The OS suspends a
+  backgrounded mobile app, so its socket cannot be serviced and every broadcast
+  to it is a wasted wake. The Rust core leaves the lifecycle to the shell: it
+  exposes `RealtimeClient::connect` and `RealtimeClient::disconnect`
+  (`crates/memry-core/src/sync/socket.rs:293`, `:323`) and observes no app
+  state itself. No mobile shell drives it yet
+  (`apps/ios/Memry/App/ShellState.swift:173-179`).
+- **A resident desktop process keeps the socket open for as long as the process
+  runs and sync is started.** Closing the main window hides it to the tray and
+  leaves the process running
+  (`apps/desktop/src/main/index.ts:836-839`); losing window focus only records
+  telemetry (`apps/desktop/src/main/index.ts:1614-1620`). Neither is a socket
+  lifecycle event. Desktop disconnects only when the engine stops
+  (`apps/desktop/src/main/sync/engine.ts:329`), the network drops (`:788`; a
+  system `suspend` counts as offline,
+  `apps/desktop/src/main/sync/network.ts:92-95`), the device is revoked
+  (`apps/desktop/src/main/sync/engine/error-recovery-handler.ts:72`), or a
+  close is terminal (`apps/desktop/src/main/sync/websocket.ts:180-201`, §9.9).
+
+An idle desktop socket costs the server nothing. The Durable Object accepts it
+through the hibernation API
+(`apps/sync-server/src/durable-objects/user-sync-state.ts:181`) and answers the
+client's `ping` with the registered `pong` auto-response without waking
+(`:62`, §9.6). The client pings every 25 s and terminates the socket after 31 s
+without a frame (`apps/desktop/src/main/sync/websocket.ts:12`, `:16`,
+`:303-325`), so a half-open connection reports disconnected instead of being
+trusted.
+
+**On any surface, a client that returns to the foreground or regains a socket
+MUST run a full pull rather than assuming the socket told it everything**:
+broadcasts sent while it was away are gone. Desktop pulls on every socket
+`connected` event and on network return
+(`apps/desktop/src/main/sync/engine.ts:864-878`, `:736-770`).
 
 **Disposition of Q09.1: answered** (this section).
 
