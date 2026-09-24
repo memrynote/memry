@@ -100,4 +100,43 @@ describe('Sync Harness — note bodies in the change feed (#2295)', () => {
       .first<{ server_cursor: number }>()
     expect(cursorRow?.server_cursor).toBe(1)
   })
+
+  // #2296: the partial unique index and INSERT OR IGNORE on the real D1.
+  it('stores a retried CRDT update once and answers the same sequences', async () => {
+    const identity = await createTestDevice(server, { vaultKey: generateVaultKey() })
+    const push = () =>
+      server.fetch('http://localhost/sync/crdt/updates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${identity.accessToken}`
+        },
+        body: JSON.stringify({
+          noteId: 'note-retry',
+          updates: [Buffer.from([1, 2, 3]).toString('base64')]
+        })
+      })
+
+    const first = await push()
+    const retry = await push()
+    const firstBody = await first.json()
+    const retryBody = await retry.json()
+    console.log(
+      '[#2296 live] first:',
+      JSON.stringify(firstBody),
+      'retry:',
+      JSON.stringify(retryBody)
+    )
+
+    expect(firstBody).toEqual({ sequences: [1] })
+    expect(retryBody).toEqual(firstBody)
+    const db = await server.getD1()
+    const rows = await db
+      .prepare('SELECT COUNT(*) AS n FROM crdt_updates WHERE note_id = ?')
+      .bind('note-retry')
+      .first<{ n: number }>()
+    expect(rows?.n).toBe(1)
+    const bodies = await changes(identity, 'note_body')
+    expect(bodies.noteBodies?.map((body) => body.sequenceNum)).toEqual([1])
+  })
 })
