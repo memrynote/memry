@@ -1,3 +1,4 @@
+import { caldavCalendarProvider } from '../caldav/caldav-provider'
 import { googleCalendarProvider } from '../google/google-provider'
 import { icsCalendarProvider } from '../ics/ics-provider'
 import { registerProvider } from './registry'
@@ -6,4 +7,5 @@ import { registerProvider } from './registry'
 export function registerBuiltinCalendarProviders(): void {
   registerProvider(googleCalendarProvider)
   registerProvider(icsCalendarProvider)
+  registerProvider(caldavCalendarProvider)
 }

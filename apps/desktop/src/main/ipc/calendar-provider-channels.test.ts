@@ -166,8 +166,13 @@ describe('calendar provider registry and generic channels (#1392)', () => {
       registerBuiltinCalendarProviders()
     })
 
-    it('registers Google and ICS with their declared capabilities', () => {
-      expect(listProviders().map((definition) => definition.id)).toEqual(['google', 'ics'])
+    it('registers Google, ICS and CalDAV with their declared capabilities', () => {
+      expect(listProviders().map((definition) => definition.id)).toEqual([
+        'google',
+        'ics',
+        'caldav'
+      ])
+      expect(getProvider('caldav')?.capabilities).toBe(PROVIDER_CAPABILITIES.caldav)
       expect(getProvider('google')?.capabilities).toBe(PROVIDER_CAPABILITIES.google)
       expect(getProvider('ics')?.capabilities).toBe(PROVIDER_CAPABILITIES.ics)
       expect(getProvider('microsoft')).toBeNull()
@@ -193,7 +198,8 @@ describe('calendar provider registry and generic channels (#1392)', () => {
     )
     expect(response.providers).toEqual([
       { id: 'google', capabilities: PROVIDER_CAPABILITIES.google },
-      { id: 'ics', capabilities: PROVIDER_CAPABILITIES.ics }
+      { id: 'ics', capabilities: PROVIDER_CAPABILITIES.ics },
+      { id: 'caldav', capabilities: PROVIDER_CAPABILITIES.caldav }
     ])
   })
 

@@ -49,6 +49,52 @@ providers made opposite choices, and both are coherent:
 enqueued. The `seedUnclocked` sweeps of the calendar source and external event handlers both
 filter on it, and a desktop test keeps the constant in step with the capability table.
 
+## CalDAV
+
+CalDAV (RFC 4791) reaches iCloud, Fastmail, Nextcloud, Radicale, Baïkal, mailbox.org, Posteo,
+Zoho, Yahoo, Synology and self-hosted servers through one adapter in `calendar/caldav/`.
+
+**Discovery.** `/.well-known/caldav` → `current-user-principal` → `calendar-home-set` → the
+collections. Hosts come from the server's answers; nothing is hardcoded. Collections that cannot
+hold events (VTODO-only task lists) are skipped. The XML requests and responses go through the
+`tsdav` library; every request goes through `caldav-transport.ts`.
+
+**Credentials across redirects.** iCloud answers discovery with a redirect to a per-account
+partition host such as `p67-caldav.icloud.com`. `fetch` drops the `Authorization` header on any
+cross-origin redirect, and re-attaching it blindly would send the app password wherever a server
+points. The transport follows redirects itself and attaches credentials only to hosts in the
+account's scope: the server's host, and, when that host has at least three labels, its parent
+domain and every subdomain (`caldav.icloud.com` covers `*.icloud.com`). Credentials never move
+from HTTPS to plain HTTP; plain HTTP gets them only for the exact origin the user typed, which is
+how a LAN Radicale works. Servers that only offer HTTP Digest are answered from their challenge.
+
+**Reading.** The `sync_cursor` is `sync-token:<token>` when the collection supports RFC 6578
+`sync-collection`, and `ctag:<ctag>` otherwise, in which case the ETags of all objects are diffed
+against the mirror. `sync-collection` has no time-range filter, so the first pull (and every pull
+after the cursor is reset) reads the token first and then fetches only the objects inside the
+mirror window (90 days back, a year ahead) with a `calendar-query` time-range REPORT. A token the
+server no longer accepts (the `valid-sync-token` precondition) is `ProviderGoneError`: the cursor
+is cleared and the calendar is pulled in full.
+
+**Instances per object.** A CalDAV object (an `href`) holds a master event and its overrides.
+Mirrored instances are keyed `<href>` or `<href>::<recurrence-id>`, so a changed or deleted
+object replaces or removes exactly its own instances. The mirror keeps each object's ETag on
+every row and the whole iCalendar text on one row per object, for write-back.
+
+**One parser.** VEVENT expansion (RRULE, RDATE, EXDATE, RECURRENCE-ID overrides, VTIMEZONE,
+undefined TZIDs, floating times, cancelled instances, caps on runaway rules) lives in
+`calendar/ical/` and is shared by ICS feeds and CalDAV.
+
+**Mirror scope: synced.** Credentials never leave the device. With a device-local mirror, a
+second device would show the account as needing its password and no events at all until the
+app password is entered there too. A synced mirror is what Google users already get, and an app
+password per device is real friction, so CalDAV's mirror and its cursor sync. A device without
+the password shows the events, skips pulling, and shows the account as needing the password.
+
+**Auth.** Basic over TLS with an app password, stored as the `password` secret kind. A `401`
+marks the account `reconnect_required` on that device only (resetting an Apple ID password
+revokes every app-specific password), and the next successful sync or a reconnect clears it.
+
 ## Registry
 
 `provider/registry.ts` holds one `ProviderDefinition` per provider: connect, disconnect,

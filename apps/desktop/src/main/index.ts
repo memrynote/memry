@@ -79,6 +79,10 @@ import { getEmbeddingWorkerCrashContext, stopEmbeddingModel } from './lib/embedd
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { startIcsCalendarRunner, stopIcsCalendarRunner } from './calendar/ics/ics-runner'
+import {
+  startCaldavCalendarRunner,
+  stopCaldavCalendarRunner
+} from './calendar/caldav/caldav-runner'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import { getLogShip, installLogShip } from './telemetry/log-ship'
@@ -1860,6 +1864,7 @@ const appReady = app.whenReady().then(async () => {
         })
       }
       startIcsCalendarRunner()
+      startCaldavCalendarRunner()
       void startGoogleCalendarSyncRunner().catch((error) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
         trackMainLog('warn', {
@@ -2340,6 +2345,9 @@ app.on('before-quit', (event) => {
 
         shutdownLog.info('stopping calendar feed runner...')
         stopIcsCalendarRunner()
+
+        shutdownLog.info('stopping CalDAV calendar runner...')
+        stopCaldavCalendarRunner()
       }
     },
     {

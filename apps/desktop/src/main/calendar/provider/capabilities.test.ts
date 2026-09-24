@@ -99,6 +99,19 @@ describe('provider capability table (#1391)', () => {
     })
   })
 
+  it('declares CalDAV: polled, multi-account, no Memry account, synced mirror (#1399)', () => {
+    expect(PROVIDER_CAPABILITIES.caldav).toMatchObject({
+      supportsPush: false,
+      supportsMultiAccount: true,
+      requiresMemryAccount: false,
+      mirrorScope: 'synced',
+      sourceScope: 'synced',
+      incrementalMode: 'sync-collection',
+      authFlow: 'basic',
+      pollIntervalMs: 15 * 60 * 1000
+    })
+  })
+
   it('gives an unknown provider nothing writable', () => {
     expect(isKnownProvider('microsoft')).toBe(false)
     expect(providerCapabilities('microsoft')).toBe(UNKNOWN_PROVIDER_CAPABILITIES)

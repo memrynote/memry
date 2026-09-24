@@ -202,6 +202,9 @@ export const ICS_CALENDAR_PROVIDER = 'ics'
 /** `calendar_sources.provider` for the Google Calendar API provider. */
 export const GOOGLE_CALENDAR_PROVIDER = 'google'
 
+/** `calendar_sources.provider` for CalDAV servers (RFC 4791): iCloud, Fastmail, Nextcloud, ... */
+export const CALDAV_CALENDAR_PROVIDER = 'caldav'
+
 /**
  * Whether a provider's rows travel through sync. `synced` rows are enqueued
  * like any other record; `device` rows never leave the device that wrote them.

@@ -1,4 +1,5 @@
 import {
+  CALDAV_CALENDAR_PROVIDER,
   GOOGLE_CALENDAR_PROVIDER,
   ICS_CALENDAR_PROVIDER,
   type CalendarProviderCapabilities
@@ -34,6 +35,29 @@ export const PROVIDER_CAPABILITIES: Readonly<Record<string, CalendarProviderCapa
     sourceScope: 'synced',
     incrementalMode: 'conditional-get',
     authFlow: 'url'
+  },
+  [CALDAV_CALENDAR_PROVIDER]: {
+    // Read-only until write-back lands (#1400).
+    supportsWrite: false,
+    // MKCALENDAR is optional server-side and Memry never needs its own
+    // collection: the default write target is always an existing calendar.
+    supportsCreateCalendar: false,
+    supportsPush: false,
+    supportsMultiAccount: true,
+    // Like ICS, CalDAV talks to the server directly.
+    requiresMemryAccount: false,
+    // #1399 decision: synced. Credentials never leave the device, so with a
+    // device-local mirror a second device would show the account as needing
+    // its password and no events at all until the app password is entered
+    // there too. A synced mirror is what Google users already get, and an app
+    // password per device is real friction. The rule from #1391 holds: the
+    // sync-token/ctag cursor lives on the synced source row, so it travels
+    // with the mirror.
+    mirrorScope: 'synced',
+    sourceScope: 'synced',
+    incrementalMode: 'sync-collection',
+    authFlow: 'basic',
+    pollIntervalMs: 15 * 60 * 1000
   }
 }
 
