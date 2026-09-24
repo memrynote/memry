@@ -180,6 +180,32 @@ export const CalendarProviderRequestSchema = z.object({
   includeCapabilities: z.boolean().optional()
 })
 
+/**
+ * #1401: run a provider's discovery with the given connection and report what
+ * it found, saving nothing ("Test connection").
+ */
+export const DiscoverProviderCalendarsSchema = z.object({
+  provider: z.string().min(1),
+  connection: CalendarProviderConnectionSchema
+})
+
+export type DiscoverProviderCalendarsInput = z.infer<typeof DiscoverProviderCalendarsSchema>
+
+export interface DiscoveredProviderCalendar {
+  /** The remote calendar id (a CalDAV collection URL). */
+  id: string
+  title: string
+  color: string | null
+}
+
+export interface DiscoverProviderCalendarsResponse {
+  success: boolean
+  calendars: DiscoveredProviderCalendar[]
+  /** A code the renderer localizes (`unauthorized`, `unreachable`, `not_caldav`, ...). */
+  errorCode?: string
+  error?: string
+}
+
 export const ListProviderCalendarsSchema = z.object({
   provider: z.string().min(1)
 })
@@ -487,6 +513,16 @@ export interface CalendarProviderAccountStatus {
   status: CalendarProviderAccountConnectionStatus
   lastSyncedAt: string | null
   lastError: string | null
+  /**
+   * #1401: why a `reconnect_required` account needs attention on this device:
+   * it never had the credential here (`missing`), or the server rejected it
+   * (`rejected`, e.g. a revoked app password). Omitted when unknown.
+   */
+  reconnectReason?: 'missing' | 'rejected'
+  /** #1401: for basic-auth accounts, what a reconnect form prefills. Never a password. */
+  serverUrl?: string
+  username?: string
+  preset?: string | null
 }
 
 export interface CalendarProviderStatus {

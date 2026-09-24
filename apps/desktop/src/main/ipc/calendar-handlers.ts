@@ -17,6 +17,7 @@ import {
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
   CheckProviderWriterCompatSchema,
+  DiscoverProviderCalendarsSchema,
   UpdateCalendarEventSchema,
   type CalendarChangedEvent,
   type CalendarDeleteResponse,
@@ -32,6 +33,7 @@ import {
   type CalendarSourceMutationResponse,
   type CalendarSourceRecord,
   type CalendarWriterCompatResponse,
+  type DiscoverProviderCalendarsResponse,
   type ListCalendarProvidersResponse,
   type ListGoogleCalendarsResponse,
   type ListProviderCalendarsResponse,
@@ -494,6 +496,20 @@ export function registerCalendarHandlers(): void {
   )
 
   ipcMain.handle(
+    CalendarChannels.invoke.DISCOVER_PROVIDER_CALENDARS,
+    createValidatedHandler(
+      DiscoverProviderCalendarsSchema,
+      async (input): Promise<DiscoverProviderCalendarsResponse> => {
+        const definition = getProvider(input.provider)
+        if (!definition?.discover) {
+          return { success: false, calendars: [], error: unsupportedProviderError(input.provider) }
+        }
+        return await definition.discover(input.connection)
+      }
+    )
+  )
+
+  ipcMain.handle(
     CalendarChannels.invoke.CHECK_PROVIDER_WRITER_COMPAT,
     createValidatedHandler(
       CheckProviderWriterCompatSchema,
@@ -634,4 +650,5 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.SET_DEFAULT_PROVIDER_CALENDAR)
   ipcMain.removeHandler(CalendarChannels.invoke.RETRY_SOURCE_SYNC)
   ipcMain.removeHandler(CalendarChannels.invoke.CHECK_PROVIDER_WRITER_COMPAT)
+  ipcMain.removeHandler(CalendarChannels.invoke.DISCOVER_PROVIDER_CALENDARS)
 }

@@ -15,11 +15,22 @@ async function buildProviderAccountStatus(
   const accountId = source.accountId
   if (!accountId) return null
 
-  const metadata = (source.metadata as { email?: string; lastError?: string } | null) ?? null
+  const metadata =
+    (source.metadata as {
+      email?: string
+      lastError?: string
+      serverUrl?: string
+      username?: string
+      preset?: string | null
+    } | null) ?? null
   const definition = getProvider(source.provider)
   const hasLocalAuth = definition ? await definition.hasAccountLocalAuth(db, accountId) : false
 
   let status: CalendarProviderAccountConnectionStatus
+  const reconnectReason =
+    !hasLocalAuth && definition?.accountReconnectReason
+      ? await definition.accountReconnectReason(db, accountId)
+      : null
   if (!hasLocalAuth) {
     status = 'reconnect_required'
   } else if (source.syncStatus === 'error') {
@@ -33,7 +44,16 @@ async function buildProviderAccountStatus(
     email: metadata?.email ?? source.title,
     status,
     lastSyncedAt: source.lastSyncedAt ?? null,
-    lastError: source.lastError ?? metadata?.lastError ?? null
+    lastError: source.lastError ?? metadata?.lastError ?? null,
+    ...(reconnectReason ? { reconnectReason } : {}),
+    // Basic-auth accounts only: what a reconnect form prefills.
+    ...(metadata?.serverUrl && metadata.username
+      ? {
+          serverUrl: metadata.serverUrl,
+          username: metadata.username,
+          preset: metadata.preset ?? null
+        }
+      : {})
   }
 }
 

@@ -688,6 +688,47 @@
         "unknownVersion": "version unknown",
         "consequence": "An older version can copy tasks and events from this calendar into Google Calendar as duplicates, or fail to sync them. Update those devices first, or continue if you accept that.",
         "acknowledge": "I understand, connect anyway"
+      },
+      "reconnect": "Reconnect"
+    },
+    "caldav": {
+      "presetLabel": "Service",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale or Baïkal (self-hosted)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Other CalDAV server"
+      },
+      "hostLabel": "Server name",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple ID (email)",
+      "icloudHelp": "Use an app-specific password, not your Apple ID password. Create one under Sign-In and Security → App-Specific Passwords.",
+      "appPasswordHelp": "If your service offers app passwords, create one for memrynote and use it here.",
+      "createAppPassword": "Create an app password",
+      "testConnection": "Test connection",
+      "testing": "Testing…",
+      "chooseCalendars": "Calendars to show",
+      "reconnectFor": "Enter the app password for {username}.",
+      "errors": {
+        "unauthorizedIcloud": "iCloud did not accept this password. iCloud needs an app-specific password here, not your Apple ID password. Create one at account.apple.com under Sign-In and Security, then try again.",
+        "unauthorized": "The server did not accept this username and password. Check both, and use an app password if your service has them.",
+        "unreachable": "Could not reach the server. Check the address and your internet connection, then try again.",
+        "notCaldav": "No CalDAV calendars were found at this address. Check the server address; some services need a path such as /remote.php/dav.",
+        "noCalendars": "This account has no calendars that hold events.",
+        "invalidUrl": "That is not a server address. Enter an address like https://dav.example.com.",
+        "outdatedDevices": "Some of your devices run an older memrynote. Update them, or confirm below that you want to connect anyway.",
+        "unknown": "Could not connect ({code}). Nothing was saved; try again later."
+      },
+      "reconnect": {
+        "missing": "This device does not have the app password for this account yet. Its events still arrive from your other devices; enter the app password here to sync from this device too.",
+        "icloudRevoked": "iCloud stopped accepting this app-specific password. Resetting your Apple ID password revokes every app-specific password. Create a new one at account.apple.com and reconnect.",
+        "rejected": "The server stopped accepting this password. If you changed it or revoked the app password, create a new one and reconnect."
       }
     }
   },

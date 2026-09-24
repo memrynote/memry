@@ -5,10 +5,13 @@ import type {
 } from '@memry/contracts/calendar-api'
 import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { calendarService } from '@/services/calendar-service'
+import {
+  CalendarWriterCompatNotice,
+  writerCompatNeedsAcknowledgement
+} from '@/components/settings/calendar-writer-compat-notice'
 
 export interface CalendarBasicConnectFormProps {
   provider: CalendarProviderDescriptor
@@ -47,11 +50,7 @@ export function CalendarBasicConnectForm({
   const [compat, setCompat] = useState<CalendarWriterCompatResponse | null>(null)
   const [acknowledged, setAcknowledged] = useState(false)
 
-  const needsAcknowledgement =
-    compat !== null &&
-    compat.required &&
-    (!compat.verified || compat.outdatedDevices.length > 0) &&
-    !acknowledged
+  const needsAcknowledgement = writerCompatNeedsAcknowledgement(compat) && !acknowledged
 
   const connect = async (): Promise<void> => {
     setIsConnecting(true)
@@ -60,9 +59,7 @@ export function CalendarBasicConnectForm({
       if (provider.capabilities.supportsWrite && compat === null) {
         const checked = await calendarService.checkProviderWriterCompat({ provider: provider.id })
         setCompat(checked)
-        if (checked.required && (!checked.verified || checked.outdatedDevices.length > 0)) {
-          return
-        }
+        if (writerCompatNeedsAcknowledgement(checked)) return
       }
       const result = await calendarService.connectProvider({
         provider: provider.id,
@@ -131,38 +128,12 @@ export function CalendarBasicConnectForm({
         autoComplete="current-password"
       />
 
-      {compat && compat.required && (!compat.verified || compat.outdatedDevices.length > 0) && (
-        <div
-          role="alert"
-          className="grid gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs/4 text-foreground"
-          data-testid="calendar-writer-compat-warning"
-        >
-          <p>
-            {compat.verified
-              ? t('calendar.providers.compat.outdated', { version: compat.minVersion })
-              : t('calendar.providers.compat.unverified')}
-          </p>
-          {compat.outdatedDevices.length > 0 && (
-            <ul className="list-disc ps-4">
-              {compat.outdatedDevices.map((device) => (
-                <li key={device.id}>
-                  {device.name}
-                  {' · '}
-                  {device.appVersion ?? t('calendar.providers.compat.unknownVersion')}
-                </li>
-              ))}
-            </ul>
-          )}
-          <p>{t('calendar.providers.compat.consequence')}</p>
-          <label className="flex items-center gap-2">
-            <Checkbox
-              checked={acknowledged}
-              onCheckedChange={(checked) => setAcknowledged(checked === true)}
-              aria-label={t('calendar.providers.compat.acknowledge')}
-            />
-            <span>{t('calendar.providers.compat.acknowledge')}</span>
-          </label>
-        </div>
+      {compat && writerCompatNeedsAcknowledgement(compat) && (
+        <CalendarWriterCompatNotice
+          compat={compat}
+          acknowledged={acknowledged}
+          onAcknowledgedChange={setAcknowledged}
+        />
       )}
 
       {error && (

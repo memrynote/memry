@@ -4,6 +4,7 @@ import { useT } from '@memry/i18n/renderer'
 import { SettingsGroup } from '@/components/settings/settings-primitives'
 import { GoogleCalendarConnection } from '@/components/settings/google-calendar-connection'
 import { IcsCalendarSubscriptions } from '@/components/settings/ics-calendar-subscriptions'
+import { CaldavProviderPanel } from '@/components/settings/caldav-provider-panel'
 import { GenericCalendarProviderPanel } from '@/components/settings/generic-calendar-provider-panel'
 import { calendarService } from '@/services/calendar-service'
 import { createLogger } from '@/lib/logger'
@@ -69,6 +70,8 @@ function providerSettingsBody(provider: CalendarProviderDescriptor): ReactNode {
   const { authFlow } = provider.capabilities
   if (authFlow === 'oauth2' && provider.id === 'google') return <GoogleCalendarConnection />
   if (authFlow === 'url' && provider.id === 'ics') return <IcsCalendarSubscriptions />
+  if (authFlow === 'basic' && provider.id === 'caldav')
+    return <CaldavProviderPanel provider={provider} />
   return <GenericCalendarProviderPanel provider={provider} />
 }
 

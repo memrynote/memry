@@ -1,6 +1,8 @@
 import type {
   CalendarProviderCapabilities,
+  CalendarProviderConnection,
   CalendarProviderMutationResponse,
+  DiscoverProviderCalendarsResponse,
   CalendarProviderRequest,
   ListProviderCalendarsResponse,
   RetryCalendarSourceSyncResponse,
@@ -43,6 +45,8 @@ export interface ProviderDefinition {
   hasAnyLocalAuth(db: DataDb): Promise<boolean>
   /** Whether this device holds credentials for one account. */
   hasAccountLocalAuth(db: DataDb, accountId: string): Promise<boolean>
+  /** Why an account without usable local auth needs a reconnect, when the provider can tell. */
+  accountReconnectReason?(db: DataDb, accountId: string): Promise<'missing' | 'rejected' | null>
   /**
    * The user switched one of the provider's calendars on or off. The source
    * row is already saved; this reconciles the mirror and any runtime state.
@@ -58,6 +62,8 @@ export interface ProviderDefinition {
   ): SetDefaultProviderCalendarResponse
   /** The push path. Only providers with `supportsWrite` are ever asked. */
   writer?: ProviderWriter
+  /** Run discovery with a connection and report what it found, saving nothing. */
+  discover?(connection: CalendarProviderConnection): Promise<DiscoverProviderCalendarsResponse>
 }
 
 const providers = new Map<string, ProviderDefinition>()

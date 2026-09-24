@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
+  CalendarProviderAccountStatus,
   CalendarProviderDescriptor,
   CalendarProviderMutationResponse,
   CalendarSourceRecord
@@ -37,15 +38,28 @@ function sourcesQueryKey(providerId: string): readonly string[] {
  * - `supportsPush: false`: the poll interval instead of a real-time claim.
  * - `authFlow`: which connect form appears.
  */
+export interface ProviderConnectFormArgs {
+  onConnected: () => Promise<void>
+  /** Set when the form reconnects an account that needs its credential again. */
+  reconnect?: CalendarProviderAccountStatus
+}
+
 export function GenericCalendarProviderPanel({
-  provider
+  provider,
+  renderConnectForm,
+  describeReconnect
 }: {
   provider: CalendarProviderDescriptor
+  /** A provider-specific connect form (CalDAV presets); defaults to the form for its auth flow. */
+  renderConnectForm?: (args: ProviderConnectFormArgs) => ReactNode
+  /** Copy for an account that needs reconnecting on this device. */
+  describeReconnect?: (account: CalendarProviderAccountStatus) => string
 }): React.JSX.Element {
   const { t } = useT('settings')
   const queryClient = useQueryClient()
   const { id, capabilities } = provider
   const [showConnectForm, setShowConnectForm] = useState(false)
+  const [reconnectAccountId, setReconnectAccountId] = useState<string | null>(null)
 
   const { data: status } = useQuery({
     queryKey: statusQueryKey(id),
@@ -129,27 +143,27 @@ export function GenericCalendarProviderPanel({
     disconnectMutation.error ?? refreshMutation.error ?? retryMutation.error ?? pushMutation.error
   const busy = disconnectMutation.isPending || refreshMutation.isPending
   const canAddAnother = capabilities.supportsMultiAccount || !connected
-  const connectForm =
-    capabilities.authFlow === 'basic' ? (
-      <CalendarBasicConnectForm
-        provider={provider}
-        onConnected={async () => {
-          setShowConnectForm(false)
-          await invalidate()
-        }}
-      />
-    ) : (
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-7 w-fit px-3 text-xs/4"
-        onClick={() => {
-          void calendarService.connectProvider({ provider: id }).then(invalidate)
-        }}
-      >
-        {t('calendar.providers.connect')}
-      </Button>
-    )
+  const onConnected = async (): Promise<void> => {
+    setShowConnectForm(false)
+    setReconnectAccountId(null)
+    await invalidate()
+  }
+  const connectForm = renderConnectForm ? (
+    renderConnectForm({ onConnected })
+  ) : capabilities.authFlow === 'basic' ? (
+    <CalendarBasicConnectForm provider={provider} onConnected={onConnected} />
+  ) : (
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-7 w-fit px-3 text-xs/4"
+      onClick={() => {
+        void calendarService.connectProvider({ provider: id }).then(invalidate)
+      }}
+    >
+      {t('calendar.providers.connect')}
+    </Button>
+  )
 
   return (
     <div className="grid gap-3 px-4 py-3" data-testid={`calendar-provider-panel-${id}`}>
@@ -251,9 +265,27 @@ export function GenericCalendarProviderPanel({
                 </Button>
               </div>
               {account.status === 'reconnect_required' && (
-                <p className="text-[11px]/4 text-amber-800 dark:text-amber-300">
-                  {t('calendar.providers.reconnectRequired')}
-                </p>
+                <div
+                  className="grid gap-1.5"
+                  data-testid={`calendar-provider-reconnect-${account.accountId}`}
+                >
+                  <p className="text-[11px]/4 text-amber-800 dark:text-amber-300">
+                    {describeReconnect?.(account) ?? t('calendar.providers.reconnectRequired')}
+                  </p>
+                  {renderConnectForm && reconnectAccountId !== account.accountId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 w-fit px-2 text-[11px]/4"
+                      onClick={() => setReconnectAccountId(account.accountId)}
+                    >
+                      {t('calendar.providers.reconnect')}
+                    </Button>
+                  )}
+                  {renderConnectForm &&
+                    reconnectAccountId === account.accountId &&
+                    renderConnectForm({ onConnected, reconnect: account })}
+                </div>
               )}
               {account.status === 'error' && account.lastError && (
                 <p className="text-[11px]/4 text-destructive">{account.lastError}</p>

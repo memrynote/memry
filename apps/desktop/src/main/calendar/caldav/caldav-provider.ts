@@ -20,8 +20,18 @@ import { purgeCalendarSourceMirrors } from '../provider/source-mirrors'
 import { buildProviderStatus } from '../provider/status'
 import { checkProviderWriterCompat, writerCompatAllowsConnect } from '../provider/writer-compat'
 import { createWriterCompatDeps } from '../provider/writer-compat-runtime'
-import { hasCaldavLocalAuth, listCaldavAccountSources } from './caldav-accounts'
-import { CaldavConnectError, connectCaldavAccount, disconnectCaldavAccount } from './caldav-connect'
+import {
+  hasCaldavAuthFailure,
+  hasCaldavLocalAuth,
+  listCaldavAccountSources,
+  readCaldavPassword
+} from './caldav-accounts'
+import {
+  CaldavConnectError,
+  connectCaldavAccount,
+  disconnectCaldavAccount,
+  discoverCaldavCalendars
+} from './caldav-connect'
 import { syncCaldavCalendarSource, syncCaldavNow } from './caldav-sync'
 
 const log = createLogger('Calendar:CaldavProvider')
@@ -136,6 +146,10 @@ export const caldavCalendarProvider: ProviderDefinition = {
     return false
   },
   hasAccountLocalAuth: (db, accountId) => hasCaldavLocalAuth(db, accountId),
+  async accountReconnectReason(db, accountId) {
+    if (hasCaldavAuthFailure(db, accountId)) return 'rejected'
+    return (await readCaldavPassword(accountId)) ? null : 'missing'
+  },
   onSelectionChanged(db, before, after) {
     // The mirror is synced, so unticking removes the events everywhere, as it
     // does for Google; ticking pulls straight away.
@@ -159,5 +173,24 @@ export const caldavCalendarProvider: ProviderDefinition = {
       })
     }
   },
-  retrySource: retryCaldavSource
+  retrySource: retryCaldavSource,
+  async discover(connection) {
+    if (connection.kind !== 'basic') {
+      return { success: false, calendars: [], errorCode: 'invalid_url' }
+    }
+    try {
+      const info = await discoverCaldavCalendars(connection)
+      return {
+        success: true,
+        calendars: info.calendars.map((calendar) => ({
+          id: calendar.url,
+          title: calendar.displayName,
+          color: calendar.color
+        }))
+      }
+    } catch (error) {
+      if (!(error instanceof CaldavConnectError)) throw error
+      return { success: false, calendars: [], errorCode: error.code, error: error.message }
+    }
+  }
 }

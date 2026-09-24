@@ -18,6 +18,7 @@ import {
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
   CheckProviderWriterCompatSchema,
+  DiscoverProviderCalendarsSchema,
   type CalendarChangedEvent,
   type CalendarDeleteResponse,
   type CalendarEventListResponse,
@@ -33,6 +34,7 @@ import {
   type CalendarSourceMutationResponse,
   type CalendarSourceRecord,
   type CalendarWriterCompatResponse,
+  type DiscoverProviderCalendarsResponse,
   type IcsCalendarMutationResponse,
   type IcsFeedErrorCode,
   type ListCalendarProvidersResponse,
@@ -68,6 +70,7 @@ export type IcsCalendarSourceRequest = z.input<typeof IcsCalendarSourceRequestSc
 export type ListProviderCalendarsInput = z.input<typeof ListProviderCalendarsSchema>
 export type SetDefaultProviderCalendarInput = z.input<typeof SetDefaultProviderCalendarSchema>
 export type CheckProviderWriterCompatInput = z.input<typeof CheckProviderWriterCompatSchema>
+export type DiscoverProviderCalendarsInput = z.input<typeof DiscoverProviderCalendarsSchema>
 
 export type {
   CalendarChangedEvent,
@@ -182,6 +185,12 @@ export const calendarRpc = defineDomain({
       (input: SetDefaultProviderCalendarInput) => Promise<SetDefaultProviderCalendarResponse>
     >({
       channel: CalendarChannels.invoke.SET_DEFAULT_PROVIDER_CALENDAR,
+      params: ['input']
+    }),
+    discoverProviderCalendars: defineMethod<
+      (input: DiscoverProviderCalendarsInput) => Promise<DiscoverProviderCalendarsResponse>
+    >({
+      channel: CalendarChannels.invoke.DISCOVER_PROVIDER_CALENDARS,
       params: ['input']
     }),
     checkProviderWriterCompat: defineMethod<

@@ -492,6 +492,19 @@ rest of your vault; each device downloads the calendar itself. The events are ne
 
 Treat a secret calendar link like a password: anyone who has it can read that calendar.
 
+## CalDAV Calendars
+
+Calendars from iCloud (Apple Calendar), Fastmail, Nextcloud, Radicale, Baïkal, Zoho, Yahoo,
+mailbox.org, Posteo, Synology and other CalDAV servers connect in
+[Settings → Calendar](/user-guide/settings#calendar) → **CalDAV** with a username and an app
+password, on every operating system. See [CalDAV Calendars](/user-guide/caldav/) for each
+service's steps.
+
+Their events appear on the calendar, the Day Panel and the Home widget with the calendar's name
+as their label, and the calendar page lists them under **CalDAV calendars**. memrynote checks for
+changes every 15 minutes, and the events sync to your other devices, which show them without the
+app password.
+
 ## Day Cell Click Behavior
 
 [Settings → Calendar](/user-guide/settings#calendar) lets you choose what clicking a date does by default:

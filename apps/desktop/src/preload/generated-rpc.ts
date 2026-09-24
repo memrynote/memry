@@ -339,6 +339,7 @@ export function createGeneratedRpcApi({
       "listProviders": (() => invoke("calendar:list-providers")) as GeneratedRpcApi["calendar"]["listProviders"],
       "listProviderCalendars": ((input) => invoke("calendar:list-provider-calendars", input)) as GeneratedRpcApi["calendar"]["listProviderCalendars"],
       "setDefaultProviderCalendar": ((input) => invoke("calendar:set-default-provider-calendar", input)) as GeneratedRpcApi["calendar"]["setDefaultProviderCalendar"],
+      "discoverProviderCalendars": ((input) => invoke("calendar:discover-provider-calendars", input)) as GeneratedRpcApi["calendar"]["discoverProviderCalendars"],
       "checkProviderWriterCompat": ((input) => invoke("calendar:check-provider-writer-compat", input)) as GeneratedRpcApi["calendar"]["checkProviderWriterCompat"],
       "retrySourceSync": ((input) => invoke("calendar:retry-source-sync", input)) as GeneratedRpcApi["calendar"]["retrySourceSync"],
       "listGoogleCalendars": ((options) => invoke("calendar:list-google-calendars", options ?? {})) as GeneratedRpcApi["calendar"]["listGoogleCalendars"],

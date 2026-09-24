@@ -755,6 +755,8 @@ export const CalendarChannels = {
     SET_DEFAULT_PROVIDER_CALENDAR: 'calendar:set-default-provider-calendar',
     /** #1392: re-run sync for one calendar source of any provider */
     RETRY_SOURCE_SYNC: 'calendar:retry-source-sync',
+    /** #1401: run a provider's discovery with a connection, saving nothing */
+    DISCOVER_PROVIDER_CALENDARS: 'calendar:discover-provider-calendars',
     /** #1396: devices too old to share an account with a second writable provider */
     CHECK_PROVIDER_WRITER_COMPAT: 'calendar:check-provider-writer-compat',
     // ------------------------------------------------------------------------
