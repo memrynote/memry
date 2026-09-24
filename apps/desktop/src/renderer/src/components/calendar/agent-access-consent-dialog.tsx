@@ -33,7 +33,9 @@ export function AgentAccessConsentDialog({
       ? t('agent-access-dialog.provider-names.ics')
       : promptProvider === 'caldav'
         ? t('agent-access-dialog.provider-names.caldav')
-        : promptProvider
+        : promptProvider === 'apple-eventkit'
+          ? t('agent-access-dialog.provider-names.apple-eventkit')
+          : promptProvider
   const copy =
     promptProvider === GOOGLE_CALENDAR_PROVIDER
       ? {

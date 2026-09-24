@@ -759,6 +759,10 @@ export const CalendarChannels = {
     DISCOVER_PROVIDER_CALENDARS: 'calendar:discover-provider-calendars',
     /** #1396: devices too old to share an account with a second writable provider */
     CHECK_PROVIDER_WRITER_COMPAT: 'calendar:check-provider-writer-compat',
+    /** #2374: open System Settings → Privacy & Security → Calendars (macOS only) */
+    OPEN_OS_CALENDAR_SETTINGS: 'calendar:open-os-calendar-settings',
+    /** #2374: one mirrored external event with attendees, reminders and join link */
+    GET_EXTERNAL_EVENT: 'calendar:get-external-event',
     // ------------------------------------------------------------------------
     // Compatibility surface: the provider-specific channels below are kept as
     // permanent aliases of the generic ones above (#1392). During a partial

@@ -1,4 +1,5 @@
 import {
+  APPLE_EVENTKIT_CALENDAR_PROVIDER,
   CALDAV_CALENDAR_PROVIDER,
   GOOGLE_CALENDAR_PROVIDER,
   ICS_CALENDAR_PROVIDER,
@@ -58,6 +59,25 @@ export const PROVIDER_CAPABILITIES: Readonly<Record<string, CalendarProviderCapa
     incrementalMode: 'sync-collection',
     authFlow: 'basic',
     pollIntervalMs: 15 * 60 * 1000
+  },
+  [APPLE_EVENTKIT_CALENDAR_PROVIDER]: {
+    // #2374: read-only. Promotion would create a synced event and binding for
+    // a provider Windows, Linux and older builds cannot reach.
+    supportsWrite: false,
+    supportsCreateCalendar: false,
+    // EKEventStoreChanged: a local notification, no relay and no polling.
+    supportsPush: true,
+    // One "This Mac" connection; macOS owns the accounts behind it.
+    supportsMultiAccount: false,
+    requiresMemryAccount: false,
+    // Neither the calendars nor their events leave the Mac. Other platforms
+    // and older builds never receive a row from this provider.
+    mirrorScope: 'device',
+    sourceScope: 'device',
+    platforms: ['darwin'],
+    // Local and cheap: re-read the window on every change.
+    incrementalMode: 'full',
+    authFlow: 'os-permission'
   }
 }
 

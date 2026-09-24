@@ -62,6 +62,7 @@ pnpm --filter @memry/desktop db:studio:index
 - Node test/script load errors: `pnpm --filter @memry/desktop rebuild:node`.
 - Electron dev/E2E/build load errors: `pnpm --filter @memry/desktop rebuild:electron`.
 - Neither rebuild is evidence for the other runtime.
+- The EventKit helper (`native/eventkit`, macOS only) is separate from both: `pnpm --filter @memry/desktop build:eventkit`. Unit tests use a fake helper; one test also checks the protocol against the built helper when it exists on a Mac. See `native/eventkit/README.md`.
 
 ## UI
 

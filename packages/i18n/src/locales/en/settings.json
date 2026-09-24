@@ -737,6 +737,24 @@
         "description": "Where new events, tasks, reminders and snoozes go when you do not pick a calendar. Only one calendar service holds the default.",
         "none": "Not the default",
         "error": "Could not change the default calendar"
+      },
+      "appleEventKit": {
+        "name": "This Mac",
+        "description": "Shows every calendar Calendar.app already has on this Mac: iCloud, Google, Exchange and On My Mac. No sign-in, read-only, and the events never leave this Mac or sync to your other devices.",
+        "connect": "Allow calendar access",
+        "connectHint": "macOS asks once. You can change it later in System Settings.",
+        "otherCalendars": "Other calendars",
+        "alreadyConnected": "Already connected via {provider}, so it starts off to avoid showing events twice.",
+        "openSystemSettings": "Open System Settings",
+        "checkAgain": "Check again",
+        "errors": {
+          "permission_denied": "Calendar access is off for memrynote. Turn it on in System Settings → Privacy & Security → Calendars, then check again.",
+          "permission_restricted": "Calendar access is blocked on this Mac, usually by a management profile. Nothing changed in memrynote; whoever manages this Mac can allow it.",
+          "permission_write_only": "memrynote can only add events, which is not enough to show them. Switch it to Full Access in System Settings → Privacy & Security → Calendars.",
+          "permission_not_determined": "memrynote has not been given calendar access yet. Allow it to show your Mac's calendars.",
+          "unavailable": "The macOS Calendar reader could not start. Your calendars are unchanged; restart memrynote and try again.",
+          "sync_failed": "Could not read Calendar.app just now. Your calendars stay as they were, and memrynote tries again when Calendar.app changes."
+        }
       }
     },
     "caldav": {

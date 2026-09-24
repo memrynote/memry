@@ -5,6 +5,7 @@ import { SettingsGroup } from '@/components/settings/settings-primitives'
 import { GoogleCalendarConnection } from '@/components/settings/google-calendar-connection'
 import { IcsCalendarSubscriptions } from '@/components/settings/ics-calendar-subscriptions'
 import { CaldavProviderPanel } from '@/components/settings/caldav-provider-panel'
+import { MacosCalendarProviderPanel } from '@/components/settings/macos-calendar-provider-panel'
 import { GenericCalendarProviderPanel } from '@/components/settings/generic-calendar-provider-panel'
 import { calendarService } from '@/services/calendar-service'
 import { createLogger } from '@/lib/logger'
@@ -55,6 +56,8 @@ function useProviderName(): (providerId: string) => string {
         return t('calendar.subscriptions.name')
       case 'caldav':
         return t('calendar.providers.caldav.name')
+      case 'apple-eventkit':
+        return t('calendar.providers.appleEventKit.name')
       default:
         return providerId
     }
@@ -72,6 +75,9 @@ function providerSettingsBody(provider: CalendarProviderDescriptor): ReactNode {
   if (authFlow === 'url' && provider.id === 'ics') return <IcsCalendarSubscriptions />
   if (authFlow === 'basic' && provider.id === 'caldav')
     return <CaldavProviderPanel provider={provider} />
+  // macOS only: main never lists it on Windows or Linux (#2374).
+  if (authFlow === 'os-permission' && provider.id === 'apple-eventkit')
+    return <MacosCalendarProviderPanel provider={provider} />
   return <GenericCalendarProviderPanel provider={provider} />
 }
 

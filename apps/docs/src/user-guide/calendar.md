@@ -538,6 +538,58 @@ changes every 15 minutes, and the events sync to your other devices, which show 
 app password. CalDAV calendars are two-way: see
 [Writing to a CalDAV Calendar](/user-guide/caldav/#writing-to-a-caldav-calendar).
 
+## macOS Calendar (This Mac)
+
+On a Mac, memrynote can show every calendar that the built-in Calendar app already has: iCloud,
+Google, Exchange and Outlook accounts added in macOS, **On My Mac** calendars, and calendars
+subscribed inside Calendar. You don't sign in, and you don't need an app password or a server
+address. This option exists only on macOS; Windows and Linux don't show it.
+
+1. Open [Settings → Calendar](/user-guide/settings#calendar) → **This Mac**.
+2. Press **Allow calendar access**. macOS asks once whether memrynote may use your calendars.
+   Choose **Allow Full Access**.
+
+memrynote never asks at launch. Only that button shows the macOS dialog.
+
+**What you see.** Events from the last 90 days through the next year, grouped in Settings by the
+account Calendar files them under. Tick or untick a calendar to show or hide its events. A change
+you make in Calendar (a new event, a moved meeting, a deleted calendar) shows up in memrynote
+within a few seconds, without a restart.
+
+**Event details.** Clicking an event shows what Calendar shows: how it repeats, its alerts, a
+**Join meeting** button for Google Meet, Zoom, Teams and Webex links, the dial-in number, who is
+invited and who accepted, and the description with clickable links. Google's "Join with Google
+Meet… Please do not edit this section." text is left out of the description, because the Join row
+already covers it.
+
+**Read-only.** These events can't be moved, edited, deleted, or copied into memrynote events.
+Change them in Calendar.
+
+**Stays on this Mac.** Neither the calendars nor their events sync to your other devices, and
+nothing is uploaded. Another Mac shows its own calendars once you allow access there. **Disconnect**
+removes them from memrynote on this Mac only; Calendar itself is untouched.
+
+**Seeing events twice.** If you connected Google or a CalDAV account in memrynote and the same
+account is also in Calendar, its Calendar copies start switched off and say **Already connected
+via …**. You can switch them on anyway.
+
+**AI access.** Like every calendar service, these events reach the AI assistant only after you
+allow it for **This Mac**. See [AI Access Is Asked Per Calendar
+Service](#ai-access-is-asked-per-calendar-service).
+
+### If access was denied
+
+macOS shows its question only once. If you chose **Don't Allow**, or later turned memrynote off
+in System Settings, the events disappear from memrynote and **This Mac** explains why:
+
+1. Press **Open System Settings**, or go to **System Settings → Privacy & Security → Calendars**.
+2. Switch **MemryNote** on and choose **Full Access**. **Add Events Only** is not enough to read
+   events.
+3. Back in memrynote, press **Check again**.
+
+If the setting is greyed out, a management profile on this Mac blocks calendar access. Whoever
+manages the Mac can allow it.
+
 ## Day Cell Click Behavior
 
 [Settings → Calendar](/user-guide/settings#calendar) lets you choose what clicking a date does by default:

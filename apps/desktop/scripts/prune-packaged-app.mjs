@@ -128,7 +128,56 @@ function relativizeInternalSymlinks(rootPath) {
   }
 }
 
+const EVENTKIT_HELPER_NAME = 'memry-eventkit'
+
+function findFileNamed(rootPath, fileName) {
+  if (!existsSync(rootPath)) return null
+  for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
+    const entryPath = join(rootPath, entry.name)
+    if (entry.isDirectory() && !entry.isSymbolicLink()) {
+      // node_modules can only hold what pnpm installed, never the helper.
+      if (entry.name === 'node_modules') continue
+      const found = findFileNamed(entryPath, fileName)
+      if (found) return found
+    } else if (entry.name === fileName) {
+      return entryPath
+    }
+  }
+  return null
+}
+
+/**
+ * The macOS Calendar bridge (#1405) ships in the mac app bundle and nowhere
+ * else. A mac artifact without it would ship a provider that is always
+ * unavailable; a Windows or Linux artifact with it would break the promise
+ * that those builds carry no macOS-only code. Both fail the build.
+ */
+export function assertEventKitHelperPlacement(context) {
+  if (context.electronPlatformName === 'darwin') {
+    const helperPath = join(
+      context.appOutDir,
+      `${context.packager.appInfo.productFilename}.app`,
+      'Contents',
+      'MacOS',
+      EVENTKIT_HELPER_NAME
+    )
+    if (!existsSync(helperPath)) {
+      throw new Error(`macOS build is missing the EventKit helper at ${helperPath}`)
+    }
+    return
+  }
+
+  const stray = findFileNamed(context.appOutDir, EVENTKIT_HELPER_NAME)
+  if (stray) {
+    throw new Error(
+      `${context.electronPlatformName} build must not contain the macOS EventKit helper: ${stray}`
+    )
+  }
+}
+
 export default async function prunePackagedApp(context) {
+  assertEventKitHelperPlacement(context)
+
   const resourcesDir = resolve(getResourcesDir(context))
   const archName = resolveArchName(context.arch)
   const nodeModulesDirs = [

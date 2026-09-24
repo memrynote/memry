@@ -1,10 +1,24 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
+import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
+import { DEVICE_LOCAL_CALENDAR_PROVIDERS } from '@memry/contracts/calendar-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
 
+function sourceIdOf(row: { sourceId?: unknown } | null | undefined): string | null {
+  return typeof row?.sourceId === 'string' ? row.sourceId : null
+}
+
+function parseSnapshot(snapshotPayload: string): { sourceId?: unknown } | null {
+  try {
+    const parsed = JSON.parse(snapshotPayload) as unknown
+    return parsed && typeof parsed === 'object' ? (parsed as { sourceId?: unknown }) : null
+  } catch {
+    return null
+  }
+}
 
 interface CalendarExternalEventSyncDeps {
   queue: SyncQueueManager
@@ -33,6 +47,22 @@ export class CalendarExternalEventSyncService {
   private controller: RecordSyncController<Record<string, unknown>, [], [string?]>
 
   constructor(deps: CalendarExternalEventSyncDeps) {
+    /**
+     * Events mirrored from a device-local provider (`mirrorScope: 'device'`:
+     * ICS feeds, the macOS Calendar provider) never leave the device. A source
+     * row that is already gone cannot be classified, so that case is let
+     * through, as the controller does for any row it cannot load.
+     */
+    const isDeviceLocalMirror = (sourceId: string | null): boolean => {
+      if (!sourceId) return false
+      const source = deps.db
+        .select({ provider: calendarSources.provider })
+        .from(calendarSources)
+        .where(eq(calendarSources.id, sourceId))
+        .get()
+      return source ? DEVICE_LOCAL_CALENDAR_PROVIDERS.mirrors.includes(source.provider) : false
+    }
+
     this.controller = new RecordSyncController({
       type: 'calendar_external_event',
       queue: deps.queue,
@@ -56,8 +86,12 @@ export class CalendarExternalEventSyncService {
         return { ...local, clock: nextClock }
       },
       serialize: (local) => local,
+      shouldSkip: (local) => isDeviceLocalMirror(sourceIdOf(local)),
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
         const snapshotPayload = extra[0]
+        if (snapshotPayload && isDeviceLocalMirror(sourceIdOf(parseSnapshot(snapshotPayload)))) {
+          return null
+        }
         if (snapshotPayload) return withIncrementedClock(snapshotPayload, deviceId)
         if (local) return withIncrementedClock(JSON.stringify(local), deviceId)
         return JSON.stringify({ id: itemId, clock: incrementClock({}, deviceId) })

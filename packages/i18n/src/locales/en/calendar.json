@@ -38,6 +38,7 @@
     "provider-calendars": {
       "ics": "Subscribed calendars",
       "caldav": "CalDAV calendars",
+      "apple-eventkit": "This Mac",
       "other": "Other calendars"
     }
   },
@@ -111,7 +112,8 @@
     },
     "provider-names": {
       "ics": "subscribed calendar",
-      "caldav": "CalDAV calendar"
+      "caldav": "CalDAV calendar",
+      "apple-eventkit": "macOS Calendar"
     }
   },
   "promote-dialog": {
@@ -350,7 +352,25 @@
   },
   "subscribedEvent": {
     "kind": "Subscribed calendar",
-    "readOnly": "Read-only. Change it in the app that shares this calendar."
+    "kindAppleEventKit": "This Mac",
+    "close": "Close",
+    "detailsFailed": "Could not load the attendees and links for this event. The event itself is unchanged.",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "organizer": "organizer",
+    "you": "you",
+    "phone": "Join by phone",
+    "alert": "{minutes, plural, =0 {Alert at start time} one {Alert # minute before} other {Alert # minutes before}}",
+    "alertHours": "{hours, plural, one {Alert # hour before} other {Alert # hours before}}",
+    "alertDays": "{days, plural, one {Alert # day before} other {Alert # days before}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Repeats every day} other {Repeats every # days}}",
+      "weekly": "{count, plural, one {Repeats every week} other {Repeats every # weeks}}",
+      "weeklyOn": "{count, plural, one {Repeats every week on {days}} other {Repeats every # weeks on {days}}}",
+      "monthly": "{count, plural, one {Repeats every month} other {Repeats every # months}}",
+      "yearly": "{count, plural, one {Repeats every year} other {Repeats every # years}}",
+      "other": "Repeats"
+    }
   },
   "providers": {
     "google": {

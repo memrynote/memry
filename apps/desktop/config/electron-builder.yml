@@ -21,6 +21,9 @@ files:
   - '!app-config'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!**/*.tsbuildinfo'
+  # The macOS Calendar bridge (#1405) never goes into app.asar on any
+  # platform; macOS gets the built helper through mac.extraFiles below.
+  - '!native/**'
   - '!node_modules/**/*.map'
   - '!node_modules/**/{coverage,doc,docs,example,examples,test,tests,__tests__}/**'
 asarUnpack:
@@ -54,11 +57,18 @@ nsis:
 mac:
   artifactName: ${productName}-${version}-${arch}.${ext}
   entitlementsInherit: config/entitlements.mac.plist
+  # The EventKit helper (#1405), macOS only. build-packaged-app.js builds it
+  # before packaging a mac target; it is signed with entitlementsInherit.
+  extraFiles:
+    - from: native/eventkit/bin/memry-eventkit
+      to: MacOS/memry-eventkit
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    - NSCalendarsFullAccessUsageDescription: MemryNote shows the events from your Mac's calendars next to your notes and tasks. They are read on this Mac only and never uploaded or synced.
+    - NSCalendarsUsageDescription: MemryNote shows the events from your Mac's calendars next to your notes and tasks. They are read on this Mac only and never uploaded or synced.
   notarize: true
 linux:
   # electron-builder >=26.13 rejects executable names with unsafe path chars;

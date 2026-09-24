@@ -1,5 +1,8 @@
 import { and, eq, inArray } from 'drizzle-orm'
-import type { CalendarSourceRecord } from '@memry/contracts/calendar-api'
+import {
+  DEVICE_LOCAL_CALENDAR_PROVIDERS,
+  type CalendarSourceRecord
+} from '@memry/contracts/calendar-api'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
@@ -17,7 +20,11 @@ import {
   syncCalendarSourceUpdate
 } from '../runtime-effects'
 
-/** Save a source row, enqueue it for sync as a create or an update, and tell the renderer. */
+/**
+ * Save a source row, enqueue it for sync as a create or an update, and tell the
+ * renderer. A device-local provider's row (`sourceScope: 'device'`) is saved
+ * but never enqueued.
+ */
 export function upsertSyncedCalendarSource(
   db: DataDb,
   source: typeof calendarSources.$inferInsert
@@ -28,9 +35,10 @@ export function upsertSyncedCalendarSource(
     createdAt: existing?.createdAt ?? source.createdAt
   })
 
-  if (existing) {
+  const deviceLocal = DEVICE_LOCAL_CALENDAR_PROVIDERS.sources.includes(source.provider)
+  if (!deviceLocal && existing) {
     syncCalendarSourceUpdate(source.id)
-  } else {
+  } else if (!deviceLocal) {
     syncCalendarSourceCreate(source.id)
   }
 
@@ -101,8 +109,10 @@ export function purgeCalendarSourceMirrors(
     }
   })
 
+  // A device-local mirror was never pushed, so there is nothing to delete remotely.
+  const mirrorSynced = !DEVICE_LOCAL_CALENDAR_PROVIDERS.mirrors.includes(provider)
   for (const row of externalRows) {
-    syncCalendarExternalEventDelete(row.id, JSON.stringify(row))
+    if (mirrorSynced) syncCalendarExternalEventDelete(row.id, JSON.stringify(row))
     emitCalendarChanged({ entityType: 'calendar_external_event', id: row.id })
   }
 

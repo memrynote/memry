@@ -83,6 +83,10 @@ import {
   startCaldavCalendarRunner,
   stopCaldavCalendarRunner
 } from './calendar/caldav/caldav-runner'
+import {
+  startAppleCalendarRunner,
+  stopAppleCalendarRunner
+} from './calendar/eventkit/eventkit-runner'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import { getLogShip, installLogShip } from './telemetry/log-ship'
@@ -1865,6 +1869,8 @@ const appReady = app.whenReady().then(async () => {
       }
       startIcsCalendarRunner()
       startCaldavCalendarRunner()
+      // macOS Calendar (#2374) exists only on macOS; nothing starts elsewhere.
+      if (process.platform === 'darwin') startAppleCalendarRunner()
       void startGoogleCalendarSyncRunner().catch((error) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
         trackMainLog('warn', {
@@ -2348,6 +2354,11 @@ app.on('before-quit', (event) => {
 
         shutdownLog.info('stopping CalDAV calendar runner...')
         stopCaldavCalendarRunner()
+
+        if (process.platform === 'darwin') {
+          shutdownLog.info('stopping macOS Calendar runner...')
+          stopAppleCalendarRunner()
+        }
       }
     },
     {

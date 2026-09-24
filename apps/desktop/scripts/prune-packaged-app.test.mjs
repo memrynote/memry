@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import prunePackagedApp from './prune-packaged-app.mjs'
+import prunePackagedApp, { assertEventKitHelperPlacement } from './prune-packaged-app.mjs'
 
 const VELOPACK_BINARIES = [
   'velopack_nodeffi_win_x64_msvc.node',
@@ -23,6 +23,12 @@ function writeVelopackNative(nodeModulesDir) {
   }
 
   return nativeDir
+}
+
+function writeEventKitHelper(appOutDir) {
+  const macOsDir = path.join(appOutDir, 'Memrynote.app', 'Contents', 'MacOS')
+  fs.mkdirSync(macOsDir, { recursive: true })
+  fs.writeFileSync(path.join(macOsDir, 'memry-eventkit'), '')
 }
 
 function createContext(appOutDir, electronPlatformName, arch) {
@@ -59,6 +65,7 @@ test('darwin universal keeps only the macOS velopack binary', async () => {
     const nativeDir = writeVelopackNative(
       path.join(appOutDir, 'Memrynote.app', 'Contents', 'Resources', 'node_modules')
     )
+    writeEventKitHelper(appOutDir)
 
     await prunePackagedApp(createContext(appOutDir, 'darwin', 'universal'))
 
@@ -94,3 +101,38 @@ test('an unmapped platform-arch leaves every velopack binary in place', async ()
     fs.rmSync(appOutDir, { force: true, recursive: true })
   }
 })
+
+test('a macOS bundle must carry the EventKit helper in Contents/MacOS', () => {
+  const appOutDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-eventkit-placement-'))
+  try {
+    assert.throws(
+      () => assertEventKitHelperPlacement(createContext(appOutDir, 'darwin', 'arm64')),
+      /missing the EventKit helper/
+    )
+    writeEventKitHelper(appOutDir)
+    assert.doesNotThrow(() =>
+      assertEventKitHelperPlacement(createContext(appOutDir, 'darwin', 'arm64'))
+    )
+  } finally {
+    fs.rmSync(appOutDir, { force: true, recursive: true })
+  }
+})
+
+for (const platform of ['win32', 'linux']) {
+  test(`a ${platform} build must not carry the EventKit helper anywhere`, () => {
+    const appOutDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-eventkit-placement-'))
+    try {
+      fs.mkdirSync(path.join(appOutDir, 'resources'), { recursive: true })
+      assert.doesNotThrow(() =>
+        assertEventKitHelperPlacement(createContext(appOutDir, platform, 'x64'))
+      )
+      fs.writeFileSync(path.join(appOutDir, 'resources', 'memry-eventkit'), '')
+      assert.throws(
+        () => assertEventKitHelperPlacement(createContext(appOutDir, platform, 'x64')),
+        /must not contain the macOS EventKit helper/
+      )
+    } finally {
+      fs.rmSync(appOutDir, { force: true, recursive: true })
+    }
+  })
+}
