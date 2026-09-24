@@ -118,6 +118,11 @@ final class TasksUITests: XCTestCase {
         nameField.typeText(name)
         app.buttons["tasks.filter.saveConfirm"].firstMatch.tap()
         let saved = app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
+        // Earlier runs leave saved filters behind; the new one may be below
+        // the sheet's fold, where a lazy list has not built its row yet.
+        for _ in 0 ..< 6 where !saved.waitForExistence(timeout: 1) {
+            app.swipeUp()
+        }
         XCTAssertTrue(saved.waitForExistence(timeout: 5))
         XCTAssertTrue(saved.isSelected, "a just-saved filter is the applied one")
 
