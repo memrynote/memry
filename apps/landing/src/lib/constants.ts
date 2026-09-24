@@ -810,6 +810,11 @@ export const PRICING_FAQ_ITEMS = [
       'A supporter package. You get everything in Pro, 50 GB of encrypted sync storage, unlimited vaults, early access to new features, your name in the credits, and the satisfaction of helping keep memrynote independent.'
   },
   {
+    question: 'Can I pay for Believer in installments?',
+    answer:
+      'Yes, on request. Email kaan@memrynote.com and we will set up monthly installments through Paddle. Believer activates after the first payment.'
+  },
+  {
     question: 'Can I upgrade or downgrade later?',
     answer:
       'Yes. Upgrades pro-rate immediately. Downgrades take effect at the end of your billing period — if you have more vaults than the new tier allows, existing data stays readable while you archive what you no longer need.'
