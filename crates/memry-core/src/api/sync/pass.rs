@@ -129,8 +129,10 @@ impl VaultSync {
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
+        // The server's id for this device, not the local clock id: the server
+        // finds the signer among registered devices (`registered_device_id`).
         let signer = DeviceSigner::new(
-            &self.session.device_id()?,
+            &self.session.registered_device_id()?,
             self.session.signing_secret_key()?,
         )
         .map_err(|e| StorageError::Failed {

@@ -285,8 +285,11 @@ final class TasksStore {
         isSyncing = true
         defer { isSyncing = false }
         do {
-            _ = try await filler.syncNow()
-            Log.sync.info("task sync pass finished")
+            let pass = try await filler.syncNow()
+            Log.sync.info("task sync pass pulled", .count(Int(pass.pulled)))
+            Log.sync.info("task sync pass pushed", .count(Int(pass.pushed)))
+            if pass.rejected > 0 { Log.sync.error("task sync pass rejected", .count(Int(pass.rejected))) }
+            if pass.pending > 0 { Log.sync.info("task sync pass left pending", .count(Int(pass.pending))) }
         } catch {
             report(error)
         }

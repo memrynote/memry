@@ -87,7 +87,9 @@ impl VaultSync {
             &sodium::random_bytes(24),
             &sodium::random_bytes(24),
             &signing_key,
-            &device_id,
+            // Signed as the server's id for this device, which other devices
+            // resolve to a public key; `device_id` stays the local clock id.
+            &self.session.registered_device_id()?,
         )
         .map_err(|error| SyncError::AttachmentCorrupt {
             what: error.to_string(),
