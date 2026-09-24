@@ -198,6 +198,22 @@ because those are attempt counters and a still-broken item simply re-quarantines
 quarantines are the record that keeps a failed-signature item out of the vault and are never dropped
 to satisfy the cap.
 
+A payload this build's schema refuses, usually a newer peer's shape, is not dropped. The item
+returns `'schema_invalid'` and goes into a persisted ledger (`schemaInvalidItems` sync-state key)
+with the app version that refused it, and the cursor moves on, because one global cursor cannot wait
+for one item. Once another app version runs, the next pull re-fetches every ledger entry by id, in
+100-id requests, and applies it again in FK order. An entry the new build still refuses is kept with
+the new version; one that applies, or that the server no longer has, leaves the ledger. A pulled item
+that fails the envelope schema goes into the ledger too, while its page-mates apply; because that is
+usually a server fault, it is also retried after the one-hour corrupt-item cooldown. Ledger entries
+are listed with the quarantined items and count as known to the manifest check, so they never
+trigger a full re-pull. Orphan repair never tombstones a child whose parent the server still has,
+even when this build cannot apply the parent.
+
+A `/sync/pull` body that is not a pull envelope at all is a server contract regression: the cursor
+holds, the run is refused and sync shows a server error, so the page re-arrives once the server
+answers correctly.
+
 Each pulled page applies inside one SQLite transaction. Handlers run synchronously inside it; the
 files they produce (a note or journal markdown file, a rewritten `.memry/properties.md` after a
 remote property-definition delete) are recorded in a crash journal just before the commit and
