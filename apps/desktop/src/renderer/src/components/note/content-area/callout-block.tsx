@@ -200,8 +200,23 @@ export type CalloutSegment = { kind: 'callout'; run: CalloutRun; markers: string
  */
 export type QuoteSegment = { kind: 'quote'; run: QuoteRun; markers: string[] }
 export type MarkdownSegment = { kind: 'markdown'; text: string }
-export type ContentSegment = CalloutSegment | QuoteSegment | MarkdownSegment
+/**
+ * Blank lines beyond the standard paragraph break at a callout's or a quote's
+ * edge. Callers emit `extraLines` empty paragraphs, exactly as for the toggle
+ * splitter's gap segment (#1877).
+ */
+export type GapSegment = { kind: 'gap'; extraLines: number }
+export type ContentSegment = CalloutSegment | QuoteSegment | MarkdownSegment | GapSegment
 
+/**
+ * Split markdown into claimed callout / structured quote runs and the markdown
+ * between them.
+ *
+ * This runs BEFORE `splitMarkdownPreservingBlanks`, so the blank lines at each
+ * run's edge never reach the blank-line scanner: they are this function's to
+ * carry, as `gap` segments, or they collapse to a single paragraph break on the
+ * next write-back (#1892). Same rules as `splitMarkdownByToggles`.
+ */
 export function splitMarkdownByBlockquoteRuns(markdown: string): ContentSegment[] {
   const lines = markdown.split('\n')
   const segments: ContentSegment[] = []
@@ -210,9 +225,31 @@ export function splitMarkdownByBlockquoteRuns(markdown: string): ContentSegment[
   let mdLines: string[] = []
   let i = 0
 
+  // One blank line is the paragraph break assembly writes on its own, so only
+  // the lines beyond it are carried. A gap before the first segment is dropped:
+  // with nothing in front, assembly's `\n\n` would add blank lines, not extend
+  // a separator (see `splitMarkdownByToggles`).
+  const pushGap = (blankLines: number): void => {
+    if (segments.length > 0 && blankLines > 1) {
+      segments.push({ kind: 'gap', extraLines: blankLines - 1 })
+    }
+  }
+
   const flushMarkdown = (): void => {
-    const text = mdLines.join('\n').trim()
-    if (text) segments.push({ kind: 'markdown', text })
+    let first = 0
+    while (first < mdLines.length && mdLines[first].trim() === '') first++
+    let afterLast = mdLines.length
+    while (afterLast > first && mdLines[afterLast - 1].trim() === '') afterLast--
+
+    const text = mdLines.slice(first, afterLast).join('\n').trim()
+    if (text) {
+      pushGap(first)
+      segments.push({ kind: 'markdown', text })
+      pushGap(mdLines.length - afterLast)
+    } else {
+      // Nothing but blanks: a single seam between two runs, counted once.
+      pushGap(mdLines.length)
+    }
     mdLines = []
   }
 

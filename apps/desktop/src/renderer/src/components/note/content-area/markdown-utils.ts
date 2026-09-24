@@ -359,10 +359,7 @@ async function parseMaskedMarkdown(editor: any, markdown: string): Promise<Block
       // Blank lines the user left at a toggle's edge. Same currency, and the
       // same empty paragraphs, as a gap the blank-line scanner finds inside a
       // markdown segment (#1877).
-      for (let i = 0; i < segment.extraLines; i++) {
-        // SAFETY: an empty paragraph, the schema's own default block.
-        blocks.push({ type: 'paragraph', content: [], children: [], props: {} } as unknown as Block)
-      }
+      pushEmptyParagraphs(blocks, segment.extraLines)
     } else {
       blocks.push(...(await parseMarkdownWithoutToggles(editor, segment.text)))
     }
@@ -385,12 +382,23 @@ async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Pro
   } as unknown as Block
 }
 
+function pushEmptyParagraphs(blocks: Block[], count: number): void {
+  for (let i = 0; i < count; i++) {
+    // SAFETY: an empty paragraph, the schema's own default block.
+    blocks.push({ type: 'paragraph', content: [], children: [], props: {} } as unknown as Block)
+  }
+}
+
 async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promise<Block[]> {
   const quotedSegments = splitMarkdownByBlockquoteRuns(markdown)
   const blocks: Block[] = []
 
   for (const cseg of quotedSegments) {
-    if (cseg.kind === 'quote') {
+    if (cseg.kind === 'gap') {
+      // Blank lines at a callout's or a quote's edge; the blank-line scanner
+      // never sees them, so they are carried here (#1892).
+      pushEmptyParagraphs(blocks, cseg.extraLines)
+    } else if (cseg.kind === 'quote') {
       const claimed = await resolveQuoteRun(
         cseg.run,
         async (md) => parseMarkdown(editor, md),

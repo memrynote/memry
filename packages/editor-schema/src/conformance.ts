@@ -170,11 +170,14 @@ const calloutCases: RoundtripCase[] = [
   },
   {
     // #1877's defect one splitter over: the renderer reads callout and quote
-    // runs BEFORE the blank-line scanner, so a gap at their edge is trimmed
-    // away. Main reads them after, and keeps it.
+    // runs BEFORE the blank-line scanner, so the splitter itself has to carry
+    // the gap at their edge (#1892). Main reads them after the scanner.
     name: 'extra blank line next to a callout survives',
-    markdown: `Before\n\n\n${serializeCalloutBlock('info', 'Body')}\n\n\nAfter`,
-    pending: { renderer: 1892 }
+    markdown: `Before\n\n\n${serializeCalloutBlock('info', 'Body')}\n\n\nAfter`
+  },
+  {
+    name: 'extra blank line next to a structured quote survives',
+    markdown: 'Before\n\n\n> One\n>\n> Two\n\n\n\nAfter'
   },
   {
     // Lazy continuation, the one shape in this group that cannot be identity:
@@ -1552,9 +1555,6 @@ export const FUZZ_FAMILIES: readonly FuzzFamily[] = [
   { name: 'toggle summaries and bodies', generate: (random) => fuzzToggleMarkdown(random) },
   {
     name: 'mixed documents',
-    generate: fuzzMixedDocumentMarkdown,
-    // The gap join reaches a callout's edge too, and the renderer's
-    // blockquote splitter still trims those (#1892). Main is already green.
-    pending: { renderer: 1892 }
+    generate: fuzzMixedDocumentMarkdown
   }
 ]

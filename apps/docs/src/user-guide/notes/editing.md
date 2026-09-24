@@ -289,6 +289,9 @@ Both survive a save, byte for byte. A note written in Obsidian with multi-paragr
 nested quotes opens here and is written back exactly as its author wrote it, so the two
 apps can edit the same vault without either one reflowing the other's quotes.
 
+The blank lines around a quote or a callout are kept the same way: an extra blank line
+above or below one is still there the next time the note is opened.
+
 A nested quote written without the blank line between the levels (`> Outer` directly
 above `> > Inner`) keeps its nesting too, but not its exact bytes: the blank quote line
 is added on the first save, and the file stops changing after that. Markdown reads both
