@@ -36,6 +36,7 @@ import type * as Y from 'yjs'
 import {
   CRITIC_MARKUP_MARKS_ARRAY,
   readCriticMarkupMarksFromYDoc,
+  serializeCriticMarkup,
   writeCriticMarkupMarksToYDoc
 } from '@memry/shared'
 import { cn } from '@/lib/utils'
@@ -598,7 +599,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Hook #2b: Explicit teardown. `useCreateBlockNote` never disposes what it
   // builds, so the editor is destroyed here — after the pending markdown save
   // has been flushed, since serializing needs a live editor.
-  useEditorTeardown(editor, flushPendingMarkdown)
+  //
+  // Serializing is async, so that flush lands after the owner has already run
+  // its own unmount cleanup, or moved on to another note (#1900). The owner's
+  // review state then belongs to whatever it shows now, so the flushed markdown
+  // is merged with this editor's last marks rather than routed through
+  // `review.onPlainMarkdownChange`, which would write it into that state.
+  const mergesReviewMarks = Boolean(review?.onPlainMarkdownChange)
+  useEditorTeardown(editor, () =>
+    flushPendingMarkdown((markdown) =>
+      onMarkdownChange?.(
+        mergesReviewMarks ? serializeCriticMarkup(markdown, reviewMarksRef.current) : markdown
+      )
+    )
+  )
 
   useEffect(() => {
     onReviewEditorReady?.(editor)

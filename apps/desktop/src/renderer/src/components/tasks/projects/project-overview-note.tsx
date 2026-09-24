@@ -48,6 +48,8 @@ export const ProjectOverviewNote = ({
   // flushed on unmount / homeNoteId change and by the app save-registry.
   const pendingMarkdownRef = useRef<string | null>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The home note whose save lifecycle is running, cleared once its flush ran.
+  const liveNoteIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!homeNoteId) {
@@ -88,6 +90,7 @@ export const ProjectOverviewNote = ({
     if (!homeNoteId) return
 
     const registryKey = `project-overview:${homeNoteId}`
+    liveNoteIdRef.current = homeNoteId
     const flush = async (): Promise<void> => {
       const pending = pendingMarkdownRef.current
       if (pending !== null) {
@@ -105,12 +108,26 @@ export const ProjectOverviewNote = ({
       }
       void flush()
       unregisterPendingSave(registryKey)
+      if (liveNoteIdRef.current === homeNoteId) liveNoteIdRef.current = null
     }
   }, [homeNoteId])
 
   const handleMarkdownChange = useCallback(
     (markdown: string) => {
       if (!homeNoteId) return
+      // The editor's teardown flush reports its last edit after the flush above
+      // already ran (#1900). Queued in the refs it would ride along with the
+      // next home note's save, so it is saved now, to the note it was typed in.
+      if (liveNoteIdRef.current !== homeNoteId) {
+        notesService.update({ id: homeNoteId, content: markdown }).catch((error: unknown) => {
+          log.error(
+            'Failed to save overview note',
+            extractErrorMessage(error, t('projectHome.overview.saveError'))
+          )
+          trackRendererError('project_overview_note_save', error)
+        })
+        return
+      }
       if (markdown === lastSavedContentRef.current) return
 
       pendingMarkdownRef.current = markdown
