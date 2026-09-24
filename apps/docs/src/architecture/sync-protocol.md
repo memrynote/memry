@@ -501,7 +501,30 @@ terminal status.
 
 ## Cursors
 
-`server_cursor_sequence` tracks per-device pull progress. Pull is incremental: fetch everything strictly after the cursor, advance, repeat.
+`server_cursor_sequence` holds one counter per user. Every accepted push row takes the next value as
+its `server_cursor`. Each device keeps its own pull cursor, `LAST_CURSOR`, which means "every row at
+or below this value is applied here". Pull is incremental: fetch everything strictly after the
+cursor, apply it, advance, repeat.
+
+Two rules keep that paging lossless.
+
+- **The server reserves a push's cursors inside the transaction that commits its rows.** When the
+  reservation ran in a separate D1 batch, a later push could take a higher range, commit first, and
+  let a reader page past the lower range before those rows existed. The reader then never saw them.
+- **Only the pull moves `LAST_CURSOR`.** The push response's `maxCursor` says where this device's own
+  rows landed, not that the rows below it were pulled. A desktop build that moved `LAST_CURSOR` to
+  `maxCursor` skipped every peer row that was still unpulled at that moment.
+
+Installs that ran a build with either bug may already have skipped a range. On the first full sync
+of a fixed build, the desktop resets `LAST_CURSOR` to 0 once, under the sync lock, and re-pulls its
+whole history. Rows it already holds at the same or a newer clock change nothing. The
+`cursorSkipRepair` sync-state key tracks the repair: `pending:<cursor>` after the reset, `done` after
+a pull delivered. An interrupted repair resumes from the persisted cursor on the next full sync, so a
+page the pull refuses every time costs one pass, not one per sync. A device with no cursor yet pulls
+from 0 anyway and records `done` without a reset.
+
+The server fix has to be live before a desktop build runs the repair: a repair pull that races a
+peer push on an old Worker can skip the range again and still record `done`.
 
 ## Pull Scheduling and Hang Recovery
 
