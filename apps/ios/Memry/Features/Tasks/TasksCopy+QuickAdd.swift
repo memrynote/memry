@@ -9,6 +9,9 @@ extension TasksCopy {
 
     static let quickAddLabel = "Quick add task"
     static let quickAddPlaceholder = "Add a task…  @tomorrow  !high  +project  #tag"
+    /// At accessibility text sizes the token hints would fill the screen; the
+    /// help sheet still lists them.
+    static let quickAddPlaceholderShort = "Add a task…"
     static let quickAddSubmit = "Add task"
     static let quickAddOpenDetail = "Open in Add Task"
     static let quickAddAccept = "Accept suggestion"

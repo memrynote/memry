@@ -11,6 +11,7 @@ import SwiftUI
 /// The filter sheet.
 struct TaskFilterSheet: View {
     let store: TasksStore
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     @Environment(\.dismiss) private var dismiss
     @State private var search = ""
@@ -64,7 +65,12 @@ struct TaskFilterSheet: View {
 
     private var presetSection: some View {
         Section(TasksCopy.filterQuickFilters) {
-            FlowLayout(spacing: Tokens.Space.small) {
+            // Pills flow at regular sizes; at accessibility sizes one wide
+            // pill would not fit a row, so they stack full width.
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: Tokens.Space.small))
+                : AnyLayout(FlowLayout(spacing: Tokens.Space.small))
+            layout {
                 ForEach(TaskFilterPreset.allCases) { preset in
                     TaskFilterPresetButton(
                         preset: preset,

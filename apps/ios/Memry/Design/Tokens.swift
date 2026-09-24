@@ -487,22 +487,22 @@ enum Tokens {
     /// completion, repeat and quick-add tokens. Every use pairs the colour with
     /// an icon or text (DESIGN.md: colour is never the only cue).
     enum Task {
-        static let priorityUrgent = AdaptiveColor(light: 0xEF_44_44, dark: 0xEF_44_44)
-        static let priorityHigh = AdaptiveColor(light: 0xF9_73_16, dark: 0xFB_92_3C)
-        static let priorityMedium = AdaptiveColor(light: 0xA0_A0_A8, dark: 0xA0_A0_A8)
+        static let priorityUrgent = AdaptiveColor(light: 0xE7_14_14, dark: 0xEF_44_44)
+        static let priorityHigh = AdaptiveColor(light: 0xC3_53_05, dark: 0xFB_92_3C)
+        static let priorityMedium = AdaptiveColor(light: 0x73_73_7E, dark: 0xA0_A0_A8)
         static let priorityLow = AdaptiveColor(light: 0x50_50_5A, dark: 0x8A_8A_94)
         static let dueOverdue = AdaptiveColor(light: 0xDC_26_26, dark: 0xF8_71_71)
         static let dueToday = AdaptiveColor(light: 0xB4_5F_06, dark: 0xFB_BF_24)
         static let dueTomorrow = AdaptiveColor(light: 0x25_63_EB, dark: 0x60_A5_FA)
         static let dueUpcoming = AdaptiveColor(light: 0x4F_46_E5, dark: 0x81_8C_F8)
         static let complete = AdaptiveColor(light: 0x15_80_3D, dark: 0x4A_DE_80)
-        static let progress = AdaptiveColor(light: 0x3B_82_F6, dark: 0x60_A5_FA)
+        static let progress = AdaptiveColor(light: 0x19_6C_F4, dark: 0x60_A5_FA)
         static let repeatMark = AdaptiveColor(light: 0x25_63_EB, dark: 0x60_A5_FA)
         static let star = AdaptiveColor(light: 0xB4_5F_06, dark: 0xFB_BF_24)
         static let tokenDate = AdaptiveColor(light: 0xB4_5F_06, dark: 0xFB_BF_24)
         static let tokenProject = AdaptiveColor(light: 0x25_63_EB, dark: 0x93_C5_FD)
         static let tokenTag = AdaptiveColor(light: 0x7C_3A_ED, dark: 0xA7_8B_FA)
-        static let tokenNote = AdaptiveColor(light: 0x0D_94_88, dark: 0x2D_D4_BF)
+        static let tokenNote = AdaptiveColor(light: 0x0B_81_77, dark: 0x2D_D4_BF)
 
         /// 0 none .. 4 urgent, desktop's `priorityConfig` colours.
         static func priority(_ value: Int64) -> AdaptiveColor {

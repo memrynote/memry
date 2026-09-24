@@ -28,8 +28,13 @@ struct QuickAddTextView: UIViewRepresentable {
     var focusRequest = 0
 
     func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
+        let view = QuickAddUITextView()
         view.delegate = context.coordinator
+        // The overlays follow the view's own layout: an update can arrive
+        // before the view has a width, which left the placeholder zero-wide
+        // until something else redrew the field.
+        let coordinator = context.coordinator
+        view.onLayout = { [weak coordinator] layoutView in coordinator?.layoutOverlays(in: layoutView) }
         view.isScrollEnabled = false
         view.backgroundColor = .clear
         view.textContainerInset = UIEdgeInsets(
@@ -49,7 +54,8 @@ struct QuickAddTextView: UIViewRepresentable {
         placeholderLabel.font = Self.font
         placeholderLabel.adjustsFontForContentSizeCategory = true
         placeholderLabel.textColor = Tokens.Text.tertiary.uiColor
-        placeholderLabel.numberOfLines = 1
+        // Wraps at large text sizes instead of clipping; the field grows to it.
+        placeholderLabel.numberOfLines = 0
         placeholderLabel.isAccessibilityElement = false
         view.addSubview(placeholderLabel)
 
@@ -65,7 +71,15 @@ struct QuickAddTextView: UIViewRepresentable {
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width.isFinite else { return nil }
         let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        return CGSize(width: width, height: max(ceil(fitted.height), Tokens.Size.minimumHitArea))
+        var height = fitted.height
+        if uiView.text.isEmpty {
+            let insets = uiView.textContainerInset
+            let placeholder = context.coordinator.placeholder.sizeThatFits(
+                CGSize(width: max(width - insets.left - insets.right, 0), height: .greatestFiniteMagnitude)
+            )
+            height = max(height, placeholder.height + insets.top + insets.bottom)
+        }
+        return CGSize(width: width, height: max(ceil(height), Tokens.Size.minimumHitArea))
     }
 
     func updateUIView(_ view: UITextView, context: Context) {
@@ -139,9 +153,10 @@ struct QuickAddTextView: UIViewRepresentable {
         /// true).
         func layoutOverlays(in view: UITextView) {
             let origin = CGPoint(x: view.textContainerInset.left, y: view.textContainerInset.top)
+            let lineWidth = max(view.bounds.width - origin.x - view.textContainerInset.right, 0)
+            let height = placeholder.sizeThatFits(CGSize(width: lineWidth, height: .greatestFiniteMagnitude)).height
             placeholder.frame = CGRect(
-                origin: origin,
-                size: CGSize(width: max(view.bounds.width - origin.x, 0), height: Self.lineHeight)
+                origin: origin, size: CGSize(width: lineWidth, height: max(height, Self.lineHeight))
             )
             let atEnd = view.selectedRange == NSRange(location: view.textStorage.length, length: 0)
             guard let ghost = parent.ghost, !ghost.isEmpty, atEnd, view.isFirstResponder else {
@@ -192,5 +207,16 @@ struct QuickAddTextView: UIViewRepresentable {
                 return true
             }
         }
+    }
+}
+
+/// A text view that reports each layout pass, so the placeholder and ghost
+/// overlays are placed once it has its real size.
+private final class QuickAddUITextView: UITextView {
+    var onLayout: ((UITextView) -> Void)?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onLayout?(self)
     }
 }

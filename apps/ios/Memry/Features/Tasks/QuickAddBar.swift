@@ -15,6 +15,7 @@ struct QuickAddBar: View {
     var defaultProjectId: String?
 
     @State private var text = ""
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var isFocused = false
     @State private var parse: QuickAddParse?
     @State private var parsedText = ""
@@ -40,7 +41,9 @@ struct QuickAddBar: View {
                     spans: currentSpans,
                     priority: parsedText == text ? parse?.priority ?? 0 : 0,
                     ghost: ghost?.remainder,
-                    placeholder: TasksCopy.quickAddPlaceholder,
+                    placeholder: typeSize.isAccessibilitySize
+                        ? TasksCopy.quickAddPlaceholderShort
+                        : TasksCopy.quickAddPlaceholder,
                     onSubmit: { Task { await submit() } },
                     onAcceptGhost: acceptGhost,
                     focusRequest: focusRequest

@@ -58,6 +58,8 @@ struct TaskFilterPresetButton: View {
     let isActive: Bool
     let action: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         Button(action: action) {
             // Icon and text spelled out: a `Label` inside a form row takes the
@@ -66,9 +68,11 @@ struct TaskFilterPresetButton: View {
                 Image(systemName: preset.symbol)
                     .accessibilityHidden(true)
                 Text(TasksCopy.presetLabel(preset))
-                    .lineLimit(1)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
             }
-            .fixedSize()
+            // One line at regular sizes; at accessibility sizes the pills
+            // stack full width (TaskFilterSheet) and the label may wrap.
+            .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: true)
             .font(Tokens.Typography.label.font)
             .foregroundStyle(isActive ? Tokens.Interaction.actionForeground.color : Tokens.Text.primary.color)
             .padding(.horizontal, Tokens.Space.medium)

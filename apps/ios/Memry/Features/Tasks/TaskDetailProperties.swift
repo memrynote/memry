@@ -229,20 +229,28 @@ struct TaskDetailProperties: View {
 }
 
 /// One property row: the label leading, the value trailing, the whole row a
-/// 44pt target read as "label, value".
+/// 44pt target read as "label, value". At accessibility text sizes the value
+/// goes under the label, so neither is broken mid-word.
 struct TaskDetailRow<Value: View>: View {
     let label: String
     @ViewBuilder let value: () -> Value
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(spacing: Tokens.Space.medium) {
+        let stacked = typeSize.isAccessibilitySize
+        let layout = stacked
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Tokens.Space.tight))
+            : AnyLayout(HStackLayout(spacing: Tokens.Space.medium))
+        layout {
             Text(label)
                 .foregroundStyle(Tokens.Text.secondary.color)
-            Spacer(minLength: Tokens.Space.small)
+            if !stacked { Spacer(minLength: Tokens.Space.small) }
             value()
                 .foregroundStyle(Tokens.Text.primary.color)
-                .multilineTextAlignment(.trailing)
+                .multilineTextAlignment(stacked ? .leading : .trailing)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .font(Tokens.Typography.body.font)
         .frame(minHeight: Tokens.Size.minimumHitArea)
         .contentShape(.rect)

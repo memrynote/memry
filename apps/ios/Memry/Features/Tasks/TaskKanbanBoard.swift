@@ -71,6 +71,7 @@ private struct KanbanBoardHeader: View {
     let onDrop: (String, KanbanColumn) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         HStack(spacing: Tokens.Space.small) {
@@ -101,7 +102,10 @@ private struct KanbanBoardHeader: View {
                 }
             }
         } label: {
+            // Icon only at accessibility sizes, where the name would break
+            // mid-word beside the strip; the spoken label carries it.
             Label(TasksCopy.kanbanModeLabel(store.kanbanMode), systemImage: "rectangle.split.3x1")
+                .labelStyle(ModeLabelStyle(iconOnly: typeSize.isAccessibilitySize))
                 .font(Tokens.Typography.label.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
                 .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
@@ -171,5 +175,20 @@ private struct KanbanStripChip: View {
 
     private var background: Color {
         isVisible || isTargeted ? Tokens.Canvas.surfaceActive.color : Tokens.Canvas.surface.color
+    }
+}
+
+private struct ModeLabelStyle: LabelStyle {
+    let iconOnly: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly {
+            configuration.icon
+        } else {
+            HStack(spacing: Tokens.Space.tight) {
+                configuration.icon
+                configuration.title.lineLimit(1)
+            }
+        }
     }
 }
