@@ -13,7 +13,7 @@ use crate::domain::projects::{Project, ProjectLink, ProjectSummary, Status};
 use crate::domain::repeat_config::{EndType, Frequency, MonthlyType, RepeatConfig};
 use crate::domain::task_filter::TaskGroup;
 use crate::domain::task_records::TaskRecord;
-use crate::domain::tasks::{Completion, Prior, TaskWrite};
+use crate::domain::tasks::{Completion, Prior, Removed, TaskWrite};
 
 /// One task.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
@@ -215,6 +215,15 @@ pub struct TaskChange {
     pub changed: Vec<TaskPrior>,
     pub created: Vec<String>,
     pub deleted: Vec<String>,
+    /// Each deleted task's last payload, so an undo can bring it back.
+    pub removed: Vec<RemovedTask>,
+}
+
+/// A deleted task's last payload as JSON text (opaque to the shell).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RemovedTask {
+    pub task_id: String,
+    pub json: String,
 }
 
 impl From<TaskWrite> for TaskChange {
@@ -237,6 +246,14 @@ impl From<TaskWrite> for TaskChange {
                 .collect(),
             created: write.created,
             deleted: write.deleted,
+            removed: write
+                .removed
+                .into_iter()
+                .map(|removed| RemovedTask {
+                    task_id: removed.task_id,
+                    json: Value::Object(removed.payload).to_string(),
+                })
+                .collect(),
         }
     }
 }
@@ -264,6 +281,17 @@ impl TaskChange {
                 .collect(),
             created: self.created.clone(),
             deleted: self.deleted.clone(),
+            removed: self
+                .removed
+                .iter()
+                .filter_map(|removed| match serde_json::from_str(&removed.json) {
+                    Ok(Value::Object(payload)) => Some(Removed {
+                        task_id: removed.task_id.clone(),
+                        payload,
+                    }),
+                    _ => None,
+                })
+                .collect(),
         }
     }
 }

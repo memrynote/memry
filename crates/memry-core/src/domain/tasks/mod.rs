@@ -80,7 +80,7 @@ pub mod lifecycle;
 pub mod model;
 pub mod structure;
 
-pub use batch::{Prior, TaskWrite, undo, write_fields};
+pub use batch::{Prior, Removed, TaskWrite, undo, write_fields};
 pub use bulk::*;
 pub use create::{TaskDetails, create_detailed, duplicate};
 pub use fields::*;

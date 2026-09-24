@@ -10,6 +10,7 @@
 //! | the view answers tabs, counts and done like desktop       | D4                |
 //! | projects, saved filters and settings round-trip           | D2, TP022, TP023  |
 //! | quick add and date parsing cross the FFI                  | D1                |
+//! | undoing a delete brings the task and subtasks back        | TP051             |
 
 mod http_fakes;
 
@@ -390,4 +391,45 @@ fn quick_add_and_date_parsing_cross_the_ffi() {
         repeat_preview(rule, "2026-01-14".into(), 3),
         vec!["2026-01-14", "2026-01-19", "2026-01-21"]
     );
+}
+
+#[test]
+fn undoing_a_delete_brings_the_task_and_its_subtasks_back() {
+    let vault = vault();
+    let tasks = tasks(&vault);
+    let work = project(&tasks, "Agent Test Undo");
+    inbound(
+        &vault,
+        "task",
+        "t-parent",
+        json!({"title": "[agent] parent", "projectId": work, "priority": 3,
+               "tags": ["keep"], "futureField": 7, "clock": {"desktop": 1}}),
+    );
+    let mut child = input("[agent] child", &work);
+    child.parent_id = Some("t-parent".into());
+    tasks.create(child).expect("child");
+
+    let removed = tasks.delete("t-parent".into(), false).expect("delete");
+    assert_eq!(removed.deleted.len(), 2);
+    assert!(tasks.all().expect("all").is_empty());
+
+    let back = tasks.undo(removed).expect("undo");
+    assert_eq!(back.created.len(), 2);
+    let all = tasks.all().expect("all");
+    let parent = all
+        .iter()
+        .find(|t| t.title == "[agent] parent")
+        .expect("parent back");
+    let child = all
+        .iter()
+        .find(|t| t.title == "[agent] child")
+        .expect("child back");
+    assert_ne!(parent.id, "t-parent", "a tombstoned id is never reused");
+    assert_eq!(parent.priority, 3);
+    assert_eq!(parent.tags, ["keep"]);
+    assert_eq!(child.parent_id.as_deref(), Some(parent.id.as_str()));
+    assert_eq!(stored_payload(&vault, &parent.id)["futureField"], json!(7));
+
+    tasks.undo(back).expect("undo the undo");
+    assert!(tasks.all().expect("all").is_empty());
 }

@@ -12961,6 +12961,63 @@ public func FfiConverterTypeReminderSummary_lower(_ value: ReminderSummary) -> R
 
 
 /**
+ * A deleted task's last payload as JSON text (opaque to the shell).
+ */
+public struct RemovedTask: Equatable, Hashable {
+    public var taskId: String
+    public var json: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: String, json: String) {
+        self.taskId = taskId
+        self.json = json
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension RemovedTask: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRemovedTask: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RemovedTask {
+        return
+            try RemovedTask(
+                taskId: FfiConverterString.read(from: &buf), 
+                json: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RemovedTask, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.taskId, into: &buf)
+        FfiConverterString.write(value.json, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRemovedTask_lift(_ buf: RustBuffer) throws -> RemovedTask {
+    return try FfiConverterTypeRemovedTask.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRemovedTask_lower(_ value: RemovedTask) -> RustBuffer {
+    return FfiConverterTypeRemovedTask.lower(value)
+}
+
+
+/**
  * A repeat rule in desktop's `RepeatConfig` terms.
  */
 public struct RepeatRule: Equatable, Hashable {
@@ -14236,13 +14293,21 @@ public struct TaskChange: Equatable, Hashable {
     public var changed: [TaskPrior]
     public var created: [String]
     public var deleted: [String]
+    /**
+     * Each deleted task's last payload, so an undo can bring it back.
+     */
+    public var removed: [RemovedTask]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(changed: [TaskPrior], created: [String], deleted: [String]) {
+    public init(changed: [TaskPrior], created: [String], deleted: [String], 
+        /**
+         * Each deleted task's last payload, so an undo can bring it back.
+         */removed: [RemovedTask]) {
         self.changed = changed
         self.created = created
         self.deleted = deleted
+        self.removed = removed
     }
 
     
@@ -14263,7 +14328,8 @@ public struct FfiConverterTypeTaskChange: FfiConverterRustBuffer {
             try TaskChange(
                 changed: FfiConverterSequenceTypeTaskPrior.read(from: &buf), 
                 created: FfiConverterSequenceString.read(from: &buf), 
-                deleted: FfiConverterSequenceString.read(from: &buf)
+                deleted: FfiConverterSequenceString.read(from: &buf), 
+                removed: FfiConverterSequenceTypeRemovedTask.read(from: &buf)
         )
     }
 
@@ -14271,6 +14337,7 @@ public struct FfiConverterTypeTaskChange: FfiConverterRustBuffer {
         FfiConverterSequenceTypeTaskPrior.write(value.changed, into: &buf)
         FfiConverterSequenceString.write(value.created, into: &buf)
         FfiConverterSequenceString.write(value.deleted, into: &buf)
+        FfiConverterSequenceTypeRemovedTask.write(value.removed, into: &buf)
     }
 }
 
@@ -20588,6 +20655,31 @@ fileprivate struct FfiConverterSequenceTypeReminderSummary: FfiConverterRustBuff
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeReminderSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeRemovedTask: FfiConverterRustBuffer {
+    typealias SwiftType = [RemovedTask]
+
+    public static func write(_ value: [RemovedTask], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRemovedTask.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RemovedTask] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RemovedTask]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRemovedTask.read(from: &buf))
         }
         return seq
     }

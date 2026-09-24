@@ -11,6 +11,8 @@
 //! field it changed, and the ids it created and deleted — what a shell needs
 //! to show the result and to offer an undo ([`undo`]).
 
+use std::collections::HashMap;
+
 use rusqlite::{Connection, Transaction};
 use serde_json::Value;
 
@@ -21,7 +23,8 @@ use crate::sync::field_merge::TASK_SYNCABLE_FIELDS;
 use crate::sync::outbox;
 
 use super::super::notes::{failed, insert_local, tombstone_local};
-use super::model::find_live;
+use super::create::seeded;
+use super::model::{find_live, new_task_id};
 use super::{ITEM_TYPE, edit_merged_in};
 
 /// The fields outside `TASK_SYNCABLE_FIELDS` a task write may change. They
@@ -51,6 +54,16 @@ pub struct TaskWrite {
     pub created: Vec<String>,
     /// Ids of the tasks the write tombstoned.
     pub deleted: Vec<String>,
+    /// Each tombstoned task's payload as it was just before the delete, so
+    /// [`undo`] can bring it back.
+    pub removed: Vec<Removed>,
+}
+
+/// A deleted task's last live payload, verbatim (unknown keys included, D7).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Removed {
+    pub task_id: String,
+    pub payload: Object,
 }
 
 impl TaskWrite {
@@ -167,6 +180,12 @@ impl<'c> Batch<'c> {
 
     /// Tombstones one task and queues the delete.
     pub(super) fn delete(&mut self, task_id: &str) -> Result<(), StorageError> {
+        if let Some(stored) = find_live(&self.tx, task_id)? {
+            self.write.removed.push(Removed {
+                task_id: task_id.to_owned(),
+                payload: stored.object,
+            });
+        }
         tombstone_local(&self.tx, ITEM_TYPE, task_id, &self.device_id, self.now_ms)?;
         outbox::enqueue(
             &self.tx,
@@ -184,14 +203,19 @@ impl<'c> Batch<'c> {
     }
 }
 
-/// Reverts a [`TaskWrite`] as one new local write: every changed field is set
-/// back to its prior value (newest change first) and every created task is
-/// tombstoned.
+/// Reverts a [`TaskWrite`] as one new local write: every deleted task comes
+/// back, every changed field is set back to its prior value (newest change
+/// first) and every created task is tombstoned.
 ///
 /// A new write, not a rollback: the clocks tick again, so the revert syncs
-/// like any other edit. A task that has since been deleted is skipped. A
-/// **deleted** task is not brought back — a tombstone is final on the wire —
-/// so a shell that offers undo on delete defers the delete instead.
+/// like any other edit. A task that has since been deleted is skipped.
+///
+/// **A deleted task returns under a new id.** A tombstone is final on the wire
+/// (a peer that saw the delete never resurrects the id), so this recreates
+/// the task from its last payload, as desktop's undo does (`addTask(snapshot)`
+/// in `use-undoable-task-actions.ts`). Subtasks deleted with their parent come
+/// back under the parent's new id, and a prior `parentId` that named a
+/// deleted task is rewritten to its new id.
 pub fn undo(
     conn: &Connection,
     write: &TaskWrite,
@@ -199,13 +223,54 @@ pub fn undo(
     now_ms: i64,
 ) -> Result<TaskWrite, StorageError> {
     let mut batch = Batch::open(conn, device_id, now_ms)?;
+    let renamed: HashMap<&str, String> = write
+        .removed
+        .iter()
+        .map(|removed| (removed.task_id.as_str(), new_task_id()))
+        .collect();
+    let remap = |value: &Value| match value.as_str().and_then(|id| renamed.get(id)) {
+        Some(id) => Value::String(id.clone()),
+        None => value.clone(),
+    };
+    let (parents, subtasks): (Vec<&Removed>, Vec<&Removed>) =
+        write.removed.iter().partition(|removed| {
+            !removed
+                .payload
+                .get("parentId")
+                .is_some_and(|p| !p.is_null())
+        });
+    for removed in parents.into_iter().chain(subtasks) {
+        let Some(id) = renamed.get(removed.task_id.as_str()) else {
+            continue;
+        };
+        let mut fields = removed.payload.clone();
+        for key in [
+            "id",
+            "clock",
+            "fieldClocks",
+            "createdAt",
+            "modifiedAt",
+            "deletedAt",
+        ] {
+            fields.remove(key);
+        }
+        if let Some(parent) = fields.get("parentId").map(&remap) {
+            fields.insert("parentId".to_owned(), parent);
+        }
+        batch.create(id, seeded(fields, device_id, now_ms)?)?;
+    }
     for prior in write.changed.iter().rev() {
         if find_live(batch.conn(), &prior.task_id)?.is_none() {
             continue;
         }
         let mut changes = Vec::new();
         for (field, value) in &prior.fields {
-            changes.push((restorable_field(field)?, value.clone()));
+            let value = if field == "parentId" {
+                remap(value)
+            } else {
+                value.clone()
+            };
+            changes.push((restorable_field(field)?, value));
         }
         batch.edit(&prior.task_id, changes)?;
     }
