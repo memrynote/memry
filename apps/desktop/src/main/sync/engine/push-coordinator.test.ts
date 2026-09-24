@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import { SyncQueueManager, DEFAULT_MAX_ATTEMPTS } from '@memry/sync-client/queue'
 import { setupTestDb, type TestDatabaseResult } from '@tests/utils/engine-mocks'
@@ -37,6 +37,7 @@ vi.mock('../http-client', async (importOriginal) => {
 })
 
 import { PushCoordinator } from './push-coordinator'
+import { PUSH_DEBOUNCE_MS } from './sync-context'
 import { SyncServerError } from '../http-client'
 
 interface QueueRow {
@@ -1022,7 +1023,137 @@ describe('PushCoordinator', () => {
       coordinator.requestPush()
 
       expect(ctx.scheduleSync).not.toHaveBeenCalled()
-      coordinator.clearDebounce()
+      coordinator.stop()
+    })
+  })
+
+  describe('#given requestPush is the leading edge of a push window', () => {
+    /**
+     * The engine's scheduleSync: a cycle scheduled while one is in flight is
+     * chained after it, and `inFlightSync` clears when the chain settles.
+     */
+    function engineLikeScheduling(ctx: SyncContext): ReturnType<typeof vi.fn> {
+      const doPush = vi.fn(async () => undefined)
+      ctx.doPush = doPush
+      ctx.scheduleSync = vi.fn((fn: () => Promise<void>) => {
+        const run = (): Promise<void> =>
+          fn().finally(() => {
+            ctx.inFlightSync = null
+          })
+        ctx.inFlightSync = ctx.inFlightSync ? ctx.inFlightSync.then(run) : run()
+      })
+      return doPush
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    // #2289
+    it('#then a lone request starts a push within one tick', () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+
+      coordinator.requestPush()
+
+      expect(doPush).toHaveBeenCalledTimes(1)
+      expect(vi.getTimerCount()).toBe(0)
+      coordinator.stop()
+    })
+
+    // #2289
+    it('#then five requests inside one window produce one push', async () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(doPush).toHaveBeenCalledTimes(1)
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(20)
+        coordinator.requestPush()
+      }
+      expect(doPush).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(PUSH_DEBOUNCE_MS)
+      expect(doPush).toHaveBeenCalledTimes(2)
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(doPush).toHaveBeenCalledTimes(2)
+      coordinator.stop()
+    })
+
+    // #2289
+    it('#then a request during an in-flight cycle pushes exactly once after it, with no timer', async () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+      let endCycle!: () => void
+      ctx.syncing = true
+      ctx.inFlightSync = new Promise<void>((resolve) => {
+        endCycle = resolve
+      }).then(() => {
+        ctx.syncing = false
+        ctx.inFlightSync = null
+      })
+
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(PUSH_DEBOUNCE_MS * 3)
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(PUSH_DEBOUNCE_MS * 10)
+
+      expect(doPush).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+
+      endCycle()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(doPush).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(doPush).toHaveBeenCalledTimes(1)
+      coordinator.stop()
+    })
+
+    // #2289
+    it('#then a request during a directly started cycle pushes once when the engine signals its end', async () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+      ctx.fullSyncActive = true
+
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(PUSH_DEBOUNCE_MS * 10)
+      expect(doPush).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+
+      ctx.fullSyncActive = false
+      coordinator.onSyncCycleEnded()
+      coordinator.onSyncCycleEnded()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(doPush).toHaveBeenCalledTimes(1)
+
+      coordinator.onSyncCycleEnded()
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(doPush).toHaveBeenCalledTimes(1)
+      coordinator.stop()
+    })
+
+    // #2289
+    it('#then nothing requested before stop() pushes after it', async () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+      ctx.syncing = true
+      coordinator.requestPush()
+
+      coordinator.stop()
+      ctx.syncing = false
+      coordinator.onSyncCycleEnded()
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      expect(doPush).not.toHaveBeenCalled()
     })
   })
 })

@@ -717,14 +717,7 @@ describe('SyncEngine', () => {
   })
 
   describe('#given fullSync active #when requestPush called', () => {
-    it('#then does not schedule push', async () => {
-      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
-        items: [],
-        deleted: [],
-        hasMore: false,
-        nextCursor: 0
-      })
-
+    it('#then the request rides on the fullSync push instead of scheduling another', async () => {
       const initialSeedModule = await import('./initial-seed')
       vi.spyOn(initialSeedModule, 'runInitialSeed').mockImplementation(() => {})
 
@@ -738,26 +731,140 @@ describe('SyncEngine', () => {
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
 
+      // Requested mid-pull, while fullSyncActive is set.
+      const getFromServer = vi
+        .spyOn(await import('./http-client'), 'getFromServer')
+        .mockImplementation(async () => {
+          engine.requestPush()
+          return { items: [], deleted: [], hasMore: false, nextCursor: 0 }
+        })
+
       let pushCallCount = 0
       const origPush = engine.push.bind(engine)
-      const origFullSync = engine.fullSync.bind(engine)
 
       engine.push = async () => {
         pushCallCount++
         return origPush()
       }
 
-      engine.fullSync = async () => {
-        engine.requestPush()
-        return origFullSync()
-      }
-
-      pushCallCount = 0
       await engine.fullSync()
+      await new Promise((r) => setTimeout(r, 500))
 
+      expect(getFromServer).toHaveBeenCalled()
       expect(pushCallCount).toBe(1)
 
       await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given a push is requested while a directly started fullSync runs', () => {
+    const task = (id: string): string =>
+      JSON.stringify({
+        id,
+        title: id,
+        projectId: 'proj-1',
+        priority: 0,
+        position: 0,
+        clock: { 'device-1': 1 }
+      })
+
+    async function stubFullSyncIo(): Promise<void> {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      vi.spyOn(await import('./initial-seed'), 'runInitialSeed').mockImplementation(() => {})
+      // Enqueues after fullSync's first push, so fullSync runs its follow-up push.
+      vi.spyOn(await import('./manifest-check'), 'checkManifestIntegrity').mockImplementation(
+        async ({ queue }) => {
+          queue.enqueue({
+            type: 'task',
+            itemId: 'task-m',
+            operation: 'create',
+            payload: task('task-m')
+          })
+          return { checkedAt: Date.now(), rePullNeeded: false, serverOnlyCount: 0 }
+        }
+      )
+      vi.spyOn(await import('./http-client'), 'postToServer').mockImplementation(
+        async (_path: string, body: unknown) => ({
+          accepted: (body as { items: Array<{ id: string }> }).items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        })
+      )
+    }
+
+    // #2289: no ctx.inFlightSync exists for this cycle, so only the engine's
+    // end-of-cycle signal can run the held push.
+    it('#then it pushes exactly once after the fullSync ends', async () => {
+      await stubFullSyncIo()
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      let pushCallCount = 0
+      const origPush = engine.push.bind(engine)
+      engine.push = async () => {
+        pushCallCount++
+        if (pushCallCount === 2) {
+          // fullSync's follow-up push: after it cleared its own pending flag.
+          deps.queue.enqueue({
+            type: 'task',
+            itemId: 'task-b',
+            operation: 'create',
+            payload: task('task-b')
+          })
+          engine.requestPush()
+        }
+        return origPush()
+      }
+
+      await engine.fullSync()
+
+      await vi.waitFor(() => expect(pushCallCount).toBe(3), { timeout: 200 })
+      await new Promise((r) => setTimeout(r, 1000))
+      expect(pushCallCount).toBe(3)
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+
+    // #2289
+    it('#then nothing requested during stop() pushes after it', async () => {
+      await stubFullSyncIo()
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-a',
+        operation: 'create',
+        payload: task('task-a')
+      })
+
+      let pushCallCount = 0
+      const origPush = engine.push.bind(engine)
+      engine.push = async () => {
+        pushCallCount++
+        deps.queue.enqueue({
+          type: 'task',
+          itemId: `task-late-${pushCallCount}`,
+          operation: 'create',
+          payload: task(`task-late-${pushCallCount}`)
+        })
+        engine.requestPush()
+        return origPush()
+      }
+
+      await engine.stop()
+      expect(pushCallCount).toBe(1)
+
+      // Longer than the old 2 s debounce, which used to fire after stop().
+      await new Promise((r) => setTimeout(r, 2500))
+      expect(pushCallCount).toBe(1)
       vi.restoreAllMocks()
     })
   })

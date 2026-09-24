@@ -4,6 +4,11 @@ import { RateLimitError, SyncServerError } from './http-client'
 
 const log = createLogger('CrdtUpdateQueue')
 
+// Minimum spacing between two flushes of one note (#2289): an update after a
+// quiet window flushes at once, anything closer waits for one trailing flush.
+// Not lowered to the record push's 300 ms: every CRDT push route shares one
+// per-device `crdt_push` bucket (300/min) with snapshot pushes, and 300 ms
+// would let two notes edited at once spend more than all of it.
 const FLUSH_INTERVAL_MS = 1000
 const MAX_BATCH_SIZE = 50
 // Largest single merged update produced by coalescing. Merged updates are
@@ -49,7 +54,9 @@ export interface CrdtUpdateQueueOptions {
 
 export class CrdtUpdateQueue {
   private buffers = new Map<string, BufferedUpdate[]>()
-  private flushTimer: ReturnType<typeof setInterval> | null = null
+  private running = false
+  private flushTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  private lastFlushStartedAt = new Map<string, number>()
   private flushingNotes = new Set<string>()
   /** Notes `dropNote` reached mid-push; their batch must not be re-buffered. */
   private droppedInFlight = new Set<string>()
@@ -74,17 +81,15 @@ export class CrdtUpdateQueue {
 
   start(pushFn: (noteId: string, updates: Uint8Array[]) => Promise<void>): void {
     this.pushFn = pushFn
-    this.flushTimer = setInterval(() => {
-      this.flushAll()
-    }, FLUSH_INTERVAL_MS)
+    this.running = true
     log.info('CrdtUpdateQueue started')
+    this.flushAll()
   }
 
   stop(): void {
-    if (this.flushTimer) {
-      clearInterval(this.flushTimer)
-      this.flushTimer = null
-    }
+    this.running = false
+    for (const timer of this.flushTimers.values()) clearTimeout(timer)
+    this.flushTimers.clear()
     this.flushAll()
 
     // flushAll() no-ops while paused (offline / 401 / quota) and its pushes are
@@ -140,6 +145,7 @@ export class CrdtUpdateQueue {
         this.coalesce(noteId, remaining)
       }
     }
+    this.scheduleFlush(noteId)
 
     // Every cap above is per note; this one bounds the map as a whole.
     if (this.bufferedBytes >= this.nextBudgetSweepBytes) {
@@ -152,8 +158,8 @@ export class CrdtUpdateQueue {
    *
    * The one caller is `CrdtProvider.setNoteLocalOnly` going ON: the note has
    * just been told never to leave this device, and the guard that enforces that
-   * sits at `onDocUpdate`, i.e. at enqueue time. Anything the ~1s flush loop had
-   * not taken yet is already past that guard and would go out on the next tick.
+   * sits at `onDocUpdate`, i.e. at enqueue time. Anything still buffered is
+   * already past that guard and would go out on the note's next flush.
    *
    * Dropping loses nothing. Every update here is also in the local CRDT store,
    * which is what the doc is rebuilt from; the queue only ever held a copy bound
@@ -172,6 +178,10 @@ export class CrdtUpdateQueue {
       this.buffers.delete(noteId)
     }
     if (this.flushingNotes.has(noteId)) this.droppedInFlight.add(noteId)
+    const timer = this.flushTimers.get(noteId)
+    if (timer) clearTimeout(timer)
+    this.flushTimers.delete(noteId)
+    this.lastFlushStartedAt.delete(noteId)
   }
 
   getPendingCount(): number {
@@ -329,11 +339,40 @@ export class CrdtUpdateQueue {
     }
   }
 
+  /**
+   * Leading edge with a trailing guard, per note (#2289). A note with a push in
+   * flight is skipped: its settle calls this again, so an update that landed
+   * mid-push is flushed once after it and never through a re-armed timer.
+   */
+  private scheduleFlush(noteId: string): void {
+    if (!this.running || this.paused) return
+    if (this.flushingNotes.has(noteId) || this.flushTimers.has(noteId)) return
+    if (!this.buffers.get(noteId)?.length) return
+
+    const now = Date.now()
+    const sinceLastFlush = now - (this.lastFlushStartedAt.get(noteId) ?? Number.NEGATIVE_INFINITY)
+    if (sinceLastFlush > FLUSH_INTERVAL_MS && now >= this.rateLimitedUntil) {
+      this.flushNote(noteId)
+      return
+    }
+    const waitMs = Math.max(FLUSH_INTERVAL_MS - sinceLastFlush, this.rateLimitedUntil - now, 0)
+    this.flushTimers.set(
+      noteId,
+      setTimeout(() => {
+        this.flushTimers.delete(noteId)
+        this.flushNote(noteId)
+      }, waitMs)
+    )
+  }
+
   private flushNote(noteId: string): void {
     if (this.paused) return
     // Global, not per note: the server's bucket is per device, so retrying a
     // different note inside the window just burns the same budget.
-    if (Date.now() < this.rateLimitedUntil) return
+    if (Date.now() < this.rateLimitedUntil) {
+      this.scheduleFlush(noteId)
+      return
+    }
     if (this.flushingNotes.has(noteId)) return
 
     const buffer = this.buffers.get(noteId)
@@ -349,6 +388,7 @@ export class CrdtUpdateQueue {
     }
 
     this.flushingNotes.add(noteId)
+    this.lastFlushStartedAt.set(noteId, Date.now())
     this.pushFn(
       noteId,
       updates.map((u) => u.rawUpdate)
@@ -386,6 +426,7 @@ export class CrdtUpdateQueue {
       .finally(() => {
         this.flushingNotes.delete(noteId)
         this.droppedInFlight.delete(noteId)
+        this.scheduleFlush(noteId)
       })
   }
 }

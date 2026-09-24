@@ -283,7 +283,7 @@ export class SyncEngine extends SyncEventEmitter {
   }
 
   async stop(options?: { skipFinalPush?: boolean }): Promise<void> {
-    this.pushCoordinator.clearDebounce()
+    this.pushCoordinator.stop()
     if (this.pullInterval) {
       clearInterval(this.pullInterval)
       this.pullInterval = null
@@ -495,6 +495,8 @@ export class SyncEngine extends SyncEventEmitter {
         dimensions: { transport: 'record' }
       })
       throw error
+    } finally {
+      this.pushCoordinator.onSyncCycleEnded()
     }
   }
 
@@ -714,6 +716,7 @@ export class SyncEngine extends SyncEventEmitter {
     if (this.ctx.state === 'syncing') {
       this.stateManager.setState(this.ctx.deps.network.online ? 'idle' : 'offline')
     }
+    this.pushCoordinator.onSyncCycleEnded()
   }
 
   private async reconnectSync(offlineDurationMs: number): Promise<void> {

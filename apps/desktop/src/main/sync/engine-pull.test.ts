@@ -122,6 +122,9 @@ describe('SyncEngine', () => {
         expect.objectContaining({ itemId: 'task-1', type: 'task' })
       )
 
+      // The conflict push-back now goes out at once (#2289); settle it before
+      // the mocks it runs against are restored.
+      await engine.stop({ skipFinalPush: true })
       vi.restoreAllMocks()
     })
   })

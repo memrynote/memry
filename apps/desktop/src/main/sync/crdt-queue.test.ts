@@ -26,7 +26,7 @@ describe('CrdtUpdateQueue', () => {
     vi.useRealTimers()
   })
 
-  it('buffers updates by note, flushes on the interval, and tracks outstanding work', async () => {
+  it('buffers updates by note, flushes each note on its own window, and tracks outstanding work', async () => {
     const queue = new CrdtUpdateQueue()
     const push = vi.fn(async () => undefined)
 
@@ -35,15 +35,20 @@ describe('CrdtUpdateQueue', () => {
     queue.enqueue('note-a', new Uint8Array([2]))
     queue.enqueue('note-b', new Uint8Array([3]))
 
-    expect(queue.getPendingCount()).toBe(3)
+    // Each note's first update leaves at once; note-a's second waits for its window.
+    expect(push).toHaveBeenCalledWith('note-a', [new Uint8Array([1])])
+    expect(push).toHaveBeenCalledWith('note-b', [new Uint8Array([3])])
+    expect(queue.getPendingCount()).toBe(1)
     expect(queue.getOutstandingCount()).toBe(3)
+
+    await flushPromises()
+    expect(queue.getOutstandingCount()).toBe(1)
 
     vi.advanceTimersByTime(1000)
 
-    expect(push).toHaveBeenCalledWith('note-a', [new Uint8Array([1]), new Uint8Array([2])])
-    expect(push).toHaveBeenCalledWith('note-b', [new Uint8Array([3])])
+    expect(push).toHaveBeenLastCalledWith('note-a', [new Uint8Array([2])])
     expect(queue.getPendingCount()).toBe(0)
-    expect(queue.getOutstandingCount()).toBe(2)
+    expect(queue.getOutstandingCount()).toBe(1)
 
     await flushPromises()
     expect(queue.getOutstandingCount()).toBe(0)
@@ -105,11 +110,16 @@ describe('CrdtUpdateQueue', () => {
     })
 
     queue.start(push)
+    // The leading-edge flush opens a window; the full batch below must not wait it out.
+    queue.enqueue('note-a', new Uint8Array([255]))
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(1)
+
     for (let i = 0; i < 50; i++) {
       queue.enqueue('note-a', new Uint8Array([i]))
     }
 
-    expect(push).toHaveBeenCalledTimes(1)
+    expect(push).toHaveBeenCalledTimes(2)
     await flushPromises()
     expect(queue.getPendingCount()).toBe(0)
     expect(queue.getOutstandingCount()).toBe(0)
@@ -415,6 +425,81 @@ describe('CrdtUpdateQueue', () => {
     await flushPromises()
     expect(push).toHaveBeenCalledTimes(2)
     expect(push).toHaveBeenLastCalledWith('note-a', [new Uint8Array([2])])
+  })
+
+  // #2289
+  it('flushes a lone update on the leading edge instead of waiting for a tick', () => {
+    const queue = new CrdtUpdateQueue()
+    const push = vi.fn(async () => undefined)
+
+    queue.start(push)
+    queue.enqueue('note-a', new Uint8Array([1]))
+
+    expect(push).toHaveBeenCalledWith('note-a', [new Uint8Array([1])])
+    queue.stop()
+  })
+
+  // #2289
+  it('coalesces the updates of one window into a single trailing flush', async () => {
+    const queue = new CrdtUpdateQueue()
+    const push = vi.fn(async () => undefined)
+
+    queue.start(push)
+    queue.enqueue('note-a', new Uint8Array([0]))
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(1)
+
+    for (let i = 1; i <= 5; i++) {
+      vi.advanceTimersByTime(20)
+      queue.enqueue('note-a', new Uint8Array([i]))
+    }
+    expect(push).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(2)
+    expect(push).toHaveBeenLastCalledWith(
+      'note-a',
+      [1, 2, 3, 4, 5].map((i) => new Uint8Array([i]))
+    )
+
+    vi.advanceTimersByTime(5000)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(2)
+    queue.stop()
+  })
+
+  // #2289
+  it('flushes an update that lands mid-push once the push settles, without a timer', async () => {
+    let resolvePush!: () => void
+    const push = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePush = resolve
+        })
+    )
+    const queue = new CrdtUpdateQueue()
+
+    queue.start(push)
+    queue.enqueue('note-a', new Uint8Array([1]))
+    expect(push).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(1500)
+    queue.enqueue('note-a', new Uint8Array([2]))
+    vi.advanceTimersByTime(5000)
+    expect(push).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+
+    resolvePush()
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(2)
+    expect(push).toHaveBeenLastCalledWith('note-a', [new Uint8Array([2])])
+
+    resolvePush()
+    await flushPromises()
+    vi.advanceTimersByTime(5000)
+    expect(push).toHaveBeenCalledTimes(2)
+    queue.stop()
   })
 
   it('does not persist anything when the shutdown flush drains the buffers', async () => {
