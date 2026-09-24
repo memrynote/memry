@@ -206,7 +206,7 @@ Memry -testPlan Unit|UI -destination 'platform=iOS Simulator,id=A7E3D181-58A5-49
 
 ## Phase 3: detail and dates
 
-- [ ] RD08 **Detail**: status circle (complete toggle) + large editable
+- [x] RD08 **Detail**: status circle (complete toggle) + large editable
       title; pills only for set fields (status, priority, When with repeat /
       bell glyphs, project, tags, start date, parent) + dashed "+" pill;
       notes; subtasks "N of M" + progress bar + inline Add subtask; Linked
@@ -217,18 +217,22 @@ Memry -testPlan Unit|UI -destination 'platform=iOS Simulator,id=A7E3D181-58A5-49
       TP046 subtasks inline add, reorder, promote, complete/delete parent
       dialogs, all-subtasks-done prompt, subtask bulk menu; TP053 reminders
       list with edit/snooze/dismiss/delete.
-- [ ] RD09 **Add property ("+")**: Tag, Start date, Parent task, Link note or
+      Evidence: apps/ios/SpikeEvidence/tasks-redesign/RD08-detail.png (status circle, title, pills with repeat + bell inside When, notes, Sub-issues 1 of 3 + bar, footer), RD08-linked-and-footer.png (Linked only when present, title-only row), RD08-complete-parent-dialog.png, RD08-subtask-menu.png (Open / Promote / Move up / Delete; Move up reordered on device), RD08-activity-sheet.png (footer line opens the feed); on device: rename via title field, 3 subtasks added inline, notes tap-to-edit + keyboard Done, subtask complete moved the bar. `TasksDetailTests` (19, incl. `the_footer_line_names_created_edited_and_archived`, `an_unknown_task_id_is_absent_not_a_crash` for FR-061) and all 17 Tasks suites (186 tests) passed.
+- [x] RD09 **Add property ("+")**: Tag, Start date, Parent task, Link note or
       file (+ Priority / Date when unset).
       Carries: TP043 tags autocomplete, start date, TP046 parent picker with
       search, TP043 related search.
-- [ ] RD10 **Detail …**: Duplicate, Make subtask of…, Activity, Archive
+      Evidence: RD09-add-property-menu.png (Priority ›, Tag, Start date, Parent task, Link note or file, Reminder; Date appears when unset), RD09-tags-sheet.png (tag added, pill shown), RD09-parent-picker.png (searchable, same/other project); "Link note or file" searched and linked "iOS Parity Test" (RD08-linked-and-footer.png); Priority → High set from the menu in 2 taps.
+- [x] RD10 **Detail …**: Duplicate, Make subtask of…, Activity, Archive
       (Unarchive), Delete.
-- [ ] RD11 **When sheet**: detent sheet, xmark / When / prominent checkmark;
+      Evidence: RD10-more-menu.png, RD10-duplicate-dialog.png (with items / task only; "Copy of …" created), RD10-make-subtask-of.png, RD10-archived-unarchive.png (footer gains "Archived …", menu offers Unarchive; unarchived on device), RD10-delete-confirm.png (confirm → "Task deleted" + Undo).
+- [x] RD11 **When sheet**: detent sheet, xmark / When / prominent checkmark;
       natural-language field with live resolved value (dates and repeats);
       graphical calendar; rows Time, Repeat, Remind me, Start date.
       Carries: TP044 natural-language field + ghost, calendar, time add/
       clear, remove date; TP045 custom editor, repeat-from, Stop/Edit
       Repeating dialogs; TP053 reminder picker, edit, delete.
+      Evidence: RD11-when-sheet.png (detent over the detail, tint-ink selection, Remind me shows the reminder), RD11-natural-repeat.png ("every thu 3pm" → "Weekly · Thu 15:00"), RD11-ghost.png (core completion + accept), RD11-edit-repeating.png (one question after the sheet leaves; "all future" wrote the date and the Thursday rule), RD11-stop-repeating.png ("Never" on a series), RD11-repeat-page.png (current rule section + presets), RD11-custom-repeat.png, RD11-remind-page.png / RD11-reminder-actions.png / RD11-edit-reminder.png (edit, snooze, dismiss, delete; delete done on device), RD11-when-sheet-task.png; time cleared and date removed on device (When pill left, "+" offered Date). `TasksDetailTests.a_when_sheet_date_change_on_a_series_asks_once` / `…_ends_a_series_asks_stop` / `…_on_a_plain_task_writes`, `TasksDatesTests.the_when_field_reads_a_repeat_with_its_time` passed.
 
 ## Phase 4: board and projects
 
@@ -286,6 +290,18 @@ Memry -testPlan Unit|UI -destination 'platform=iOS Simulator,id=A7E3D181-58A5-49
 - 2026-09-24 — RD20 — The Today empty state keeps desktop's title "All caught up for today" (`today-empty-state.tsx`; the goal requires desktop wording where one exists) instead of Paper's "Nothing left for today". Paper's next-view hint is new copy: "N tasks due tomorrow." + "Show tomorrow" (Today → Tomorrow → Next 7 days; Tomorrow → Next 7; Next 7 → All), else the view's own line and add action. Filter presets keep desktop's labels ("High Priority", "Due This Week", "No Due Date").
 - 2026-09-24 — RD03 — The composer closes on a tap outside it (the typed title is kept for the next open), on Esc from a hardware keyboard (a `UIKeyCommand` on the field: a focused text view swallows Esc before SwiftUI shortcuts), on entering select mode and on leaving the screen. Paper draws no close control; closing on focus loss was unreliable with chip menus, which take the keyboard away.
 - 2026-09-24 — RD01/RD07 — Tap counts are counted after the gesture that opens a surface (long press, swipe): from the list, date = long press → icon row (1 tap) or swipe → Date → day (2); priority and status = long press → submenu → value (2). Composer: "+" → type → chip → option → send.
+
+- 2026-09-24 — RD08 — Desktop's "Sub-issues" heading (`tasks.json` `subIssues`) is kept over Paper's "Subtasks" (goal: desktop wording wins). Reminders left the detail body: the When pill shows a bell when any is set and the list lives on the When sheet's Remind me page (edit, snooze, dismiss, delete as before). The description has no header or Edit/Done button: tap the text to edit, the keyboard's Done or leaving ends it. Unarchive and Delete moved to the … menu; the footer is one line ("Created … · Edited … · Archived …") that opens the activity feed, replacing the inline three-entry preview. Linked shows the title only for present items (the not-on-device / missing lines stay); an empty Linked section renders nothing and linking is the "+" pill's "Link note or file".
+- 2026-09-24 — RD11 — On a repeating task, every change made together on the When sheet (date, start, rule) goes into one Edit Repeating question; "only this" / "all future" applies them all in one undo (previously a rule change alongside a date change would have been dropped). Removing the rule asks Stop Repeating and writes the dates directly. "every thu 3pm": quick add leaves the bare time as title text, so the remainder is read as a time. The calendar's selected day uses tint-ink (white text on it passes contrast; raw tint would not, rule 6). Detent 85 % over the detail with an opaque canvas background (Paper draws an opaque sheet); rows grouped on surface.
+- 2026-09-24 — RD08/RD11 — Sheet chrome made uniform: xmark close + prominent checkmark on the date, reminder, custom repeat, parent picker, related picker and activity sheets (were text Cancel / Done / Save / Close). Identifiers unchanged.
+- 2026-09-24 — RD01 follow-up — A view whose only open group is the view itself (Tomorrow's "Tomorrow") shows no group header (goal rule 4), and that group cannot fold its rows away; All keeps the header. `TasksListTests.a_lone_group_that_is_the_view_has_no_header`.
+- 2026-09-24 — Phase 3 verification — One crash while presenting the When sheet from the detail right after the … menu (SIGSEGV in AttributeGraph during sheet layout, `Memry-2026-09-24-171632.ips`) with the earlier Linked section that loaded inside an empty `Section`; after moving the load to the detail's List (`linkedItemsLoader`) the same sequence ran clean three times. A test rename left "[ v2agent] Redesign check" in Agent Test Redesign (cursor landed mid-title); it goes with that project in RD93.
+
+## Removed views (Phase 3)
+
+- `TaskDetailProperties.swift` (menu/sheet property rows): the pills (`TaskDetailPills.swift`) and the When sheet; `TaskRepeatText` moved to `RepeatSheet.swift`.
+- `RepeatSheet` (standalone repeat sheet): the When sheet's Repeat page (`TaskWhenRepeatPage`) with the same presets, custom editor, repeat-from and "current repeat" section; `RepeatSheet.swift` keeps `RepeatCurrentSection`, the prompt host and the text helpers.
+- `TaskActivitySection` (inline last-three preview): the footer line; `TaskActivityRow` stays for the feed.
 
 ## Removed views (Phase 2)
 

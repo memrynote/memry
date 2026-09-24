@@ -26,14 +26,21 @@ extension TasksStore {
             return TaskWhenReading(date: parsed.date, time: parsed.time, rule: nil, display: parsed.displayText)
         }
         guard let parse = await parseQuickAdd(trimmed), let rule = parse.repeat else { return nil }
-        let time = parse.dueDate == nil ? nil : parse.dueTime
+        // Quick add reads "every thu" and leaves a bare "3pm" as title text;
+        // read that remainder as a date/time phrase of its own.
+        let rest = parse.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let extra = rest.isEmpty ? nil : parsedDate(rest)
+        // The core's date parser wants a day before a bare time ("3pm").
+        let extraTime = extra?.time ?? (rest.isEmpty ? nil : parsedDate("today \(rest)")?.time)
+        let date = parse.dueDate ?? extra?.date
+        let time = date == nil ? nil : parse.dueTime ?? extraTime
         var parts = [TasksCopy.Detail.repeatSummary(frequency: rule.frequency, interval: rule.interval)]
-        let day = parse.dueDate.map(TasksCopy.shortWeekday)
+        let day = date.map(TasksCopy.shortWeekday)
         let clock = time.flatMap(TaskDueLabel.prettyTime)
         let when = [day, clock].compactMap { $0 }.joined(separator: " ")
         if !when.isEmpty { parts.append(when) }
         return TaskWhenReading(
-            date: parse.dueDate, time: time, rule: rule, display: parts.joined(separator: TasksCopy.subtitleSeparator)
+            date: date, time: time, rule: rule, display: parts.joined(separator: TasksCopy.subtitleSeparator)
         )
     }
 }
@@ -51,14 +58,37 @@ struct TaskWhenNaturalField: View {
             Image(systemName: "sparkles")
                 .foregroundStyle(Tokens.Text.tertiary.color)
                 .accessibilityHidden(true)
-            TextField(TasksCopy.whenNaturalPlaceholder, text: $query)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-                .onSubmit(apply)
-                .accessibilityLabel(TasksCopy.naturalDateLabel)
-                .accessibilityIdentifier("tasks.when.natural")
-            if let reading {
+            // TP044: the core's completion as ghost text after the caret.
+            ZStack(alignment: .leading) {
+                if let ghost {
+                    HStack(spacing: 0) {
+                        Text(query).hidden()
+                        Text(ghost).foregroundStyle(Tokens.Text.tertiary.color)
+                    }
+                    .lineLimit(1)
+                    .accessibilityHidden(true)
+                }
+                TextField(TasksCopy.whenNaturalPlaceholder, text: $query)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                    .onSubmit(submit)
+                    .accessibilityLabel(TasksCopy.naturalDateLabel)
+                    .accessibilityIdentifier("tasks.when.natural")
+            }
+            if let ghost, reading == nil {
+                Button {
+                    query += ghost
+                } label: {
+                    Image(systemName: "arrow.forward.to.line")
+                        .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .accessibilityLabel(TasksCopy.acceptDateCompletion(query + ghost))
+                .accessibilityIdentifier("tasks.when.acceptGhost")
+            } else if let reading {
                 Button(reading.display, action: apply)
                     .font(Tokens.Typography.caption.font)
                     .foregroundStyle(Tokens.Text.tint.color)
@@ -83,6 +113,17 @@ struct TaskWhenNaturalField: View {
         }
     }
 
+    private var ghost: String? { store.dateGhost(query) }
+
+    /// Return applies a value that reads; otherwise it takes the ghost.
+    private func submit() {
+        if reading != nil {
+            apply()
+        } else if let ghost {
+            query += ghost
+        }
+    }
+
     private func apply() {
         guard let reading else { return }
         onApply(reading)
@@ -102,6 +143,9 @@ struct TaskWhenRepeatPage: View {
 
     var body: some View {
         List {
+            if wasRepeating {
+                RepeatCurrentSection(rule: original.rule, repeatFrom: original.repeatFrom)
+            }
             Section {
                 row(TasksCopy.doesNotRepeat, selected: touched ? rule == nil : !wasRepeating, id: "none") {
                     choose(nil)
@@ -250,6 +294,7 @@ struct TaskWhenStartPage: View {
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
+                .tint(Tokens.Text.tint.color)
                 .accessibilityIdentifier("tasks.when.start.calendar")
             }
             if startDate != nil {

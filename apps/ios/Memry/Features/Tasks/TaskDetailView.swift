@@ -1,10 +1,13 @@
 import MemryCore
 import SwiftUI
 
-// TP043. A task's detail screen, after desktop's `task-detail-drawer.tsx`:
-// title, the properties (status, priority, start, due, reminders, project,
-// repeat), tags, description, subtasks, related items, activity, and the
-// footer (unarchive, delete, created/archived).
+// TP043, redesigned (RD08, RD10). A task's detail (Paper artboard 08): the
+// status circle (tap completes or reopens) beside a large editable title;
+// pills for the properties that are set, and a dashed "+" for the rest
+// (`TaskDetailPills`); the notes; the subtasks with their progress and an
+// inline Add subtask; Linked, only when something is; and one footer line
+// (created, edited) that opens the activity. The "…" in the bar holds
+// Duplicate, Make subtask of…, Activity, Archive and Delete (artboard 10).
 //
 // **A task id that is not in this vault** (deleted elsewhere, or not pulled
 // yet) renders a calm "no longer in this vault" state (FR-061), never a
@@ -26,7 +29,12 @@ struct TaskDetailView: View {
     var body: some View {
         Group {
             if let task = store.items[taskId] {
-                TaskDetailContent(task: task, store: store, onDelete: requestDelete)
+                TaskDetailContent(task: task, store: store)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            TaskDetailMoreMenu(task: task, store: store, onDelete: requestDelete)
+                        }
+                    }
             } else if !checked || store.isLoading {
                 ProgressView(TasksCopy.loading)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -35,7 +43,7 @@ struct TaskDetailView: View {
             }
         }
         .background(Tokens.Canvas.background.color)
-        .navigationTitle(TasksCopy.Detail.details)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: taskId) { await check() }
         .onChange(of: store.items[taskId] == nil) { _, gone in
@@ -75,33 +83,86 @@ struct TaskDetailMissing: View {
 struct TaskDetailContent: View {
     let task: TaskItem
     let store: TasksStore
-    let onDelete: (TaskItem) -> Void
+
+    @State private var linked: [LinkedItemRecord] = []
 
     var body: some View {
         List {
             if let failure = store.failure {
-                Section {
-                    ErrorNotice(error: failure, code: nil)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                }
+                ErrorNotice(error: failure, code: nil)
+                    .listRowSeparator(.hidden)
             }
-            Section {
-                TaskDetailTitleField(task: task, store: store)
-            }
-            TaskDetailProperties(task: task, store: store)
-            TaskRemindersSection(task: task, store: store)
-            TaskDetailTags(task: task, store: store)
+            TaskDetailHeader(task: task, store: store)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(
+                    top: Tokens.Space.medium, leading: TaskLayout.edge, bottom: 0, trailing: TaskLayout.edge
+                ))
+            TaskDetailPills(task: task, store: store)
+                .listRowSeparator(.hidden)
+                .listRowInsets(TaskDetailLayout.bodyInsets(top: Tokens.Space.small))
             TaskDescriptionSection(task: task, store: store)
             SubtasksSection(parent: task, store: store)
-            TaskRelatedSection(task: task, store: store)
-            TaskActivitySection(task: task, store: store)
-            TaskDetailFooter(task: task, store: store, onDelete: onDelete)
+            TaskRelatedSection(task: task, store: store, linked: linked)
+            TaskDetailFooter(task: task, store: store)
         }
-        .listStyle(.insetGrouped)
+        .linkedItemsLoader(task: task, store: store, into: $linked)
+        .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .accessibilityIdentifier("tasks.detail")
+    }
+}
+
+/// The detail's column: everything under the title starts where the title
+/// text does (Paper: the 20pt edge, the 28pt status lane and its 12pt gap).
+enum TaskDetailLayout {
+    static let lane = TaskLayout.lane + Tokens.Space.tight
+    static let bodyLeading = TaskLayout.edge + lane + Tokens.Space.medium
+
+    static func bodyInsets(top: CGFloat = 0, bottom: CGFloat = 0) -> EdgeInsets {
+        EdgeInsets(top: top, leading: bodyLeading, bottom: bottom, trailing: TaskLayout.edge)
+    }
+}
+
+/// The status circle and the large editable title (Paper "Title (editable)").
+struct TaskDetailHeader: View {
+    let task: TaskItem
+    let store: TasksStore
+
+    @State private var completions = 0
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.medium) {
+            Text(verbatim: "A")
+                .font(TaskDetailTitleField.font)
+                .hidden()
+                .frame(width: TaskDetailLayout.lane)
+                .overlay {
+                    Button(action: toggle) {
+                        TaskStatusIcon(
+                            statusType: task.statusType,
+                            isDone: task.isDone,
+                            color: store.rowStatus(task).map { Tokens.Palette.color($0.color) },
+                            scale: .large
+                        )
+                        .font(TaskDetailTitleField.font)
+                        .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.borderless)
+                    .sensoryFeedback(.success, trigger: completions)
+                    .accessibilityLabel(task.isDone ? TasksCopy.rowReopen : TasksCopy.rowComplete)
+                    .accessibilityIdentifier("tasks.detail.complete")
+                }
+            TaskDetailTitleField(task: task, store: store)
+        }
+    }
+
+    private func toggle() {
+        if !task.isDone { completions += 1 }
+        let task = task
+        Task { await store.requestComplete(task) }
     }
 }
 
@@ -111,13 +172,16 @@ struct TaskDetailTitleField: View {
     let task: TaskItem
     let store: TasksStore
 
+    /// Paper's 28pt bold title: the title-one step.
+    static var font: Font { TypeRole(.documentTitle, weight: .bold).font }
+
     @State private var draft = ""
     @FocusState private var focused: Bool
 
     var body: some View {
         TextField(TasksCopy.Detail.namePlaceholder, text: $draft, axis: .vertical)
-            .font(Tokens.Typography.sectionTitle.font)
-            .foregroundStyle(Tokens.Text.primary.color)
+            .font(Self.font)
+            .foregroundStyle(task.isDone ? Tokens.Text.tertiary.color : Tokens.Text.primary.color)
             .strikethrough(task.isDone, color: Tokens.Text.tertiary.color)
             .focused($focused)
             .submitLabel(.done)
@@ -149,5 +213,78 @@ struct TaskDetailTitleField: View {
             let wrote = await store.detailRename(current, to: text)
             if !wrote { draft = store.items[task.id]?.title ?? task.title }
         }
+    }
+}
+
+/// The detail's "…" (artboard 10): Duplicate, Make subtask of…, Activity,
+/// Archive (Unarchive), Delete behind desktop's confirmation.
+struct TaskDetailMoreMenu: View {
+    let task: TaskItem
+    let store: TasksStore
+    let onDelete: (TaskItem) -> Void
+
+    @State private var isPickingParent = false
+    @State private var isConfirmingDuplicate = false
+    @State private var isConfirmingDelete = false
+    @State private var showsActivity = false
+
+    var body: some View {
+        Menu {
+            Section {
+                Button(TasksCopy.rowDuplicate, systemImage: "plus.square.on.square", action: duplicate)
+                    .accessibilityIdentifier("tasks.detail.duplicate")
+                if store.rowCanBecomeSubtask(task) {
+                    Button(TasksCopy.rowMakeSubtaskOf, systemImage: "arrow.turn.down.right") { isPickingParent = true }
+                        .accessibilityIdentifier("tasks.detail.makeSubtask")
+                }
+                Button(TasksCopy.Detail.activity, systemImage: "clock.arrow.circlepath") { showsActivity = true }
+                    .accessibilityIdentifier("tasks.detail.activityMenu")
+            }
+            Section {
+                Button(
+                    task.archivedAt == nil ? TasksCopy.rowArchive : TasksCopy.rowUnarchive,
+                    systemImage: task.archivedAt == nil ? "archivebox" : "tray.and.arrow.up"
+                ) {
+                    let task = task
+                    Task {
+                        if task.archivedAt == nil { await store.rowToggleArchive(task) } else { await store.detailUnarchive(task) }
+                    }
+                }
+                .accessibilityIdentifier(task.archivedAt == nil ? "tasks.detail.archive" : "tasks.detail.unarchive")
+                Button(TasksCopy.rowDelete, systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
+                    .accessibilityIdentifier("tasks.detail.delete")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .accessibilityLabel(TasksCopy.more)
+        }
+        .accessibilityIdentifier("tasks.detail.more")
+        .sheet(isPresented: $isPickingParent) { ParentPickerSheet(task: task, store: store) }
+        .sheet(isPresented: $showsActivity) {
+            TaskActivitySheet(taskId: task.id, taskTitle: task.title, store: store)
+        }
+        .confirmationDialog(TasksCopy.rowDuplicateTitle, isPresented: $isConfirmingDuplicate, titleVisibility: .visible) {
+            Button(TasksCopy.rowDuplicateWithItems(store.subtasks(of: task.id).count + 1)) { runDuplicate(true) }
+            Button(TasksCopy.rowDuplicateTaskOnly) { runDuplicate(false) }
+            Button(TasksCopy.rowCancel, role: .cancel) {}
+        } message: {
+            Text(TasksCopy.rowDuplicateMessage(task.title))
+        }
+        .alert(TasksCopy.Detail.deleteTaskQuestion, isPresented: $isConfirmingDelete) {
+            Button(TasksCopy.Detail.cancel, role: .cancel) {}
+            Button(TasksCopy.Detail.deleteTaskConfirm, role: .destructive) { onDelete(task) }
+                .accessibilityIdentifier("tasks.detail.deleteConfirm")
+        } message: {
+            Text(TasksCopy.Detail.deleteConfirmBody(task.title))
+        }
+    }
+
+    private func duplicate() {
+        if store.subtasks(of: task.id).isEmpty { runDuplicate(false) } else { isConfirmingDuplicate = true }
+    }
+
+    private func runDuplicate(_ withSubtasks: Bool) {
+        let task = task
+        Task { await store.rowDuplicate(task, withSubtasks: withSubtasks) }
     }
 }

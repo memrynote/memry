@@ -1,70 +1,9 @@
 import MemryCore
 import SwiftUI
 
-// TP043. The detail's activity preview, after desktop's
-// `task-activity-section.tsx`: the last three entries inline, and "Show all N"
-// into the full feed (`TaskActivitySheet`) when there are more. Re-read after
-// every change to the task, since each write may log an entry.
-
-struct TaskActivitySection: View {
-    let task: TaskItem
-    let store: TasksStore
-
-    @State private var page: ActivityPageItem?
-    @State private var failed = false
-    @State private var showingAll = false
-
-    var body: some View {
-        Section {
-            if failed {
-                Text(TasksCopy.Detail.activityError)
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Interaction.destructive.color)
-            } else if let page {
-                if page.entries.isEmpty {
-                    Text(TasksCopy.Detail.activityEmpty)
-                        .font(Tokens.Typography.supporting.font)
-                        .foregroundStyle(Tokens.Text.tertiary.color)
-                }
-                ForEach(page.entries, id: \.id) { entry in
-                    TaskActivityRow(line: TaskActivityFormat.line(entry, now: store.clock()))
-                }
-            } else {
-                Text(TasksCopy.Detail.activityLoading)
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-            }
-        } header: {
-            HStack {
-                Text(TasksCopy.Detail.activity)
-                Spacer()
-                if let page, Int(page.total) > page.entries.count {
-                    Button(TasksCopy.Detail.activityShowAll(Int(page.total))) {
-                        showingAll = true
-                    }
-                    .font(Tokens.Typography.label.font)
-                    .frame(minHeight: Tokens.Size.minimumHitArea)
-                    .accessibilityIdentifier("tasks.detail.activityShowAll")
-                }
-            }
-        }
-        .task(id: task) { await load() }
-        .sheet(isPresented: $showingAll) {
-            TaskActivitySheet(taskId: task.id, taskTitle: task.title, store: store)
-        }
-    }
-
-    private func load() async {
-        let loaded = await store.detailActivity(
-            taskId: task.id,
-            action: nil,
-            limit: TaskActivityPaging.preview,
-            offset: 0
-        )
-        failed = loaded == nil
-        if let loaded { page = loaded }
-    }
-}
+// TP043. One activity entry, drawn by the full feed (`TaskActivitySheet`).
+// RD08 folded the detail's inline preview into the footer line
+// (`TaskDetailFooter`), which opens that feed.
 
 /// One entry on the timeline (`TaskActivityRow`): a rail with a dot, the
 /// label and its old → new values (or the description's size change), then

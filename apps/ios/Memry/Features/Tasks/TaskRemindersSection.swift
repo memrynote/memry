@@ -22,11 +22,8 @@ struct TaskRemindersSection: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
+        // RD11: shown on the When sheet's "Remind me" page, whose title names it.
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            Label(TasksCopy.reminderSectionTitle, systemImage: "bell")
-                .font(Tokens.Typography.label.font)
-                .foregroundStyle(Tokens.Text.secondary.color)
-                .accessibilityAddTraits(.isHeader)
             ForEach(reminders, id: \.id) { reminder in
                 TaskReminderRow(
                     reminder: reminder,

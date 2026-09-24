@@ -32,6 +32,9 @@ extension TasksCopy {
         static let close = "Close"
 
         static func createdOn(_ date: String) -> String { "Created \(date)" }
+        static func editedAgo(_ relative: String) -> String { "Edited \(relative)" }
+        /// `linked` (tasks.json).
+        static let linked = "Linked"
         static func archivedOn(_ date: String) -> String { "Archived \(date)" }
 
         // MARK: Missing task (FR-061)

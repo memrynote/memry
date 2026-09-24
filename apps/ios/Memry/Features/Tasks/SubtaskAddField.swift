@@ -1,8 +1,10 @@
 import MemryCore
 import SwiftUI
 
-// TP046. The inline "Add sub-issue…" field (`add-subtask-input.tsx`): Return
-// adds and keeps the field focused for the next one; leaving it empty closes it.
+// TP046, redesigned (RD08). The inline "Add subtask" row (Paper "Add subtask
+// (inline)", desktop's `add-subtask-input.tsx`): a "+" in the status lane and
+// the row's text. Tapping it turns it into a field; Return adds and keeps the
+// field focused for the next one; leaving it empty turns it back.
 
 struct SubtaskAddField: View {
     let parent: TaskItem
@@ -13,23 +15,41 @@ struct SubtaskAddField: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        HStack(spacing: Tokens.Space.small) {
-            Image(systemName: "plus")
-                .foregroundStyle(Tokens.Text.tertiary.color)
-                .accessibilityHidden(true)
-            TextField(TasksCopy.subtaskAddPlaceholder, text: $title)
-                .font(Tokens.Typography.body.font)
-                .focused($isFocused)
-                .submitLabel(.next)
-                .onSubmit(submit)
-                .accessibilityLabel(TasksCopy.subtaskAdd)
-                .accessibilityIdentifier("tasks.subtasks.addField")
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.medium) {
+            TaskStatusLane(action: activate, label: TasksCopy.subtaskAdd, identifier: "tasks.subtasks.add") {
+                Image(systemName: "plus")
+                    .font(Tokens.Typography.body.font)
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+            }
+            if isActive {
+                TextField(TasksCopy.subtaskAddRow, text: $title)
+                    .font(Tokens.Typography.label.font.weight(.regular))
+                    .focused($isFocused)
+                    .submitLabel(.next)
+                    .onSubmit(submit)
+                    .accessibilityLabel(TasksCopy.subtaskAdd)
+                    .accessibilityIdentifier("tasks.subtasks.addField")
+            } else {
+                Button(action: activate) {
+                    Text(TasksCopy.subtaskAddRow)
+                        .font(Tokens.Typography.label.font.weight(.regular))
+                        .foregroundStyle(Tokens.Text.tertiary.color)
+                        .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("tasks.subtasks.addRow")
+            }
         }
         .frame(minHeight: Tokens.Size.minimumHitArea)
-        .onAppear { isFocused = true }
         .onChange(of: isFocused) { _, focused in
             if !focused, title.trimmingCharacters(in: .whitespaces).isEmpty { isActive = false }
         }
+    }
+
+    private func activate() {
+        isActive = true
+        isFocused = true
     }
 
     private func submit() {
@@ -42,4 +62,9 @@ struct SubtaskAddField: View {
         isFocused = true
         Task { await store.addSubtask(to: parent, title: text) }
     }
+}
+
+extension TasksCopy {
+    /// `addSubtask2`.
+    static let subtaskAddRow = "Add subtask"
 }

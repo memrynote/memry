@@ -47,12 +47,12 @@ struct TaskReminderPickerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(TasksCopy.reminderCancel) { dismiss() }
+                    Button(role: .close) { dismiss() }
                         .accessibilityIdentifier("tasks.reminders.cancel")
                 }
                 if custom || isEditing {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button(isEditing ? TasksCopy.reminderSave : TasksCopy.reminderSet) {
+                        TaskSheetConfirmButton(label: isEditing ? TasksCopy.reminderSave : TasksCopy.reminderSet) {
                             onChoose(date, isEditing ? nil : note)
                         }
                         .disabled(date <= now)
@@ -122,6 +122,7 @@ struct TaskReminderPickerSheet: View {
                     displayedComponents: [.date, .hourAndMinute]
                 )
                 .datePickerStyle(.graphical)
+                .tint(Tokens.Text.tint.color)
                 .accessibilityIdentifier("tasks.reminders.datePicker")
             } footer: {
                 Text(TaskReminderPresets.text(date, now: now))

@@ -208,6 +208,98 @@ struct TasksDetailTests {
         #expect(TaskRepeatText.info(nil) == nil)
     }
 
+    // RD08: the footer is one line: created, edited and (when so) archived.
+    @Test func the_footer_line_names_created_edited_and_archived() async throws {
+        let (vault, id) = try await loaded()
+        let fresh = TaskDetailMeta.line(try item(vault, id), now: vault.store.clock())
+        #expect(fresh.hasPrefix("Created "))
+        #expect(fresh.contains(TasksCopy.subtitleSeparator + "Edited "))
+        #expect(!fresh.contains("Archived"))
+
+        _ = try vault.tasks.bulkArchive(ids: [id])
+        await vault.store.refresh()
+        #expect(TaskDetailMeta.line(try item(vault, id), now: vault.store.clock()).contains("Archived "))
+    }
+
+    // RD11: on a series, a date change and a rule change made together raise
+    // one question (Edit Repeating, carrying the date), not two.
+    @Test func a_when_sheet_date_change_on_a_series_asks_once() async throws {
+        let (vault, id) = try await loaded()
+        let rule = RepeatRule(
+            frequency: "weekly", interval: 1, daysOfWeek: nil, monthlyType: nil, dayOfMonth: nil,
+            weekOfMonth: nil, dayOfWeekForMonth: nil, endType: "never", endDate: nil, endCount: nil,
+            completedCount: 0, createdAt: nil
+        )
+        await vault.store.detailSetDue(try item(vault, id), date: "2026-09-25", time: nil)
+        await vault.store.detailSetRepeat(try item(vault, id), rule: rule, repeatFrom: nil)
+        let task = try item(vault, id)
+        #expect(vault.store.isRepeating(id))
+
+        let original = TaskWhenDraft(task: task)
+        var draft = original
+        draft.date = "2026-09-28"
+        let daily = RepeatRule(
+            frequency: "daily", interval: 1, daysOfWeek: nil, monthlyType: nil, dayOfMonth: nil,
+            weekOfMonth: nil, dayOfWeekForMonth: nil, endType: "never", endDate: nil, endCount: nil,
+            completedCount: 0, createdAt: nil
+        )
+        draft.rule = daily
+        let prompt = TaskWhenCommit.write(
+            store: vault.store, task: task, original: original, draft: draft, ruleTouched: true
+        )
+        #expect(prompt == .editRepeating(taskId: id))
+        let pending = try #require(vault.store.pendingRepeatingEdit(taskId: id))
+        #expect(pending == .due(date: "2026-09-28", time: nil))
+        #expect(vault.store.followingRepeatingEdits(taskId: id).count == 1)
+
+        // "This and all future": both the date and the rule land, one undo.
+        await vault.store.applyRepeatingEdit(taskId: id, pending, onlyThis: false)
+        #expect(try item(vault, id).dueDate == "2026-09-28")
+        #expect(try item(vault, id).repeat?.frequency == "daily")
+        #expect(vault.store.followingRepeatingEdits(taskId: id).isEmpty)
+        #expect(vault.store.undoable != nil)
+    }
+
+    // RD11: ending a series with a date change asks Stop Repeating only.
+    @Test func a_when_sheet_that_ends_a_series_asks_stop() async throws {
+        let (vault, id) = try await loaded()
+        let rule = RepeatRule(
+            frequency: "weekly", interval: 1, daysOfWeek: nil, monthlyType: nil, dayOfMonth: nil,
+            weekOfMonth: nil, dayOfWeekForMonth: nil, endType: "never", endDate: nil, endCount: nil,
+            completedCount: 0, createdAt: nil
+        )
+        await vault.store.detailSetDue(try item(vault, id), date: "2026-09-25", time: nil)
+        await vault.store.detailSetRepeat(try item(vault, id), rule: rule, repeatFrom: nil)
+        let task = try item(vault, id)
+        let original = TaskWhenDraft(task: task)
+        var draft = original
+        draft.rule = nil
+        let prompt = TaskWhenCommit.write(
+            store: vault.store, task: task, original: original, draft: draft, ruleTouched: true
+        )
+        #expect(prompt == .stopRepeating(taskId: id))
+        #expect(vault.store.pendingRepeatingEdit(taskId: id) == nil)
+    }
+
+    // RD11: a plain task's When sheet writes the date directly, no question.
+    @Test func a_when_sheet_date_change_on_a_plain_task_writes() async throws {
+        let (vault, id) = try await loaded()
+        let task = try item(vault, id)
+        let original = TaskWhenDraft(task: task)
+        var draft = original
+        draft.date = "2026-09-28"
+        draft.time = "09:30"
+        let prompt = TaskWhenCommit.write(
+            store: vault.store, task: task, original: original, draft: draft, ruleTouched: false
+        )
+        #expect(prompt == nil)
+        for _ in 0..<50 where (try? item(vault, id).dueDate) != "2026-09-28" {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(try item(vault, id).dueDate == "2026-09-28")
+        #expect(try item(vault, id).dueTime == "09:30")
+    }
+
     @Test func markdown_preview_renders_inline_formatting() {
         let rendered = TaskDescriptionMarkdown.render("**Bold** and [link](https://memry.app)")
         #expect(String(rendered.characters) == "Bold and link")

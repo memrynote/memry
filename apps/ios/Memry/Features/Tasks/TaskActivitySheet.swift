@@ -51,8 +51,8 @@ struct TaskActivitySheet: View {
             .navigationTitle(TasksCopy.Detail.activityTitle(taskTitle))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(TasksCopy.Detail.close) { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(role: .close) { dismiss() }
                         .accessibilityIdentifier("tasks.detail.activityClose")
                 }
             }

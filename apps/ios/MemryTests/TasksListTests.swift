@@ -149,6 +149,25 @@ struct TasksListTests {
         #expect(!vault.store.state.collapsedGroups.contains("done"))
     }
 
+    // Goal rule 4: Tomorrow's lone "Tomorrow" group restates the title, so it
+    // has no header (and so cannot fold its rows away); All keeps it.
+    @Test func a_lone_group_that_is_the_view_has_no_header() async throws {
+        let vault = try TasksTestVault()
+        let project = try vault.project()
+        let open = try vault.task("[agent] open", project: project, due: "2026-01-15")
+        await vault.store.load()
+        vault.store.toggleGroup("tomorrow")
+
+        await vault.store.selectTab(.tomorrow)
+        let tomorrow = vault.store.listSections(orders: scratchOrders())
+        #expect(tomorrow.first?.id == "tomorrow")
+        #expect(tomorrow.first?.title == nil)
+        #expect(tomorrow.first?.rows.map(\.id) == [open])
+
+        await vault.store.selectTab(.all)
+        #expect(vault.store.listSections(orders: scratchOrders()).first?.title == "Tomorrow")
+    }
+
     @Test func subtasks_ride_one_level_in_under_their_parent() async throws {
         let vault = try TasksTestVault()
         let project = try vault.project()

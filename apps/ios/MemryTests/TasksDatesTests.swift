@@ -42,6 +42,17 @@ struct TasksDatesTests {
         #expect(store.dateReading("today at") == .typing)
     }
 
+    // RD11: the When sheet's field reads repeats with their time too.
+    @Test func the_when_field_reads_a_repeat_with_its_time() async throws {
+        let vault = try TasksTestVault()
+        let reading = try #require(await vault.store.whenReading("every thu 3pm"))
+        #expect(reading.rule?.frequency == "weekly")
+        #expect(reading.time == "15:00")
+        #expect(reading.date != nil)
+        #expect(await vault.store.whenReading("next friday")?.date == "2026-01-16")
+        #expect(await vault.store.whenReading("   ") == nil)
+    }
+
     @Test func the_ghost_is_the_rest_of_the_cores_completion() throws {
         let vault = try TasksTestVault()
         #expect(vault.store.dateGhost("tom") == "orrow")

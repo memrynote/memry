@@ -20,23 +20,26 @@ struct TaskDescriptionSection: View {
     @State private var pending: Task<Void, Never>?
     @FocusState private var focused: Bool
 
+    /// RD08: the notes sit in the title's text column with no header (Paper
+    /// "Notes (editable, markdown)"); a tap edits, and the keyboard's Done or
+    /// leaving the field ends editing.
     var body: some View {
-        Section {
+        Group {
             if editing {
                 editor
             } else {
                 preview
             }
-        } header: {
-            HStack {
-                Text(TasksCopy.Detail.descriptionLabel)
-                Spacer()
-                Button(editing ? TasksCopy.Detail.done : TasksCopy.Detail.edit) {
-                    editing ? finish() : start()
+        }
+        .listRowSeparator(.hidden)
+        .listRowInsets(TaskDetailLayout.bodyInsets(top: Tokens.Space.small, bottom: Tokens.Space.small))
+        .toolbar {
+            if editing {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(TasksCopy.Detail.done, action: finish)
+                        .accessibilityIdentifier("tasks.detail.descriptionToggle")
                 }
-                .font(Tokens.Typography.label.font)
-                .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
-                .accessibilityIdentifier("tasks.detail.descriptionToggle")
             }
         }
         .onDisappear { flush() }

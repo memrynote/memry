@@ -81,11 +81,11 @@ struct TaskDateSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(TasksCopy.dateCancel) { dismiss() }
+                    Button(role: .close) { dismiss() }
                         .accessibilityIdentifier("tasks.date.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(TasksCopy.dateDone) { commit(draftDate, draftTime) }
+                    TaskSheetConfirmButton(label: TasksCopy.dateDone) { commit(draftDate, draftTime) }
                         .accessibilityIdentifier("tasks.date.done")
                 }
             }
@@ -106,6 +106,7 @@ struct TaskDateSheet: View {
             )
             .datePickerStyle(.graphical)
             .labelsHidden()
+            .tint(Tokens.Text.tint.color)
             .environment(\.calendar, weekCalendar)
             .accessibilityIdentifier("tasks.date.calendar")
             Button(TasksCopy.calendarToday) { draftDate = store.today() }

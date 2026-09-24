@@ -72,6 +72,8 @@ struct TaskWhenSheet: View {
     @State private var draft: TaskWhenDraft
     @State private var ruleTouched = false
     @State private var raised: TasksPrompt?
+    /// A task's live reminders, for the Remind me row's value.
+    @State private var reminders: [ReminderItem] = []
     private let original: TaskWhenDraft
 
     init(store: TasksStore, target: TaskWhenTarget, onCommit: @escaping (TaskWhenDraft, TaskWhenDraft) -> Void = { _, _ in }) {
@@ -97,6 +99,7 @@ struct TaskWhenSheet: View {
                 Section {
                     TaskWhenNaturalField(store: store) { reading in apply(reading) }
                 }
+                .listRowBackground(Tokens.Canvas.surface.color)
                 Section {
                     DatePicker(
                         TasksCopy.pickADate,
@@ -108,9 +111,15 @@ struct TaskWhenSheet: View {
                     )
                     .datePickerStyle(.graphical)
                     .labelsHidden()
+                    // Rule 6: the selected day's fill carries white text, so
+                    // it takes tint-ink (contrast), not the raw tint.
+                    .tint(Tokens.Text.tint.color)
                     .environment(\.calendar, weekCalendar)
                     .accessibilityIdentifier("tasks.when.calendar")
                 }
+                // Paper 11: the calendar sits on the sheet, not in a card.
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: Tokens.Space.tight, bottom: 0, trailing: Tokens.Space.tight))
                 Section {
                     timeRow
                     NavigationLink {
@@ -141,6 +150,7 @@ struct TaskWhenSheet: View {
                     .accessibilityIdentifier("tasks.when.startRow")
                 }
                 .font(Tokens.Typography.body.font)
+                .listRowBackground(Tokens.Canvas.surface.color)
                 if draft.date != nil {
                     Section {
                         Button(TasksCopy.removeDate, role: .destructive) {
@@ -150,10 +160,19 @@ struct TaskWhenSheet: View {
                         .frame(minHeight: Tokens.Size.minimumHitArea)
                         .accessibilityIdentifier("tasks.when.removeDate")
                     }
+                    .listRowBackground(Tokens.Canvas.surface.color)
                 }
             }
+            .listSectionSpacing(.compact)
+            .contentMargins(.top, Tokens.Space.tight, for: .scrollContent)
+            .scrollContentBackground(.hidden)
             .navigationTitle(TasksCopy.whenTitle)
             .navigationBarTitleDisplayMode(.inline)
+            // Re-read on every return from the Remind me page, which writes.
+            .onAppear {
+                guard let id = task?.id else { return }
+                Task { reminders = await store.activeReminders(of: id) }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(role: .close) { dismiss() }
@@ -165,7 +184,12 @@ struct TaskWhenSheet: View {
                 }
             }
         }
-        .presentationDetents([.large])
+        // Paper 11: a tall detent over the detail, the calendar and rows in
+        // view; drag up for the rest.
+        .presentationDetents([.fraction(0.85), .large])
+        // Paper 11 draws an opaque canvas sheet; the grouped rows stay legible
+        // over the detail at the partial detent.
+        .presentationBackground(Tokens.Canvas.background.color)
         .onDisappear {
             if let raised { store.prompt = raised }
         }
@@ -215,7 +239,12 @@ struct TaskWhenSheet: View {
     }
 
     private var reminderValue: String {
-        if task != nil { return TasksCopy.whenManage }
+        if task != nil {
+            guard let first = reminders.first else { return TasksCopy.whenNone }
+            if reminders.count > 1 { return TasksCopy.whenReminderCount(reminders.count) }
+            return TaskReminderPresets.instant(first.remindAt)
+                .map { TaskReminderPresets.text($0, now: store.clock()) } ?? first.remindAt
+        }
         return draft.reminder.map { TaskReminderPresets.text($0, now: store.clock()) } ?? TasksCopy.whenNone
     }
 
@@ -277,31 +306,30 @@ enum TaskWhenCommit {
             draft: RepeatChoice(rule: draft.rule, repeatFrom: draft.repeatFrom),
             touched: ruleTouched
         )
-        let repeating = store.isRepeating(task.id)
-        // One question at a time: a date edit on a series asks first, and a
-        // rule change made alongside it waits for that answer's write.
-        var prompt: TasksPrompt?
-        if repeating, dueChanged {
-            store.stashRepeatingEdit(taskId: task.id, .due(date: draft.date, time: draft.date == nil ? nil : draft.time))
-            prompt = .editRepeating(taskId: task.id)
-        } else if repeating, startChanged {
-            store.stashRepeatingEdit(taskId: task.id, .start(date: draft.startDate))
-            prompt = .editRepeating(taskId: task.id)
+        let dueEdit = RepeatingEdit.due(date: draft.date, time: draft.date == nil ? nil : draft.time)
+        let startEdit = RepeatingEdit.start(date: draft.startDate)
+        // On a series, one Edit Repeating question covers every change made
+        // together (date, start, rule); "only this" or "all" applies them all.
+        var seriesEdits: [RepeatingEdit] = []
+        if store.isRepeating(task.id), outcome.isStop == false {
+            if dueChanged { seriesEdits.append(dueEdit) }
+            if startChanged { seriesEdits.append(startEdit) }
+            if case let .editRepeating(_, edit) = outcome { seriesEdits.append(edit) }
         }
+        if !seriesEdits.isEmpty {
+            store.stashRepeatingEdits(taskId: task.id, seriesEdits)
+            return .editRepeating(taskId: task.id)
+        }
+        // Not a series (or the series ends): dates write now.
         Task {
-            if !repeating {
-                if dueChanged {
-                    await store.detailSetDue(task, date: draft.date, time: draft.date == nil ? nil : draft.time)
-                }
-                if startChanged { await store.detailSetStartDate(task, date: draft.startDate) }
-            } else if dueChanged, startChanged {
-                await store.detailSetStartDate(task, date: draft.startDate)
+            if dueChanged {
+                await store.detailSetDue(task, date: draft.date, time: draft.date == nil ? nil : draft.time)
             }
+            if startChanged { await store.detailSetStartDate(task, date: draft.startDate) }
             if case let .commit(rule, from) = outcome {
                 await store.detailSetRepeat(task, rule: rule, repeatFrom: from)
             }
         }
-        if prompt != nil { return prompt }
         switch outcome {
         case let .stopRepeating(id):
             return .stopRepeating(taskId: id)
@@ -311,6 +339,13 @@ enum TaskWhenCommit {
         case .unchanged, .commit:
             return nil
         }
+    }
+}
+
+private extension RepeatSheetOutcome {
+    var isStop: Bool {
+        if case .stopRepeating = self { return true }
+        return false
     }
 }
 

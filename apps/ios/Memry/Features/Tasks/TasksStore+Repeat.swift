@@ -76,6 +76,25 @@ extension TasksStore {
     // MARK: Prompts
 
     private static func editKey(_ taskId: String) -> String { "repeat.edit.\(taskId)" }
+    private static func thenKey(_ taskId: String) -> String { "repeat.edit.then.\(taskId)" }
+
+    /// Keeps several edits for one Edit Repeating answer (the When sheet's
+    /// date and rule changed together): the first is the pending edit, the
+    /// rest ride along when the answer writes.
+    func stashRepeatingEdits(taskId: String, _ edits: [RepeatingEdit]) {
+        guard let first = edits.first else { return }
+        stashRepeatingEdit(taskId: taskId, first)
+        let rest = edits.dropFirst().map(StoredRepeatingEdit.init)
+        scratch[Self.thenKey(taskId)] = rest.isEmpty ? nil
+            : (try? JSONEncoder().encode(rest)).flatMap { String(bytes: $0, encoding: .utf8) }
+    }
+
+    func followingRepeatingEdits(taskId: String) -> [RepeatingEdit] {
+        guard let json = scratch[Self.thenKey(taskId)],
+              let stored = try? JSONDecoder().decode([StoredRepeatingEdit].self, from: Data(json.utf8))
+        else { return [] }
+        return stored.compactMap(\.edit)
+    }
 
     /// Routes an edit to a task: a repeating one asks the Edit Repeating
     /// question first, any other takes the edit now.
@@ -93,6 +112,7 @@ extension TasksStore {
         let stored = StoredRepeatingEdit(edit)
         guard let data = try? JSONEncoder().encode(stored) else { return }
         scratch[Self.editKey(taskId)] = String(bytes: data, encoding: .utf8)
+        scratch[Self.thenKey(taskId)] = nil
     }
 
     func pendingRepeatingEdit(taskId: String) -> RepeatingEdit? {
@@ -107,6 +127,7 @@ extension TasksStore {
         switch prompt {
         case let .editRepeating(id):
             scratch[Self.editKey(id)] = nil
+            scratch[Self.thenKey(id)] = nil
             prompt = nil
         case .stopRepeating:
             prompt = nil
@@ -129,23 +150,28 @@ extension TasksStore {
     /// Edit Repeating: "only this" detaches the task first; one undo reverts
     /// both writes.
     func applyRepeatingEdit(taskId: String, _ edit: RepeatingEdit, onlyThis: Bool) async {
+        let edits = [edit] + followingRepeatingEdits(taskId: taskId)
         scratch[Self.editKey(taskId)] = nil
+        scratch[Self.thenKey(taskId)] = nil
         let detach = onlyThis && isRepeating(taskId)
         await perform(TasksCopy.updated) { core in
-            var detached: TaskChange?
+            var merged: TaskChange?
             if detach {
-                detached = try core.setRepeat(id: taskId, rule: nil, repeatFrom: nil)
+                merged = try core.setRepeat(id: taskId, rule: nil, repeatFrom: nil)
             }
-            var edited: TaskChange?
-            switch edit {
-            case let .rule(rule, from):
-                if !detach { edited = try core.setRepeat(id: taskId, rule: rule, repeatFrom: from) }
-            case let .due(date, time):
-                edited = try core.setDue(id: taskId, date: date, time: time)
-            case let .start(date):
-                edited = try core.setStartDate(id: taskId, date: date)
+            for edit in edits {
+                var edited: TaskChange?
+                switch edit {
+                case let .rule(rule, from):
+                    if !detach { edited = try core.setRepeat(id: taskId, rule: rule, repeatFrom: from) }
+                case let .due(date, time):
+                    edited = try core.setDue(id: taskId, date: date, time: time)
+                case let .start(date):
+                    edited = try core.setStartDate(id: taskId, date: date)
+                }
+                merged = TasksStore.merge(merged, edited)
             }
-            return TasksStore.merge(detached, edited)
+            return TasksStore.merge(merged, nil)
         }
     }
 }

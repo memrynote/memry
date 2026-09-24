@@ -18,17 +18,19 @@ enum TaskPillTone: Equatable {
     case neutral
     /// Text and glyph in `color`, the fill a wash of it.
     case tinted(AdaptiveColor)
+    /// Text and glyph in `color` on the neutral fill (the detail's When pill).
+    case inked(AdaptiveColor)
 
     var foreground: Color {
         switch self {
         case .neutral: Tokens.Text.primary.color
-        case let .tinted(color): color.color
+        case let .tinted(color), let .inked(color): color.color
         }
     }
 
     var fill: Color {
         switch self {
-        case .neutral: Tokens.Canvas.surfaceActive.color
+        case .neutral, .inked: Tokens.Canvas.surfaceActive.color
         case let .tinted(color): color.color.opacity(Tokens.Palette.chipFillAlpha)
         }
     }

@@ -1,11 +1,12 @@
 import MemryCore
 import SwiftUI
 
-// TP043. The detail's related items, after the drawer's Related section. The
-// core resolves each linked id to present, missing or not on this device
-// (canvases: the phone does not sync them, §6 TP027); the section lists them
-// in that state, removes one with its own control or a swipe, and adds through
-// a search picker.
+// TP043, redesigned (RD08). The detail's "Linked" items (Paper "Related
+// (shown only when present)"): nothing at all while the task links nothing;
+// linking is the "+" pill's "Link note or file" (artboard 09). The core
+// resolves each linked id to present, missing or not on this device
+// (canvases: the phone does not sync them, §6 TP027); a row removes by swipe,
+// long press or VoiceOver action.
 //
 // A present item is shown, not opened: the Notes tab has no route a task
 // screen can push onto, so a tap would be a dead control.
@@ -13,14 +14,9 @@ import SwiftUI
 struct TaskRelatedSection: View {
     let task: TaskItem
     let store: TasksStore
-
-    @State private var linked: [LinkedItemRecord] = []
-    @State private var picking = false
-
-    /// Re-read when either linked id list changes.
-    private var key: String {
-        (task.linkedNoteIds + ["|"] + task.linkedCanvasIds).joined(separator: ",")
-    }
+    /// Loaded by the detail (`linkedItemsLoader`): an empty section renders
+    /// nothing, so a load attached here would never run.
+    let linked: [LinkedItemRecord]
 
     var body: some View {
         Section {
@@ -28,32 +24,27 @@ struct TaskRelatedSection: View {
                 TaskRelatedRow(item: item) {
                     Task { await store.detailRemoveRelated(item, from: store.items[task.id] ?? task) }
                 }
-            }
-            if linked.isEmpty {
-                Text(TasksCopy.Detail.noRelatedItems)
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
+                .listRowInsets(SubtaskRow.insets)
             }
         } header: {
-            HStack {
-                Text(TasksCopy.Detail.related)
-                Spacer()
-                Button {
-                    picking = true
-                } label: {
-                    Image(systemName: "plus")
-                        .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
-                        .contentShape(.rect)
-                }
-                .accessibilityLabel(TasksCopy.Detail.addRelatedItem)
-                .accessibilityIdentifier("tasks.detail.addRelated")
+            if !linked.isEmpty {
+                Text(TasksCopy.Detail.linked)
+                    .font(Tokens.Typography.caption.font.weight(.semibold))
+                    .foregroundStyle(Tokens.Text.primary.color)
+                    .textCase(nil)
+                    .padding(.leading, TaskDetailLayout.bodyLeading - TaskLayout.edge)
+                    .accessibilityAddTraits(.isHeader)
             }
         }
-        .task(id: key) {
-            linked = await store.detailLinkedItems(taskId: task.id)
-        }
-        .sheet(isPresented: $picking) {
-            TaskRelatedPicker(task: store.items[task.id] ?? task, store: store)
+    }
+}
+
+extension View {
+    /// Re-reads a task's linked items whenever either linked id list changes.
+    func linkedItemsLoader(task: TaskItem, store: TasksStore, into linked: Binding<[LinkedItemRecord]>) -> some View {
+        let key = (task.linkedNoteIds + ["|"] + task.linkedCanvasIds).joined(separator: ",")
+        return self.task(id: "\(task.id)#\(key)") {
+            linked.wrappedValue = await store.detailLinkedItems(taskId: task.id)
         }
     }
 }
@@ -64,11 +55,15 @@ struct TaskRelatedRow: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: Tokens.Space.medium) {
-            TaskRelatedIcon(kind: kind, emoji: item.item?.emoji)
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.medium) {
+            Text(verbatim: "A")
+                .font(Tokens.Typography.body.font)
+                .hidden()
+                .frame(width: TaskLayout.lane)
+                .overlay { TaskRelatedIcon(kind: kind, emoji: item.item?.emoji) }
             VStack(alignment: .leading, spacing: Tokens.Space.tight) {
                 Text(title)
-                    .font(Tokens.Typography.body.font)
+                    .font(Tokens.Typography.label.font.weight(.regular))
                     .foregroundStyle(item.state == "present" ? Tokens.Text.primary.color : Tokens.Text.tertiary.color)
                     .lineLimit(2)
                 if let detail {
@@ -78,25 +73,18 @@ struct TaskRelatedRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            Button(action: onRemove) {
-                Image(systemName: "xmark")
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                    .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(
-                TasksCopy.Detail.removeRelatedItem(item.item?.title ?? TasksCopy.Detail.relatedItemFallback)
-            )
-            .accessibilityIdentifier("tasks.detail.removeRelated.\(item.id)")
         }
         .frame(minHeight: Tokens.Size.minimumHitArea)
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: TasksCopy.Detail.removeRelatedItem(title), onRemove)
         .swipeActions {
             Button(role: .destructive, action: onRemove) {
                 Label(TasksCopy.Detail.removeRelatedItem(title), systemImage: "xmark")
             }
+            .accessibilityIdentifier("tasks.detail.removeRelated.\(item.id)")
+        }
+        .contextMenu {
+            Button(TasksCopy.Detail.removeRelatedItem(title), systemImage: "xmark", role: .destructive, action: onRemove)
         }
         .accessibilityIdentifier("tasks.detail.related.\(item.id)")
     }
@@ -113,7 +101,8 @@ struct TaskRelatedRow: View {
 
     private var detail: String? {
         switch item.state {
-        case "present": item.item?.folderPath.flatMap { $0.isEmpty ? nil : $0 }
+        // Paper's Linked row is the title alone; the state lines stay.
+        case "present": nil
         case "notOnDevice": TasksCopy.Detail.relatedCanvasElsewhere
         default: nil
         }
@@ -131,7 +120,7 @@ struct TaskRelatedIcon: View {
                 Text(emoji)
             } else {
                 Image(systemName: symbol)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
+                    .foregroundStyle(kind == "note" ? Tokens.Task.tokenNote.color : Tokens.Text.tertiary.color)
             }
         }
         .font(Tokens.Typography.body.font)
@@ -204,7 +193,7 @@ struct TaskRelatedPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(TasksCopy.Detail.cancel) { dismiss() }
+                    Button(role: .close) { dismiss() }
                 }
             }
             .task(id: query) {

@@ -1,16 +1,15 @@
 import MemryCore
 import SwiftUI
 
-// TP046. The subtasks of a task, after desktop's detail drawer "Sub-issues"
-// block (`task-detail-drawer.tsx:590-678`), `sortable-subtask-list.tsx` and
-// `add-subtask-input.tsx`: a header with the done count, the add button and the
-// bulk menu; one row per subtask; an inline add field that stays focused for
-// rapid entry.
+// TP046, redesigned (RD08). The subtasks of a task (Paper "Subtasks"):
+// "Subtasks 2 of 5" with a progress bar and the bulk menu (desktop's
+// `sortable-subtask-list.tsx` and `subtask-bulk-utils.ts`), one row per
+// subtask, and an inline "Add subtask" row that stays focused for rapid entry.
+// The header only shows when there are subtasks; the add row always does.
 //
-// It is a `Section`, so inside a `List` or `Form` its rows are real rows (with
-// drag-to-reorder through `onMove`) and inside a stack it lays out as a column.
-// Reorder is also offered as Move up / Move down, for VoiceOver and for hosts
-// that are not lists.
+// Rows are real List rows: drag to reorder (`onMove`), long press for the
+// subtask's menu (open, promote, move up / down, delete), swipe to promote or
+// delete. Reorder is also offered as Move up / Move down for VoiceOver.
 
 /// TP046 — subtasks of a task.
 struct SubtasksSection: View {
@@ -29,60 +28,50 @@ struct SubtasksSection: View {
                     canMoveUp: index > 0,
                     canMoveDown: index < subtasks.count - 1
                 )
+                .listRowInsets(SubtaskRow.insets)
             }
             .onMove { source, destination in
                 var ids = subtasks.map(\.id)
                 ids.move(fromOffsets: source, toOffset: destination)
                 Task { await store.reorderSubtasks(ids) }
             }
-            if isAdding {
-                SubtaskAddField(parent: parent, store: store, isActive: $isAdding)
-            } else if subtasks.isEmpty {
-                Text(TasksCopy.subtasksEmpty)
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-            }
+            SubtaskAddField(parent: parent, store: store, isActive: $isAdding)
+                .listRowInsets(SubtaskRow.insets)
+                .listRowSeparator(.hidden)
         } header: {
-            SubtasksHeader(parent: parent, subtasks: subtasks, store: store, isAdding: $isAdding)
+            if !subtasks.isEmpty {
+                SubtasksHeader(parent: parent, subtasks: subtasks, store: store)
+            }
         }
     }
 }
 
-/// "Sub-issues  2 / 5  [+] […]".
+/// "Subtasks  2 of 5 ……… [progress] […]".
 private struct SubtasksHeader: View {
     let parent: TaskItem
     let subtasks: [TaskItem]
     let store: TasksStore
-    @Binding var isAdding: Bool
 
     var body: some View {
+        let done = subtasks.filter(\.isDone).count
         HStack(spacing: Tokens.Space.small) {
             Text(TasksCopy.subtasksTitle)
-                .font(Tokens.Typography.label.font)
-                .foregroundStyle(Tokens.Text.secondary.color)
+                .font(Tokens.Typography.caption.font.weight(.semibold))
+                .foregroundStyle(Tokens.Text.primary.color)
                 .accessibilityAddTraits(.isHeader)
+            Text(TasksCopy.subtaskCount(done: done, total: subtasks.count))
+                .font(Tokens.Typography.caption.font.monospacedDigit())
+                .foregroundStyle(Tokens.Text.tertiary.color)
+                .accessibilityLabel(TasksCopy.subtaskCountLabel(done: done, total: subtasks.count))
             Spacer(minLength: Tokens.Space.small)
-            if !subtasks.isEmpty {
-                let done = subtasks.filter(\.isDone).count
-                Text(TasksCopy.subtaskCount(done: done, total: subtasks.count))
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                    .accessibilityLabel(TasksCopy.subtaskCountLabel(done: done, total: subtasks.count))
-                SubtaskBulkMenu(parent: parent, subtasks: subtasks, store: store)
-            }
-            Button {
-                isAdding = true
-            } label: {
-                Image(systemName: "plus")
-                    .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Tokens.Text.secondary.color)
-            .accessibilityLabel(TasksCopy.subtaskAdd)
-            .accessibilityIdentifier("tasks.subtasks.add")
+            ProgressView(value: Double(done), total: Double(subtasks.count))
+                .tint(Tokens.Task.complete.color)
+                .frame(maxWidth: Tokens.Size.minimumHitArea + Tokens.Space.section)
+                .accessibilityHidden(true)
+            SubtaskBulkMenu(parent: parent, subtasks: subtasks, store: store)
         }
         .textCase(nil)
+        .padding(.leading, TaskDetailLayout.bodyLeading - TaskLayout.edge)
     }
 }
 

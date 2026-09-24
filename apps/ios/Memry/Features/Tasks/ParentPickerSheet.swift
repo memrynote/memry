@@ -22,7 +22,7 @@ struct ParentPickerSheet: View {
                 .searchable(text: $query, prompt: TasksCopy.parentPickerSearch)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(TasksCopy.subtaskCancel) { close() }
+                        Button(role: .close) { close() }
                             .accessibilityIdentifier("tasks.parentPicker.cancel")
                     }
                 }

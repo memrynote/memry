@@ -15,7 +15,7 @@ extension TasksCopy {
     static let subtasksEmpty = "No sub-issues yet"
     static let subtaskBulkMenu = "Subtask actions"
 
-    static func subtaskCount(done: Int, total: Int) -> String { "\(done) / \(total)" }
+    static func subtaskCount(done: Int, total: Int) -> String { "\(done) of \(total)" }
 
     static func subtaskCountLabel(done: Int, total: Int) -> String {
         "\(done) of \(total) subtasks complete"

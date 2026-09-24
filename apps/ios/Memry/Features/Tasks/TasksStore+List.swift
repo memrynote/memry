@@ -63,9 +63,14 @@ extension TasksStore {
             sections += flatSections(topLevel, orders: orders)
         } else {
             let visible = Set(topLevel)
+            let filled = result.groups.filter { $0.taskIds.contains(where: visible.contains) }
             for group in result.groups {
                 let ids = group.taskIds.filter(visible.contains)
-                let title = group.labelKey.map(TasksCopy.groupLabel) ?? group.name ?? group.key
+                // A lone group that is the view itself (Tomorrow's "Tomorrow")
+                // gets no header: the title already says it (goal rule 4).
+                let restatesView = filled.count == 1 && filled.first?.key == group.key
+                    && group.key == state.tab.rawValue
+                let title = restatesView ? nil : group.labelKey.map(TasksCopy.groupLabel) ?? group.name ?? group.key
                 sections.append(section(
                     id: group.key,
                     kind: .group,

@@ -1,73 +1,67 @@
 import MemryCore
 import SwiftUI
 
-// TP043. The detail's footer, after the drawer's: unarchive (the way back out
-// of the archive, `task-unarchive-button.tsx`), delete behind desktop's
-// confirmation (`delete-task-dialog.tsx`), and when the task was created and
-// archived.
+// TP043, redesigned (RD08). The detail's footer (Paper "Activity footer"):
+// one line, "Created Sep 12 · Edited 2h ago" (and when it was archived), that
+// opens the full activity feed (`TaskActivitySheet`). Unarchive and Delete
+// moved to the "…" menu (artboard 10).
 
 struct TaskDetailFooter: View {
     let task: TaskItem
     let store: TasksStore
-    let onDelete: (TaskItem) -> Void
 
-    @State private var confirmingDelete = false
+    @State private var showsActivity = false
 
     var body: some View {
-        Section {
-            if task.archivedAt != nil {
-                Button {
-                    Task { await store.detailUnarchive(task) }
-                } label: {
-                    Label(TasksCopy.Detail.unarchive, systemImage: "arrow.uturn.backward")
-                        .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
-                        .contentShape(.rect)
-                }
-                .foregroundStyle(Tokens.Text.primary.color)
-                .accessibilityIdentifier("tasks.detail.unarchive")
-            }
-            Button(role: .destructive) {
-                confirmingDelete = true
-            } label: {
-                Label(TasksCopy.Detail.deleteTask, systemImage: "trash")
-                    .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
-                    .contentShape(.rect)
-            }
-            .foregroundStyle(Tokens.Interaction.destructive.color)
-            .accessibilityIdentifier("tasks.detail.delete")
-        } footer: {
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                if let created = TaskDetailMeta.day(task.createdAt) {
-                    Text(TasksCopy.Detail.createdOn(created))
-                }
-                if let archived = TaskDetailMeta.day(task.archivedAt) {
-                    Text(TasksCopy.Detail.archivedOn(archived))
-                }
+        Button {
+            showsActivity = true
+        } label: {
+            HStack(spacing: Tokens.Space.tight) {
+                Text(TaskDetailMeta.line(task, now: store.clock()))
+                    .multilineTextAlignment(.leading)
+                Image(systemName: "chevron.forward")
+                    .font(Tokens.Typography.caption.font.weight(.semibold))
+                    .accessibilityHidden(true)
             }
             .font(Tokens.Typography.caption.font)
             .foregroundStyle(Tokens.Text.tertiary.color)
-            .accessibilityIdentifier("tasks.detail.meta")
+            .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+            .contentShape(.rect)
         }
-        .alert(TasksCopy.Detail.deleteTaskQuestion, isPresented: $confirmingDelete) {
-            Button(TasksCopy.Detail.cancel, role: .cancel) {}
-            Button(TasksCopy.Detail.deleteTaskConfirm, role: .destructive) {
-                onDelete(task)
-            }
-            .accessibilityIdentifier("tasks.detail.deleteConfirm")
-        } message: {
-            Text(TasksCopy.Detail.deleteConfirmBody(task.title))
+        .buttonStyle(.plain)
+        .listRowSeparator(.hidden)
+        .listRowInsets(TaskDetailLayout.bodyInsets(top: Tokens.Space.small))
+        .accessibilityHint(TasksCopy.Detail.activity)
+        .accessibilityIdentifier("tasks.detail.meta")
+        .sheet(isPresented: $showsActivity) {
+            TaskActivitySheet(taskId: task.id, taskTitle: task.title, store: store)
         }
     }
 }
 
-/// The created/archived stamps as a short date.
+/// The created / edited / archived stamps.
 enum TaskDetailMeta {
     /// An ISO instant (or a bare `YYYY-MM-DD`) as `Jan 14, 2026`.
     static func day(_ stamp: String?) -> String? {
+        instant(stamp)?.formatted(.dateTime.month(.abbreviated).day().year())
+    }
+
+    static func instant(_ stamp: String?) -> Date? {
         guard let stamp, !stamp.isEmpty else { return nil }
         let withFraction = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
         let plain = Date.ISO8601FormatStyle()
-        let date = (try? withFraction.parse(stamp)) ?? (try? plain.parse(stamp)) ?? TaskDates.date(stamp)
-        return date?.formatted(.dateTime.month(.abbreviated).day().year())
+        return (try? withFraction.parse(stamp)) ?? (try? plain.parse(stamp)) ?? TaskDates.date(stamp)
+    }
+
+    /// "Created Jan 14, 2026 · Edited 2 hours ago · Archived Jan 20, 2026".
+    static func line(_ task: TaskItem, now: Date) -> String {
+        var parts: [String] = []
+        if let created = day(task.createdAt) { parts.append(TasksCopy.Detail.createdOn(created)) }
+        if let modified = instant(task.modifiedAt) {
+            let relative = modified.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
+            parts.append(TasksCopy.Detail.editedAgo(relative))
+        }
+        if let archived = day(task.archivedAt) { parts.append(TasksCopy.Detail.archivedOn(archived)) }
+        return parts.isEmpty ? TasksCopy.Detail.activity : parts.joined(separator: TasksCopy.subtitleSeparator)
     }
 }
