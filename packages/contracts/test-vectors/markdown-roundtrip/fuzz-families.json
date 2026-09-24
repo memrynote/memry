@@ -32,9 +32,7 @@
     },
     {
       "name": "mixed documents",
-      "pending": {
-        "renderer": 1892
-      }
+      "pending": null
     }
   ]
 }

@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 101,
+    "exportedCaseCount": 102,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 111,
+    "caseCount": 112,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -227,10 +227,15 @@
       "name": "extra blank line next to a callout survives",
       "markdown": "Before\n\n\n> [!info]\n> Body\n\n\nAfter",
       "canonical": null,
-      "pending": {
-        "renderer": 1892
-      },
+      "pending": null,
       "sha256": "0c5eb1f1d3e88dbfaafa69b9b49e347af8e7faa911e1fbb7833d63bf81141bee"
+    },
+    {
+      "name": "extra blank line next to a structured quote survives",
+      "markdown": "Before\n\n\n> One\n>\n> Two\n\n\n\nAfter",
+      "canonical": null,
+      "pending": null,
+      "sha256": "da7673e470ee9df21147511681c27ba7db6822daf8bbd720ad717cc32c1c58d2"
     },
     {
       "name": "lazily continued nested quote normalizes onto the separator form",
