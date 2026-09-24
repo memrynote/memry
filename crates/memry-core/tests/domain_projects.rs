@@ -1,4 +1,6 @@
-//! Projects: read and assign only, plus the second field-merged type (T129).
+//! Projects: the read surface and the second field-merged type (T129). The
+//! writes (spec 004 D2) are in `domain_projects_write.rs` and
+//! `domain_projects_links.rs`.
 //!
 //! | Test                                             | Rule                        |
 //! | ------------------------------------------------ | --------------------------- |
@@ -6,7 +8,6 @@
 //! | the Inbox is a project carrying a flag           | §A.4                        |
 //! | an archived project is out unless asked for      | the read surface            |
 //! | a concurrent project merges over the nine fields | chapter 06 §6.7, §6.8       |
-//! | there is no project write to call                | FR-060                      |
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -177,13 +178,6 @@ fn a_concurrent_project_merges_over_the_nine_fields_including_modified_at() {
         Ok(())
     })
     .expect("the merge");
-}
-
-#[test]
-fn there_is_no_project_write_to_call_and_the_refusal_names_the_operation() {
-    let message = projects::write_unavailable("delete").to_string();
-    assert!(message.contains("delete"), "{message}");
-    assert!(message.contains("read-only"), "{message}");
 }
 
 /// **Spec defect 53's shape, on `project`.** The same substitute-never-refuse

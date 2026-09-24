@@ -19,10 +19,11 @@
       "project",
       "task_activity",
       "reminder",
-      "settings"
+      "settings",
+      "filter"
     ],
     "obligation": "a payload schema is a READER over a preserved string, never the storage shape (FR-033)",
-    "caseCount": 52
+    "caseCount": 56
   },
   "groups": [
     {
@@ -1437,6 +1438,181 @@
           "name": "settings: verbatim round trip of the unknown-field instance",
           "storedPayloadJson": "{\"settings\":{\"general\":{\"theme\":\"dark\"},\"experimental\":{\"agentSidebar\":true}},\"fieldClocks\":{\"general.theme\":{\"device-a\":1},\"experimental.agentSidebar\":{\"device-a\":1}}}",
           "expectedPushedPayloadJson": "{\"settings\":{\"general\":{\"theme\":\"dark\"},\"experimental\":{\"agentSidebar\":true}},\"fieldClocks\":{\"general.theme\":{\"device-a\":1},\"experimental.agentSidebar\":{\"device-a\":1}}}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "filter",
+      "cases": [
+        {
+          "name": "filter: valid, every modelled field populated",
+          "payload": {
+            "name": "Due this week",
+            "config": {
+              "filters": {
+                "search": "",
+                "projectIds": [
+                  "proj-1"
+                ],
+                "priorities": [
+                  "high"
+                ],
+                "tags": [],
+                "dueDate": {
+                  "type": "this-week",
+                  "customStart": null,
+                  "customEnd": null
+                },
+                "statusIds": [],
+                "completion": "active",
+                "repeatType": "all",
+                "hasTime": "all"
+              },
+              "sort": {
+                "field": "dueDate",
+                "direction": "asc"
+              },
+              "starred": true
+            },
+            "position": 2,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "name": "Due this week",
+            "config": {
+              "filters": {
+                "search": "",
+                "projectIds": [
+                  "proj-1"
+                ],
+                "priorities": [
+                  "high"
+                ],
+                "tags": [],
+                "dueDate": {
+                  "type": "this-week",
+                  "customStart": null,
+                  "customEnd": null
+                },
+                "statusIds": [],
+                "completion": "active",
+                "repeatType": "all",
+                "hasTime": "all"
+              },
+              "sort": {
+                "field": "dueDate",
+                "direction": "asc"
+              },
+              "starred": true
+            },
+            "position": 2,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "filter: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "name": "",
+            "config": {},
+            "position": 0,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "name": "",
+            "config": {},
+            "position": 0,
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "filter: an unknown field a newer client wrote",
+          "payload": {
+            "name": "Due this week",
+            "config": {
+              "filters": {
+                "search": "",
+                "projectIds": [
+                  "proj-1"
+                ],
+                "priorities": [
+                  "high"
+                ],
+                "tags": [],
+                "dueDate": {
+                  "type": "this-week",
+                  "customStart": null,
+                  "customEnd": null
+                },
+                "statusIds": [],
+                "completion": "active",
+                "repeatType": "all",
+                "hasTime": "all"
+              },
+              "sort": {
+                "field": "dueDate",
+                "direction": "asc"
+              },
+              "starred": true
+            },
+            "position": 2,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "syncedAt": "2026-04-16T00:00:01.000Z"
+          },
+          "expectedParsed": {
+            "name": "Due this week",
+            "config": {
+              "filters": {
+                "search": "",
+                "projectIds": [
+                  "proj-1"
+                ],
+                "priorities": [
+                  "high"
+                ],
+                "tags": [],
+                "dueDate": {
+                  "type": "this-week",
+                  "customStart": null,
+                  "customEnd": null
+                },
+                "statusIds": [],
+                "completion": "active",
+                "repeatType": "all",
+                "hasTime": "all"
+              },
+              "sort": {
+                "field": "dueDate",
+                "direction": "asc"
+              },
+              "starred": true
+            },
+            "position": 2,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "syncedAt"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "filter: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"name\":\"Due this week\",\"config\":{\"filters\":{\"search\":\"\",\"projectIds\":[\"proj-1\"],\"priorities\":[\"high\"],\"tags\":[],\"dueDate\":{\"type\":\"this-week\",\"customStart\":null,\"customEnd\":null},\"statusIds\":[],\"completion\":\"active\",\"repeatType\":\"all\",\"hasTime\":\"all\"},\"sort\":{\"field\":\"dueDate\",\"direction\":\"asc\"},\"starred\":true},\"position\":2,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "expectedPushedPayloadJson": "{\"name\":\"Due this week\",\"config\":{\"filters\":{\"search\":\"\",\"projectIds\":[\"proj-1\"],\"priorities\":[\"high\"],\"tags\":[],\"dueDate\":{\"type\":\"this-week\",\"customStart\":null,\"customEnd\":null},\"statusIds\":[],\"completion\":\"active\",\"repeatType\":\"all\",\"hasTime\":\"all\"},\"sort\":{\"field\":\"dueDate\",\"direction\":\"asc\"},\"starred\":true},\"position\":2,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

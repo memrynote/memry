@@ -830,11 +830,11 @@ fn clock_field(input: &Json) -> Option<BTreeMap<String, u64>> {
 
 /// `payload-schemas.json` — the declared type set only (T106).
 ///
-/// The file's 52 payload cases exercise the per-type projectors, which are not
+/// The file's 56 payload cases exercise the per-type projectors, which are not
 /// this module's: chapter 13 §13.2 requires them to read a preserved string
 /// rather than to be the storage shape, and they land with the repositories.
-/// What is assertable here is the half the negotiation owns — that the thirteen
-/// names this client declares are exactly the thirteen the vector was generated
+/// What is assertable here is the half the negotiation owns — that the fourteen
+/// names this client declares are exactly the fourteen the vector was generated
 /// for, in the same order, and that every group in the file is one of them.
 #[test]
 fn payload_schemas_subscribed_types() {
@@ -868,7 +868,7 @@ fn payload_schemas_subscribed_types() {
     );
 }
 
-/// `payload-schemas.json` — chapter 13, all 52 payload cases (T089, T104).
+/// `payload-schemas.json` — chapter 13, all 56 payload cases (T089, T104, TP022).
 ///
 /// Every group is four cases and the four are one argument:
 ///

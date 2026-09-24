@@ -7017,6 +7017,1233 @@ public func FfiConverterTypeSyncProgressListener_lower(_ value: SyncProgressList
 
 
 /**
+ * The task surface over one opened vault.
+ */
+public protocol TasksProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates a project and returns its id.
+     */
+    func createProject(draft: ProjectDraft) throws  -> String
+    
+    /**
+     * `config_json` is desktop's `{filters, sort?, starred?}`. Returns the id.
+     */
+    func createSavedFilter(name: String, configJson: String) throws  -> String
+    
+    /**
+     * Deletes a project, moving its tasks to the Inbox or deleting them.
+     */
+    func deleteProject(id: String, moveTasksToInbox: Bool) throws 
+    
+    func deleteSavedFilter(id: String) throws 
+    
+    /**
+     * `item_type` is `note`, `calendar_event` or `file`.
+     */
+    func linkToProject(id: String, itemType: String, itemId: String) throws 
+    
+    /**
+     * The items linked to a project's hub, in position order.
+     */
+    func projectLinks(id: String) throws  -> [ProjectLinkItem]
+    
+    /**
+     * Open/done/overdue numbers per project. `today` is `YYYY-MM-DD`.
+     */
+    func projectStats(includeArchived: Bool, today: String) throws  -> [ProjectStats]
+    
+    /**
+     * New positions, one per id, in the order given.
+     */
+    func reorderProjects(ids: [String]) throws 
+    
+    /**
+     * New positions, one per id, in the order given.
+     */
+    func reorderSavedFilters(ids: [String]) throws 
+    
+    func savedFilters() throws  -> [SavedFilterItem]
+    
+    func setDefaultProject(projectId: String?) throws  -> TaskSettingsItem
+    
+    func setDefaultSortOrder(order: String) throws  -> TaskSettingsItem
+    
+    /**
+     * Local to this device, as on desktop.
+     */
+    func setDefaultView(view: String) throws  -> TaskSettingsItem
+    
+    func setProjectArchived(id: String, archived: Bool) throws 
+    
+    func setProjectHomeNote(id: String, noteId: String?) throws 
+    
+    func setProjectLinkPinned(id: String, itemId: String, pinned: Bool) throws 
+    
+    func setSavedFilterStarred(id: String, starred: Bool) throws 
+    
+    func setStaleInboxDays(days: Int64) throws  -> TaskSettingsItem
+    
+    func taskSettings() throws  -> TaskSettingsItem
+    
+    func unlinkFromProject(id: String, itemType: String, itemId: String) throws 
+    
+    /**
+     * Saves a project editor: name, description, color, icon and (when
+     * given) the status list, reconciled as desktop does.
+     */
+    func updateProject(id: String, draft: ProjectDraft) throws 
+    
+    /**
+     * Renames and/or replaces parts of the config (deep-merged).
+     */
+    func updateSavedFilter(id: String, name: String?, configJson: String?) throws 
+    
+    /**
+     * One page of a task's activity, newest first.
+     */
+    func activity(taskId: String, actions: [String], limit: UInt32, offset: UInt32) throws  -> ActivityPageItem
+    
+    /**
+     * Adds a reminder to a task at an ISO instant; returns its id.
+     */
+    func addTaskReminder(taskId: String, remindAt: String, title: String?, note: String?) throws  -> String
+    
+    /**
+     * Turns a checklist item in a note into a task (FR-058): creates the task
+     * in the resolved project (a parent task line's, else the note's, else the
+     * default, else the Inbox), then rewrites the line into a task block.
+     * Returns the new task's id, or `nil` when the block is not a convertible
+     * checkbox.
+     */
+    func convertChecklistItem(noteId: String, blockId: String, localNow: String) throws  -> String?
+    
+    func deleteReminder(id: String) throws 
+    
+    func dismissReminder(id: String) throws 
+    
+    /**
+     * Every pending or snoozed reminder that fires by `until_ms` (all of them
+     * with `nil`), for scheduling local notifications.
+     */
+    func dueReminders(untilMs: Int64?) throws  -> [DueReminderItem]
+    
+    /**
+     * A task's linked notes and canvases, each present, missing or not on
+     * this device.
+     */
+    func linkedItems(taskId: String) throws  -> [LinkedItemRecord]
+    
+    /**
+     * Quick-add over this vault's projects.
+     */
+    func parseQuickAdd(input: String, now: String) throws  -> QuickAddParse
+    
+    /**
+     * Notes and files to offer in the related-item picker.
+     */
+    func searchRelated(query: String, limit: UInt32) throws  -> [RelatedItemRecord]
+    
+    func snoozeReminder(id: String, until: String) throws 
+    
+    /**
+     * A task's reminders; `active_only` drops dismissed and triggered ones.
+     */
+    func taskReminders(taskId: String, activeOnly: Bool) throws  -> [ReminderItem]
+    
+    /**
+     * Reschedules or retitles a reminder (any target).
+     */
+    func updateReminder(id: String, remindAt: String?, title: String?) throws 
+    
+    /**
+     * Every live task, archived ones included, in `position` order.
+     */
+    func all() throws  -> [TaskItem]
+    
+    /**
+     * One live task, or `nil` when this vault holds none by that id (deleted
+     * elsewhere, or not pulled yet).
+     */
+    func get(id: String) throws  -> TaskItem?
+    
+    /**
+     * Every project with its statuses; archived ones only when asked.
+     */
+    func projects(includeArchived: Bool) throws  -> [ProjectItem]
+    
+    /**
+     * One Tasks-page query, answered with desktop's rules end to end.
+     */
+    func view(query: TaskViewQuery) throws  -> TaskViewResult
+    
+    func bulkArchive(ids: [String]) throws  -> TaskChange
+    
+    func bulkComplete(ids: [String]) throws  -> TaskChange
+    
+    func bulkDelete(ids: [String]) throws  -> TaskChange
+    
+    func bulkMove(ids: [String], projectId: String) throws  -> TaskChange
+    
+    func bulkSetDue(ids: [String], date: String?, time: String?) throws  -> TaskChange
+    
+    func bulkSetPriority(ids: [String], priority: Int64) throws  -> TaskChange
+    
+    func bulkSetStatus(ids: [String], statusId: String) throws  -> TaskChange
+    
+    func bulkUnarchive(ids: [String]) throws  -> TaskChange
+    
+    func bulkUncomplete(ids: [String]) throws  -> TaskChange
+    
+    /**
+     * Completes a task (and its open subtasks); a repeating one rolls to its
+     * next occurrence. `local_now` is the shell's wall clock.
+     */
+    func complete(id: String, localNow: String) throws  -> TaskCompletion
+    
+    func completeAllSubtasks(parentId: String) throws  -> TaskChange
+    
+    /**
+     * Creates a task; `created[0]` of the answer is its id.
+     */
+    func create(input: NewTaskInput) throws  -> TaskChange
+    
+    /**
+     * Deletes a task; its subtasks go with it, or are promoted to top level.
+     */
+    func delete(id: String, promoteSubtasks: Bool) throws  -> TaskChange
+    
+    func deleteAllSubtasks(parentId: String) throws  -> TaskChange
+    
+    func duplicate(id: String, withSubtasks: Bool) throws  -> TaskChange
+    
+    func incompleteAllSubtasks(parentId: String) throws  -> TaskChange
+    
+    func reorder(ids: [String], positions: [Int64]) throws  -> TaskChange
+    
+    func setDescription(id: String, description: String?) throws  -> TaskChange
+    
+    /**
+     * Sets or clears the due date and time (`nil` is an explicit clear).
+     */
+    func setDue(id: String, date: String?, time: String?) throws  -> TaskChange
+    
+    func setDueForAllSubtasks(parentId: String, date: String?, includeCompleted: Bool) throws  -> TaskChange
+    
+    func setLinkedCanvasIds(id: String, ids: [String]) throws  -> TaskChange
+    
+    func setLinkedNoteIds(id: String, ids: [String]) throws  -> TaskChange
+    
+    /**
+     * Makes the task a subtask of `parent_id`, or top level with `nil`.
+     */
+    func setParent(id: String, parentId: String?) throws  -> TaskChange
+    
+    /**
+     * 0 none .. 4 urgent.
+     */
+    func setPriority(id: String, priority: Int64) throws  -> TaskChange
+    
+    func setPriorityForAllSubtasks(parentId: String, priority: Int64, includeCompleted: Bool) throws  -> TaskChange
+    
+    /**
+     * Moves the task (and its subtasks) to a project, resolving the
+     * equivalent status there.
+     */
+    func setProject(id: String, projectId: String) throws  -> TaskChange
+    
+    /**
+     * Sets or stops the repeat. A new rule is laid over the stored config so
+     * keys this build does not model survive (D7).
+     */
+    func setRepeat(id: String, rule: RepeatRule?, repeatFrom: String?) throws  -> TaskChange
+    
+    func setStartDate(id: String, date: String?) throws  -> TaskChange
+    
+    /**
+     * A status of the task's project; a done status stamps `completedAt`.
+     */
+    func setStatus(id: String, statusId: String) throws  -> TaskChange
+    
+    func setTags(id: String, tags: [String]) throws  -> TaskChange
+    
+    func setTitle(id: String, title: String) throws  -> TaskChange
+    
+    func uncomplete(id: String) throws  -> TaskChange
+    
+    /**
+     * Reverts a change this surface returned. A new write: it syncs.
+     */
+    func undo(change: TaskChange) throws  -> TaskChange
+    
+}
+/**
+ * The task surface over one opened vault.
+ */
+open class Tasks: TasksProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_tasks(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_tasks(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates a project and returns its id.
+     */
+open func createProject(draft: ProjectDraft)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_create_project(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeProjectDraft_lower(draft),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `config_json` is desktop's `{filters, sort?, starred?}`. Returns the id.
+     */
+open func createSavedFilter(name: String, configJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_create_saved_filter(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(configJson),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Deletes a project, moving its tasks to the Inbox or deleting them.
+     */
+open func deleteProject(id: String, moveTasksToInbox: Bool)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_delete_project(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterBool.lower(moveTasksToInbox),uniffiCallStatus
+    )
+}
+}
+    
+open func deleteSavedFilter(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_delete_saved_filter(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `item_type` is `note`, `calendar_event` or `file`.
+     */
+open func linkToProject(id: String, itemType: String, itemId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_link_to_project(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(itemType),
+        FfiConverterString.lower(itemId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The items linked to a project's hub, in position order.
+     */
+open func projectLinks(id: String)throws  -> [ProjectLinkItem]  {
+    return try  FfiConverterSequenceTypeProjectLinkItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_project_links(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Open/done/overdue numbers per project. `today` is `YYYY-MM-DD`.
+     */
+open func projectStats(includeArchived: Bool, today: String)throws  -> [ProjectStats]  {
+    return try  FfiConverterSequenceTypeProjectStats.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_project_stats(
+            self.uniffiCloneHandle(),
+        FfiConverterBool.lower(includeArchived),
+        FfiConverterString.lower(today),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * New positions, one per id, in the order given.
+     */
+open func reorderProjects(ids: [String])throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_reorder_projects(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * New positions, one per id, in the order given.
+     */
+open func reorderSavedFilters(ids: [String])throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_reorder_saved_filters(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+}
+}
+    
+open func savedFilters()throws  -> [SavedFilterItem]  {
+    return try  FfiConverterSequenceTypeSavedFilterItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_saved_filters(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+open func setDefaultProject(projectId: String?)throws  -> TaskSettingsItem  {
+    return try  FfiConverterTypeTaskSettingsItem_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_default_project(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionString.lower(projectId),uniffiCallStatus
+    )
+})
+}
+    
+open func setDefaultSortOrder(order: String)throws  -> TaskSettingsItem  {
+    return try  FfiConverterTypeTaskSettingsItem_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_default_sort_order(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(order),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Local to this device, as on desktop.
+     */
+open func setDefaultView(view: String)throws  -> TaskSettingsItem  {
+    return try  FfiConverterTypeTaskSettingsItem_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_default_view(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(view),uniffiCallStatus
+    )
+})
+}
+    
+open func setProjectArchived(id: String, archived: Bool)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_project_archived(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterBool.lower(archived),uniffiCallStatus
+    )
+}
+}
+    
+open func setProjectHomeNote(id: String, noteId: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_project_home_note(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(noteId),uniffiCallStatus
+    )
+}
+}
+    
+open func setProjectLinkPinned(id: String, itemId: String, pinned: Bool)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_project_link_pinned(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(itemId),
+        FfiConverterBool.lower(pinned),uniffiCallStatus
+    )
+}
+}
+    
+open func setSavedFilterStarred(id: String, starred: Bool)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_saved_filter_starred(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterBool.lower(starred),uniffiCallStatus
+    )
+}
+}
+    
+open func setStaleInboxDays(days: Int64)throws  -> TaskSettingsItem  {
+    return try  FfiConverterTypeTaskSettingsItem_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_stale_inbox_days(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(days),uniffiCallStatus
+    )
+})
+}
+    
+open func taskSettings()throws  -> TaskSettingsItem  {
+    return try  FfiConverterTypeTaskSettingsItem_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_task_settings(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+open func unlinkFromProject(id: String, itemType: String, itemId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_unlink_from_project(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(itemType),
+        FfiConverterString.lower(itemId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Saves a project editor: name, description, color, icon and (when
+     * given) the status list, reconciled as desktop does.
+     */
+open func updateProject(id: String, draft: ProjectDraft)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_update_project(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterTypeProjectDraft_lower(draft),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Renames and/or replaces parts of the config (deep-merged).
+     */
+open func updateSavedFilter(id: String, name: String?, configJson: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_update_saved_filter(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(name),
+        FfiConverterOptionString.lower(configJson),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * One page of a task's activity, newest first.
+     */
+open func activity(taskId: String, actions: [String], limit: UInt32, offset: UInt32)throws  -> ActivityPageItem  {
+    return try  FfiConverterTypeActivityPageItem_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_activity(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(taskId),
+        FfiConverterSequenceString.lower(actions),
+        FfiConverterUInt32.lower(limit),
+        FfiConverterUInt32.lower(offset),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Adds a reminder to a task at an ISO instant; returns its id.
+     */
+open func addTaskReminder(taskId: String, remindAt: String, title: String?, note: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_add_task_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(taskId),
+        FfiConverterString.lower(remindAt),
+        FfiConverterOptionString.lower(title),
+        FfiConverterOptionString.lower(note),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Turns a checklist item in a note into a task (FR-058): creates the task
+     * in the resolved project (a parent task line's, else the note's, else the
+     * default, else the Inbox), then rewrites the line into a task block.
+     * Returns the new task's id, or `nil` when the block is not a convertible
+     * checkbox.
+     */
+open func convertChecklistItem(noteId: String, blockId: String, localNow: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_convert_checklist_item(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterString.lower(blockId),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+open func deleteReminder(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_delete_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+open func dismissReminder(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_dismiss_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Every pending or snoozed reminder that fires by `until_ms` (all of them
+     * with `nil`), for scheduling local notifications.
+     */
+open func dueReminders(untilMs: Int64?)throws  -> [DueReminderItem]  {
+    return try  FfiConverterSequenceTypeDueReminderItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_due_reminders(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionInt64.lower(untilMs),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A task's linked notes and canvases, each present, missing or not on
+     * this device.
+     */
+open func linkedItems(taskId: String)throws  -> [LinkedItemRecord]  {
+    return try  FfiConverterSequenceTypeLinkedItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_linked_items(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(taskId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Quick-add over this vault's projects.
+     */
+open func parseQuickAdd(input: String, now: String)throws  -> QuickAddParse  {
+    return try  FfiConverterTypeQuickAddParse_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_parse_quick_add(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(input),
+        FfiConverterString.lower(now),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Notes and files to offer in the related-item picker.
+     */
+open func searchRelated(query: String, limit: UInt32)throws  -> [RelatedItemRecord]  {
+    return try  FfiConverterSequenceTypeRelatedItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_search_related(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(query),
+        FfiConverterUInt32.lower(limit),uniffiCallStatus
+    )
+})
+}
+    
+open func snoozeReminder(id: String, until: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_snooze_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(until),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A task's reminders; `active_only` drops dismissed and triggered ones.
+     */
+open func taskReminders(taskId: String, activeOnly: Bool)throws  -> [ReminderItem]  {
+    return try  FfiConverterSequenceTypeReminderItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_task_reminders(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(taskId),
+        FfiConverterBool.lower(activeOnly),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Reschedules or retitles a reminder (any target).
+     */
+open func updateReminder(id: String, remindAt: String?, title: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_update_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(remindAt),
+        FfiConverterOptionString.lower(title),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Every live task, archived ones included, in `position` order.
+     */
+open func all()throws  -> [TaskItem]  {
+    return try  FfiConverterSequenceTypeTaskItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_all(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * One live task, or `nil` when this vault holds none by that id (deleted
+     * elsewhere, or not pulled yet).
+     */
+open func get(id: String)throws  -> TaskItem?  {
+    return try  FfiConverterOptionTypeTaskItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_get(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every project with its statuses; archived ones only when asked.
+     */
+open func projects(includeArchived: Bool)throws  -> [ProjectItem]  {
+    return try  FfiConverterSequenceTypeProjectItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_projects(
+            self.uniffiCloneHandle(),
+        FfiConverterBool.lower(includeArchived),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * One Tasks-page query, answered with desktop's rules end to end.
+     */
+open func view(query: TaskViewQuery)throws  -> TaskViewResult  {
+    return try  FfiConverterTypeTaskViewResult_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_view(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeTaskViewQuery_lower(query),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkArchive(ids: [String])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_archive(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkComplete(ids: [String])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_complete(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkDelete(ids: [String])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_delete(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkMove(ids: [String], projectId: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_move(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),
+        FfiConverterString.lower(projectId),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkSetDue(ids: [String], date: String?, time: String?)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_set_due(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),
+        FfiConverterOptionString.lower(date),
+        FfiConverterOptionString.lower(time),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkSetPriority(ids: [String], priority: Int64)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_set_priority(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),
+        FfiConverterInt64.lower(priority),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkSetStatus(ids: [String], statusId: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_set_status(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),
+        FfiConverterString.lower(statusId),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkUnarchive(ids: [String])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_unarchive(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkUncomplete(ids: [String])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_bulk_uncomplete(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Completes a task (and its open subtasks); a repeating one rolls to its
+     * next occurrence. `local_now` is the shell's wall clock.
+     */
+open func complete(id: String, localNow: String)throws  -> TaskCompletion  {
+    return try  FfiConverterTypeTaskCompletion_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_complete(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+open func completeAllSubtasks(parentId: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_complete_all_subtasks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(parentId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Creates a task; `created[0]` of the answer is its id.
+     */
+open func create(input: NewTaskInput)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_create(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeNewTaskInput_lower(input),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Deletes a task; its subtasks go with it, or are promoted to top level.
+     */
+open func delete(id: String, promoteSubtasks: Bool)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_delete(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterBool.lower(promoteSubtasks),uniffiCallStatus
+    )
+})
+}
+    
+open func deleteAllSubtasks(parentId: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_delete_all_subtasks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(parentId),uniffiCallStatus
+    )
+})
+}
+    
+open func duplicate(id: String, withSubtasks: Bool)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_duplicate(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterBool.lower(withSubtasks),uniffiCallStatus
+    )
+})
+}
+    
+open func incompleteAllSubtasks(parentId: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_incomplete_all_subtasks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(parentId),uniffiCallStatus
+    )
+})
+}
+    
+open func reorder(ids: [String], positions: [Int64])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_reorder(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),
+        FfiConverterSequenceInt64.lower(positions),uniffiCallStatus
+    )
+})
+}
+    
+open func setDescription(id: String, description: String?)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_description(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(description),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Sets or clears the due date and time (`nil` is an explicit clear).
+     */
+open func setDue(id: String, date: String?, time: String?)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_due(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(date),
+        FfiConverterOptionString.lower(time),uniffiCallStatus
+    )
+})
+}
+    
+open func setDueForAllSubtasks(parentId: String, date: String?, includeCompleted: Bool)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_due_for_all_subtasks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(parentId),
+        FfiConverterOptionString.lower(date),
+        FfiConverterBool.lower(includeCompleted),uniffiCallStatus
+    )
+})
+}
+    
+open func setLinkedCanvasIds(id: String, ids: [String])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_linked_canvas_ids(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+})
+}
+    
+open func setLinkedNoteIds(id: String, ids: [String])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_linked_note_ids(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Makes the task a subtask of `parent_id`, or top level with `nil`.
+     */
+open func setParent(id: String, parentId: String?)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_parent(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(parentId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * 0 none .. 4 urgent.
+     */
+open func setPriority(id: String, priority: Int64)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_priority(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterInt64.lower(priority),uniffiCallStatus
+    )
+})
+}
+    
+open func setPriorityForAllSubtasks(parentId: String, priority: Int64, includeCompleted: Bool)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_priority_for_all_subtasks(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(parentId),
+        FfiConverterInt64.lower(priority),
+        FfiConverterBool.lower(includeCompleted),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Moves the task (and its subtasks) to a project, resolving the
+     * equivalent status there.
+     */
+open func setProject(id: String, projectId: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_project(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(projectId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Sets or stops the repeat. A new rule is laid over the stored config so
+     * keys this build does not model survive (D7).
+     */
+open func setRepeat(id: String, rule: RepeatRule?, repeatFrom: String?)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_repeat(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionTypeRepeatRule.lower(rule),
+        FfiConverterOptionString.lower(repeatFrom),uniffiCallStatus
+    )
+})
+}
+    
+open func setStartDate(id: String, date: String?)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_start_date(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(date),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A status of the task's project; a done status stamps `completedAt`.
+     */
+open func setStatus(id: String, statusId: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_status(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(statusId),uniffiCallStatus
+    )
+})
+}
+    
+open func setTags(id: String, tags: [String])throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_tags(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceString.lower(tags),uniffiCallStatus
+    )
+})
+}
+    
+open func setTitle(id: String, title: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_title(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(title),uniffiCallStatus
+    )
+})
+}
+    
+open func uncomplete(id: String)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_uncomplete(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Reverts a change this surface returned. A new write: it syncs.
+     */
+open func undo(change: TaskChange)throws  -> TaskChange  {
+    return try  FfiConverterTypeTaskChange_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_undo(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeTaskChange_lower(change),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTasks: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Tasks
+
+    public static func lift(_ handle: UInt64) throws -> Tasks {
+        return Tasks(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Tasks) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Tasks {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Tasks, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTasks_lift(_ handle: UInt64) throws -> Tasks {
+    return try FfiConverterTypeTasks.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTasks_lower(_ value: Tasks) -> UInt64 {
+    return FfiConverterTypeTasks.lower(value)
+}
+
+
+
+
+
+
+/**
  * The one network seam.
  */
 public protocol Transport: AnyObject, Sendable {
@@ -7375,6 +8602,13 @@ public protocol VaultProtocol: AnyObject, Sendable {
      */
     func sync(session: AuthSession)  -> VaultSync
     
+    /**
+     * Every task, project, saved filter, reminder and activity read and write
+     * over this vault (spec 004). Needs the keychain for the same reason
+     * [`Vault::notes_writer`] does: a write ticks this device's clock.
+     */
+    func tasks(store: SecureStore) throws  -> Tasks
+    
 }
 /**
  * One vault's local database, opened.
@@ -7545,6 +8779,21 @@ open func sync(session: AuthSession) -> VaultSync  {
     uniffi_memry_core_fn_method_vault_sync(
             self.uniffiCloneHandle(),
         FfiConverterTypeAuthSession_lower(session),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every task, project, saved filter, reminder and activity read and write
+     * over this vault (spec 004). Needs the keychain for the same reason
+     * [`Vault::notes_writer`] does: a write ticks this device's clock.
+     */
+open func tasks(store: SecureStore)throws  -> Tasks  {
+    return try  FfiConverterTypeTasks_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_tasks(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
     )
 })
 }
@@ -7725,6 +8974,16 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * to collect.
      */
     func uploadAttachment(noteId: String, filename: String, mimeType: String, bytes: Data) async throws  -> String
+    
+    /**
+     * One pass: pull records, pull the bodies they touched, then push.
+     *
+     * **`async`**: tens of round trips on a busy vault. Like every sync call
+     * it cannot be cancelled from the shell (spec-defect 108); a killed pass
+     * resumes at the last cursor it committed, and an unsent outbox row stays
+     * queued. Safe to call repeatedly; concurrent calls simply run twice.
+     */
+    func syncNow() async throws  -> SyncPassSummary
     
 }
 /**
@@ -7982,6 +9241,30 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
         )
 }
     
+    /**
+     * One pass: pull records, pull the bodies they touched, then push.
+     *
+     * **`async`**: tens of round trips on a busy vault. Like every sync call
+     * it cannot be cancelled from the shell (spec-defect 108); a killed pass
+     * resumes at the last cursor it committed, and an unsent outbox row stays
+     * queued. Safe to call repeatedly; concurrent calls simply run twice.
+     */
+open func syncNow()async throws  -> SyncPassSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_sync_now(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeSyncPassSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
 
     
 }
@@ -8028,6 +9311,150 @@ public func FfiConverterTypeVaultSync_lower(_ value: VaultSync) -> UInt64 {
 }
 
 
+
+
+/**
+ * One activity row.
+ */
+public struct ActivityItem: Equatable, Hashable {
+    public var id: String
+    public var action: String
+    public var field: String?
+    /**
+     * JSON-encoded values, as desktop stores them.
+     */
+    public var oldValue: String?
+    public var newValue: String?
+    public var isThisDevice: Bool
+    public var createdAtMs: Int64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, action: String, field: String?, 
+        /**
+         * JSON-encoded values, as desktop stores them.
+         */oldValue: String?, newValue: String?, isThisDevice: Bool, createdAtMs: Int64?) {
+        self.id = id
+        self.action = action
+        self.field = field
+        self.oldValue = oldValue
+        self.newValue = newValue
+        self.isThisDevice = isThisDevice
+        self.createdAtMs = createdAtMs
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ActivityItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeActivityItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ActivityItem {
+        return
+            try ActivityItem(
+                id: FfiConverterString.read(from: &buf), 
+                action: FfiConverterString.read(from: &buf), 
+                field: FfiConverterOptionString.read(from: &buf), 
+                oldValue: FfiConverterOptionString.read(from: &buf), 
+                newValue: FfiConverterOptionString.read(from: &buf), 
+                isThisDevice: FfiConverterBool.read(from: &buf), 
+                createdAtMs: FfiConverterOptionInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ActivityItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.action, into: &buf)
+        FfiConverterOptionString.write(value.field, into: &buf)
+        FfiConverterOptionString.write(value.oldValue, into: &buf)
+        FfiConverterOptionString.write(value.newValue, into: &buf)
+        FfiConverterBool.write(value.isThisDevice, into: &buf)
+        FfiConverterOptionInt64.write(value.createdAtMs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeActivityItem_lift(_ buf: RustBuffer) throws -> ActivityItem {
+    return try FfiConverterTypeActivityItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeActivityItem_lower(_ value: ActivityItem) -> RustBuffer {
+    return FfiConverterTypeActivityItem.lower(value)
+}
+
+
+/**
+ * One page of a task's activity.
+ */
+public struct ActivityPageItem: Equatable, Hashable {
+    public var entries: [ActivityItem]
+    public var total: UInt32
+    public var hasMore: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(entries: [ActivityItem], total: UInt32, hasMore: Bool) {
+        self.entries = entries
+        self.total = total
+        self.hasMore = hasMore
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ActivityPageItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeActivityPageItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ActivityPageItem {
+        return
+            try ActivityPageItem(
+                entries: FfiConverterSequenceTypeActivityItem.read(from: &buf), 
+                total: FfiConverterUInt32.read(from: &buf), 
+                hasMore: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ActivityPageItem, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeActivityItem.write(value.entries, into: &buf)
+        FfiConverterUInt32.write(value.total, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeActivityPageItem_lift(_ buf: RustBuffer) throws -> ActivityPageItem {
+    return try FfiConverterTypeActivityPageItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeActivityPageItem_lower(_ value: ActivityPageItem) -> RustBuffer {
+    return FfiConverterTypeActivityPageItem.lower(value)
+}
 
 
 /**
@@ -8928,6 +10355,79 @@ public func FfiConverterTypeDeviceDescriptor_lower(_ value: DeviceDescriptor) ->
 
 
 /**
+ * A reminder that will fire, with what its notification says (FR-061/062).
+ */
+public struct DueReminderItem: Equatable, Hashable {
+    public var reminder: ReminderItem
+    public var fireAt: String
+    public var fireAtMs: Int64
+    public var targetTitle: String?
+    public var targetExists: Bool
+    public var targetCompleted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(reminder: ReminderItem, fireAt: String, fireAtMs: Int64, targetTitle: String?, targetExists: Bool, targetCompleted: Bool) {
+        self.reminder = reminder
+        self.fireAt = fireAt
+        self.fireAtMs = fireAtMs
+        self.targetTitle = targetTitle
+        self.targetExists = targetExists
+        self.targetCompleted = targetCompleted
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension DueReminderItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDueReminderItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DueReminderItem {
+        return
+            try DueReminderItem(
+                reminder: FfiConverterTypeReminderItem.read(from: &buf), 
+                fireAt: FfiConverterString.read(from: &buf), 
+                fireAtMs: FfiConverterInt64.read(from: &buf), 
+                targetTitle: FfiConverterOptionString.read(from: &buf), 
+                targetExists: FfiConverterBool.read(from: &buf), 
+                targetCompleted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DueReminderItem, into buf: inout [UInt8]) {
+        FfiConverterTypeReminderItem.write(value.reminder, into: &buf)
+        FfiConverterString.write(value.fireAt, into: &buf)
+        FfiConverterInt64.write(value.fireAtMs, into: &buf)
+        FfiConverterOptionString.write(value.targetTitle, into: &buf)
+        FfiConverterBool.write(value.targetExists, into: &buf)
+        FfiConverterBool.write(value.targetCompleted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDueReminderItem_lift(_ buf: RustBuffer) throws -> DueReminderItem {
+    return try FfiConverterTypeDueReminderItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDueReminderItem_lower(_ value: DueReminderItem) -> RustBuffer {
+    return FfiConverterTypeDueReminderItem.lower(value)
+}
+
+
+/**
  * The signed, encrypted envelope the manifest travels in.
  */
 public struct EncryptedAttachmentManifest: Equatable, Hashable {
@@ -8997,6 +10497,63 @@ public func FfiConverterTypeEncryptedAttachmentManifest_lift(_ buf: RustBuffer) 
 #endif
 public func FfiConverterTypeEncryptedAttachmentManifest_lower(_ value: EncryptedAttachmentManifest) -> RustBuffer {
     return FfiConverterTypeEncryptedAttachmentManifest.lower(value)
+}
+
+
+/**
+ * One field's value before a write, as JSON text.
+ */
+public struct FieldValue: Equatable, Hashable {
+    public var field: String
+    public var json: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(field: String, json: String) {
+        self.field = field
+        self.json = json
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension FieldValue: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFieldValue: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FieldValue {
+        return
+            try FieldValue(
+                field: FfiConverterString.read(from: &buf), 
+                json: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FieldValue, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.field, into: &buf)
+        FfiConverterString.write(value.json, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFieldValue_lift(_ buf: RustBuffer) throws -> FieldValue {
+    return try FfiConverterTypeFieldValue.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFieldValue_lower(_ value: FieldValue) -> RustBuffer {
+    return FfiConverterTypeFieldValue.lower(value)
 }
 
 
@@ -9536,6 +11093,83 @@ public func FfiConverterTypeKeyMaterial_lower(_ value: KeyMaterial) -> RustBuffe
 
 
 /**
+ * One linked id on a task and what it resolved to.
+ */
+public struct LinkedItemRecord: Equatable, Hashable {
+    /**
+     * `note` (linkedNoteIds) or `canvas` (linkedCanvasIds).
+     */
+    public var field: String
+    public var id: String
+    /**
+     * `present`, `missing` or `notOnDevice`.
+     */
+    public var state: String
+    public var item: RelatedItemRecord?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `note` (linkedNoteIds) or `canvas` (linkedCanvasIds).
+         */field: String, id: String, 
+        /**
+         * `present`, `missing` or `notOnDevice`.
+         */state: String, item: RelatedItemRecord?) {
+        self.field = field
+        self.id = id
+        self.state = state
+        self.item = item
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension LinkedItemRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLinkedItemRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LinkedItemRecord {
+        return
+            try LinkedItemRecord(
+                field: FfiConverterString.read(from: &buf), 
+                id: FfiConverterString.read(from: &buf), 
+                state: FfiConverterString.read(from: &buf), 
+                item: FfiConverterOptionTypeRelatedItemRecord.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LinkedItemRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.field, into: &buf)
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.state, into: &buf)
+        FfiConverterOptionTypeRelatedItemRecord.write(value.item, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkedItemRecord_lift(_ buf: RustBuffer) throws -> LinkedItemRecord {
+    return try FfiConverterTypeLinkedItemRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkedItemRecord_lower(_ value: LinkedItemRecord) -> RustBuffer {
+    return FfiConverterTypeLinkedItemRecord.lower(value)
+}
+
+
+/**
  * One task linked to a note (N807).
  */
 public struct LinkedTask: Equatable, Hashable {
@@ -9784,6 +11418,119 @@ public func FfiConverterTypeLocalNotification_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeLocalNotification_lower(_ value: LocalNotification) -> RustBuffer {
     return FfiConverterTypeLocalNotification.lower(value)
+}
+
+
+/**
+ * Everything a new task can carry.
+ */
+public struct NewTaskInput: Equatable, Hashable {
+    public var title: String
+    public var projectId: String
+    public var statusId: String?
+    public var parentId: String?
+    public var priority: Int64
+    public var description: String?
+    public var dueDate: String?
+    public var dueTime: String?
+    public var startDate: String?
+    public var `repeat`: RepeatRule?
+    public var repeatFrom: String?
+    public var tags: [String]
+    public var linkedNoteIds: [String]
+    public var linkedCanvasIds: [String]
+    public var sourceNoteId: String?
+    public var position: Int64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(title: String, projectId: String, statusId: String?, parentId: String?, priority: Int64, description: String?, dueDate: String?, dueTime: String?, startDate: String?, `repeat`: RepeatRule?, repeatFrom: String?, tags: [String], linkedNoteIds: [String], linkedCanvasIds: [String], sourceNoteId: String?, position: Int64?) {
+        self.title = title
+        self.projectId = projectId
+        self.statusId = statusId
+        self.parentId = parentId
+        self.priority = priority
+        self.description = description
+        self.dueDate = dueDate
+        self.dueTime = dueTime
+        self.startDate = startDate
+        self.`repeat` = `repeat`
+        self.repeatFrom = repeatFrom
+        self.tags = tags
+        self.linkedNoteIds = linkedNoteIds
+        self.linkedCanvasIds = linkedCanvasIds
+        self.sourceNoteId = sourceNoteId
+        self.position = position
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NewTaskInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNewTaskInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NewTaskInput {
+        return
+            try NewTaskInput(
+                title: FfiConverterString.read(from: &buf), 
+                projectId: FfiConverterString.read(from: &buf), 
+                statusId: FfiConverterOptionString.read(from: &buf), 
+                parentId: FfiConverterOptionString.read(from: &buf), 
+                priority: FfiConverterInt64.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                dueDate: FfiConverterOptionString.read(from: &buf), 
+                dueTime: FfiConverterOptionString.read(from: &buf), 
+                startDate: FfiConverterOptionString.read(from: &buf), 
+                repeat: FfiConverterOptionTypeRepeatRule.read(from: &buf), 
+                repeatFrom: FfiConverterOptionString.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                linkedNoteIds: FfiConverterSequenceString.read(from: &buf), 
+                linkedCanvasIds: FfiConverterSequenceString.read(from: &buf), 
+                sourceNoteId: FfiConverterOptionString.read(from: &buf), 
+                position: FfiConverterOptionInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NewTaskInput, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.projectId, into: &buf)
+        FfiConverterOptionString.write(value.statusId, into: &buf)
+        FfiConverterOptionString.write(value.parentId, into: &buf)
+        FfiConverterInt64.write(value.priority, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.dueDate, into: &buf)
+        FfiConverterOptionString.write(value.dueTime, into: &buf)
+        FfiConverterOptionString.write(value.startDate, into: &buf)
+        FfiConverterOptionTypeRepeatRule.write(value.`repeat`, into: &buf)
+        FfiConverterOptionString.write(value.repeatFrom, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterSequenceString.write(value.linkedNoteIds, into: &buf)
+        FfiConverterSequenceString.write(value.linkedCanvasIds, into: &buf)
+        FfiConverterOptionString.write(value.sourceNoteId, into: &buf)
+        FfiConverterOptionInt64.write(value.position, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNewTaskInput_lift(_ buf: RustBuffer) throws -> NewTaskInput {
+    return try FfiConverterTypeNewTaskInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNewTaskInput_lower(_ value: NewTaskInput) -> RustBuffer {
+    return FfiConverterTypeNewTaskInput.lower(value)
 }
 
 
@@ -10259,6 +12006,389 @@ public func FfiConverterTypeNoteSummary_lower(_ value: NoteSummary) -> RustBuffe
 
 
 /**
+ * A natural-language date, resolved.
+ */
+public struct ParsedDate: Equatable, Hashable {
+    /**
+     * `YYYY-MM-DD`.
+     */
+    public var date: String
+    /**
+     * `HH:MM`, 24-hour.
+     */
+    public var time: String?
+    /**
+     * "Wednesday, January 14, 2026 · 3:00 PM".
+     */
+    public var displayText: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `YYYY-MM-DD`.
+         */date: String, 
+        /**
+         * `HH:MM`, 24-hour.
+         */time: String?, 
+        /**
+         * "Wednesday, January 14, 2026 · 3:00 PM".
+         */displayText: String) {
+        self.date = date
+        self.time = time
+        self.displayText = displayText
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ParsedDate: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeParsedDate: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ParsedDate {
+        return
+            try ParsedDate(
+                date: FfiConverterString.read(from: &buf), 
+                time: FfiConverterOptionString.read(from: &buf), 
+                displayText: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ParsedDate, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.date, into: &buf)
+        FfiConverterOptionString.write(value.time, into: &buf)
+        FfiConverterString.write(value.displayText, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeParsedDate_lift(_ buf: RustBuffer) throws -> ParsedDate {
+    return try FfiConverterTypeParsedDate.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeParsedDate_lower(_ value: ParsedDate) -> RustBuffer {
+    return FfiConverterTypeParsedDate.lower(value)
+}
+
+
+/**
+ * A project editor's contents.
+ */
+public struct ProjectDraft: Equatable, Hashable {
+    public var name: String
+    public var description: String?
+    public var color: String?
+    public var icon: String?
+    /**
+     * `nil` on create is desktop's three default statuses; on update it
+     * leaves the statuses alone.
+     */
+    public var statuses: [StatusDraft]?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, description: String?, color: String?, icon: String?, 
+        /**
+         * `nil` on create is desktop's three default statuses; on update it
+         * leaves the statuses alone.
+         */statuses: [StatusDraft]?) {
+        self.name = name
+        self.description = description
+        self.color = color
+        self.icon = icon
+        self.statuses = statuses
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ProjectDraft: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProjectDraft: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProjectDraft {
+        return
+            try ProjectDraft(
+                name: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf), 
+                statuses: FfiConverterOptionSequenceTypeStatusDraft.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProjectDraft, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+        FfiConverterOptionSequenceTypeStatusDraft.write(value.statuses, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectDraft_lift(_ buf: RustBuffer) throws -> ProjectDraft {
+    return try FfiConverterTypeProjectDraft.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectDraft_lower(_ value: ProjectDraft) -> RustBuffer {
+    return FfiConverterTypeProjectDraft.lower(value)
+}
+
+
+/**
+ * One project with its statuses.
+ */
+public struct ProjectItem: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var description: String?
+    public var color: String
+    public var icon: String?
+    public var position: Int64
+    public var isInbox: Bool
+    public var archivedAt: String?
+    public var homeNoteId: String?
+    public var statuses: [StatusItem]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, description: String?, color: String, icon: String?, position: Int64, isInbox: Bool, archivedAt: String?, homeNoteId: String?, statuses: [StatusItem]) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.color = color
+        self.icon = icon
+        self.position = position
+        self.isInbox = isInbox
+        self.archivedAt = archivedAt
+        self.homeNoteId = homeNoteId
+        self.statuses = statuses
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ProjectItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProjectItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProjectItem {
+        return
+            try ProjectItem(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf), 
+                isInbox: FfiConverterBool.read(from: &buf), 
+                archivedAt: FfiConverterOptionString.read(from: &buf), 
+                homeNoteId: FfiConverterOptionString.read(from: &buf), 
+                statuses: FfiConverterSequenceTypeStatusItem.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProjectItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
+        FfiConverterBool.write(value.isInbox, into: &buf)
+        FfiConverterOptionString.write(value.archivedAt, into: &buf)
+        FfiConverterOptionString.write(value.homeNoteId, into: &buf)
+        FfiConverterSequenceTypeStatusItem.write(value.statuses, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectItem_lift(_ buf: RustBuffer) throws -> ProjectItem {
+    return try FfiConverterTypeProjectItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectItem_lower(_ value: ProjectItem) -> RustBuffer {
+    return FfiConverterTypeProjectItem.lower(value)
+}
+
+
+/**
+ * One item linked to a project hub.
+ */
+public struct ProjectLinkItem: Equatable, Hashable {
+    public var id: String
+    public var itemType: String
+    public var itemId: String
+    public var position: Int64
+    public var pinned: Bool
+    public var createdAt: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, itemType: String, itemId: String, position: Int64, pinned: Bool, createdAt: String?) {
+        self.id = id
+        self.itemType = itemType
+        self.itemId = itemId
+        self.position = position
+        self.pinned = pinned
+        self.createdAt = createdAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ProjectLinkItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProjectLinkItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProjectLinkItem {
+        return
+            try ProjectLinkItem(
+                id: FfiConverterString.read(from: &buf), 
+                itemType: FfiConverterString.read(from: &buf), 
+                itemId: FfiConverterString.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf), 
+                pinned: FfiConverterBool.read(from: &buf), 
+                createdAt: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProjectLinkItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.itemType, into: &buf)
+        FfiConverterString.write(value.itemId, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
+        FfiConverterBool.write(value.pinned, into: &buf)
+        FfiConverterOptionString.write(value.createdAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectLinkItem_lift(_ buf: RustBuffer) throws -> ProjectLinkItem {
+    return try FfiConverterTypeProjectLinkItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectLinkItem_lower(_ value: ProjectLinkItem) -> RustBuffer {
+    return FfiConverterTypeProjectLinkItem.lower(value)
+}
+
+
+/**
+ * A project's progress numbers.
+ */
+public struct ProjectStats: Equatable, Hashable {
+    public var projectId: String
+    public var taskCount: UInt32
+    public var completedCount: UInt32
+    public var overdueCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(projectId: String, taskCount: UInt32, completedCount: UInt32, overdueCount: UInt32) {
+        self.projectId = projectId
+        self.taskCount = taskCount
+        self.completedCount = completedCount
+        self.overdueCount = overdueCount
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ProjectStats: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProjectStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProjectStats {
+        return
+            try ProjectStats(
+                projectId: FfiConverterString.read(from: &buf), 
+                taskCount: FfiConverterUInt32.read(from: &buf), 
+                completedCount: FfiConverterUInt32.read(from: &buf), 
+                overdueCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProjectStats, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.projectId, into: &buf)
+        FfiConverterUInt32.write(value.taskCount, into: &buf)
+        FfiConverterUInt32.write(value.completedCount, into: &buf)
+        FfiConverterUInt32.write(value.overdueCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectStats_lift(_ buf: RustBuffer) throws -> ProjectStats {
+    return try FfiConverterTypeProjectStats.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectStats_lower(_ value: ProjectStats) -> RustBuffer {
+    return FfiConverterTypeProjectStats.lower(value)
+}
+
+
+/**
  * What `POST /auth/oauth/:provider/native` answered, minus the parts the core
  * keeps.
  *
@@ -10329,6 +12459,170 @@ public func FfiConverterTypeProviderSignInOutcome_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeProviderSignInOutcome_lower(_ value: ProviderSignInOutcome) -> RustBuffer {
     return FfiConverterTypeProviderSignInOutcome.lower(value)
+}
+
+
+/**
+ * What quick-add read out of the input.
+ */
+public struct QuickAddParse: Equatable, Hashable {
+    public var title: String
+    public var dueDate: String?
+    public var dueTime: String?
+    /**
+     * 0 none .. 4 urgent.
+     */
+    public var priority: Int64
+    public var projectId: String?
+    public var `repeat`: RepeatRule?
+    public var tags: [String]
+    public var noteTitles: [String]
+    public var spans: [QuickAddSpan]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(title: String, dueDate: String?, dueTime: String?, 
+        /**
+         * 0 none .. 4 urgent.
+         */priority: Int64, projectId: String?, `repeat`: RepeatRule?, tags: [String], noteTitles: [String], spans: [QuickAddSpan]) {
+        self.title = title
+        self.dueDate = dueDate
+        self.dueTime = dueTime
+        self.priority = priority
+        self.projectId = projectId
+        self.`repeat` = `repeat`
+        self.tags = tags
+        self.noteTitles = noteTitles
+        self.spans = spans
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension QuickAddParse: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeQuickAddParse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> QuickAddParse {
+        return
+            try QuickAddParse(
+                title: FfiConverterString.read(from: &buf), 
+                dueDate: FfiConverterOptionString.read(from: &buf), 
+                dueTime: FfiConverterOptionString.read(from: &buf), 
+                priority: FfiConverterInt64.read(from: &buf), 
+                projectId: FfiConverterOptionString.read(from: &buf), 
+                repeat: FfiConverterOptionTypeRepeatRule.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                noteTitles: FfiConverterSequenceString.read(from: &buf), 
+                spans: FfiConverterSequenceTypeQuickAddSpan.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: QuickAddParse, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.dueDate, into: &buf)
+        FfiConverterOptionString.write(value.dueTime, into: &buf)
+        FfiConverterInt64.write(value.priority, into: &buf)
+        FfiConverterOptionString.write(value.projectId, into: &buf)
+        FfiConverterOptionTypeRepeatRule.write(value.`repeat`, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterSequenceString.write(value.noteTitles, into: &buf)
+        FfiConverterSequenceTypeQuickAddSpan.write(value.spans, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQuickAddParse_lift(_ buf: RustBuffer) throws -> QuickAddParse {
+    return try FfiConverterTypeQuickAddParse.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQuickAddParse_lower(_ value: QuickAddParse) -> RustBuffer {
+    return FfiConverterTypeQuickAddParse.lower(value)
+}
+
+
+/**
+ * One stretch of quick-add input that carries syntax.
+ */
+public struct QuickAddSpan: Equatable, Hashable {
+    /**
+     * UTF-16 offsets, end exclusive (an `NSRange`).
+     */
+    public var start: UInt32
+    public var end: UInt32
+    /**
+     * `priority`, `project`, `tag`, `noteLink`, `datePhrase` or `repeat`.
+     */
+    public var kind: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * UTF-16 offsets, end exclusive (an `NSRange`).
+         */start: UInt32, end: UInt32, 
+        /**
+         * `priority`, `project`, `tag`, `noteLink`, `datePhrase` or `repeat`.
+         */kind: String) {
+        self.start = start
+        self.end = end
+        self.kind = kind
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension QuickAddSpan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeQuickAddSpan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> QuickAddSpan {
+        return
+            try QuickAddSpan(
+                start: FfiConverterUInt32.read(from: &buf), 
+                end: FfiConverterUInt32.read(from: &buf), 
+                kind: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: QuickAddSpan, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.start, into: &buf)
+        FfiConverterUInt32.write(value.end, into: &buf)
+        FfiConverterString.write(value.kind, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQuickAddSpan_lift(_ buf: RustBuffer) throws -> QuickAddSpan {
+    return try FfiConverterTypeQuickAddSpan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQuickAddSpan_lower(_ value: QuickAddSpan) -> RustBuffer {
+    return FfiConverterTypeQuickAddSpan.lower(value)
 }
 
 
@@ -10410,6 +12704,162 @@ public func FfiConverterTypeReindexSummary_lift(_ buf: RustBuffer) throws -> Rei
 #endif
 public func FfiConverterTypeReindexSummary_lower(_ value: ReindexSummary) -> RustBuffer {
     return FfiConverterTypeReindexSummary.lower(value)
+}
+
+
+/**
+ * A note, file or journal a task can link to.
+ */
+public struct RelatedItemRecord: Equatable, Hashable {
+    /**
+     * `note`, `file`, `journal` or `canvas`.
+     */
+    public var kind: String
+    public var id: String
+    public var title: String
+    public var folderPath: String?
+    public var emoji: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `note`, `file`, `journal` or `canvas`.
+         */kind: String, id: String, title: String, folderPath: String?, emoji: String?) {
+        self.kind = kind
+        self.id = id
+        self.title = title
+        self.folderPath = folderPath
+        self.emoji = emoji
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension RelatedItemRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRelatedItemRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RelatedItemRecord {
+        return
+            try RelatedItemRecord(
+                kind: FfiConverterString.read(from: &buf), 
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                folderPath: FfiConverterOptionString.read(from: &buf), 
+                emoji: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RelatedItemRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.folderPath, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRelatedItemRecord_lift(_ buf: RustBuffer) throws -> RelatedItemRecord {
+    return try FfiConverterTypeRelatedItemRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRelatedItemRecord_lower(_ value: RelatedItemRecord) -> RustBuffer {
+    return FfiConverterTypeRelatedItemRecord.lower(value)
+}
+
+
+/**
+ * One reminder.
+ */
+public struct ReminderItem: Equatable, Hashable {
+    public var id: String
+    public var targetType: String
+    public var targetId: String
+    public var remindAt: String
+    public var title: String?
+    public var note: String?
+    public var status: String
+    public var snoozedUntil: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, targetType: String, targetId: String, remindAt: String, title: String?, note: String?, status: String, snoozedUntil: String?) {
+        self.id = id
+        self.targetType = targetType
+        self.targetId = targetId
+        self.remindAt = remindAt
+        self.title = title
+        self.note = note
+        self.status = status
+        self.snoozedUntil = snoozedUntil
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReminderItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReminderItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReminderItem {
+        return
+            try ReminderItem(
+                id: FfiConverterString.read(from: &buf), 
+                targetType: FfiConverterString.read(from: &buf), 
+                targetId: FfiConverterString.read(from: &buf), 
+                remindAt: FfiConverterString.read(from: &buf), 
+                title: FfiConverterOptionString.read(from: &buf), 
+                note: FfiConverterOptionString.read(from: &buf), 
+                status: FfiConverterString.read(from: &buf), 
+                snoozedUntil: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReminderItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.targetType, into: &buf)
+        FfiConverterString.write(value.targetId, into: &buf)
+        FfiConverterString.write(value.remindAt, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.note, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.snoozedUntil, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReminderItem_lift(_ buf: RustBuffer) throws -> ReminderItem {
+    return try FfiConverterTypeReminderItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReminderItem_lower(_ value: ReminderItem) -> RustBuffer {
+    return FfiConverterTypeReminderItem.lower(value)
 }
 
 
@@ -10507,6 +12957,139 @@ public func FfiConverterTypeReminderSummary_lift(_ buf: RustBuffer) throws -> Re
 #endif
 public func FfiConverterTypeReminderSummary_lower(_ value: ReminderSummary) -> RustBuffer {
     return FfiConverterTypeReminderSummary.lower(value)
+}
+
+
+/**
+ * A repeat rule in desktop's `RepeatConfig` terms.
+ */
+public struct RepeatRule: Equatable, Hashable {
+    /**
+     * `daily`, `weekly`, `monthly` or `yearly`.
+     */
+    public var frequency: String
+    public var interval: Int64
+    /**
+     * 0 Sunday .. 6 Saturday.
+     */
+    public var daysOfWeek: [Int64]?
+    /**
+     * `dayOfMonth` or `weekPattern`.
+     */
+    public var monthlyType: String?
+    public var dayOfMonth: Int64?
+    /**
+     * 1..4, or 5 for the last.
+     */
+    public var weekOfMonth: Int64?
+    public var dayOfWeekForMonth: Int64?
+    /**
+     * `never`, `date` or `count`.
+     */
+    public var endType: String
+    /**
+     * `YYYY-MM-DD`.
+     */
+    public var endDate: String?
+    public var endCount: Int64?
+    public var completedCount: Int64
+    public var createdAt: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `daily`, `weekly`, `monthly` or `yearly`.
+         */frequency: String, interval: Int64, 
+        /**
+         * 0 Sunday .. 6 Saturday.
+         */daysOfWeek: [Int64]?, 
+        /**
+         * `dayOfMonth` or `weekPattern`.
+         */monthlyType: String?, dayOfMonth: Int64?, 
+        /**
+         * 1..4, or 5 for the last.
+         */weekOfMonth: Int64?, dayOfWeekForMonth: Int64?, 
+        /**
+         * `never`, `date` or `count`.
+         */endType: String, 
+        /**
+         * `YYYY-MM-DD`.
+         */endDate: String?, endCount: Int64?, completedCount: Int64, createdAt: String?) {
+        self.frequency = frequency
+        self.interval = interval
+        self.daysOfWeek = daysOfWeek
+        self.monthlyType = monthlyType
+        self.dayOfMonth = dayOfMonth
+        self.weekOfMonth = weekOfMonth
+        self.dayOfWeekForMonth = dayOfWeekForMonth
+        self.endType = endType
+        self.endDate = endDate
+        self.endCount = endCount
+        self.completedCount = completedCount
+        self.createdAt = createdAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension RepeatRule: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRepeatRule: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RepeatRule {
+        return
+            try RepeatRule(
+                frequency: FfiConverterString.read(from: &buf), 
+                interval: FfiConverterInt64.read(from: &buf), 
+                daysOfWeek: FfiConverterOptionSequenceInt64.read(from: &buf), 
+                monthlyType: FfiConverterOptionString.read(from: &buf), 
+                dayOfMonth: FfiConverterOptionInt64.read(from: &buf), 
+                weekOfMonth: FfiConverterOptionInt64.read(from: &buf), 
+                dayOfWeekForMonth: FfiConverterOptionInt64.read(from: &buf), 
+                endType: FfiConverterString.read(from: &buf), 
+                endDate: FfiConverterOptionString.read(from: &buf), 
+                endCount: FfiConverterOptionInt64.read(from: &buf), 
+                completedCount: FfiConverterInt64.read(from: &buf), 
+                createdAt: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RepeatRule, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.frequency, into: &buf)
+        FfiConverterInt64.write(value.interval, into: &buf)
+        FfiConverterOptionSequenceInt64.write(value.daysOfWeek, into: &buf)
+        FfiConverterOptionString.write(value.monthlyType, into: &buf)
+        FfiConverterOptionInt64.write(value.dayOfMonth, into: &buf)
+        FfiConverterOptionInt64.write(value.weekOfMonth, into: &buf)
+        FfiConverterOptionInt64.write(value.dayOfWeekForMonth, into: &buf)
+        FfiConverterString.write(value.endType, into: &buf)
+        FfiConverterOptionString.write(value.endDate, into: &buf)
+        FfiConverterOptionInt64.write(value.endCount, into: &buf)
+        FfiConverterInt64.write(value.completedCount, into: &buf)
+        FfiConverterOptionString.write(value.createdAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRepeatRule_lift(_ buf: RustBuffer) throws -> RepeatRule {
+    return try FfiConverterTypeRepeatRule.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRepeatRule_lower(_ value: RepeatRule) -> RustBuffer {
+    return FfiConverterTypeRepeatRule.lower(value)
 }
 
 
@@ -10621,6 +13204,81 @@ public func FfiConverterTypeReviewComment_lift(_ buf: RustBuffer) throws -> Revi
 #endif
 public func FfiConverterTypeReviewComment_lower(_ value: ReviewComment) -> RustBuffer {
     return FfiConverterTypeReviewComment.lower(value)
+}
+
+
+/**
+ * One saved filter.
+ */
+public struct SavedFilterItem: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    /**
+     * The full `config` JSON (`{filters, sort?, starred?}`), verbatim.
+     */
+    public var configJson: String
+    public var starred: Bool
+    public var position: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, 
+        /**
+         * The full `config` JSON (`{filters, sort?, starred?}`), verbatim.
+         */configJson: String, starred: Bool, position: Int64) {
+        self.id = id
+        self.name = name
+        self.configJson = configJson
+        self.starred = starred
+        self.position = position
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SavedFilterItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSavedFilterItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SavedFilterItem {
+        return
+            try SavedFilterItem(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                configJson: FfiConverterString.read(from: &buf), 
+                starred: FfiConverterBool.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SavedFilterItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.configJson, into: &buf)
+        FfiConverterBool.write(value.starred, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSavedFilterItem_lift(_ buf: RustBuffer) throws -> SavedFilterItem {
+    return try FfiConverterTypeSavedFilterItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSavedFilterItem_lower(_ value: SavedFilterItem) -> RustBuffer {
+    return FfiConverterTypeSavedFilterItem.lower(value)
 }
 
 
@@ -10775,6 +13433,279 @@ public func FfiConverterTypeSocketRequest_lift(_ buf: RustBuffer) throws -> Sock
 #endif
 public func FfiConverterTypeSocketRequest_lower(_ value: SocketRequest) -> RustBuffer {
     return FfiConverterTypeSocketRequest.lower(value)
+}
+
+
+/**
+ * One status in a project editor.
+ */
+public struct StatusDraft: Equatable, Hashable {
+    /**
+     * `nil` for a new status.
+     */
+    public var id: String?
+    public var name: String
+    public var color: String
+    /**
+     * `todo`, `in_progress` or `done`.
+     */
+    public var statusType: String
+    public var order: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `nil` for a new status.
+         */id: String?, name: String, color: String, 
+        /**
+         * `todo`, `in_progress` or `done`.
+         */statusType: String, order: Int64) {
+        self.id = id
+        self.name = name
+        self.color = color
+        self.statusType = statusType
+        self.order = order
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension StatusDraft: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStatusDraft: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StatusDraft {
+        return
+            try StatusDraft(
+                id: FfiConverterOptionString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                color: FfiConverterString.read(from: &buf), 
+                statusType: FfiConverterString.read(from: &buf), 
+                order: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StatusDraft, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.color, into: &buf)
+        FfiConverterString.write(value.statusType, into: &buf)
+        FfiConverterInt64.write(value.order, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStatusDraft_lift(_ buf: RustBuffer) throws -> StatusDraft {
+    return try FfiConverterTypeStatusDraft.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStatusDraft_lower(_ value: StatusDraft) -> RustBuffer {
+    return FfiConverterTypeStatusDraft.lower(value)
+}
+
+
+/**
+ * One status of a project.
+ */
+public struct StatusItem: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var color: String
+    public var position: Int64
+    public var isDefault: Bool
+    public var isDone: Bool
+    /**
+     * `todo`, `in_progress` or `done`, desktop's derivation.
+     */
+    public var statusType: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, color: String, position: Int64, isDefault: Bool, isDone: Bool, 
+        /**
+         * `todo`, `in_progress` or `done`, desktop's derivation.
+         */statusType: String) {
+        self.id = id
+        self.name = name
+        self.color = color
+        self.position = position
+        self.isDefault = isDefault
+        self.isDone = isDone
+        self.statusType = statusType
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension StatusItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStatusItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StatusItem {
+        return
+            try StatusItem(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                color: FfiConverterString.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf), 
+                isDefault: FfiConverterBool.read(from: &buf), 
+                isDone: FfiConverterBool.read(from: &buf), 
+                statusType: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StatusItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.color, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
+        FfiConverterBool.write(value.isDefault, into: &buf)
+        FfiConverterBool.write(value.isDone, into: &buf)
+        FfiConverterString.write(value.statusType, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStatusItem_lift(_ buf: RustBuffer) throws -> StatusItem {
+    return try FfiConverterTypeStatusItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStatusItem_lower(_ value: StatusItem) -> RustBuffer {
+    return FfiConverterTypeStatusItem.lower(value)
+}
+
+
+/**
+ * What one pass did.
+ */
+public struct SyncPassSummary: Equatable, Hashable {
+    /**
+     * Records applied locally.
+     */
+    public var pulled: UInt32
+    /**
+     * Records deleted locally.
+     */
+    public var deleted: UInt32
+    /**
+     * Documents whose body log was pulled.
+     */
+    public var bodies: UInt32
+    /**
+     * Outbox rows the server accepted.
+     */
+    public var pushed: UInt32
+    /**
+     * Outbox rows the server rejected and that stay queued.
+     */
+    public var rejected: UInt32
+    /**
+     * Rows still queued after the pass.
+     */
+    public var pending: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Records applied locally.
+         */pulled: UInt32, 
+        /**
+         * Records deleted locally.
+         */deleted: UInt32, 
+        /**
+         * Documents whose body log was pulled.
+         */bodies: UInt32, 
+        /**
+         * Outbox rows the server accepted.
+         */pushed: UInt32, 
+        /**
+         * Outbox rows the server rejected and that stay queued.
+         */rejected: UInt32, 
+        /**
+         * Rows still queued after the pass.
+         */pending: UInt32) {
+        self.pulled = pulled
+        self.deleted = deleted
+        self.bodies = bodies
+        self.pushed = pushed
+        self.rejected = rejected
+        self.pending = pending
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SyncPassSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncPassSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncPassSummary {
+        return
+            try SyncPassSummary(
+                pulled: FfiConverterUInt32.read(from: &buf), 
+                deleted: FfiConverterUInt32.read(from: &buf), 
+                bodies: FfiConverterUInt32.read(from: &buf), 
+                pushed: FfiConverterUInt32.read(from: &buf), 
+                rejected: FfiConverterUInt32.read(from: &buf), 
+                pending: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyncPassSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pulled, into: &buf)
+        FfiConverterUInt32.write(value.deleted, into: &buf)
+        FfiConverterUInt32.write(value.bodies, into: &buf)
+        FfiConverterUInt32.write(value.pushed, into: &buf)
+        FfiConverterUInt32.write(value.rejected, into: &buf)
+        FfiConverterUInt32.write(value.pending, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncPassSummary_lift(_ buf: RustBuffer) throws -> SyncPassSummary {
+    return try FfiConverterTypeSyncPassSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncPassSummary_lower(_ value: SyncPassSummary) -> RustBuffer {
+    return FfiConverterTypeSyncPassSummary.lower(value)
 }
 
 
@@ -11295,6 +14226,800 @@ public func FfiConverterTypeTaskCard_lift(_ buf: RustBuffer) throws -> TaskCard 
 #endif
 public func FfiConverterTypeTaskCard_lower(_ value: TaskCard) -> RustBuffer {
     return FfiConverterTypeTaskCard.lower(value)
+}
+
+
+/**
+ * What a write did, in the shape [`crate::api::tasks::Tasks::undo`] takes.
+ */
+public struct TaskChange: Equatable, Hashable {
+    public var changed: [TaskPrior]
+    public var created: [String]
+    public var deleted: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(changed: [TaskPrior], created: [String], deleted: [String]) {
+        self.changed = changed
+        self.created = created
+        self.deleted = deleted
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskChange: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskChange: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskChange {
+        return
+            try TaskChange(
+                changed: FfiConverterSequenceTypeTaskPrior.read(from: &buf), 
+                created: FfiConverterSequenceString.read(from: &buf), 
+                deleted: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskChange, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeTaskPrior.write(value.changed, into: &buf)
+        FfiConverterSequenceString.write(value.created, into: &buf)
+        FfiConverterSequenceString.write(value.deleted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskChange_lift(_ buf: RustBuffer) throws -> TaskChange {
+    return try FfiConverterTypeTaskChange.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskChange_lower(_ value: TaskChange) -> RustBuffer {
+    return FfiConverterTypeTaskChange.lower(value)
+}
+
+
+/**
+ * What completing a task did.
+ */
+public struct TaskCompletion: Equatable, Hashable {
+    public var change: TaskChange
+    public var repeating: Bool
+    /**
+     * The next occurrence's id and due date, when the series continues.
+     */
+    public var nextTaskId: String?
+    public var nextDueDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(change: TaskChange, repeating: Bool, 
+        /**
+         * The next occurrence's id and due date, when the series continues.
+         */nextTaskId: String?, nextDueDate: String?) {
+        self.change = change
+        self.repeating = repeating
+        self.nextTaskId = nextTaskId
+        self.nextDueDate = nextDueDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskCompletion: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskCompletion: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskCompletion {
+        return
+            try TaskCompletion(
+                change: FfiConverterTypeTaskChange.read(from: &buf), 
+                repeating: FfiConverterBool.read(from: &buf), 
+                nextTaskId: FfiConverterOptionString.read(from: &buf), 
+                nextDueDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskCompletion, into buf: inout [UInt8]) {
+        FfiConverterTypeTaskChange.write(value.change, into: &buf)
+        FfiConverterBool.write(value.repeating, into: &buf)
+        FfiConverterOptionString.write(value.nextTaskId, into: &buf)
+        FfiConverterOptionString.write(value.nextDueDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskCompletion_lift(_ buf: RustBuffer) throws -> TaskCompletion {
+    return try FfiConverterTypeTaskCompletion.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskCompletion_lower(_ value: TaskCompletion) -> RustBuffer {
+    return FfiConverterTypeTaskCompletion.lower(value)
+}
+
+
+/**
+ * One group of a task list.
+ */
+public struct TaskGroupItem: Equatable, Hashable {
+    public var key: String
+    /**
+     * A fixed label's key (`dueDate.overdue`, `status.todo`, …).
+     */
+    public var labelKey: String?
+    /**
+     * User data naming the group (a project, a folder, a note).
+     */
+    public var name: String?
+    public var color: String?
+    public var variant: String?
+    public var taskIds: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(key: String, 
+        /**
+         * A fixed label's key (`dueDate.overdue`, `status.todo`, …).
+         */labelKey: String?, 
+        /**
+         * User data naming the group (a project, a folder, a note).
+         */name: String?, color: String?, variant: String?, taskIds: [String]) {
+        self.key = key
+        self.labelKey = labelKey
+        self.name = name
+        self.color = color
+        self.variant = variant
+        self.taskIds = taskIds
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskGroupItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskGroupItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskGroupItem {
+        return
+            try TaskGroupItem(
+                key: FfiConverterString.read(from: &buf), 
+                labelKey: FfiConverterOptionString.read(from: &buf), 
+                name: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                variant: FfiConverterOptionString.read(from: &buf), 
+                taskIds: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskGroupItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.key, into: &buf)
+        FfiConverterOptionString.write(value.labelKey, into: &buf)
+        FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.variant, into: &buf)
+        FfiConverterSequenceString.write(value.taskIds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskGroupItem_lift(_ buf: RustBuffer) throws -> TaskGroupItem {
+    return try FfiConverterTypeTaskGroupItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskGroupItem_lower(_ value: TaskGroupItem) -> RustBuffer {
+    return FfiConverterTypeTaskGroupItem.lower(value)
+}
+
+
+/**
+ * One task.
+ */
+public struct TaskItem: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    public var description: String?
+    public var projectId: String
+    public var statusId: String?
+    public var parentId: String?
+    /**
+     * 0 none, 1 low, 2 medium, 3 high, 4 urgent.
+     */
+    public var priority: Int64
+    public var position: Int64
+    public var dueDate: String?
+    public var dueTime: String?
+    public var startDate: String?
+    /**
+     * The parsed rule, when the stored config is in desktop's shape.
+     */
+    public var `repeat`: RepeatRule?
+    /**
+     * Whether any `repeatConfig` is stored, readable or not (desktop's
+     * `isRepeating: !!repeatConfig`).
+     */
+    public var isRepeating: Bool
+    public var repeatFrom: String?
+    public var sourceNoteId: String?
+    public var completedAt: String?
+    public var archivedAt: String?
+    public var tags: [String]
+    public var linkedNoteIds: [String]
+    public var linkedCanvasIds: [String]
+    public var createdAt: String?
+    public var modifiedAt: String?
+    /**
+     * `todo`, `in_progress` or `done`; `None` when the status does not
+     * resolve in the task's project.
+     */
+    public var statusType: String?
+    public var isDone: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, description: String?, projectId: String, statusId: String?, parentId: String?, 
+        /**
+         * 0 none, 1 low, 2 medium, 3 high, 4 urgent.
+         */priority: Int64, position: Int64, dueDate: String?, dueTime: String?, startDate: String?, 
+        /**
+         * The parsed rule, when the stored config is in desktop's shape.
+         */`repeat`: RepeatRule?, 
+        /**
+         * Whether any `repeatConfig` is stored, readable or not (desktop's
+         * `isRepeating: !!repeatConfig`).
+         */isRepeating: Bool, repeatFrom: String?, sourceNoteId: String?, completedAt: String?, archivedAt: String?, tags: [String], linkedNoteIds: [String], linkedCanvasIds: [String], createdAt: String?, modifiedAt: String?, 
+        /**
+         * `todo`, `in_progress` or `done`; `None` when the status does not
+         * resolve in the task's project.
+         */statusType: String?, isDone: Bool) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.projectId = projectId
+        self.statusId = statusId
+        self.parentId = parentId
+        self.priority = priority
+        self.position = position
+        self.dueDate = dueDate
+        self.dueTime = dueTime
+        self.startDate = startDate
+        self.`repeat` = `repeat`
+        self.isRepeating = isRepeating
+        self.repeatFrom = repeatFrom
+        self.sourceNoteId = sourceNoteId
+        self.completedAt = completedAt
+        self.archivedAt = archivedAt
+        self.tags = tags
+        self.linkedNoteIds = linkedNoteIds
+        self.linkedCanvasIds = linkedCanvasIds
+        self.createdAt = createdAt
+        self.modifiedAt = modifiedAt
+        self.statusType = statusType
+        self.isDone = isDone
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskItem {
+        return
+            try TaskItem(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                projectId: FfiConverterString.read(from: &buf), 
+                statusId: FfiConverterOptionString.read(from: &buf), 
+                parentId: FfiConverterOptionString.read(from: &buf), 
+                priority: FfiConverterInt64.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf), 
+                dueDate: FfiConverterOptionString.read(from: &buf), 
+                dueTime: FfiConverterOptionString.read(from: &buf), 
+                startDate: FfiConverterOptionString.read(from: &buf), 
+                repeat: FfiConverterOptionTypeRepeatRule.read(from: &buf), 
+                isRepeating: FfiConverterBool.read(from: &buf), 
+                repeatFrom: FfiConverterOptionString.read(from: &buf), 
+                sourceNoteId: FfiConverterOptionString.read(from: &buf), 
+                completedAt: FfiConverterOptionString.read(from: &buf), 
+                archivedAt: FfiConverterOptionString.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                linkedNoteIds: FfiConverterSequenceString.read(from: &buf), 
+                linkedCanvasIds: FfiConverterSequenceString.read(from: &buf), 
+                createdAt: FfiConverterOptionString.read(from: &buf), 
+                modifiedAt: FfiConverterOptionString.read(from: &buf), 
+                statusType: FfiConverterOptionString.read(from: &buf), 
+                isDone: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterString.write(value.projectId, into: &buf)
+        FfiConverterOptionString.write(value.statusId, into: &buf)
+        FfiConverterOptionString.write(value.parentId, into: &buf)
+        FfiConverterInt64.write(value.priority, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
+        FfiConverterOptionString.write(value.dueDate, into: &buf)
+        FfiConverterOptionString.write(value.dueTime, into: &buf)
+        FfiConverterOptionString.write(value.startDate, into: &buf)
+        FfiConverterOptionTypeRepeatRule.write(value.`repeat`, into: &buf)
+        FfiConverterBool.write(value.isRepeating, into: &buf)
+        FfiConverterOptionString.write(value.repeatFrom, into: &buf)
+        FfiConverterOptionString.write(value.sourceNoteId, into: &buf)
+        FfiConverterOptionString.write(value.completedAt, into: &buf)
+        FfiConverterOptionString.write(value.archivedAt, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterSequenceString.write(value.linkedNoteIds, into: &buf)
+        FfiConverterSequenceString.write(value.linkedCanvasIds, into: &buf)
+        FfiConverterOptionString.write(value.createdAt, into: &buf)
+        FfiConverterOptionString.write(value.modifiedAt, into: &buf)
+        FfiConverterOptionString.write(value.statusType, into: &buf)
+        FfiConverterBool.write(value.isDone, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskItem_lift(_ buf: RustBuffer) throws -> TaskItem {
+    return try FfiConverterTypeTaskItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskItem_lower(_ value: TaskItem) -> RustBuffer {
+    return FfiConverterTypeTaskItem.lower(value)
+}
+
+
+/**
+ * One task's fields before a write.
+ */
+public struct TaskPrior: Equatable, Hashable {
+    public var taskId: String
+    public var fields: [FieldValue]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: String, fields: [FieldValue]) {
+        self.taskId = taskId
+        self.fields = fields
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskPrior: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskPrior: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskPrior {
+        return
+            try TaskPrior(
+                taskId: FfiConverterString.read(from: &buf), 
+                fields: FfiConverterSequenceTypeFieldValue.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskPrior, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.taskId, into: &buf)
+        FfiConverterSequenceTypeFieldValue.write(value.fields, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskPrior_lift(_ buf: RustBuffer) throws -> TaskPrior {
+    return try FfiConverterTypeTaskPrior.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskPrior_lower(_ value: TaskPrior) -> RustBuffer {
+    return FfiConverterTypeTaskPrior.lower(value)
+}
+
+
+/**
+ * The task settings desktop has.
+ */
+public struct TaskSettingsItem: Equatable, Hashable {
+    public var defaultProjectId: String?
+    public var defaultSortOrder: String
+    public var defaultView: String
+    public var staleInboxDays: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(defaultProjectId: String?, defaultSortOrder: String, defaultView: String, staleInboxDays: Int64) {
+        self.defaultProjectId = defaultProjectId
+        self.defaultSortOrder = defaultSortOrder
+        self.defaultView = defaultView
+        self.staleInboxDays = staleInboxDays
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskSettingsItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskSettingsItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskSettingsItem {
+        return
+            try TaskSettingsItem(
+                defaultProjectId: FfiConverterOptionString.read(from: &buf), 
+                defaultSortOrder: FfiConverterString.read(from: &buf), 
+                defaultView: FfiConverterString.read(from: &buf), 
+                staleInboxDays: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskSettingsItem, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.defaultProjectId, into: &buf)
+        FfiConverterString.write(value.defaultSortOrder, into: &buf)
+        FfiConverterString.write(value.defaultView, into: &buf)
+        FfiConverterInt64.write(value.staleInboxDays, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskSettingsItem_lift(_ buf: RustBuffer) throws -> TaskSettingsItem {
+    return try FfiConverterTypeTaskSettingsItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskSettingsItem_lower(_ value: TaskSettingsItem) -> RustBuffer {
+    return FfiConverterTypeTaskSettingsItem.lower(value)
+}
+
+
+/**
+ * The tab badges.
+ */
+public struct TaskTabCounts: Equatable, Hashable {
+    public var all: UInt32
+    public var archived: UInt32
+    public var today: UInt32
+    public var tomorrow: UInt32
+    public var next7: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(all: UInt32, archived: UInt32, today: UInt32, tomorrow: UInt32, next7: UInt32) {
+        self.all = all
+        self.archived = archived
+        self.today = today
+        self.tomorrow = tomorrow
+        self.next7 = next7
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskTabCounts: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskTabCounts: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskTabCounts {
+        return
+            try TaskTabCounts(
+                all: FfiConverterUInt32.read(from: &buf), 
+                archived: FfiConverterUInt32.read(from: &buf), 
+                today: FfiConverterUInt32.read(from: &buf), 
+                tomorrow: FfiConverterUInt32.read(from: &buf), 
+                next7: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskTabCounts, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.all, into: &buf)
+        FfiConverterUInt32.write(value.archived, into: &buf)
+        FfiConverterUInt32.write(value.today, into: &buf)
+        FfiConverterUInt32.write(value.tomorrow, into: &buf)
+        FfiConverterUInt32.write(value.next7, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskTabCounts_lift(_ buf: RustBuffer) throws -> TaskTabCounts {
+    return try FfiConverterTypeTaskTabCounts.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskTabCounts_lower(_ value: TaskTabCounts) -> RustBuffer {
+    return FfiConverterTypeTaskTabCounts.lower(value)
+}
+
+
+/**
+ * One Tasks-page query: the tab, the project picker, the filter bar and the
+ * sort, exactly the inputs desktop's `pages/tasks.tsx` combines.
+ */
+public struct TaskViewQuery: Equatable, Hashable {
+    /**
+     * `all`, `today`, `tomorrow`, `next7` or `archived`.
+     */
+    public var tab: String
+    /**
+     * The project picker's scope; `None` is every project.
+     */
+    public var projectId: String?
+    /**
+     * The saved-filter `filters` object as JSON; `None` is desktop's defaults.
+     */
+    public var filtersJson: String?
+    /**
+     * `{field, direction}` as JSON; `None` is due date ascending.
+     */
+    public var sortJson: String?
+    /**
+     * The shell's local wall clock, `YYYY-MM-DDTHH:MM:SS`.
+     */
+    public var now: String
+    /**
+     * 0 Sunday, 1 Monday (the Calendar `weekStartDay` setting).
+     */
+    public var weekStartsOn: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `all`, `today`, `tomorrow`, `next7` or `archived`.
+         */tab: String, 
+        /**
+         * The project picker's scope; `None` is every project.
+         */projectId: String?, 
+        /**
+         * The saved-filter `filters` object as JSON; `None` is desktop's defaults.
+         */filtersJson: String?, 
+        /**
+         * `{field, direction}` as JSON; `None` is due date ascending.
+         */sortJson: String?, 
+        /**
+         * The shell's local wall clock, `YYYY-MM-DDTHH:MM:SS`.
+         */now: String, 
+        /**
+         * 0 Sunday, 1 Monday (the Calendar `weekStartDay` setting).
+         */weekStartsOn: UInt32) {
+        self.tab = tab
+        self.projectId = projectId
+        self.filtersJson = filtersJson
+        self.sortJson = sortJson
+        self.now = now
+        self.weekStartsOn = weekStartsOn
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskViewQuery: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskViewQuery: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskViewQuery {
+        return
+            try TaskViewQuery(
+                tab: FfiConverterString.read(from: &buf), 
+                projectId: FfiConverterOptionString.read(from: &buf), 
+                filtersJson: FfiConverterOptionString.read(from: &buf), 
+                sortJson: FfiConverterOptionString.read(from: &buf), 
+                now: FfiConverterString.read(from: &buf), 
+                weekStartsOn: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskViewQuery, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.tab, into: &buf)
+        FfiConverterOptionString.write(value.projectId, into: &buf)
+        FfiConverterOptionString.write(value.filtersJson, into: &buf)
+        FfiConverterOptionString.write(value.sortJson, into: &buf)
+        FfiConverterString.write(value.now, into: &buf)
+        FfiConverterUInt32.write(value.weekStartsOn, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskViewQuery_lift(_ buf: RustBuffer) throws -> TaskViewQuery {
+    return try FfiConverterTypeTaskViewQuery.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskViewQuery_lower(_ value: TaskViewQuery) -> RustBuffer {
+    return FfiConverterTypeTaskViewQuery.lower(value)
+}
+
+
+/**
+ * What a Tasks-page query shows.
+ */
+public struct TaskViewResult: Equatable, Hashable {
+    /**
+     * The list, in order: filtered and sorted, then (on a window tab) the
+     * window's overdue-first order. Subtasks ride with their parents.
+     */
+    public var taskIds: [String]
+    /**
+     * The groups the sort field produces over the top-level rows; empty for
+     * `title`, `completedAt` and an unknown field.
+     */
+    public var groups: [TaskGroupItem]
+    /**
+     * The Done section under the list.
+     */
+    public var doneIds: [String]
+    public var counts: TaskTabCounts
+    /**
+     * Rows before the filter bar, and after it (for the "filters hid
+     * everything" empty state).
+     */
+    public var totalCount: UInt32
+    public var filteredCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The list, in order: filtered and sorted, then (on a window tab) the
+         * window's overdue-first order. Subtasks ride with their parents.
+         */taskIds: [String], 
+        /**
+         * The groups the sort field produces over the top-level rows; empty for
+         * `title`, `completedAt` and an unknown field.
+         */groups: [TaskGroupItem], 
+        /**
+         * The Done section under the list.
+         */doneIds: [String], counts: TaskTabCounts, 
+        /**
+         * Rows before the filter bar, and after it (for the "filters hid
+         * everything" empty state).
+         */totalCount: UInt32, filteredCount: UInt32) {
+        self.taskIds = taskIds
+        self.groups = groups
+        self.doneIds = doneIds
+        self.counts = counts
+        self.totalCount = totalCount
+        self.filteredCount = filteredCount
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskViewResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskViewResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskViewResult {
+        return
+            try TaskViewResult(
+                taskIds: FfiConverterSequenceString.read(from: &buf), 
+                groups: FfiConverterSequenceTypeTaskGroupItem.read(from: &buf), 
+                doneIds: FfiConverterSequenceString.read(from: &buf), 
+                counts: FfiConverterTypeTaskTabCounts.read(from: &buf), 
+                totalCount: FfiConverterUInt32.read(from: &buf), 
+                filteredCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskViewResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceString.write(value.taskIds, into: &buf)
+        FfiConverterSequenceTypeTaskGroupItem.write(value.groups, into: &buf)
+        FfiConverterSequenceString.write(value.doneIds, into: &buf)
+        FfiConverterTypeTaskTabCounts.write(value.counts, into: &buf)
+        FfiConverterUInt32.write(value.totalCount, into: &buf)
+        FfiConverterUInt32.write(value.filteredCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskViewResult_lift(_ buf: RustBuffer) throws -> TaskViewResult {
+    return try FfiConverterTypeTaskViewResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskViewResult_lower(_ value: TaskViewResult) -> RustBuffer {
+    return FfiConverterTypeTaskViewResult.lower(value)
 }
 
 
@@ -16080,6 +19805,78 @@ fileprivate struct FfiConverterOptionTypeNoteMetadata: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeParsedDate: FfiConverterRustBuffer {
+    typealias SwiftType = ParsedDate?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeParsedDate.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeParsedDate.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeRelatedItemRecord: FfiConverterRustBuffer {
+    typealias SwiftType = RelatedItemRecord?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeRelatedItemRecord.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeRelatedItemRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeRepeatRule: FfiConverterRustBuffer {
+    typealias SwiftType = RepeatRule?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeRepeatRule.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeRepeatRule.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeTableContent: FfiConverterRustBuffer {
     typealias SwiftType = TableContent?
 
@@ -16128,6 +19925,54 @@ fileprivate struct FfiConverterOptionTypeTaskCard: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeTaskItem: FfiConverterRustBuffer {
+    typealias SwiftType = TaskItem?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTaskItem.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTaskItem.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionSequenceInt64: FfiConverterRustBuffer {
+    typealias SwiftType = [Int64]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionSequenceTypeBlock: FfiConverterRustBuffer {
     typealias SwiftType = [Block]?
 
@@ -16152,6 +19997,55 @@ fileprivate struct FfiConverterOptionSequenceTypeBlock: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionSequenceTypeStatusDraft: FfiConverterRustBuffer {
+    typealias SwiftType = [StatusDraft]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceTypeStatusDraft.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceTypeStatusDraft.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceInt64: FfiConverterRustBuffer {
+    typealias SwiftType = [Int64]
+
+    public static func write(_ value: [Int64], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterInt64.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Int64] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Int64]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterInt64.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
@@ -16169,6 +20063,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeActivityItem: FfiConverterRustBuffer {
+    typealias SwiftType = [ActivityItem]
+
+    public static func write(_ value: [ActivityItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeActivityItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ActivityItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ActivityItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeActivityItem.read(from: &buf))
         }
         return seq
     }
@@ -16302,6 +20221,56 @@ fileprivate struct FfiConverterSequenceTypeCachedAttachment: FfiConverterRustBuf
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeDueReminderItem: FfiConverterRustBuffer {
+    typealias SwiftType = [DueReminderItem]
+
+    public static func write(_ value: [DueReminderItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeDueReminderItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [DueReminderItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [DueReminderItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeDueReminderItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFieldValue: FfiConverterRustBuffer {
+    typealias SwiftType = [FieldValue]
+
+    public static func write(_ value: [FieldValue], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFieldValue.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FieldValue] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FieldValue]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFieldValue.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFolderSummary: FfiConverterRustBuffer {
     typealias SwiftType = [FolderSummary]
 
@@ -16344,6 +20313,31 @@ fileprivate struct FfiConverterSequenceTypeInlineRun: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeInlineRun.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLinkedItemRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [LinkedItemRecord]
+
+    public static func write(_ value: [LinkedItemRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLinkedItemRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LinkedItemRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LinkedItemRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLinkedItemRecord.read(from: &buf))
         }
         return seq
     }
@@ -16427,6 +20421,156 @@ fileprivate struct FfiConverterSequenceTypeNoteSummary: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeProjectItem: FfiConverterRustBuffer {
+    typealias SwiftType = [ProjectItem]
+
+    public static func write(_ value: [ProjectItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeProjectItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ProjectItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ProjectItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeProjectItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeProjectLinkItem: FfiConverterRustBuffer {
+    typealias SwiftType = [ProjectLinkItem]
+
+    public static func write(_ value: [ProjectLinkItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeProjectLinkItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ProjectLinkItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ProjectLinkItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeProjectLinkItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeProjectStats: FfiConverterRustBuffer {
+    typealias SwiftType = [ProjectStats]
+
+    public static func write(_ value: [ProjectStats], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeProjectStats.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ProjectStats] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ProjectStats]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeProjectStats.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeQuickAddSpan: FfiConverterRustBuffer {
+    typealias SwiftType = [QuickAddSpan]
+
+    public static func write(_ value: [QuickAddSpan], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeQuickAddSpan.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [QuickAddSpan] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [QuickAddSpan]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeQuickAddSpan.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeRelatedItemRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [RelatedItemRecord]
+
+    public static func write(_ value: [RelatedItemRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRelatedItemRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RelatedItemRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RelatedItemRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRelatedItemRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeReminderItem: FfiConverterRustBuffer {
+    typealias SwiftType = [ReminderItem]
+
+    public static func write(_ value: [ReminderItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeReminderItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ReminderItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ReminderItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeReminderItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeReminderSummary: FfiConverterRustBuffer {
     typealias SwiftType = [ReminderSummary]
 
@@ -16477,6 +20621,31 @@ fileprivate struct FfiConverterSequenceTypeReviewComment: FfiConverterRustBuffer
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeSavedFilterItem: FfiConverterRustBuffer {
+    typealias SwiftType = [SavedFilterItem]
+
+    public static func write(_ value: [SavedFilterItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSavedFilterItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SavedFilterItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SavedFilterItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSavedFilterItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer {
     typealias SwiftType = [SearchResult]
 
@@ -16494,6 +20663,56 @@ fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeSearchResult.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeStatusDraft: FfiConverterRustBuffer {
+    typealias SwiftType = [StatusDraft]
+
+    public static func write(_ value: [StatusDraft], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeStatusDraft.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [StatusDraft] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [StatusDraft]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeStatusDraft.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeStatusItem: FfiConverterRustBuffer {
+    typealias SwiftType = [StatusItem]
+
+    public static func write(_ value: [StatusItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeStatusItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [StatusItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [StatusItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeStatusItem.read(from: &buf))
         }
         return seq
     }
@@ -16569,6 +20788,81 @@ fileprivate struct FfiConverterSequenceTypeTagSummary: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTagSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTaskGroupItem: FfiConverterRustBuffer {
+    typealias SwiftType = [TaskGroupItem]
+
+    public static func write(_ value: [TaskGroupItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTaskGroupItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TaskGroupItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TaskGroupItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTaskGroupItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTaskItem: FfiConverterRustBuffer {
+    typealias SwiftType = [TaskItem]
+
+    public static func write(_ value: [TaskItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTaskItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TaskItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TaskItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTaskItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTaskPrior: FfiConverterRustBuffer {
+    typealias SwiftType = [TaskPrior]
+
+    public static func write(_ value: [TaskPrior], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTaskPrior.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TaskPrior] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TaskPrior]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTaskPrior.read(from: &buf))
         }
         return seq
     }
@@ -17051,6 +21345,67 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
     )
 })
 }
+/**
+ * Whether a time is still being typed after a date (keeps the ghost open).
+ */
+public func isTaskTimeInProgress(query: String, now: String) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_is_task_time_in_progress(
+        FfiConverterString.lower(query),
+        FfiConverterString.lower(now),uniffiCallStatus
+    )
+})
+}
+/**
+ * `parseNaturalDate`; `nil` when it does not read as a date.
+ */
+public func parseTaskDate(input: String, now: String) -> ParsedDate?  {
+    return try!  FfiConverterOptionTypeParsedDate.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_parse_task_date(
+        FfiConverterString.lower(input),
+        FfiConverterString.lower(now),uniffiCallStatus
+    )
+})
+}
+/**
+ * Ghost completion for a half-typed date phrase (the text after `@`).
+ */
+public func predictTaskDate(query: String, now: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_predict_task_date(
+        FfiConverterString.lower(query),
+        FfiConverterString.lower(now),uniffiCallStatus
+    )
+})
+}
+/**
+ * Ghost completion for a half-typed `every …`.
+ */
+public func predictTaskRepeat(query: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_predict_task_repeat(
+        FfiConverterString.lower(query),uniffiCallStatus
+    )
+})
+}
+/**
+ * The next `count` dates of a repeat rule from `start` (`YYYY-MM-DD`),
+ * `start` first — the custom repeat sheet's preview.
+ */
+public func repeatPreview(rule: RepeatRule, start: String, count: UInt32) -> [String]  {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_repeat_preview(
+        FfiConverterTypeRepeatRule_lower(rule),
+        FfiConverterString.lower(start),
+        FfiConverterUInt32.lower(count),uniffiCallStatus
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -17113,6 +21468,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_is_task_time_in_progress() != 26769) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_parse_task_date() != 17224) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_predict_task_date() != 35205) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_predict_task_repeat() != 26067) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_repeat_preview() != 44138) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_complete_account_setup() != 57429) {
@@ -17334,6 +21704,222 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 32723) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_create_project() != 54330) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_create_saved_filter() != 1730) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_delete_project() != 41673) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_delete_saved_filter() != 31953) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_link_to_project() != 15728) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_project_links() != 151) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_project_stats() != 41093) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_reorder_projects() != 54289) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_reorder_saved_filters() != 11078) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_saved_filters() != 62676) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_default_project() != 8225) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_default_sort_order() != 24259) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_default_view() != 60508) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_project_archived() != 17486) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_project_home_note() != 19839) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_project_link_pinned() != 57758) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_saved_filter_starred() != 19631) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_stale_inbox_days() != 38736) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_task_settings() != 39252) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_unlink_from_project() != 62631) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_update_project() != 16714) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_update_saved_filter() != 32829) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_activity() != 38149) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_add_task_reminder() != 10964) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_convert_checklist_item() != 574) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_delete_reminder() != 65164) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_dismiss_reminder() != 16277) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_due_reminders() != 39957) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_linked_items() != 64646) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_parse_quick_add() != 35785) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_search_related() != 49394) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_snooze_reminder() != 37247) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_task_reminders() != 30017) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_update_reminder() != 43650) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_all() != 20951) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_get() != 47980) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_projects() != 993) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_view() != 7979) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_archive() != 24032) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_complete() != 11111) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_delete() != 59788) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_move() != 57039) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_set_due() != 27305) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_set_priority() != 24603) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_set_status() != 27435) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_unarchive() != 63789) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_bulk_uncomplete() != 5862) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_complete() != 43193) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_complete_all_subtasks() != 63765) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_create() != 56167) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_delete() != 30530) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_delete_all_subtasks() != 38) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_duplicate() != 60344) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_incomplete_all_subtasks() != 28140) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_reorder() != 56249) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_description() != 4182) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_due() != 47218) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_due_for_all_subtasks() != 39529) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_linked_canvas_ids() != 41445) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_linked_note_ids() != 57347) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_parent() != 46469) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_priority() != 956) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_priority_for_all_subtasks() != 5014) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_project() != 55777) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_repeat() != 4133) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_start_date() != 30266) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_status() != 55479) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_tags() != 10757) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_title() != 65044) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_uncomplete() != 9496) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_undo() != 32165) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -17347,6 +21933,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_sync() != 39035) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_tasks() != 28160) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_backgroundexec_schedule_refresh() != 7923) {

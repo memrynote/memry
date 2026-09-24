@@ -266,7 +266,7 @@ G1 result (2026-09-24): GREEN. `pnpm --filter @memry/contracts vectors:check` pa
 TP020–TP027 are separate modules and run in parallel. TP028 is serial after
 all of them because it owns the UniFFI surface and the generated Swift.
 
-- [ ] TP020 [P] Tasks domain (`domain/tasks.rs`, split to stay under 600
+- [x] TP020 [P] Tasks domain (`domain/tasks.rs`, split to stay under 600
       lines). Every write = one transaction with its outbox row and field
       clocks, as the existing functions do:
   - create with every field: description, statusId (default status of the
@@ -288,7 +288,8 @@ all of them because it owns the UniFFI surface and the generated Swift.
   - bulk over ids: complete, uncomplete, delete, move to project, set status,
     set priority, set due date (+time, or clear), archive, unarchive
   - `tests/domain_tasks.rs` extended for each, including clocks and outbox
-- [ ] TP021 [P] Projects domain write (D2) in `domain/projects.rs` (+ split
+    Evidence: `domain/tasks/{mod,model,create,lifecycle,structure,fields,batch,bulk}.rs` (subagent tp020, integrated). `cargo test -p memry-core --test domain_tasks --test domain_tasks_write --test domain_tasks_lifecycle`: 11+10+9 passed (create every field/default status/next position, project move w/ equivalent status, parent rules, complete/uncomplete w/ subtasks, repeating roll incl. count/date end + repeat-from-completion + foreign repeatConfig, undo, duplicate, reorder, delete cascade/promote, subtask bulk, bulk over ids; payload + field clocks + outbox asserted).
+- [x] TP021 [P] Projects domain write (D2) in `domain/projects.rs` (+ split
       file): create with desktop default statuses or a custom list (≥2, with
       type/color/order), update name/description/color/icon, reconcile
       statuses (add, rename, recolor, retype, reorder, delete with task
@@ -296,21 +297,26 @@ all of them because it owns the UniFFI surface and the generated Swift.
       "move tasks to inbox project" or "delete tasks", set home note,
       link/unlink/pin note, calendar event and file items. Delete
       `write_unavailable` and rewrite the module doc. `tests/domain_projects.rs`.
-- [ ] TP022 [P] Saved filters: project the `filter` sync type if TP003 shows
+      Evidence: `domain/projects/` dir (subagent tp021, integrated), `write_unavailable` deleted. `--test domain_projects --test domain_projects_write --test domain_projects_links`: 5+12+5 passed (default/custom statuses, update + reconcile, archive, reorder, delete move-to-inbox/delete-tasks, home note, link/unlink/pin incl. markdown-note `project` property).
+- [x] TP022 [P] Saved filters: project the `filter` sync type if TP003 shows
       it missing; create, update, delete, reorder, star; payload identical to
       desktop's. Tests.
-- [ ] TP023 [P] Task settings (`defaultProjectId`, `defaultSortOrder`,
+      Evidence: `filter` subscribed (protocol/types.rs, 14 types), migration `0003_saved_filters.sql`, projector `projectors/filters.rs`, `domain/saved_filters.rs`; payload-schemas vector regenerated (56 cases) + chapters 00/05/13 updated. `--test domain_saved_filters` 9 passed, `--test vectors` 7 passed, `vectors:check` passed, contracts payload-schemas.test.ts 74 passed.
+- [x] TP023 [P] Task settings (`defaultProjectId`, `defaultSortOrder`,
       `defaultView`, `staleInboxDays`) read/write through the existing
       settings merge, with desktop's defaults and coercion of unknown values.
       Tests.
-- [ ] TP024 [P] Reminders with `targetType: 'task'`: list, add, edit, delete,
+      Evidence: `domain/task_settings.rs` (subagent tp023, integrated): synced `tasks.defaultProjectId/defaultSortOrder/staleInboxDays` via settings merge, local `defaultView` in meta, coercion to desktop defaults. `--test domain_task_settings` 9 passed. Desktop keeps task settings device-local (see §6).
+- [x] TP024 [P] Reminders with `targetType: 'task'`: list, add, edit, delete,
       snooze for a task, reusing the existing note reminder path. Tests.
-- [ ] TP025 [P] Task activity: project `task_activity` rows for reading
+      Evidence: `domain/reminders/{mod,queries}.rs` (subagent tp024, integrated): task reminders list/add/edit/delete/dismiss/snooze + `due_window` with target title/exists/completed. `--test domain_reminders_task` 6 passed; note reminder tests unchanged and green.
+- [x] TP025 [P] Task activity: project `task_activity` rows for reading
       (paged, filter by action). If TP003 shows it syncs, write user rows for
       local mutations with desktop's encoding (`field`, JSON `oldValue`/
       `newValue`, `description` values always null, `actor: 'user'`), never
       `superseded` rows. Tests.
-- [ ] TP026 [P] Note ↔ task (FR-058) in the core:
+      Evidence: `domain/task_activity/{mod,read}.rs` (subagent tp025, integrated): paged read w/ action filter + count, desktop-encoded user rows (created/updated/completed/uncompleted/moved/deleted, never superseded), 90-day retention. `--test domain_task_activity` 12 passed.
+- [x] TP026 [P] Note ↔ task (FR-058) in the core:
   - completing or reopening a task from the phone flips its
     `- [ ] … {task:<id>}` line in the source note body
   - flipping the checkbox in a note body completes or reopens the task
@@ -322,22 +328,35 @@ all of them because it owns the UniFFI surface and the generated Swift.
   - default project resolution chain: parent → `+token` → note's project →
     settings default → inbox → first project
   - tests over CRDT bodies
-- [ ] TP027 [P] Search and linked items: tasks in vault search (exists), and
+    Evidence: `domain/note_tasks/{mod,write,project}.rs` (subagent tp026, integrated): task lines (taskBlock + checklist `{task:id}`), set checked, remove own line, checklist->task conversion, checkbox-flip detection, Tab-nesting parent changes, default project chain. `--test domain_note_tasks` 12 passed over real CRDT bodies.
+- [x] TP027 [P] Search and linked items: tasks in vault search (exists), and
       related-item search over notes, canvases and files for the task detail
       screen.
-- [ ] TP028 UniFFI surface `crates/memry-core/src/api/tasks.rs` +
+      Evidence: `domain/related_items.rs` (subagent tp027, integrated): related search over notes/files (canvas not subscribed -> `NotOnDevice`), `resolve` present/missing. Tasks already in vault search (`domain/search/mod.rs:138`, `api/search.rs:262`). `--test domain_related_items` 6 passed. Whole crate: 64 binaries, 904 passed, 0 failed.
+- [x] TP028 UniFFI surface `crates/memry-core/src/api/tasks.rs` +
       `api/projects.rs`: records for task detail, list row, project with
       statuses, repeat config, filter spec, grouped list result, activity
       entry, parse result (title + spans with kinds for pills); functions for
       everything in TP013–TP027. Errors through `api/errors.rs` with messages
       `ErrorMapping.swift` can map. Build the xcframework, commit the
       regenerated Swift.
-- [ ] TP029 `tests/api_tasks.rs`: end-to-end through the API layer, including
+      Evidence: `api/{tasks,tasks_write,projects,task_extras,task_records}.rs` + `Vault::tasks(store)` + note checkbox flip hook in `NotesWriter::edit_block`: records TaskItem/RepeatRule/TaskChange/TaskCompletion/ProjectItem/StatusItem/TaskGroupItem/TaskViewQuery+Result/QuickAddParse(+UTF-16 spans)/ParsedDate/ReminderItem/DueReminderItem/ActivityPageItem/RelatedItemRecord/LinkedItemRecord/SavedFilterItem/TaskSettingsItem; functions for TP013-TP027; errors as StorageError. `crates/memry-core/build-xcframework.sh --release` exit 0; regenerated `Generated/memry_core.swift` is purely additive (0 lines lost vs HEAD, checked by multiset diff).
+- [x] TP028a Found while planning Phase 2: the iOS core exports **no push**.
+      `VaultSync` (`api/sync/mod.rs:15-22`) is pull-only, so every phone write
+      sits in the outbox forever and "synced both ways" (goal, TP082) is
+      impossible. Export one pull-then-push pass (`VaultSync.syncNow`) built
+      from the existing `PullLoop` + `PushCoordinator` + `AccountSealer`,
+      never a bare push verb; the shell runs it after writes, on foreground and
+      on pull-to-refresh. Test through the API with scripted transport.
+      Evidence: `crates/memry-core/src/api/sync/pass.rs`: `VaultSync::sync_now() -> SyncPassSummary` = PullLoop (records) -> BodyPull of notes/journals touched this pass -> PushCoordinator drain sealed by AccountSealer (device signer from the keychain). `tests/api_sync_pass.rs` a_local_write_is_pulled_over_then_pushed_and_leaves_the_outbox passed (pull precedes push, outbox empty, pushed item is the note); clippy/fmt clean. Generated Swift regenerated in TP028.
+- [x] TP029 `tests/api_tasks.rs`: end-to-end through the API layer, including
       inbound payloads from an older desktop (missing fields) and a newer one
       (unknown fields preserved on the next local edit).
+      Evidence: `crates/memry-core/tests/api_tasks.rs` 7 passed: create/edit/complete/undo + activity, repeating roll + undo removes next occurrence, older-desktop payload (no statusId/priority/fieldClocks) reads and edits, newer-desktop unknown fields (task + inside repeatConfig) survive local edits, view tabs/counts/done/groups/archived, projects + saved filters + settings, quick add + date parse + repeat preview.
 
 **Gate G2**: `cargo test -p memry-core` and clippy green, `vectors:check`
 green, xcframework builds, iOS app still builds and Unit plan is green.
+G2 result (2026-09-24): GREEN. `cargo test -p memry-core` 65 binaries, 911 passed / 0 failed / 1 ignored; `cargo clippy --all-targets -D warnings` + `cargo fmt --check` clean; line ceilings passed; `vectors:check` passed (16 classes); `build-xcframework.sh --release` exit 0; `xcodebuild test -testPlan Unit` 503 tests in 84 suites passed (app builds against the new bindings).
 **Commit** Phase 2.
 
 ---
@@ -580,6 +599,15 @@ clock, createdAt`) but is in the core's **unsubscribed** list
 <!-- date — task id — choice — why -->
 
 - 2026-09-24 — TP001 — Simulator driving goes through `apps/ios/MemryUITests/AgentDriverUITests.swift` (file-command XCUITest harness, skipped unless `TEST_RUNNER_MEMRY_DRIVER_DIR` is set) instead of AXe/`xcodebuildmcp ui-automation` taps — Xcode 27 ships no Simulator.app; AXe HID via Device Hub delivered touches only briefly after a reboot and then silently dropped them (and `simctl io screenshot` returned stale frames). XCUITest event synthesis and `XCUIScreen` screenshots work headless. `xcodebuildmcp` is still used for build/run/logs.
+- 2026-09-24 — TP028a — Add a pull-then-push `VaultSync.syncNow` export. Why: the core's FFI surface is pull-only (`api/sync/mod.rs` module doc), so no phone write could ever reach desktop; desktop's behaviour is pull then push per pass, which is what the export runs. Not a wire change.
+- 2026-09-24 — TP022 — Subscribe the core to the `filter` record type (13 → 14 subscribed types). Why: saved filters are a desktop feature that syncs; the protocol chapter's subscribed list is updated in the same change. Not a payload change.
+- 2026-09-24 — TP027 — Canvases cannot be offered as related items on iOS: the core does not subscribe to `canvas` (13 §13.1). Linked canvas ids are preserved on the task and shown as present-but-unopenable/missing; desktop-only affordance per D6's spirit.
+- 2026-09-24 — TP020 — Moving a parent task to another project moves its subtasks with it, and bulk delete deletes subtasks too. Desktop leaves subtasks behind in both cases, which breaks the one-project/visible-subtask rules this plan states (TP020, D4); the plan's rule wins where desktop would leave an invisible or cross-project subtask.
+- 2026-09-24 — TP021 — Deleting a status rewrites no task (desktop parity: the dead `statusId` stays and reads as unresolved). Project delete offers "move tasks to Inbox" (new on the phone, equivalent status in the Inbox) besides desktop's "delete tasks". Linking a markdown note writes the note's `project` property as desktop does, plus the `links` entry.
+- 2026-09-24 — TP023 — Desktop keeps task settings device-local (`settings-handlers.ts:1162` writes only the local table; the settings sync handler has no `tasks` branch). iOS reads/writes the synced `tasks` group (schema-valid for every desktop) and keeps `defaultView` local; the values therefore do not cross to desktop, matching desktop's own behaviour.
+- 2026-09-24 — TP025 — Activity for `description` follows desktop's actual encoding (`newValue: {"delta":N}`), not §13.7.5's "always null"; no body text is ever stored.
+- 2026-09-24 — TP028 — A checkbox flipped in a note body completes the task with the core clock as the completion anchor (the note editor path has no local wall clock); only `repeatFrom: completion` tasks can differ, by at most the UTC offset's day.
+- 2026-09-24 — TP026 — Found, not fixed here: `crdt/body_edit/structure.rs` Outdent/Indent/MoveBlock/Duplicate flatten formatted text into literal tag text (`snapshot_subtree` uses `get_string`). Task-line delete lifts nested blocks with Outdent, so formatted text nested under a task line would be damaged. Logged for TP092.
 - 2026-09-24 — TP001 — Found, not fixed (out of scope): vault picker rows (`VaultListView.VaultChoiceList`) use `.buttonStyle(.plain)` without `contentShape`, so tapping the empty middle of a row does nothing; only the icon/name/chevron are hit-testable.
 
 ## 7. Blockers

@@ -48,6 +48,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "projections",
         sql: include_str!("migrations/data/0002_projections.sql"),
     },
+    Migration {
+        version: 3,
+        name: "saved_filters",
+        sql: include_str!("migrations/data/0003_saved_filters.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -169,7 +174,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -197,6 +202,7 @@ mod tests {
             "projects",
             "property_definitions",
             "reminders",
+            "saved_filters",
             "settings",
             "settings_field_clocks",
             "tag_categories",
@@ -266,7 +272,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -284,8 +290,9 @@ mod tests {
         assert_eq!(count, 1);
         // Verbatim, §A.1: a migration is not an excuse to re-serialise a payload.
         assert_eq!(payload, "{\"unmodelled\":1}");
-        // The projections 0002 added are present and empty.
+        // The projections 0002 and 0003 added are present and empty.
         assert!(table_names(&db).iter().any(|n| n == "notes"));
+        assert!(table_names(&db).iter().any(|n| n == "saved_filters"));
     }
 
     #[test]

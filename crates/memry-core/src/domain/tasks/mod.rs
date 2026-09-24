@@ -43,19 +43,52 @@
 //! `notes::next_clock` and `task_merge::next_field_clocks` both
 //! refuse the reserved device id, which is §6.6 made structural rather than
 //! remembered.
+//!
+//! ## The desktop-parity write surface (spec 004 TP020)
+//!
+//! Desktop is the reference for what each user action writes. The submodules
+//! hold it, each named for the part of the surface it owns:
+//!
+//! - [`create`]: create with every field, and duplicate.
+//! - [`lifecycle`]: complete (including a repeating task's next occurrence,
+//!   D3), uncomplete.
+//! - [`structure`]: project, status and parent changes, reorder, delete with
+//!   subtasks.
+//! - [`fields`]: the remaining single-field setters.
+//! - [`bulk`]: the subtask and multi-select bulk actions.
+//! - [`batch`]: the one-transaction writer behind every multi-task write, and
+//!   [`undo`].
+//! - [`model`]: status types, status pickers, positions and id minting.
 
 use rusqlite::Connection;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::storage::repositories::Change;
-use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
-use crate::sync::field_merge::{TASK_SYNCABLE_FIELDS, init_all_field_clocks};
+use crate::sync::field_merge::TASK_SYNCABLE_FIELDS;
 use crate::sync::outbox::{self, Durable};
 
-use super::notes::{insert_local, iso, next_clock, object, require_payload};
+use super::notes::{iso, next_clock, require_payload};
 use super::task_merge;
+
+pub mod batch;
+pub mod bulk;
+pub mod create;
+pub mod fields;
+pub mod lifecycle;
+pub mod model;
+pub mod structure;
+
+pub use batch::{Prior, TaskWrite, undo, write_fields};
+pub use bulk::*;
+pub use create::{TaskDetails, create_detailed, duplicate};
+pub use fields::*;
+pub use lifecycle::{Completion, NextOccurrence, complete, uncomplete};
+pub use model::{StatusKind, TASK_ID_LEN, new_task_id, status_kind};
+pub use structure::{
+    SubtaskDisposal, delete_with_subtasks, reorder, set_parent, set_project, set_status,
+};
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "task";
@@ -108,54 +141,16 @@ pub enum Inbound {
 }
 
 /// Creates a task, its payload and its outbox row.
+///
+/// [`create_detailed`] with no details: the task starts in its project's
+/// default status at the next free position.
 pub fn create(
     conn: &Connection,
     task: &NewTask<'_>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(ITEM_TYPE, task.id),
-        now_ms,
-        |tx| {
-            valid_item_id(task.id)?;
-            let at = iso(now_ms)?;
-            let clock = next_clock(&Object::new(), device_id)?;
-            // §6.7: a row with a document clock and no field clocks seeds every
-            // listed field from the document clock. A create is exactly that
-            // row, so the fifteen start life at this device's first tick.
-            let field_clocks =
-                init_all_field_clocks(&task_merge::as_clock(&clock)?, &TASK_SYNCABLE_FIELDS);
-            let mut payload = object(json!({
-                "title": task.title,
-                "projectId": task.project_id,
-                "priority": task.priority,
-                "position": 0,
-                "clock": clock,
-                "fieldClocks": field_clocks,
-                "createdAt": at,
-                "modifiedAt": at,
-            }));
-            // Absent rather than `null` (§13.4): a create knows of no due date
-            // to clear, and an explicit null is a clear.
-            for (key, value) in [("dueDate", task.due_date), ("dueTime", task.due_time)] {
-                if let Some(value) = value {
-                    payload.insert(key.to_owned(), json!(value));
-                }
-            }
-            if let Some(repeat) = task.repeat_config {
-                payload.insert("repeatConfig".to_owned(), repeat.clone());
-            }
-            if !task.tags.is_empty() {
-                payload.insert(
-                    "tags".to_owned(),
-                    json!(super::tags::dedupe(task.tags.to_vec())),
-                );
-            }
-            insert_local(tx, ITEM_TYPE, task.id, payload, now_ms)
-        },
-    )
+    create_detailed(conn, task, &TaskDetails::default(), device_id, now_ms)
 }
 
 /// Retitles a task.
@@ -358,7 +353,7 @@ pub(crate) fn edit_merged(
     item_type: &str,
     fields: &[&str],
     item_id: &str,
-    mut changes: Vec<(&'static str, Change)>,
+    changes: Vec<(&'static str, Change)>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
@@ -366,26 +361,37 @@ pub(crate) fn edit_merged(
         conn,
         &outbox::Change::upsert(item_type, item_id),
         now_ms,
-        |tx| {
-            let stored = require_payload(tx, item_type, item_id)?;
-            // Pushed before the field clocks are computed, because
-            // `modifiedAt` **is** one of `PROJECT_SYNCABLE_FIELDS` (§6.7) even
-            // though it is none of `TASK_SYNCABLE_FIELDS`, and its clock must
-            // tick on the type that merges it.
-            changes.push(("modifiedAt", Change::set(iso(now_ms)?)));
-            let touched: Vec<&str> = changes.iter().map(|(key, _)| *key).collect();
-            let clock = next_clock(stored.object(), device_id)?;
-            let field_clocks =
-                task_merge::next_field_clocks(stored.object(), fields, &touched, device_id)?;
-            changes.push(("clock", Change::Set(clock)));
-            changes.push(("fieldClocks", Change::Set(field_clocks)));
-            sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)
-        },
+        |tx| edit_merged_in(tx, item_type, fields, item_id, changes, device_id, now_ms),
     )
 }
 
+/// [`edit_merged`] inside a transaction the caller holds, without the outbox
+/// row: the caller queues it in the same transaction.
+pub(crate) fn edit_merged_in(
+    tx: &Connection,
+    item_type: &str,
+    fields: &[&str],
+    item_id: &str,
+    mut changes: Vec<(&'static str, Change)>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<String, StorageError> {
+    let stored = require_payload(tx, item_type, item_id)?;
+    // Pushed before the field clocks are computed, because `modifiedAt` **is**
+    // one of `PROJECT_SYNCABLE_FIELDS` (§6.7) even though it is none of
+    // `TASK_SYNCABLE_FIELDS`, and its clock must tick on the type that merges
+    // it.
+    changes.push(("modifiedAt", Change::set(iso(now_ms)?)));
+    let touched: Vec<&str> = changes.iter().map(|(key, _)| *key).collect();
+    let clock = next_clock(stored.object(), device_id)?;
+    let field_clocks = task_merge::next_field_clocks(stored.object(), fields, &touched, device_id)?;
+    changes.push(("clock", Change::Set(clock)));
+    changes.push(("fieldClocks", Change::Set(field_clocks)));
+    sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)
+}
+
 /// `Some` is the value, `None` is §13.4's explicit clear.
-fn nullable(value: Option<&str>) -> Value {
+pub(crate) fn nullable(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |value| Value::String(value.to_owned()))
 }
 
@@ -402,6 +408,8 @@ pub(crate) fn valid_item_id(id: &str) -> Result<&str, StorageError> {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
 
     #[test]

@@ -78,6 +78,9 @@ use crate::sync::first_sync_store::read_meta;
 use crate::sync::pull::PullLoop;
 
 mod attachments_io;
+mod pass;
+
+pub use pass::SyncPassSummary;
 
 use attachments_io::*;
 

@@ -30,10 +30,13 @@ use crate::crdt::body_edit::BlockEdit;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::{keys, sodium};
 use crate::domain::body_write;
+use crate::domain::calendar::LocalDateTime;
 use crate::domain::folders;
+use crate::domain::note_tasks;
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
 use crate::domain::reminders;
+use crate::domain::tasks;
 use crate::domain::templates;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
@@ -173,13 +176,29 @@ impl NotesWriter {
         let device_id = self.device_id.clone();
         self.db
             .call_blocking(move |conn| {
-                Ok(body_write::edit_block(
-                    conn,
-                    &note_id,
-                    &edit,
-                    &device_id,
-                    now_ms(),
-                ))
+                // FR-058: a task line's checkbox flipped in the note completes
+                // or reopens the task. Read before the edit lands, applied
+                // after it did.
+                let flip = note_tasks::detect_checkbox_flip(conn, &note_id, &edit)
+                    .ok()
+                    .flatten();
+                let now = now_ms();
+                let applied = body_write::edit_block(conn, &note_id, &edit, &device_id, now);
+                if let (Ok(true), Some(flip)) = (&applied, flip) {
+                    let _ = if flip.checked {
+                        tasks::complete(
+                            conn,
+                            &flip.task_id,
+                            LocalDateTime::from_ms(now),
+                            &device_id,
+                            now,
+                        )
+                        .map(|_| ())
+                    } else {
+                        tasks::uncomplete(conn, &flip.task_id, &device_id, now).map(|_| ())
+                    };
+                }
+                Ok(applied)
             })
             .map_err(CrdtError::from)?
     }
