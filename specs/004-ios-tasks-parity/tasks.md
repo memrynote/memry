@@ -200,7 +200,7 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry \
 
 Desktop change first, so the vectors are generated from real code.
 
-- [ ] TP010 Move the pure logic out of the renderer into
+- [x] TP010 Move the pure logic out of the renderer into
       `packages/domain-tasks/src/parsing/` (no React, no i18n, no `Date.now()`):
       `natural-date-parser`, `repeat-phrase`, the `quick-add-parser` core
       (projects as a structural `{id,name,isArchived}` list), the English
@@ -213,7 +213,8 @@ Desktop change first, so the vectors are generated from real code.
       from `task-view-helpers`. Every function takes `now` explicitly. Desktop
       imports from the package; no behavior change. Existing desktop tests
       pass unchanged.
-- [ ] TP012 Vector generator `packages/contracts/scripts/vectors/task-parsing.ts`
+      Evidence: `packages/domain-tasks/src/parsing/` (types, dates, natural-date, repeat-phrase, quick-add, completion, recurrence incl. `completeRepeatingTask`, due-window incl. `getTaskTabCounts`); renderer `natural-date-parser`, `repeat-phrase`, `quick-add-parser`, `date-phrase-completion` (locale layer over the package), `repeat-utils`, `task-view-helpers`, `task-status-helpers.isTaskCompleted`, `use-undoable-task-actions`, `pages/tasks.tsx` tab counts now import it. `typecheck:web/node/test:web` clean; `pnpm --filter @memry/desktop test:renderer` 784 files / 9988 passed, 0 failed, no test edited.
+- [x] TP012 Vector generator `packages/contracts/scripts/vectors/task-parsing.ts`
       → `test-vectors/task-parsing.json`, registered in `gen-protocol-vectors`
       and `package.json` exports. Fixed `now` values (including a Sunday, a
       month end, Dec 31, Feb 29). Case families:
@@ -227,27 +228,35 @@ Desktop change first, so the vectors are generated from real code.
     `repeatFrom` due vs completion
   - due windows: today/tomorrow/next7 membership, overdue ordering, start
     date admission, subtask ride-along, archived and completed exclusion
-- [ ] TP015 Vector generator `task-filtering.ts` → `test-vectors/task-filtering.json`
+    Evidence: `packages/contracts/scripts/vectors/task-parsing.ts` (+ `task-parsing-cases.ts`, `task-recurrence-cases.ts`) registered in `gen-protocol-vectors.ts` and `package.json` exports; `test-vectors/task-parsing.json` (7 nows incl. Sunday, month end, Dec 31, Feb 29 2028; TZ pinned UTC; UTF-16 offsets). `pnpm --filter @memry/contracts vectors:check` -> passed (15 classes).
+- [x] TP015 Vector generator `task-filtering.ts` → `test-vectors/task-filtering.json`
       from desktop `task-filters.ts` and `task-grouping.ts`: every
       `TaskFilters` dimension, every `SortField` × direction, group output
       (keys, order, labels as keys not strings), unknown sort field from a
       newer build leaves order untouched and yields no groups.
-- [ ] TP013 [P] Rust `crates/memry-core/src/domain/task_parse/natural_date.rs`
+      Evidence: `packages/domain-tasks/src/filtering/` (types, filters, grouping with label keys) now backs renderer `task-filters.ts`, `task-grouping.ts` and `tasks-data.ts` types; generator `packages/contracts/scripts/vectors/task-filtering.ts` (+ cases) -> `test-vectors/task-filtering.json` (every dimension incl. due-date types x 3 nows x week start 0/1, 10 sort fields x asc/desc incl. unknown `bogus` = order untouched, 120 group cases incl. unknown field = no groups, 13 applied combos). `vectors:check` passed (16 classes); renderer suite 784/9988 green.
+- [x] TP013 [P] Rust `crates/memry-core/src/domain/task_parse/natural_date.rs`
       and `completion.rs` (English ghost completion), consumed by
       `tests/task_parse_vectors.rs`.
-- [ ] TP016 [P] Rust `task_parse/quick_add.rs` + `repeat_phrase.rs`, same test file.
-- [ ] TP017 [P] Rust `domain/recurrence.rs` (next occurrence, series end,
+      Evidence: `domain/task_parse/natural_date.rs` + `completion.rs` (subagent tp013, integrated); `cargo test -p memry-core --test task_parse_vectors`: natural_date_vectors (644 cases) + completion_date_vectors (86 cases x3) passed; clippy -D warnings, fmt, line ceilings green.
+- [x] TP016 [P] Rust `task_parse/quick_add.rs` + `repeat_phrase.rs`, same test file.
+      Evidence: `domain/task_parse/quick_add.rs` + `repeat_phrase.rs` (subagent tp016, integrated); `cargo test -p memry-core --test task_parse_vectors`: 6 passed (repeatPhrase.parse 31, find 8, quickAdd 43 incl. UTF-16 spans + hasSpecialSyntax, completion.repeat 14, plus natural date and completion).
+- [x] TP017 [P] Rust `domain/recurrence.rs` (next occurrence, series end,
       first occurrence), `tests/recurrence_vectors.rs`.
-- [ ] TP018 [P] Rust `domain/task_filter.rs` (filter, sort, group over
+      Evidence: `domain/recurrence.rs` (subagent tp017, integrated); `cargo test -p memry-core --test recurrence_vectors`: 7 passed (389 cases: next, occurrences, shouldCreate, complete incl. repeatFrom due/completion, nthWeekday incl. 5=last, progress, firstOccurrence).
+- [x] TP018 [P] Rust `domain/task_filter.rs` (filter, sort, group over
       projection rows; `TaskFilters` JSON identical to desktop's saved-filter
       shape, unknown values tolerated), `tests/task_filter_vectors.rs`.
-- [ ] TP019 Rust `task_views.rs` rewritten to D4 (all, today, tomorrow,
+      Evidence: `domain/task_filter/{mod,config,filters,grouping,collation}.rs` (subagent tp018, integrated); `cargo test -p memry-core --test task_filter_vectors`: 13 passed (every dimension, 20 sorts incl. unknown field, 120 group cases, 13 applied, saved-filter JSON round-trip with unknown values).
+- [x] TP019 Rust `task_views.rs` rewritten to D4 (all, today, tomorrow,
       next7, archived, completed-in-window, by_project, per-tab counts),
       driven by the TP012 due-window vectors; old `today`/`upcoming` callers
       updated.
+      Evidence: `crates/memry-core/src/domain/task_views.rs` rewritten to D4 (`in_due_window` today/tomorrow/next7 overdue-first, `completed_in_due_window`, `completed_all`, `completed_today`, `archived`, `filtered` views + by-project, `tab_counts`, `load`); `tests/task_views_vectors.rs` drives the `dueWindows` vectors (2 nows) green; `tests/domain_task_views.rs` callers moved off `today`/`upcoming` (7 passed); `cargo clippy -p memry-core --all-targets -D warnings` clean.
 
 **Gate G1**: `vectors:check` green, `cargo test -p memry-core` green,
 desktop `test:renderer` green, `pnpm lint && pnpm typecheck` green.
+G1 result (2026-09-24): GREEN. `pnpm --filter @memry/contracts vectors:check` passed (16 classes); `cargo test -p memry-core` 53 binaries, 787 passed / 0 failed / 1 ignored (baseline 749); `cargo clippy --all-targets -D warnings` + `cargo fmt --check` clean; `pnpm --filter @memry/desktop test:renderer` 784 files, 9988 passed; `pnpm lint` 0 errors (3 pre-existing warnings in untouched files); `pnpm typecheck` exit 0; `git diff --check` clean.
 **Commit** Phase 1.
 
 ---

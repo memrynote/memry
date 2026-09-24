@@ -5,7 +5,9 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./parsing": "./src/parsing/index.ts",
+    "./filtering": "./src/filtering/index.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

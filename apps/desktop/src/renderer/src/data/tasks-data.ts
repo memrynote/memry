@@ -1,7 +1,13 @@
 import type { TFunction } from 'i18next'
 import { getI18n } from 'react-i18next'
 
-import type { Priority } from './task-model'
+import type {
+  DueDateFilter,
+  DueDateFilterType,
+  SortField,
+  TaskFilters,
+  TaskSort
+} from '@memry/domain-tasks/filtering'
 
 // ============================================================================
 // LOCALIZATION
@@ -316,94 +322,21 @@ export const canDeleteStatus = (statuses: Status[], statusId: string): StatusDel
 // FILTER TYPES AND INTERFACES
 // ============================================================================
 
-export type DueDateFilterType =
-  | 'any'
-  | 'none'
-  | 'overdue'
-  | 'today'
-  | 'tomorrow'
-  | 'this-week'
-  | 'next-week'
-  | 'this-month'
-  | 'custom'
-
-/**
- * `archived` is a scope, not a completion state: it shows archived tasks only,
- * which every other value hides. Persisted filter rows written by older builds
- * never carry it, so reading it back stays backwards compatible.
- */
-export type CompletionFilterType = 'active' | 'completed' | 'all' | 'archived'
-
-export type RepeatFilterType = 'all' | 'repeating' | 'one-time'
-
-export type HasTimeFilterType = 'all' | 'with-time' | 'without-time'
-
-export interface DueDateFilter {
-  type: DueDateFilterType
-  customStart?: Date | null
-  customEnd?: Date | null
-}
-
-export interface TaskFilters {
-  // Text search
-  search: string
-
-  // Project filter (multi-select)
-  projectIds: string[] // empty = all projects
-
-  // Priority filter (multi-select)
-  priorities: Priority[] // empty = all priorities
-
-  // Tag filter (multi-select, OR semantics)
-  tags: string[] // empty = all tags
-
-  // Due date filter
-  dueDate: DueDateFilter
-
-  // Status filter (for Kanban view)
-  statusIds: string[] // empty = all statuses
-
-  // Completion filter
-  completion: CompletionFilterType
-
-  // Repeat filter
-  repeatType: RepeatFilterType
-
-  // Has time set
-  hasTime: HasTimeFilterType
-}
-
-// ============================================================================
-// SORT TYPES AND INTERFACES
-// ============================================================================
-
-/**
- * `folder` and `note` group by the document a task came from, not by a field
- * stored on the task, so they need the note index to resolve a source note to
- * its title and vault-relative folder.
- *
- * A saved filter carries this value through sync, so an older build can read a
- * field it does not know: `sortTasksAdvanced` leaves the order untouched and
- * `groupTasksForSort` returns no groups, which renders the flat list. Keep that
- * unknown-value path intact.
- */
-export type SortField =
-  | 'dueDate'
-  | 'priority'
-  | 'status'
-  | 'createdAt'
-  | 'title'
-  | 'project'
-  | 'completedAt'
-  | 'folder'
-  | 'note'
-
-export type SortDirection = 'asc' | 'desc'
-
-export interface TaskSort {
-  field: SortField
-  direction: SortDirection
-}
+// The filter and sort shapes live in `@memry/domain-tasks/filtering` beside the
+// logic that consumes them (spec 004 TP015). `archived` is a completion scope,
+// not a state; a saved filter can carry a sort field an older build does not
+// know, and the unknown value leaves the order untouched with no groups.
+export type {
+  CompletionFilterType,
+  DueDateFilter,
+  DueDateFilterType,
+  HasTimeFilterType,
+  RepeatFilterType,
+  SortDirection,
+  SortField,
+  TaskFilters,
+  TaskSort
+} from '@memry/domain-tasks/filtering'
 
 // ============================================================================
 // SAVED FILTER TYPES

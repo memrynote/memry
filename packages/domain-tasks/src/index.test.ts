@@ -1,14 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  createTasksCommands,
-  createTasksDomain,
-  createTasksQueries
-} from './index.ts'
-import {
-  createCommandRepository,
-  createPublisher,
-  createTask
-} from './test-fixtures.ts'
+import { createTasksCommands, createTasksDomain, createTasksQueries } from './index.ts'
+import { createCommandRepository, createPublisher, createTask } from './test-fixtures.ts'
 
 describe('domain-tasks barrel', () => {
   it('re-exports the factories', () => {

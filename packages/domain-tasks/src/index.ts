@@ -6,7 +6,9 @@ export * from './queries.ts'
 export * from './commands.ts'
 
 export function createTasksDomain(
-  deps: CreateTasksCommandsDeps & { repository: CreateTasksCommandsDeps['repository'] & TasksQueryRepository }
+  deps: CreateTasksCommandsDeps & {
+    repository: CreateTasksCommandsDeps['repository'] & TasksQueryRepository
+  }
 ) {
   return {
     ...createTasksQueries(deps.repository),

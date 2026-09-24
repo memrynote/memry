@@ -70,6 +70,12 @@ pub fn vector_file(name: &str) -> Json {
         "attachment-manifest" => {
             include_str!("../../../../packages/contracts/test-vectors/attachment-manifest.json")
         }
+        "task-parsing" => {
+            include_str!("../../../../packages/contracts/test-vectors/task-parsing.json")
+        }
+        "task-filtering" => {
+            include_str!("../../../../packages/contracts/test-vectors/task-filtering.json")
+        }
         other => panic!("no committed vector file named {other}"),
     };
     serde_json::from_str(raw)

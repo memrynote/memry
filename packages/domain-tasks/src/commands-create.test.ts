@@ -106,9 +106,9 @@ describe('createTasksCommands — create/update/delete task', () => {
       })
       const commands = createTasksCommands(deps)
 
-      await expect(
-        commands.createTask({ projectId: 'p1', title: 'T' })
-      ).rejects.toThrow('db write failed')
+      await expect(commands.createTask({ projectId: 'p1', title: 'T' })).rejects.toThrow(
+        'db write failed'
+      )
     })
   })
 
@@ -157,7 +157,12 @@ describe('createTasksCommands — create/update/delete task', () => {
       }
       const deps = buildDeps({
         getNextProjectPosition: vi.fn(() => 5),
-        createProject: vi.fn((p) => ({ ...p, createdAt: 'now', modifiedAt: 'now', archivedAt: null })),
+        createProject: vi.fn((p) => ({
+          ...p,
+          createdAt: 'now',
+          modifiedAt: 'now',
+          archivedAt: null
+        })),
         getProject: vi.fn(() => createdProject)
       })
       const commands = createTasksCommands(deps)

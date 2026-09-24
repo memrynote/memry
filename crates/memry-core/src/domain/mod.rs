@@ -11,6 +11,7 @@
 
 pub mod attachments;
 pub mod body_write;
+pub mod calendar;
 pub mod folders;
 pub mod journal;
 pub mod note_meta;
@@ -18,11 +19,15 @@ pub mod notes;
 pub mod projects;
 pub mod properties;
 pub mod reads;
+pub mod recurrence;
 pub mod reminders;
+pub mod repeat_config;
 pub mod search;
 pub mod settings;
 pub mod tags;
+pub mod task_filter;
 pub mod task_merge;
+pub mod task_parse;
 pub mod task_views;
 pub mod tasks;
 pub mod templates;

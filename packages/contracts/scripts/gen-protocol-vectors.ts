@@ -44,6 +44,8 @@ import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
 import { buildRecordEnvelope } from './vectors/record-envelope'
+import { buildTaskFiltering } from './vectors/task-filtering'
+import { buildTaskParsing } from './vectors/task-parsing'
 import { buildTextExtract } from './vectors/text-extract'
 import { VECTORS_DIR, writeVectorFile } from './vectors/shared'
 
@@ -76,6 +78,11 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'text-extract', files: [{ path: 'text-extract.json', build: buildTextExtract }] },
   { name: 'note-blocks', files: [{ path: 'note-blocks.json', build: buildNoteBlocks }] },
   { name: 'block-edit', files: [{ path: 'block-edit.json', build: buildBlockEdit }] },
+  { name: 'task-parsing', files: [{ path: 'task-parsing.json', build: buildTaskParsing }] },
+  {
+    name: 'task-filtering',
+    files: [{ path: 'task-filtering.json', build: buildTaskFiltering }]
+  },
   {
     name: 'attachment-manifest',
     files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]
