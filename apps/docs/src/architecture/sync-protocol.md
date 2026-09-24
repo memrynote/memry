@@ -198,6 +198,14 @@ because those are attempt counters and a still-broken item simply re-quarantines
 quarantines are the record that keeps a failed-signature item out of the vault and are never dropped
 to satisfy the cap.
 
+Each pulled page applies inside one SQLite transaction. Handlers run synchronously inside it; the
+files they produce (a note or journal markdown file, a rewritten `.memry/properties.md` after a
+remote property-definition delete) are recorded in a crash journal just before the commit and
+written after it. A crash between the commit and the file writes is healed at the start of the next
+pull. A handler that wrote its rows from an unawaited promise could land them after the page
+committed, or inside the next page's transaction, with no crash-journal record for its file. Synced
+journal entries were applied that way until #2284.
+
 ### Push acknowledgements and in-flight mutations
 
 The push queue coalesces: a new mutation for an item that already has an unattempted row overwrites
