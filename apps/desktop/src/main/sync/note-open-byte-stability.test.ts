@@ -212,6 +212,38 @@ const FIXTURES: ReadonlyArray<readonly [string, string]> = [
   ['a hash tag', 'Tagged #hashtag here.'],
   ['a date mention token', '((date:eyJhbmNob3JJZCI6ImExIn0)) leftover token.'],
   ['a callout', '> [!info]\n> Heads up'],
+  // Every custom block whose on-disk form is a marker (#2306). The 0.51
+  // serializer drops any DOM node that is not an element or text, which is how
+  // the file block's comment marker and the cell checkbox's `<input>` would
+  // have vanished; these pin the whole collaborative open, not just the
+  // converter.
+  ['a youtube embed marker', '![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)'],
+  ['a bookmark marker', '![bookmark](https://example.com/a)'],
+  [
+    'a file marker',
+    '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->'
+  ],
+  ['a task block line', '- [ ] a task {task:t1}'],
+  ['a math block', '$$\nE = mc^2\n$$'],
+  ['a whiteboard marker', '![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)'],
+  [
+    'a checkbox and an image in table cells',
+    '| a        | b               |\n| -------- | --------------- |\n| [x] done | ![alt](img.png) |'
+  ],
+  [
+    'an aliased wiki link in a table cell',
+    '| a                     | b |\n| --------------------- | - |\n| [[Roadmap\\|the plan]] | c |'
+  ],
+  // The tree does not survive a reparse (#2365), but the file must: #1915
+  // keeps the author's bytes for a note nobody edited.
+  [
+    'a callout nested under a list item',
+    '- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> Heads up\n\n<!-- memry:block-nesting-level=0 -->'
+  ],
+  [
+    'a task block nested under a list item',
+    '- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n- [ ] a task {task:t1}\n\n<!-- memry:block-nesting-level=0 -->'
+  ],
   [
     'the whole set in one note',
     [
