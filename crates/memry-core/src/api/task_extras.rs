@@ -84,6 +84,20 @@ pub fn predict_task_date(query: String, now: String) -> Option<String> {
     completion::predict_date_completion(&query, LocalDateTime::parse(&now)?)
 }
 
+/// Ghost completion for a time typed after a date (`today 12` -> `today 12:00`).
+#[uniffi::export]
+pub fn predict_task_time(query: String, now: String) -> Option<String> {
+    completion::predict_time(&query, LocalDateTime::parse(&now)?)
+}
+
+/// The next date of a repeat rule after `from` (`YYYY-MM-DD`), or `nil` when
+/// the series has ended.
+#[uniffi::export]
+pub fn next_repeat_date(rule: RepeatRule, from: String) -> Option<String> {
+    let from = CivilDate::parse_key(&from)?;
+    recurrence::calculate_next_occurrence(from, &rule.config()).map(CivilDate::key)
+}
+
 /// Whether a time is still being typed after a date (keeps the ghost open).
 #[uniffi::export]
 pub fn is_task_time_in_progress(query: String, now: String) -> bool {

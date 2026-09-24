@@ -21346,6 +21346,30 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 })
 }
 /**
+ * The `dueWindows` section of `task-parsing.json` evaluated at every `at`
+ * entry's `now`, in the file's own shape.
+ */
+public func taskDueWindowsConformance(sectionJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_task_due_windows_conformance(
+        FfiConverterString.lower(sectionJson),uniffiCallStatus
+    )
+})
+}
+/**
+ * Every section of `task-filtering.json` recomputed: `{dimensions, sorts,
+ * groups, applied}` in the file's own shape (each case's `expected`).
+ */
+public func taskFilteringConformance(fileJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_task_filtering_conformance(
+        FfiConverterString.lower(fileJson),uniffiCallStatus
+    )
+})
+}
+/**
  * Whether a time is still being typed after a date (keeps the ghost open).
  */
 public func isTaskTimeInProgress(query: String, now: String) -> Bool  {
@@ -21354,6 +21378,19 @@ public func isTaskTimeInProgress(query: String, now: String) -> Bool  {
     uniffi_memry_core_fn_func_is_task_time_in_progress(
         FfiConverterString.lower(query),
         FfiConverterString.lower(now),uniffiCallStatus
+    )
+})
+}
+/**
+ * The next date of a repeat rule after `from` (`YYYY-MM-DD`), or `nil` when
+ * the series has ended.
+ */
+public func nextRepeatDate(rule: RepeatRule, from: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_next_repeat_date(
+        FfiConverterTypeRepeatRule_lower(rule),
+        FfiConverterString.lower(from),uniffiCallStatus
     )
 })
 }
@@ -21389,6 +21426,18 @@ public func predictTaskRepeat(query: String) -> String?  {
         uniffiCallStatus in
     uniffi_memry_core_fn_func_predict_task_repeat(
         FfiConverterString.lower(query),uniffiCallStatus
+    )
+})
+}
+/**
+ * Ghost completion for a time typed after a date (`today 12` -> `today 12:00`).
+ */
+public func predictTaskTime(query: String, now: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_predict_task_time(
+        FfiConverterString.lower(query),
+        FfiConverterString.lower(now),uniffiCallStatus
     )
 })
 }
@@ -21470,7 +21519,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_task_filtering_conformance() != 22113) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_is_task_time_in_progress() != 26769) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_next_repeat_date() != 26388) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_parse_task_date() != 17224) {
@@ -21480,6 +21538,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_predict_task_repeat() != 26067) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_predict_task_time() != 10459) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_repeat_preview() != 44138) {

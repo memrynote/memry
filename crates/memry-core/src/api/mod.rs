@@ -12,6 +12,7 @@ pub mod projects;
 pub mod runtime;
 pub mod search;
 pub mod sync;
+pub mod task_conformance;
 pub mod task_extras;
 pub mod task_records;
 pub mod tasks;

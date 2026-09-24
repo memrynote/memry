@@ -479,9 +479,10 @@ of its flows via XcodeBuildMCP with screenshots saved to
 
 ## Phase 5: verification (serial)
 
-- [ ] TP080 Conformance: `apps/ios/MemryConformanceTests/TasksConformanceTests.swift`
+- [x] TP080 Conformance: `apps/ios/MemryConformanceTests/TasksConformanceTests.swift`
       runs `task-parsing.json` and `task-filtering.json` through the FFI.
       Conformance plan green.
+      Evidence: `apps/ios/MemryConformanceTests/TasksConformanceTests.swift`: natural dates (644), ghost completion date+repeat, recurrence next+preview, quick add over a scratch vault holding the vectors' projects (the one `+<vector id>` case is Rust-only: ids are core-minted), due windows/views/counts and every task-filtering section through the new seam `api/task_conformance.rs` (Rust check `tests/api_task_conformance.rs` 2 passed). `xcodebuild test -testPlan Conformance`: 27 tests in 7 suites passed (was 21/5).
 - [ ] TP081 UI tests `apps/ios/MemryUITests/TasksUITests.swift`:
       quick add `[agent] meeting @may 17 3pm !high #test` → due May 17 15:00, high,
       tagged; complete a daily repeating task → next occurrence exists; bulk
