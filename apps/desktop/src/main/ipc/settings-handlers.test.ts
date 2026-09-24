@@ -862,7 +862,7 @@ describe('settings-handlers', () => {
       })
 
       // #then
-      expect(mockUpdateField).toHaveBeenCalledWith('general.accentColor', '#ef4444', 'local')
+      expect(mockUpdateField).toHaveBeenCalledWith('general.accentColor', '#ef4444')
     })
 
     it('#given sync manager exists #when theme is set #then syncs via updateField', async () => {
@@ -872,7 +872,7 @@ describe('settings-handlers', () => {
       await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { theme: 'dark' })
 
       // #then
-      expect(mockUpdateField).toHaveBeenCalledWith('general.theme', 'dark', 'local')
+      expect(mockUpdateField).toHaveBeenCalledWith('general.theme', 'dark')
     })
 
     it('#given sync manager exists #when fontSize is set #then syncs via updateField', async () => {
@@ -882,7 +882,7 @@ describe('settings-handlers', () => {
       await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { fontSize: 'large' })
 
       // #then
-      expect(mockUpdateField).toHaveBeenCalledWith('general.fontSize', 'large', 'local')
+      expect(mockUpdateField).toHaveBeenCalledWith('general.fontSize', 'large')
     })
 
     it('#given sync manager exists #when fontFamily is set #then syncs via updateField', async () => {
@@ -894,7 +894,7 @@ describe('settings-handlers', () => {
       })
 
       // #then
-      expect(mockUpdateField).toHaveBeenCalledWith('general.fontFamily', 'monospace', 'local')
+      expect(mockUpdateField).toHaveBeenCalledWith('general.fontFamily', 'monospace')
     })
 
     it('#given sync manager exists #when startOnBoot is set #then does NOT sync (device-specific)', async () => {
@@ -931,8 +931,8 @@ describe('settings-handlers', () => {
       })
 
       // #then
-      expect(mockUpdateField).toHaveBeenCalledWith('general.accentColor', '#10b981', 'local')
-      expect(mockUpdateField).toHaveBeenCalledWith('general.theme', 'white', 'local')
+      expect(mockUpdateField).toHaveBeenCalledWith('general.accentColor', '#10b981')
+      expect(mockUpdateField).toHaveBeenCalledWith('general.theme', 'white')
       expect(mockUpdateField).toHaveBeenCalledTimes(2)
     })
 

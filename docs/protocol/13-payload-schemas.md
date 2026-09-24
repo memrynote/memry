@@ -171,7 +171,7 @@ A conforming client MUST accept both shapes and MUST emit the string shape.
 - `tag_definition` ids are **tag names**;
 - `folder_config` ids are **folder paths**;
 - `settings` has exactly **one** item, `synced_settings`
-  (`packages/sync-client/src/settings-sync.ts:196`,
+  (`packages/sync-client/src/settings-sync.ts:222`,
   `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 **The sync bookkeeping key MUST therefore be `(type, id)` and never `id`

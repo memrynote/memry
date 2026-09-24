@@ -11,8 +11,10 @@ import type {
 import { compare, merge, increment } from '@memry/sync-client/vector-clock'
 import { SyncQueueManager } from './queue'
 import { createLogger } from './logging'
-import { SETTINGS_SYNC_CLOCKS_KEY, SETTINGS_SYNC_SETTINGS_KEY } from '@memry/sync-client/settings-sync-keys'
-
+import {
+  SETTINGS_SYNC_CLOCKS_KEY,
+  SETTINGS_SYNC_SETTINGS_KEY
+} from '@memry/sync-client/settings-sync-keys'
 
 const log = createLogger('SettingsSync')
 
@@ -43,10 +45,12 @@ export function resetSettingsSyncManager(): void {
 export class SettingsSyncManager {
   private db: DrizzleDb
   private queue: SyncQueueManager
+  private getDeviceId: () => string | null
 
   constructor(deps: SettingsSyncDeps) {
     this.db = deps.db
     this.queue = deps.queue
+    this.getDeviceId = deps.getDeviceId
   }
 
   enqueueCreate(_itemId = 'synced_settings'): void {
@@ -61,7 +65,20 @@ export class SettingsSyncManager {
     // Settings currently sync as a singleton update payload only.
   }
 
-  updateField(fieldPath: string, value: unknown, deviceId: string): void {
+  /**
+   * Returns false, writing nothing, when no device is registered (#2287). The
+   * clock needs a real device id: every device used to tick the shared key
+   * `local`, so concurrent edits compared equal and one was silently dropped.
+   * A stored `local` component is left in place — it already reached peers,
+   * so unlike `_offline` it is shared causal history, not this device's.
+   */
+  updateField(fieldPath: string, value: unknown): boolean {
+    const deviceId = this.getDeviceId()
+    if (!deviceId) {
+      log.warn('No current device, skipping synced settings write', { fieldPath })
+      return false
+    }
+
     const current = this.loadSettings()
     const clocks = this.loadClocks()
 
@@ -73,6 +90,7 @@ export class SettingsSyncManager {
     this.saveSettings(current)
     this.saveClocks(clocks)
     this.enqueueCurrentState()
+    return true
   }
 
   mergeRemote(remote: SettingsSyncPayload): void {
@@ -81,6 +99,7 @@ export class SettingsSyncManager {
     const remoteClocks = remote.fieldClocks
 
     const allFields = new Set([...Object.keys(localClocks), ...Object.keys(remoteClocks)])
+    let mergedConcurrent = false
 
     for (const field of allFields) {
       const localClock = localClocks[field] ?? {}
@@ -94,6 +113,7 @@ export class SettingsSyncManager {
         }
         localClocks[field] = remoteClock
       } else if (cmp === 'concurrent') {
+        mergedConcurrent = true
         const remoteCombined = this.getMaxTick(remoteClock)
         const localCombined = this.getMaxTick(localClock)
         if (remoteCombined > localCombined) {
@@ -108,6 +128,12 @@ export class SettingsSyncManager {
 
     this.saveSettings(local)
     this.saveClocks(localClocks)
+
+    // §6.5.2 P3 (#2287): the union clock must reach the server. Settings have
+    // no buildPushPayload, so a queued row is pushed as frozen; without this a
+    // device that kept its own value on a concurrent tie holds it alone while
+    // the server keeps the peer's, and the two never converge.
+    if (mergedConcurrent) this.enqueueCurrentState()
   }
 
   getPayload(): SettingsSyncPayload {

@@ -471,7 +471,7 @@ arbitrary depth** — `general.theme`, `journal.weekdayTemplates.3`,
 `sidebar.sortModes.collections`
 (`packages/contracts/src/settings-sync.ts:78-93`, `:111-116`). The whole settings
 blob is **one sync item** with `itemId = 'synced_settings'`
-(`packages/sync-client/src/settings-sync.ts:196`,
+(`packages/sync-client/src/settings-sync.ts:222`,
 `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
@@ -535,6 +535,14 @@ nothing.** §6.9 already requires a key outside the modelled set to ride along
 rather than fail the payload; an unaddressable key is that rule's limiting case,
 and refusing the payload over one would stall every other synced setting.
 
+**A merge in which any path compared `concurrent` MUST re-queue the merged
+settings** (`packages/sync-client/src/settings-sync.ts:136`). This is §6.5.2 P3
+for settings, which reach it without the pull coordinator's conflict re-queue:
+the handler reports `applied`, and settings have no `buildPushPayload`, so the
+queued payload is what gets pushed. Without it, a device that kept its own value
+on a concurrent pair is the only one holding it; the server keeps the peer's row
+and the two devices stay on different values (#2287).
+
 ### 6.9.1 Every clocked path is a leaf, including a removal
 
 Every example above is a leaf, and that left two questions a writer has to
@@ -551,6 +559,16 @@ not because a writer chose to clock higher.
 wrong if you do not think about it: a removal that ticks nothing loses to the
 peer still holding the old value, and the setting the user cleared comes back on
 the next pull. A removal is a write.
+
+**A write MUST tick the writing device's registered id, never a shared
+constant** (`packages/sync-client/src/settings-sync.ts:76`, `:88`). Desktop
+builds before #2287 ticked the literal key `local` on every device, so two
+concurrent edits compared `equal` and the pull took the remote with no merge.
+Stored `local` components stay where they are and are never rebound the way
+`_offline` is (§6.6): they already reached every peer, so they are shared
+history, and folding one into a device id would turn a peer's `before` into
+`concurrent`. A reader treats `local` as an ordinary key (§6.1). With no
+registered device, desktop writes nothing to the synced settings (`:77-80`).
 
 **This specification defines no rule for pruning the clocks under a path whose
 value is replaced by a non-object, and a client MUST NOT invent one.** Dropping

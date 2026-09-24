@@ -44,7 +44,7 @@ describe('settings sync — inbox group', () => {
       getDeviceId: () => 'B'
     })
     // Local device set its own time.
-    mgr.updateField('inbox.reviewReminderTime', '06:30', 'B')
+    mgr.updateField('inbox.reviewReminderTime', '06:30')
     // Old client re-emits: has the clock, but its schema stripped the value.
     mgr.mergeRemote({
       settings: {},
