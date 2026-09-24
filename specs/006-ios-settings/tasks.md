@@ -17,7 +17,7 @@
 - One session, no questions to Kaan. If something is ambiguous, pick desktop's behavior, write it to §6 Decisions and continue.
 - If something outside the repo blocks an item, write it to §7 Blockers with evidence, move to the next unblocked item, and retry once per phase.
 - This file is the only state. After a restart, re-read §0, §1, §6 and §7, then continue at the first unticked item.
-- Spec 004 §0.5 (test data) and §1 D1–D7 still apply. Simulator and sign-in come from goal.md "Simulator and sign-in" (memry-B, gmail-bridge OTP), not spec 004 §0.3/§0.4. Reuse the spec 005 primitives and its §6 token decisions.
+- Spec 004 §0.5 (test data) and §1 D1–D7 still apply. Simulator and sign-in come from goal.md "Simulator and sign-in" (memry-C, gmail-bridge OTP), not spec 004 §0.3/§0.4. Reuse the spec 005 primitives and its §6 token decisions.
 
 ### 0.2 Scope
 
@@ -27,10 +27,24 @@
 
 ### 0.3 Verification
 
-- Simulator **memry-B** `87D1093B-2676-4B04-9FCF-3479FF10859D` only; `-derivedDataPath /tmp/memry-dd-B`; XcodeBuildMCP `simulatorId` = that UDID. Never target by name or `booted`. Never boot, shut down or erase another simulator; `simctl shutdown all` / `erase all` are forbidden. Drive the app with `AgentDriverUITests`. Screenshots go to `apps/ios/SpikeEvidence/settings/STxx-<state>.png`; compare each with `paper_get_screenshot`.
-- `xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry -testPlan Unit|UI -destination 'platform=iOS Simulator,id=87D1093B-2676-4B04-9FCF-3479FF10859D' -derivedDataPath /tmp/memry-dd-B`, with Conformance green and untouched.
+- Simulator **memry-C** `0E5C90DE-62A7-42F7-94EB-82ECEBE99A59` only; `-derivedDataPath /tmp/memry-dd-C`; XcodeBuildMCP `simulatorId` = that UDID. Never target by name or `booted`. Never boot, shut down or erase another simulator; `simctl shutdown all` / `erase all` are forbidden. Drive the app with `AgentDriverUITests`. Screenshots go to `apps/ios/SpikeEvidence/settings/STxx-<state>.png`; compare each with `paper_get_screenshot`.
+- `xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry -testPlan Unit|UI -destination 'platform=iOS Simulator,id=0E5C90DE-62A7-42F7-94EB-82ECEBE99A59' -derivedDataPath /tmp/memry-dd-C`, with Conformance green and untouched.
 - `cargo test -p memry-core`, `cargo clippy -p memry-core -- -D warnings`, `node scripts/check-line-ceilings.mjs`, `git diff --check`.
 - Never revoke the simulator's own device or the desktop dev device.
+
+### 0.4 Simulator isolation (per session)
+
+Each agent session gets its own simulator, created once with `xcrun simctl create "memry-<X>" "iPhone 16"` (`xcrun simctl list devices | grep memry` lists the UDIDs). This session uses **memry-C**, UDID `0E5C90DE-62A7-42F7-94EB-82ECEBE99A59`:
+
+- Build, install, launch and test commands always use `-destination 'platform=iOS Simulator,id=0E5C90DE-62A7-42F7-94EB-82ECEBE99A59'`. Never target by name, never use `booted`.
+- DerivedData: `-derivedDataPath /tmp/memry-dd-C`.
+- XcodeBuildMCP: `simulatorId` = that UDID.
+- Do not boot, shut down or erase any other simulator (memry-A and memry-B belong to other sessions). `simctl shutdown all` and `simctl erase all` are forbidden.
+
+### 0.5 Sign-in (if the app asks)
+
+- Email `kaan94karaca@gmail.com`; recovery phrase as in goal.md "Simulator and sign-in".
+- OTP: read the newest mail from `noreply@memrynote.com` via gmail-bridge, newer than the request. Kaan revokes these after the session; keep them out of code, tests, evidence and commits.
 
 ---
 
@@ -51,13 +65,17 @@
 
 ## Phase 0: plan and audit
 
-- [ ] ST00a Read everything in goal.md "Read first". Read Paper 00 (`58I-0`), 01 (`5IQ-0`), and every phone artboard via `get_screenshot` + `get_jsx`.
-- [ ] ST00b Verify F2 against desktop `main`:
+- [x] ST00a Read everything in goal.md "Read first". Read Paper 00 (`58I-0`), 01 (`5IQ-0`), and every phone artboard via `get_screenshot` + `get_jsx`.
+      Evidence: goal Read-first files read; Paper 00 (37 audit rows, 6 rules, 8 SwiftUI mappings) and 01 (lanes 01–07) via `paper_get_jsx`; all 44 phone artboards via `get_jsx` text + screenshots of 01, 02, 03, 07, 09, 12, 15, 23, 25, 27b, 29.
+- [x] ST00b Verify F2 against desktop `main`:
   - List every caller of `syncSettingsFieldUpdate` / `syncSettingsUpdates` / `syncSettingsMapEntryUpdates`, plus the Rust `task_settings` writers.
   - Confirm whether `calendar.weekStartDay`, `notes.defaultFolder`, `notes.spellCheck` and `editor.*` have a desktop writer.
   - Record the final synced-field table in §5.
-- [ ] ST00c Verify the core surface table in goal.md. For each need, write "exists: <path>" or "add: <signature>" in §5. Confirm the server endpoints (`/devices`, `/linking/*`, `/storage`, `/billing`, `/vaults/:id`) and their request/response shapes from `apps/sync-server/src/routes`.
-- [ ] ST00d Map each desktop device-local setting to its iOS storage key (UserDefaults suite or core local table) in §5.
+    Evidence: `grep syncSettings*` over `apps/desktop/src` (5 writers + sidebar stores); §5.1.
+- [x] ST00c Verify the core surface table in goal.md. For each need, write "exists: <path>" or "add: <signature>" in §5. Confirm the server endpoints (`/devices`, `/linking/*`, `/storage`, `/billing`, `/vaults/:id`) and their request/response shapes from `apps/sync-server/src/routes`.
+      Evidence: `routes/devices.ts`, `routes/linking.ts`, `routes/sync.ts:128,287`, `routes/auth.ts:857`, `services/storage.ts`, `services/paddle-billing.ts`; §5.3.
+- [x] ST00d Map each desktop device-local setting to its iOS storage key (UserDefaults suite or core local table) in §5.
+      Evidence: §5.2.
 
 ## Phase 1: core (Rust + UniFFI)
 
@@ -131,19 +149,47 @@
 
 <!-- path — desktop writer file:line — iOS control -->
 
+- `general.{theme,accentColor,fontFamily,language}` — `ipc/settings-handlers.ts:1147` via `GENERAL_SYNCABLE_FIELDS` (:142) — Appearance / General. Same list also syncs `fontSize, fontSizePx, customFontFamily, createInSelectedFolder, openPagesInNewTab, minimizeToTray`: preserved, never written by iOS (F2).
+- `inbox.{reviewReminderEnabled,reviewReminderTime}` — `settings-handlers.ts:343` (`INBOX_SYNCABLE_FIELDS` :155) — Inbox.
+- `journal.defaultTemplate` — `settings-handlers.ts:494` (null = clear) — Journal.
+- `journal.weekdayTemplates.<0-6>` — `settings-handlers.ts:508` via `syncSettingsMapEntryUpdates`, keys `/^[0-6]$/` (`settings/journal-template-keys.ts`) — Per-day templates.
+- `tasks.*` — Rust `domain/task_settings.rs` (shipped).
+- Desktop-only writers, preserved untouched: `sidebar.sectionOrder`, `sidebar.navCollapsed`, `sidebar.sortModes.<surface>`, `sidebar.notesFirst/showFiles`.
+- No desktop writer: `calendar.weekStartDay`, `notes.defaultFolder`, `notes.spellCheck`, `editor.*` (in the schema only; spellCheck lives in `editor` local prefs). So week start, new-notes folder, spell check are device-local on iOS.
+
 ### 5.2 Device-local settings
 
 <!-- setting — desktop storage — iOS key -->
 
+- clockFormat / dateFormat — `general` local group (not in syncable list) — UserDefaults `settings.clockFormat` / `settings.dateFormat`.
+- week start — desktop calendar local — `settings.weekStart`.
+- new notes folder — vault config `defaultNoteFolder` — `settings.newNotesFolder`.
+- spell check — editor prefs — `settings.spellCheck`.
+- usage metrics — telemetry local — `settings.usageMetrics`.
+- features toggles — local — `settings.features.<home|inbox|journal|tasks>`.
+- journal showTasks/showStatsFooter, folder, date format — data-DB `journal.*` keys / vault config — `settings.journal.*`.
+- inbox image filing + ask — local — `settings.inbox.imageFiling`, `settings.inbox.askEveryTime`.
+- attachment download — local — `settings.attachmentDownload`.
+
 ### 5.3 Core surface
 
 <!-- need — exists: path | add: signature -->
+
+- settings read/write — exists: `domain/settings.rs` (`all/read/set/clear/remove`); add: UniFFI `Settings` object (`snapshot`, `get`, `set`, `clear`).
+- devices — exists: server `GET/PATCH/DELETE /devices[/:id]` (`routes/devices.ts`; rename `{name 1..100}`, self-revoke 400); core has only `/auth/devices` directory read (`protocol/account.rs:46`); add: `AuthSession.devices/rename_device/revoke_device`.
+- linking approver — exists: server `/auth/linking/{initiate,session/:id,approve}`; core crypto `send_master_key`, `derive_subkeys`, `sas_code_from_key`; add: `DeviceApprover` (`initiate`, `status`, `approve`, `cancel`), vault transfer block sealed like desktop `linking-service.ts:628`.
+- storage / billing — exists: server `GET /sync/storage` `{used,limit,breakdown{notes,attachments,crdt,other}}`, `GET /auth/billing` `{plan,status,limits{storageLimit,maxFileSize,maxVaults,versionHistoryDays},usage,expiresAt}`; add: `AuthSession.storage/billing`.
+- large notes — exists: `NOTE_SYNC_MAX_BYTES = 3_826_919` (`protocol/envelope.rs:69`); add: `Notes.large_notes()` at ratio 0.8.
+- vault delete — exists: server `DELETE /sync/vaults/:id`; add: `AuthSession.delete_vault`.
+- sync status — exists: `VaultSync` (`api/sync/mod.rs`); add: status snapshot if missing (ST15).
+- tags / properties / templates bulk ops — exist per-item only (`domain/tags.rs`, `properties.rs` values-only, `templates.rs` create/rename/delete); add per ST16–ST18.
 
 ## 6. Decisions log
 
 <!-- date — id — choice — why -->
 
 - 2026-09-25 — goal — Voice memos settings skipped (F4); Paper artboards 22 and 22a are not built.
+- 2026-09-25 — ST00a — Kaan redirected this session from memry-B to a new simulator memry-C (`0E5C90DE-62A7-42F7-94EB-82ECEBE99A59`, iPhone 16, iOS 26.5), DerivedData `/tmp/memry-dd-C`. goal.md and §0.3/§0.4 updated.
 - 2026-09-25 — goal — Sync scope follows desktop (F2), which overrides Paper's "This iPhone" / "Shared" footers (F3).
 
 ## 7. Blockers
