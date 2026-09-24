@@ -1,6 +1,7 @@
 import { CRYPTO_VERSION, ED25519_PARAMS, XCHACHA20_PARAMS } from '@memry/contracts/crypto'
 import type {
   EncryptedItemPayload,
+  NoteBodyChange,
   PushItemInput,
   PushResponse,
   SyncStatus,
@@ -20,7 +21,10 @@ import type { ClientIdentity } from '../lib/client-identity'
 import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
+import { LEGACY_SYNC_SUBSCRIPTION, type SyncSubscription } from '../lib/sync-types'
 import { deleteBlobs, generateItemBlobKey, getBlob, putBlob } from './blob'
+import { readChangePage, type FeedSourceBuilder } from './change-feed'
+import { noteBodyFeedSource } from './crdt'
 import { reserveCursors } from './cursor'
 import { getDevice, type Device } from './device'
 import { adjustStorageUsed, reserveStorage } from './quota'
@@ -30,6 +34,9 @@ const logger = createLogger('SyncService')
 const MAX_ENCRYPTED_DATA_BYTES = 5 * 1024 * 1024
 const DEFAULT_CHANGES_LIMIT = 100
 const MAX_CHANGES_LIMIT = 500
+// A page that carries note bodies inlines update bytes, so it is clamped lower
+// than a record-only page (#2295).
+const MAX_NOTE_BODY_CHANGES_LIMIT = 100
 // D1 hard ceiling is 100 bound parameters per statement; 95 leaves headroom
 // for the fixed user_id/vault_id/type columns that ride along with IN lists.
 const D1_MAX_BIND_PARAMS = 95
@@ -960,41 +967,10 @@ type ChangesRow = StoredSyncItemPullRow & {
   committed_at_ms: number | null
 }
 
-/** `GET /sync/changes?inline=1` (#2292): `inline` holds exactly what `/sync/pull` returns. */
-export type RecordInlineChangesResponse = Omit<RecordChangesResponse, 'inline'> & {
-  inline: RecordPullItemResponse[]
-}
-
 /** Rows per `?inline=1` page: ≤ 100 × 64 KiB of stored JSON, about 6.5 MB per response. */
 const MAX_INLINE_CHANGES_LIMIT = 100
 /** A row is inlined only when its stored R2 object (`size_bytes`) is at most this. */
 const INLINE_MAX_BLOB_BYTES = 64 * 1024
-
-/** One SELECT for both changes modes: `server_cursor > ?`, `pageLimit + 1` rows to learn hasMore. */
-const selectChangesRows = async (
-  db: D1Database,
-  userId: string,
-  vaultId: string,
-  cursor: number,
-  types: readonly RecordSyncItemType[],
-  pageLimit: number
-): Promise<{ rows: ChangesRow[]; hasMore: boolean }> => {
-  const result = await db
-    .prepare(
-      `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at,
-              committed_at_ms, blob_key, crypto_version, operation, signer_device_id, signature, clock
-       FROM sync_items
-       WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${placeholdersFor(types)})
-       ORDER BY server_cursor ASC
-       LIMIT ?`
-    )
-    .bind(userId, vaultId, cursor, ...types, pageLimit + 1)
-    .all<ChangesRow>()
-
-  const allRows = result.results ?? []
-  const hasMore = allRows.length > pageLimit
-  return { rows: hasMore ? allRows.slice(0, pageLimit) : allRows, hasMore }
-}
 
 /**
  * Rows `?inline=1` may inline. Coverage is by id because `/sync/pull` ids are
@@ -1049,88 +1025,130 @@ const readInlineItems = async (
   )
 }
 
+/** A /sync/changes page as the server builds it. The wire schema types `noteBodies` as unknown[]. */
+export type ChangesPage = Omit<RecordChangesResponse, 'noteBodies'> & {
+  noteBodies?: NoteBodyChange[]
+}
+
+/** A served sync_items row keeps its pull columns so `?inline=1` can inline it. */
+type RecordChangeValue =
+  | { kind: 'ref'; ref: RecordChangesResponse['items'][number]; row: ChangesRow }
+  | { kind: 'tombstone'; id: string; row: ChangesRow }
+
+/** The sync_items half of a /sync/changes page: ref columns plus pull columns. */
+const recordFeedSource =
+  (
+    db: D1Database,
+    userId: string,
+    vaultId: string,
+    types: readonly RecordSyncItemType[]
+  ): FeedSourceBuilder<RecordChangeValue> =>
+  (after, fetchLimit) => ({
+    statement: db
+      .prepare(
+        `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at,
+              committed_at_ms, blob_key, crypto_version, operation, signer_device_id, signature, clock
+       FROM sync_items
+       WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${placeholdersFor(types)})
+       ORDER BY server_cursor ASC
+       LIMIT ?`
+      )
+      .bind(userId, vaultId, after, ...types, fetchLimit),
+    parse: (rows) =>
+      (rows as ChangesRow[]).map((row) => {
+        if (!isSupportedRecordSyncItemType(row.item_type)) {
+          return { cursor: row.server_cursor, value: null }
+        }
+        if (row.deleted_at) {
+          return { cursor: row.server_cursor, value: { kind: 'tombstone', id: row.item_id, row } }
+        }
+        return {
+          cursor: row.server_cursor,
+          value: {
+            kind: 'ref',
+            row,
+            ref: {
+              id: row.item_id,
+              type: row.item_type,
+              version: row.version,
+              modifiedAt: row.updated_at,
+              size: row.size_bytes,
+              serverCursor: row.server_cursor,
+              ...(typeof row.committed_at_ms === 'number'
+                ? { committedAtMs: row.committed_at_ms }
+                : {})
+            }
+          }
+        }
+      })
+  })
+
+/**
+ * GET /sync/changes. One path for every mode:
+ * - records only (the legacy response, byte for byte);
+ * - `note_body` declared (#2295): body rows from both CRDT tables merged into
+ *   the same page, read in one db.batch;
+ * - `inlineFrom` given (`?inline=1`, #2292): the `/sync/pull` items of the
+ *   record rows this page serves, read after the page is closed so `inline`
+ *   never names a row beyond `nextCursor`.
+ * A page that carries bodies or inline payloads is clamped to 100 rows.
+ */
 export const getChanges = async (
   db: D1Database,
   userId: string,
   cursor: number,
   limit?: number,
   vaultId = 'default',
-  types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
-): Promise<RecordChangesResponse> => {
-  if (types.length === 0) {
-    return { items: [], deleted: [], hasMore: false, nextCursor: cursor }
+  subscription: SyncSubscription = LEGACY_SYNC_SUBSCRIPTION,
+  inlineFrom?: R2Bucket
+): Promise<ChangesPage> => {
+  const { recordTypes, noteBodies } = subscription
+  if (recordTypes.length === 0 && !noteBodies) {
+    return {
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: cursor,
+      ...(inlineFrom ? { inline: [] } : {})
+    }
   }
 
-  const effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)
-  const { rows, hasMore } = await selectChangesRows(
-    db,
-    userId,
-    vaultId,
-    cursor,
-    types,
-    effectiveLimit
+  const effectiveLimit = Math.min(
+    limit ?? DEFAULT_CHANGES_LIMIT,
+    inlineFrom
+      ? MAX_INLINE_CHANGES_LIMIT
+      : noteBodies
+        ? MAX_NOTE_BODY_CHANGES_LIMIT
+        : MAX_CHANGES_LIMIT
   )
-  return toChangesResponse(rows, hasMore, cursor)
-}
+  const sources: Array<FeedSourceBuilder<RecordChangeValue | NoteBodyChange>> = []
+  if (recordTypes.length > 0) sources.push(recordFeedSource(db, userId, vaultId, recordTypes))
+  if (noteBodies) sources.push(noteBodyFeedSource(db, userId, vaultId))
 
-/**
- * `GET /sync/changes?inline=1` (#2292): getChanges' page clamped to
- * MAX_INLINE_CHANGES_LIMIT rows (clamped, never rejected, §5.10.1), plus the
- * `/sync/pull` items of the ids it could inline. Refs and payloads come from
- * one SELECT, so an inline item is always the version its ref names.
- */
-export const getInlineChanges = async (
-  db: D1Database,
-  storage: R2Bucket,
-  userId: string,
-  cursor: number,
-  limit: number | undefined,
-  vaultId: string,
-  types: readonly RecordSyncItemType[]
-): Promise<RecordInlineChangesResponse> => {
-  if (types.length === 0) {
-    return { items: [], deleted: [], hasMore: false, nextCursor: cursor, inline: [] }
-  }
+  const page = await readChangePage(db, sources, cursor, effectiveLimit)
 
-  const pageLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_INLINE_CHANGES_LIMIT)
-  const { rows, hasMore } = await selectChangesRows(db, userId, vaultId, cursor, types, pageLimit)
-  return {
-    ...toChangesResponse(rows, hasMore, cursor),
-    inline: await readInlineItems(storage, userId, rows)
-  }
-}
-
-const toChangesResponse = (
-  pageRows: ChangesRow[],
-  hasMore: boolean,
-  cursor: number
-): RecordChangesResponse => {
   const items: RecordChangesResponse['items'] = []
   const deleted: string[] = []
-
-  for (const row of pageRows) {
-    if (!isSupportedRecordSyncItemType(row.item_type)) {
+  const bodies: NoteBodyChange[] = []
+  const servedRows: ChangesRow[] = []
+  for (const entry of page.entries) {
+    if ('op' in entry) {
+      bodies.push(entry)
       continue
     }
-    if (row.deleted_at) {
-      deleted.push(row.item_id)
-    } else {
-      items.push({
-        id: row.item_id,
-        type: row.item_type,
-        version: row.version,
-        modifiedAt: row.updated_at,
-        size: row.size_bytes,
-        serverCursor: row.server_cursor,
-        ...(typeof row.committed_at_ms === 'number' ? { committedAtMs: row.committed_at_ms } : {})
-      })
-    }
+    servedRows.push(entry.row)
+    if (entry.kind === 'tombstone') deleted.push(entry.id)
+    else items.push(entry.ref)
   }
 
-  const lastRow = pageRows[pageRows.length - 1]
-  const nextCursor = lastRow?.server_cursor ?? cursor
-
-  return { items, deleted, hasMore, nextCursor }
+  return {
+    items,
+    deleted,
+    hasMore: page.hasMore,
+    nextCursor: page.nextCursor,
+    ...(noteBodies ? { noteBodies: bodies } : {}),
+    ...(inlineFrom ? { inline: await readInlineItems(inlineFrom, userId, servedRows) } : {})
+  }
 }
 
 export interface UserVaultSummary {

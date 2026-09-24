@@ -96,10 +96,16 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
   })
 
   // FIRST PAGE of the opt-in paginated manifest service — never all rows.
-  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!, {
-    cursor: 0,
-    limit: MAX_MANIFEST_PAGE_LIMIT
-  })
+  const manifest = await getManifest(
+    c.env.DB,
+    userId,
+    vaultId,
+    c.get('syncSubscription')!.recordTypes,
+    {
+      cursor: 0,
+      limit: MAX_MANIFEST_PAGE_LIMIT
+    }
+  )
 
   const tailRow = await c.env.DB.prepare(
     'SELECT MAX(server_cursor) AS max_cursor FROM sync_items WHERE user_id = ? AND vault_id = ?'

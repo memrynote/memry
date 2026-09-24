@@ -257,6 +257,32 @@ describe('#given an item with no usable id', () => {
   })
 })
 
+// #2295: note_body is negotiable on /sync/changes but is never a record type.
+// A push item naming it takes the unknown-type path above: dropped, unanswered,
+// neighbours land, 200. It can never reach sync_items.
+describe('#given a push item typed note_body', () => {
+  it('#then it is dropped and never stored, and its neighbour lands', async () => {
+    const app = buildApp()
+    const noteBody = { ...(await signedItem('note-body-1', 'note')), type: 'note_body' }
+    const res = await push(app, [noteBody, await signedItem('task-ok-4')])
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      accepted: string[]
+      rejected: Array<{ id: string }>
+    }
+
+    expect(body.accepted).toEqual(['task-ok-4'])
+    expect(body.rejected).toEqual([])
+    expect(itemRow('note-body-1')).toBeUndefined()
+    expect(
+      harness.raw
+        .prepare(`SELECT COUNT(*) AS n FROM sync_items WHERE item_type = 'note_body'`)
+        .get()
+    ).toEqual({ n: 0 })
+  })
+})
+
 describe('#given a malformed request envelope', () => {
   it('#then it is still refused as a request, not as items', async () => {
     const app = buildApp()

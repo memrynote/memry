@@ -3,10 +3,11 @@
 **Status**: normative. Every normative sentence carries a `path:line` citation
 (chapter 00 §0.1).
 
-Note and journal **bodies** travel here and nowhere else. A record push for a
-body edit carries `content: null`
-(`packages/sync-client/src/pull/crdt-pull.ts:9-10`), so a client that implements
-only the record feed (chapter 05) never sees a body change.
+Note and journal **bodies** travel here. A record push for a body edit carries
+`content: null` (`packages/sync-client/src/pull/crdt-pull.ts:9-10`), so a client
+that implements only the record feed (chapter 05) never sees a body change. A
+client that declares `note_body` also receives the body rows stored here in
+`GET /sync/changes` (§7.17); the routes below are unchanged either way.
 
 ## 7.1 A journal body is a CRDT document — Q07.1
 
@@ -144,6 +145,11 @@ update takes `COALESCE(MAX(sequence_num), 0) + 1` over the **union** of
 (`apps/sync-server/src/services/crdt.ts:139-146`, and the same union at `:99-104`
 for the current maximum), so **a snapshot consumes a sequence number in the same
 space**.
+
+Every update and every snapshot write also takes a `server_cursor` from the
+user's record cursor sequence, in the same D1 batch (§7.17). `sequence_num` is
+still assigned exactly as above, forever; the cursor is an additional column,
+not a replacement.
 
 ### 7.4.1 The request and response shapes
 
@@ -529,3 +535,86 @@ SHA-256 of the device id, because the device id is already unique per device and
 already durable across relaunches. A random id per launch would make every
 relaunch look like a new peer and grow the document's state vector without
 bound; a counter would collide across devices immediately.
+
+## 7.17 Note bodies in the change feed (#2295)
+
+**Normative.** `crdt_updates` and `crdt_snapshots` carry a `server_cursor`
+(migration `0011_crdt_server_cursor.sql`) drawn from the same per-user
+`server_cursor_sequence` as `sync_items`. The cursor is reserved **inside the
+batch that commits the row** (`apps/sync-server/src/services/crdt.ts:142`,
+`:375`, `:621`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
+above a row that has not committed. Push requests and responses are unchanged,
+and no push response carries the cursor.
+
+- **A snapshot is re-cursored on every write**, insert and conflict alike, like
+  a `sync_items` row: the upsert sets `server_cursor = excluded.server_cursor`
+  (`apps/sync-server/src/services/crdt.ts:327-331`). Its `sequence_num` stays
+  pinned (§7.6). A reader past the old cursor therefore sees the replaced
+  snapshot again at its new cursor.
+- **Rows written before migration `0011` have a NULL cursor** and are never in
+  the feed; there is no backfill. Bootstrap (snapshot GET, packs) and the routes
+  of §7.2 still serve them. So does any row a Worker older than this change
+  writes after the migration.
+- **Cursor order is commit order across all three tables.** Within one
+  document, the cursor order of updates equals their `sequence_num` order.
+- **A reader never assumes cursors are contiguous**: a pruned update leaves a
+  gap in the sequence.
+
+### 7.17.1 What the feed serves
+
+A client that declared `note_body` (chapter 05 §5.3) gets `noteBodies` on every
+`GET /sync/changes` page, with the entry shape of chapter 05 §5.11.1. The body
+rows come from one statement over both tables
+(`apps/sync-server/src/services/crdt.ts:785`) read in the same D1 batch as the
+record rows, so a page is one consistent snapshot.
+
+- **An update entry carries `data` when the update is at most
+  `NOTE_BODY_INLINE_MAX_BYTES` (4 KiB) stored bytes**
+  (`apps/sync-server/src/services/crdt.ts:735`). A larger one is a ref without
+  `data`: fetch it with
+  `GET /sync/crdt/updates?note_id=<noteId>&since=<sequenceNum - 1>&limit=1` and
+  check `sequenceNum`. An empty or different answer means the update was pruned;
+  a snapshot entry at a higher cursor covers it (§7.17.2). The threshold was set
+  from a read-only size aggregate on staging D1 on 2026-09-25: 11 rows, p50 212
+  bytes, p99 287, max 332. The sample is small; the constant is revisable
+  without a protocol change because a ref is always a valid entry.
+- **A snapshot entry is always a ref.** Fetch `GET /sync/crdt/snapshot/<noteId>`,
+  or skip the entry when its `revision` equals the one held. `revision` is the
+  same token that route and `snapshotMeta` return (§7.5). The GET may return a
+  newer snapshot than the entry names. That is harmless: document state only
+  moves forward, and the newer write reappears at its own higher cursor.
+- **The server serves every body row of the user's vault**, including the
+  requesting device's own writes and bodies of tombstoned documents (§7.15
+  keeps their rows). A client drops bodies for a tombstoned id itself.
+
+### 7.17.2 Pruning never makes the feed skip state
+
+Pruning (§7.7) deletes feed rows, so the feed has to survive it. **Claim:** when
+an update `u` is pruned, the document's snapshot row `s` has
+`s.server_cursor > u.server_cursor`.
+
+1. Prune runs only after a snapshot upsert has committed (§7.12), and that
+   upsert gave `s` a fresh cursor above every row committed before it.
+2. Prune deletes only `sequence_num <= s.sequence_num`, a value read before `s`
+   was first written and pinned after (§7.6), so every pruned `u` committed
+   before that upsert.
+3. So `u.server_cursor < s.server_cursor`, and `s`'s cursor only grows
+   afterwards.
+
+A reader below `u`'s cursor will still read `s`; a reader at or past it already
+read `u`. The feed adds no loss beyond today's assumption that a client
+snapshot contains the updates it prunes (§7.6).
+
+### 7.17.3 Known races and rollback
+
+- `GET /sync/crdt/snapshot/:noteId` reads the D1 row and then the R2 blob, which
+  is overwritten in place, so it can pair an older `revision` with newer bytes
+  (`apps/sync-server/src/services/crdt.ts:691-726`). The feed converges it: the
+  write that replaced the blob re-cursored the row, so the client sees a snapshot
+  entry again and re-fetches.
+- **Rolling the Worker back past this change is unsafe once a client depends on
+  the feed for bodies** (#2297). Old Worker code writes updates with a NULL
+  cursor and upserts snapshots without moving their cursor, so a feed-only
+  client never sees those writes. Before such a client ships, a rollback past
+  this change is safe: nothing reads the column.
+- The `crdt_updated` broadcast (chapter 09) is unchanged and carries no cursor.

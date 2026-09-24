@@ -132,6 +132,21 @@ export const LEGACY_RECORD_SYNC_ITEM_TYPES = [
 
 export type LegacyRecordSyncItemType = (typeof LEGACY_RECORD_SYNC_ITEM_TYPES)[number]
 
+/**
+ * Types a client may declare in `X-Memry-Sync-Types` that never travel as a
+ * record envelope (#2295): never pushed through /sync/push, never in the
+ * manifest, /sync/pull or bootstrap, and never in `items`/`deleted`. They are
+ * served only by GET /sync/changes, only when declared.
+ *
+ * Not in RECORD_SYNC_ITEM_TYPES on purpose: both clients declare that whole
+ * list as their header, so a member here would make them receive rows they
+ * cannot apply. Never in LEGACY_RECORD_SYNC_ITEM_TYPES.
+ */
+export const FEED_ONLY_SYNC_TYPES = ['note_body'] as const
+
+/** Everything the server recognises in `X-Memry-Sync-Types`. */
+export const NEGOTIABLE_SYNC_TYPES = [...RECORD_SYNC_ITEM_TYPES, ...FEED_ONLY_SYNC_TYPES] as const
+
 export const SYNC_OPERATIONS = ['create', 'update', 'delete'] as const
 
 export const ENCRYPTABLE_ITEM_TYPES = [
@@ -171,6 +186,8 @@ export type SyncItemType = (typeof SYNC_ITEM_TYPES)[number]
 export type RecordSyncItemType = (typeof RECORD_SYNC_ITEM_TYPES)[number]
 export type RecordClockRequiredItemType = (typeof RECORD_CLOCK_REQUIRED_ITEM_TYPES)[number]
 export type CrdtSyncItemType = (typeof CRDT_SYNC_ITEM_TYPES)[number]
+export type FeedOnlySyncType = (typeof FEED_ONLY_SYNC_TYPES)[number]
+export type NegotiableSyncType = (typeof NEGOTIABLE_SYNC_TYPES)[number]
 export type SyncOperation = (typeof SYNC_OPERATIONS)[number]
 
 /**
@@ -499,6 +516,49 @@ export const RecordChangesItemRefSchema = RecordSyncItemRefSchema.extend({
   committedAtMs: z.number().int().min(0).optional()
 })
 
+const NoteBodyChangeBaseSchema = z.object({
+  /** The CRDT document id: a note id or a journal id (protocol 07 §7.1). */
+  noteId: z.string().min(1),
+  /** The row's server_cursor. Orders the entry among the page's records; never a pull cursor. */
+  cursor: z.number().int().min(1),
+  signerDeviceId: z.string().min(1),
+  /** Epoch seconds, as the CRDT tables store it. */
+  createdAt: z.number().int().min(0),
+  /** Stored bytes of the update or snapshot. */
+  size: z.number().int().min(0)
+})
+
+/**
+ * A crdt_updates row. `data` is the same base64 packed envelope GET
+ * /sync/crdt/updates returns. Absent when the update is too large to inline:
+ * fetch it with GET /sync/crdt/updates?note_id=<noteId>&since=<sequenceNum - 1>&limit=1.
+ */
+export const NoteBodyUpdateChangeSchema = NoteBodyChangeBaseSchema.extend({
+  op: z.literal('update'),
+  sequenceNum: z.number().int().min(1),
+  data: z.string().min(1).optional()
+})
+
+/**
+ * A crdt_snapshots row, always a ref: fetch GET /sync/crdt/snapshot/<noteId>,
+ * or skip it when `revision` equals the one held.
+ */
+export const NoteBodySnapshotChangeSchema = NoteBodyChangeBaseSchema.extend({
+  op: z.literal('snapshot'),
+  sequenceNum: z.number().int().min(0),
+  revision: z.string().min(1)
+})
+
+/**
+ * One note-body row in a /sync/changes page (#2295). The op set is frozen: a
+ * new op ships under a new negotiated type, because a reader that meets an op
+ * it does not know fails the entry.
+ */
+export const NoteBodyChangeSchema = z.discriminatedUnion('op', [
+  NoteBodyUpdateChangeSchema,
+  NoteBodySnapshotChangeSchema
+])
+
 export const RecordChangesResponseSchema = z.object({
   items: z.array(RecordChangesItemRefSchema),
   deleted: z.array(z.string().min(1)),
@@ -514,7 +574,15 @@ export const RecordChangesResponseSchema = z.object({
    * with RecordPullItemResponseSchema on its own (§5.14), so one bad element
    * never fails the page.
    */
-  inline: z.array(z.unknown()).optional()
+  inline: z.array(z.unknown()).optional(),
+  /**
+   * Present, possibly empty, iff the request declared `note_body` (#2295).
+   * Absent means the server does not serve bodies in the feed. Cursor-ordered;
+   * every entry, like every item, lies in (cursor, nextCursor]. `unknown` on
+   * purpose, like `inline`: each entry is validated with NoteBodyChangeSchema
+   * on its own (§5.14), so one bad entry never fails the page.
+   */
+  noteBodies: z.array(z.unknown()).optional()
 })
 
 export const ClientPlatformSchema = z.enum(CLIENT_PLATFORMS)
@@ -721,6 +789,7 @@ export type SyncManifestInput = z.infer<typeof SyncManifestSchema>
 export type RecordSyncManifest = z.infer<typeof RecordSyncManifestSchema>
 export type ChangesResponseInput = z.infer<typeof ChangesResponseSchema>
 export type RecordChangesResponse = z.infer<typeof RecordChangesResponseSchema>
+export type NoteBodyChange = z.infer<typeof NoteBodyChangeSchema>
 export type SyncStatusInput = z.infer<typeof SyncStatusSchema>
 export type ConflictResponseInput = z.infer<typeof ConflictResponseSchema>
 export type DeviceSyncStateInput = z.infer<typeof DeviceSyncStateSchema>

@@ -1,6 +1,10 @@
+import type { NoteBodyChange } from '@memry/contracts/sync-api'
 import { generateCrdtKey, getBlob, putBlob } from './blob'
+import type { FeedSourceBuilder } from './change-feed'
+import { reserveCursors, type CursorReservation } from './cursor'
 import { adjustStorageUsed, reserveStorage } from './quota'
 import type { ClientIdentity } from '../lib/client-identity'
+import { safeBase64Encode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 
@@ -132,12 +136,15 @@ export const storeUpdates = async (
   // statement inserted (sequence numbers stay strictly increasing and gapless)
   // while the batch as a whole is atomic against a concurrent device writing
   // the same note — the property the per-statement loop relied on, at one
-  // round trip instead of one per update.
-  const statements = updates.map((update) =>
+  // round trip instead of one per update. The feed cursors are reserved in the
+  // same batch (#2295), so no reader can see a cursor above a row that has not
+  // committed.
+  const cursors = reserveCursors(db, userId, updates.length)
+  const statements = updates.map((update, position) =>
     db
       .prepare(
-        `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, client_platform, client_version)
-         SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?, ?, ?
+        `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, client_platform, client_version, server_cursor)
+         SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?, ?, ?, ${cursors.cursorSql}
          FROM (
            SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
            UNION ALL
@@ -155,6 +162,7 @@ export const storeUpdates = async (
         now,
         client?.platform ?? null,
         client?.version ?? null,
+        ...cursors.cursorBinds(position),
         userId,
         vaultId,
         noteId,
@@ -166,7 +174,7 @@ export const storeUpdates = async (
 
   let results: Array<D1Result<{ sequence_num: number }>>
   try {
-    results = await db.batch<{ sequence_num: number }>(statements)
+    results = await db.batch<{ sequence_num: number }>(cursors.batch(statements))
   } catch (error) {
     await refundReservation(db, userId, totalBytes, {
       operation: 'storeUpdates',
@@ -176,7 +184,9 @@ export const storeUpdates = async (
     throw error
   }
 
-  return results.map((result) => result.results[0].sequence_num)
+  return results
+    .slice(results.length - statements.length)
+    .map((result) => result.results[0].sequence_num)
 }
 
 export const getUpdates = async (
@@ -310,12 +320,15 @@ export const getBatchUpdates = async (
  * The one snapshot upsert. Shared by the single-note and batch writers so the
  * two can never drift on the DO UPDATE SET list: a column missing from that
  * clause (`revision` above all) is not a compile error, it is a client stuck on
- * a stale body forever.
+ * a stale body forever. `server_cursor` is in it for the same reason (#2295):
+ * a replaced snapshot that kept its old cursor would never reach a reader
+ * already past that cursor. Bind the 12 row values, then `cursorBinds`.
  */
-const SNAPSHOT_UPSERT_SQL = `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision, client_platform, client_version)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+const snapshotUpsertSql = (cursors: CursorReservation): string =>
+  `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision, client_platform, client_version, server_cursor)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cursors.cursorSql})
          ON CONFLICT (user_id, vault_id, note_id)
-         DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at, revision = excluded.revision, client_platform = excluded.client_platform, client_version = excluded.client_version`
+         DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at, revision = excluded.revision, client_platform = excluded.client_platform, client_version = excluded.client_version, server_cursor = excluded.server_cursor`
 
 export const storeSnapshot = async (
   db: D1Database,
@@ -359,23 +372,28 @@ export const storeSnapshot = async (
     // ahead of the D1 upsert so a failed put writes no orphan row.
     await putBlob(storage, blobKey, snapshotData, userId)
 
-    await db
-      .prepare(SNAPSHOT_UPSERT_SQL)
-      .bind(
-        id,
-        userId,
-        vaultId,
-        noteId,
-        blobKey,
-        sequenceNum,
-        snapshotData.byteLength,
-        signerDeviceId,
-        now,
-        revision,
-        client?.platform ?? null,
-        client?.version ?? null
-      )
-      .run()
+    const cursors = reserveCursors(db, userId, 1)
+    await db.batch(
+      cursors.batch([
+        db
+          .prepare(snapshotUpsertSql(cursors))
+          .bind(
+            id,
+            userId,
+            vaultId,
+            noteId,
+            blobKey,
+            sequenceNum,
+            snapshotData.byteLength,
+            signerDeviceId,
+            now,
+            revision,
+            client?.platform ?? null,
+            client?.version ?? null,
+            ...cursors.cursorBinds(0)
+          )
+      ])
+    )
   } catch (error) {
     await refundReservation(db, userId, deltaBytes, {
       operation: 'storeSnapshot',
@@ -599,11 +617,13 @@ export const storeSnapshotBatch = async (
   // client retries the rejected notes either way.
   if (stored.length > 0) {
     const now = Math.floor(Date.now() / 1000)
+    // Cursor positions follow `stored` order; the shrink UPDATEs take none.
+    const cursors = reserveCursors(db, userId, stored.length)
     const statements: D1PreparedStatement[] = []
-    for (const entry of stored) {
+    for (const [position, entry] of stored.entries()) {
       statements.push(
         db
-          .prepare(SNAPSHOT_UPSERT_SQL)
+          .prepare(snapshotUpsertSql(cursors))
           .bind(
             crypto.randomUUID(),
             userId,
@@ -616,7 +636,8 @@ export const storeSnapshotBatch = async (
             now,
             entry.revision,
             client?.platform ?? null,
-            client?.version ?? null
+            client?.version ?? null,
+            ...cursors.cursorBinds(position)
           )
       )
       if (entry.deltaBytes < 0) {
@@ -631,7 +652,7 @@ export const storeSnapshotBatch = async (
     }
 
     try {
-      await db.batch(statements)
+      await db.batch(cursors.batch(statements))
       for (const entry of stored) {
         outcomes[entry.index] = {
           noteId: entry.noteId,
@@ -703,6 +724,88 @@ export const getSnapshot = async (
     revision: coalesceRevision(row)
   }
 }
+
+/**
+ * Updates up to this many stored bytes are inlined in a /sync/changes body
+ * entry; a larger one is served as a ref without `data` (#2295). A page is
+ * clamped to 100 rows when bodies are negotiated, so this bounds the inlined
+ * bytes of one page. Staging on 2026-09-25 had p50 212 B, p99 287 B, max
+ * 332 B over 11 rows, so nearly every update inlines.
+ */
+export const NOTE_BODY_INLINE_MAX_BYTES = 4 * 1024
+
+interface NoteBodyFeedRow {
+  op: 'update' | 'snapshot'
+  note_id: string
+  server_cursor: number
+  sequence_num: number
+  signer_device_id: string
+  created_at: number
+  size: number
+  data: ArrayBuffer | ArrayLike<number> | null
+  snapshot_id: string | null
+  revision: string | null
+}
+
+const toNoteBodyChange = (row: NoteBodyFeedRow): NoteBodyChange => {
+  const base = {
+    noteId: row.note_id,
+    cursor: row.server_cursor,
+    signerDeviceId: row.signer_device_id,
+    createdAt: row.created_at,
+    size: row.size
+  }
+  if (row.op === 'update') {
+    return {
+      op: 'update',
+      ...base,
+      sequenceNum: row.sequence_num,
+      ...(row.data !== null ? { data: safeBase64Encode(row.data) } : {})
+    }
+  }
+  return {
+    op: 'snapshot',
+    ...base,
+    sequenceNum: row.sequence_num,
+    // The same token GET /sync/crdt/snapshot and snapshotMeta return.
+    revision: coalesceRevision({
+      id: row.snapshot_id as string,
+      created_at: row.created_at,
+      size_bytes: row.size,
+      revision: row.revision ?? ''
+    })
+  }
+}
+
+/**
+ * The note-body half of a /sync/changes page (#2295): both CRDT tables in one
+ * statement, ascending by server_cursor. Rows written before migration 0011
+ * carry a NULL cursor and never match `server_cursor > ?`.
+ */
+export const noteBodyFeedSource =
+  (db: D1Database, userId: string, vaultId: string): FeedSourceBuilder<NoteBodyChange> =>
+  (after, fetchLimit) => ({
+    statement: db
+      .prepare(
+        `SELECT 'update' AS op, note_id, server_cursor, sequence_num, signer_device_id, created_at,
+                length(update_data) AS size,
+                CASE WHEN length(update_data) <= ${NOTE_BODY_INLINE_MAX_BYTES} THEN update_data END AS data,
+                NULL AS snapshot_id, NULL AS revision
+         FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND server_cursor > ?
+         UNION ALL
+         SELECT 'snapshot', note_id, server_cursor, sequence_num, signer_device_id, created_at,
+                size_bytes, NULL, id, revision
+         FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND server_cursor > ?
+         ORDER BY server_cursor ASC
+         LIMIT ?`
+      )
+      .bind(userId, vaultId, after, userId, vaultId, after, fetchLimit),
+    parse: (rows) =>
+      (rows as NoteBodyFeedRow[]).map((row) => ({
+        cursor: row.server_cursor,
+        value: toNoteBodyChange(row)
+      }))
+  })
 
 const PRUNE_SUM_SQL =
   'SELECT COALESCE(SUM(length(update_data)), 0) as total_bytes FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num <= ?'

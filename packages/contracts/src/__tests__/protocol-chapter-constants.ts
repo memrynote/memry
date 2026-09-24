@@ -57,7 +57,9 @@ import {
   CLIENT_PLATFORMS,
   CRDT_SYNC_ITEM_TYPES,
   ENCRYPTABLE_ITEM_TYPES,
+  FEED_ONLY_SYNC_TYPES,
   LEGACY_RECORD_SYNC_ITEM_TYPES,
+  NEGOTIABLE_SYNC_TYPES,
   OFFLINE_CLOCK_DEVICE_ID,
   RECORD_CLOCK_REQUIRED_ITEM_TYPES,
   RECORD_SYNC_ITEM_TYPES,
@@ -160,6 +162,18 @@ export const COVERED: readonly Covered[] = [
     label: 'ENCRYPTABLE_ITEM_TYPES size',
     value: ENCRYPTABLE_ITEM_TYPES.length,
     spelledAs: ['| `ENCRYPTABLE_ITEM_TYPES` | 25 |']
+  },
+  {
+    slug: C00,
+    label: 'FEED_ONLY_SYNC_TYPES',
+    value: FEED_ONLY_SYNC_TYPES,
+    spelledAs: ['| `FEED_ONLY_SYNC_TYPES` | 1 |']
+  },
+  {
+    slug: C00,
+    label: 'NEGOTIABLE_SYNC_TYPES size',
+    value: NEGOTIABLE_SYNC_TYPES.length,
+    spelledAs: ['| `NEGOTIABLE_SYNC_TYPES` | 26 |']
   },
   {
     slug: C00,

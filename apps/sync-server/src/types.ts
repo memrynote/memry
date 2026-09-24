@@ -1,3 +1,5 @@
+import type { SyncSubscription } from './lib/sync-types'
+
 export type Bindings = {
   DB: D1Database
   STORAGE: R2Bucket
@@ -67,7 +69,7 @@ export type AppContext = {
     sessionNonce?: string
     vaultId?: string
     syncEntitlement?: import('./services/entitlements').SyncEntitlement
-    syncTypes?: import('@memry/contracts/sync-api').RecordSyncItemType[]
+    syncSubscription?: SyncSubscription
     client?: import('./lib/client-identity').ClientIdentity
   }
 }
