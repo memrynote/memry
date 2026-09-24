@@ -441,7 +441,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         void performSaveRef.current()
       }
       unregisterPendingSave(registryKey)
-      if (liveDateRef.current === date) liveDateRef.current = null
+      liveDateRef.current = null
     }
   }, [date])
 

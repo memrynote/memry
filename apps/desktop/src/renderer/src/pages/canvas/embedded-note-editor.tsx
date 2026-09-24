@@ -72,7 +72,7 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
     return () => {
       unregisterPendingSave(registryKey)
       void flush()
-      if (liveNoteIdRef.current === noteId) liveNoteIdRef.current = null
+      liveNoteIdRef.current = null
     }
   }, [noteId, flush])
 

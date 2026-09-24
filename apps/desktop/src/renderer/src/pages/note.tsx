@@ -573,7 +573,7 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       unregisterPendingSave(registryKey)
-      if (liveNoteIdRef.current === noteId) liveNoteIdRef.current = null
+      liveNoteIdRef.current = null
     }
   }, [noteId])
 

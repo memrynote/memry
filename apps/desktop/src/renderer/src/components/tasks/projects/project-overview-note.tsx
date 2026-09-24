@@ -108,7 +108,7 @@ export const ProjectOverviewNote = ({
       }
       void flush()
       unregisterPendingSave(registryKey)
-      if (liveNoteIdRef.current === homeNoteId) liveNoteIdRef.current = null
+      liveNoteIdRef.current = null
     }
   }, [homeNoteId])
 
