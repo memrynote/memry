@@ -611,6 +611,13 @@ Desktop periodically compares `/sync/manifest` with local syncable records. Note
 matched from canonical `note_metadata` first, with the rebuildable index cache as a fallback, so a
 freshly pushed note is not treated as server-only while indexing catches up.
 
+The full-sync log line says whether a manifest was actually diffed. `fullSync: manifest check
+complete { rePullNeeded, serverOnlyCount }` appears only after a real fetch and diff. A check that
+did not run logs `fullSync: manifest check skipped { reason, nextEligibleAt }` instead, where
+`reason` is `throttled` (the 30-minute window has not elapsed), `no-token` or `error`, and
+`nextEligibleAt` is the ISO time the next check may run. A skipped check never reports
+`serverOnlyCount: 0`, so it cannot be read as a verified clean result.
+
 The comparison reads ids only. Repair payloads are built one row at a time, and only for a record
 the server manifest is actually missing, so the usual clean check never materializes or serializes a
 single row body — the cost of the check scales with the size of the disagreement, not with the size
