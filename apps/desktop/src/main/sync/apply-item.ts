@@ -22,6 +22,9 @@ export interface ApplyItemInput {
 }
 
 export class ItemApplier {
+  /** Applies that changed a local row ('applied' or 'conflict') since construction. */
+  changedCount = 0
+
   constructor(
     private db: DrizzleDb,
     private emitToWindows: EmitToWindows,
@@ -34,6 +37,12 @@ export class ItemApplier {
    * is unchanged.
    */
   apply(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyResult {
+    const result = this.dispatch(input, dbOverride)
+    if (result === 'applied' || result === 'conflict') this.changedCount++
+    return result
+  }
+
+  private dispatch(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyResult {
     const db = dbOverride ?? this.db
     const ctx = { db, emit: this.emitToWindows, vaultKey: input.vaultKey }
     const adapter = this.adapters?.getRemote(input.type) ?? getRemoteSyncAdapter(input.type)

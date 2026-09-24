@@ -86,7 +86,8 @@ describe('SYNC_STATE_KEYS', () => {
         // Additive again (#1840): absent reads as 0 — "no pack coverage" —
         // which is what every install written before packs existed means, and
         // the answer that leaves the item-granular bootstrap untouched.
-        PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor'
+        PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor',
+        CURSOR_SKIP_REPAIR: 'cursorSkipRepair'
       })
     })
 

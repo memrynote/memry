@@ -7,6 +7,7 @@ import { closeBootstrapSession, openBootstrapSession } from '../bootstrap-sessio
 import { getBootstrapElevationFactor } from '../bootstrap-session-state'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
+import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext } from './sync-context'
 import {
   CRDT_FULL_SWEEP_MIN_INTERVAL_MS,
@@ -24,6 +25,8 @@ import { getAllCrdtNoteIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
 
 const log = createLogger('SyncEngine')
+
+const CURSOR_SKIP_REPAIR_DONE = 'done'
 
 /**
  * How long the paced CRDT drain must stay CONTINUOUSLY blocked before the
@@ -540,7 +543,14 @@ export class FullSyncRunner {
       // swallows every error and the coordinator returns early on a busy lock,
       // missing credentials or a page it refused to apply — so it proved
       // nothing outside a unit test whose `pull` was a bare mock.
-      if (await this.actions.pull()) this.bootstrapPullSucceeded = true
+      const repairFrom = await this.beginCursorSkipRepair()
+      const changedBeforePull = this.ctx.applier.changedCount
+      if (await this.actions.pull()) {
+        this.bootstrapPullSucceeded = true
+        if (repairFrom !== null) {
+          this.finishCursorSkipRepair(repairFrom, this.ctx.applier.changedCount - changedBeforePull)
+        }
+      }
       log.debug('fullSync: pull complete')
 
       const queueBeforeSeed = this.ctx.deps.queue.getPendingCount()
@@ -695,6 +705,54 @@ export class FullSyncRunner {
       // without a second call of our own.
       this.flushPendingCrdtPulls()
     }
+  }
+
+  /**
+   * Starts or resumes the one-time re-pull (#2382); see
+   * `SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR`. Returns the cursor the repair reset
+   * from while it is pending, else null.
+   *
+   * The reset happens under the sync lock: a pull holding the lock would
+   * otherwise overwrite the reset with its own next cursor, and the repair
+   * would be recorded without ever re-reading the skipped range.
+   */
+  private async beginCursorSkipRepair(): Promise<number | null> {
+    const recorded = this.stateManager.getStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR)
+    if (recorded === CURSOR_SKIP_REPAIR_DONE) return null
+    const pendingFrom = Number(recorded?.match(/^pending:(\d+)$/)?.[1])
+    if (Number.isInteger(pendingFrom)) return pendingFrom
+
+    const release = await this.ctx.acquireLock()
+    if (!release) return null
+    try {
+      const cursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? '0')
+      if (!Number.isInteger(cursor) || cursor <= 0) {
+        this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, CURSOR_SKIP_REPAIR_DONE)
+        return null
+      }
+      log.info('fullSync: cursor-skip repair, re-pulling from cursor 0', { fromCursor: cursor })
+      // Cursor first: a crash between the two writes leaves cursor 0 and no
+      // key, which the next run records as done with nothing lost.
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, `pending:${cursor}`)
+      return cursor
+    } finally {
+      this.ctx.releaseLock()
+      release()
+    }
+  }
+
+  private finishCursorSkipRepair(fromCursor: number, changedItems: number): void {
+    this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, CURSOR_SKIP_REPAIR_DONE)
+    log.info('fullSync: cursor-skip repair complete', { fromCursor, changedItems })
+    trackMainEvent('sync_run_completed', {
+      surface: 'sync',
+      action: 'cursor_skip_repair',
+      result: 'success',
+      metrics: { itemCount: changedItems, value: fromCursor },
+      source: 'full',
+      dimensions: { transport: 'record' }
+    })
   }
 
   /**

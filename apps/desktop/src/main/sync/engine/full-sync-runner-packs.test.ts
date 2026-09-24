@@ -128,6 +128,9 @@ const createHarness = (
       emitToRenderer: vi.fn(),
       ...(provider ? { crdtProvider: provider } : {})
     },
+    applier: { changedCount: 0 },
+    acquireLock: vi.fn(async () => () => {}),
+    releaseLock: vi.fn(),
     fullSyncActive: false
   } as unknown as SyncContext
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { EventEmitter } from 'events'
 import { INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS, SyncEngine, type SyncEngineDeps } from './engine'
 import { NetworkError } from './http-client'
+import { SYNC_STATE_KEYS } from './engine/sync-context'
 import type { WebSocketMessage } from './websocket'
 import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
 
@@ -646,6 +647,7 @@ describe('SyncEngine', () => {
 
         // @ts-expect-error accessing private for test
         engine.setStateValue('lastCursor', '12345')
+        engine.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, 'done')
 
         const THIRTY_MINUTES_MS = 30 * 60 * 1000
         // @ts-expect-error accessing private for test

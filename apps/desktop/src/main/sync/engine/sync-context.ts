@@ -119,7 +119,19 @@ export const SYNC_STATE_KEYS = {
    * A missing row reads as 0 — no pack coverage — which is what every install
    * written before this key existed has.
    */
-  PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor'
+  PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor',
+  /**
+   * The one-time re-pull from cursor 0 that heals installs an older build left
+   * with a skipped cursor range (#2382). The manifest diff heals missing items
+   * only, never stale ones.
+   *
+   * Missing: not started. `pending:<cursor>`: LAST_CURSOR was reset from
+   * `<cursor>` to 0 and the re-pull has not delivered yet; an interrupted
+   * repair resumes from the persisted LAST_CURSOR, never from 0 again, because
+   * a page the pull refuses every time would otherwise restart it forever.
+   * `done`: a pull delivered after the reset, or there was nothing to repair.
+   */
+  CURSOR_SKIP_REPAIR: 'cursorSkipRepair'
 } as const
 
 // Item ids are NOT unique across item types (default project id 'inbox', tag

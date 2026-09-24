@@ -477,6 +477,68 @@ describe('SyncEngine', () => {
     })
   })
 
+  // #2382
+  describe('#given an install that skipped a cursor range before the fix #when the first fullSync runs', () => {
+    it('#then the skipped update arrives and the repair is recorded', async () => {
+      const skippedUpdate = new TextEncoder().encode(
+        JSON.stringify({ id: 'task-7', title: 'Updated on B', clock: { 'device-b': 2 } })
+      )
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockImplementation(
+        async (path: string) => {
+          if (!path.startsWith('/sync/changes')) return { items: [], serverTime: 0 }
+          const cursor = Number(new URL(path, 'http://x').searchParams.get('cursor') ?? '0')
+          return cursor < 7
+            ? {
+                items: [{ id: 'task-7', type: 'task', version: 2, modifiedAt: 1000, size: 10 }],
+                deleted: [],
+                hasMore: false,
+                nextCursor: 24
+              }
+            : { items: [], deleted: [], hasMore: false, nextCursor: 24 }
+        }
+      )
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: [
+          {
+            id: 'task-7',
+            type: 'task',
+            operation: 'update',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+            signature: 'sig',
+            signerDeviceId: 'device-b',
+            clock: { 'device-b': 2 }
+          }
+        ]
+      })
+      vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockReturnValue({
+        content: skippedUpdate,
+        verified: true
+      })
+      vi.spyOn(await import('./initial-seed'), 'runInitialSeed').mockImplementation(() => {})
+      const { ItemApplier } = await import('./apply-item')
+      const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      engine.setStateValue('lastCursor', '24')
+
+      await engine.fullSync()
+
+      expect(applySpy.mock.calls.map(([input]) => input)).toEqual([
+        expect.objectContaining({ itemId: 'task-7', type: 'task', content: skippedUpdate })
+      ])
+      expect(engine.getStateValue('lastCursor')).toBe('24')
+      expect(engine.getStateValue('cursorSkipRepair')).toBe('done')
+
+      applySpy.mockClear()
+      await engine.fullSync()
+      expect(applySpy).not.toHaveBeenCalled()
+
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given a runtime adapter registry that omits a record type #when fullSync seeds', () => {
     it('#then still seeds every registered handler type', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({

@@ -40,11 +40,16 @@ const mocks = vi.hoisted(() => ({
   markBootstrapFullText: vi.fn(),
   abandonBootstrap: vi.fn(),
   openBootstrapSession: vi.fn(),
-  closeBootstrapSession: vi.fn()
+  closeBootstrapSession: vi.fn(),
+  trackMainEvent: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({
   createLogger: () => mocks.log
+}))
+
+vi.mock('../../telemetry/track', () => ({
+  trackMainEvent: (...args: unknown[]) => mocks.trackMainEvent(...args)
 }))
 
 vi.mock('../manifest-check', () => ({
@@ -235,6 +240,9 @@ function createHarness(
       emitToRenderer,
       ...(options.crdtProvider !== undefined && { crdtProvider: options.crdtProvider })
     },
+    applier: { changedCount: 0 },
+    acquireLock: vi.fn(async () => () => {}),
+    releaseLock: vi.fn(),
     fullSyncActive: false
   } as unknown as SyncContext
 
@@ -333,6 +341,7 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
 
       expect(h.calls).toEqual([
+        `setState:${SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR}`,
         'pull',
         'seed',
         'push',
@@ -528,6 +537,128 @@ describe('FullSyncRunner', () => {
 
       expect(h.actions.pull).toHaveBeenCalledTimes(1)
       expect(h.setStateValue).not.toHaveBeenCalledWith(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+    })
+  })
+
+  // #2382
+  describe('#given the one-time cursor-skip repair', () => {
+    function withState(h: Harness, initial: Record<string, string>): Map<string, string> {
+      const state = new Map(Object.entries(initial))
+      h.getStateValue.mockImplementation((key: string) => state.get(key))
+      h.setStateValue.mockImplementation((key: string, value: string) => {
+        h.calls.push(`setState:${key}`)
+        state.set(key, value)
+      })
+      return state
+    }
+
+    function pullThatSees(
+      h: Harness,
+      state: Map<string, string>,
+      outcome: { delivered: boolean; cursorAfter: string; changed?: number }
+    ) {
+      const seen: Array<string | undefined> = []
+      h.actions.pull.mockImplementationOnce(async () => {
+        h.calls.push('pull')
+        seen.push(state.get(SYNC_STATE_KEYS.LAST_CURSOR))
+        state.set(SYNC_STATE_KEYS.LAST_CURSOR, outcome.cursorAfter)
+        ;(h.ctx.applier as { changedCount: number }).changedCount += outcome.changed ?? 0
+        return outcome.delivered
+      })
+      return seen
+    }
+
+    it('#then an install with a cursor re-pulls from 0 under the lock and records done after a delivered pull', async () => {
+      const h = createHarness()
+      const state = withState(h, { [SYNC_STATE_KEYS.LAST_CURSOR]: '40' })
+      const seen = pullThatSees(h, state, { delivered: true, cursorAfter: '40', changed: 3 })
+
+      await h.runner.run()
+
+      expect(seen).toEqual(['0'])
+      expect(h.ctx.acquireLock).toHaveBeenCalledTimes(1)
+      expect(h.ctx.releaseLock).toHaveBeenCalledTimes(1)
+      expect(state.get(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR)).toBe('done')
+      expect(mocks.trackMainEvent).toHaveBeenCalledWith(
+        'sync_run_completed',
+        expect.objectContaining({
+          action: 'cursor_skip_repair',
+          metrics: { itemCount: 3, value: 40 }
+        })
+      )
+    })
+
+    it('#then an interrupted repair resumes from its persisted cursor instead of restarting at 0', async () => {
+      const h = createHarness()
+      const state = withState(h, { [SYNC_STATE_KEYS.LAST_CURSOR]: '40' })
+      pullThatSees(h, state, { delivered: false, cursorAfter: '12' })
+
+      await h.runner.run()
+
+      expect(state.get(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR)).toBe('pending:40')
+
+      const next = createHarness()
+      const nextState = withState(next, Object.fromEntries(state))
+      const seen = pullThatSees(next, nextState, { delivered: true, cursorAfter: '40' })
+
+      await next.runner.run()
+
+      expect(seen).toEqual(['12'])
+      expect(nextState.get(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR)).toBe('done')
+      expect(mocks.trackMainEvent).toHaveBeenCalledWith(
+        'sync_run_completed',
+        expect.objectContaining({ metrics: expect.objectContaining({ value: 40 }) })
+      )
+    })
+
+    it('#then a pull that throws leaves the repair pending', async () => {
+      const h = createHarness()
+      const state = withState(h, { [SYNC_STATE_KEYS.LAST_CURSOR]: '40' })
+      h.actions.pull.mockRejectedValueOnce(new Error('offline'))
+
+      await expect(h.runner.run()).rejects.toThrow('offline')
+
+      expect(state.get(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR)).toBe('pending:40')
+      expect(state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('0')
+    })
+
+    it.each([
+      ['no cursor', {}],
+      ['cursor 0', { [SYNC_STATE_KEYS.LAST_CURSOR]: '0' }]
+    ])('#then an install with %s records done without a reset', async (_label, initial) => {
+      const h = createHarness()
+      const state = withState(h, initial)
+
+      await h.runner.run()
+
+      expect(h.setStateValue).not.toHaveBeenCalledWith(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+      expect(state.get(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR)).toBe('done')
+      expect(mocks.trackMainEvent).not.toHaveBeenCalled()
+    })
+
+    it('#then a repaired install never resets its cursor again', async () => {
+      const h = createHarness()
+      withState(h, {
+        [SYNC_STATE_KEYS.LAST_CURSOR]: '40',
+        [SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR]: 'done'
+      })
+
+      await h.runner.run()
+
+      expect(h.setStateValue).not.toHaveBeenCalledWith(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+      expect(h.ctx.acquireLock).not.toHaveBeenCalled()
+    })
+
+    it('#then a busy sync lock defers the repair to the next full sync', async () => {
+      const h = createHarness()
+      const state = withState(h, { [SYNC_STATE_KEYS.LAST_CURSOR]: '40' })
+      vi.mocked(h.ctx.acquireLock).mockResolvedValueOnce(null)
+
+      await h.runner.run()
+
+      expect(state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('40')
+      expect(state.has(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR)).toBe(false)
+      expect(h.actions.pull).toHaveBeenCalledTimes(1)
     })
   })
 
