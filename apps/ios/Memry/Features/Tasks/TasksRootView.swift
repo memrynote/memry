@@ -100,10 +100,11 @@ struct VaultTasksScope<Content: View>: View {
     var body: some View {
         content(store, failure)
             .environment(\.requestVaultSync, syncRequest)
-            // Pull and push when the vault opens and on every return to the
-            // foreground, whichever tab shows: a tab's own views miss scene
-            // changes while hidden.
-            .onChange(of: scenePhase, initial: true) { _, phase in
+            // Pull and push on every return to the foreground, whichever tab
+            // shows: a tab's own views miss scene changes while hidden. The
+            // pass for the vault opening runs from `make()`, because the
+            // scene can already be active before the store exists.
+            .onChange(of: scenePhase) { _, phase in
                 if phase == .active, let store { Task { await store.sync() } }
             }
             .background {
@@ -131,7 +132,9 @@ struct VaultTasksScope<Content: View>: View {
         }
         do {
             let tasks = try vault.tasks(store: secureStore)
-            store = TasksStore(core: tasks, filler: filler, vaultId: vault.id())
+            let made = TasksStore(core: tasks, filler: filler, vaultId: vault.id())
+            store = made
+            Task { await made.sync() }
         } catch {
             failure = ErrorMapping.userFacing(error)
         }
