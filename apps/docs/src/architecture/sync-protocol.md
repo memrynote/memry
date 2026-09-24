@@ -301,6 +301,10 @@ vault still too big at the doubled size pays one refused request per raise and h
 A per-item `STORAGE_QUOTA_EXCEEDED` rejection refuses only that item. The rest of the same response
 is still acked, and the run keeps dequeuing, because the server refuses only items that grow storage:
 a delete or a shrinking update still commits and is how a vault gets back under its quota.
+`POST /sync/push` has no request-level quota check: the Worker reserves storage for the growing
+items only and answers the ones that do not fit per item. Before #2303 it first compared the JSON
+length of the whole request against the quota and refused the batch with a 413, which blocked those
+deletes too. The paid-plan check is unaffected; it runs on every `/sync/*` route.
 
 ### The per-item attempt budget is spent per sync cycle
 
