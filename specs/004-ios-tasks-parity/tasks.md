@@ -391,83 +391,100 @@ All blocks are `[P]` against each other: each owns its own files under
 to land owns it and the other rebases. The orchestrator runs the simulator
 checks for each block after merging it.
 
-- [ ] TP040 [P] **Views**: segmented All / Today / Tomorrow / Next 7 / Archived
+- [x] TP040 [P] **Views**: segmented All / Today / Tomorrow / Next 7 / Archived
       with counts; overdue section first in Today and Next 7; completed group
       collapsed by default; per-view empty states; project scope picker (all
       projects, search, starred saved filters); List/Kanban switch;
       pull-to-refresh; Today progress/celebration; view state persisted per
       desktop's `tasks-view-state` keys meaning.
-- [ ] TP041 [P] **Task row**: tap opens detail, circle completes (with haptic),
+      Evidence: `TaskListScreen`/`TaskListBody`/`TasksStore+List` (block A, integrated 77f96e4aa). Simulator on the staging MemryNote vault: apps/ios/SpikeEvidence/tasks-parity/TP040-all-list.png (All 56 with Overdue group), TP040-today.png (Overdue first, "0 of 18 done today"), TP040-archived-empty.png, TP040-scope-picker.png, TP040-scoped-project.png, Kanban switch on All only; view state (scope) survived relaunch. Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksListTests + TasksListMoveTests.
+- [x] TP041 [P] **Task row**: tap opens detail, circle completes (with haptic),
       swipe actions (complete, reschedule, delete), context menu = desktop
       Move menu (reschedule Today/Tomorrow/Next week/Remove date, move to
       project, change status) + duplicate, make subtask of…, archive, delete.
       Row shows priority, title, subtask progress, repeat, linked note, tags,
       due, project.
-- [ ] TP042 [P] **Quick add**: capture field with live pills for `@date`,
+      Evidence: `TaskRowView`/`TaskRowActions`/`TaskRowBadges` (block B). Simulator: row tap opened detail, circle completed a repeating task (next occurrence toast), apps/ios/SpikeEvidence/tasks-parity/TP041-context-menu.png (Reschedule/Move to project/Change status/Duplicate/Make subtask of…/Archive/Delete), TP041-swipe-trailing.png + TP041-swipe-reschedule-menu.png (swipe Reschedule → Today rescheduled `[agent] trio 2`). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksRowTests.
+- [x] TP042 [P] **Quick add**: capture field with live pills for `@date`,
       `every …`, `!priority`, `+project`, `#tag`, `[[note]]` from the core
       parse spans; ghost completion for dates and repeats; autocomplete lists
       for project, tag and note; project resolution chain; help sheet.
       **Add Task sheet** with every field and "Create another".
-- [ ] TP043 [P] **Task detail**: editable title; status, priority, due
+      Evidence: `QuickAddBar`/`QuickAddTextView`/`AddTaskSheet` (block C, finished at integration). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP042-quickadd-pills.png (@may 17 3pm, !high, #test, +project pills + project suggestion) → created `[agent] meeting` due May 17 2027 15:00, high, #test, in Agent Test Parity (TP040-scoped-project.png); TP042-quickadd-help.png; TP042-add-task-sheet.png + TP042-create-another.png (sheet stays open, fields reset). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksQuickAddTests.
+- [x] TP043 [P] **Task detail**: editable title; status, priority, due
       date+time, start date, project, tags (autocomplete), reminders, repeat,
       description (per TP003), subtasks, related items (add/search/remove,
       missing-item state), activity (last 3 + full sheet with filter and
       paging), created/archived meta, unarchive, delete with confirmation.
-- [ ] TP044 [P] **Date and time**: suggestions (Today, Tomorrow, This Weekend,
+      Evidence: `TaskDetailView` + properties/tags/description/related/activity/footer (block D). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP043-detail-top.png, TP043-detail-middle.png (reminders, tags, description, sub-issues), TP043-related-linked.png (note linked via search), TP043-detail-activity.png (activity: due/repeat changes, Show all). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksDetailTests.
+- [x] TP044 [P] **Date and time**: suggestions (Today, Tomorrow, This Weekend,
       Next Week), natural-language field backed by the core parser with the
       resolved date shown live, graphical calendar with "Today", add/clear
       time, remove date; start date uses the same picker.
-- [ ] TP045 [P] **Repeat**: presets (daily, weekdays, weekly on X, biweekly,
+      Evidence: `TaskDateSheet`/`TaskDateField` (block E). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP044-date-sheet.png (Today/Tomorrow/This Weekend/Next Week, calendar with Today), TP044-natural-ghost.png ("next fri" ghost "day" + desktop's "Couldn't understand this date" while unparsed, same as natural-date-input.tsx), accepted → due saved. Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksDatesTests.
+- [x] TP045 [P] **Repeat**: presets (daily, weekdays, weekly on X, biweekly,
       monthly on day N, monthly on Nth weekday, yearly on date); custom sheet
       (frequency, interval, days, monthly type, ends never/date/count, preview
       of next dates from the core); repeat-from due/completion; "N of M"
       progress; Stop Repeating dialog (keep as one-time / delete this and
       future); Edit Repeating dialog (only this / this and future).
-- [ ] TP046 [P] **Subtasks**: inline add, reorder, promote to task, parent
+      Evidence: `RepeatSheet`/`RepeatCustomEditor`/`RepeatPrompts` (block E). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP045-repeat-sheet.png (7 presets), TP045-custom-editor.png (weekly Mon+Fri, ends after 10, core preview "(1 of 10)"), saved as "Weekly, Ends: After 10x | Done: 0x"; TP045-stop-repeating-dialog.png → keep → Does not repeat. Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksDatesTests.
+- [x] TP046 [P] **Subtasks**: inline add, reorder, promote to task, parent
       picker (same project / other projects, search), complete-parent dialog
       (all / parent only), all-subtasks-complete prompt, delete-parent dialog
       (all / keep as tasks), subtask bulk menu (complete all, incomplete all,
       due date for all incl. completed option, priority for all, delete all),
       duplicate with subtasks.
-- [ ] TP047 [P] **Multi-select and bulk**: edit mode, select all, range select,
+      Evidence: `SubtasksSection`/`SubtaskRow`/`ParentPickerSheet`/`TasksStore+Subtasks` (block F). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP046-parent-picker.png → "Moved under [agent] parent task" (TP046-subtask-under-parent.png, "0 of 1 subtasks done"), inline add of `[agent] child two`, TP046-all-subtasks-done-prompt.png after completing both. Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksSubtasksTests.
+- [x] TP047 [P] **Multi-select and bulk**: edit mode, select all, range select,
       bulk bar (complete, priority, due date + time, move to project, status,
       archive, unarchive, delete with confirmation); hardware keyboard
       Cmd+A / Cmd+Return / Cmd+Delete / Esc.
-- [ ] TP048 [P] **Filters, sort, group**: filter sheet with every dimension
+      Evidence: `TaskSelectionBar`/`TasksStore+Bulk`/`TaskSelectionKeyboard` (block G). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP047-edit-selection.png, TP047-multi-select-bar.png, TP047-bulk-complete-toast.png ("3 tasks completed") then Undo restored all three (TP051-bulk-undo.png), TP047-cmd-a-select-all.png (hardware Cmd+A). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksBulkTests (incl. preset keeps each task's time).
+- [x] TP048 [P] **Filters, sort, group**: filter sheet with every dimension
       (search, projects, priorities, tags, due date presets + custom range,
       status after picking a project, completion incl. archived, repeat
       type, has time); quick presets (Overdue, High Priority, Due This Week,
       Repeating, No Due Date); active filter chips with clear; group-by
       field + direction; collapsible groups persisted; saved filters (save,
       apply, rename, delete, reorder, star).
-- [ ] TP049 [P] **Kanban**: paged columns for each column mode (canonical,
+      Evidence: `TaskFilterSheet`/`TaskFilterChips`/`SavedFilterSection`/`TasksStore+Filters` (block H). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP048-filter-sheet.png, Repeating preset → saved as "Agent Test Filter" (TP048-saved-filter-applied.png, chip + scope label), cleared, reapplied and starred (TP048-saved-filter-section.png). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksFiltersTests.
+- [x] TP049 [P] **Kanban**: paged columns for each column mode (canonical,
       status, priority, due date, project); drag between columns writes the
       field; per-column add; done column "show N more".
-- [ ] TP050 [P] **Reorder and reschedule by drag**: manual order writes
+      Evidence: `TaskKanbanBoard`/`KanbanCardView` (block I). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP049-kanban-canonical.png, drag `[agent] trio 3` onto In Progress → To Do 4→3, In Progress 0→1 (TP049-kanban-drag-status.png), TP049-kanban-priority.png (priority columns). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksKanbanTests.
+- [x] TP050 [P] **Reorder and reschedule by drag**: manual order writes
       `position`; dropping onto a date group reschedules; multi-item drag in
       edit mode.
-- [ ] TP051 [P] **Undo**: toast with Undo for create, delete, complete
+      Evidence: Block A plus integration fix 8a5f9d58f (headers as rows, page-owned selection). Simulator in edit mode: handle drag reordered within Today; `[agent] trio 2` dragged into Tomorrow → Today 2→1, Tomorrow 1→2; `[agent] trio 3` into Later → due Oct 8 (+14); with two rows selected, dragging one moved both to Later (TP050-multi-drag-reschedule.png). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksListMoveTests (4).
+- [x] TP051 [P] **Undo**: toast with Undo for create, delete, complete
       (including the repeating next-occurrence case), uncomplete, archive,
       field edits, and every bulk action; hardware Cmd+Z.
-- [ ] TP052 [P] **Projects**: list with reorder and archive; create/edit sheet
+      Evidence: `TasksToast`/`TasksToastState` (block G) + core undo-of-delete (6431914ae). Simulator: repeating complete → "Next occurrence: Sep 25" → Undo removed it and reopened the same task (apps/ios/SpikeEvidence/tasks-parity/TP051-repeat-complete-toast.png, TP051-undo-repeat.png "Changes undone"); bulk complete → Undo (TP051-bulk-undo.png). Rust: api_tasks undoing_a_delete_brings_the_task_and_its_subtasks_back. Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24).
+- [x] TP052 [P] **Projects**: list with reorder and archive; create/edit sheet
       (icon, name ≤50, color palette, description, status editor with ≥2
       rule, type, color, reorder, delete); unsaved-changes guard; delete
       dialog (move tasks / delete all); project hub (overview, task list,
       progress, home note, linked notes/events/files with pin and unlink).
-- [ ] TP053 [P] **Reminders**: picker with desktop presets + custom date/time,
+      Evidence: `ProjectsViews`/`ProjectEditorSheet`/`ProjectHubView`/`ProjectDeleteDialog` (block J, delete-count fix 28d2888be). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP052-projects-list.png, TP052-project-editor.png (icon, name, palette, status editor) → created "Agent Test Parity", TP052-project-hub.png (overview, 7 of 12 done, tasks), TP052-delete-dialog.png (Move tasks to Inbox / Delete all tasks permanently), dismissed. Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksProjectsTests.
+- [x] TP053 [P] **Reminders**: picker with desktop presets + custom date/time,
       multiple per task, edit/delete; local notification scheduling; tapping
       one opens the task; a task completed or deleted elsewhere opens a
       sensible state (FR-061).
+      Evidence: `TaskRemindersSection`/`ReminderNotifications`/`ReminderNotificationsRouting` (block K, tap-crash fix c66265d5e). Simulator: apps/ios/SpikeEvidence/tasks-parity/TP053-reminder-picker.png, three reminders on one task (TP053-reminders-list.png), custom 06:02 (TP053-custom-time.png) fired as a notification with the app backgrounded (TP053-notification-fired.png, "[agent] parent task / Task reminder"); tapping the banner with the app on Notes switched to Tasks and opened the task (TP053-notification-tap-opens-task.png); no crash report. Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksRemindersTests.
 - [ ] TP054 [P] **Notes integration UI**: `TaskBlockRow` becomes interactive
       (circle toggles, title opens detail); checklist → task in the editor;
       linked tasks section on the note screen; "move note tasks?" prompt when
       a note's project changes, if iOS can edit that property.
-- [ ] TP055 [P] **Settings > Tasks**: default project, default sort, default
+- [x] TP055 [P] **Settings > Tasks**: default project, default sort, default
       view, stale inbox days.
-- [ ] TP056 [P] **Search**: task results open the detail route.
-- [ ] TP057 Accessibility pass over every screen above: VoiceOver labels and
+      Evidence: `TaskSettingsView`/`TaskSettingsActions` (block M; default view wired via `restoredState`). Simulator: More tab → Tasks row (apps/ios/SpikeEvidence/tasks-parity/TP055-more-tab-row.png) → apps/ios/SpikeEvidence/tasks-parity/TP055-task-settings.png; stale-inbox 7→8→7 read back. Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); TasksSettingsTests.
+- [x] TP056 [P] **Search**: task results open the detail route.
+      Evidence: `VaultSearch` `tasks(query:limit:)` + Tasks section (block L). Simulator: "agent meeting" → Tasks result (apps/ios/SpikeEvidence/tasks-parity/TP056-search-task-results.png) → tap opened the task detail on the Tasks tab (TP056-search-opens-detail.png). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24); VaultSearchTests + TasksNotesTests.
+- [x] TP057 Accessibility pass over every screen above: VoiceOver labels and
       custom actions (complete, delete, reschedule), Dynamic Type up to AX5,
       reduced motion, RTL, WCAG AA contrast. Runs after TP040–TP056.
+      Evidence: Fixes 72f817bfb. VoiceOver: rows read "title, priority, due, project, tags" with Complete / Reschedule to tomorrow / Delete custom actions (tree dumps); Dynamic Type AX5: apps/ios/SpikeEvidence/tasks-parity/TP057-ax5-list.png, TP057-ax5-detail.png (rows stack), TP057-ax5-filter.png (presets stack), TP057-ax5-kanban.png; RTL (forced): TP057-rtl-list.png, TP057-rtl-detail.png; reduced motion: every Tasks transition runs under `calmAnimation`; contrast: task text colours ≥4.5:1 on both canvases after darkening five light values (§6 TP057). Unit plan 669 tests in 99 suites passed (xcodebuild test-without-building -testPlan Unit, 2026-09-24).
 
 Per block, before ticking: unit tests for its view model, one simulator run
 of its flows via XcodeBuildMCP with screenshots saved to
@@ -614,6 +631,20 @@ clock, createdAt`) but is in the core's **unsubscribed** list
 - 2026-09-24 — TP028 — A checkbox flipped in a note body completes the task with the core clock as the completion anchor (the note editor path has no local wall clock); only `repeatFrom: completion` tasks can differ, by at most the UTC offset's day.
 - 2026-09-24 — TP026 — Found, not fixed here: `crdt/body_edit/structure.rs` Outdent/Indent/MoveBlock/Duplicate flatten formatted text into literal tag text (`snapshot_subtree` uses `get_string`). Task-line delete lifts nested blocks with Outdent, so formatted text nested under a task line would be damaged. Logged for TP092.
 - 2026-09-24 — TP001 — Found, not fixed (out of scope): vault picker rows (`VaultListView.VaultChoiceList`) use `.buttonStyle(.plain)` without `contentShape`, so tapping the empty middle of a row does nothing; only the icon/name/chevron are hit-testable.
+- 2026-09-24 — TP050 — On iPhone a long press on a row opens its menu (desktop's right-click Move menu), so drags start from the edit-mode handles. Group headers are List rows, not `Section` headers, so one `onMove` sees a move into another due-date group (a List never delivered a cross-section drop to `onInsert` or a header drop target). The page owns the selection, not the List: a List holding a multi-selection turns a drag into a drag session and never calls `onMove`. Dragging a selected row moves the whole selection.
+- 2026-09-24 — TP040 — Drop buckets resolve through the core parser (`today`, `tomorrow`, `in 3 days`, `in 14 days`), matching desktop's +0/+1/+3/+14. Per-view empty states use desktop's view copy (desktop itself shows "No tasks yet" everywhere). Starred saved filters sit in the scope sheet rather than header pills. The applied saved filter is session state (desktop clears it on tab change too). The list title is inline because the tabs header is pinned under it.
+- 2026-09-24 — TP043 — Tag suggestions come from tasks only (the Tasks surface has no vault tag list). Repeat wording is built from the rule's fields. A related note is shown but not opened (no cross-tab note route yet). Desktop's "in N days" date hint and create-project-from-detail are not ported.
+- 2026-09-24 — TP045 — Desktop's Edit Repeating dialog has no production handler; iOS: "This and future" applies the edit, "Only this" detaches the occurrence (`setRepeat(nil)`) then applies, one undo. Stop Repeating "delete" deletes (desktop's option is a no-op). Repeat-from is shown (desktop has no control). Anchor weekday/week-of-month reads are Swift UI code, as on desktop; dates and occurrences come from the core.
+- 2026-09-24 — TP046 — Completing the last subtask asks (plan) where desktop's default auto-completes the parent. The complete-parent and delete-parent dialogs exist on desktop but are unmounted; iOS shows them per plan. "Parent only" = `complete` then `undo` of the subtasks that were open (core gap: no complete without cascade). Picking a parent in another project moves the task there first (desktop refuses). Parent candidates are filtered in Swift like desktop's `getPotentialParents`.
+- 2026-09-24 — TP047 — Status bulk action shows only when the selection is in one project. Due presets keep each task's time (grouped by time, one undo). Unarchive toast is pluralised correctly. Cmd+Z undoes only while the Undo toast is up.
+- 2026-09-24 — TP048 — Tag filter lists tags on tasks only. Custom due range is written as `YYYY-MM-DD` (desktop writes a timestamp; the core reads both). The Done section ignores filters, as desktop's `doneTasks` does.
+- 2026-09-24 — TP049 — Column add is an inline title field with the column's value preset (desktop's column add). Overdue has no add. Subtask and completed cards take their due bucket from the tone (the core groups open top-level rows only); completed cards are not filtered (no core query).
+- 2026-09-24 — TP051 — Undoing a delete recreates the task (and subtasks deleted with it) from its last payload under new ids, as desktop's `addTask(snapshot)` does; a tombstoned id is never reused. `TaskChange` gains `removed`.
+- 2026-09-24 — TP052 — Linked-item titles are looked up through `searchRelated` (no core call resolves a project's links). Calendar events can be unlinked but not added; linked notes/files do not open (no cross-tab route). Progress shows total/done/overdue (no per-status counts). Icons are emoji only. The overview note can be picked or cleared, not created. The delete dialog counts tasks from the store before it opens (an async count once showed a non-empty project as empty).
+- 2026-09-24 — TP053 — A reminder's note cannot be edited (`updateReminder` takes time and title only). The core has no "mark triggered", so a fired reminder stays listed as Past due with snooze/dismiss. Preset times are computed in Swift, as desktop's renderer does. The nearest 60 reminders are scheduled. A non-task reminder tap selects the Notes tab. The tasks store is built when the vault opens so the window refills at launch. The notification delegate uses the completion-handler methods on the main actor (the async form crashed on tap).
+- 2026-09-24 — TP054 — No "move note tasks?" prompt: iOS cannot edit a note's project property. Indenting an existing task line does not re-parent it (`editBlock` does not call `rewire_task_parents`; core gap). A deleted task line and a not-yet-synced one read the same. Checklist conversion is explicit (menu), never as-you-type.
+- 2026-09-24 — TP055 — Default View applies only when no saved view state was restored (`restoredState`); once applied it is saved like any tab choice.
+- 2026-09-24 — TP057 — Light-mode `priorityUrgent`, `priorityHigh`, `priorityMedium`, `progress` and `tokenNote` are darkened from desktop's CSS values to reach 4.5:1 on the canvas (desktop's fail AA). At accessibility sizes detail rows stack, filter presets stack, the Kanban mode button is icon-only and quick add uses a short placeholder.
 
 ## 7. Blockers
 
