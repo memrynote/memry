@@ -127,9 +127,47 @@ export const CalendarProviderConnectionSchema = z.discriminatedUnion('kind', [
     /** Server preset the user picked, for copy and telemetry only. */
     preset: z.string().trim().max(64).optional(),
     /** Remote calendar ids to show; omitted = the provider's default selection. */
-    selectedCalendarIds: z.array(z.string().min(1).max(4096)).max(500).optional()
+    selectedCalendarIds: z.array(z.string().min(1).max(4096)).max(500).optional(),
+    /**
+     * #1396: the user saw the devices below CALENDAR_MULTI_WRITER_MIN_APP_VERSION
+     * and chose to connect anyway. Without it, a writable provider refuses to
+     * connect while such devices exist.
+     */
+    acknowledgeOutdatedDevices: z.boolean().optional()
   })
 ])
+
+/**
+ * The first build that never double-pushes an item another provider holds and
+ * resolves a non-Google `target_calendar_id` correctly (#2372). A device below
+ * it mishandles bindings and targets from a second writable provider (#1396),
+ * so connecting one first lists those devices. Set to the release that ships
+ * the write routing; anything built before it compares lower.
+ */
+export const CALENDAR_MULTI_WRITER_MIN_APP_VERSION = '2026.925.0'
+
+export const CheckProviderWriterCompatSchema = z.object({
+  provider: z.string().min(1)
+})
+
+export type CheckProviderWriterCompatInput = z.infer<typeof CheckProviderWriterCompatSchema>
+
+export interface CalendarWriterCompatDevice {
+  id: string
+  name: string
+  platform: string
+  /** null when the server has no version for the device: treated as outdated. */
+  appVersion: string | null
+}
+
+export interface CalendarWriterCompatResponse {
+  /** false when connecting this provider adds no second writer (Google, read-only providers). */
+  required: boolean
+  /** false when the device list could not be read; the user must acknowledge blind. */
+  verified: boolean
+  minVersion: string
+  outdatedDevices: CalendarWriterCompatDevice[]
+}
 
 export const CalendarProviderRequestSchema = z.object({
   provider: z.string().min(1),

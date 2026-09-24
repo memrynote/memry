@@ -82,6 +82,7 @@ vi.mock('../calendar/google/push-runtime', () => ({
 vi.mock('../auth-state', () => ({ isMemryUserSignedIn: vi.fn(async () => true) }))
 
 import { getDatabase, getIndexDatabase, requireDatabase } from '../database'
+import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 import {
   getProvider,
@@ -230,6 +231,46 @@ describe('calendar provider registry and generic channels (#1392)', () => {
       { provider: 'google', includeCapabilities: true }
     )
     expect(withCapabilities.capabilities).toEqual(PROVIDER_CAPABILITIES.google)
+  })
+
+  // #1396 hazard 3: an older build lists a source from a provider it does not
+  // know. Unticking it purges the mirror and enqueues the deletes, so a synced
+  // mirror disappears on every device until the provider's next pull. That is
+  // how new builds treat unselecting too; this pins it for unknown providers.
+  it('unticking a source from a provider this build does not know purges and syncs its mirror', async () => {
+    for (const provider of ['caldav', 'microsoft']) {
+      dbResult.db.run(sql`
+        INSERT INTO calendar_sources (
+          id, provider, kind, remote_id, title, is_selected, sync_status, created_at, modified_at
+        ) VALUES (
+          ${`${provider}-src`}, ${provider}, ${'calendar'}, ${`${provider}-remote`}, ${'Work'},
+          ${1}, ${'ok'}, ${'2026-09-24T08:00:00.000Z'}, ${'2026-09-24T08:00:00.000Z'}
+        )
+      `)
+      dbResult.db.run(sql`
+        INSERT INTO calendar_external_events (
+          id, source_id, remote_event_id, title, start_at, is_all_day, status, created_at, modified_at
+        ) VALUES (
+          ${`${provider}-evt`}, ${`${provider}-src`}, ${'remote-evt'}, ${'Standup'},
+          ${'2026-09-25T09:00:00.000Z'}, ${0}, ${'confirmed'},
+          ${'2026-09-24T08:00:00.000Z'}, ${'2026-09-24T08:00:00.000Z'}
+        )
+      `)
+    }
+
+    const response = await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+      id: 'microsoft-src',
+      isSelected: false
+    })
+
+    expect(response).toMatchObject({ success: true, source: { isSelected: false } })
+    const remaining = dbResult.db.all<{ id: string }>(sql`SELECT id FROM calendar_external_events`)
+    expect(remaining.map((row) => row.id)).toEqual(['caldav-evt'])
+    expect(vi.mocked(enqueueLocalSyncDelete)).toHaveBeenCalledWith(
+      'calendar_external_event',
+      'microsoft-evt',
+      expect.any(String)
+    )
   })
 
   describe('ICS through the generic channels and the legacy aliases', () => {

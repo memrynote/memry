@@ -16,6 +16,7 @@ import {
   SetDefaultProviderCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
+  CheckProviderWriterCompatSchema,
   UpdateCalendarEventSchema,
   type CalendarChangedEvent,
   type CalendarDeleteResponse,
@@ -30,6 +31,7 @@ import {
   type CalendarSourceListResponse,
   type CalendarSourceMutationResponse,
   type CalendarSourceRecord,
+  type CalendarWriterCompatResponse,
   type ListCalendarProvidersResponse,
   type ListGoogleCalendarsResponse,
   type ListProviderCalendarsResponse,
@@ -83,6 +85,8 @@ import {
   upsertSyncedCalendarSource
 } from '../calendar/provider/source-mirrors'
 import { buildProviderStatus } from '../calendar/provider/status'
+import { checkProviderWriterCompat } from '../calendar/provider/writer-compat'
+import { createWriterCompatDeps } from '../calendar/provider/writer-compat-runtime'
 
 const log = createLogger('IPC:Calendar')
 
@@ -490,6 +494,18 @@ export function registerCalendarHandlers(): void {
   )
 
   ipcMain.handle(
+    CalendarChannels.invoke.CHECK_PROVIDER_WRITER_COMPAT,
+    createValidatedHandler(
+      CheckProviderWriterCompatSchema,
+      withDb(
+        async (db, input): Promise<CalendarWriterCompatResponse> =>
+          await checkProviderWriterCompat(input.provider, createWriterCompatDeps(db)),
+        'errors:calendar.connectProviderFailed'
+      )
+    )
+  )
+
+  ipcMain.handle(
     CalendarChannels.invoke.RETRY_SOURCE_SYNC,
     createValidatedHandler(
       RetryCalendarSourceSyncSchema,
@@ -617,4 +633,5 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.LIST_PROVIDER_CALENDARS)
   ipcMain.removeHandler(CalendarChannels.invoke.SET_DEFAULT_PROVIDER_CALENDAR)
   ipcMain.removeHandler(CalendarChannels.invoke.RETRY_SOURCE_SYNC)
+  ipcMain.removeHandler(CalendarChannels.invoke.CHECK_PROVIDER_WRITER_COMPAT)
 }
