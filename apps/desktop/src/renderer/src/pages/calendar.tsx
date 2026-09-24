@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ICS_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
+import { isReadOnlyExternalItem } from '@/lib/calendar-external-items'
 import {
   CalendarShell,
   type AnchorRect,
@@ -688,8 +688,9 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     if (item.sourceType !== 'external_event') return
 
     setNotePopoverState(null)
-    // A subscribed feed is read-only end to end: no promote-to-edit.
-    if (item.source.provider === ICS_CALENDAR_PROVIDER) {
+    // An event from a provider without a write path (a subscribed feed) is
+    // read-only end to end: no promote-to-edit.
+    if (isReadOnlyExternalItem(item)) {
       setPopoverState(null)
       setTaskPopoverState(null)
       setInboxSnoozePopoverState(null)

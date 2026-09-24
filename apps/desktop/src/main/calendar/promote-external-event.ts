@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import {
-  ICS_CALENDAR_PROVIDER,
   type PromoteExternalEventInput,
   type PromoteExternalEventResponse
 } from '@memry/contracts/calendar-api'
@@ -18,6 +17,7 @@ import {
 } from './repositories/calendar-sources-repository'
 import { getCalendarExternalEventById } from './repositories/calendar-external-events-repository'
 import { emitCalendarChanged, emitCalendarProjectionChanged } from './change-events'
+import { sourceCapabilities } from './provider/capabilities'
 
 const log = createLogger('Calendar:PromoteExternal')
 
@@ -57,9 +57,9 @@ export function promoteExternalEvent(
   if (!sourceRow) {
     throw new ExternalEventSourceMissingError(input.externalEventId, mirror.sourceId)
   }
-  // Promotion binds the copy to the remote event for Google writeback. A
-  // subscribed feed has nowhere to write back to.
-  if (sourceRow.provider === ICS_CALENDAR_PROVIDER) {
+  // Promotion binds the copy to the remote event for writeback. A provider
+  // without a write path (a subscribed feed) has nowhere to write back to.
+  if (!sourceCapabilities(sourceRow).supportsWrite) {
     throw new ExternalEventReadOnlyError(input.externalEventId)
   }
 

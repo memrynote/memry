@@ -1,4 +1,5 @@
-import { eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, notInArray } from 'drizzle-orm'
+import { DEVICE_LOCAL_CALENDAR_PROVIDERS } from '@memry/contracts/calendar-api'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { utcNow } from '@memry/shared/utc'
 import {
@@ -148,7 +149,20 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
   }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
-    const items = db.select().from(calendarSources).where(isNull(calendarSources.clock)).all()
+    // Source rows of a device-local provider (`sourceScope: 'device'`) never
+    // leave the device that wrote them, so other platforms and older builds
+    // never receive them. They stay unclocked and out of the queue.
+    const localSources = [...DEVICE_LOCAL_CALENDAR_PROVIDERS.sources]
+    const items = db
+      .select()
+      .from(calendarSources)
+      .where(
+        and(
+          isNull(calendarSources.clock),
+          localSources.length === 0 ? undefined : notInArray(calendarSources.provider, localSources)
+        )
+      )
+      .all()
     for (const item of items) {
       const nextClock = increment({}, deviceId)
       db.update(calendarSources)

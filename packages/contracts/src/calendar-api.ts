@@ -118,6 +118,61 @@ export type RetryCalendarSourceSyncInput = z.infer<typeof RetryCalendarSourceSyn
 /** `calendar_sources.provider` for read-only calendars subscribed by URL (#1207). */
 export const ICS_CALENDAR_PROVIDER = 'ics'
 
+/** `calendar_sources.provider` for the Google Calendar API provider. */
+export const GOOGLE_CALENDAR_PROVIDER = 'google'
+
+/**
+ * Whether a provider's rows travel through sync. `synced` rows are enqueued
+ * like any other record; `device` rows never leave the device that wrote them.
+ */
+export type CalendarProviderScope = 'synced' | 'device'
+
+export type CalendarProviderIncrementalMode =
+  'sync-token' | 'delta-link' | 'sync-collection' | 'ctag-etag' | 'conditional-get' | 'full'
+
+export type CalendarProviderAuthFlow = 'oauth2' | 'basic' | 'url' | 'os-permission'
+
+/** The `process.platform` values the desktop app ships on. */
+export type CalendarProviderPlatform = 'darwin' | 'win32' | 'linux'
+
+/**
+ * What a calendar provider can do (#1391). Every "is this read-only / can this
+ * be promoted / does this sync" decision reads these instead of comparing
+ * provider ids.
+ */
+export interface CalendarProviderCapabilities {
+  supportsWrite: boolean
+  supportsCreateCalendar: boolean
+  supportsPush: boolean
+  supportsMultiAccount: boolean
+  requiresMemryAccount: boolean
+  /** Whether `calendar_external_events` mirrored from this provider sync. The cursor travels only if the mirror travels. */
+  mirrorScope: CalendarProviderScope
+  /** Whether the provider's `calendar_sources` rows themselves sync. */
+  sourceScope: CalendarProviderScope
+  /** Omitted = every platform. A provider outside its platforms does not exist there. */
+  platforms?: CalendarProviderPlatform[]
+  incrementalMode: CalendarProviderIncrementalMode
+  authFlow: CalendarProviderAuthFlow
+}
+
+/**
+ * Providers whose rows must never be enqueued by the shared sync handlers.
+ * `@memry/sync-client` cannot read the desktop capability table, so the
+ * device-local subset lives here and the desktop table is tested against it.
+ *
+ * - `sources`: `sourceScope: 'device'`. Their `calendar_sources` rows stay on the device.
+ * - `mirrors`: `mirrorScope: 'device'`. Their `calendar_external_events` stay on the device.
+ *   A device-local source always has a device-local mirror, so `sources` is a subset.
+ */
+export const DEVICE_LOCAL_CALENDAR_PROVIDERS: {
+  readonly sources: readonly string[]
+  readonly mirrors: readonly string[]
+} = {
+  sources: [],
+  mirrors: [ICS_CALENDAR_PROVIDER]
+}
+
 /**
  * Why a feed could not be fetched or read. Stored as `calendar_sources.last_error`
  * for ICS sources, so each device's renderer localizes it rather than showing a
