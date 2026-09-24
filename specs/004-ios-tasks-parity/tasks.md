@@ -540,10 +540,12 @@ of its flows via XcodeBuildMCP with screenshots saved to
       compat (D7), no `!`/`try!` outside tests, no raw error strings, logical
       layout. Fix what it finds.
       Evidence: Three fable-5-1 reviewers over the full branch diff (Rust core / iOS Swift / TS), verdict OK-with-notes, no blockers. Every should-fix fixed with tests (1f05e8df9, ab08b54cd, 76904f5f8): TP026 block moves keep formatting (`body_edit_ops` round-trip test), unchanged project fields keep clocks (`domain_projects_write`), overlapping passes push once (`api_sync_pass`, verified to fail without the gate), wider declaration restarts the feed (`unknown_fields`), typed NotFound/Invalid errors (`api_tasks`, ErrorMappingTests). Checked criteria: D7 preserved on every write path; no `!`/`try!` outside tests and no unwrap/expect/panic added in Rust src; no raw error strings; logical layout (RTL symbol and ghost fixes). Details and kept items in §6 TP092. After fixes: `cargo test -p memry-core` 920 passed / 0 failed / 1 ignored, clippy + fmt clean, Unit plan 669/99 green, line ceilings passed.
-- [ ] TP093 Final report in §8: what shipped, evidence index, anything left
+- [x] TP093 Final report in §8: what shipped, evidence index, anything left
       in §7.
-- [ ] TP094 Delete all `[agent] ` tasks and `Agent Test …` projects from the
+      Evidence: §8 written: what shipped, bugs fixed outside the plan, evidence index (gates, screenshots, §6), and what is left open (§7 empty; follow-ups listed).
+- [x] TP094 Delete all `[agent] ` tasks and `Agent Test …` projects from the
       staging vault; confirm on desktop that they are gone.
+      Evidence: Through desktop's own IPC handlers on the synced `iosparity` desktop peer: deleted 5 reminders on agent tasks, 54 `[agent] ` tasks (subtasks first), 7 `Agent Test …` saved filters, the `Agent Test Parity` project and the `Agent Test FR058` note; 0 errors, desktop outbox drained (pendingCount 0). Desktop afterwards: 0 agent tasks / projects / filters, projects back to the original eight (`apps/ios/SpikeEvidence/tasks-parity/TP094-desktop-clean.png`). Phone after its pass (pulled 74): no `[agent]` rows, All 56 (the count at TP040 before any agent data), no saved filters, the original eight projects (TP094-phone-clean.png, TP094-phone-projects.png). The two unmarked values touched during verification were set back at the time (§6 Phase 4 verification). Found on the way and fixed: the vault's first pass could be skipped at launch (a4a56da36, see §6).
 
 ---
 
@@ -660,6 +662,8 @@ clock, createdAt`) but is in the core's **unsubscribed** list
 - 2026-09-24 — TP042 — Quick add keeps focus after a submit (rapid entry), so its keyboard carries a Done key, and the list and Kanban dismiss it on scroll; without it the keyboard covered the tab bar with no way out on a short list.
 - 2026-09-24 — TP084 — `pnpm test:desktop` failed before this branch (on main too): the iOS parity seed note did not use the `whiteboard` block added by 73bfcbfba, which its "every registered block" test requires. Fixed by adding a whiteboard block to the seed's Embeds section, pointing at the first seeded canvas. Seed-only change; no product code.
 - 2026-09-24 — TP092 — Review by three fable-5-1 reviewers (Rust core, iOS Swift, desktop/shared TypeScript; artifacts under the session's subagent outputs, run d3dbf52e). No blockers. Fixed: **TP026** (moving, indenting, outdenting and duplicating a note block now keep marks, inline-node order and nested children, and an emptied nested group is removed; 1f05e8df9); **S1/N4** a project write drops fields equal to the stored value so an unchanged field keeps its clock, and archiving an archived project keeps its first instant; **S2** `ProjectDraft` semantics documented (whole-form save; with S1 an unchanged field is never re-clocked); **S4** `task_records::get` reads one row, `source_notes` reads the projection, `view` indexes by id; **S5** the declaration a device pulled under is kept in `meta`, and a changed (wider) declaration restarts the record feed once so rows of a newly subscribed type (saved filters) behind the cursor arrive; **S6** new typed `StorageError::NotFound` / `StorageError::Invalid` for missing items and rule refusals across the task surface, mapped to their own copy; **S7** one `sync_now` at a time per vault (a second call waits); **N1** a note checkbox flip goes through the same bookkeeping as `Tasks.complete` (activity row); **N2** a checklist conversion whose block rewrite is refused deletes the task it created; **N3** week start taken mod 7 and repeat interval clamped to 1..=9999 on read (the stored wire value is untouched); Swift: per-vault store rebuild, per-vault manual orders (`task-orders.<vault>`), no Kanban move onto Overdue (desktop's drag clears the date there; the phone refuses), RTL-mirroring symbols, quick-add ghost placed toward the writing direction. Kept, with reason: `Declaration::subscribed().expect` (constant table, pre-existing); reminder notifications carry the task title (desktop's notification does too; the note never goes in, §6 TP091); desktop drops unknown `repeatConfig` keys on its own edits (desktop behaviour, outside this plan); `domain-tasks` has no package-local tests (covered by desktop suites and the vector gate); desktop's `week` view ignores the week-start setting (pinned by vectors, reproduced on purpose).
+- 2026-09-24 — TP094 — Found and fixed: the launch sync pass hung off `onChange(of: scenePhase, initial: true)`, which can fire before `VaultTasksScope.make()` has built the store, so a cold launch skipped its pass until the next foreground (a4a56da36). The store now runs its pass as soon as it is made; foregrounding still syncs.
+- 2026-09-24 — TP083 — Re-run after the TP092 fixes: `cargo test -p memry-core` 920 passed / 0 failed / 1 ignored, clippy + fmt clean, line ceilings passed; `vectors:check` passed (16 classes); `docs:build` passed; Conformance 27/7, Unit 669/99, UI 8 executed / 0 failures / 1 skipped. TypeScript was not touched after TP083's run.
 
 ## 7. Blockers
 
@@ -667,4 +671,32 @@ clock, createdAt`) but is in the core's **unsubscribed** list
 
 ## 8. Final report
 
-<!-- filled by TP093 -->
+Branch `feat/ios-tasks-parity` (worktree `.worktrees/ios-tasks-parity`), not pushed, no PR (§0.2).
+
+### What shipped
+
+- **Shared rules, pinned by vectors.** Desktop's quick-add, natural-date, repeat-phrase, completion, recurrence, due-window, filter, sort and group logic moved into `packages/domain-tasks/src/{parsing,filtering}` with explicit clocks; desktop keeps thin wrappers (behaviour unchanged, full renderer suite green). Two new vector classes, `task-parsing` and `task-filtering`, record desktop's real output (TP010–TP015).
+- **Core (Rust, `crates/memry-core`).** Hand-rolled ports of those rules (`domain/calendar`, `repeat_config`, `recurrence`, `task_parse/*`, `task_filter/*`, `task_views`), conformance-tested against the vectors (TP013–TP019). A full write surface: tasks (create, fields, complete with repeat roll-over, subtasks, reorder, duplicate, archive, delete, bulk, undo including undo of delete), projects with statuses and links (superseding FR-060), saved filters as a new subscribed sync type, task settings, task reminders, the activity log, note task lines and related items (TP020–TP027). UniFFI `Tasks` surface and `VaultSync::sync_now`, the pull-then-push pass the phone lacked (TP028, TP028a). Typed `NotFound`/`Invalid` errors (TP092).
+- **iOS app.** A full Tasks tab: views and counts, list and Kanban, quick add with live tokens, the Add Task sheet, task detail, date and repeat sheets with the Stop/Edit Repeating dialogs, subtasks and parent picker, selection, drag, bulk and keyboard shortcuts, Undo, filters and saved filters, projects, reminders as local notifications, tasks in notes and in search, Settings > Tasks, and an accessibility pass (TP030–TP057).
+- **Docs.** `apps/docs/src/user-guide/tasks/on-iphone.md`, `apps/ios/AGENTS.md` rules, FR-057..062 status in `specs/002-native-foundation-ios/compliance.md` §9 (TP090, TP091).
+
+### Bugs found and fixed outside the planned work
+
+- Phone pushes were signed as the local clock id and refused by the server (`AUTH_DEVICE_NOT_FOUND`); pushes and attachment manifests now sign as the registered device (TP082).
+- Tapping a reminder notification crashed the app (async delegate off the main thread) (TP053).
+- Note block moves, indents and duplicates flattened formatting into tag text (TP026, fixed at TP092).
+- A project edit re-clocked unchanged fields; overlapping sync passes pushed rows twice; a wider sync declaration never backfilled (TP092).
+- Note task writes and foregrounding did not sync; the launch pass could be skipped (TP082, TP094).
+- `pnpm test:desktop` was red on `main` (seed note missing the whiteboard block) (TP084).
+
+### Evidence index
+
+- Gates: TP083 plus its re-run in §6 (Rust 920/0/1; vectors 16 classes; lint, typecheck, renderer 9988, i18n, architecture, contracts; Conformance 27/7, Unit 669/99, UI 8/0/1); desktop 22416 tests and 46 task e2e tests (TP084).
+- Screenshots: `apps/ios/SpikeEvidence/tasks-parity/` — `TP0xx-*` per block, `xdevice-*` for the cross-device run (TP082), `TP094-*` for the clean-up.
+- Decisions: §6, every choice made during the run with its reason.
+
+### Left open
+
+- §7 is empty: nothing blocked.
+- Follow-ups recorded in §6, none required by this plan: desktop drops unknown `repeatConfig` keys on its own edits; desktop task settings do not sync (the phone's do, so the values stay separate); calendar events cannot be added to a project from the phone, and linked notes and files on a project page do not open yet; a reminder's note cannot be edited after creation; indenting an existing task line does not re-parent it; `packages/domain-tasks` has no package-local tests.
+- Kaan revokes the staging test account (§0.4). The simulator is left signed in.
