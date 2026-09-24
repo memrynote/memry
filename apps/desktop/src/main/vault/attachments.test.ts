@@ -147,6 +147,12 @@ describe('isAllowedFileType', () => {
     expect(isAllowedFileType('clip.MOV')).toBe(true)
   })
 
+  it('#1872: returns true for html documents', () => {
+    expect(isAllowedFileType('report.html')).toBe(true)
+    expect(isAllowedFileType('report.HTM')).toBe(true)
+    expect(isAllowedFileType('report.xhtml')).toBe(false)
+  })
+
   it('#2190: rejects video containers Chromium cannot play', () => {
     expect(isAllowedFileType('clip.avi')).toBe(false)
     expect(isAllowedFileType('clip.mkv')).toBe(false)
@@ -192,6 +198,11 @@ describe('getMimeType', () => {
     expect(getMimeType('file.pdf')).toBe('application/pdf')
     expect(getMimeType('file.txt')).toBe('text/plain')
     expect(getMimeType('file.md')).toBe('text/markdown')
+  })
+
+  it('#1872: returns text/html for html documents', () => {
+    expect(getMimeType('report.html')).toBe('text/html')
+    expect(getMimeType('report.htm')).toBe('text/html')
   })
 
   it('#2190: returns correct MIME type for videos', () => {

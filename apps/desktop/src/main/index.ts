@@ -23,7 +23,8 @@ import {
   Menu,
   MenuItem,
   dialog,
-  type IpcMainEvent
+  type IpcMainEvent,
+  type WebFrameMain
 } from 'electron'
 import { createHash, randomUUID } from 'node:crypto'
 import { join, resolve, normalize } from 'path'
@@ -117,6 +118,7 @@ import { probeSecretStoreIdentity } from './secrets/secret-storage'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { remapCrossDeviceAttachmentPath } from './lib/attachment-path-remap'
 import { healAttachmentPath } from './vault/attachment-heal'
+import { HTML_EMBED_SCHEME, isHtmlEmbedPath, serveHtmlEmbed } from './vault/html-embed-protocol'
 import { decideFrameNavigation } from './lib/frame-navigation'
 import { decideEmbedRequestHeaders } from './lib/embed-referer'
 import { registerTestHooks } from './test-hooks'
@@ -340,6 +342,15 @@ function openMemryFileInOs(rawUrl: string): boolean {
   return true
 }
 
+// A WebFrameMain whose render frame is already gone throws on property access.
+function readFrameUrl(frame: WebFrameMain | null | undefined): string | undefined {
+  try {
+    return frame?.url
+  } catch {
+    return undefined
+  }
+}
+
 // Frame-level navigation guard for every window's webContents: pins main-frame
 // navigation to the local app origin and re-routes external links through
 // shell.openExternal. Complements (does not replace) the per-window
@@ -349,7 +360,8 @@ app.on('web-contents-created', (_event, contents) => {
     const decision = decideFrameNavigation(details.url, {
       isMainFrame: details.isMainFrame,
       currentUrl: contents.getURL(),
-      isDev: is.dev
+      isDev: is.dev,
+      frameUrl: readFrameUrl(details.frame)
     })
     if (decision === 'allow') return
     details.preventDefault()
@@ -513,6 +525,17 @@ protocol.registerSchemesAsPrivileged([
       stream: true, // Required for audio/video streaming
       bypassCSP: false
     }
+  },
+  {
+    // Attached .html files, rendered in a sandboxed iframe (#1872). `standard`
+    // gives the document a real URL to resolve against; `secure` keeps its
+    // https subresources from being treated as mixed content. No fetch/CORS
+    // privileges: nothing is ever meant to read these bytes but the frame.
+    scheme: HTML_EMBED_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true
+    }
   }
 ])
 
@@ -578,7 +601,7 @@ function configureCsp(): void {
     "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com https://cdn.syndication.twimg.com https://react-tweet.vercel.app http://127.0.0.1:*",
     "media-src 'self' memry-file:",
     "worker-src 'self' blob:",
-    'frame-src https://www.youtube-nocookie.com',
+    'frame-src https://www.youtube-nocookie.com memry-html:',
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -1362,6 +1385,11 @@ const appReady = app.whenReady().then(async () => {
     app.setAsDefaultProtocolClient('memry')
   }
 
+  // Attached .html files only, sandboxed; see vault/html-embed-protocol.ts.
+  protocol.handle(HTML_EMBED_SCHEME, (request) =>
+    serveHtmlEmbed(request, [getCurrentVaultPath(), getVaultStatus().path])
+  )
+
   // Register custom protocol for serving local attachment files
   // This allows secure access to vault files from the renderer process
   protocol.handle('memry-file', async (request) => {
@@ -1457,6 +1485,23 @@ const appReady = app.whenReady().then(async () => {
       const stats = statSync(filePath)
       const fileSize = stats.size
       const mimeType = mimeLookup(filePath) || 'application/octet-stream'
+
+      // Never let an attached HTML file render as a page from this scheme: it
+      // would run on the trusted memry-file origin with read access to the
+      // whole vault. Rendering goes through memry-html://, sandboxed; here the
+      // bytes are only ever text (a download link still gets the file).
+      // Read through the same file:// fetch as the full-file path below rather
+      // than re-opening the checked path (CodeQL js/file-system-race).
+      if (isHtmlEmbedPath(filePath)) {
+        const file = await net.fetch(`file://${filePath}`)
+        return new Response(file.body, {
+          status: file.status,
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'X-Content-Type-Options': 'nosniff'
+          }
+        })
+      }
 
       // Check for Range header (needed for video/audio seeking)
       const rangeHeader = request.headers.get('Range')

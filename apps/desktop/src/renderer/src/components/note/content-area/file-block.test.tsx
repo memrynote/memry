@@ -8,6 +8,7 @@ import {
   parseFileBlockMarker,
   serializeFileBlock
 } from './file-block'
+import { toHtmlEmbedUrl } from './html-embed-preview'
 import { NoteFileUrlProvider } from './note-file-url-context'
 
 const mocks = vi.hoisted(() => ({
@@ -163,7 +164,9 @@ describe('file block helpers', () => {
       '.md',
       '.mp4',
       '.webm',
-      '.mov'
+      '.mov',
+      '.html',
+      '.htm'
     ])
     // BlockNote's upload tab reads the accept list off the spec's meta.
     expect((createFileBlock as any).meta).toEqual({ fileBlockAccept: FILE_BLOCK_ACCEPT })
@@ -410,6 +413,122 @@ describe('file block helpers', () => {
     expect(updateBlock).toHaveBeenCalledWith(block, {
       props: expect.objectContaining({ align: 'right' })
     })
+  })
+})
+
+describe('FileBlock HTML embed (#1872)', () => {
+  const HTML_URL = 'memry-file://local/Users/kaan/vault/attachments/n1/report.html'
+  const htmlProps = (extra: Record<string, unknown> = {}) => ({
+    url: HTML_URL,
+    name: 'report.html',
+    size: 1024,
+    mimeType: 'text/html',
+    ...extra
+  })
+
+  it('maps only vault memry-file URLs onto the sandboxed scheme', () => {
+    expect(toHtmlEmbedUrl(HTML_URL)).toBe(
+      'memry-html://local/Users/kaan/vault/attachments/n1/report.html'
+    )
+    expect(toHtmlEmbedUrl(`${HTML_URL}?v=2`)).toBe(
+      'memry-html://local/Users/kaan/vault/attachments/n1/report.html?v=2'
+    )
+    expect(toHtmlEmbedUrl('https://example.com/report.html')).toBeNull()
+    expect(toHtmlEmbedUrl('../attachments/n1/report.html')).toBeNull()
+  })
+
+  it('renders the file in a sandboxed frame that never shares an origin with the app', () => {
+    const Render = (createFileBlock as any).render
+    render(<Render block={{ props: htmlProps() }} />)
+
+    const frame = screen.getByTestId('html-embed')
+    expect(frame).toHaveAttribute(
+      'src',
+      'memry-html://local/Users/kaan/vault/attachments/n1/report.html'
+    )
+    const sandbox = frame.getAttribute('sandbox') ?? ''
+    expect(sandbox.split(' ')).toContain('allow-scripts')
+    // Same-origin + scripts would let the document lift its own sandbox.
+    expect(sandbox).not.toContain('allow-same-origin')
+    expect(sandbox).not.toContain('allow-top-navigation')
+    expect(frame).toHaveAttribute('referrerpolicy', 'no-referrer')
+    expect(frame).toHaveStyle({ height: '480px' })
+    expect(screen.getByText('report.html')).toBeInTheDocument()
+    // The block content is a flex row: without full width the embed measures
+    // its own card as the column and can neither grow nor align.
+    expect(frame.closest('.file-block')).toHaveClass('w-full')
+  })
+
+  it('resizes width and height like the PDF embed, from the keyboard', () => {
+    const Render = (createFileBlock as any).render
+    const updateBlock = vi.fn()
+    const block = { props: htmlProps({ width: 400, height: 300 }) }
+    const { container } = render(<Render block={block} editor={{ updateBlock }} />)
+
+    expect(screen.getByTestId('html-embed')).toHaveStyle({ height: '300px' })
+    expect(container.querySelector('.file-html')).toHaveStyle({ width: '400px' })
+
+    const handle = screen.getByRole('slider', {
+      name: 'phaseF.componentsNoteContentAreaFileBlock.resizeHtml'
+    })
+    fireEvent.keyDown(handle, { key: 'ArrowDown' })
+    expect(updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, width: 400, height: 320 }
+    })
+    fireEvent.keyDown(handle, { key: 'ArrowUp', shiftKey: true })
+    expect(updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, width: 400, height: 200 }
+    })
+    fireEvent.keyDown(handle, { key: 'ArrowRight' })
+    expect(updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, width: 420, height: 300 }
+    })
+    fireEvent.keyDown(handle, { key: 'ArrowLeft', shiftKey: true })
+    expect(updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, width: 300, height: 300 }
+    })
+  })
+
+  it('aligns the embed within the column', () => {
+    const Render = (createFileBlock as any).render
+    const updateBlock = vi.fn()
+    const block = { props: htmlProps({ width: 400, align: 'center' }) }
+    const { container } = render(<Render block={block} editor={{ updateBlock }} />)
+
+    expect(container.querySelector('.file-html')).toHaveClass('ms-auto', 'me-auto')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'phaseF.componentsNoteContentAreaFileBlock.alignRight' })
+    )
+    expect(updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, align: 'right' }
+    })
+  })
+
+  it('abandons an interrupted drag instead of committing it', () => {
+    const Render = (createFileBlock as any).render
+    const updateBlock = vi.fn()
+    render(<Render block={{ props: htmlProps({ height: 300 }) }} editor={{ updateBlock }} />)
+    const handle = screen.getByRole('slider', {
+      name: 'phaseF.componentsNoteContentAreaFileBlock.resizeHtml'
+    })
+    handle.setPointerCapture = vi.fn()
+    handle.releasePointerCapture = vi.fn()
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0, clientY: 0 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 0, clientY: 100 })
+    expect(screen.getByTestId('html-embed')).toHaveStyle({ height: '400px' })
+
+    fireEvent.pointerCancel(handle, { pointerId: 1 })
+    expect(screen.getByTestId('html-embed')).toHaveStyle({ height: '300px' })
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 0, clientY: 100 })
+    expect(updateBlock).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the download card for a ref that is not a vault attachment', () => {
+    const Render = (createFileBlock as any).render
+    render(<Render block={{ props: htmlProps({ url: 'https://example.com/report.html' }) }} />)
+    expect(screen.queryByTestId('html-embed')).toBeNull()
+    expect(screen.getByText('report.html')).toBeInTheDocument()
   })
 })
 

@@ -42,6 +42,7 @@ import { getAttachmentRevision, subscribeToAttachmentRevisions } from '@/lib/att
 import { HAS_SCHEME, useAttachmentNoteId, useResolvedFileUrl } from './note-file-url-context'
 import { AttachmentBlockContextMenu, AttachmentMenuButton } from './attachment-block-menu'
 import type { FileBlockProps } from './file-block-markers'
+import { HtmlPreview, toHtmlEmbedUrl } from './html-embed-preview'
 
 export { parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
 export type { FileBlockProps } from './file-block-markers'
@@ -589,6 +590,22 @@ function SyncProgressOverlay({
   )
 }
 
+/** The sync transfer currently moving this attachment, matched by file name. */
+function useAttachmentTransfer(name: string) {
+  const { state } = useSync()
+
+  const uploadEntry = state.uploadProgress
+    ? Object.entries(state.uploadProgress).find(([key]) => name && key.includes(name))?.[1]
+    : null
+
+  const downloadEntry = state.downloadProgress
+    ? Object.entries(state.downloadProgress).find(([key]) => name && key.includes(name))?.[1]
+    : null
+
+  const transferDirection: 'upload' | 'download' = uploadEntry ? 'upload' : 'download'
+  return { activeTransfer: uploadEntry ?? downloadEntry, transferDirection }
+}
+
 // ============================================================================
 // Generic File Preview Component
 // ============================================================================
@@ -604,18 +621,7 @@ interface FilePreviewProps {
 
 function FilePreview({ url, name, size, mimeType, menu }: FilePreviewProps) {
   const { t: tPhaseF } = useT('notes')
-  const { state } = useSync()
-
-  const uploadEntry = state.uploadProgress
-    ? Object.entries(state.uploadProgress).find(([key]) => name && key.includes(name))?.[1]
-    : null
-
-  const downloadEntry = state.downloadProgress
-    ? Object.entries(state.downloadProgress).find(([key]) => name && key.includes(name))?.[1]
-    : null
-
-  const activeTransfer = uploadEntry ?? downloadEntry
-  const transferDirection: 'upload' | 'download' = uploadEntry ? 'upload' : 'download'
+  const { activeTransfer, transferDirection } = useAttachmentTransfer(name)
 
   return (
     <div className="file-attachment relative flex items-center gap-3 rounded-md border border-border bg-muted/30 p-3">
@@ -644,18 +650,7 @@ function FilePreview({ url, name, size, mimeType, menu }: FilePreviewProps) {
 }
 
 function AudioPreview({ url, name, menu }: FilePreviewProps) {
-  const { state } = useSync()
-
-  const uploadEntry = state.uploadProgress
-    ? Object.entries(state.uploadProgress).find(([key]) => name && key.includes(name))?.[1]
-    : null
-
-  const downloadEntry = state.downloadProgress
-    ? Object.entries(state.downloadProgress).find(([key]) => name && key.includes(name))?.[1]
-    : null
-
-  const activeTransfer = uploadEntry ?? downloadEntry
-  const transferDirection: 'upload' | 'download' = uploadEntry ? 'upload' : 'download'
+  const { activeTransfer, transferDirection } = useAttachmentTransfer(name)
 
   return (
     <div className="file-audio relative rounded-md border border-border bg-muted/30 p-3">
@@ -699,18 +694,7 @@ function AudioPreview({ url, name, menu }: FilePreviewProps) {
  * header reads on open, not a full download of each.
  */
 function VideoPreview({ url, name, mimeType, menu }: FilePreviewProps) {
-  const { state } = useSync()
-
-  const uploadEntry = state.uploadProgress
-    ? Object.entries(state.uploadProgress).find(([key]) => name && key.includes(name))?.[1]
-    : null
-
-  const downloadEntry = state.downloadProgress
-    ? Object.entries(state.downloadProgress).find(([key]) => name && key.includes(name))?.[1]
-    : null
-
-  const activeTransfer = uploadEntry ?? downloadEntry
-  const transferDirection: 'upload' | 'download' = uploadEntry ? 'upload' : 'download'
+  const { activeTransfer, transferDirection } = useAttachmentTransfer(name)
 
   return (
     <div className="file-video relative rounded-md border border-border bg-muted/30 p-2">
@@ -874,6 +858,7 @@ function FileBlockRender({
   const isPdf = mimeType === 'application/pdf'
   const isAudio = mimeType.startsWith('audio/')
   const isVideo = mimeType.startsWith('video/')
+  const isHtml = mimeType === 'text/html'
 
   // Attachments are stored as a note-relative ref (`../attachments/…`) or a
   // mobile root-relative ref (`attachments/<noteId>/…`), both of which the
@@ -934,6 +919,7 @@ function FileBlockRender({
   // The raw stored url goes to the menu, never `resolvedUrl` — main re-resolves
   // and validates it against the vault itself.
   const menuButton = <AttachmentMenuButton url={url} name={name} onRenamed={handleRenamed} />
+  const htmlSrc = isHtml ? toHtmlEmbedUrl(resolvedUrl) : null
 
   // The file is gone from disk and self-heal found no unique match: name the
   // expected file so the user can repair the rename by hand (#1713).
@@ -953,7 +939,10 @@ function FileBlockRender({
 
   return (
     <AttachmentBlockContextMenu url={url} name={name} onRenamed={handleRenamed}>
-      <div className="file-block my-2" contentEditable={false}>
+      {/* `.bn-block-content` is a flex row, so this div is sized to its
+          content. The HTML embed measures its column from inside it and needs
+          the full width, or it could only ever shrink and never align. */}
+      <div className={cn('file-block my-2', htmlSrc && 'w-full')} contentEditable={false}>
         {isPdf ? (
           <PdfPreview
             // Keyed by URL so a changed one rebuilds the preview from scratch. A
@@ -964,6 +953,17 @@ function FileBlockRender({
             // changes when this note's attachments land (see `attachment-revision`).
             key={resolvedUrl}
             url={resolvedUrl}
+            name={name}
+            width={width ?? 0}
+            height={height ?? 0}
+            align={align ?? 'left'}
+            onResize={handleResize}
+            onAlign={handleAlign}
+            menu={menuButton}
+          />
+        ) : htmlSrc ? (
+          <HtmlPreview
+            src={htmlSrc}
             name={name}
             width={width ?? 0}
             height={height ?? 0}
@@ -1032,7 +1032,10 @@ export const FILE_BLOCK_ACCEPT = [
   // Video (#2190) — only the containers Chromium can actually play.
   '.mp4',
   '.webm',
-  '.mov'
+  '.mov',
+  // HTML (#1872) — embedded in a sandboxed frame.
+  '.html',
+  '.htm'
 ]
 
 // Type/props/content come from the shared config so this block and the main

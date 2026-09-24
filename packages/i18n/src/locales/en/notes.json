@@ -305,6 +305,10 @@
         "title": "PDF",
         "subtext": "Attach a PDF and read it inline"
       },
+      "html": {
+        "title": "HTML file",
+        "subtext": "Embed an .html file and interact with it inline"
+      },
       "linkToNote": {
         "title": "Link to note",
         "subtext": "Search notes — or type [[ anywhere"
@@ -366,24 +370,28 @@
         "image": "Add an image",
         "media": "Add media",
         "pdf": "Add a PDF",
+        "html": "Embed an HTML file",
         "file": "Add a file"
       },
       "placeholder": {
         "image": "Search images, or upload a new one…",
         "media": "Search media, or upload a new one…",
         "pdf": "Search PDFs, or upload a new one…",
+        "html": "Search HTML files, or upload a new one…",
         "file": "Search attachments, or upload a new one…"
       },
       "upload": {
         "image": "Upload an image…",
         "media": "Upload media…",
         "pdf": "Upload a PDF…",
+        "html": "Upload an HTML file…",
         "file": "Upload a file…"
       },
       "empty": {
         "image": "No images in this vault yet.",
         "media": "No media in this vault yet.",
         "pdf": "No PDFs in this vault yet.",
+        "html": "No HTML files in this vault yet.",
         "file": "No attachments in this vault yet."
       },
       "addHeading": "Add",
@@ -977,6 +985,7 @@
       "download2": "Download",
       "noFileAttached": "No file attached",
       "resizePdf": "Resize PDF",
+      "resizeHtml": "Resize HTML embed",
       "alignLeft": "Align left",
       "alignCenter": "Align center",
       "alignRight": "Align right",
