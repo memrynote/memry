@@ -12,6 +12,7 @@ import {
 import { setSetting } from '../../settings/settings-store'
 import type { DataDb } from '../../database'
 import { readCalendarGoogleSettings } from './calendar-google-settings'
+import { syncDefaultWriteTargetWithGoogle } from '../provider/write-routing'
 import type { GoogleCalendarClient, GoogleCalendarDescriptor } from '../types'
 
 const CALENDAR_GOOGLE_SETTINGS_KEY = 'calendar.google'
@@ -53,5 +54,6 @@ export function setDefaultGoogleCalendar(
     onboardingCompleted: input.markOnboardingComplete ? true : current.onboardingCompleted
   }
   setSetting(db, CALENDAR_GOOGLE_SETTINGS_KEY, JSON.stringify(next))
+  syncDefaultWriteTargetWithGoogle(db, input.calendarId)
   return { success: true }
 }

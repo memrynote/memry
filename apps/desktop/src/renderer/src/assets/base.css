@@ -1400,15 +1400,17 @@
 }
 
 /* ===== COMPACT SLASH MENU (Suggestion Menu) ===== */
-/* BlockNote uses .bn-suggestion-menu class and [role="option"] for items */
-.bn-suggestion-menu {
+/* BlockNote uses .bn-suggestion-menu class and [role="option"] for items.
+   The note editor's `/` menu renders its own rows (`slash-menu.tsx`) and opts
+   out with .memry-slash-menu; these rules still style any stock menu left. */
+.bn-suggestion-menu:not(.memry-slash-menu) {
   max-height: 300px !important;
   min-width: 180px !important;
   padding: 4px !important;
 }
 
 /* Group labels (e.g., "Subheadings", "Others") */
-.bn-suggestion-menu > div:not([role='option']) {
+.bn-suggestion-menu:not(.memry-slash-menu) > div:not([role='option']) {
   font-size: 9px !important;
   padding: 4px 8px 2px !important;
   text-transform: uppercase;
@@ -1417,7 +1419,7 @@
 }
 
 /* Menu items - compact layout */
-.bn-suggestion-menu [role='option'] {
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] {
   padding: 4px 8px !important;
   gap: 6px !important;
   min-height: 28px !important;
@@ -1426,39 +1428,39 @@
 }
 
 /* Highlighted/selected item when navigating with arrow keys */
-.bn-suggestion-menu [role='option'][aria-selected='true'] {
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'][aria-selected='true'] {
   background-color: var(--surface-active) !important;
 }
 
-.dark .bn-suggestion-menu [role='option'][aria-selected='true'] {
+.dark .bn-suggestion-menu:not(.memry-slash-menu) [role='option'][aria-selected='true'] {
   background-color: #2a2a2e !important;
 }
 
 /* HIDE SUBTEXT - removes descriptions like "Resizable image with caption" */
-.bn-suggestion-menu [role='option'] .flex-1 > .text-xs {
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] .flex-1 > .text-xs {
   display: none !important;
 }
 
 /* Title text - compact */
-.bn-suggestion-menu [role='option'] .flex-1 > .text-base {
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] .flex-1 > .text-base {
   font-size: 13px !important;
   font-weight: 500 !important;
   line-height: 1.2 !important;
 }
 
 /* Icon container - remove extra padding */
-.bn-suggestion-menu [role='option'] [data-position='left'] {
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] [data-position='left'] {
   padding: 0 !important;
 }
 
 /* Badge/shortcut - subtle styling */
-.bn-suggestion-menu [role='option'] [data-position='right'] {
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] [data-position='right'] {
   font-size: 10px !important;
   opacity: 0.6;
 }
 
 /* Icon size - compact */
-.bn-suggestion-menu [role='option'] svg {
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] svg {
   width: 16px !important;
   height: 16px !important;
 }

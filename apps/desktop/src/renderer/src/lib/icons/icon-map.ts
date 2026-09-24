@@ -110,6 +110,8 @@ import {
   PlayIcon,
   QrCodeIcon,
   RepeatIcon,
+  Location01Icon,
+  Call02Icon,
   SaveIcon,
   Search01Icon,
   Settings01Icon,
@@ -487,6 +489,8 @@ export const Progress = createIcon(Progress03Icon)
 export const BadgeCheck = createIcon(CheckmarkBadge01Icon)
 export const ShieldAlert = createIcon(Shield01Icon)
 export const Repeat = createIcon(RepeatIcon)
+export const MapPin = createIcon(Location01Icon)
+export const Phone = createIcon(Call02Icon)
 
 // ── Media & Creative ────────────────────────────────
 export const Image = createIcon(Image01Icon)

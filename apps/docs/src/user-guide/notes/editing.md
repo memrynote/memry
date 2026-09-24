@@ -232,6 +232,20 @@ normally. Text styles need no such line: markdown carries them itself.
 
 Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.
 
+- **Recent** — the last three commands you used sit at the top of the menu, above every other command. They are remembered on this device only.
+- **Groups** — the rest of the menu is always the same order: **Blocks**, **More headings** (Heading 4–6 and toggle headings), **Insert**, **Media** and **AI**. Every command is listed; none of them is hidden behind search.
+- **Best match** — while you type, the command <kbd>Enter</kbd> will pick is lifted to the top. A command found through another name says so, for example `/tod` shows **Task** with _matches todo_.
+- **Shortcut hints** — the right edge of a row shows the markdown that makes the same block without the menu (`##`, `-`, `[]`, `>`, `[[`, `@`…).
+- **Action bar** — the bottom of the menu describes the selected command. Some commands have a second action on <kbd>⌘</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd> on Windows and Linux):
+
+| Command     | <kbd>⌘</kbd>+<kbd>Enter</kbd> inserts |
+| ----------- | ------------------------------------- |
+| Heading 1–3 | The same level as a toggle heading    |
+| Check list  | A linked task                         |
+| Date        | A reminder                            |
+
+When nothing matches, the menu offers to **Link to** a note with what you typed — it opens the `[[` search with your text already in it — or, with AI on, to **Ask AI**. Keep typing and the menu closes on its own, as before.
+
 ## Inserting a Template
 
 `/` and **Insert template content…**, or the <kbd>⋯</kbd> menu's **Insert template content…**, drops a [template](/user-guide/templates)'s body in at the cursor. Choosing the row opens the picker. Type a query instead and matching templates appear as their own rows under **Templates**, so `/meeting` then <kbd>Enter</kbd> inserts Meeting Notes straight away.
@@ -274,6 +288,9 @@ indented inside another one stays nested:
 Both survive a save, byte for byte. A note written in Obsidian with multi-paragraph or
 nested quotes opens here and is written back exactly as its author wrote it, so the two
 apps can edit the same vault without either one reflowing the other's quotes.
+
+The blank lines around a quote or a callout are kept the same way: an extra blank line
+above or below one is still there the next time the note is opened.
 
 A nested quote written without the blank line between the levels (`> Outer` directly
 above `> > Inner`) keeps its nesting too, but not its exact bytes: the blank quote line
@@ -440,8 +457,11 @@ One consequence worth knowing: the empty space to the right of a short line stil
 Saves are **automatic and debounced** (default ~1 second). Changes also flush on:
 
 - Tab close
+- Switching the tab to another note or journal day
 - App quit
 - Sync push
+
+The flush on close or switch includes whatever you typed just before it, and it is saved to the note or journal day you typed it in, never to the one you opened next.
 
 You can flush manually with <kbd>⌘</kbd>+<kbd>S</kbd>. Auto-save delay is configurable in [Settings → Editor](/user-guide/settings#editor).
 

@@ -2,8 +2,19 @@ import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import type { GoogleCalendarDescriptorRecord } from '@memry/contracts/calendar-api'
 
+export interface CalendarPickerGroup {
+  /** Shown as the group heading, e.g. the provider's name. */
+  label: string
+  calendars: GoogleCalendarDescriptorRecord[]
+}
+
 export interface CalendarPickerProps {
   calendars: GoogleCalendarDescriptorRecord[]
+  /**
+   * #2372: writable calendars from every provider, grouped by provider. With
+   * one group or none the picker stays the flat list it always was.
+   */
+  groups?: CalendarPickerGroup[]
   value: string | null
   onChange: (next: string | null) => void
   isLoading?: boolean
@@ -18,6 +29,7 @@ const DEFAULT_SENTINEL = '__default__'
 
 export function CalendarPicker({
   calendars,
+  groups,
   value,
   onChange,
   isLoading = false,
@@ -51,12 +63,23 @@ export function CalendarPicker({
           ? t('state.loading-calendars')
           : (defaultOptionLabel ?? t('form.use-default-calendar'))}
       </option>
-      {calendars.map((calendar) => (
-        <option key={calendar.id} value={calendar.id}>
-          {calendar.title}
-          {calendar.isPrimary ? ` (${t('form.primary-suffix')})` : ''}
-        </option>
-      ))}
+      {groups && groups.length > 1
+        ? groups.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.calendars.map((calendar) => (
+                <option key={calendar.id} value={calendar.id}>
+                  {calendar.title}
+                  {calendar.isPrimary ? ` (${t('form.primary-suffix')})` : ''}
+                </option>
+              ))}
+            </optgroup>
+          ))
+        : calendars.map((calendar) => (
+            <option key={calendar.id} value={calendar.id}>
+              {calendar.title}
+              {calendar.isPrimary ? ` (${t('form.primary-suffix')})` : ''}
+            </option>
+          ))}
     </select>
   )
 }

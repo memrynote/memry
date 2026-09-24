@@ -258,7 +258,22 @@ Link a Google account to show external events alongside vault events on the [Cal
 
 ### Subscribed Calendars
 
-Paste a calendar's shared link (ICS or `webcal://`) and press **Subscribe** to add it to the [Calendar](/user-guide/calendar#subscribed-calendars) as a read-only calendar. Each subscription shows its host, when it last updated, and why the last update failed, with **Refresh** and **Remove** buttons.
+Paste a calendar's shared link (ICS or `webcal://`) and press **Subscribe** to add it to the [Calendar](/user-guide/calendar#subscribed-calendars) as a read-only calendar. A plain `http://` link gets a warning that it travels unencrypted. **Where do I find the link?** lists the steps for Proton, iCloud, Outlook, Fastmail, Notion Calendar, and public schedules. Each subscription shows its host, when it last updated, and why the last update failed, with **Rename**, **Refresh**, and **Remove** buttons; the dot in front of its name sets its color.
+
+Once you have a subscription, **Let AI read these events** decides whether the AI assistant can read your subscribed calendars. It is separate from the Google switch: allowing Google does not allow subscribed calendars. See [AI access per calendar service](/user-guide/calendar#ai-access-is-asked-per-calendar-service).
+
+### This Mac (macOS)
+
+On a Mac, **This Mac** shows the calendars the built-in Calendar app already has, read-only and without signing in. **Allow calendar access** is the only thing that shows the macOS permission question. Calendars are grouped by the account Calendar files them under; tick the ones you want. If access was denied or later turned off, the section says why, with **Open System Settings** and **Check again**. These calendars stay on this Mac and never sync. See [macOS Calendar](/user-guide/calendar#macos-calendar-this-mac). Windows and Linux don't list this section.
+
+### Other Calendar Services
+
+Settings → Calendar has one section per calendar service memrynote supports on your operating system. A service that does not exist on your system is not listed at all. Each section shows only what that service can do:
+
+- A service memrynote can only read shows a **Read-only** badge and has no switch for writing memrynote events to it.
+- A service without instant change notifications says how often memrynote checks it for changes.
+- A service that allows several accounts lists them, each with its own **Disconnect**, and has **Add account**.
+- **Let AI read these events** is asked per service, as described above.
 
 ### Week Start
 

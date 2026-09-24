@@ -142,7 +142,6 @@ export const SidebarSection = ({
             className={cn(
               'flex flex-1 min-w-0 cursor-pointer items-center gap-1.5 px-2 py-1 h-6 shrink-0',
               'text-[11px] leading-3.5 font-medium tracking-[0.04em]',
-              "font-['DM_Sans',system-ui,sans-serif]",
               // Resting colour only. `hover:text-sidebar-foreground` used to live
               // here, and on the paper sidebar that is 3.18:1 — under the 4.5:1 AA
               // floor for 11px text — so the heading lost its guarantee exactly

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { removeAndInsertBlocks, type Block } from '@blocknote/core'
-import { yUndoPluginKey } from 'y-prosemirror'
+import { ySyncPluginKey, yUndoPluginKey } from 'y-prosemirror'
 import type * as Y from 'yjs'
 import {
   extractHeadings,
@@ -51,6 +51,44 @@ function editingWikiLinkBlockId(editor: any): string | undefined {
   } catch {
     return undefined
   }
+}
+
+/**
+ * True when the change being handled was dispatched BY y-prosemirror: a remote
+ * update, the IPC handshake, or a Yjs undo/redo rendered into the editor.
+ *
+ * y-prosemirror renders those inside its binding mutex, and BlockNote's
+ * `onChange` fires synchronously from that same dispatch. Anything the handler
+ * writes back from there reaches ProseMirror but NOT the Y.Doc: the binding's
+ * view update sees the mutex held and skips `_prosemirrorChanged`. The editor
+ * shows the result, the shared doc never gets it, and the next Y change
+ * re-renders the paragraph from the doc — which still holds the old text.
+ */
+function isYSyncRender(editor: any): boolean {
+  const state = editor?._tiptapEditor?.state
+  if (!state) return false
+  return ySyncPluginKey.getState(state)?.isChangeOrigin === true
+}
+
+/**
+ * Promote `[[…]]` that reached the editor through Yjs rather than a keystroke.
+ *
+ * Run after the y-prosemirror render has returned (see `isYSyncRender`), so the
+ * write lands in the Y.Doc and every later render keeps the chip. Kept off the
+ * undo stack: the user did not type this text, so Cmd+Z must undo their last
+ * edit, not turn a link they never touched back into brackets.
+ */
+function promoteSyncedWikiLinks(editor: any): void {
+  if (editor?._tiptapEditor?.isDestroyed) return
+  const normalized = normalizeWikiLinks(editor.document as Block[], {
+    skipBlockId: editingWikiLinkBlockId(editor)
+  })
+  if (!normalized.didChange) return
+
+  editor.transact((tr: any) => {
+    tr.setMeta('addToHistory', false)
+    editor.replaceBlocks(editor.document, normalized.blocks)
+  })
 }
 
 function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void {
@@ -293,9 +331,10 @@ interface EditorSyncResult {
   /**
    * Run the debounced markdown save right now instead of waiting for its timer.
    * Used at teardown so an edit made inside the debounce window still persists
-   * before the editor is destroyed. Resolves once `onMarkdownChange` has run.
+   * before the editor is destroyed. The markdown goes to `deliver` when given,
+   * otherwise to `onMarkdownChange`; resolves once it has been handed over.
    */
-  flushPendingMarkdown: () => Promise<void>
+  flushPendingMarkdown: (deliver?: (markdown: string) => void) => Promise<void>
   isContentReadyRef: React.RefObject<boolean>
   prevInlineTagsRef: React.MutableRefObject<string[]>
   lastNormalizedTagsRef: React.MutableRefObject<string>
@@ -327,7 +366,9 @@ export function useEditorSync({
   const headingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inlineTagsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The debounced markdown save, kept callable so teardown can run it early.
-  const pendingMarkdownSaveRef = useRef<(() => Promise<void>) | null>(null)
+  const pendingMarkdownSaveRef = useRef<
+    ((deliver?: (markdown: string) => void) => Promise<void>) | null
+  >(null)
   // What the loaded markdown said, so a save gives the author's spelling back
   // wherever the document did not change (#1915). Null for anything that did
   // not load from markdown, or that the editor already spells the same way.
@@ -510,6 +551,13 @@ export function useEditorSync({
       skipBlockId: editingWikiLinkBlockId(editor)
     })
     if (normalized.didChange) {
+      // Inside a y-prosemirror render the write would be swallowed (see
+      // `isYSyncRender`), so it waits until that render has returned. The
+      // promotion's own change event runs the rest of this handler.
+      if (isYSyncRender(editor)) {
+        queueMicrotask(() => promoteSyncedWikiLinks(editor))
+        return
+      }
       editor.replaceBlocks(editor.document, normalized.blocks)
       return
     }
@@ -525,7 +573,9 @@ export function useEditorSync({
       if (markdownDebounceRef.current) {
         clearTimeout(markdownDebounceRef.current)
       }
-      const save = async (): Promise<void> => {
+      const save = async (
+        deliver: (markdown: string) => void = onMarkdownChange
+      ): Promise<void> => {
         pendingMarkdownSaveRef.current = null
         try {
           const markdown = await serializeMarkdownPreservingSource(
@@ -535,7 +585,7 @@ export function useEditorSync({
             notePath
           )
 
-          onMarkdownChange(markdown)
+          deliver(markdown)
         } catch (error) {
           // The debounced save silently stops while the user keeps typing.
           log.error('Failed to convert blocks to markdown', error)
@@ -586,13 +636,16 @@ export function useEditorSync({
   // Teardown hook: run the debounced save now. The unmount cleanup above only
   // clears the timer, so without this an edit made in the last 150ms before the
   // tab/journal date closed would never reach `onMarkdownChange`.
-  const flushPendingMarkdown = useCallback(async (): Promise<void> => {
-    if (markdownDebounceRef.current) {
-      clearTimeout(markdownDebounceRef.current)
-      markdownDebounceRef.current = null
-    }
-    await pendingMarkdownSaveRef.current?.()
-  }, [])
+  const flushPendingMarkdown = useCallback(
+    async (deliver?: (markdown: string) => void): Promise<void> => {
+      if (markdownDebounceRef.current) {
+        clearTimeout(markdownDebounceRef.current)
+        markdownDebounceRef.current = null
+      }
+      await pendingMarkdownSaveRef.current?.(deliver)
+    },
+    []
+  )
 
   return {
     handleChange,

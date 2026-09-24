@@ -94,7 +94,8 @@ vi.mock('sonner', () => ({
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
-    error: vi.fn()
+    error: vi.fn(),
+    warn: vi.fn()
   })
 }))
 

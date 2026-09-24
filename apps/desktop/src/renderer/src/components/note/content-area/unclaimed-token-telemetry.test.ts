@@ -94,6 +94,20 @@ describe('countUnclaimedTokens', () => {
 
     expect(countUnclaimedTokens(blocks)).toEqual({})
   })
+
+  it('counts tokens in blocks nested under a code block', () => {
+    const blocks = [
+      {
+        type: 'codeBlock',
+        content: [{ type: 'text', text: '((mention:x))', styles: {} }],
+        children: [
+          { type: 'paragraph', content: [{ type: 'text', text: '((date:y))', styles: {} }] }
+        ]
+      }
+    ]
+
+    expect(countUnclaimedTokens(blocks)).toEqual({ date: 1 })
+  })
 })
 
 describe('reportUnclaimedTokens', () => {

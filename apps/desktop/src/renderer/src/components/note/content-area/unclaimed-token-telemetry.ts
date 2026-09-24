@@ -76,10 +76,8 @@ function visitBlocks(
 ): void {
   for (const block of blocks) {
     // A token inside a code block is the author's text, exactly as the
-    // normalize passes treat it.
-    if (block.type === 'codeBlock') continue
-
-    const content = block.content
+    // normalize passes treat it. Blocks nested under one are still walked.
+    const content = block.type === 'codeBlock' ? undefined : block.content
     if (
       content &&
       typeof content === 'object' &&

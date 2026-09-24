@@ -66,6 +66,28 @@ describe('hash tag inline content', () => {
     ])
   })
 
+  it('normalizes tags nested under a code block, but not the code itself', () => {
+    const result = normalizeHashTags(
+      [
+        {
+          id: 'code',
+          type: 'codeBlock',
+          content: '#work',
+          children: [{ id: 'item', type: 'bulletListItem', content: 'Due #work' }]
+        }
+      ] as any,
+      new Set(['work']),
+      new Map([['work', 'blue']])
+    )
+
+    expect(result.didChange).toBe(true)
+    expect((result.blocks[0] as any).content).toBe('#work')
+    expect((result.blocks[0] as any).children[0].content).toEqual([
+      'Due ',
+      { type: 'hashTag', props: { tag: 'work', color: 'blue', icon: '' } }
+    ])
+  })
+
   it('threads a per-tag icon from the icon map into hash tag props and renders it', () => {
     const result = normalizeHashTags(
       [{ id: 'a', type: 'paragraph', content: 'Read #books today' }] as any,

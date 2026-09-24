@@ -42,6 +42,17 @@ function getPaddleClient() {
   return paddlePromise
 }
 
+/**
+ * Paddle payment links (default payment link + `?_ptxn=txn_...`) land on /pricing: manual
+ * transactions and the "update payment method" links in Paddle's dunning emails. Paddle.js opens
+ * the checkout for `_ptxn` by itself, but only once it is initialized, and this page loads it
+ * lazily. Initialize eagerly only when the parameter is present.
+ */
+export function openPaddlePaymentLink(search: string) {
+  if (!new URLSearchParams(search).get('_ptxn')) return
+  void getPaddleClient()
+}
+
 export function buildMemryBillingStartUrl(plan: CheckoutPlanId, cadence: PaddleCheckoutCadence) {
   const params = new URLSearchParams({ plan, cadence })
   return `memry://billing/start?${params.toString()}`

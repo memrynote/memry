@@ -302,6 +302,62 @@ export const CALENDAR_GOOGLE_SETTINGS_DEFAULTS: CalendarGoogleSettings = {
 }
 
 // ============================================================================
+// Calendar — per-provider settings groups (#1394)
+// ============================================================================
+//
+// Each provider owns a `calendar.<providerId>` settings group. Google keeps its
+// historical `calendar.google` key and exact shape above. Every other provider
+// shares the base below; writable providers add the neutral one-way switch.
+// New providers only ever write new keys, so no stored value is migrated.
+
+export const CalendarProviderBaseSettingsSchema = z.object({
+  // No provider's external events reach the agent until that provider is
+  // explicitly consented. null = not asked yet, which reads as a no.
+  agentReadEventsConsent: z.boolean().nullable().default(null)
+})
+
+export const CalendarWritableProviderSettingsSchema = CalendarProviderBaseSettingsSchema.extend({
+  // false = one-way (inbound-only): pull the provider's events but never
+  // push memrynote items out to it. Google keeps reading `pushEventsToGoogle`.
+  pushEventsToProvider: z.boolean().default(true)
+})
+
+export type CalendarProviderBaseSettings = z.infer<typeof CalendarProviderBaseSettingsSchema>
+export type CalendarWritableProviderSettings = z.infer<
+  typeof CalendarWritableProviderSettingsSchema
+>
+
+/** What `settings:getCalendarProviderSettings` returns for any provider. */
+export type CalendarProviderSettings =
+  CalendarGoogleSettings | CalendarProviderBaseSettings | CalendarWritableProviderSettings
+
+export const CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS: CalendarProviderBaseSettings = {
+  agentReadEventsConsent: null
+}
+
+export const CALENDAR_WRITABLE_PROVIDER_SETTINGS_DEFAULTS: CalendarWritableProviderSettings = {
+  agentReadEventsConsent: null,
+  pushEventsToProvider: true
+}
+
+export const GetCalendarProviderSettingsSchema = z.object({
+  provider: z.string().min(1)
+})
+
+export const SetCalendarProviderSettingsSchema = z.object({
+  provider: z.string().min(1),
+  updates: z.record(z.string(), z.unknown())
+})
+
+export type GetCalendarProviderSettingsInput = z.infer<typeof GetCalendarProviderSettingsSchema>
+export type SetCalendarProviderSettingsInput = z.infer<typeof SetCalendarProviderSettingsSchema>
+
+/** The settings key a provider's group is stored under. */
+export function calendarProviderSettingsKey(providerId: string): string {
+  return `calendar.${providerId}`
+}
+
+// ============================================================================
 // Features Settings (optional module toggles)
 // ============================================================================
 

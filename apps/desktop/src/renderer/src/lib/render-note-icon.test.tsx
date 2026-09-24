@@ -82,3 +82,16 @@ describe('NoteIconDisplay custom icons', () => {
     expect(glyph.className).toBe('text-sm')
   })
 })
+
+describe('NoteIconDisplay emoji', () => {
+  // Without an explicit emoji family the glyph inherits the UI font stack, and a
+  // machine with no color emoji font draws it monochrome or as an empty box.
+  it('renders emoji with the bundled color emoji font family', () => {
+    const { container } = render(<NoteIconDisplay value="🥰" className="text-sm" />)
+
+    const span = container.querySelector('span')
+    expect(span?.textContent).toBe('🥰')
+    expect(span?.className).toContain('font-emoji')
+    expect(span?.className).toContain('text-sm')
+  })
+})

@@ -218,6 +218,57 @@ describe('parseIcsFeed', () => {
     ])
   })
 
+  it('shows an instance moved into the window from a date past its end', () => {
+    const feed = parseIcsFeed(
+      calendar([
+        'BEGIN:VEVENT',
+        'UID:review@test',
+        'DTSTART:20261218T150000Z',
+        'DTEND:20261218T160000Z',
+        'RRULE:FREQ=WEEKLY',
+        'SUMMARY:Review',
+        'END:VEVENT',
+        // Pulled forward from after the window into it: must appear.
+        'BEGIN:VEVENT',
+        'UID:review@test',
+        'RECURRENCE-ID:20270115T150000Z',
+        'DTSTART:20261230T100000Z',
+        'DTEND:20261230T110000Z',
+        'SUMMARY:Review (pulled forward)',
+        'END:VEVENT',
+        // Moved, but still after the window: must not.
+        'BEGIN:VEVENT',
+        'UID:review@test',
+        'RECURRENCE-ID:20270122T150000Z',
+        'DTSTART:20270120T150000Z',
+        'DTEND:20270120T160000Z',
+        'SUMMARY:Review (still later)',
+        'END:VEVENT',
+        // Pulled forward but cancelled: must not.
+        'BEGIN:VEVENT',
+        'UID:review@test',
+        'RECURRENCE-ID:20270129T150000Z',
+        'DTSTART:20261231T100000Z',
+        'STATUS:CANCELLED',
+        'SUMMARY:Review',
+        'END:VEVENT'
+      ]),
+      WINDOW
+    )
+
+    expect(
+      feed.events.map(({ remoteEventId, title, startAt }) => [remoteEventId, title, startAt])
+    ).toEqual([
+      ['review@test::2026-12-18T15:00:00.000Z', 'Review', '2026-12-18T15:00:00.000Z'],
+      ['review@test::2026-12-25T15:00:00.000Z', 'Review', '2026-12-25T15:00:00.000Z'],
+      [
+        'review@test::2027-01-15T15:00:00.000Z',
+        'Review (pulled forward)',
+        '2026-12-30T10:00:00.000Z'
+      ]
+    ])
+  })
+
   it('rejects a response that is not an iCalendar document', () => {
     expect(errorCode(() => parseIcsFeed('<!doctype html><html></html>', WINDOW))).toBe(
       'not_a_calendar'

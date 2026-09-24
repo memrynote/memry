@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import {
-  ICS_CALENDAR_PROVIDER,
   type PromoteExternalEventInput,
   type PromoteExternalEventResponse
 } from '@memry/contracts/calendar-api'
@@ -18,6 +17,7 @@ import {
 } from './repositories/calendar-sources-repository'
 import { getCalendarExternalEventById } from './repositories/calendar-external-events-repository'
 import { emitCalendarChanged, emitCalendarProjectionChanged } from './change-events'
+import { sourceCapabilities } from './provider/capabilities'
 
 const log = createLogger('Calendar:PromoteExternal')
 
@@ -57,9 +57,9 @@ export function promoteExternalEvent(
   if (!sourceRow) {
     throw new ExternalEventSourceMissingError(input.externalEventId, mirror.sourceId)
   }
-  // Promotion binds the copy to the remote event for Google writeback. A
-  // subscribed feed has nowhere to write back to.
-  if (sourceRow.provider === ICS_CALENDAR_PROVIDER) {
+  // Promotion binds the copy to the remote event for writeback. A provider
+  // without a write path (a subscribed feed) has nowhere to write back to.
+  if (!sourceCapabilities(sourceRow).supportsWrite) {
     throw new ExternalEventReadOnlyError(input.externalEventId)
   }
 
@@ -68,9 +68,12 @@ export function promoteExternalEvent(
 
   // Idempotency: repeat calls should return the existing promoted event
   // without creating duplicate rows or re-emitting create events.
+  // The binding takes the source's provider (#2372): a promoted CalDAV event
+  // is written back by CalDAV, never by Google.
+  const provider = sourceRow.provider
   const existingBinding = findCalendarBindingByRemoteEvent(
     db,
-    'google',
+    provider,
     remoteCalendarId,
     mirror.remoteEventId
   )
@@ -115,7 +118,7 @@ export function promoteExternalEvent(
     id: bindingId,
     sourceType: 'event',
     sourceId: eventId,
-    provider: 'google',
+    provider,
     remoteCalendarId,
     remoteEventId: mirror.remoteEventId,
     ownershipMode: 'provider_managed',
@@ -138,7 +141,8 @@ export function promoteExternalEvent(
   emitCalendarChanged({ entityType: 'calendar_event', id: eventId })
   emitCalendarProjectionChanged(`event:${eventId}`)
 
-  log.info('Promoted external Google event to memrynote event', {
+  log.info('Promoted external event to memrynote event', {
+    provider,
     externalEventId: input.externalEventId,
     eventId,
     remoteCalendarId,
@@ -151,7 +155,7 @@ export function promoteExternalEvent(
   trackMainEvent('calendar_event_created', {
     surface: 'calendar',
     action: 'promoted',
-    source: 'google_promote',
+    source: provider === 'google' ? 'google_promote' : `${provider}_promote`,
     result: 'success'
   })
 

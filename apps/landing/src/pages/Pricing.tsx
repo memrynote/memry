@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { motion, useReducedMotion } from 'motion/react'
 import { Check, ShieldCheck, ExternalLink } from 'lucide-react'
@@ -19,7 +19,11 @@ import {
   type SyncPlanId,
   type LifecycleTone
 } from '@/lib/constants'
-import { buildMemryBillingCompleteUrl, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
+import {
+  buildMemryBillingCompleteUrl,
+  openPaddlePaymentLink,
+  type PaddleCheckoutCadence
+} from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
 import { trackLandingEvent } from '@/lib/analytics'
 
@@ -63,6 +67,10 @@ export function PricingPage() {
     }
     return { error: null, notice: null }
   })
+
+  useEffect(() => {
+    openPaddlePaymentLink(window.location.search)
+  }, [])
 
   const handleCheckout = (tier: SyncPlanTier) => {
     if (!PURCHASES_ENABLED || !tier.checkoutPlanId) return
@@ -671,6 +679,17 @@ function BelieverNarrative() {
               <p className="text-lg leading-relaxed text-dark-muted">
                 Believer is a supporter package: everything in Pro, more encrypted storage,
                 unlimited vaults, early access, and a name in the credits.
+              </p>
+              <p className="text-sm leading-relaxed text-dark-muted">
+                Prefer to spread it out? Believer can be paid in monthly installments on request.
+                Email{' '}
+                <a
+                  href="mailto:kaan@memrynote.com?subject=Believer%20installments"
+                  className="text-terracotta underline-offset-2 hover:underline"
+                >
+                  kaan@memrynote.com
+                </a>
+                .
               </p>
             </motion.div>
 

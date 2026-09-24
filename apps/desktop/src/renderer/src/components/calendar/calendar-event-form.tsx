@@ -19,7 +19,7 @@ import { type ClockFormat, formatTimeString } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 
 import { toLocalDateString } from './date-utils'
-import { CalendarPicker } from './calendar-picker'
+import { CalendarPicker, type CalendarPickerGroup } from './calendar-picker'
 import { CalendarEventMetadata } from './calendar-event-metadata'
 import { EventProjectField } from './event-project-field'
 import {
@@ -31,6 +31,7 @@ import {
 } from './calendar-card'
 import { formatDurationShort } from './chip-duration'
 import { useGoogleCalendars } from '@/hooks/use-google-calendars'
+import { useOtherWritableCalendars } from '@/hooks/use-writable-calendars'
 import type { CalendarEventDraft } from './types'
 import type { CalendarEventReadOnlyMetadata } from './calendar-event-popover'
 
@@ -506,14 +507,30 @@ interface TargetCalendarFieldProps {
 
 function TargetCalendarField({ value, onChange, disabled }: TargetCalendarFieldProps) {
   const { data, isLoading } = useGoogleCalendars()
+  const others = useOtherWritableCalendars()
   const { t } = useT('calendar')
-  const calendars = data?.calendars ?? []
-  // Only surface the picker when the user actually has Google connected
+  const googleCalendars = data?.calendars ?? []
+  // #2372: writable calendars from every provider, grouped by provider. With
+  // Google alone this is exactly the Google list it always was.
+  const groups: CalendarPickerGroup[] = [
+    ...(googleCalendars.length > 0
+      ? [{ label: t('providers.google.name'), calendars: googleCalendars }]
+      : []),
+    ...others.groups.map((group) => ({
+      label: group.provider === 'caldav' ? t('providers.caldav.name') : group.provider,
+      calendars: group.calendars
+    }))
+  ]
+  const calendars = groups.flatMap((group) => group.calendars)
+  // Only surface the picker when a writable provider is connected
   // (empty list = not connected OR no calendars yet).
   if (!isLoading && calendars.length === 0) return null
 
-  const currentDefaultLabel = data?.currentDefaultId
-    ? (data.calendars.find((c) => c.id === data.currentDefaultId)?.title ?? data.currentDefaultId)
+  // A default on another provider overrides Google's own default.
+  const otherDefault = others.groups.find((group) => group.currentDefaultId)
+  const currentDefaultId = otherDefault?.currentDefaultId ?? data?.currentDefaultId ?? null
+  const currentDefaultLabel = currentDefaultId
+    ? (calendars.find((c) => c.id === currentDefaultId)?.title ?? currentDefaultId)
     : null
   const defaultLabel = currentDefaultLabel
     ? t('form.use-default-calendar-with-name', { calendar: currentDefaultLabel })
@@ -525,6 +542,7 @@ function TargetCalendarField({ value, onChange, disabled }: TargetCalendarFieldP
         <span className="sr-only">{t('form.google-calendar')}</span>
         <CalendarPicker
           calendars={calendars}
+          groups={groups}
           value={value}
           onChange={onChange}
           isLoading={isLoading}

@@ -13,7 +13,20 @@ const googleIntegrationOperations = [
   'calendar.updateSourceSelection',
   'calendar.setDefaultGoogleCalendar',
   'settings.getCalendarGoogleSettings',
-  'settings.setCalendarGoogleSettings'
+  'settings.setCalendarGoogleSettings',
+  // The provider-generic channels (#1392, #1394) carry Google data too when
+  // called with provider: 'google'.
+  'calendar.listProviders',
+  'calendar.listProviderCalendars',
+  'calendar.setDefaultProviderCalendar',
+  'calendar.retrySourceSync',
+  'calendar.discoverProviderCalendars',
+  'calendar.checkProviderWriterCompat',
+  'calendar.connectProvider',
+  'calendar.disconnectProvider',
+  'calendar.refreshProvider',
+  'settings.getCalendarProviderSettings',
+  'settings.setCalendarProviderSettings'
 ] as const
 
 // The Projects hub added a project↔item link layer. Agents get the same reads

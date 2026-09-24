@@ -520,11 +520,13 @@ Calendar desktop reads accept the same single-object shape as the renderer bridg
 Google-integration operations — calendar sources, provider status, Google calendar lists, promoting
 external events, and Google calendar settings — are excluded from the agent allowlists outright.
 
-Google-synced events themselves are gated on explicit user consent. `calendar.getRange` resolves
-`includeExternal` from the stored answer to the **Let AI read Google Calendar events** setting, never
-from the caller: an agent that passes `includeExternal: true` still gets native-only results unless
-the user granted access. Not asked yet, declined, or a settings read that failed all resolve to
-native-only. See [Calendar → Google Data and AI Features](/user-guide/calendar#google-data-and-ai-features).
+Events from external calendars are gated on explicit user consent, asked separately for each
+calendar service (Google, subscribed calendars, CalDAV). `calendar.getRange` builds the list of
+services whose events it may return (`externalProviders`) from the stored answers, never from the
+caller: an agent that passes `includeExternal: true` still gets native-only results unless the user
+allowed at least one service, and then only that service's events. Not asked yet, declined, or a
+settings read that failed all count as not allowed. See
+[Calendar → AI Access Is Asked Per Calendar Service](/user-guide/calendar#ai-access-is-asked-per-calendar-service).
 
 Google user data is never used to train or improve AI models, in line with the Google API Services
 User Data Policy (Limited Use).

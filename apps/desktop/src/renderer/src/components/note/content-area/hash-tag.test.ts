@@ -87,6 +87,19 @@ describe('extractInlineTags', () => {
       expect(extractInlineTags(blocks)).toEqual([])
     })
 
+    it('walks blocks nested under a codeBlock, but not the code itself', () => {
+      const blocks = [
+        {
+          type: 'codeBlock',
+          content: [textItem('#notag')],
+          children: [textBlock([textItem('#nested')])],
+          id: 'c1',
+          props: {}
+        }
+      ] as unknown as Block[]
+      expect(extractInlineTags(blocks)).toEqual(['nested'])
+    })
+
     it('walks nested children', () => {
       const parent = {
         type: 'paragraph',

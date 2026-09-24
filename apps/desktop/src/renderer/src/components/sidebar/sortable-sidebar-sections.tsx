@@ -90,7 +90,7 @@ function SortableSidebarSection({
           className="pointer-events-none absolute inset-x-2 top-0 z-30 flex h-6 items-center gap-1.5 rounded-md bg-sidebar px-2 shadow-lg ring-1 ring-sidebar-border"
         >
           <GripVertical className="size-3 shrink-0 text-sidebar-muted" aria-hidden="true" />
-          <span className="truncate text-[11px] font-medium uppercase tracking-[0.04em] text-sidebar-section-heading [font-synthesis:none] font-['DM_Sans',system-ui,sans-serif]">
+          <span className="truncate text-[11px] font-medium uppercase tracking-[0.04em] text-sidebar-section-heading [font-synthesis:none]">
             {label}
           </span>
         </div>

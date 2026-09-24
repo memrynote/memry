@@ -87,6 +87,40 @@ describe('decideFrameNavigation', () => {
     })
   })
 
+  describe('memry-html attached HTML embeds (#1872)', () => {
+    const EMBED_URL = 'memry-html://local/Users/kaan/vault/attachments/n1/report.html'
+    const embedFrame = { ...prodSub, frameUrl: EMBED_URL }
+
+    it('loads in a subframe and never in the main frame', () => {
+      expect(decideFrameNavigation(EMBED_URL, prodSub)).toBe('allow')
+      expect(decideFrameNavigation(EMBED_URL, prodMain)).toBe('deny')
+    })
+
+    it('sends a link followed inside the embed to the browser', () => {
+      expect(decideFrameNavigation('https://example.com/docs', embedFrame)).toBe('open-external')
+      expect(decideFrameNavigation('http://example.com/', embedFrame)).toBe('open-external')
+    })
+
+    it('never hands a loopback target from the embed to the browser', () => {
+      expect(decideFrameNavigation('http://127.0.0.1:8080/', embedFrame)).toBe('deny')
+      expect(decideFrameNavigation('http://localhost:3000/', embedFrame)).toBe('deny')
+    })
+
+    it('keeps other schemes out of the embed frame', () => {
+      expect(decideFrameNavigation('file:///etc/passwd', embedFrame)).toBe('deny')
+      expect(decideFrameNavigation('javascript:alert(1)', embedFrame)).toBe('deny')
+    })
+
+    it('leaves ordinary https subframes (youtube) as they were', () => {
+      expect(
+        decideFrameNavigation('https://www.youtube-nocookie.com/embed/xyz', {
+          ...prodSub,
+          frameUrl: 'about:blank'
+        })
+      ).toBe('allow')
+    })
+  })
+
   describe('subframes — embeds keep working, dangerous schemes stay out', () => {
     it('allows the youtube-nocookie embed frame to navigate', () => {
       expect(

@@ -356,6 +356,25 @@ To switch to **one-way (inbound only)**, open [Settings → Calendar](/user-guid
 
 Switching to one-way is non-destructive — anything already synced to Google before the change stays there; only new pushes, updates, and deletes are stopped.
 
+### Where New Events Go
+
+Every memrynote item that appears on an external calendar is written by exactly one calendar
+service, so it never shows up twice.
+
+- **An item already on a calendar stays there.** Once an event, task, reminder or snooze has been
+  written to a calendar, later edits go back to that same calendar, from every device. Picking a
+  different calendar for an event that is already written does not move it.
+- **An event you point at a calendar goes to that calendar.** The calendar picker in the event
+  form lists the calendars you can write to, grouped by service when more than one is connected.
+- **Everything else goes to your default calendar.** Tasks, reminders, inbox snoozes and events
+  without a chosen calendar go to your default calendar: a CalDAV calendar chosen under **Default
+  calendar** in its account's section in Settings → Calendar, or else the Google calendar picked
+  during Google Calendar onboarding, or else the memrynote calendar Google creates for you. If the
+  CalDAV default is disconnected or hidden, items go back to that Google chain.
+
+The default is chosen per device. An item that another device already wrote to a calendar is
+never written a second time by this one, even when this device's default is a different service.
+
 ### How Often Google Events Refresh
 
 Inbound pulls run on a schedule. One pull covers everything at once — every linked account and every
@@ -414,6 +433,22 @@ improve AI models.
 Note that promoting an external event (above) copies it into your vault as a memrynote event. From
 then on it is your own event, and the assistant can read it regardless of this setting.
 
+### AI Access Is Asked Per Calendar Service
+
+The Google rule above applies to every calendar service on its own: **no service's events reach
+the AI assistant until you allow that service.** Each one gets its own question and its own stored
+answer.
+
+- The first time you open the calendar with calendars from a service you have not answered for —
+  a [subscribed calendar](#subscribed-calendars), for example — memrynote asks about that service.
+  Google keeps its original question, shown above.
+- Allowing Google does not allow anything else. If you allowed Google before subscribed calendars
+  asked on their own, the assistant stops seeing subscribed events until you allow them too.
+- A service you have not answered for counts as **Don't allow**.
+
+The assistant never chooses which services it may read. memrynote looks up your stored answers on
+every question and sends the assistant only the events from services you allowed.
+
 ### If the account says "Reconnect required"
 
 An account can drop back to **Reconnect required** without you doing anything — most often after an
@@ -437,6 +472,33 @@ sports fixtures or university timetables. No Google account or memrynote sign-in
 
 memrynote downloads the calendar before saving it, so a wrong link is rejected with the reason
 (not a calendar, not found, access refused, unreachable) instead of leaving an empty calendar behind.
+Once it is added, a short message says how many events it found and the dates they span.
+
+**Where to find the link.** **Where do I find the link?** under the link field lists the steps
+for common services:
+
+- **Proton Calendar:** Settings → Calendars, choose the calendar, then create a link under
+  **Share with anyone**. Pick full view to see event details.
+- **iCloud:** in Calendar on a Mac or at iCloud.com, share the calendar, turn on **Public
+  Calendar**, and copy the link. To edit iCloud events in memrynote too, connect iCloud under
+  [CalDAV](#caldav-calendars) instead.
+- **Outlook and Microsoft 365:** Outlook on the web → Settings → Calendar → Shared calendars →
+  **Publish a calendar**. Choose **Can view all details**, publish, and copy the ICS link.
+- **Fastmail:** Settings → Calendars, open the calendar, turn on publishing, and copy the
+  iCalendar link.
+- **Notion Calendar:** its events live in the Google or iCloud account you connected to it. Share
+  the link from that account.
+- **Holidays, schools, and sports:** look for **Subscribe**, **Add to calendar**, or **iCal** on
+  the organizer's site.
+
+**Proton is read-only by design.** Proton encrypts calendars end to end and offers no CalDAV and
+no public API, so a shared link is the only way to read a Proton calendar outside Proton, and
+there is no way to write back. Make changes in Proton; memrynote picks them up on its next refresh.
+
+**Plain `http://` links.** memrynote accepts them, and warns before subscribing: the link and
+the events travel unencrypted, so anyone on the same network can read them. Use an `https://` or
+`webcal://` link when the calendar offers one. A subscription over `http://` is marked **Not
+encrypted** in Settings. Links to your own network, such as a calendar on a home server, work.
 
 **What you see.** Events from the last 90 days through the next year, including every instance of
 a repeating event with its skipped and moved dates. They appear on the calendar, the Day Panel,
@@ -452,11 +514,81 @@ asks for (between 15 minutes and a day). An unchanged calendar costs one small r
 **Refresh** next to a subscription to check now. If a refresh fails, the reason shows under the
 subscription and the events you already had stay on the calendar.
 
+**Name and color.** **Rename** next to a subscription changes the name its events are labelled
+with, and the dot in front of the name picks its color. Both apply on every device, and a refresh
+keeps them.
+
 **Across devices.** The subscription syncs to your other devices, end-to-end encrypted like the
 rest of your vault; each device downloads the calendar itself. The events are never uploaded.
 **Remove** unsubscribes on every device and clears the events.
 
 Treat a secret calendar link like a password: anyone who has it can read that calendar.
+
+## CalDAV Calendars
+
+Calendars from iCloud (Apple Calendar), Fastmail, Nextcloud, Radicale, Baïkal, Zoho, Yahoo,
+mailbox.org, Posteo, Synology and other CalDAV servers connect in
+[Settings → Calendar](/user-guide/settings#calendar) → **CalDAV** with a username and an app
+password, on every operating system. See [CalDAV Calendars](/user-guide/caldav/) for each
+service's steps.
+
+Their events appear on the calendar, the Day Panel and the Home widget with the calendar's name
+as their label, and the calendar page lists them under **CalDAV calendars**. memrynote checks for
+changes every 15 minutes, and the events sync to your other devices, which show them without the
+app password. CalDAV calendars are two-way: see
+[Writing to a CalDAV Calendar](/user-guide/caldav/#writing-to-a-caldav-calendar).
+
+## macOS Calendar (This Mac)
+
+On a Mac, memrynote can show every calendar that the built-in Calendar app already has: iCloud,
+Google, Exchange and Outlook accounts added in macOS, **On My Mac** calendars, and calendars
+subscribed inside Calendar. You don't sign in, and you don't need an app password or a server
+address. This option exists only on macOS; Windows and Linux don't show it.
+
+1. Open [Settings → Calendar](/user-guide/settings#calendar) → **This Mac**.
+2. Press **Allow calendar access**. macOS asks once whether memrynote may use your calendars.
+   Choose **Allow Full Access**.
+
+memrynote never asks at launch. Only that button shows the macOS dialog.
+
+**What you see.** Events from the last 90 days through the next year, grouped in Settings by the
+account Calendar files them under. Tick or untick a calendar to show or hide its events. A change
+you make in Calendar (a new event, a moved meeting, a deleted calendar) shows up in memrynote
+within a few seconds, without a restart.
+
+**Event details.** Clicking an event shows what Calendar shows: how it repeats, its alerts, a
+**Join meeting** button for Google Meet, Zoom, Teams and Webex links, the dial-in number, who is
+invited and who accepted, and the description with clickable links. Google's "Join with Google
+Meet… Please do not edit this section." text is left out of the description, because the Join row
+already covers it.
+
+**Read-only.** These events can't be moved, edited, deleted, or copied into memrynote events.
+Change them in Calendar.
+
+**Stays on this Mac.** Neither the calendars nor their events sync to your other devices, and
+nothing is uploaded. Another Mac shows its own calendars once you allow access there. **Disconnect**
+removes them from memrynote on this Mac only; Calendar itself is untouched.
+
+**Seeing events twice.** If you connected Google or a CalDAV account in memrynote and the same
+account is also in Calendar, its Calendar copies start switched off and say **Already connected
+via …**. You can switch them on anyway.
+
+**AI access.** Like every calendar service, these events reach the AI assistant only after you
+allow it for **This Mac**. See [AI Access Is Asked Per Calendar
+Service](#ai-access-is-asked-per-calendar-service).
+
+### If access was denied
+
+macOS shows its question only once. If you chose **Don't Allow**, or later turned memrynote off
+in System Settings, the events disappear from memrynote and **This Mac** explains why:
+
+1. Press **Open System Settings**, or go to **System Settings → Privacy & Security → Calendars**.
+2. Switch **MemryNote** on and choose **Full Access**. **Add Events Only** is not enough to read
+   events.
+3. Back in memrynote, press **Check again**.
+
+If the setting is greyed out, a management profile on this Mac blocks calendar access. Whoever
+manages the Mac can allow it.
 
 ## Day Cell Click Behavior
 

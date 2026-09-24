@@ -264,9 +264,11 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
       let next = block
       // Code content is literal. Wrapping it would write span html inside the
       // fence, and the parse side deliberately skips fences — so it could never
-      // be unmasked and would corrupt the user's code permanently.
-      if (block.type === 'codeBlock') return block
-      if (Array.isArray(block.content)) {
+      // be unmasked and would corrupt the user's code permanently. Blocks
+      // nested under a code block are not code, so their runs are still wrapped.
+      if (block.type === 'codeBlock') {
+        // content is left as it is
+      } else if (Array.isArray(block.content)) {
         const content = wrapInline(block.content as InlineNode[])
         if (content !== block.content) next = { ...next, content }
       } else if ((block.content as TableContent | undefined)?.type === 'tableContent') {
@@ -415,6 +417,7 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
         out.push(item)
         continue
       }
+      // SAFETY: `item.text` was just checked to be a string, so this is a text run.
       const run = item as unknown as StyledText
       let last = 0
       TOKEN_REGEX.lastIndex = 0

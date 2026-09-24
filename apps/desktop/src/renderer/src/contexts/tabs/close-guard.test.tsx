@@ -45,13 +45,14 @@ describe('useCloseGuardRegistry', () => {
     expect(result.current.pending).toEqual({ tabId: 'tab-1' })
   })
 
-  it('discard commits without saving', async () => {
+  it('discard tells the guard, then commits without saving', async () => {
     const commit = vi.fn()
     const save = vi.fn().mockResolvedValue(true)
+    const discard = vi.fn(() => expect(commit).not.toHaveBeenCalled())
     const { result } = renderHook(() => useCloseGuardRegistry())
 
     act(() => {
-      result.current.registerCloseGuard('tab-1', { isDirty: () => true, save })
+      result.current.registerCloseGuard('tab-1', { isDirty: () => true, save, discard })
     })
     act(() => result.current.requestClose(['tab-1'], commit))
     await act(async () => {
@@ -59,6 +60,7 @@ describe('useCloseGuardRegistry', () => {
     })
 
     expect(save).not.toHaveBeenCalled()
+    expect(discard).toHaveBeenCalledTimes(1)
     expect(commit).toHaveBeenCalledTimes(1)
     expect(result.current.pending).toBeNull()
   })

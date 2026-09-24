@@ -26,6 +26,10 @@ vi.mock('@blocknote/core', async (importOriginal) => {
 vi.mock('y-prosemirror', () => ({
   yUndoPluginKey: {
     getState: yUndoMocks.getState
+  },
+  // These editors have no ySync plugin, so no change is a y-prosemirror render.
+  ySyncPluginKey: {
+    getState: () => undefined
   }
 }))
 
@@ -645,6 +649,43 @@ describe('useEditorSync', () => {
     expect(onMarkdownChange.mock.invocationCallOrder[0]).toBeLessThan(
       editor._tiptapEditor.destroy.mock.invocationCallOrder[0]
     )
+  })
+
+  it('hands a flushed save to the sink it is given instead of onMarkdownChange', async () => {
+    const onMarkdownChange = vi.fn()
+    const deliver = vi.fn()
+    const editor = createEditor()
+    editor.blocksToMarkdownLossy.mockResolvedValue('Typed just before closing')
+    const typed = [
+      {
+        id: 'paragraph-1',
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Typed just before closing', styles: {} }],
+        children: []
+      }
+    ]
+
+    const { result } = renderHook(() =>
+      useEditorSync({
+        editor,
+        initialContent: typed as never,
+        contentType: 'blocks',
+        onMarkdownChange
+      })
+    )
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    act(() => {
+      result.current.handleChange()
+    })
+    await act(async () => {
+      await result.current.flushPendingMarkdown(deliver)
+    })
+
+    expect(deliver).toHaveBeenCalledTimes(1)
+    expect(deliver.mock.calls[0][0]).toContain('Typed just before closing')
+    expect(onMarkdownChange).not.toHaveBeenCalled()
   })
 
   it('skips markdown persistence for remote updates and Yjs-backed documents', async () => {

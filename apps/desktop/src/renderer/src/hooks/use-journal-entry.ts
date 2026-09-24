@@ -109,6 +109,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const pendingTagsRef = useRef<string[] | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentDateRef = useRef(date)
+  // The date whose save lifecycle is running: set by the registry effect below,
+  // cleared by its cleanup once that date's pending save has been flushed.
+  const liveDateRef = useRef<string | null>(null)
   const isDirtyRef = useRef(isDirty)
   const isSavingRef = useRef(false)
   const templateSeedKeyRef = useRef<string | null>(null)
@@ -335,11 +338,23 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
   const updateContent = useCallback(
     (content: string) => {
+      // The editor's teardown flush reports its last edit after the journal
+      // has switched dates or unmounted, and after that date's pending save
+      // was flushed (#1900). Queued here it would save under whatever date is
+      // open now, or sit in a timer the save registry cannot see, so it is
+      // saved now, to the date it was typed on.
+      if (liveDateRef.current !== date) {
+        updateMutation.mutateAsync({ date, content }).catch((err: unknown) => {
+          trackRendererError('journal_pending_save_failed', err)
+          log.error(`Failed to save late changes for ${date}:`, err)
+        })
+        return
+      }
       pendingContentRef.current = content
       setIsDirty(true)
       scheduleSave()
     },
-    [scheduleSave]
+    [date, scheduleSave, updateMutation]
   )
 
   const updateTags = useCallback(
@@ -409,6 +424,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // Save registry + unmount flush
   useEffect(() => {
     const registryKey = `journal:${date}`
+    liveDateRef.current = date
 
     registerPendingSave(registryKey, async () => {
       if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
@@ -425,6 +441,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         void performSaveRef.current()
       }
       unregisterPendingSave(registryKey)
+      liveDateRef.current = null
     }
   }, [date])
 

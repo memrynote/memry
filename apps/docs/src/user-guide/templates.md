@@ -61,6 +61,8 @@ A brand-new template is a **draft**: nothing is written until you press **Create
 
 Once created, the button becomes **Update** and saving turns continuous — edits are written about a second after you stop typing, with no prompt and no toast. **Update** is there when you want to flush immediately; it greys out when there is nothing pending.
 
+Switching to another tab writes pending edits right away rather than waiting out that delay. If the write fails you get an error toast, and the edits come back the next time you open the template in this session, then save again.
+
 While a draft has unsaved work, its tab shows the unsaved dot. Closing that tab — by the tab's ✕, middle-click, the tab menu, or <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>W</kbd> — asks whether to **Save**, **Don't Save**, or **Cancel**. Quitting the app does not ask, so a draft you never created is lost on quit.
 
 ### Other actions

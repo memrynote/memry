@@ -32,6 +32,20 @@ describe('normalizeDateMentions', () => {
     expect(content[0]).toMatchObject({ type: 'text', text: 'due ' })
   })
 
+  it('promotes a token nested under a code block, and not in the code itself', () => {
+    const code = {
+      ...paragraph(token),
+      type: 'codeBlock',
+      children: [{ ...paragraph(`due ${token}`), id: 'b2', type: 'bulletListItem' }]
+    } as unknown as Block
+
+    const { blocks, didChange } = normalizeDateMentions([code])
+    expect(didChange).toBe(true)
+    expect((blocks[0] as any).content[0]).toMatchObject({ type: 'text', text: token })
+    const nested = (blocks[0] as any).children[0].content
+    expect(nested.some((c: any) => c.type === 'dateMention')).toBe(true)
+  })
+
   it('returns didChange=false when there is no token', () => {
     const { didChange } = normalizeDateMentions([paragraph('plain text')])
     expect(didChange).toBe(false)

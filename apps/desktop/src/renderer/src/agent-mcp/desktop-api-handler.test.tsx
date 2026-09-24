@@ -27,6 +27,10 @@ describe('useAgentMcpDesktopApiResponder', () => {
   let calendarGetRange: ReturnType<typeof vi.fn>
   let calendarListEvents: ReturnType<typeof vi.fn>
   let getCalendarGoogleSettings: ReturnType<typeof vi.fn>
+  let getCalendarProviderSettings: ReturnType<typeof vi.fn>
+  let calendarListProviders: ReturnType<typeof vi.fn>
+  // #1394: consent is read per provider through the generic settings channel.
+  let consentByProvider: Record<string, boolean | null>
 
   beforeEach(() => {
     onMainInvokeCallback = undefined
@@ -42,6 +46,13 @@ describe('useAgentMcpDesktopApiResponder', () => {
     // null = the user has not answered the agent-access prompt yet. Until they
     // grant it, Google-synced events stay out of every agent read.
     getCalendarGoogleSettings = vi.fn().mockResolvedValue({ agentReadEventsConsent: null })
+    consentByProvider = { google: null, ics: null }
+    calendarListProviders = vi.fn().mockResolvedValue({
+      providers: [{ id: 'google' }, { id: 'ics' }]
+    })
+    getCalendarProviderSettings = vi.fn(async ({ provider }: { provider: string }) => ({
+      agentReadEventsConsent: consentByProvider[provider] ?? null
+    }))
     mocks.logError.mockReset()
     ;(window as Window & { api: unknown }).api = {
       onMainInvoke: vi.fn(
@@ -64,10 +75,12 @@ describe('useAgentMcpDesktopApiResponder', () => {
       calendar: {
         getProviderStatus: calendarGetProviderStatus,
         getRange: calendarGetRange,
-        listEvents: calendarListEvents
+        listEvents: calendarListEvents,
+        listProviders: calendarListProviders
       },
       settings: {
-        getCalendarGoogleSettings
+        getCalendarGoogleSettings,
+        getCalendarProviderSettings
       }
     }
   })
@@ -156,7 +169,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: localDayIso('2026-05-14'),
       endAt: localDayIso('2026-06-15'),
-      includeExternal: false
+      includeExternal: false,
+      externalProviders: []
     })
   })
 
@@ -176,7 +190,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: localDayIso('2026-05-14'),
       endAt: localDayIso('2026-06-15'),
-      includeExternal: false
+      includeExternal: false,
+      externalProviders: []
     })
   })
 
@@ -207,12 +222,13 @@ describe('useAgentMcpDesktopApiResponder', () => {
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: '2026-05-14T09:00:00.000Z',
       endAt: '2026-05-14T10:00:00.000Z',
-      includeExternal: false
+      includeExternal: false,
+      externalProviders: []
     })
   })
 
   it('keeps Google events out of range reads when consent is denied, ignoring caller flags', async () => {
-    getCalendarGoogleSettings.mockResolvedValue({ agentReadEventsConsent: false })
+    consentByProvider.google = false
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
@@ -221,12 +237,13 @@ describe('useAgentMcpDesktopApiResponder', () => {
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: '2026-05-14T09:00:00.000Z',
       endAt: '2026-05-14T10:00:00.000Z',
-      includeExternal: false
+      includeExternal: false,
+      externalProviders: []
     })
   })
 
   it('includes Google events in range reads once the user grants consent', async () => {
-    getCalendarGoogleSettings.mockResolvedValue({ agentReadEventsConsent: true })
+    consentByProvider.google = true
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
@@ -235,12 +252,13 @@ describe('useAgentMcpDesktopApiResponder', () => {
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: '2026-05-14T09:00:00.000Z',
       endAt: '2026-05-14T10:00:00.000Z',
-      includeExternal: true
+      includeExternal: true,
+      externalProviders: ['google']
     })
   })
 
   it('falls back to excluding Google events when the consent lookup fails', async () => {
-    getCalendarGoogleSettings.mockRejectedValue(new Error('settings unavailable'))
+    getCalendarProviderSettings.mockRejectedValue(new Error('settings unavailable'))
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
@@ -249,8 +267,27 @@ describe('useAgentMcpDesktopApiResponder', () => {
     expect(calendarGetRange).toHaveBeenCalledWith({
       startAt: '2026-05-14T09:00:00.000Z',
       endAt: '2026-05-14T10:00:00.000Z',
-      includeExternal: false
+      includeExternal: false,
+      externalProviders: []
     })
+  })
+
+  it('keeps ICS events out until ICS itself is consented, whatever Google answered', async () => {
+    consentByProvider.google = true
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await invokeCalendarRange('request-calendar-range-google-only')
+    expect(calendarGetRange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ includeExternal: true, externalProviders: ['google'] })
+    )
+
+    consentByProvider.google = false
+    consentByProvider.ics = true
+    await invokeCalendarRange('request-calendar-range-ics-only')
+    expect(calendarGetRange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ includeExternal: true, externalProviders: ['ics'] })
+    )
   })
 
   it('parses stringified empty args for calendar event lists', async () => {

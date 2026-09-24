@@ -32,6 +32,8 @@ const runtimeEnvFile = `.env.${runtimeEnvName}`
 const packagedRuntimeEnvName = 'app-config'
 const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
 const generateIconsScript = path.join(appRoot, 'scripts', 'generate-icons.mjs')
+const eventKitHelperScript = path.join(appRoot, 'scripts', 'build-eventkit-helper.mjs')
+const eventKitHelperDir = path.join('native', 'eventkit', 'bin')
 const osxSignWalkPatchScript = path.join(appRoot, 'scripts', 'patch-osx-sign-walk.js')
 const electronBuilderUlimitScript = path.join(appRoot, 'scripts', 'run-with-builder-ulimit.sh')
 const pnpmCli = resolveBundledPnpmCli()
@@ -198,6 +200,30 @@ function ensureBuildResources() {
   })
 }
 
+/**
+ * The macOS Calendar bridge (#1405) exists only in mac builds. Windows and
+ * Linux packaging never builds or stages it, so `mac.extraFiles` is the only
+ * way it reaches an artifact. A mac build without it fails here, loudly,
+ * rather than shipping a provider that is always "unavailable".
+ */
+function isMacTarget(args) {
+  if (args.some((arg) => arg === '--mac' || arg === '-m' || arg === '--macos')) return true
+  // No platform flag builds for the host (`build:unpack` passes only --dir).
+  const otherPlatform = args.some((arg) =>
+    ['--win', '-w', '--windows', '--linux', '-l'].includes(arg)
+  )
+  return process.platform === 'darwin' && !otherPlatform
+}
+
+function stageEventKitHelper() {
+  execFileSync(process.execPath, [eventKitHelperScript, '--force'], {
+    stdio: 'inherit',
+    shell: false,
+    cwd: appRoot
+  })
+  syncIntoStage(eventKitHelperDir)
+}
+
 function runElectronBuilder(args, options = {}) {
   if (process.platform !== 'darwin') {
     execFileSync(process.execPath, [electronBuilderCli, ...args], {
@@ -309,6 +335,9 @@ function main() {
   syncIntoStage('config')
   syncIntoStage('out')
   syncIntoStage('scripts')
+  if (isMacTarget(args)) {
+    stageEventKitHelper()
+  }
   // Stage the runtime env under the neutral name electron-builder copies from.
   fs.cpSync(path.join(appRoot, runtimeEnvFile), path.join(stageDir, packagedRuntimeEnvName), {
     force: true

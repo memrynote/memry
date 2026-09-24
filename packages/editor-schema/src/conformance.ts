@@ -10,9 +10,10 @@
  * each reproduce the same constant necessarily agree with each other.
  *
  * `pending` marks a case that FAILS against current main because the fix it
- * asserts ships in a sibling of epic #1843. The suites run those with
- * `it.fails`, so the moment the sibling lands the inverted expectation turns
- * red and forces the flag's removal. Remove the flag, never the case.
+ * asserts ships in the named issue (siblings of epic #1843, and #2365). The
+ * suites run those with `it.fails`, so the moment the fix lands the inverted
+ * expectation turns red and forces the flag's removal. Remove the flag, never
+ * the case.
  */
 
 import { serializeLinkMentionToken } from './inline/link-mention'
@@ -169,11 +170,14 @@ const calloutCases: RoundtripCase[] = [
   },
   {
     // #1877's defect one splitter over: the renderer reads callout and quote
-    // runs BEFORE the blank-line scanner, so a gap at their edge is trimmed
-    // away. Main reads them after, and keeps it.
+    // runs BEFORE the blank-line scanner, so the splitter itself has to carry
+    // the gap at their edge (#1892). Main reads them after the scanner.
     name: 'extra blank line next to a callout survives',
-    markdown: `Before\n\n\n${serializeCalloutBlock('info', 'Body')}\n\n\nAfter`,
-    pending: { renderer: 1892 }
+    markdown: `Before\n\n\n${serializeCalloutBlock('info', 'Body')}\n\n\nAfter`
+  },
+  {
+    name: 'extra blank line next to a structured quote survives',
+    markdown: 'Before\n\n\n> One\n>\n> Two\n\n\n\nAfter'
   },
   {
     // Lazy continuation, the one shape in this group that cannot be identity:
@@ -385,6 +389,29 @@ const containerCases: RoundtripCase[] = [
     markdown: tableOf(['a', 'b'], ['[[Roadmap]]', '#work'])
   },
   {
+    // The two inline nodes #1865 did not name. The checkbox is the one that
+    // broke on the 0.51 serializer rewrite (`<input>` is neither element-with-
+    // text nor text, so `| [x] task |` came back `| task |`); the image shares
+    // the row because its render and its on-disk form happen to agree, which
+    // makes it the control.
+    name: 'inline checkbox and inline image in table cells',
+    markdown: tableOf(['a', 'b'], ['[x] done', '![alt](img.png)'])
+  },
+  {
+    // The escaped pipe is the only spelling of an aliased link that survives a
+    // cell: 0.51's parser treats a bare `|` as the cell delimiter. On 0.47.1
+    // this row was not a fixed point at all, so it is pinned now that it is.
+    name: 'aliased wiki link and marked runs in table cells',
+    markdown: tableOf(['a', 'b'], ['[[Roadmap\\|the plan]]', '**bold** *it* ~~s~~'])
+  },
+  {
+    // Main keeps the bold; the renderer's `WikiLink.toExternalHTML` does not
+    // emit the marks it carries in props, and a cell serializes through it.
+    name: 'marked wiki link in a table cell',
+    markdown: tableOf(['a', 'b'], ['**[[A]]**', date(dateMentionData())]),
+    pending: { renderer: 2365 }
+  },
+  {
     name: 'mention and date tokens in list items',
     markdown: `- ${mention('https://example.com/plain')}\n- ${date(dateMentionData())}`
   },
@@ -402,6 +429,52 @@ const containerCases: RoundtripCase[] = [
   {
     name: 'callout inside a toggle body',
     markdown: serializeToggleBlock('Summary', serializeCalloutBlock('warning', 'Inside'))
+  }
+]
+
+/**
+ * A block indented under a list item: the bytes main writes today. Neither
+ * pipeline reads them back as the same tree — the nesting markers are dropped
+ * and the block lands at the top level — and the renderer does not write them
+ * at all for most types. Identical on BlockNote 0.47.1 and 0.54.2, so this is
+ * not upgrade fallout; it is pinned here so the fix has a target (#2365).
+ */
+function nestedUnderBullet(child: string): string {
+  return [
+    '- parent',
+    '<!-- memry:block-nesting-level=1 -->',
+    child,
+    '<!-- memry:block-nesting-level=0 -->'
+  ].join('\n\n')
+}
+
+const nestedUnderListCases: RoundtripCase[] = [
+  {
+    name: 'callout nested under a list item',
+    markdown: nestedUnderBullet(serializeCalloutBlock('info', 'Heads up')),
+    pending: { renderer: 2365, main: 2365 }
+  },
+  {
+    name: 'task block nested under a list item',
+    markdown: nestedUnderBullet('- [ ] a task {task:t1}'),
+    pending: { renderer: 2365, main: 2365 }
+  },
+  {
+    name: 'file marker nested under a list item',
+    markdown: nestedUnderBullet(
+      '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->'
+    ),
+    pending: { renderer: 2365, main: 2365 }
+  },
+  {
+    name: 'youtube embed marker nested under a list item',
+    markdown: nestedUnderBullet('![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)'),
+    pending: { renderer: 2365, main: 2365 }
+  },
+  {
+    name: 'bookmark marker nested under a list item',
+    markdown: nestedUnderBullet('![bookmark](https://example.com/a)'),
+    pending: { renderer: 2365, main: 2365 }
   }
 ]
 
@@ -569,6 +642,7 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...mathCases,
   ...containerCases,
   ...blockMarkerCases,
+  ...nestedUnderListCases,
   ...diagramCases,
   ...whiteboardCases,
   ...foreignSpellingCases
@@ -1481,9 +1555,6 @@ export const FUZZ_FAMILIES: readonly FuzzFamily[] = [
   { name: 'toggle summaries and bodies', generate: (random) => fuzzToggleMarkdown(random) },
   {
     name: 'mixed documents',
-    generate: fuzzMixedDocumentMarkdown,
-    // The gap join reaches a callout's edge too, and the renderer's
-    // blockquote splitter still trims those (#1892). Main is already green.
-    pending: { renderer: 1892 }
+    generate: fuzzMixedDocumentMarkdown
   }
 ]

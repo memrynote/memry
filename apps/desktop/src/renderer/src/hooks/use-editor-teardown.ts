@@ -23,6 +23,13 @@ interface TiptapHost {
  * a pending save can still read the document while the editor is intact. It is
  * awaited even when it rejects — a failed save must not strand the editor.
  *
+ * `beforeDestroy` runs after the owner has unmounted, and whatever it reports
+ * lands later still if it is async. By then every ancestor's effect cleanup has
+ * run (React tears a deleted subtree down parent first), so a callback that
+ * reaches the owner finds its unmount flush done and its save registry entry
+ * gone. Running it synchronously in the cleanup would not change that for an
+ * async flush, so owners handle a late report themselves (#1900).
+ *
  * Teardown is deferred by a microtask so it can be cancelled. In development
  * StrictMode runs setup → cleanup → setup on the same fiber, and
  * `useCreateBlockNote` is a `useMemo`, so that simulated remount hands back the

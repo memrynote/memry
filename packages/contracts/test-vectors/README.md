@@ -63,7 +63,7 @@ one-class change reviewable.
 | `note-blocks.json`                      |                                 32 | `../scripts/vectors/note-blocks.ts`         | `../src/__tests__/note-blocks.test.ts` + the Rust and iOS harnesses   |
 | `block-edit.json`                       |                                 12 | `../scripts/vectors/block-edit.ts`          | `../src/__tests__/block-edit.test.ts` + the Rust writer harness       |
 | `attachment-manifest.json`              |                                  4 | `../scripts/vectors/attachment-manifest.ts` | `../src/__tests__/attachment-manifest.test.ts` + the Rust harness     |
-| `markdown-roundtrip/cases.json`         |                                 96 | `../scripts/vectors/markdown-roundtrip.ts`  | `../src/__tests__/markdown-roundtrip.test.ts`                         |
+| `markdown-roundtrip/cases.json`         |                                119 | `../scripts/vectors/markdown-roundtrip.ts`  | `../src/__tests__/markdown-roundtrip.test.ts`                         |
 | `markdown-roundtrip/fuzz-families.json` |                         5 families | same                                        | same                                                                  |
 | **Total**                               | **334 cases plus 5 fuzz families** |                                             |                                                                       |
 

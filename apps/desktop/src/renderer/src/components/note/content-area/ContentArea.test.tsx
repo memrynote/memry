@@ -3,6 +3,7 @@ import { renderWithProviders as render } from '@tests/utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
+import { serializeCriticMarkup } from '@memry/shared'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 
 const contentAreaMocks = vi.hoisted(() => ({
@@ -14,6 +15,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   pasteSelect: null as
     null | ((option: 'url' | 'mention' | 'embed' | 'bookmark', url: string) => void),
   handleChange: vi.fn(),
+  flushPendingMarkdown: vi.fn(async (_deliver?: (markdown: string) => void) => {}),
   retryAI: vi.fn(),
   openSidebarItem: vi.fn(),
   analyzeTaskIntents: vi.fn(),
@@ -286,7 +288,10 @@ vi.mock('./scan-task-intents', () => ({
 
 vi.mock('./hooks', () => ({
   useBlockNoteSetup: vi.fn(() => ({ aiReady: true })),
-  useEditorSync: vi.fn(() => ({ handleChange: contentAreaMocks.handleChange })),
+  useEditorSync: vi.fn(() => ({
+    handleChange: contentAreaMocks.handleChange,
+    flushPendingMarkdown: contentAreaMocks.flushPendingMarkdown
+  })),
   useWikiLinkSuggestions: vi.fn(() => ({
     getWikiLinkItems: vi.fn(async () => [{ title: 'Wiki' }]),
     handleWikiLinkSelect: vi.fn()
@@ -621,11 +626,37 @@ describe('ContentArea', () => {
     expect(editor._tiptapEditor.destroy).not.toHaveBeenCalled()
 
     unmount()
-    // Teardown is deferred by a microtask so StrictMode's remount can cancel it.
-    await Promise.resolve()
-
-    expect(editor._tiptapEditor.destroy).toHaveBeenCalledTimes(1)
+    // Teardown is deferred by a microtask so StrictMode's remount can cancel it,
+    // then waits for the markdown flush.
+    await waitFor(() => expect(editor._tiptapEditor.destroy).toHaveBeenCalledTimes(1))
     expect(win.ProseMirror).toBeUndefined()
+  })
+
+  // The flush lands after the page has unmounted or moved to another note, so
+  // the page's live review state is no longer this document's (#1900).
+  it("merges a teardown flush with its own review marks, not the page's live review state", async () => {
+    const onMarkdownChange = vi.fn()
+    const onPlainMarkdownChange = vi.fn((markdown: string) => `live:${markdown}`)
+    const marks = [
+      { id: 'add-1', kind: 'addition' as const, visibleText: 'Typed', start: 0, end: 5 }
+    ]
+    contentAreaMocks.flushPendingMarkdown.mockImplementationOnce(async (deliver) => {
+      deliver?.('Typed on close')
+    })
+
+    const { unmount } = render(
+      <ContentArea
+        noteId="note-1"
+        onMarkdownChange={onMarkdownChange}
+        review={{ plainMarkdown: '', marks, hoveredMarkId: null, onPlainMarkdownChange }}
+      />
+    )
+    unmount()
+
+    const expected = serializeCriticMarkup('Typed on close', marks)
+    expect(expected).not.toBe('Typed on close')
+    await waitFor(() => expect(onMarkdownChange).toHaveBeenCalledWith(expected))
+    expect(onPlainMarkdownChange).not.toHaveBeenCalled()
   })
 
   it('leaves no DOM listener or animation frame behind after unmount', () => {

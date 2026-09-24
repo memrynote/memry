@@ -133,6 +133,22 @@ function unifiedSidebar() {
             { text: 'Home Dashboard', link: '/user-guide/home-dashboard' },
             { text: 'Projects', link: '/user-guide/projects' },
             { text: 'Calendar', link: '/user-guide/calendar' },
+            {
+              text: 'CalDAV Calendars',
+              link: '/user-guide/caldav/',
+              collapsed: true,
+              items: [
+                { text: 'Apple iCloud', link: '/user-guide/caldav/icloud' },
+                { text: 'Fastmail', link: '/user-guide/caldav/fastmail' },
+                { text: 'Nextcloud', link: '/user-guide/caldav/nextcloud' },
+                { text: 'Radicale and Baïkal', link: '/user-guide/caldav/self-hosted' },
+                { text: 'Zoho', link: '/user-guide/caldav/zoho' },
+                { text: 'Yahoo', link: '/user-guide/caldav/yahoo' },
+                { text: 'mailbox.org', link: '/user-guide/caldav/mailbox-org' },
+                { text: 'Posteo', link: '/user-guide/caldav/posteo' },
+                { text: 'Synology', link: '/user-guide/caldav/synology' }
+              ]
+            },
             { text: 'Search & Command Palette', link: '/user-guide/search' },
             { text: 'Command Line', link: '/user-guide/cli' },
             { text: 'Templates', link: '/user-guide/templates' },
@@ -189,6 +205,7 @@ function unifiedSidebar() {
         { text: 'Vault Packs', link: '/architecture/vault-packs' },
         { text: 'Cryptography', link: '/architecture/cryptography' },
         { text: 'Sync Item Handlers', link: '/architecture/sync-handlers' },
+        { text: 'Calendar Providers', link: '/architecture/calendar-providers' },
         { text: 'Observability & Telemetry', link: '/architecture/observability' }
       ]
     },

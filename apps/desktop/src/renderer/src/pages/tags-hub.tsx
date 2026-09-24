@@ -16,7 +16,7 @@ import {
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
-  type DragOverEvent,
+  type DragMoveEvent,
   type DragStartEvent,
   type DropAnimation,
   type MeasuringConfiguration
@@ -95,17 +95,12 @@ const hubCollisionDetection: CollisionDetection = (args) => {
   )
 }
 
-// A tag drag moves the chip's own DOM subtree between `CategoryBlock`s mid-drag
-// (the preview in `handleDragOver`, below). dnd-kit's default droppable
-// measuring re-runs continuously while dragging, so that reflow — a
-// flex-wrapped category row growing or shrinking a line — can shift the
-// section boundaries under a *stationary* pointer and flip `over` to a
-// different category on the next internal remeasure. `previewContainerMove`'s
-// same-category guard doesn't catch that, since the flip is between two
-// different categories: each flip previews the tag back, reflowing again,
-// forever — "Maximum update depth exceeded". Freezing droppable rects to
-// their pre-drag geometry (`BeforeDragging`) makes collision detection immune
-// to reflow the drag itself causes.
+// Stops dnd-kit's continuous droppable re-measuring while dragging. This does
+// NOT freeze rects for the whole drag: dnd-kit still re-measures every
+// droppable against the live DOM whenever the set of registered droppables
+// changes, and the tag preview changes it on every category move (the chip
+// unmounts from one `CategoryBlock` and mounts in another). The loop that
+// reflow can cause is broken in `handleDragPreview`, below.
 const hubMeasuring: MeasuringConfiguration = {
   droppable: { strategy: MeasuringStrategy.BeforeDragging }
 }
@@ -153,6 +148,8 @@ export function TagsHubPage(): React.JSX.Element {
   }, [])
 
   const dragSessionRef = useRef<TagDragSession | null>(null)
+  // The drag offset at which the preview last moved the tag. See `handleDragPreview`.
+  const lastPreviewDeltaRef = useRef<{ x: number; y: number } | null>(null)
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null)
 
   const [query, setQuery] = useTabViewState<string>({
@@ -236,6 +233,7 @@ export function TagsHubPage(): React.JSX.Element {
         const hubTag = findHubTag(snapshot, tagName)
         if (!hubTag) return
         dragSessionRef.current = beginTagDrag(snapshot, tagName)
+        lastPreviewDeltaRef.current = null
         setActiveDrag({ kind: 'tag', tag: hubTag })
         // Seed the preview with the pre-drag arrangement so every later
         // `onDragOver` has a base to move the tag within.
@@ -258,23 +256,48 @@ export function TagsHubPage(): React.JSX.Element {
   // why previewing position *within* a category loops forever. Category drags
   // are left alone entirely; `verticalListSortingStrategy` already displaces
   // their neighbours, and moving them in state as well would fight it.
-  const handleDragOver = useCallback(
-    (event: DragOverEvent): void => {
+  //
+  // Moving the chip reflows the page: a category row gains or loses a line, or
+  // an empty category's hint box turns into a chip row. dnd-kit re-measures
+  // every droppable when the chip re-mounts, so a pointer that has not moved
+  // can now sit over a different category. Trace, pointer held still near the
+  // boundary of an empty category B below category A:
+  //
+  //   over B -> chip moves A->B -> reflow, remeasure -> over A
+  //          -> chip moves B->A -> reflow, remeasure -> over B -> ...
+  //
+  // Every step is a synchronous commit, so React throws "Maximum update depth
+  // exceeded" (#185). A move is therefore only previewed at a drag offset the
+  // preview has not already acted on: an `over` change that arrives without
+  // the pointer moving was caused by our own reflow and is ignored.
+  // `onDragMove` feeds the same function, so the ignored target is applied as
+  // soon as the pointer moves again. Each preview now needs a new pointer or
+  // keyboard event, so the loop cannot run on its own.
+  //
+  // `DragOverEvent` extends `DragMoveEvent`, so this serves both props.
+  const handleDragPreview = useCallback(
+    ({ over, delta }: DragMoveEvent): void => {
       const session = dragSessionRef.current
-      if (!session || !event.over) return
+      if (!session || !over) return
 
-      const overData = event.over.data.current as OverTarget | undefined
+      const overData = over.data.current as OverTarget | undefined
       if (!overData || (overData.type !== 'tag' && overData.type !== 'tag-container')) return
+
+      const last = lastPreviewDeltaRef.current
+      if (last && last.x === delta.x && last.y === delta.y) return
 
       const base = overrideRef.current ?? session.snapshot
       const next = previewContainerMove(base, session.tag, overData)
-      if (next) applyOverride(next)
+      if (!next) return
+      lastPreviewDeltaRef.current = { x: delta.x, y: delta.y }
+      applyOverride(next)
     },
     [applyOverride]
   )
 
   const handleDragCancel = useCallback((): void => {
     dragSessionRef.current = null
+    lastPreviewDeltaRef.current = null
     setActiveDrag(null)
     applyOverride(null)
   }, [applyOverride])
@@ -283,6 +306,7 @@ export function TagsHubPage(): React.JSX.Element {
     (event: DragEndEvent): void => {
       const session = dragSessionRef.current
       dragSessionRef.current = null
+      lastPreviewDeltaRef.current = null
       setActiveDrag(null)
 
       // Belt-and-suspenders alongside `activeSensors`: even if a drag end
@@ -382,7 +406,8 @@ export function TagsHubPage(): React.JSX.Element {
               collisionDetection={hubCollisionDetection}
               measuring={hubMeasuring}
               onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
+              onDragMove={handleDragPreview}
+              onDragOver={handleDragPreview}
               onDragCancel={handleDragCancel}
               onDragEnd={handleDragEnd}
             >

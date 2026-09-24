@@ -80,8 +80,12 @@ export function NoteIconDisplay({
       />
     )
   }
+  // `font-emoji` pins the glyph to a color emoji font (see emoji-font.css) so
+  // the icon matches what the picker showed, whatever the UI font is.
   return (
-    <span className={cn('inline-flex items-center justify-center leading-none', className)}>
+    <span
+      className={cn('inline-flex items-center justify-center font-emoji leading-none', className)}
+    >
       {value}
     </span>
   )

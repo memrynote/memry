@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ICS_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
 import { cn } from '@/lib/utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import type {
@@ -30,6 +29,7 @@ import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useT } from '@memry/i18n/renderer'
+import { externalEventSourceLabel } from '@/lib/calendar-external-items'
 
 const log = createLogger('JournalDayPanel')
 
@@ -93,18 +93,12 @@ function formatSnoozeOffset(minutes: number): string {
   return `${sign}${hours}h${rem}m`
 }
 
-function capitalize(value: string): string {
-  if (!value) return value
-  return value[0].toUpperCase() + value.slice(1)
-}
-
 function getScheduleLabel(item: CalendarProjectionItem): string | null {
   switch (item.visualType) {
     case 'event':
       return null
     case 'external_event':
-      if (item.source.provider === ICS_CALENDAR_PROVIDER) return item.source.title
-      return item.source.provider ? capitalize(item.source.provider) : null
+      return externalEventSourceLabel(item.source)
     case 'reminder':
       return item.snoozeOffsetMinutes !== null ? formatSnoozeOffset(item.snoozeOffsetMinutes) : null
     case 'snooze':

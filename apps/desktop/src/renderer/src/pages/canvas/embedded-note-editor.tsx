@@ -34,6 +34,8 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
   const lastSavedContentRef = useRef<string | null>(null)
   const pendingContentRef = useRef<string | null>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The note whose save lifecycle is running, cleared once its unmount flush ran.
+  const liveNoteIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (note && lastSavedContentRef.current === null) {
@@ -65,15 +67,27 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
 
   useEffect(() => {
     const registryKey = `canvas-card:${noteId}`
+    liveNoteIdRef.current = noteId
     registerPendingSave(registryKey, flush)
     return () => {
       unregisterPendingSave(registryKey)
       void flush()
+      liveNoteIdRef.current = null
     }
   }, [noteId, flush])
 
   const handleMarkdownChange = useCallback(
     (markdown: string) => {
+      // The editor's teardown flush reports its last edit after the flush above
+      // already ran (#1900). A timer armed now would be invisible to quit, so
+      // the edit is saved straight away, to the note it was typed in.
+      if (liveNoteIdRef.current !== noteId) {
+        notesService.update({ id: noteId, content: markdown }).catch((err: unknown) => {
+          log.error('Failed to save note after its editor closed', { noteId, error: err })
+          trackRendererError('canvas_card_note_save', err)
+        })
+        return
+      }
       if (markdown === lastSavedContentRef.current) return
       pendingContentRef.current = markdown
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
@@ -82,7 +96,7 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
         void flush()
       }, SAVE_DEBOUNCE_MS)
     },
-    [flush]
+    [noteId, flush]
   )
 
   if (!note) {

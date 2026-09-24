@@ -67,6 +67,11 @@ export const PromoteExternalEventSchema = z.object({
   externalEventId: z.string().min(1)
 })
 
+/** #2374: one mirrored external event with its details, for the read-only event card. */
+export const GetExternalEventSchema = z.object({
+  externalEventId: z.string().min(1)
+})
+
 export const ListGoogleCalendarsSchema = z.object({}).optional().default({})
 
 export const SetDefaultGoogleCalendarSchema = z.object({
@@ -90,7 +95,12 @@ export const GetCalendarRangeSchema = z.object({
   includeUnselectedSources: z.boolean().default(false),
   // false = native memrynote events only, no Google-synced external events
   // (forced by the agent MCP surface for Google Workspace Limited Use).
-  includeExternal: z.boolean().optional()
+  // Kept for older renderers; `externalProviders` narrows it per provider.
+  includeExternal: z.boolean().optional(),
+  // #1394: allow-list of providers whose external events may appear. The
+  // agent read path sends exactly the providers the user consented to; an
+  // empty list means no external events at all. Omitted = no filter.
+  externalProviders: z.array(z.string().min(1)).max(64).optional()
 })
 
 export const ListCalendarSourcesSchema = z.object({
@@ -104,9 +114,111 @@ export const UpdateCalendarSourceSelectionSchema = z.object({
   isSelected: z.boolean()
 })
 
+/**
+ * What a non-OAuth provider needs to connect (#1392). OAuth providers send no
+ * connection payload; the flow runs in main.
+ */
+export const CalendarProviderConnectionSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('url'),
+    url: z.string().trim().min(1).max(4096),
+    title: z.string().trim().max(200).optional()
+  }),
+  z.object({
+    kind: z.literal('basic'),
+    serverUrl: z.string().trim().min(1).max(4096),
+    username: z.string().trim().min(1).max(320),
+    password: z.string().min(1).max(1024),
+    /** Server preset the user picked, for copy and telemetry only. */
+    preset: z.string().trim().max(64).optional(),
+    /** Remote calendar ids to show; omitted = the provider's default selection. */
+    selectedCalendarIds: z.array(z.string().min(1).max(4096)).max(500).optional(),
+    /**
+     * #1396: the user saw the devices below CALENDAR_MULTI_WRITER_MIN_APP_VERSION
+     * and chose to connect anyway. Without it, a writable provider refuses to
+     * connect while such devices exist.
+     */
+    acknowledgeOutdatedDevices: z.boolean().optional()
+  })
+])
+
+/**
+ * The first build that never double-pushes an item another provider holds and
+ * resolves a non-Google `target_calendar_id` correctly (#2372). A device below
+ * it mishandles bindings and targets from a second writable provider (#1396),
+ * so connecting one first lists those devices. Set to the release that ships
+ * the write routing; anything built before it compares lower.
+ */
+export const CALENDAR_MULTI_WRITER_MIN_APP_VERSION = '2026.925.0'
+
+export const CheckProviderWriterCompatSchema = z.object({
+  provider: z.string().min(1)
+})
+
+export type CheckProviderWriterCompatInput = z.infer<typeof CheckProviderWriterCompatSchema>
+
+export interface CalendarWriterCompatDevice {
+  id: string
+  name: string
+  platform: string
+  /** null when the server has no version for the device: treated as outdated. */
+  appVersion: string | null
+}
+
+export interface CalendarWriterCompatResponse {
+  /** false when connecting this provider adds no second writer (Google, read-only providers). */
+  required: boolean
+  /** false when the device list could not be read; the user must acknowledge blind. */
+  verified: boolean
+  minVersion: string
+  outdatedDevices: CalendarWriterCompatDevice[]
+}
+
 export const CalendarProviderRequestSchema = z.object({
   provider: z.string().min(1),
-  accountId: z.string().min(1).optional()
+  accountId: z.string().min(1).optional(),
+  /** #1392: one source of a provider, for providers whose sources have no account (ICS). */
+  sourceId: z.string().min(1).optional(),
+  /** #1392: additive. Older callers send `{ provider }` only. */
+  connection: CalendarProviderConnectionSchema.optional(),
+  /** #1392: attach `capabilities` to the returned status. */
+  includeCapabilities: z.boolean().optional()
+})
+
+/**
+ * #1401: run a provider's discovery with the given connection and report what
+ * it found, saving nothing ("Test connection").
+ */
+export const DiscoverProviderCalendarsSchema = z.object({
+  provider: z.string().min(1),
+  connection: CalendarProviderConnectionSchema
+})
+
+export type DiscoverProviderCalendarsInput = z.infer<typeof DiscoverProviderCalendarsSchema>
+
+export interface DiscoveredProviderCalendar {
+  /** The remote calendar id (a CalDAV collection URL). */
+  id: string
+  title: string
+  color: string | null
+}
+
+export interface DiscoverProviderCalendarsResponse {
+  success: boolean
+  calendars: DiscoveredProviderCalendar[]
+  /** A code the renderer localizes (`unauthorized`, `unreachable`, `not_caldav`, ...). */
+  errorCode?: string
+  error?: string
+}
+
+export const ListProviderCalendarsSchema = z.object({
+  provider: z.string().min(1)
+})
+
+export const SetDefaultProviderCalendarSchema = z.object({
+  provider: z.string().min(1),
+  calendarId: z.string().nullable(),
+  markOnboardingComplete: z.boolean().default(true)
 })
 
 export const RetryCalendarSourceSyncSchema = z.object({
@@ -117,6 +229,79 @@ export type RetryCalendarSourceSyncInput = z.infer<typeof RetryCalendarSourceSyn
 
 /** `calendar_sources.provider` for read-only calendars subscribed by URL (#1207). */
 export const ICS_CALENDAR_PROVIDER = 'ics'
+
+/** `calendar_sources.provider` for the Google Calendar API provider. */
+export const GOOGLE_CALENDAR_PROVIDER = 'google'
+
+/** `calendar_sources.provider` for CalDAV servers (RFC 4791): iCloud, Fastmail, Nextcloud, ... */
+export const CALDAV_CALENDAR_PROVIDER = 'caldav'
+
+/**
+ * `calendar_sources.provider` for the calendars macOS Calendar.app already has,
+ * read through EventKit (#2374). macOS only, read-only, and nothing it writes
+ * leaves the device.
+ */
+export const APPLE_EVENTKIT_CALENDAR_PROVIDER = 'apple-eventkit'
+
+/**
+ * `errorCode` a provider operation returns when the provider exists in this
+ * build but not on this OS (the macOS Calendar provider on Windows or Linux).
+ */
+export const CALENDAR_PROVIDER_UNSUPPORTED_PLATFORM = 'unsupported_platform'
+
+/**
+ * Whether a provider's rows travel through sync. `synced` rows are enqueued
+ * like any other record; `device` rows never leave the device that wrote them.
+ */
+export type CalendarProviderScope = 'synced' | 'device'
+
+export type CalendarProviderIncrementalMode =
+  'sync-token' | 'delta-link' | 'sync-collection' | 'ctag-etag' | 'conditional-get' | 'full'
+
+export type CalendarProviderAuthFlow = 'oauth2' | 'basic' | 'url' | 'os-permission'
+
+/** The `process.platform` values the desktop app ships on. */
+export type CalendarProviderPlatform = 'darwin' | 'win32' | 'linux'
+
+/**
+ * What a calendar provider can do (#1391). Every "is this read-only / can this
+ * be promoted / does this sync" decision reads these instead of comparing
+ * provider ids.
+ */
+export interface CalendarProviderCapabilities {
+  supportsWrite: boolean
+  supportsCreateCalendar: boolean
+  supportsPush: boolean
+  supportsMultiAccount: boolean
+  requiresMemryAccount: boolean
+  /** Whether `calendar_external_events` mirrored from this provider sync. The cursor travels only if the mirror travels. */
+  mirrorScope: CalendarProviderScope
+  /** Whether the provider's `calendar_sources` rows themselves sync. */
+  sourceScope: CalendarProviderScope
+  /** Omitted = every platform. A provider outside its platforms does not exist there. */
+  platforms?: CalendarProviderPlatform[]
+  incrementalMode: CalendarProviderIncrementalMode
+  authFlow: CalendarProviderAuthFlow
+  /** For `supportsPush: false` providers: how often this device polls, in milliseconds. */
+  pollIntervalMs?: number
+}
+
+/**
+ * Providers whose rows must never be enqueued by the shared sync handlers.
+ * `@memry/sync-client` cannot read the desktop capability table, so the
+ * device-local subset lives here and the desktop table is tested against it.
+ *
+ * - `sources`: `sourceScope: 'device'`. Their `calendar_sources` rows stay on the device.
+ * - `mirrors`: `mirrorScope: 'device'`. Their `calendar_external_events` stay on the device.
+ *   A device-local source always has a device-local mirror, so `sources` is a subset.
+ */
+export const DEVICE_LOCAL_CALENDAR_PROVIDERS: {
+  readonly sources: readonly string[]
+  readonly mirrors: readonly string[]
+} = {
+  sources: [APPLE_EVENTKIT_CALENDAR_PROVIDER],
+  mirrors: [ICS_CALENDAR_PROVIDER, APPLE_EVENTKIT_CALENDAR_PROVIDER]
+}
 
 /**
  * Why a feed could not be fetched or read. Stored as `calendar_sources.last_error`
@@ -131,7 +316,11 @@ export const IcsFeedErrorCodeSchema = z.enum([
   'unauthorized',
   'http_error',
   'too_large',
-  'not_a_calendar'
+  'not_a_calendar',
+  // #1397: added after the first release. An older renderer shows these as
+  // its generic "couldn't update ({code})" message.
+  'too_many_redirects',
+  'unsupported_redirect'
 ])
 
 export const SubscribeIcsCalendarSchema = z.object({
@@ -143,15 +332,39 @@ export const IcsCalendarSourceRequestSchema = z.object({
   sourceId: z.string().min(1)
 })
 
+/**
+ * #1398: rename or recolour a subscription. Both land on the synced source row,
+ * so every device shows them. `color` is stored as its `#rrggbb`, the format
+ * `calendar_sources.color` already carries for Google calendars, so older
+ * builds paint it without knowing the name. There is no "clear colour": the
+ * source sync merge keeps the old value when the incoming one is null.
+ */
+export const UpdateIcsCalendarSchema = z.object({
+  sourceId: z.string().min(1),
+  title: z.string().trim().min(1).max(200).optional(),
+  color: CalendarEventColorSchema.optional()
+})
+
 export type IcsFeedErrorCode = z.infer<typeof IcsFeedErrorCodeSchema>
 export type SubscribeIcsCalendarInput = z.infer<typeof SubscribeIcsCalendarSchema>
 export type IcsCalendarSourceRequest = z.infer<typeof IcsCalendarSourceRequestSchema>
+export type UpdateIcsCalendarInput = z.infer<typeof UpdateIcsCalendarSchema>
+
+/** #1398: what a subscription put on the calendar, for the confirmation after subscribing. */
+export interface IcsCalendarFeedSummary {
+  eventCount: number
+  /** Start of the earliest and latest mirrored instance; null when there are none. */
+  firstStartAt: string | null
+  lastStartAt: string | null
+}
 
 export interface IcsCalendarMutationResponse {
   success: boolean
   source: CalendarSourceRecord | null
   errorCode?: IcsFeedErrorCode
   error?: string
+  /** #1398: set by a successful subscribe. */
+  summary?: IcsCalendarFeedSummary
 }
 
 export interface RetryCalendarSourceSyncResponse {
@@ -174,7 +387,11 @@ export type GetCalendarRangeInput = z.infer<typeof GetCalendarRangeSchema>
 export type ListCalendarSourcesInput = z.infer<typeof ListCalendarSourcesSchema>
 export type UpdateCalendarSourceSelectionInput = z.infer<typeof UpdateCalendarSourceSelectionSchema>
 export type CalendarProviderRequest = z.infer<typeof CalendarProviderRequestSchema>
+export type CalendarProviderConnection = z.infer<typeof CalendarProviderConnectionSchema>
+export type ListProviderCalendarsInput = z.infer<typeof ListProviderCalendarsSchema>
+export type SetDefaultProviderCalendarInput = z.infer<typeof SetDefaultProviderCalendarSchema>
 export type PromoteExternalEventInput = z.infer<typeof PromoteExternalEventSchema>
+export type GetExternalEventInput = z.infer<typeof GetExternalEventSchema>
 export type ListGoogleCalendarsInput = z.infer<typeof ListGoogleCalendarsSchema>
 export type SetDefaultGoogleCalendarInput = z.infer<typeof SetDefaultGoogleCalendarSchema>
 
@@ -343,10 +560,22 @@ export interface CalendarProviderAccountStatus {
   status: CalendarProviderAccountConnectionStatus
   lastSyncedAt: string | null
   lastError: string | null
+  /**
+   * #1401: why a `reconnect_required` account needs attention on this device:
+   * it never had the credential here (`missing`), or the server rejected it
+   * (`rejected`, e.g. a revoked app password). Omitted when unknown.
+   */
+  reconnectReason?: 'missing' | 'rejected'
+  /** #1401: for basic-auth accounts, what a reconnect form prefills. Never a password. */
+  serverUrl?: string
+  username?: string
+  preset?: string | null
 }
 
 export interface CalendarProviderStatus {
   provider: string
+  /** #1392: optional so an older renderer that ignores it keeps working. */
+  capabilities?: CalendarProviderCapabilities
   connected: boolean
   hasLocalAuth: boolean
   account: Pick<CalendarSourceRecord, 'id' | 'title'> | null
@@ -414,6 +643,51 @@ export interface CalendarProviderMutationResponse {
   success: boolean
   status: CalendarProviderStatus
   error?: string
+  /** #1392: a code the renderer localizes (an `IcsFeedErrorCode`, a CalDAV connect failure). */
+  errorCode?: string
+  /** #1392: the source a URL connect created or a per-source refresh touched. */
+  source?: CalendarSourceRecord | null
+}
+
+/**
+ * #2374: what the read-only event card shows for a mirrored event. Fields a
+ * provider does not supply are null (an ICS feed has no attendees).
+ */
+export interface CalendarExternalEventDetails {
+  id: string
+  title: string
+  description: string | null
+  location: string | null
+  startAt: string
+  endAt: string | null
+  timezone: string | null
+  isAllDay: boolean
+  status: string
+  recurrenceRule: Record<string, unknown> | null
+  attendees: CalendarEventAttendeeRecord[] | null
+  reminders: CalendarEventRemindersRecord | null
+  conferenceData: CalendarEventConferenceDataRecord | null
+  source: {
+    id: string
+    provider: string
+    title: string
+    color: string | null
+    /** The account the calendar belongs to, when the provider knows it. */
+    accountTitle: string | null
+  } | null
+}
+
+export interface GetExternalEventResponse {
+  event: CalendarExternalEventDetails | null
+}
+
+export interface CalendarProviderDescriptor {
+  id: string
+  capabilities: CalendarProviderCapabilities
+}
+
+export interface ListCalendarProvidersResponse {
+  providers: CalendarProviderDescriptor[]
 }
 
 // ============================================================================
@@ -434,6 +708,15 @@ export interface ListGoogleCalendarsResponse {
   currentDefaultId: string | null
 }
 
+export type ProviderCalendarDescriptorRecord = GoogleCalendarDescriptorRecord
+
+export interface ListProviderCalendarsResponse {
+  provider: string
+  calendars: ProviderCalendarDescriptorRecord[]
+  primary: ProviderCalendarDescriptorRecord | null
+  currentDefaultId: string | null
+}
+
 export interface PromoteExternalEventResponse {
   success: boolean
   eventId: string | null
@@ -444,3 +727,5 @@ export interface SetDefaultGoogleCalendarResponse {
   success: boolean
   error?: string
 }
+
+export type SetDefaultProviderCalendarResponse = SetDefaultGoogleCalendarResponse

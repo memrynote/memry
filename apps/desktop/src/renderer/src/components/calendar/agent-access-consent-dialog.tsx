@@ -1,17 +1,19 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useT } from '@memry/i18n/renderer'
+import { GOOGLE_CALENDAR_PROVIDER } from '@memry/contracts/calendar-api'
 import { Button } from '@/components/ui/button'
 import { useAgentAccessConsent } from '@/hooks/use-agent-access-consent'
 import { cn } from '@/lib/utils'
 
 export interface AgentAccessConsentDialogProps {
-  /** Whether this vault has Google calendars imported. No connection, no question. */
-  hasImportedSources: boolean
+  /** Providers this vault has calendars from. No calendars, no question. */
+  providerIds: string[]
 }
 
 /**
- * Google Workspace Limited Use: asked once, the first time a user with a live
- * Google Calendar connection opens the calendar. Both buttons are an answer —
+ * Asked once per provider (#1394), the first time a user with calendars from
+ * it opens the calendar. For Google this is the Workspace Limited Use prompt,
+ * with its original copy. Both buttons are an answer —
  * there is no dismiss, and Escape/outside clicks are suppressed, because an
  * unanswered prompt is exactly what makes us ask again on the next visit.
  *
@@ -19,12 +21,35 @@ export interface AgentAccessConsentDialogProps {
  * this dialog, and the calendar page is already at its line budget.
  */
 export function AgentAccessConsentDialog({
-  hasImportedSources
+  providerIds
 }: AgentAccessConsentDialogProps): React.JSX.Element | null {
   const { t } = useT('calendar')
-  const { isPromptOpen, isSaving, error, decide } = useAgentAccessConsent(hasImportedSources)
+  const { promptProvider, isSaving, error, decide } = useAgentAccessConsent(providerIds)
 
-  if (!isPromptOpen) return null
+  if (!promptProvider) return null
+
+  const providerName =
+    promptProvider === 'ics'
+      ? t('agent-access-dialog.provider-names.ics')
+      : promptProvider === 'caldav'
+        ? t('agent-access-dialog.provider-names.caldav')
+        : promptProvider === 'apple-eventkit'
+          ? t('agent-access-dialog.provider-names.apple-eventkit')
+          : promptProvider
+  const copy =
+    promptProvider === GOOGLE_CALENDAR_PROVIDER
+      ? {
+          aria: t('agent-access-dialog.aria'),
+          title: t('agent-access-dialog.title'),
+          body: t('agent-access-dialog.body'),
+          footnote: t('agent-access-dialog.footnote')
+        }
+      : {
+          aria: t('agent-access-dialog.provider.aria', { provider: providerName }),
+          title: t('agent-access-dialog.provider.title', { provider: providerName }),
+          body: t('agent-access-dialog.provider.body'),
+          footnote: t('agent-access-dialog.provider.footnote')
+        }
 
   return (
     <DialogPrimitive.Root open>
@@ -32,7 +57,8 @@ export function AgentAccessConsentDialog({
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" />
         <DialogPrimitive.Content
           data-testid="agent-access-consent-dialog"
-          aria-label={t('agent-access-dialog.aria')}
+          data-provider={promptProvider}
+          aria-label={copy.aria}
           onEscapeKeyDown={(event) => event.preventDefault()}
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
@@ -44,12 +70,12 @@ export function AgentAccessConsentDialog({
           )}
         >
           <DialogPrimitive.Title className="mb-1 text-lg font-semibold">
-            {t('agent-access-dialog.title')}
+            {copy.title}
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="mb-2 text-sm text-muted-foreground">
-            {t('agent-access-dialog.body')}
+            {copy.body}
           </DialogPrimitive.Description>
-          <p className="text-xs/4 text-muted-foreground">{t('agent-access-dialog.footnote')}</p>
+          <p className="text-xs/4 text-muted-foreground">{copy.footnote}</p>
 
           {error && (
             <p role="alert" className="mt-3 text-xs text-destructive">

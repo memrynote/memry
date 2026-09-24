@@ -28,6 +28,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BlockNoteEditor, type Block } from '@blocknote/core'
 import * as Y from 'yjs'
 import { TextSelection } from '@tiptap/pm/state'
+import { yUndoPluginKey } from 'y-prosemirror'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 
 // The file block's PDF preview pulls pdf.js, which touches `DOMMatrix` at
@@ -376,6 +377,85 @@ describe('opening a collaborative note promotes its links without an edit', () =
     // and not an excuse to do nothing
     expect(wikiLinkTargets(editor, 1)).toEqual(['Other Block'])
     expect(nodeNames(fragment).filter((name) => name === 'wikiLink')).toHaveLength(1)
+  })
+})
+
+/**
+ * Raw `[[X]]` that reaches an OPEN editor through Yjs.
+ *
+ * y-prosemirror renders a remote update inside its binding mutex, and
+ * BlockNote's `onChange` fires synchronously from that render. A promotion
+ * written from there reached ProseMirror but not the Y.Doc, so the chip showed
+ * until the next Y change re-rendered the paragraph from the doc, which then
+ * read `[[note1]] [[note2]]` until the user clicked into it.
+ */
+describe('raw [[X]] arriving in a remote update to an open editor', () => {
+  function openWithChangeListener(): CollabEditor {
+    const local = createCollaborativeEditor()
+    seedWithPlainText(local.editor, 'hello')
+    const handleChange = mountEditorSync(local.editor, local.fragment)
+    // What BlockNoteView's `onChange` prop does.
+    local.editor.onChange(() => handleChange())
+    return local
+  }
+
+  function remoteEditorFor(local: CollabEditor): CollabEditor {
+    const remoteDoc = new Y.Doc()
+    Y.applyUpdate(remoteDoc, Y.encodeStateAsUpdate(local.doc))
+    return createCollaborativeEditor(remoteDoc)
+  }
+
+  async function deliver(from: CollabEditor, to: CollabEditor): Promise<void> {
+    await act(async () => {
+      Y.applyUpdate(to.doc, Y.encodeStateAsUpdate(from.doc, Y.encodeStateVector(to.doc)), 'remote')
+    })
+  }
+
+  it('promotes it in the shared doc, so a later remote update keeps the chips', async () => {
+    // #given an open editor, and another writer that puts raw links in the body
+    const local = openWithChangeListener()
+    const remote = remoteEditorFor(local)
+    remote.editor.replaceBlocks(remote.editor.document, [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: '[[note1]] [[note2]]', styles: {} }]
+      } as never
+    ])
+
+    // #when it arrives
+    await deliver(remote, local)
+
+    // #then the chips are in the Y.Doc, not only in the editor
+    expect(wikiLinkTargets(local.editor)).toEqual(['note1', 'note2'])
+    expect(nodeNames(local.fragment).filter((name) => name === 'wikiLink')).toHaveLength(2)
+
+    // #and an unrelated remote change re-renders from that doc without losing them
+    remote.editor.insertBlocks(
+      [{ type: 'paragraph', content: 'later' } as never],
+      remote.editor.document[0],
+      'after'
+    )
+    await deliver(remote, local)
+
+    expect(wikiLinkTargets(local.editor)).toEqual(['note1', 'note2'])
+  })
+
+  it('keeps the promotion off the undo stack', async () => {
+    // #given
+    const local = openWithChangeListener()
+    const remote = remoteEditorFor(local)
+    remote.editor.replaceBlocks(remote.editor.document, [
+      { type: 'paragraph', content: [{ type: 'text', text: '[[note1]]', styles: {} }] } as never
+    ])
+
+    // #when
+    await deliver(remote, local)
+
+    // #then the user did not type it, so Cmd+Z has nothing of it to undo
+    const tiptap = (local.editor as unknown as { _tiptapEditor: any })._tiptapEditor
+    const undoManager = yUndoPluginKey.getState(tiptap.state)?.undoManager
+    expect(wikiLinkTargets(local.editor)).toEqual(['note1'])
+    expect(undoManager?.undoStack ?? []).toHaveLength(0)
   })
 })
 
