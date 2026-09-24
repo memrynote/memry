@@ -12,7 +12,6 @@ vi.mock('./blob', async (importOriginal) => ({
 
 vi.mock('./quota', () => ({
   adjustStorageUsed: vi.fn().mockResolvedValue(undefined),
-  checkQuota: vi.fn().mockResolvedValue(undefined),
   reserveStorage: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -55,13 +54,12 @@ import {
 } from './sync'
 import { getDevice } from './device'
 import { getBlob, putBlob } from './blob'
-import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
+import { adjustStorageUsed, reserveStorage } from './quota'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
 const mockedVerifyEd25519 = vi.mocked(verifyEd25519)
 const mockedGetDevice = vi.mocked(getDevice)
 const mockedEncodeSignaturePayload = vi.mocked(encodeSignaturePayload)
-const mockedCheckQuota = vi.mocked(checkQuota)
 const mockedReserveStorage = vi.mocked(reserveStorage)
 const mockedAdjustStorageUsed = vi.mocked(adjustStorageUsed)
 let cursorSequenceTop = 41
@@ -1748,7 +1746,6 @@ describe('processRecordPushBatch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     armCursorSequence(42)
-    mockedCheckQuota.mockResolvedValue(undefined)
     mockedReserveStorage.mockResolvedValue(undefined)
     mockedAdjustStorageUsed.mockResolvedValue(undefined)
     mockedVerifyEd25519.mockResolvedValue(true)
@@ -1797,7 +1794,6 @@ describe('processRecordPushBatch', () => {
     )
 
     // #then
-    expect(mockedCheckQuota).toHaveBeenCalled()
     expect(result.accepted).toEqual(['item-a'])
     expect(result.rejected).toEqual([{ id: 'item-b', reason: 'SYNC_REPLAY_DETECTED' }])
     expect(result.maxCursor).toBe(42)
