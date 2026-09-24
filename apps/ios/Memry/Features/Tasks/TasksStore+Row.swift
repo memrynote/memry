@@ -134,6 +134,15 @@ extension TasksStore {
         }
     }
 
+    /// Moves the due date to a picked day (the When menu), keeping the time.
+    func rowSetDue(_ task: TaskItem, date: String) async {
+        guard date != task.dueDate.map({ String($0.prefix(10)) }) else { return }
+        let id = task.id
+        let time = task.dueTime
+        let label = TaskDueLabel.make(date: date, time: nil, today: today(), isDone: false)?.day ?? date
+        await perform(TasksCopy.rowRescheduledTo(label)) { try $0.setDue(id: id, date: date, time: time) }
+    }
+
     /// Moves the task (and its subtasks) to another project.
     func rowMove(_ task: TaskItem, to project: ProjectItem) async {
         guard project.id != task.projectId else { return }

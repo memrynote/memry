@@ -80,7 +80,8 @@ extension TasksStore {
         let done = result.doneIds.filter { items[$0]?.parentId == nil }
         if !done.isEmpty {
             sections.append(section(
-                id: "done", kind: .done, title: TasksCopy.doneGroup, color: nil, ids: done, bucket: nil, orders: orders
+                id: "done", kind: .done, title: TasksCopy.completedGroup, color: nil, ids: done, bucket: nil,
+                orders: orders
             ))
         }
         return sections
@@ -102,8 +103,11 @@ extension TasksStore {
             ))
         }
         if !rest.isEmpty {
+            // Under an Overdue header the rest of the view gets its own name
+            // ("Today 4", artboard 01); alone it needs none.
+            let title = overdue.isEmpty ? nil : TasksCopy.tabTitle(state.tab)
             sections.append(section(
-                id: "flat", kind: .flat, title: nil, color: nil, ids: rest, bucket: nil, orders: orders
+                id: "flat", kind: .flat, title: title, color: nil, ids: rest, bucket: nil, orders: orders
             ))
         }
         return sections
@@ -153,9 +157,11 @@ extension TasksStore {
         return total > 0 ? (done, total) : nil
     }
 
-    /// The empty state to show, or `nil` when the list has rows.
+    /// The empty state to show, or `nil` when the list has open rows. A view
+    /// whose tasks are all done is empty too (artboard 20); its Completed
+    /// section stays under the empty state.
     var listEmptyState: TaskListEmptyState? {
-        guard let result, result.taskIds.isEmpty, result.doneIds.isEmpty else { return nil }
+        guard let result, result.taskIds.isEmpty else { return nil }
         if state.filters.isActive, result.totalCount > 0 { return .filtered }
         switch state.tab {
         case .today: return .today

@@ -21,6 +21,8 @@ extension TasksCopy {
     static let rowNextWeek = "Next week"
     static let rowRemoveDate = "Remove date"
     static let rowMoveToProject = "Move to project"
+    /// `moveTo` (tasks.json).
+    static let rowMoveTo = "Move to"
     static let rowChangeStatus = "Change status"
     static let rowCurrent = "Current"
 
@@ -68,6 +70,9 @@ extension TasksCopy {
 
     static func rowSubtasks(done: Int, total: Int) -> String { "\(done) of \(total) subtasks done" }
     static func rowProject(_ name: String) -> String { "Project: \(name)" }
+    static func tagLabel(_ tag: String) -> String { "Tag \(tag)" }
+    /// `formatDueDate`'s "Yesterday".
+    static let dueYesterday = "Yesterday"
     static func rowPriority(_ value: Int64) -> String { "Priority: \(priorityLabel(value))" }
     static func rowTags(_ tags: [String]) -> String { "Tags: \(tags.joined(separator: ", "))" }
 

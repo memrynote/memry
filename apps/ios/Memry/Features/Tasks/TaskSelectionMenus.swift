@@ -70,7 +70,7 @@ struct TaskBulkDueMenu: View {
             }
             .accessibilityIdentifier("tasks.bulk.due.remove")
         } label: {
-            TaskBulkActionLabel(title: TasksCopy.bulkDueDate, systemImage: "calendar")
+            TaskBulkActionLabel(title: TasksCopy.bulkDate, systemImage: "calendar")
         }
         .accessibilityIdentifier("tasks.bulk.due")
     }
@@ -92,7 +92,7 @@ struct TaskBulkMoveMenu: View {
                 .accessibilityIdentifier("tasks.bulk.move.\(project.id)")
             }
         } label: {
-            TaskBulkActionLabel(title: TasksCopy.bulkMoveTo, systemImage: "folder")
+            TaskBulkActionLabel(title: TasksCopy.bulkMove, systemImage: "folder")
         }
         .accessibilityIdentifier("tasks.bulk.move")
     }

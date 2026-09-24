@@ -1,43 +1,67 @@
 import SwiftUI
 
-// TP040. The list's empty states and Today's progress, in desktop's copy:
-// `task-empty-state.tsx`, `today-empty-state.tsx`, `upcoming-empty-state.tsx`,
-// `empty-states/simple-empty-state.tsx`, `filters/filter-empty-state.tsx`, and
-// the completed-today count `pages/tasks.tsx` keeps for the day's progress.
-// Calm, never confetti: a bar, a count, and a check when the day is done.
+// TP040, redesigned (RD20). The list's empty states (Paper artboard 20): a
+// small glyph, the title, and either the next useful view ("6 tasks due
+// tomorrow." + "Show tomorrow") or the view's own description and action, in
+// desktop's copy (`task-empty-state.tsx`, `today-empty-state.tsx`,
+// `upcoming-empty-state.tsx`, `filters/filter-empty-state.tsx`). Leading
+// aligned, calm, never confetti.
+
+/// A view the empty state can send the user to, and how much waits there.
+struct TaskListEmptyNext: Equatable {
+    let tab: TasksTab
+    let count: Int
+}
+
+extension TasksStore {
+    /// The next view with open tasks: Today → Tomorrow → Next 7 days;
+    /// Tomorrow → Next 7 days; Next 7 days → All.
+    var listEmptyNext: TaskListEmptyNext? {
+        let chain: [TasksTab] = switch state.tab {
+        case .today: [.tomorrow, .next7]
+        case .tomorrow: [.next7]
+        case .next7: [.all]
+        case .all, .archived: []
+        }
+        return chain.lazy.map { TaskListEmptyNext(tab: $0, count: self.tabCount($0)) }.first { $0.count > 0 }
+    }
+}
 
 /// One empty state, with its action.
 struct TaskListEmptyView: View {
     let state: TaskListEmptyState
+    let next: TaskListEmptyNext?
     let addTask: () -> Void
+    let show: (TasksTab) -> Void
     let clearFilters: () -> Void
 
     var body: some View {
-        VStack(spacing: Tokens.Space.medium) {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
             Image(systemName: symbol)
-                .font(Tokens.Typography.screenTitle.font)
+                .font(Tokens.Typography.sectionTitle.font)
                 .foregroundStyle(symbolColor)
                 .accessibilityHidden(true)
             Text(title)
-                .font(Tokens.Typography.heading.font)
+                .font(TypeRole(.subsectionTitle, weight: .semibold).font)
                 .foregroundStyle(Tokens.Text.primary.color)
-                .multilineTextAlignment(.center)
-            if let description {
-                Text(description)
+                .padding(.top, Tokens.Space.tight)
+                .accessibilityAddTraits(.isHeader)
+            if let detail {
+                Text(detail)
                     .font(Tokens.Typography.supporting.font)
                     .foregroundStyle(Tokens.Text.tertiary.color)
-                    .multilineTextAlignment(.center)
             }
             if let action {
                 Button(action.title, action: action.run)
-                    .buttonStyle(.bordered)
+                    .font(Tokens.Typography.supporting.font.weight(.semibold))
+                    .foregroundStyle(Tokens.Text.tint.color)
+                    .buttonStyle(.plain)
                     .frame(minHeight: Tokens.Size.minimumHitArea)
                     .accessibilityIdentifier(action.identifier)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, Tokens.Space.screenBlock)
-        .padding(.horizontal, Tokens.Space.screenInline)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tasks.empty")
     }
@@ -45,7 +69,7 @@ struct TaskListEmptyView: View {
     private var symbol: String {
         switch state {
         case .filtered: "magnifyingglass"
-        case .today: "checkmark.circle"
+        case .today: "checkmark.circle.fill"
         case .tomorrow, .next7: "calendar"
         case .project: "folder"
         case .all, .archived: "list.clipboard"
@@ -67,8 +91,12 @@ struct TaskListEmptyView: View {
         }
     }
 
-    private var description: String? {
-        switch state {
+    /// The next view's count where there is one, else the view's own line.
+    private var detail: String? {
+        if state != .filtered, let next {
+            return TasksCopy.nextViewHint(next.count, view: TasksCopy.tabTitle(next.tab))
+        }
+        return switch state {
         case .filtered: TasksCopy.filtersEmptyHelp
         case .all: TasksCopy.allEmptyDescription
         case .project: TasksCopy.projectEmptyDescription
@@ -85,7 +113,15 @@ struct TaskListEmptyView: View {
     }
 
     private var action: Action? {
-        switch state {
+        if state != .filtered, let next {
+            let tab = next.tab
+            return Action(
+                title: TasksCopy.showView(TasksCopy.tabTitle(tab)),
+                identifier: "tasks.empty.showNext",
+                run: { show(tab) }
+            )
+        }
+        return switch state {
         case .filtered:
             Action(title: TasksCopy.clearAllFilters, identifier: "tasks.empty.clearFilters", run: clearFilters)
         case .all, .project:
@@ -99,38 +135,5 @@ struct TaskListEmptyView: View {
         case .archived:
             nil
         }
-    }
-}
-
-/// Today's progress: tasks completed today against everything on Today.
-struct TaskTodayProgress: View {
-    let done: Int
-    let total: Int
-
-    private var isComplete: Bool { done == total }
-
-    var body: some View {
-        HStack(spacing: Tokens.Space.medium) {
-            ProgressView(value: Double(done), total: Double(max(total, 1)))
-                .tint(isComplete ? Tokens.Task.complete.color : Tokens.Task.progress.color)
-                .accessibilityHidden(true)
-            if isComplete {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Tokens.Task.complete.color)
-                    .accessibilityHidden(true)
-                    .transition(.opacity)
-            }
-            Text(isComplete ? TasksCopy.allCaughtUp : TasksCopy.todayProgress(done: done, total: total))
-                .font(Tokens.Typography.caption.font.monospacedDigit())
-                .foregroundStyle(isComplete ? Tokens.Task.complete.color : Tokens.Text.secondary.color)
-                .fixedSize()
-        }
-        .calmAnimation(.normal, value: isComplete)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            isComplete ? TasksCopy.allCaughtUp : TasksCopy.todayProgress(done: done, total: total)
-        )
-        .accessibilityValue("\(done) / \(total)")
-        .accessibilityIdentifier("tasks.progress")
     }
 }

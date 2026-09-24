@@ -311,6 +311,10 @@ enum Tokens {
         static let actionHeight: CGFloat = 52
         /// The one-point boundary that `Line.border` paints.
         static let hairline: CGFloat = 1
+        /// The resting height of a capsule property: a task's detail pills,
+        /// the composer's chips, a filter preset. Visual only: each keeps a
+        /// `minimumHitArea` frame around it, and Dynamic Type grows it.
+        static let pill: CGFloat = 32
         /// A note cover's resting height. Tall enough to read as an image and
         /// short enough that the title stays the dominant read on the screen
         /// (`DESIGN.md`: "one dominant read").

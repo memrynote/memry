@@ -120,4 +120,7 @@ struct TasksViewState: Codable, Equatable, Sendable {
     var collapsedGroups: Set<String> = ["done", "completed"]
     /// Kanban column mode: `status`, `priority`, `dueDate`, `project`, `canonical`.
     var kanbanColumns: String = "status"
+    /// The … menu's "Show completed" off (RD12). Optional so a view state
+    /// saved by an older build, which has no such key, still decodes.
+    var hidesCompleted: Bool?
 }

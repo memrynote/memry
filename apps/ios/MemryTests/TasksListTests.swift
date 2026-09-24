@@ -79,7 +79,48 @@ struct TasksListTests {
         #expect(sections.map(\.id) == ["overdue", "flat"])
         #expect(sections.first?.rows.map(\.id) == [late])
         #expect(sections.last?.rows.map(\.id) == [now])
-        #expect(sections.last?.title == nil)
+        // RD01: under an Overdue header the rest is named for the view.
+        #expect(sections.last?.title == TasksCopy.tabTitle(.today))
+        // A row in it does not repeat the day the header names.
+        #expect(vault.store.sectionNamesDay(try #require(sections.last)))
+        #expect(!vault.store.sectionNamesDay(try #require(sections.first)))
+    }
+
+    @Test func the_title_and_subtitle_name_the_view_scope_and_progress() async throws {
+        let vault = try TasksTestVault()
+        let project = try vault.project("Agent Test Launch")
+        _ = try vault.task("[agent] today", project: project, due: "2026-01-14")
+        let done = try vault.task("[agent] done today", project: project, due: "2026-01-14")
+        _ = try vault.tasks.complete(id: done, localNow: "2026-01-14T09:00:00")
+        await vault.store.load()
+
+        // Today counts what was completed today by the core's clock, which is
+        // not the reference day, so only the open task counts here.
+        await vault.store.selectTab(.today)
+        #expect(vault.store.listTitle == TasksCopy.tabTitle(.today))
+        #expect(vault.store.listSubtitle.hasSuffix(TasksCopy.subtitleDone(0, of: 1)))
+        #expect(vault.store.listSubtitle.contains(TasksCopy.subtitleSeparator))
+
+        await vault.store.selectTab(.all)
+        await vault.store.selectProject(project)
+        #expect(vault.store.listTitle == "Agent Test Launch")
+        #expect(vault.store.listSubtitle == TasksCopy.subtitleDone(1, of: 2))
+
+        await vault.store.updateFilters { $0.priorities = ["high"] }
+        #expect(vault.store.listSubtitle.hasSuffix(TasksCopy.subtitleFiltered))
+    }
+
+    @Test func a_view_whose_tasks_are_all_done_is_empty_and_names_the_next_view() async throws {
+        let vault = try TasksTestVault()
+        let project = try vault.project()
+        let done = try vault.task("[agent] done", project: project, due: "2026-01-14")
+        _ = try vault.task("[agent] tomorrow", project: project, due: "2026-01-15")
+        _ = try vault.tasks.complete(id: done, localNow: "2026-01-14T09:00:00")
+        await vault.store.load()
+        await vault.store.selectTab(.today)
+
+        #expect(vault.store.listEmptyState == .today)
+        #expect(vault.store.listEmptyNext == TaskListEmptyNext(tab: .tomorrow, count: 1))
     }
 
     @Test func groups_follow_the_core_and_done_starts_collapsed() async throws {

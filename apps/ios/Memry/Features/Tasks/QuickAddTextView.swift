@@ -26,10 +26,18 @@ struct QuickAddTextView: UIViewRepresentable {
     let onAcceptGhost: () -> Void
     /// Bumped by the owner to move focus into the field.
     var focusRequest = 0
+    /// The composer submits with "next" and keeps going (RD03).
+    var returnKey: UIReturnKeyType = .done
+    /// A keyboard bar with Done, for a field that has no other way out.
+    var showsDismissBar = true
+    var identifier = "tasks.quickAdd.field"
+    /// Hardware Esc while the field has focus (the composer closes on it).
+    var onEscape: (() -> Void)?
 
     func makeUIView(context: Context) -> UITextView {
         let view = QuickAddUITextView()
         view.delegate = context.coordinator
+        view.onEscape = { [weak coordinator = context.coordinator] in coordinator?.parent.onEscape?() }
         // The overlays follow the view's own layout: an update can arrive
         // before the view has a width, which left the placeholder zero-wide
         // until something else redrew the field.
@@ -44,11 +52,11 @@ struct QuickAddTextView: UIViewRepresentable {
         view.font = Self.font
         view.adjustsFontForContentSizeCategory = true
         view.textColor = Tokens.Text.primary.uiColor
-        view.returnKeyType = .done
+        view.returnKeyType = returnKey
         view.autocorrectionType = .default
         view.accessibilityLabel = TasksCopy.quickAddLabel
-        view.accessibilityIdentifier = "tasks.quickAdd.field"
-        view.inputAccessoryView = Self.dismissBar(for: view)
+        view.accessibilityIdentifier = identifier
+        if showsDismissBar { view.inputAccessoryView = Self.dismissBar(for: view) }
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let placeholderLabel = context.coordinator.placeholder
@@ -238,9 +246,21 @@ struct QuickAddTextView: UIViewRepresentable {
 /// overlays are placed once it has its real size.
 private final class QuickAddUITextView: UITextView {
     var onLayout: ((UITextView) -> Void)?
+    var onEscape: (() -> Void)?
 
     override func layoutSubviews() {
         super.layoutSubviews()
         onLayout?(self)
+    }
+
+    /// A focused text view swallows Esc before SwiftUI's shortcuts see it.
+    override var keyCommands: [UIKeyCommand]? {
+        let escape = UIKeyCommand(input: UIKeyCommand.inputEscape, modifierFlags: [], action: #selector(escapePressed))
+        escape.wantsPriorityOverSystemBehavior = true
+        return (super.keyCommands ?? []) + [escape]
+    }
+
+    @objc private func escapePressed() {
+        onEscape?()
     }
 }

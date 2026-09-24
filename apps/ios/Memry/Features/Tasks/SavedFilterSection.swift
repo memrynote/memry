@@ -1,34 +1,22 @@
 import MemryCore
 import SwiftUI
 
-// TP048. Saved filters in the filter sheet, after desktop's
-// `saved-filters-section.tsx` + `save-filter-dialog.tsx`: save the current
-// filters and sort under a name, apply (tap again to clear), star, rename,
-// delete, and reorder on a pushed screen. Each write is a core `filter`
-// record, so it syncs to desktop.
+// TP048, redesigned (RD13). Saved views, pushed from the filter sheet (the
+// sheet's footer saves the current filters as one; artboard 13), after
+// desktop's `saved-filters-section.tsx`: apply (tap again to clear), star
+// (starred ones show in the title menu, RD02), rename, delete, and reorder on
+// a pushed screen. Each write is a core `filter` record, so it syncs.
 
-/// The saved filters section of the filter sheet.
-struct SavedFilterSection: View {
+/// Every saved view.
+struct SavedFiltersPage: View {
     let store: TasksStore
-    @State private var isSaving = false
     @State private var renaming: SavedFilterItem?
 
     var body: some View {
         // Captured now: dismissing the alert clears `renaming` before the
         // submitted rename runs.
         let renameId = renaming?.id
-        Section(TasksCopy.filterSavedTitle) {
-            Button {
-                isSaving = true
-            } label: {
-                Label(
-                    store.state.filters.isActive ? TasksCopy.saveCurrentFilter : TasksCopy.saveFilterSetFirst,
-                    systemImage: "star"
-                )
-                .frame(minHeight: Tokens.Size.minimumHitArea)
-            }
-            .disabled(!store.state.filters.isActive)
-            .accessibilityIdentifier("tasks.filter.save")
+        List {
             if store.savedFilters.isEmpty {
                 Text(TasksCopy.noSavedFilters)
                     .foregroundStyle(Tokens.Text.secondary.color)
@@ -49,14 +37,8 @@ struct SavedFilterSection: View {
             }
         }
         .font(Tokens.Typography.body.font)
-        .savedFilterNamePrompt(
-            isPresented: $isSaving,
-            title: TasksCopy.saveFilter,
-            confirm: TasksCopy.saveFilter,
-            initialName: ""
-        ) { name in
-            await store.saveCurrentFilter(name: name)
-        }
+        .navigationTitle(TasksCopy.filterSavedTitle)
+        .navigationBarTitleDisplayMode(.inline)
         .savedFilterNamePrompt(
             isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
             title: TasksCopy.renameFilterTitle,
