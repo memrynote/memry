@@ -89,6 +89,50 @@ function useCaldavCopy(): {
 }
 
 /**
+ * What `connectProvider` receives. A reconnect keeps the calendar choices the
+ * account already has, so it sends none.
+ */
+function connectPayload<T extends object>(
+  connection: T,
+  options: { reconnecting: boolean; selected: Set<string>; acknowledged: boolean }
+): T & { selectedCalendarIds?: string[]; acknowledgeOutdatedDevices?: boolean } {
+  const payload: T & { selectedCalendarIds?: string[]; acknowledgeOutdatedDevices?: boolean } = {
+    ...connection
+  }
+  if (!options.reconnecting) payload.selectedCalendarIds = [...options.selected]
+  if (options.acknowledged) payload.acknowledgeOutdatedDevices = true
+  return payload
+}
+
+/** "Test connection" until a test worked, then "Connect". */
+function CaldavSubmitButton({
+  tested,
+  busy,
+  disabled
+}: {
+  tested: boolean
+  busy: boolean
+  disabled: boolean
+}): React.JSX.Element {
+  const { t } = useT('settings')
+  const idle = tested ? t('calendar.providers.connect') : t('calendar.caldav.testConnection')
+  const working = tested ? t('calendar.providers.connecting') : t('calendar.caldav.testing')
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        type="submit"
+        variant="outline"
+        size="sm"
+        className="h-7 w-fit px-3 text-xs/4"
+        disabled={busy || disabled}
+      >
+        {busy ? working : idle}
+      </Button>
+    </div>
+  )
+}
+
+/**
  * Connect a CalDAV account (#1401): pick a preset or type a server, enter the
  * username and app password, test the connection, choose calendars, connect.
  * Nothing is saved until the test worked, as with subscribed calendars.
@@ -161,12 +205,11 @@ export function CaldavConnectForm({
       }
       const result = await calendarService.connectProvider({
         provider: provider.id,
-        connection: {
-          ...connection,
-          // A reconnect keeps the calendar choices the account already has.
-          ...(reconnect ? {} : { selectedCalendarIds: [...selected] }),
-          ...(acknowledged ? { acknowledgeOutdatedDevices: true } : {})
-        }
+        connection: connectPayload(connection, {
+          reconnecting: Boolean(reconnect),
+          selected,
+          acknowledged
+        })
       })
       if (!result.success) {
         setError(errorMessage(result.errorCode ?? 'unknown', presetId))
@@ -236,29 +279,13 @@ export function CaldavConnectForm({
         </p>
       )}
 
-      <div className="flex items-center gap-2">
-        {calendars ? (
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="h-7 w-fit px-3 text-xs/4"
-            disabled={busy || needsAcknowledgement || (!reconnect && selected.size === 0)}
-          >
-            {busy ? t('calendar.providers.connecting') : t('calendar.providers.connect')}
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="h-7 w-fit px-3 text-xs/4"
-            disabled={busy || !detailsComplete}
-          >
-            {busy ? t('calendar.caldav.testing') : t('calendar.caldav.testConnection')}
-          </Button>
-        )}
-      </div>
+      <CaldavSubmitButton
+        tested={calendars !== null}
+        busy={busy}
+        disabled={
+          calendars ? needsAcknowledgement || (!reconnect && selected.size === 0) : !detailsComplete
+        }
+      />
     </form>
   )
 }
