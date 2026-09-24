@@ -454,8 +454,11 @@ One consequence worth knowing: the empty space to the right of a short line stil
 Saves are **automatic and debounced** (default ~1 second). Changes also flush on:
 
 - Tab close
+- Switching the tab to another note or journal day
 - App quit
 - Sync push
+
+The flush on close or switch includes whatever you typed just before it, and it is saved to the note or journal day you typed it in, never to the one you opened next.
 
 You can flush manually with <kbd>⌘</kbd>+<kbd>S</kbd>. Auto-save delay is configurable in [Settings → Editor](/user-guide/settings#editor).
 
