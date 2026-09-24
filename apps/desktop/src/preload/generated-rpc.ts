@@ -349,6 +349,7 @@ export function createGeneratedRpcApi({
       "subscribeIcsCalendar": ((input) => invoke("calendar:subscribe-ics", input)) as GeneratedRpcApi["calendar"]["subscribeIcsCalendar"],
       "unsubscribeIcsCalendar": ((input) => invoke("calendar:unsubscribe-ics", input)) as GeneratedRpcApi["calendar"]["unsubscribeIcsCalendar"],
       "refreshIcsCalendar": ((input) => invoke("calendar:refresh-ics", input)) as GeneratedRpcApi["calendar"]["refreshIcsCalendar"],
+      "updateIcsCalendar": ((input) => invoke("calendar:update-ics", input)) as GeneratedRpcApi["calendar"]["updateIcsCalendar"],
     },
     "canvas": {
       "create": ((input) => invoke("canvas:create", input ?? {})) as GeneratedRpcApi["canvas"]["create"],

@@ -472,6 +472,33 @@ sports fixtures or university timetables. No Google account or memrynote sign-in
 
 memrynote downloads the calendar before saving it, so a wrong link is rejected with the reason
 (not a calendar, not found, access refused, unreachable) instead of leaving an empty calendar behind.
+Once it is added, a short message says how many events it found and the dates they span.
+
+**Where to find the link.** **Where do I find the link?** under the link field lists the steps
+for common services:
+
+- **Proton Calendar:** Settings → Calendars, choose the calendar, then create a link under
+  **Share with anyone**. Pick full view to see event details.
+- **iCloud:** in Calendar on a Mac or at iCloud.com, share the calendar, turn on **Public
+  Calendar**, and copy the link. To edit iCloud events in memrynote too, connect iCloud under
+  [CalDAV](#caldav-calendars) instead.
+- **Outlook and Microsoft 365:** Outlook on the web → Settings → Calendar → Shared calendars →
+  **Publish a calendar**. Choose **Can view all details**, publish, and copy the ICS link.
+- **Fastmail:** Settings → Calendars, open the calendar, turn on publishing, and copy the
+  iCalendar link.
+- **Notion Calendar:** its events live in the Google or iCloud account you connected to it. Share
+  the link from that account.
+- **Holidays, schools, and sports:** look for **Subscribe**, **Add to calendar**, or **iCal** on
+  the organizer's site.
+
+**Proton is read-only by design.** Proton encrypts calendars end to end and offers no CalDAV and
+no public API, so a shared link is the only way to read a Proton calendar outside Proton, and
+there is no way to write back. Make changes in Proton; memrynote picks them up on its next refresh.
+
+**Plain `http://` links.** memrynote accepts them, and warns before subscribing: the link and
+the events travel unencrypted, so anyone on the same network can read them. Use an `https://` or
+`webcal://` link when the calendar offers one. A subscription over `http://` is marked **Not
+encrypted** in Settings. Links to your own network, such as a calendar on a home server, work.
 
 **What you see.** Events from the last 90 days through the next year, including every instance of
 a repeating event with its skipped and moved dates. They appear on the calendar, the Day Panel,
@@ -486,6 +513,10 @@ calendar; memrynote picks the change up on its next refresh.
 asks for (between 15 minutes and a day). An unchanged calendar costs one small request. Press
 **Refresh** next to a subscription to check now. If a refresh fails, the reason shows under the
 subscription and the events you already had stay on the calendar.
+
+**Name and color.** **Rename** next to a subscription changes the name its events are labelled
+with, and the dot in front of the name picks its color. Both apply on every device, and a refresh
+keeps them.
 
 **Across devices.** The subscription syncs to your other devices, end-to-end encrypted like the
 rest of your vault; each device downloads the calendar itself. The events are never uploaded.

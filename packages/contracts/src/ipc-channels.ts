@@ -774,7 +774,9 @@ export const CalendarChannels = {
     /** #1207: subscribe to a read-only calendar feed by URL (ICS / webcal) */
     SUBSCRIBE_ICS_CALENDAR: 'calendar:subscribe-ics',
     UNSUBSCRIBE_ICS_CALENDAR: 'calendar:unsubscribe-ics',
-    REFRESH_ICS_CALENDAR: 'calendar:refresh-ics'
+    REFRESH_ICS_CALENDAR: 'calendar:refresh-ics',
+    /** #1398: rename or recolour a subscribed calendar */
+    UPDATE_ICS_CALENDAR: 'calendar:update-ics'
   },
   events: {
     CHANGED: 'calendar:changed'

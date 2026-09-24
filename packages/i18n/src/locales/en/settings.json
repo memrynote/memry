@@ -633,6 +633,46 @@
       "updatedAt": "Updated {time}",
       "notCheckedYet": "Not checked yet",
       "keptEvents": "Events already on your calendar stay until the next successful update.",
+      "notEncrypted": "Not encrypted",
+      "httpWarning": "This link starts with http://, so the link and the events travel unencrypted. Anyone on the same network can read them. Use an https:// or webcal:// link if the calendar offers one.",
+      "added": "Added {title}.",
+      "addedSummary": "Added {title}: {count, plural, one {# event} other {# events}}, {start} to {end}.",
+      "addedEmpty": "Added {title}. It has no events in the last 90 days or the next year yet.",
+      "rename": "Rename",
+      "renameLabel": "Calendar name",
+      "save": "Save",
+      "cancel": "Cancel",
+      "color": "Calendar color",
+      "colorOption": "Color: {color}",
+      "help": {
+        "toggle": "Where do I find the link?",
+        "intro": "Look for a sharing option called public link, secret address, publish, or iCal. The link ends in .ics or starts with webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Settings → Calendars, choose the calendar, then create a link under Share with anyone. Pick full view to see event details.",
+          "readOnly": "Proton calendars stay read-only in memrynote by design. Proton encrypts calendars end to end and offers no CalDAV, so there is no way to write back. Make changes in Proton."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "In Calendar on a Mac or at iCloud.com, share the calendar, turn on Public Calendar, and copy the link. To edit iCloud events here too, connect iCloud under CalDAV instead."
+        },
+        "outlook": {
+          "name": "Outlook and Microsoft 365",
+          "steps": "Outlook on the web → Settings → Calendar → Shared calendars → Publish a calendar. Choose Can view all details, publish, and copy the ICS link."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Settings → Calendars, open the calendar, turn on publishing, and copy the iCalendar link."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "Its events live in the Google or iCloud account you connected to it. Share the link from that account."
+        },
+        "public": {
+          "name": "Holidays, schools, and sports",
+          "steps": "Look for Subscribe, Add to calendar, or iCal on the organizer's site and copy that link."
+        }
+      },
       "errors": {
         "invalid_url": "That is not a calendar link. Paste an address that starts with webcal://, https://, or http://.",
         "unreachable": "Couldn't reach this calendar. Check the link and your internet connection.",
@@ -642,6 +682,8 @@
         "http_error": "The calendar server returned an error. Try again later.",
         "too_large": "This calendar is too large to add. Share a smaller calendar instead.",
         "not_a_calendar": "This link does not return a calendar. Copy the ICS or webcal link from your calendar app's sharing settings.",
+        "too_many_redirects": "This link keeps redirecting and never reaches a calendar. Copy the link again from your calendar app.",
+        "unsupported_redirect": "This link redirects to an address that is not a web link, so memrynote does not follow it. Copy the ICS or webcal link from your calendar app.",
         "unknown": "Couldn't update this calendar ({code}). Try again later."
       }
     },

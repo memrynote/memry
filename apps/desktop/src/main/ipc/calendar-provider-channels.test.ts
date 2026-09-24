@@ -306,7 +306,12 @@ describe('calendar provider registry and generic channels (#1392)', () => {
         CalendarChannels.invoke.SUBSCRIBE_ICS_CALENDAR,
         { url: FEED_URL }
       )
-      expect(legacy).toEqual({ success: true, source: generic.source })
+      // #1398: the legacy alias also reports what the feed put on the calendar.
+      expect(legacy).toEqual({
+        success: true,
+        source: generic.source,
+        summary: expect.objectContaining({ eventCount: 1 })
+      })
     })
 
     it('reports the same localizable code as subscribe-ics for a bad link', async () => {

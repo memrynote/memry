@@ -31,7 +31,9 @@ import {
   refreshDueIcsCalendars,
   refreshIcsCalendarSource,
   subscribeIcsCalendar,
-  unsubscribeIcsCalendar
+  summarizeIcsCalendarEvents,
+  unsubscribeIcsCalendar,
+  updateIcsCalendar
 } from './ics-subscriptions'
 
 const FEED_URL = 'https://calendar.example.com/feeds/secret-token/basic.ics'
@@ -243,6 +245,104 @@ describe('ICS calendar subscriptions', () => {
       `update:${source.id}`,
       `update:${source.id}`
     ])
+  })
+
+  it('renames and recolours a subscription on the synced row, and a refresh keeps both', async () => {
+    const body = feedBody(vevent('a@test', '20260510T090000Z', 'Dentist'))
+    const { fetch } = fakeFetch([
+      { status: 200, body },
+      { status: 200, body }
+    ])
+    const deps = { fetch, now: () => NOW }
+    const source = await subscribeIcsCalendar(dataDb(), { url: FEED_URL }, deps)
+
+    const renamed = updateIcsCalendar(
+      dataDb(),
+      { sourceId: source.id, title: 'Family', color: 'sage' },
+      deps
+    )
+    expect(renamed).toMatchObject({ title: 'Family', color: '#33b679' })
+
+    // Unchanged input writes nothing and enqueues nothing.
+    updateIcsCalendar(dataDb(), { sourceId: source.id, title: 'Family' }, deps)
+
+    await refreshIcsCalendarSource(dataDb(), source.id, deps)
+    expect(
+      db
+        .select({ title: calendarSources.title, color: calendarSources.color })
+        .from(calendarSources)
+        .where(eq(calendarSources.id, source.id))
+        .get()
+    ).toEqual({ title: 'Family', color: '#33b679' })
+
+    const [item] = getCalendarRangeProjection(
+      dataDb(),
+      indexResult.db as unknown as IndexDb,
+      {
+        startAt: '2026-04-01T00:00:00.000Z',
+        endAt: '2026-07-01T00:00:00.000Z',
+        includeUnselectedSources: false
+      },
+      []
+    ).items
+    expect(item.source.title).toBe('Family')
+    expect(item.displayColor).toBe('#33b679')
+    expect(syncEffects).toEqual([`create:${source.id}`, `update:${source.id}`])
+  })
+
+  it('refuses to rename a removed subscription or a calendar that is not a subscription', async () => {
+    const { fetch } = fakeFetch([
+      { status: 200, body: feedBody(vevent('a@test', '20260510T090000Z', 'Dentist')) }
+    ])
+    const deps = { fetch, now: () => NOW }
+    const source = await subscribeIcsCalendar(dataDb(), { url: FEED_URL }, deps)
+    unsubscribeIcsCalendar(dataDb(), source.id, deps)
+    db.insert(calendarSources)
+      .values({
+        id: 'google-calendar:work',
+        provider: 'google',
+        kind: 'calendar',
+        remoteId: 'work@group.calendar.google.com',
+        title: 'Work',
+        createdAt: NOW.toISOString(),
+        modifiedAt: NOW.toISOString()
+      })
+      .run()
+
+    expect(() => updateIcsCalendar(dataDb(), { sourceId: source.id, title: 'X' }, deps)).toThrow(
+      /not found/
+    )
+    expect(() =>
+      updateIcsCalendar(dataDb(), { sourceId: 'google-calendar:work', title: 'X' }, deps)
+    ).toThrow(/not found/)
+  })
+
+  it('summarizes what a subscription put on the calendar', async () => {
+    const { fetch } = fakeFetch([
+      {
+        status: 200,
+        body: feedBody([
+          ...vevent('b@test', '20260620T090000Z', 'Later'),
+          ...vevent('a@test', '20260510T090000Z', 'Sooner')
+        ])
+      },
+      { status: 200, body: feedBody([]) }
+    ])
+    const deps = { fetch, now: () => NOW }
+    const source = await subscribeIcsCalendar(dataDb(), { url: FEED_URL }, deps)
+
+    expect(summarizeIcsCalendarEvents(dataDb(), source.id)).toEqual({
+      eventCount: 2,
+      firstStartAt: '2026-05-10T09:00:00.000Z',
+      lastStartAt: '2026-06-20T09:00:00.000Z'
+    })
+
+    await refreshIcsCalendarSource(dataDb(), source.id, deps)
+    expect(summarizeIcsCalendarEvents(dataDb(), source.id)).toEqual({
+      eventCount: 0,
+      firstStartAt: null,
+      lastStartAt: null
+    })
   })
 
   it('the runner reads a source another device subscribed and clears one it removed', async () => {

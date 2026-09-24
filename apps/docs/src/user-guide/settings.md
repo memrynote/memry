@@ -258,7 +258,7 @@ Link a Google account to show external events alongside vault events on the [Cal
 
 ### Subscribed Calendars
 
-Paste a calendar's shared link (ICS or `webcal://`) and press **Subscribe** to add it to the [Calendar](/user-guide/calendar#subscribed-calendars) as a read-only calendar. Each subscription shows its host, when it last updated, and why the last update failed, with **Refresh** and **Remove** buttons.
+Paste a calendar's shared link (ICS or `webcal://`) and press **Subscribe** to add it to the [Calendar](/user-guide/calendar#subscribed-calendars) as a read-only calendar. A plain `http://` link gets a warning that it travels unencrypted. **Where do I find the link?** lists the steps for Proton, iCloud, Outlook, Fastmail, Notion Calendar, and public schedules. Each subscription shows its host, when it last updated, and why the last update failed, with **Rename**, **Refresh**, and **Remove** buttons; the dot in front of its name sets its color.
 
 Once you have a subscription, **Let AI read these events** decides whether the AI assistant can read your subscribed calendars. It is separate from the Google switch: allowing Google does not allow subscribed calendars. See [AI access per calendar service](/user-guide/calendar#ai-access-is-asked-per-calendar-service).
 

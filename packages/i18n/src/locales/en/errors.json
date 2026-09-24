@@ -169,6 +169,7 @@
     "updateEventFailed": "Failed to update calendar event",
     "deleteEventFailed": "Failed to delete calendar event",
     "updateSourceSelectionFailed": "Failed to update calendar source selection",
+    "updateSubscriptionFailed": "Failed to update the subscribed calendar",
     "connectProviderFailed": "Failed to connect calendar provider",
     "disconnectProviderFailed": "Failed to disconnect calendar provider",
     "refreshProviderFailed": "Failed to refresh calendar provider",
