@@ -17,6 +17,12 @@ enum TasksRoute: Hashable, Sendable {
     case project(String)
     case projects
     case settings
+
+    /// Screens with a floating "+" show the toast beside it themselves.
+    var placesOwnToast: Bool {
+        if case .project = self { return true }
+        return false
+    }
 }
 
 /// The vault shell's tabs, so a route can switch to Tasks.
@@ -68,7 +74,8 @@ struct TasksRootView: View {
         // The list places its own toast beside the "+" (RD15); every pushed
         // screen shows it here, over the tab bar.
         .overlay(alignment: .bottom) {
-            if !router.path.isEmpty {
+            // The hub places its own beside its "+" (RD18).
+            if let top = router.path.last, !top.placesOwnToast {
                 TasksToast(store: store)
                     .padding(.horizontal, Tokens.Space.inset)
                     .padding(.bottom, Tokens.Space.medium)

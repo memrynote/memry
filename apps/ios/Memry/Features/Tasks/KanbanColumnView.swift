@@ -1,9 +1,11 @@
 import MemryCore
 import SwiftUI
 
-// TP049. One kanban column (desktop `kanban-column.tsx`): a header with the
-// column's mark, name, count and "+", the cards, the done column's fold after
-// the first five, an inline title field for "+", and a drop target.
+// TP049, redesigned (RD16). One kanban column (desktop `kanban-column.tsx`):
+// a surface panel that hugs its cards (the board scrolls vertically), a
+// header with the column's mark, name, count and "+", the cards, the done
+// column's fold after the first five, an inline title field for "+", and a
+// drop target.
 
 struct KanbanColumnView: View {
     let store: TasksStore
@@ -32,40 +34,32 @@ struct KanbanColumnView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
             KanbanColumnHeader(column: column, count: lane.tasks.count, onAdd: startAdding)
-            ScrollView(.vertical) {
-                LazyVStack(alignment: .leading, spacing: Tokens.Space.small) {
-                    if visibleTasks.isEmpty, !isAdding {
-                        KanbanEmptyColumn(column: column, isTargeted: isTargeted)
-                    }
-                    ForEach(visibleTasks, id: \.id) { task in
-                        KanbanCardView(
-                            store: store,
-                            task: task,
-                            column: column,
-                            allColumns: allColumns,
-                            onMove: { target in onDrop(task.id, target) }
-                        )
-                    }
-                    foldButtons
-                    if isAdding { addField }
-                }
-                .padding(Tokens.Space.small)
+            if visibleTasks.isEmpty, !isAdding {
+                KanbanEmptyColumn(column: column, isTargeted: isTargeted)
             }
-            .scrollIndicators(.hidden)
-            .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
-            .overlay {
-                RoundedRectangle(cornerRadius: Tokens.Radius.card)
-                    .strokeBorder(
-                        isTargeted ? Tokens.Line.focus.color : Tokens.Line.border.color,
-                        lineWidth: Tokens.Size.hairline
-                    )
+            ForEach(visibleTasks, id: \.id) { task in
+                KanbanCardView(
+                    store: store,
+                    task: task,
+                    column: column,
+                    allColumns: allColumns,
+                    onMove: { target in onDrop(task.id, target) }
+                )
             }
-            .dropDestination(for: String.self) { ids, _ in
-                guard let id = ids.first, column.acceptsMove else { return false }
-                onDrop(id, column)
-                return true
-            } isTargeted: { isTargeted = $0 }
+            foldButtons
+            if isAdding { addField }
         }
+        .padding(Tokens.Space.small)
+        .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.container))
+        .overlay {
+            RoundedRectangle(cornerRadius: Tokens.Radius.container)
+                .strokeBorder(isTargeted ? Tokens.Line.focus.color : .clear, lineWidth: Tokens.Size.hairline)
+        }
+        .dropDestination(for: String.self) { ids, _ in
+            guard let id = ids.first, column.acceptsMove else { return false }
+            onDrop(id, column)
+            return true
+        } isTargeted: { isTargeted = $0 }
         .calmAnimation(.fast, value: isTargeted)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(TasksCopy.kanbanColumnSummary(column.title, count: lane.tasks.count))
@@ -138,7 +132,7 @@ private struct KanbanColumnHeader: View {
         HStack(spacing: Tokens.Space.small) {
             mark
             Text(column.title)
-                .font(Tokens.Typography.label.font)
+                .font(Tokens.Typography.label.font.weight(.semibold))
                 .foregroundStyle(Tokens.Text.primary.color)
                 .lineLimit(1)
             Text("\(count)")
@@ -150,7 +144,7 @@ private struct KanbanColumnHeader: View {
                 Button(action: onAdd) {
                     Image(systemName: "plus")
                         .font(Tokens.Typography.label.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
+                        .foregroundStyle(Tokens.Text.tertiary.color)
                         .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
                         .contentShape(.rect)
                 }
@@ -159,7 +153,7 @@ private struct KanbanColumnHeader: View {
                 .accessibilityIdentifier("tasks.kanban.add.\(column.id)")
             }
         }
-        .padding(.leading, Tokens.Space.small)
+        .padding(.leading, Tokens.Space.tight)
         .frame(minHeight: Tokens.Size.minimumHitArea)
         .accessibilityElement(children: .contain)
     }
@@ -167,9 +161,9 @@ private struct KanbanColumnHeader: View {
     @ViewBuilder private var mark: some View {
         switch column.target {
         case let .statusType(type):
-            TaskStatusIcon(statusType: type, isDone: type == "done")
+            TaskStatusIcon(statusType: type, isDone: type == "done", scale: .small)
         case let .status(_, _, type, _):
-            TaskStatusIcon(statusType: type, isDone: type == "done", color: column.tint)
+            TaskStatusIcon(statusType: type, isDone: type == "done", color: column.tint, scale: .small)
         case let .priority(value) where value > 0:
             TaskPriorityIcon(priority: value)
         default:

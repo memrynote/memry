@@ -236,23 +236,27 @@ Memry -testPlan Unit|UI -destination 'platform=iOS Simulator,id=A7E3D181-58A5-49
 
 ## Phase 4: board and projects
 
-- [ ] RD16 **Board**: paged columns (`viewAligned`) with the next one peeking,
+- [x] RD16 **Board**: paged columns (`viewAligned`) with the next one peeking,
       header with status mark, count and "+", minimal cards, page dots.
       Carries: TP049 column modes (canonical, status, priority, due, project),
       drag between columns, per-column add, done "show N more", card menu /
       VoiceOver moves.
-- [ ] RD17 **Projects**: progress-ring rows with counts, Inbox, Archived
+      Evidence: RD16-board.png (surface columns, next one peeking, page dots "Column N of M, <title>"), RD16-board-paged.png, RD16-board-by-priority.png / RD16-board-by-due.png / RD16-board-by-project.png (modes from … → Columns; a card never repeats its column's grouping), All without a project = canonical To Do / In Progress / Done; RD16-board-drop-peeking.png (drag onto the peeking column), RD16-card-menu.png + RD16-move-to.png ("[agent] hub add" moved To Do → In Progress via Move to, tree: In Progress 2 tasks), RD16-done-fold.png ("13 more completed" → Show fewer), column "+" added "[agent] board add". VoiceOver move actions unchanged (`accessibilityActions` on the card).
+- [x] RD17 **Projects**: progress-ring rows with counts, Inbox, Archived
       collapsed, "+" glass button.
       Carries: TP052 reorder, archive/unarchive, delete dialog, edit, open hub.
-- [ ] RD18 **Project hub**: ring + title, "7 of 12 done · 1 overdue",
+      Evidence: RD17-projects.png (ring rows 52pt, trailing open count red when overdue, no chevrons), RD17-archived-open.png (swipe Archive → "Archived 1" folded, expands; Unarchive restores), RD17-reorder.png (context menu Reorder → drag), "+" opened the new-project sheet (RD19-new-project.png), row tap opens the hub (RD18-hub.png), delete dialog RD19-delete-dialog.png (same `projectDeleteDialog` as the row's swipe/menu Delete). Edit from the row's leading swipe / menu / VoiceOver action is unchanged.
+- [x] RD18 **Project hub**: ring + title, "7 of 12 done · 1 overdue",
       description, overview note card, tasks (no project name), Linked, "…"
       menu with the project actions, floating "+".
       Carries: TP052 overview note pick/clear, links pin/unlink, edit,
       archive, delete.
-- [ ] RD19 **Project sheet**: name with colour dot, one-row palette,
+      Evidence: RD18-hub.png (ring + emoji title, "6 of 24 done 1 overdue", description, overview card), RD18-hub-subtasks.png (subtasks under their parent, no project name in rows), RD18-hub-linked.png ("Linked 15", kind icons / emoji, title only), RD18-hub-menu.png (Edit, Add note, Add file, Choose overview note, Archive, Delete), RD18-hub-composer.png ("+" opens the composer in the project; "[agent] hub add" created there), RD18-hub-toast.png (toast beside the "+"), RD18-link-menu.png / RD18-link-pinned.png (linked "iOS Parity Test", pinned, then removed; overview set to "Beta Feedback" then cleared: `tasks.projectHub.homeMenu` gone). Edit and Delete via the sheet (RD19); an empty hub shows only "No tasks yet.".
+- [x] RD19 **Project sheet**: name with colour dot, one-row palette,
       description, Statuses row.
       Carries: TP052 icon, name ≤ 50, palette, status editor (≥ 2, type,
       colour, reorder, delete), unsaved-changes guard, delete.
+      Evidence: RD19-new-project.png (xmark / checkmark, colour dot + name, one-row palette with the selected ring, description, "Statuses ◌◐● 3 ›"; "Agent Test Sheet" created), RD19-statuses-reorder.png (Statuses page: colour, name, type, delete disabled with reason, add, Reorder handles), RD19-edit-icon.png (dot tap → emoji field, 🧪 set, Remove icon), RD19-unsaved-guard.png (xmark with changes → Unsaved changes; Cancel then Save), RD19-delete-dialog.png (Delete → dialog → project gone). Name ≤ 50 / status rules unchanged (`ProjectEditorModel`, `TasksProjectsTests` green: 186 tests in 17 suites).
 
 ## Phase 5: verification
 
@@ -296,6 +300,16 @@ Memry -testPlan Unit|UI -destination 'platform=iOS Simulator,id=A7E3D181-58A5-49
 - 2026-09-24 — RD08/RD11 — Sheet chrome made uniform: xmark close + prominent checkmark on the date, reminder, custom repeat, parent picker, related picker and activity sheets (were text Cancel / Done / Save / Close). Identifiers unchanged.
 - 2026-09-24 — RD01 follow-up — A view whose only open group is the view itself (Tomorrow's "Tomorrow") shows no group header (goal rule 4), and that group cannot fold its rows away; All keeps the header. `TasksListTests.a_lone_group_that_is_the_view_has_no_header`.
 - 2026-09-24 — Phase 3 verification — One crash while presenting the When sheet from the detail right after the … menu (SIGSEGV in AttributeGraph during sheet layout, `Memry-2026-09-24-171632.ips`) with the earlier Linked section that loaded inside an empty `Section`; after moving the load to the detail's List (`linkedItemsLoader`) the same sequence ran clean three times. A test rename left "[ v2agent] Redesign check" in Agent Test Redesign (cursor landed mid-title); it goes with that project in RD93.
+- 2026-09-24 — RD16 — Paper's card shadow is drawn as the hairline border (the design system has no shadow tokens). A card drops what its column already states (no due date in due columns, no priority bars in priority columns, no project in project columns). Columns are a plain `HStack` (a lazy one clipped a taller off-screen column); the mode picker strip is gone (… → Columns).
+- 2026-09-24 — RD17 — List rows show the progress ring (tray for the Inbox); a project's emoji shows in the hub title and the sheet. Reorder is entered from a row's context menu (Paper draws no Reorder button); the checkmark ends it.
+- 2026-09-24 — RD18 — Linked notes, files and events are one "Linked N" list (pinned first) instead of three sections; linking a note/file and choosing the overview note moved into the "…" menu. The hub's tasks are each top-level task followed by its own subtasks, and the done ones fold under "Completed N". On the hub the toast sits beside the "+" (as on the list).
+- 2026-09-24 — RD19 — The status editor moved to a pushed "Statuses" page (Reorder in its toolbar). The emoji icon is set by tapping the colour dot. Palette swatches share the row width (≈34pt wide, 44pt tall hit areas) so all ten fit on one row as Paper draws. Desktop copy kept: "Brief description of this project..." and "Delete Project" (goal: desktop wording wins). New projects open at the medium detent with the name focused.
+
+## Removed views (Phase 4)
+
+- `KanbanBoardHeader` (mode menu + column chip strip): … → Columns and the page dots.
+- `ProjectHubOverview` / `ProjectProgressView` (progress bar + percent): the hub header's ring and "N of M done · N overdue" line.
+- The hub's separate Notes / Files / Events sections with their inline add buttons: one Linked list, adding from the "…" menu.
 
 ## Removed views (Phase 3)
 

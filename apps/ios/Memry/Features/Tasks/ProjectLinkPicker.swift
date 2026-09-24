@@ -65,7 +65,7 @@ struct ProjectLinkPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(Copy.cancel) { dismiss() }
+                    Button(role: .close) { dismiss() }
                         .accessibilityIdentifier("tasks.projectPicker.cancel")
                 }
             }

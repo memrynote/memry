@@ -13,6 +13,9 @@ extension TasksCopy {
         static let projectsTitle = "Projects"
         static let newProject = "New project"
         static let archivedProjects = "Archived"
+        static func archivedAccessibility(_ count: Int, collapsed: Bool) -> String {
+            "Archived, \(count) \(count == 1 ? "project" : "projects"), \(collapsed ? "collapsed" : "expanded")"
+        }
         static let reorderProjects = "Reorder"
         static let doneReordering = "Done"
         static let editProject = "Edit project"
@@ -136,6 +139,8 @@ extension TasksCopy {
         static let noResults = "No matches"
 
         static func doneOf(done: Int, total: Int) -> String { "\(done) of \(total) done" }
+        static func overdueCount(_ count: Int) -> String { "\(count) overdue" }
+        static func openCount(_ count: Int) -> String { "\(count) open" }
 
         static func percent(_ value: Int) -> String { "\(value)%" }
     }

@@ -1,11 +1,13 @@
 import MemryCore
 import SwiftUI
 
-// TP052. Desktop's project hub (`pages/project/*`, `use-project-hub.ts`) as
-// one scrolling list: the overview (name, description, progress from
-// `projectStats`, the overview note), then the project's tasks (the core's
-// `all` view scoped to the project; top-level rows with their subtasks), then
-// linked notes, files and events with pin and unlink.
+// TP052, redesigned (RD18). Desktop's project hub (`pages/project/*`,
+// `use-project-hub.ts`) as one scrolling list: the header (ring, name,
+// progress from `projectStats`, description, the overview note card), the
+// project's tasks (the core's `all` view scoped to the project), then one
+// Linked list with pin and unlink. The "…" menu edits, links a note or file,
+// picks the overview note, archives and deletes; the floating "+" opens the
+// composer in this project.
 
 private typealias Copy = TasksCopy.Projects
 
@@ -19,6 +21,10 @@ struct ProjectHubView: View {
     @State private var picker: ProjectLinkPickerMode?
     @State private var editing: ProjectEditorTarget?
     @State private var deleting: ProjectItem?
+    @State private var showsDone = false
+    @State private var composer: TaskComposerRequest?
+    @State private var composerText = ""
+    @State private var titleCollapsed = false
 
     var body: some View {
         Group {
@@ -37,7 +43,7 @@ struct ProjectHubView: View {
             if let failure = store.failure {
                 ErrorNotice(error: failure, code: nil)
             }
-            ProjectHubOverview(
+            ProjectHubHeader(
                 project: project,
                 hub: hub,
                 onChooseHome: { picker = .homeNote },
@@ -48,16 +54,48 @@ struct ProjectHubView: View {
                     }
                 }
             )
-            ProjectHubTasks(store: store, result: hub.tasks)
-            ProjectHubLinks(
-                project: project,
-                hub: hub,
-                onAdd: { picker = $0 },
-                onAction: { action in Task { await perform(action, in: project.id) } }
-            )
+            ProjectHubTasks(store: store, result: hub.tasks, showsDone: $showsDone)
+            ProjectHubLinks(hub: hub) { action in Task { await perform(action, in: project.id) } }
         }
-        .navigationTitle(project.name)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Tokens.Canvas.background.color)
+        .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
+        // On the list only: set on the whole screen it would rename the "+".
+        .accessibilityIdentifier("tasks.projectHub")
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > Tokens.Size.minimumHitArea
+        } action: { _, collapsed in
+            titleCollapsed = collapsed
+        }
+        .navigationTitle(titleCollapsed ? project.name : "")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar(project) }
+        .overlay {
+            // A tap outside the composer closes it (the draft stays).
+            if composer != nil {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture { composer = nil }
+                    .accessibilityHidden(true)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            HStack(alignment: .center, spacing: Tokens.Space.medium) {
+                TasksToast(store: store)
+                if composer == nil {
+                    TaskAddButton { composer = TaskComposerRequest(projectId: project.id) }
+                }
+            }
+            .padding(.horizontal, Tokens.Space.inset)
+            .padding(.bottom, Tokens.Space.medium)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let composer {
+                TaskComposer(store: store, request: composer, text: $composerText) { self.composer = nil }
+            }
+        }
+        .environment(\.taskOpenComposer) { composer = $0 }
         .sheet(item: $picker) { mode in
             ProjectLinkPicker(store: store, mode: mode, excluded: mode == .homeNote ? [] : hub.linkedIds) { item in
                 Task {
@@ -78,7 +116,6 @@ struct ProjectHubView: View {
             await store.sync()
             await reload()
         }
-        .accessibilityIdentifier("tasks.projectHub")
     }
 
     @ToolbarContentBuilder
@@ -89,6 +126,14 @@ struct ProjectHubView: View {
                     editing = ProjectEditorTarget(projectId: project.id)
                 }
                 .accessibilityIdentifier("tasks.projectHub.edit")
+                Section {
+                    Button(Copy.addNote, systemImage: "doc.badge.plus") { picker = .note }
+                        .accessibilityIdentifier("tasks.projectHub.add.note")
+                    Button(Copy.addFile, systemImage: "doc.badge.arrow.up") { picker = .file }
+                        .accessibilityIdentifier("tasks.projectHub.add.file")
+                    Button(Copy.chooseOverviewNote, systemImage: "doc.text.magnifyingglass") { picker = .homeNote }
+                        .accessibilityIdentifier("tasks.projectHub.chooseHome")
+                }
                 if !project.isInbox {
                     let archived = project.archivedAt != nil
                     Button(
@@ -102,7 +147,7 @@ struct ProjectHubView: View {
                         .accessibilityIdentifier("tasks.projectHub.delete")
                 }
             } label: {
-                Label(Copy.projectActions, systemImage: "ellipsis.circle")
+                Label(Copy.projectActions, systemImage: "ellipsis")
             }
             .accessibilityIdentifier("tasks.projectHub.menu")
         }

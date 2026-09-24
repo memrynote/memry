@@ -1,9 +1,12 @@
 import MemryCore
 import SwiftUI
 
-// TP052. Desktop's `project-modal.tsx` as a sheet: icon and name (≤50), the
-// colour palette, a description, the status editor, Delete (not the Inbox),
-// and the unsaved-changes guard on Cancel and on swipe-down.
+// TP052, redesigned (RD19, Paper "New / edit project sheet"). Desktop's
+// `project-modal.tsx` as a compact sheet: the colour dot (or emoji; tap to set
+// one) and the name (≤50), the palette in one row, the description, then a
+// Statuses row that opens the status editor. Delete (not the Inbox) sits
+// under it when editing. xmark closes, behind the unsaved-changes guard (also
+// on swipe-down); the checkmark creates or saves.
 
 private typealias Copy = TasksCopy.Projects
 
@@ -21,6 +24,7 @@ struct ProjectEditorSheet: View {
     @State private var isSaving = false
     @State private var showsIconField = false
     @State private var iconText = ""
+    @FocusState private var nameFocused: Bool
 
     init(store: TasksStore, projectId: String?, onDeleted: (() -> Void)? = nil) {
         self.store = store
@@ -31,36 +35,42 @@ struct ProjectEditorSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                identitySection
-                Section(Copy.color) {
-                    ProjectColorPalette(selection: model.form.color) { model.form.color = $0 }
+            List {
+                nameRow
+                if showsIconField { iconRows }
+                if let error = model.nameError, !model.form.name.isEmpty || model.hasChanges {
+                    errorText(error)
                 }
-                Section(Copy.descriptionOptional) {
-                    TextField(Copy.descriptionPlaceholder, text: $model.form.description, axis: .vertical)
-                        .lineLimit(2 ... 6)
-                        .accessibilityLabel(Copy.descriptionOptional)
-                        .accessibilityIdentifier("tasks.projectEditor.description")
-                }
-                ProjectStatusEditor(model: model)
+                ProjectColorPalette(selection: model.form.color) { model.form.color = $0 }
+                    .sheetRow()
+                TextField(Copy.descriptionPlaceholder, text: $model.form.description, axis: .vertical)
+                    .font(Tokens.Typography.body.font)
+                    .lineLimit(1 ... 6)
+                    .accessibilityLabel(Copy.descriptionOptional)
+                    .accessibilityIdentifier("tasks.projectEditor.description")
+                    .sheetRow()
+                statusesRow
+                if let error = model.statusesError { errorText(error) }
                 if model.canDeleteProject {
-                    Section {
-                        Button(Copy.deleteProject, role: .destructive) {
-                            deleting = store.project(projectId)
-                        }
+                    Button(Copy.deleteProject, role: .destructive) { deleting = store.project(projectId) }
                         .frame(minHeight: Tokens.Size.minimumHitArea)
                         .accessibilityIdentifier("tasks.projectEditor.delete")
-                    }
+                        .sheetRow()
                 }
                 if let failure = store.failure {
-                    Section { ErrorNotice(error: failure, code: nil) }
+                    ErrorNotice(error: failure, code: nil).sheetRow()
                 }
             }
-            .navigationTitle(model.isEditing ? Copy.editProjectTitle : Copy.createProject)
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.defaultMinListRowHeight, 0)
+            .navigationTitle(model.isEditing ? Copy.editProject : Copy.newProject)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
             .onChange(of: model.form) { model.clampInputs() }
         }
+        .presentationDetents(model.isEditing ? [.large] : [.medium, .large])
+        .presentationBackground(Tokens.Canvas.background.color)
         .interactiveDismissDisabled(model.hasChanges)
         .alert(Copy.unsavedChanges, isPresented: $confirmDiscard) {
             Button(Copy.cancel, role: .cancel) {}
@@ -73,61 +83,113 @@ struct ProjectEditorSheet: View {
             dismiss()
             onDeleted?()
         }
-        .onAppear { store.clearFailure() }
+        .onAppear {
+            store.clearFailure()
+            if !model.isEditing { nameFocused = true }
+        }
     }
 
-    private var identitySection: some View {
-        Section {
-            HStack(spacing: Tokens.Space.medium) {
-                Button { showsIconField.toggle() } label: {
-                    ProjectIconView(icon: model.form.icon, color: model.form.color)
-                        .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: Tokens.Radius.small)
-                                .strokeBorder(Tokens.Line.border.color, style: StrokeStyle(dash: [Tokens.Space.tight]))
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Copy.selectIcon)
-                .accessibilityIdentifier("tasks.projectEditor.icon")
-                TextField(Copy.projectName, text: $model.form.name)
-                    .font(Tokens.Typography.body.font)
-                    .textInputAutocapitalization(.sentences)
-                    .accessibilityIdentifier("tasks.projectEditor.name")
+    /// The colour dot (or emoji) and the name in the sheet's large type.
+    private var nameRow: some View {
+        HStack(spacing: Tokens.Space.medium) {
+            Button { showsIconField.toggle() } label: {
+                ProjectIconView(icon: model.form.icon, color: model.form.color)
+                    .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+                    .contentShape(.rect)
             }
-            if showsIconField {
-                TextField(Copy.emojiField, text: $iconText)
-                    .accessibilityHint(Copy.iconHint)
-                    .accessibilityIdentifier("tasks.projectEditor.emoji")
-                    .onChange(of: iconText) { _, typed in
-                        if let emoji = ProjectIconValue.sanitize(typed) { model.form.icon = emoji }
-                        if !typed.isEmpty { iconText = "" }
-                    }
-                if ProjectIconValue.emoji(model.form.icon) != nil {
-                    Button(Copy.removeIcon) { model.form.icon = ProjectIconValue.defaultIcon }
-                        .accessibilityIdentifier("tasks.projectEditor.removeIcon")
-                }
-            }
-        } header: {
-            Text(Copy.iconName)
-        } footer: {
-            if let error = model.nameError, !model.form.name.isEmpty || model.hasChanges {
-                Text(error).foregroundStyle(Tokens.Interaction.destructive.color)
-            } else if showsIconField {
-                Text(Copy.iconHint)
-            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Copy.selectIcon)
+            .accessibilityIdentifier("tasks.projectEditor.icon")
+            TextField(Copy.projectName, text: $model.form.name)
+                .font(Tokens.Typography.sectionTitle.font)
+                .foregroundStyle(Tokens.Text.primary.color)
+                .textInputAutocapitalization(.sentences)
+                .focused($nameFocused)
+                .accessibilityIdentifier("tasks.projectEditor.name")
         }
+        // The dot's centre lines up with the first swatch's.
+        .sheetRow(leading: Tokens.Space.inset)
+    }
+
+    @ViewBuilder private var iconRows: some View {
+        TextField(Copy.emojiField, text: $iconText)
+            .font(Tokens.Typography.body.font)
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .accessibilityHint(Copy.iconHint)
+            .accessibilityIdentifier("tasks.projectEditor.emoji")
+            .onChange(of: iconText) { _, typed in
+                if let emoji = ProjectIconValue.sanitize(typed) { model.form.icon = emoji }
+                if !typed.isEmpty { iconText = "" }
+            }
+            .sheetRow()
+        if ProjectIconValue.emoji(model.form.icon) != nil {
+            Button(Copy.removeIcon) { model.form.icon = ProjectIconValue.defaultIcon }
+                .frame(minHeight: Tokens.Size.minimumHitArea)
+                .accessibilityIdentifier("tasks.projectEditor.removeIcon")
+                .sheetRow()
+        }
+    }
+
+    /// "Statuses ◌◐● 3 ›" on a surface panel; opens the status editor.
+    private var statusesRow: some View {
+        NavigationLink {
+            ProjectStatusesPage(model: model)
+        } label: {
+            HStack(spacing: Tokens.Space.small) {
+                Text(Copy.statuses)
+                    .font(Tokens.Typography.body.font)
+                    .foregroundStyle(Tokens.Text.primary.color)
+                Spacer(minLength: Tokens.Space.small)
+                HStack(spacing: Tokens.Space.tight) {
+                    ForEach(model.form.statuses.prefix(4)) { row in
+                        TaskStatusIcon(
+                            statusType: row.statusType,
+                            isDone: row.statusType == "done",
+                            color: Tokens.Palette.color(row.color),
+                            scale: .small
+                        )
+                    }
+                }
+                .accessibilityHidden(true)
+                Text("\(model.form.statuses.count)")
+                    .font(Tokens.Typography.body.font.monospacedDigit())
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+                Image(systemName: "chevron.forward")
+                    .font(Tokens.Typography.caption.font.weight(.semibold))
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, Tokens.Space.inset)
+            .frame(minHeight: Tokens.Size.minimumHitArea + Tokens.Space.tight)
+            .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.panel))
+            .contentShape(.rect)
+        }
+        .navigationLinkIndicatorVisibility(.hidden)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("tasks.projectEditor.statuses")
+        .sheetRow(leading: TaskLayout.edge - Tokens.Space.tight, trailing: TaskLayout.edge - Tokens.Space.tight)
+    }
+
+    private func errorText(_ error: String) -> some View {
+        Text(error)
+            .font(Tokens.Typography.caption.font)
+            .foregroundStyle(Tokens.Interaction.destructive.color)
+            .accessibilityIdentifier("tasks.projectEditor.error")
+            .sheetRow()
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button(Copy.cancel) {
+            Button(role: .close) {
                 if model.hasChanges { confirmDiscard = true } else { dismiss() }
             }
             .accessibilityIdentifier("tasks.projectEditor.cancel")
         }
         ToolbarItem(placement: .confirmationAction) {
-            Button(model.isEditing ? Copy.save : Copy.create) {
+            TaskSheetConfirmButton(
+                label: model.isEditing ? Copy.save : Copy.create,
+                isEnabled: model.isValid && !isSaving && (!model.isEditing || model.hasChanges)
+            ) {
                 isSaving = true
                 Task {
                     let saved = await model.save(in: store)
@@ -135,8 +197,39 @@ struct ProjectEditorSheet: View {
                     if saved { dismiss() }
                 }
             }
-            .disabled(!model.isValid || isSaving || (model.isEditing && !model.hasChanges))
             .accessibilityIdentifier("tasks.projectEditor.save")
         }
+    }
+}
+
+/// The status editor on its own page, reorder in the toolbar.
+private struct ProjectStatusesPage: View {
+    @Bindable var model: ProjectEditorModel
+    @State private var editMode: EditMode = .inactive
+
+    var body: some View {
+        Form {
+            ProjectStatusEditor(model: model)
+        }
+        .environment(\.editMode, $editMode)
+        .navigationTitle(Copy.statuses)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(editMode.isEditing ? Copy.doneReordering : Copy.reorderProjects) {
+                    editMode = editMode.isEditing ? .inactive : .active
+                }
+                .accessibilityIdentifier("tasks.projectEditor.reorderStatuses")
+            }
+        }
+    }
+}
+
+private extension View {
+    /// A plain sheet row: no separator, no fill, Paper's 24pt side margins.
+    func sheetRow(leading: CGFloat = TaskLayout.edge, trailing: CGFloat = TaskLayout.edge) -> some View {
+        listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: Tokens.Space.tight, leading: leading, bottom: Tokens.Space.tight, trailing: trailing))
     }
 }

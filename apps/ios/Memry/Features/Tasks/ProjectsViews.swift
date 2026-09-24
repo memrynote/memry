@@ -1,11 +1,14 @@
 import MemryCore
 import SwiftUI
 
-// TP052. Every project: the active ones in `position` order (reorderable,
-// `reorderProjects`), then the archived ones; each row shows its open and
-// overdue counts (`projectStats`) and opens the hub. Swipe and context menu
-// edit, archive/unarchive (`setProjectArchived`) and delete; the Inbox can
-// do neither of the last two (desktop: `!project.isDefault`).
+// TP052, redesigned (RD17, Paper "Projects"). Every project: the active
+// ones in `position` order, each a progress ring in its colour (the Inbox a
+// tray; an emoji icon shows in the hub and the editor), its name and its
+// open count; then "Archived N", folded. Tap opens
+// the hub. Swipe and long press edit, archive/unarchive
+// (`setProjectArchived`) and delete; the Inbox can do neither of the last two
+// (desktop: `!project.isDefault`). Reordering (`reorderProjects`) starts from
+// a row's long-press menu and ends with the checkmark.
 
 private typealias Copy = TasksCopy.Projects
 
@@ -17,22 +20,22 @@ struct ProjectsListView: View {
     @State private var editing: ProjectEditorTarget?
     @State private var deleting: ProjectItem?
     @State private var editMode: EditMode = .inactive
+    @State private var showsArchived = false
 
     var body: some View {
         List {
             if let failure = store.failure {
                 ErrorNotice(error: failure, code: nil)
             }
-            Section {
-                ForEach(store.activeProjects, id: \.id) { project in
-                    row(project)
-                }
-                .onMove { source, destination in
-                    Task { await store.moveProjects(from: source, to: destination) }
-                }
+            ForEach(store.activeProjects, id: \.id) { project in
+                row(project)
             }
-            if !store.archivedProjects.isEmpty {
-                Section(Copy.archivedProjects) {
+            .onMove { source, destination in
+                Task { await store.moveProjects(from: source, to: destination) }
+            }
+            if !store.archivedProjects.isEmpty, !editMode.isEditing {
+                archivedHeader
+                if showsArchived {
                     ForEach(store.archivedProjects, id: \.id) { project in
                         row(project)
                     }
@@ -40,6 +43,10 @@ struct ProjectsListView: View {
                 }
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Tokens.Canvas.background.color)
+        .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
         .overlay {
             if store.projects.isEmpty, !store.isLoading {
                 ContentUnavailableView(Copy.noProjects, systemImage: "folder")
@@ -47,20 +54,20 @@ struct ProjectsListView: View {
         }
         .environment(\.editMode, $editMode)
         .navigationTitle(Copy.projectsTitle)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    editing = ProjectEditorTarget(projectId: nil)
-                } label: {
-                    Label(Copy.newProject, systemImage: "plus")
+                if editMode.isEditing {
+                    TaskSheetConfirmButton(label: Copy.doneReordering) { editMode = .inactive }
+                        .accessibilityIdentifier("tasks.projects.reorder")
+                } else {
+                    Button {
+                        editing = ProjectEditorTarget(projectId: nil)
+                    } label: {
+                        Label(Copy.newProject, systemImage: "plus")
+                    }
+                    .accessibilityIdentifier("tasks.projects.new")
                 }
-                .accessibilityIdentifier("tasks.projects.new")
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button(editMode.isEditing ? Copy.doneReordering : Copy.reorderProjects) {
-                    editMode = editMode.isEditing ? .inactive : .active
-                }
-                .accessibilityIdentifier("tasks.projects.reorder")
             }
         }
         .sheet(item: $editing) { target in
@@ -73,10 +80,45 @@ struct ProjectsListView: View {
         .refreshable { await store.sync() }
     }
 
+    /// "› Archived 2": folds the archived projects away (Paper 17).
+    private var archivedHeader: some View {
+        Button {
+            showsArchived.toggle()
+        } label: {
+            HStack(spacing: Tokens.Space.small) {
+                Image(systemName: "chevron.forward")
+                    .font(Tokens.Typography.caption.font.weight(.semibold))
+                    .rotationEffect(.degrees(showsArchived ? 90 : 0))
+                    .accessibilityHidden(true)
+                Text(Copy.archivedProjects)
+                    .font(Tokens.Typography.caption.font.weight(.semibold))
+                Text("\(store.archivedProjects.count)")
+                    .font(Tokens.Typography.caption.font.monospacedDigit())
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Tokens.Text.tertiary.color)
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .calmAnimation(.fast, value: showsArchived)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 0, leading: TaskLayout.edge, bottom: 0, trailing: TaskLayout.edge))
+        .moveDisabled(true)
+        .accessibilityLabel(Copy.archivedAccessibility(store.archivedProjects.count, collapsed: !showsArchived))
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier("tasks.projects.archived")
+    }
+
     private func row(_ project: ProjectItem) -> some View {
         NavigationLink(value: TasksRoute.project(project.id)) {
             ProjectListRow(project: project, stats: stats[project.id])
         }
+        .navigationLinkIndicatorVisibility(.hidden)
+        .listRowInsets(EdgeInsets(
+            top: Tokens.Space.tight, leading: TaskLayout.edge, bottom: Tokens.Space.tight, trailing: TaskLayout.edge
+        ))
+        .alignmentGuide(.listRowSeparatorLeading) { _ in TaskLayout.lane + Tokens.Space.medium }
         .accessibilityIdentifier("tasks.projects.row.\(project.id)")
         .swipeActions(edge: .trailing) {
             if !project.isInbox {
@@ -92,6 +134,9 @@ struct ProjectsListView: View {
         .contextMenu {
             Button(Copy.editProject, systemImage: "pencil") {
                 editing = ProjectEditorTarget(projectId: project.id)
+            }
+            if project.archivedAt == nil, store.activeProjects.count > 1 {
+                Button(Copy.reorderProjects, systemImage: "arrow.up.arrow.down") { editMode = .active }
             }
             if !project.isInbox {
                 archiveButton(project)
@@ -148,41 +193,57 @@ struct ProjectStatsKey: Equatable {
     let tasks: [TaskItem]
 }
 
+/// Paper 17: ring (or the Inbox tray), name, open count; the count turns
+/// red when any are overdue.
 private struct ProjectListRow: View {
     let project: ProjectItem
     let stats: ProjectStats?
 
+    private var open: Int {
+        guard let stats else { return 0 }
+        return max(Int(stats.taskCount) - Int(stats.completedCount), 0)
+    }
+
+    private var overdue: Int { Int(stats?.overdueCount ?? 0) }
+
+    private var fraction: Double {
+        guard let stats, stats.taskCount > 0 else { return 0 }
+        return Double(stats.completedCount) / Double(stats.taskCount)
+    }
+
     var body: some View {
         HStack(spacing: Tokens.Space.medium) {
-            ProjectIconView(icon: project.icon, color: project.color)
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(project.name)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(
-                        project.archivedAt == nil ? Tokens.Text.primary.color : Tokens.Text.secondary.color
+            Group {
+                if project.isInbox {
+                    Image(systemName: "tray")
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                } else {
+                    TaskProgressRing(
+                        fraction: fraction,
+                        color: Tokens.Palette.color(project.color),
+                        font: Tokens.Typography.body.font
                     )
-                if let stats {
-                    Text(summary(stats))
-                        .font(Tokens.Typography.caption.font)
-                        .foregroundStyle(
-                            stats.overdueCount > 0 ? Tokens.Task.dueOverdue.color : Tokens.Text.secondary.color
-                        )
                 }
             }
-            Spacer(minLength: 0)
-            if project.isInbox {
-                Image(systemName: "lock")
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                    .accessibilityLabel(Copy.inboxLocked)
+            .font(Tokens.Typography.body.font)
+            .frame(width: TaskLayout.lane)
+            .accessibilityHidden(true)
+            Text(project.name)
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(
+                    project.archivedAt == nil ? Tokens.Text.primary.color : Tokens.Text.tertiary.color
+                )
+            Spacer(minLength: Tokens.Space.small)
+            if stats != nil {
+                Text("\(open)")
+                    .font(Tokens.Typography.supporting.font.monospacedDigit())
+                    .foregroundStyle(overdue > 0 ? Tokens.Task.dueOverdue.color : Tokens.Text.tertiary.color)
             }
         }
         .frame(minHeight: Tokens.Size.minimumHitArea)
-        .accessibilityElement(children: .combine)
-    }
-
-    private func summary(_ stats: ProjectStats) -> String {
-        let open = Int(stats.taskCount) - Int(stats.completedCount)
-        return Copy.projectSummary(open: max(open, 0), overdue: Int(stats.overdueCount))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(project.name)
+        .accessibilityValue(stats.map { _ in Copy.projectSummary(open: open, overdue: overdue) } ?? "")
+        .accessibilityHint(project.isInbox ? Copy.inboxLocked : "")
     }
 }

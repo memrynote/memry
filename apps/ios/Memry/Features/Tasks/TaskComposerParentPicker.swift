@@ -32,7 +32,7 @@ struct AddTaskParentPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(TasksCopy.cancel) { dismiss() }
+                    Button(role: .close) { dismiss() }
                 }
             }
         }

@@ -102,11 +102,7 @@ struct TaskListScreen: View {
     @ViewBuilder
     private var content: some View {
         if store.showsKanban {
-            VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-                titleHeader.padding(.horizontal, TaskLayout.edge)
-                TaskKanbanBoard(store: store)
-            }
-            .background(Tokens.Canvas.background.color)
+            TaskKanbanBoard(store: store, titleCollapsed: $titleCollapsed) { titleHeader }
         } else {
             TaskListBody(store: store, selection: $selection, titleCollapsed: $titleCollapsed) { titleHeader }
         }

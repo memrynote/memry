@@ -1,6 +1,7 @@
 import SwiftUI
 
-// TP052. Desktop's `status-editor.tsx`: one row per status with its colour,
+// TP052. Desktop's `status-editor.tsx` (the project sheet's Statuses page,
+// RD19): one row per status with its colour,
 // name (≤30) and type; reorder (drag in reorder mode, or VoiceOver's move
 // actions); delete, disabled with desktop's reason when the status must stay
 // (`canDeleteStatus`); add. The ≥2 / one To Do / one Done / unique-name
@@ -10,7 +11,6 @@ private typealias Copy = TasksCopy.Projects
 
 struct ProjectStatusEditor: View {
     @Bindable var model: ProjectEditorModel
-    @State private var editMode: EditMode = .inactive
 
     var body: some View {
         Section {
@@ -19,7 +19,6 @@ struct ProjectStatusEditor: View {
             }
             .onMove { model.moveStatuses(from: $0, to: $1) }
             .onDelete { model.deleteStatuses(at: $0) }
-            .environment(\.editMode, $editMode)
             Button {
                 model.addStatus()
             } label: {
@@ -27,17 +26,6 @@ struct ProjectStatusEditor: View {
             }
             .frame(minHeight: Tokens.Size.minimumHitArea)
             .accessibilityIdentifier("tasks.projectEditor.addStatus")
-        } header: {
-            HStack {
-                Text(Copy.statuses)
-                Spacer()
-                Button(editMode.isEditing ? Copy.doneReordering : Copy.reorderProjects) {
-                    editMode = editMode.isEditing ? .inactive : .active
-                }
-                .font(Tokens.Typography.caption.font)
-                .frame(minHeight: Tokens.Size.minimumHitArea)
-                .accessibilityIdentifier("tasks.projectEditor.reorderStatuses")
-            }
         } footer: {
             VStack(alignment: .leading, spacing: Tokens.Space.tight) {
                 Text(Copy.statusesHint)

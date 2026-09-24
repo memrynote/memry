@@ -114,8 +114,19 @@ struct TaskListTitleHeader: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Paper 16 / 18: a project's title carries its colour dot.
+    private var titleProject: ProjectItem? {
+        guard selectedCount == nil, let project = store.project(store.state.projectId),
+              project.name == store.listTitle else { return nil }
+        return project
+    }
+
     private func title(_ text: String, chevron: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
+            if let project = titleProject {
+                TaskProjectDot(color: project.color, font: Tokens.Typography.body.font)
+                    .accessibilityHidden(true)
+            }
             Text(text)
                 .font(Tokens.Typography.screenTitle.font.weight(.bold))
                 .foregroundStyle(Tokens.Text.primary.color)

@@ -1,11 +1,12 @@
 import MemryCore
 import SwiftUI
 
-// TP052. Small pieces the project screens share: the project's icon, the
-// colour palette (desktop's `color-picker.tsx`) and a hub progress bar
-// (`rail-progress.tsx`).
+// TP052. Small pieces the project screens share: the project's icon and the
+// colour palette (desktop's `color-picker.tsx`). The hub's progress is its
+// header ring and "N of M done" line (RD18).
 
-/// A project's icon: its emoji, else a folder symbol in the project colour.
+/// A project's mark in the sheet (Paper 19): a dot in the project colour, or
+/// its emoji when it has one.
 struct ProjectIconView: View {
     let icon: String?
     let color: String
@@ -13,41 +14,48 @@ struct ProjectIconView: View {
     var body: some View {
         Group {
             if let emoji = ProjectIconValue.emoji(icon) {
-                Text(emoji)
+                Text(emoji).font(Tokens.Typography.sectionTitle.font)
             } else {
-                Image(systemName: "folder.fill")
-                    .foregroundStyle(Tokens.Palette.color(color))
+                Circle()
+                    .fill(Tokens.Palette.color(color))
+                    .frame(width: ProjectSwatch.mark, height: ProjectSwatch.mark)
             }
         }
-        .font(Tokens.Typography.heading.font)
-        .frame(minWidth: Tokens.Size.minimumHitArea / 2)
         .accessibilityHidden(true)
     }
 }
 
-/// The ten desktop swatches, one selected.
+enum ProjectSwatch {
+    /// Paper 19's name dot (30pt) and palette swatch (26pt), from the spacing
+    /// scale.
+    static let mark = Tokens.Space.section + Tokens.Space.tight + ring
+    static let swatch = Tokens.Space.section + ring
+    /// The selected swatch's ring and the gap inside it.
+    static let ring = Tokens.Space.tight / 2
+}
+
+/// The ten desktop swatches in one row; the selected one is ringed (Paper 19).
+/// Each button spans its share of the row and the full 44pt height.
 struct ProjectColorPalette: View {
     let selection: String
     let onSelect: (String) -> Void
     var identifierPrefix = "tasks.projectColor"
 
     var body: some View {
-        FlowLayout(spacing: Tokens.Space.small) {
+        HStack(spacing: 0) {
             ForEach(ProjectPalette.swatches) { swatch in
                 let isSelected = swatch.hex.caseInsensitiveCompare(selection) == .orderedSame
                 Button { onSelect(swatch.hex) } label: {
                     Circle()
                         .fill(Tokens.Palette.color(swatch.hex))
-                        .frame(width: Tokens.Space.section + Tokens.Space.tight,
-                               height: Tokens.Space.section + Tokens.Space.tight)
+                        .frame(width: ProjectSwatch.swatch, height: ProjectSwatch.swatch)
+                        .padding(ProjectSwatch.ring)
                         .overlay {
                             if isSelected {
-                                Image(systemName: "checkmark")
-                                    .font(Tokens.Typography.caption.font.weight(.bold))
-                                    .foregroundStyle(Tokens.Interaction.actionForeground.color)
+                                Circle().strokeBorder(Tokens.Text.primary.color, lineWidth: ProjectSwatch.ring)
                             }
                         }
-                        .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+                        .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
@@ -56,47 +64,5 @@ struct ProjectColorPalette: View {
                 .accessibilityIdentifier("\(identifierPrefix).\(swatch.id)")
             }
         }
-    }
-}
-
-/// `{done} of {total} done`, the percentage and the bar, plus overdue.
-struct ProjectProgressView: View {
-    let stats: ProjectStats?
-
-    var body: some View {
-        let total = Int(stats?.taskCount ?? 0)
-        let done = Int(stats?.completedCount ?? 0)
-        let overdue = Int(stats?.overdueCount ?? 0)
-        let percent = total == 0 ? 0 : Int((Double(done) / Double(total) * 100).rounded())
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            HStack {
-                Text(TasksCopy.Projects.doneOf(done: done, total: total))
-                    .foregroundStyle(Tokens.Text.secondary.color)
-                Spacer()
-                Text(TasksCopy.Projects.percent(percent))
-                    .monospacedDigit()
-                    .foregroundStyle(Tokens.Text.primary.color)
-            }
-            .font(Tokens.Typography.supporting.font)
-            ProgressView(value: Double(percent), total: 100)
-                .tint(Tokens.Task.progress.color)
-                .accessibilityLabel(TasksCopy.Projects.progress)
-                .accessibilityValue(TasksCopy.Projects.percent(percent))
-            if overdue > 0 {
-                Label {
-                    HStack {
-                        Text(TasksCopy.Projects.overdue)
-                        Spacer()
-                        Text("\(overdue)").monospacedDigit()
-                    }
-                } icon: {
-                    Image(systemName: "exclamationmark.circle")
-                }
-                .font(Tokens.Typography.supporting.font)
-                .foregroundStyle(Tokens.Task.dueOverdue.color)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("tasks.projectProgress")
     }
 }
