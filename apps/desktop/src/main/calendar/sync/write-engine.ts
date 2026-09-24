@@ -139,6 +139,8 @@ export async function pushSourceToProvider(
     calendarId: string
     /** Extra state the provider keeps on the binding (CalDAV: the raw object). */
     snapshotExtras?: (remote: RemoteCalendarEvent) => Record<string, unknown>
+    /** On a conflict, keep local edits to fields the remote did not change. */
+    threeWayMerge?: boolean
   }
 ): Promise<CalendarBinding> {
   assertProviderWritable(providerId)
@@ -158,7 +160,7 @@ export async function pushSourceToProvider(
     input.adapter,
     input.calendarId,
     existingBinding,
-    { providerId }
+    { providerId, threeWayMerge: input.threeWayMerge }
   )
 
   // After a possible merge, re-load the latest local snapshot for the binding record.

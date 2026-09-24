@@ -38,6 +38,7 @@ import {
   replaceObjectInstances
 } from './caldav-mirror'
 import type { CaldavTransport } from './caldav-transport'
+import { applyBoundCaldavObject } from './caldav-write'
 
 const log = createLogger('Calendar:CaldavSync')
 
@@ -48,15 +49,6 @@ const WINDOW_FUTURE_MS = 365 * DAY_MS
 
 export interface CaldavSyncDeps extends CaldavTransportDeps {
   now?: () => Date
-  /**
-   * Handles an object a Memry item is bound to (write-back, #1400). Read-only
-   * CalDAV leaves this unset and such objects are simply not mirrored.
-   */
-  applyBoundObject?: (
-    db: DataDb,
-    source: CalendarSource,
-    object: CaldavObject | { href: string; deleted: true }
-  ) => Promise<boolean>
 }
 
 export interface CaldavSourceSyncResult {
@@ -115,15 +107,23 @@ async function applyObjects(
   source: CalendarSource,
   objects: CaldavObject[],
   window: { startAt: string; endAt: string },
-  nowIso: string,
-  deps: CaldavSyncDeps
+  nowIso: string
 ): Promise<number> {
   let changed = 0
   for (const object of objects) {
-    if (deps.applyBoundObject && (await deps.applyBoundObject(db, source, object))) continue
+    // An object a Memry item is bound to flows back into that item (#1400);
+    // only its unbound instances (the rest of a series) are mirrored.
+    const bound = await applyBoundCaldavObject(db, source, object, window)
+    if (bound.all) continue
     const instances = expandObject(object, window)
     if (!instances) continue
-    changed += replaceObjectInstances(db, source, object, instances, nowIso)
+    changed += replaceObjectInstances(
+      db,
+      source,
+      object,
+      instances.filter((instance) => !bound.handled.has(instance.remoteEventId)),
+      nowIso
+    )
   }
   return changed
 }
@@ -136,12 +136,12 @@ async function applyDeletions(
 ): Promise<number> {
   let changed = 0
   for (const href of hrefs) {
-    if (
-      deps.applyBoundObject &&
-      (await deps.applyBoundObject(db, source, { href, deleted: true }))
-    ) {
-      continue
-    }
+    await applyBoundCaldavObject(
+      db,
+      source,
+      { href, deleted: true },
+      windowAt(deps.now?.() ?? new Date())
+    )
     changed += removeObjectInstances(db, source.id, href)
   }
   return changed
@@ -152,8 +152,7 @@ async function pullFull(
   source: CalendarSource,
   transport: CaldavTransport,
   window: { startAt: string; endAt: string },
-  nowIso: string,
-  deps: CaldavSyncDeps
+  nowIso: string
 ): Promise<{ cursor: string | null; changed: number }> {
   // The cursor is read before the objects, so a change landing in between is
   // reported again next time rather than lost.
@@ -166,7 +165,7 @@ async function pullFull(
     cursor = ctag ? `ctag:${ctag}` : null
   }
   const objects = await queryObjectsInWindow(source.remoteId, window, transport)
-  let changed = await applyObjects(db, source, objects, window, nowIso, deps)
+  let changed = await applyObjects(db, source, objects, window, nowIso)
   changed += removeUnseenObjects(
     db,
     source.id,
@@ -188,7 +187,7 @@ async function syncSourceWithTransport(
   const cursor = parseCursor(source.syncCursor ?? null)
 
   if (!cursor) {
-    const { cursor: next, changed } = await pullFull(db, source, transport, window, nowIso, deps)
+    const { cursor: next, changed } = await pullFull(db, source, transport, window, nowIso)
     saveSource(db, source, {
       syncCursor: next,
       syncStatus: 'ok',
@@ -210,7 +209,7 @@ async function syncSourceWithTransport(
       stale.map((entry) => entry.href),
       transport
     )
-    let changed = await applyObjects(db, source, objects, window, nowIso, deps)
+    let changed = await applyObjects(db, source, objects, window, nowIso)
     changed += await applyDeletions(db, source, changes.deleted, deps)
     saveSource(db, source, {
       syncCursor: changes.syncToken ? `sync-token:${changes.syncToken}` : source.syncCursor,
@@ -239,7 +238,7 @@ async function syncSourceWithTransport(
     stale.map((entry) => entry.href),
     transport
   )
-  let changed = await applyObjects(db, source, objects, window, nowIso, deps)
+  let changed = await applyObjects(db, source, objects, window, nowIso)
   changed += await applyDeletions(db, source, deleted, deps)
   saveSource(db, source, {
     syncCursor: ctag ? `ctag:${ctag}` : null,

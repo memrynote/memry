@@ -689,7 +689,13 @@
         "consequence": "An older version can copy tasks and events from this calendar into Google Calendar as duplicates, or fail to sync them. Update those devices first, or continue if you accept that.",
         "acknowledge": "I understand, connect anyway"
       },
-      "reconnect": "Reconnect"
+      "reconnect": "Reconnect",
+      "defaultTarget": {
+        "label": "Default calendar",
+        "description": "Where new events, tasks, reminders and snoozes go when you do not pick a calendar. Only one calendar service holds the default.",
+        "none": "Not the default",
+        "error": "Could not change the default calendar"
+      }
     },
     "caldav": {
       "presetLabel": "Service",

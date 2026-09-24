@@ -32,7 +32,13 @@ import {
   disconnectCaldavAccount,
   discoverCaldavCalendars
 } from './caldav-connect'
-import { syncCaldavCalendarSource, syncCaldavNow } from './caldav-sync'
+import { listSelectedCaldavCalendars, syncCaldavCalendarSource, syncCaldavNow } from './caldav-sync'
+import { syncLocalSourceToCaldav } from './caldav-write'
+import {
+  clearDefaultWriteTargetFor,
+  readDefaultWriteTarget,
+  writeDefaultWriteTarget
+} from '../provider/write-routing'
 
 const log = createLogger('Calendar:CaldavProvider')
 
@@ -174,6 +180,45 @@ export const caldavCalendarProvider: ProviderDefinition = {
     }
   },
   retrySource: retryCaldavSource,
+  writer: {
+    syncLocalSource: (db, target, route) => syncLocalSourceToCaldav(db, target, route)
+  },
+  async listCalendars(db) {
+    const writableAccounts = new Set<string>()
+    for (const account of listCaldavAccountSources(db)) {
+      if (account.accountId && (await hasCaldavLocalAuth(db, account.accountId))) {
+        writableAccounts.add(account.accountId)
+      }
+    }
+    const calendars = listSelectedCaldavCalendars(db)
+      .filter((source) => source.accountId && writableAccounts.has(source.accountId))
+      .map((source) => ({
+        id: source.remoteId,
+        title: source.title,
+        timezone: source.timezone ?? null,
+        color: source.color ?? null,
+        isPrimary: false
+      }))
+    const target = readDefaultWriteTarget(db)
+    return {
+      provider: CALDAV_CALENDAR_PROVIDER,
+      calendars,
+      primary: null,
+      currentDefaultId:
+        target?.provider === CALDAV_CALENDAR_PROVIDER ? target.remoteCalendarId : null
+    }
+  },
+  setDefaultCalendar(db, input) {
+    if (input.calendarId) {
+      writeDefaultWriteTarget(db, {
+        provider: CALDAV_CALENDAR_PROVIDER,
+        remoteCalendarId: input.calendarId
+      })
+    } else {
+      clearDefaultWriteTargetFor(db, CALDAV_CALENDAR_PROVIDER)
+    }
+    return { success: true }
+  },
   async discover(connection) {
     if (connection.kind !== 'basic') {
       return { success: false, calendars: [], errorCode: 'invalid_url' }

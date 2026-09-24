@@ -37,8 +37,8 @@ export const PROVIDER_CAPABILITIES: Readonly<Record<string, CalendarProviderCapa
     authFlow: 'url'
   },
   [CALDAV_CALENDAR_PROVIDER]: {
-    // Read-only until write-back lands (#1400).
-    supportsWrite: false,
+    // #1400: PUT/DELETE with If-Match through the generalized write engine.
+    supportsWrite: true,
     // MKCALENDAR is optional server-side and Memry never needs its own
     // collection: the default write target is always an existing calendar.
     supportsCreateCalendar: false,

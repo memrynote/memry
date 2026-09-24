@@ -129,6 +129,13 @@ export function writeDefaultWriteTarget(db: DataDb, target: DefaultWriteTarget):
   )
 }
 
+/** Clear the cross-provider default when it points at this provider. */
+export function clearDefaultWriteTargetFor(db: DataDb, providerId: string): void {
+  if (readStoredDefaultWriteTarget(db)?.provider === providerId) {
+    deleteSetting(db, DEFAULT_WRITE_TARGET_SETTINGS_KEY)
+  }
+}
+
 /**
  * Google's own default picker still writes `calendar.google`. Once the
  * cross-provider target exists it would shadow that choice, so a Google

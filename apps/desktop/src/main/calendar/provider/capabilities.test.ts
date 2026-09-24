@@ -99,8 +99,10 @@ describe('provider capability table (#1391)', () => {
     })
   })
 
-  it('declares CalDAV: polled, multi-account, no Memry account, synced mirror (#1399)', () => {
+  it('declares CalDAV: writable, polled, multi-account, no Memry account, synced mirror (#1399, #1400)', () => {
     expect(PROVIDER_CAPABILITIES.caldav).toMatchObject({
+      supportsWrite: true,
+      supportsCreateCalendar: false,
       supportsPush: false,
       supportsMultiAccount: true,
       requiresMemryAccount: false,

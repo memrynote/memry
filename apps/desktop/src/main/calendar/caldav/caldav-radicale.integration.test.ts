@@ -16,9 +16,13 @@ import {
 } from '@tests/utils/radicale'
 import { vevent } from '@tests/utils/fake-caldav-server'
 import type { DataDb } from '../../database'
+import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import { resolveWriteRoute } from '../provider/write-routing'
 import { caldavCalendarSourceId } from './caldav-accounts'
-import { connectCaldavAccount } from './caldav-connect'
+import { connectCaldavAccount, disconnectCaldavAccount } from './caldav-connect'
 import { syncCaldavCalendarSource } from './caldav-sync'
+import { syncLocalSourceToCaldav } from './caldav-write'
 
 vi.mock('keytar', () => ({
   default: { setPassword: vi.fn(), getPassword: vi.fn(), deletePassword: vi.fn() }
@@ -27,6 +31,7 @@ vi.mock('../change-events', () => ({
   emitCalendarChanged: vi.fn(),
   emitCalendarProjectionChanged: vi.fn()
 }))
+vi.mock('../../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
 vi.mock('../../sync/local-mutations', () => ({
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncUpdate: vi.fn(),
@@ -156,5 +161,151 @@ describe.skipIf(!RADICALE_BIN)('CalDAV against a live Radicale server', () => {
     expect(response.status).toBe(200)
     await syncCaldavCalendarSource(db, sourceId)
     expect(mirrored()).toEqual(['Review', 'Standup'])
+  })
+  const writes: Array<{ method: string; url: string; ifMatch: string | null }> = []
+  const recordingFetch = async (input: string, init: RequestInit): Promise<Response> => {
+    const method = (init.method ?? 'GET').toUpperCase()
+    if (method === 'PUT' || method === 'DELETE') {
+      writes.push({ method, url: input, ifMatch: new Headers(init.headers).get('if-match') })
+    }
+    return await fetch(input, init)
+  }
+
+  function collectionUrl(): string {
+    return dbResult.db.select().from(calendarSources).where(eq(calendarSources.id, sourceId)).get()!
+      .remoteId
+  }
+
+  async function pushEvent(id: string) {
+    const target = { sourceType: 'event' as const, sourceId: id }
+    return await syncLocalSourceToCaldav(db, target, resolveWriteRoute(db, target), {
+      fetchImpl: recordingFetch
+    })
+  }
+
+  async function remoteObject(
+    href: string
+  ): Promise<{ status: number; body: string; etag: string | null }> {
+    const response = await server.request(new URL(href).pathname, { method: 'GET' })
+    return {
+      status: response.status,
+      body: await response.text(),
+      etag: response.headers.get('etag')
+    }
+  }
+
+  it('create, update and delete from memrynote', async () => {
+    dbResult.db
+      .insert(calendarEvents)
+      .values({
+        id: 'memry-1',
+        title: 'Written by memrynote',
+        startAt: new Date(Date.now() + 4 * 86400000).toISOString(),
+        endAt: new Date(Date.now() + 4 * 86400000 + 3600000).toISOString(),
+        timezone: 'Europe/Istanbul',
+        isAllDay: false,
+        targetCalendarId: collectionUrl(),
+        createdAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString()
+      })
+      .run()
+
+    const created = await pushEvent('memry-1')
+    expect(created?.provider).toBe('caldav')
+    expect((await remoteObject(created!.remoteEventId)).body).toContain(
+      'SUMMARY:Written by memrynote'
+    )
+
+    dbResult.db
+      .update(calendarEvents)
+      .set({ title: 'Updated by memrynote' })
+      .where(eq(calendarEvents.id, 'memry-1'))
+      .run()
+    const updated = await pushEvent('memry-1')
+    expect(writes.at(-1)).toMatchObject({ method: 'PUT', ifMatch: created!.remoteVersion })
+    const afterUpdate = await remoteObject(created!.remoteEventId)
+    expect(afterUpdate.body).toContain('SUMMARY:Updated by memrynote')
+    expect(updated!.remoteVersion).toBe(afterUpdate.etag)
+
+    // The pull recognises its own object and does not mirror it.
+    await syncCaldavCalendarSource(db, sourceId)
+    expect(mirrored()).not.toContain('Updated by memrynote')
+
+    dbResult.db.delete(calendarEvents).where(eq(calendarEvents.id, 'memry-1')).run()
+    await pushEvent('memry-1')
+    expect(writes.at(-1)).toMatchObject({ method: 'DELETE', ifMatch: updated!.remoteVersion })
+    expect((await remoteObject(created!.remoteEventId)).status).toBe(404)
+  })
+
+  it('a remote edit makes the next write fail with 412, then merge and retry', async () => {
+    dbResult.db
+      .insert(calendarEvents)
+      .values({
+        id: 'memry-2',
+        title: 'Planning',
+        startAt: new Date(Date.now() + 5 * 86400000).toISOString(),
+        endAt: new Date(Date.now() + 5 * 86400000 + 3600000).toISOString(),
+        timezone: 'UTC',
+        isAllDay: false,
+        targetCalendarId: collectionUrl(),
+        createdAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString()
+      })
+      .run()
+    const created = await pushEvent('memry-2')
+    const href = created!.remoteEventId
+
+    // Another client edits the description and adds its own property.
+    const current = await remoteObject(href)
+    const edited = current.body.replace(
+      'END:VEVENT',
+      'DESCRIPTION:Bring the roadmap\r\nX-OTHER-CLIENT:yes\r\nEND:VEVENT'
+    )
+    const put = await server.request(new URL(href).pathname, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'text/calendar', 'If-Match': current.etag ?? '*' },
+      body: edited
+    })
+    expect([201, 204]).toContain(put.status)
+
+    dbResult.db
+      .update(calendarEvents)
+      .set({ title: 'Planning (Q4)' })
+      .where(eq(calendarEvents.id, 'memry-2'))
+      .run()
+    writes.length = 0
+    const binding = await pushEvent('memry-2')
+
+    expect(writes.map((write) => write.ifMatch)).toEqual([
+      created!.remoteVersion,
+      expect.any(String)
+    ])
+    const final = await remoteObject(href)
+    expect(final.body).toContain('SUMMARY:Planning (Q4)')
+    expect(final.body).toContain('Bring the roadmap')
+    expect(final.body).toContain('X-OTHER-CLIENT:yes')
+    expect(binding!.remoteVersion).toBe(final.etag)
+  })
+
+  it('after the CalDAV source is disconnected, no further PUT or DELETE', async () => {
+    const bound = dbResult.db
+      .select()
+      .from(calendarBindings)
+      .where(eq(calendarBindings.sourceId, 'memry-2'))
+      .get()!
+    await disconnectCaldavAccount(db)
+    writes.length = 0
+
+    dbResult.db
+      .update(calendarEvents)
+      .set({ title: 'Edited after disconnect' })
+      .where(eq(calendarEvents.id, 'memry-2'))
+      .run()
+    expect(await pushEvent('memry-2')).toBeNull()
+    dbResult.db.delete(calendarEvents).where(eq(calendarEvents.id, 'memry-2')).run()
+    expect(await pushEvent('memry-2')).toBeNull()
+
+    expect(writes).toEqual([])
+    expect((await remoteObject(bound.remoteEventId)).body).toContain('SUMMARY:Planning (Q4)')
   })
 })

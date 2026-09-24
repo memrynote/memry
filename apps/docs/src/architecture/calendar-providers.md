@@ -95,6 +95,22 @@ the password shows the events, skips pulling, and shows the account as needing t
 marks the account `reconnect_required` on that device only (resetting an Apple ID password
 revokes every app-specific password), and the next successful sync or a reconnect clears it.
 
+**Writing.** A create is a `PUT` of a new object with `If-None-Match: *`; an update is a `PUT`
+with `If-Match: <etag>`; a delete is a `DELETE` with `If-Match`. A 412 is
+`ProviderConflictError`, which the write engine answers by refetching, merging and retrying. For
+CalDAV the merge is three-way against the last pushed snapshot, so a field the other client did
+not touch keeps the local edit. Bindings store `remote_calendar_id` = collection URL,
+`remote_event_id` = object URL (`<object URL>::<recurrence-id>` for one occurrence of a series),
+`remote_version` = ETag, and the object itself in `last_local_snapshot.caldavRaw`. Updates patch
+that stored object (`calendar/ical/ical-write.ts`) instead of regenerating it, so properties and
+`X-` extensions other clients rely on survive; Memry marks objects it creates with
+`X-MEMRY-SOURCE-ID` and owns the recurrence rules only on those. Timed events carry a `TZID` and a
+generated `VTIMEZONE`, all-day events a `VALUE=DATE`; attendees, alarms, `CLASS`, `SEQUENCE` and an
+RFC 7986 `COLOR` are written when Memry has them. A pull that meets a bound object writes it back
+into the Memry item (and skips our own writes by ETag) instead of mirroring it. No `PUT` or
+`DELETE` is sent once the calendar or its account is disconnected, without a usable password on
+this device, or with the one-way switch `calendar.caldav.pushEventsToProvider` off.
+
 ## Registry
 
 `provider/registry.ts` holds one `ProviderDefinition` per provider: connect, disconnect,

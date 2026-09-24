@@ -19,6 +19,7 @@ import {
   providerSettingsQueryKey
 } from '@/components/settings/calendar-provider-agent-access'
 import { CalendarBasicConnectForm } from '@/components/settings/calendar-basic-connect-form'
+import { CalendarDefaultTargetRow } from '@/components/settings/calendar-default-target-row'
 
 function statusQueryKey(providerId: string): readonly string[] {
   return ['calendar', providerId, 'status'] as const
@@ -346,6 +347,8 @@ export function GenericCalendarProviderPanel({
           />
         </div>
       )}
+
+      {connected && capabilities.supportsWrite && <CalendarDefaultTargetRow providerId={id} />}
 
       {connected && (
         <div className="-mx-4 border-t border-border/60">

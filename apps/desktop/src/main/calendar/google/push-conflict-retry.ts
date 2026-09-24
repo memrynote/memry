@@ -90,7 +90,16 @@ export async function pushEventWithConflictRetry(
   client: Pick<GoogleCalendarClient, 'upsertEvent' | 'getEvent'>,
   resolvedCalendarId: string,
   existingBinding: typeof calendarBindings.$inferSelect | undefined,
-  options: { providerId?: string } = {}
+  options: {
+    providerId?: string
+    /**
+     * Merge against the last pushed snapshot: a field the remote left as it
+     * was keeps the local edit, a field the remote changed takes the remote
+     * value. Without it the remote wins every field it sends (Google's
+     * long-standing behaviour).
+     */
+    threeWayMerge?: boolean
+  } = {}
 ): Promise<GoogleCalendarRemoteEvent> {
   const label =
     !options.providerId || options.providerId === 'google' ? 'Google' : options.providerId
@@ -116,7 +125,8 @@ export async function pushEventWithConflictRetry(
       })
 
       if (target.sourceType === 'event') {
-        mergeRemoteEventIntoLocal(db, target.sourceId, remote)
+        const base = options.threeWayMerge ? (existingBinding.lastLocalSnapshot ?? null) : null
+        mergeRemoteEventIntoLocal(db, target.sourceId, remote, base)
       }
 
       ifMatch = remote.etag ?? null
@@ -150,7 +160,8 @@ export async function pushEventWithConflictRetry(
 function mergeRemoteEventIntoLocal(
   db: DataDb,
   eventId: string,
-  remote: GoogleCalendarRemoteEvent
+  remote: GoogleCalendarRemoteEvent,
+  base: Record<string, unknown> | null = null
 ): void {
   const existing = db.select().from(calendarEvents).where(eq(calendarEvents.id, eventId)).get()
   if (!existing) return
@@ -166,8 +177,14 @@ function mergeRemoteEventIntoLocal(
   const remoteForMerge: Record<string, unknown> = {}
   for (const field of CALENDAR_EVENT_SYNCABLE_FIELDS) {
     const remoteVal = (remoteData as unknown as Record<string, unknown>)[field]
+    const remoteUnchanged =
+      base !== null &&
+      field in base &&
+      JSON.stringify(base[field] ?? null) === JSON.stringify(remoteVal ?? null)
     remoteForMerge[field] =
-      remoteVal === undefined ? (existing as Record<string, unknown>)[field] : remoteVal
+      remoteVal === undefined || remoteUnchanged
+        ? (existing as Record<string, unknown>)[field]
+        : remoteVal
   }
 
   const result = mergeCalendarEventFields(

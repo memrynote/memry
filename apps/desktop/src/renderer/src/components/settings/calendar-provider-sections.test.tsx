@@ -20,7 +20,9 @@ const mocks = vi.hoisted(() => ({
   disconnectProvider: vi.fn(),
   refreshProvider: vi.fn(),
   updateSourceSelection: vi.fn(),
-  retrySourceSync: vi.fn()
+  retrySourceSync: vi.fn(),
+  listProviderCalendars: vi.fn(),
+  setDefaultProviderCalendar: vi.fn()
 }))
 
 vi.mock('@/services/calendar-service', () => ({
@@ -106,6 +108,13 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
       status(provider, true)
     )
     mocks.listSources.mockResolvedValue({ sources: [] })
+    mocks.listProviderCalendars.mockResolvedValue({
+      provider: 'writable-single',
+      calendars: [],
+      primary: null,
+      currentDefaultId: null
+    })
+    mocks.setDefaultProviderCalendar.mockResolvedValue({ success: true })
     window.api = {
       ...window.api,
       settings: {
@@ -160,6 +169,36 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
       await within(panel).findByTestId('calendar-provider-push-writable-single')
     ).toBeInTheDocument()
     expect(within(panel).queryByTestId('calendar-provider-read-only-writable-single')).toBeNull()
+  })
+
+  it('a writable provider can hold the default calendar; choosing one sets it (#2372)', async () => {
+    mocks.listProviderCalendars.mockImplementation(async ({ provider }: { provider: string }) => ({
+      provider,
+      calendars:
+        provider === 'writable-single'
+          ? [
+              {
+                id: 'https://dav.example.com/work/',
+                title: 'Work',
+                timezone: null,
+                color: null,
+                isPrimary: false
+              }
+            ]
+          : [],
+      primary: null,
+      currentDefaultId: null
+    }))
+    const user = userEvent.setup()
+    renderSections()
+
+    const select = await screen.findByTestId('calendar-provider-default-target-writable-single')
+    expect(screen.queryByTestId('calendar-provider-default-target-read-only-dav')).toBeNull()
+    await user.selectOptions(select, 'https://dav.example.com/work/')
+    expect(mocks.setDefaultProviderCalendar).toHaveBeenCalledWith({
+      provider: 'writable-single',
+      calendarId: 'https://dav.example.com/work/'
+    })
   })
 
   it('multi-account providers list accounts with Add account; single-connection ones do not', async () => {

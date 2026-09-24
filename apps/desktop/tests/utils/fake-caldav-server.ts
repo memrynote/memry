@@ -356,7 +356,7 @@ export class FakeCaldavServer {
       if (ifMatch && (!existing || existing.etag !== ifMatch))
         return new Response('', { status: 412 })
       const etag = this.putObject(calendar.path, name, record.body)
-      return new Response('', { status: existing ? 204 : 201, headers: { etag } })
+      return new Response(existing ? null : '', { status: existing ? 204 : 201, headers: { etag } })
     }
 
     if (record.method === 'DELETE') {
@@ -364,7 +364,7 @@ export class FakeCaldavServer {
       const ifMatch = record.headers['if-match']
       if (ifMatch && existing.etag !== ifMatch) return new Response('', { status: 412 })
       this.deleteObject(calendar.path, name)
-      return new Response('', { status: 204 })
+      return new Response(null, { status: 204 })
     }
     return new Response('', { status: 405 })
   }

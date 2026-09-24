@@ -367,9 +367,10 @@ service, so it never shows up twice.
 - **An event you point at a calendar goes to that calendar.** The calendar picker in the event
   form lists the calendars you can write to, grouped by service when more than one is connected.
 - **Everything else goes to your default calendar.** Tasks, reminders, inbox snoozes and events
-  without a chosen calendar go to the default you picked in Settings → Calendar. Until you pick one,
-  Google keeps its old behaviour: the default Google calendar from onboarding, or else the
-  memrynote calendar it creates for you.
+  without a chosen calendar go to the default you picked in Settings → Calendar: Google's default
+  calendar, or a CalDAV calendar chosen under **Default calendar** in its account's section. Until
+  you pick one, Google keeps its old behaviour: the default Google calendar from onboarding, or
+  else the memrynote calendar it creates for you.
 
 The default is chosen per device. An item that another device already wrote to a calendar is
 never written a second time by this one, even when this device's default is a different service.
@@ -503,7 +504,8 @@ service's steps.
 Their events appear on the calendar, the Day Panel and the Home widget with the calendar's name
 as their label, and the calendar page lists them under **CalDAV calendars**. memrynote checks for
 changes every 15 minutes, and the events sync to your other devices, which show them without the
-app password.
+app password. CalDAV calendars are two-way: see
+[Writing to a CalDAV Calendar](/user-guide/caldav/#writing-to-a-caldav-calendar).
 
 ## Day Cell Click Behavior
 

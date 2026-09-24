@@ -36,6 +36,32 @@ your calendar without knowing your main password, and you can revoke it on its o
 use two-factor sign-in require one for CalDAV. memrynote stores it in your system's secure
 storage on this device only; it never syncs and never reaches memrynote's servers.
 
+## Writing to a CalDAV Calendar
+
+CalDAV calendars are two-way. Pick a CalDAV calendar in an event's calendar picker and the event
+is written there; edits and deletes in memrynote follow it. To send tasks, reminders, snoozes and
+events without a chosen calendar to a CalDAV calendar, choose it under **Default calendar** in the
+account's section. Only one calendar service holds the default.
+
+Changes made in other apps come back: editing or deleting the event in Apple Calendar,
+Thunderbird or your server's web app updates or removes it in memrynote on the next check. You can
+also edit an event that came from a CalDAV calendar; memrynote makes it your own event, linked to
+the original.
+
+memrynote only rewrites what it manages: title, description, location, times, repeat rules,
+attendees, reminders, visibility and colour. Everything else another app stored on the event,
+such as categories, travel time or app-specific fields, is kept. If the event changed on the
+server since memrynote last saw it, memrynote fetches the new version, keeps the other app's
+changes to fields you did not edit, and writes again.
+
+Turn off **Write memrynote events to this calendar** for one-way sync: memrynote keeps showing
+the calendar's events but never writes to it.
+
+Before the first CalDAV account connects, memrynote checks your other devices. A device running
+a version from before multi-calendar support could copy the same task into Google Calendar a
+second time, so memrynote lists those devices and asks you to update them or confirm that you
+want to connect anyway.
+
 ## How Often It Updates
 
 CalDAV servers do not notify apps about changes, so memrynote checks each account for changes
