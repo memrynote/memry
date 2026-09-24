@@ -363,18 +363,22 @@ G2 result (2026-09-24): GREEN. `cargo test -p memry-core` 65 binaries, 911 passe
 
 ## Phase 3: iOS foundations (serial)
 
-- [ ] TP030 `apps/ios/Memry/Features/Tasks/`: `TasksStore` (`@Observable`)
+- [x] TP030 `apps/ios/Memry/Features/Tasks/`: `TasksStore` (`@Observable`)
       over the core API; refresh on the existing core sync events; errors via
       `ErrorMapping.swift` (new cases as needed); logging via `Core/Log.swift`.
-- [ ] TP031 Replace the Tasks `ComingSoonTab` in `VaultTabsView.swift`; add a
+      Evidence: `apps/ios/Memry/Features/Tasks/TasksStore.swift` (@Observable over `Tasks`, executor, ErrorMapping, Log; refresh after each write, coalesced `syncNow` pull-then-push after writes + on foreground; persisted view state). `VaultFilling.syncNow`. MemryTests/TasksStoreTests 8 passed (load/query, write+undo, failure reported, state persistence) over a real scratch vault (`TasksTestVault.swift`).
+- [x] TP031 Replace the Tasks `ComingSoonTab` in `VaultTabsView.swift`; add a
       route for opening a task by id (used by search, notes and reminder
       notifications).
-- [ ] TP032 Shared task UI primitives per `DESIGN.md`: status icon, priority
+      Evidence: `VaultTabsView` Tasks tab now `TasksTabContent` -> `TasksRootView` (NavigationStack with task/project/projects/settings routes); `TasksRouter.openTask(id)` selects the tab and pushes the detail (unit test the_router_opens_a_task_in_the_tasks_tab). Simulator: `apps/ios/SpikeEvidence/tasks-parity/TP031-tasks-tab.png` (MemryNote staging vault's tasks listed).
+- [x] TP032 Shared task UI primitives per `DESIGN.md`: status icon, priority
       icon, due badge (overdue/today coloring), project chip, repeat
       indicator, subtask progress, tag chip. Priority colors mapped from
       desktop `--task-priority-*` into `Tokens`.
-- [ ] TP033 `TasksCopy.swift` (or catalog, per TP003) mirroring the desktop
+      Evidence: `Features/Tasks/TaskPrimitives.swift` (status icon, priority icon, due badge w/ overdue/today/tomorrow tones, project chip, repeat indicator w/ N/M, subtask progress, tag chip, each with an accessibility label) + `Tokens.Task` (desktop `--task-*` light/dark, `base.css:1631-1665`, `:1903-1935`). Unit test due_labels_follow_desktops_relative_days passed.
+- [x] TP033 `TasksCopy.swift` (or catalog, per TP003) mirroring the desktop
       `tasks.json` strings the iOS screens use.
+      Evidence: `Features/Tasks/TasksCopy.swift` (literal copy per §5: tabs, chrome, priorities, status types, group label keys, toasts) mirroring `packages/i18n/src/locales/en/tasks.json`; feature screens extend it in their own files. Unit test group_keys_read_as_desktops_labels passed.
 
 **Commit** Phase 3.
 

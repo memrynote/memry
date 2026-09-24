@@ -65,7 +65,7 @@ struct VaultListView: View {
     ) -> some View {
         // The tab shell, not the notes screen directly: an opened vault is the
         // whole product surface, and Notes is one of its five tabs.
-        VaultTabsView {
+        VaultTabsView(notes: {
             NotesListView(
                 vault: vault,
                 title: VaultLabel(summary).text,
@@ -77,7 +77,9 @@ struct VaultListView: View {
                 store: model.secureStore,
                 switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
             )
-        }
+        }, tasks: {
+            TasksTabContent(vault: vault, secureStore: model.secureStore, filler: filler)
+        })
     }
 
     private var selection: some View {

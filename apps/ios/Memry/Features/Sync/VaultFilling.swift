@@ -112,10 +112,19 @@ protocol VaultFilling: Sendable {
     /// and permanently. The core also checks whether another note still holds
     /// the attachment before releasing anything.
     func detachAttachment(noteId: String, attachmentId: String) async throws
+
+    /// One pull-then-push pass (spec 004 TP028a): records, the bodies they
+    /// touched, then the outbox. The only way a phone write reaches another
+    /// device. Awaited directly, never queued, like ``firstSync``.
+    func syncNow() async throws -> SyncPassSummary
 }
 
 /// The production filler: the core's own `VaultSync`.
 struct CoreVaultFiller: VaultFilling {
+    func syncNow() async throws -> SyncPassSummary {
+        try await sync.syncNow()
+    }
+
     private let sync: VaultSync
     private let executor: CoreExecutor
 

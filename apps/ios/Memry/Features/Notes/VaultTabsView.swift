@@ -20,36 +20,40 @@ import SwiftUI
 // R15 requires; a second stack wrapped around it here would push its screens
 // into the wrong one.
 
-struct VaultTabsView<Notes: View>: View {
+struct VaultTabsView<Notes: View, Tasks: View>: View {
     @ViewBuilder let notes: () -> Notes
+    /// The Tasks tab (spec 004 TP031), built by the caller that holds the
+    /// vault, keychain and sync.
+    @ViewBuilder let tasks: () -> Tasks
+    /// Cross-tab navigation: search, note task blocks and reminder taps open a
+    /// task through it.
+    @State private var router = TasksRouter()
 
     var body: some View {
-        TabView {
-            Tab("Notes", systemImage: "doc.text") {
+        TabView(selection: $router.selectedTab) {
+            Tab("Notes", systemImage: "doc.text", value: VaultTab.notes) {
                 notes()
             }
-            Tab("Home", systemImage: "house") {
+            Tab("Home", systemImage: "house", value: VaultTab.home) {
                 ComingSoonTab(
                     title: "Home",
                     detail: "The home board with your widgets is on your computer for now."
                 )
             }
-            Tab("Tasks", systemImage: "checkmark.circle") {
-                ComingSoonTab(
-                    title: "Tasks",
-                    detail: "Tasks and projects are on your computer for now. Task blocks inside a note still show here."
-                )
+            Tab("Tasks", systemImage: "checkmark.circle", value: VaultTab.tasks) {
+                tasks()
             }
-            Tab("Journal", systemImage: "book") {
+            Tab("Journal", systemImage: "book", value: VaultTab.journal) {
                 ComingSoonTab(
                     title: "Journal",
                     detail: "The journal is on your computer for now. Journal entries sync and can be read as notes."
                 )
             }
-            Tab("More", systemImage: "ellipsis") {
+            Tab("More", systemImage: "ellipsis", value: VaultTab.more) {
                 MoreTab()
             }
         }
+        .environment(router)
         // The More tab holds the way out, so the shell stops drawing it over
         // every screen of the vault.
         .preference(key: SignOutHostedKey.self, value: true)
