@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { VaultAttachmentEntry } from '@memry/rpc/notes'
+import { DEFAULT_IMAGE_PREVIEW_WIDTH } from '@memry/editor-schema/blocks'
 import { useT } from '@memry/i18n/renderer'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -54,7 +55,7 @@ export function buildInsertedAttachmentBlock(result: InsertedAttachment) {
   if (result.type === 'image') {
     return {
       type: 'image' as const,
-      props: { url: result.url, caption: result.name, previewWidth: 600 }
+      props: { url: result.url, caption: result.name, previewWidth: DEFAULT_IMAGE_PREVIEW_WIDTH }
     }
   }
   return {

@@ -6,6 +6,7 @@ import {
   createCodeBlockSpec
 } from '@blocknote/core'
 import { createMemryInlineContentSpecs, type MemryInlineSpecs } from './inline'
+import { withImageWidthInAlt } from './blocks/image-width'
 import { assertSpecKeysMatchNodeTypes, type SpecKeysMatchNodeTypes } from './spec-keys'
 
 /**
@@ -101,6 +102,10 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
       createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS),
       impl.codeBlock ?? CODE_BLOCK_DEFAULTS
     ),
+    // BlockNote's own image, with its resized width written to the vault file
+    // instead of dropped. Here rather than per surface: a surface that dropped
+    // the width would erase it from the file on its next write-back.
+    image: withImageWidthInAlt(defaultBlockSpecs.image),
     ...impl.blocks
   }
   const memryInlineSpecs = createMemryInlineContentSpecs(impl.inline)
