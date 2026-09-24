@@ -510,6 +510,54 @@ describe('FullSyncRunner', () => {
 
       expect(h.runner.lastManifestCheckAt).toBe(777)
     })
+
+    it('#then a throttled check logs a skip with its reason and next eligible time, not a clean result', async () => {
+      // #2310: a throttled no-op logged "manifest check complete { serverOnlyCount: 0 }",
+      // identical to a real clean diff, so a support log could not tell
+      // "verified clean" from "did not look".
+      const h = createHarness()
+      const lastCheckAt = Date.UTC(2026, 8, 24, 19, 0, 0)
+      const nextEligibleAt = lastCheckAt + 30 * 60 * 1000
+      mocks.checkManifestIntegrity.mockResolvedValue(
+        manifestResult({
+          performed: false,
+          checkedAt: lastCheckAt,
+          skipped: { reason: 'throttled', nextEligibleAt }
+        })
+      )
+
+      await h.runner.run()
+
+      expect(mocks.log.debug).toHaveBeenCalledWith('fullSync: manifest check skipped', {
+        reason: 'throttled',
+        nextEligibleAt: new Date(nextEligibleAt).toISOString()
+      })
+      expect(mocks.log.debug).not.toHaveBeenCalledWith(
+        'fullSync: manifest check complete',
+        expect.anything()
+      )
+      const manifestLogPayloads = mocks.log.debug.mock.calls
+        .filter(([message]) => String(message).startsWith('fullSync: manifest check'))
+        .map(([, payload]) => payload as Record<string, unknown>)
+      expect(manifestLogPayloads.some((payload) => 'serverOnlyCount' in payload)).toBe(false)
+    })
+
+    it('#then a performed check logs complete with its diff result', async () => {
+      // #2310: the complete line is reserved for a manifest that was fetched and diffed.
+      const h = createHarness()
+      mocks.checkManifestIntegrity.mockResolvedValue(manifestResult({ performed: true }))
+
+      await h.runner.run()
+
+      expect(mocks.log.debug).toHaveBeenCalledWith('fullSync: manifest check complete', {
+        rePullNeeded: false,
+        serverOnlyCount: 0
+      })
+      expect(mocks.log.debug).not.toHaveBeenCalledWith(
+        'fullSync: manifest check skipped',
+        expect.anything()
+      )
+    })
   })
 
   describe('#given the manifest finds server-only items #when run', () => {
