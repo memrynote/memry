@@ -379,7 +379,7 @@ export async function syncCaldavNow(
               kind: error instanceof Error ? error.name : 'unknown'
             })
             if (error instanceof ProviderRateLimitError) {
-              retryAfterMs = Math.max(retryAfterMs ?? 0, error.retryAfterMs)
+              retryAfterMs = error.retryAfterMs
               break
             }
             // A rejected password fails every calendar the same way; stop.

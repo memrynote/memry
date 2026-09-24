@@ -219,6 +219,16 @@ function dueDateTimeFromDate(date: Date): { dueDate: string; dueTime: string } {
   }
 }
 
+/** The stored agent-read answer for an event's provider; Google keeps its own channel. */
+async function agentReadConsent(
+  provider: string | null | undefined,
+  googleConsent: boolean | null | undefined
+): Promise<boolean | null | undefined> {
+  if (!provider || provider === GOOGLE_CALENDAR_PROVIDER) return googleConsent
+  const settings = await window.api.settings.getCalendarProviderSettings({ provider })
+  return settings?.agentReadEventsConsent
+}
+
 export function CalendarPage({ className: _className }: CalendarPageProps): React.JSX.Element {
   const queryClient = useQueryClient()
   // A NEW calendar tab opens on the view last used anywhere (the pre-existing
@@ -703,13 +713,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     // regardless of the event provider's consent gate (#1394). While that consent is
     // anything but a stored `true`, confirm every time — "don't ask again" must not
     // silently widen what the agent can see.
-    const provider = item.source.provider
-    const consent =
-      !provider || provider === GOOGLE_CALENDAR_PROVIDER
-        ? settings.agentReadEventsConsent
-        : (await window.api.settings.getCalendarProviderSettings({ provider }))
-            ?.agentReadEventsConsent
-    const agentAccessOff = consent !== true
+    const agentAccessOff =
+      (await agentReadConsent(item.source.provider, settings.agentReadEventsConsent)) !== true
     if (settings.promoteConfirmDismissed && !agentAccessOff) {
       await runPromote({ item, anchorRect: rect }, { dontAskAgain: false })
       return

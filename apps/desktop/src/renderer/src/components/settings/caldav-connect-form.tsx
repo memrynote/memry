@@ -99,7 +99,7 @@ export function CaldavConnectForm({
   reconnect
 }: CaldavConnectFormProps): React.JSX.Element {
   const { t } = useT('settings')
-  const { presetName, errorMessage } = useCaldavCopy()
+  const { errorMessage } = useCaldavCopy()
   const [presetId, setPresetId] = useState<CaldavPresetId>(
     caldavPreset(reconnect?.preset)?.id ?? (reconnect ? 'other' : 'icloud')
   )
@@ -193,121 +193,33 @@ export function CaldavConnectForm({
         void (calendars ? connect() : testConnection())
       }}
     >
-      {!reconnect && (
-        <label className="grid gap-1 text-xs text-foreground">
-          <span>{t('calendar.caldav.presetLabel')}</span>
-          <select
-            value={presetId}
-            onChange={(event) => {
-              setPresetId(event.target.value as CaldavPresetId)
-              setServerInput('')
-              resetTest()
-            }}
-            aria-label={t('calendar.caldav.presetLabel')}
-            className="h-[30px] rounded-[7px] border border-input bg-transparent px-2 text-xs"
-          >
-            {CALDAV_PRESETS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {presetName(option.id)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      {!reconnect && !preset.serverUrl && (
-        <Input
-          value={serverInput}
-          onChange={(event) => {
-            setServerInput(event.target.value)
-            resetTest()
-          }}
-          placeholder={
-            preset.hostTemplate
-              ? t('calendar.caldav.hostPlaceholder')
-              : t('calendar.providers.basic.serverPlaceholder')
-          }
-          aria-label={
-            preset.hostTemplate
-              ? t('calendar.caldav.hostLabel')
-              : t('calendar.providers.basic.serverLabel')
-          }
-          spellCheck={false}
-          autoComplete="url"
-        />
-      )}
-
-      {reconnect ? (
-        <p className="text-xs/4 text-muted-foreground" data-testid="caldav-reconnect-account">
-          {t('calendar.caldav.reconnectFor', { username: reconnect.username })}
-        </p>
-      ) : (
-        <Input
-          value={username}
-          onChange={(event) => {
-            setUsername(event.target.value)
-            resetTest()
-          }}
-          placeholder={
-            presetId === 'icloud'
-              ? t('calendar.caldav.appleIdLabel')
-              : t('calendar.providers.basic.usernameLabel')
-          }
-          aria-label={t('calendar.providers.basic.usernameLabel')}
-          spellCheck={false}
-          autoComplete="username"
-        />
-      )}
-      <Input
-        type="password"
-        value={password}
-        onChange={(event) => {
-          setPassword(event.target.value)
+      <CaldavAccountFields
+        presetId={presetId}
+        serverInput={serverInput}
+        username={username}
+        password={password}
+        reconnect={reconnect}
+        onPresetChange={(next) => {
+          setPresetId(next)
+          setServerInput('')
           resetTest()
         }}
-        placeholder={t('calendar.providers.basic.passwordLabel')}
-        aria-label={t('calendar.providers.basic.passwordLabel')}
-        autoComplete="current-password"
+        onServerInputChange={(next) => {
+          setServerInput(next)
+          resetTest()
+        }}
+        onUsernameChange={(next) => {
+          setUsername(next)
+          resetTest()
+        }}
+        onCredentialChange={(next) => {
+          setPassword(next)
+          resetTest()
+        }}
       />
-      <p className="text-[11px]/4 text-muted-foreground">
-        {presetId === 'icloud'
-          ? t('calendar.caldav.icloudHelp')
-          : t('calendar.caldav.appPasswordHelp')}{' '}
-        {preset.appAccessHelpUrl && (
-          <a
-            href={preset.appAccessHelpUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            {t('calendar.caldav.createAppPassword')}
-          </a>
-        )}
-      </p>
 
       {calendars && !reconnect && (
-        <fieldset className="grid gap-1.5" data-testid="caldav-discovered-calendars">
-          <legend className="pb-1 text-xs font-medium text-foreground">
-            {t('calendar.caldav.chooseCalendars')}
-          </legend>
-          {calendars.map((calendar) => (
-            <label key={calendar.id} className="flex items-center gap-2 text-xs text-foreground">
-              <Checkbox
-                checked={selected.has(calendar.id)}
-                onCheckedChange={(checked) =>
-                  setSelected((current) => {
-                    const next = new Set(current)
-                    if (checked === true) next.add(calendar.id)
-                    else next.delete(calendar.id)
-                    return next
-                  })
-                }
-                aria-label={calendar.title}
-              />
-              <span className="truncate">{calendar.title}</span>
-            </label>
-          ))}
-        </fieldset>
+        <CaldavCalendarChoice calendars={calendars} selected={selected} onChange={setSelected} />
       )}
 
       {compat && writerCompatNeedsAcknowledgement(compat) && (
@@ -348,5 +260,151 @@ export function CaldavConnectForm({
         )}
       </div>
     </form>
+  )
+}
+
+interface CaldavAccountFieldsProps {
+  presetId: CaldavPresetId
+  serverInput: string
+  username: string
+  password: string
+  reconnect?: CaldavReconnectTarget
+  onPresetChange: (presetId: CaldavPresetId) => void
+  onServerInputChange: (value: string) => void
+  onUsernameChange: (value: string) => void
+  onCredentialChange: (value: string) => void
+}
+
+/** Preset, server, username and app password, with the preset's help text. */
+function CaldavAccountFields({
+  presetId,
+  serverInput,
+  username,
+  password,
+  reconnect,
+  onPresetChange,
+  onServerInputChange,
+  onUsernameChange,
+  onCredentialChange
+}: CaldavAccountFieldsProps): React.JSX.Element {
+  const { t } = useT('settings')
+  const { presetName } = useCaldavCopy()
+  const preset = caldavPreset(presetId) ?? CALDAV_PRESETS[0]
+  return (
+    <>
+      {!reconnect && (
+        <label className="grid gap-1 text-xs text-foreground">
+          <span>{t('calendar.caldav.presetLabel')}</span>
+          <select
+            value={presetId}
+            onChange={(event) => onPresetChange(event.target.value as CaldavPresetId)}
+            aria-label={t('calendar.caldav.presetLabel')}
+            className="h-[30px] rounded-[7px] border border-input bg-transparent px-2 text-xs"
+          >
+            {CALDAV_PRESETS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {presetName(option.id)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {!reconnect && !preset.serverUrl && (
+        <Input
+          value={serverInput}
+          onChange={(event) => onServerInputChange(event.target.value)}
+          placeholder={
+            preset.hostTemplate
+              ? t('calendar.caldav.hostPlaceholder')
+              : t('calendar.providers.basic.serverPlaceholder')
+          }
+          aria-label={
+            preset.hostTemplate
+              ? t('calendar.caldav.hostLabel')
+              : t('calendar.providers.basic.serverLabel')
+          }
+          spellCheck={false}
+          autoComplete="url"
+        />
+      )}
+
+      {reconnect ? (
+        <p className="text-xs/4 text-muted-foreground" data-testid="caldav-reconnect-account">
+          {t('calendar.caldav.reconnectFor', { username: reconnect.username })}
+        </p>
+      ) : (
+        <Input
+          value={username}
+          onChange={(event) => onUsernameChange(event.target.value)}
+          placeholder={
+            presetId === 'icloud'
+              ? t('calendar.caldav.appleIdLabel')
+              : t('calendar.providers.basic.usernameLabel')
+          }
+          aria-label={t('calendar.providers.basic.usernameLabel')}
+          spellCheck={false}
+          autoComplete="username"
+        />
+      )}
+      <Input
+        type="password"
+        value={password}
+        onChange={(event) => onCredentialChange(event.target.value)}
+        placeholder={t('calendar.providers.basic.passwordLabel')}
+        aria-label={t('calendar.providers.basic.passwordLabel')}
+        autoComplete="current-password"
+      />
+      <p className="text-[11px]/4 text-muted-foreground">
+        {presetId === 'icloud'
+          ? t('calendar.caldav.icloudHelp')
+          : t('calendar.caldav.appPasswordHelp')}{' '}
+        {preset.appAccessHelpUrl && (
+          <a
+            href={preset.appAccessHelpUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2"
+          >
+            {t('calendar.caldav.createAppPassword')}
+          </a>
+        )}
+      </p>
+    </>
+  )
+}
+
+/** The calendars a tested connection found; the user picks which to show. */
+function CaldavCalendarChoice({
+  calendars,
+  selected,
+  onChange
+}: {
+  calendars: DiscoveredProviderCalendar[]
+  selected: Set<string>
+  onChange: (selected: Set<string>) => void
+}): React.JSX.Element {
+  const { t } = useT('settings')
+  return (
+    <fieldset className="grid gap-1.5" data-testid="caldav-discovered-calendars">
+      <legend className="pb-1 text-xs font-medium text-foreground">
+        {t('calendar.caldav.chooseCalendars')}
+      </legend>
+      {calendars.map((calendar) => (
+        <label key={calendar.id} className="flex items-center gap-2 text-xs text-foreground">
+          <Checkbox
+            checked={selected.has(calendar.id)}
+            onCheckedChange={(checked) => {
+              const next = new Set(selected)
+              if (checked === true) next.add(calendar.id)
+              else next.delete(calendar.id)
+              onChange(next)
+            }}
+            aria-label={calendar.title}
+          />
+          <span className="truncate">{calendar.title}</span>
+        </label>
+      ))}
+    </fieldset>
   )
 }

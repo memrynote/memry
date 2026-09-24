@@ -45,6 +45,10 @@ export interface ProviderConnectFormArgs {
   reconnect?: CalendarProviderAccountStatus
 }
 
+function expectSuccess(result: CalendarProviderMutationResponse, fallback: string): void {
+  if (!result.success) throw new Error(result.error ?? fallback)
+}
+
 export function GenericCalendarProviderPanel({
   provider,
   renderConnectForm,
@@ -83,10 +87,6 @@ export function GenericCalendarProviderPanel({
       queryClient.invalidateQueries({ queryKey: ['calendar', 'sources'] }),
       queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
     ])
-  }
-
-  const expectSuccess = (result: CalendarProviderMutationResponse, fallback: string): void => {
-    if (!result.success) throw new Error(result.error ?? fallback)
   }
 
   const disconnectMutation = useMutation({
@@ -244,87 +244,26 @@ export function GenericCalendarProviderPanel({
       {(!connected || (showConnectForm && canAddAnother)) && connectForm}
 
       {connected && capabilities.supportsMultiAccount && accounts.length > 0 && (
-        <ul className="grid gap-2" aria-label={t('calendar.providers.accounts')}>
-          {accounts.map((account) => (
-            <li
-              key={account.accountId}
-              data-testid={`calendar-provider-account-${account.accountId}`}
-              className="grid gap-1 rounded-md border border-border/70 px-3 py-2"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-xs font-medium text-foreground">
-                  {account.email}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 shrink-0 px-2 text-[11px]/4"
-                  disabled={busy}
-                  onClick={() => disconnectMutation.mutate(account.accountId)}
-                >
-                  {t('calendar.providers.disconnect')}
-                </Button>
-              </div>
-              {account.status === 'reconnect_required' && (
-                <div
-                  className="grid gap-1.5"
-                  data-testid={`calendar-provider-reconnect-${account.accountId}`}
-                >
-                  <p className="text-[11px]/4 text-amber-800 dark:text-amber-300">
-                    {describeReconnect?.(account) ?? t('calendar.providers.reconnectRequired')}
-                  </p>
-                  {renderConnectForm && reconnectAccountId !== account.accountId && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-6 w-fit px-2 text-[11px]/4"
-                      onClick={() => setReconnectAccountId(account.accountId)}
-                    >
-                      {t('calendar.providers.reconnect')}
-                    </Button>
-                  )}
-                  {renderConnectForm &&
-                    reconnectAccountId === account.accountId &&
-                    renderConnectForm({ onConnected, reconnect: account })}
-                </div>
-              )}
-              {account.status === 'error' && account.lastError && (
-                <p className="text-[11px]/4 text-destructive">{account.lastError}</p>
-              )}
-            </li>
-          ))}
-        </ul>
+        <ProviderAccountList
+          accounts={accounts}
+          busy={busy}
+          reconnectAccountId={reconnectAccountId}
+          onDisconnect={(accountId) => disconnectMutation.mutate(accountId)}
+          onReconnect={setReconnectAccountId}
+          onConnected={onConnected}
+          renderConnectForm={renderConnectForm}
+          describeReconnect={describeReconnect}
+        />
       )}
 
       {connected && calendars.length > 0 && (
-        <ul className="grid gap-1.5" aria-label={t('calendar.providers.calendars')}>
-          {calendars.map((source) => (
-            <li key={source.id} className="flex items-center justify-between gap-3">
-              <label className="flex min-w-0 items-center gap-2 text-xs text-foreground">
-                <Checkbox
-                  checked={source.isSelected}
-                  disabled={selectionMutation.isPending}
-                  onCheckedChange={(checked) =>
-                    selectionMutation.mutate({ id: source.id, isSelected: checked === true })
-                  }
-                  aria-label={source.title}
-                />
-                <span className="truncate">{source.title}</span>
-              </label>
-              {source.syncStatus === 'error' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 shrink-0 px-2 text-[11px]/4"
-                  disabled={retryMutation.isPending}
-                  onClick={() => retryMutation.mutate(source.id)}
-                >
-                  {t('calendar.providers.retry')}
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <ProviderCalendarList
+          calendars={calendars}
+          selectionPending={selectionMutation.isPending}
+          retryPending={retryMutation.isPending}
+          onSelect={(input) => selectionMutation.mutate(input)}
+          onRetry={(sourceId) => retryMutation.mutate(sourceId)}
+        />
       )}
 
       {connected && capabilities.supportsWrite && (
@@ -356,5 +295,125 @@ export function GenericCalendarProviderPanel({
         </div>
       )}
     </div>
+  )
+}
+
+/** Connected accounts, each with its disconnect and, when needed, reconnect. */
+function ProviderAccountList({
+  accounts,
+  busy,
+  reconnectAccountId,
+  onDisconnect,
+  onReconnect,
+  onConnected,
+  renderConnectForm,
+  describeReconnect
+}: {
+  accounts: CalendarProviderAccountStatus[]
+  busy: boolean
+  reconnectAccountId: string | null
+  onDisconnect: (accountId: string) => void
+  onReconnect: (accountId: string) => void
+  onConnected: () => Promise<void>
+  renderConnectForm?: (args: ProviderConnectFormArgs) => ReactNode
+  describeReconnect?: (account: CalendarProviderAccountStatus) => string
+}): React.JSX.Element {
+  const { t } = useT('settings')
+  return (
+    <ul className="grid gap-2" aria-label={t('calendar.providers.accounts')}>
+      {accounts.map((account) => (
+        <li
+          key={account.accountId}
+          data-testid={`calendar-provider-account-${account.accountId}`}
+          className="grid gap-1 rounded-md border border-border/70 px-3 py-2"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs font-medium text-foreground">{account.email}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 shrink-0 px-2 text-[11px]/4"
+              disabled={busy}
+              onClick={() => onDisconnect(account.accountId)}
+            >
+              {t('calendar.providers.disconnect')}
+            </Button>
+          </div>
+          {account.status === 'reconnect_required' && (
+            <div
+              className="grid gap-1.5"
+              data-testid={`calendar-provider-reconnect-${account.accountId}`}
+            >
+              <p className="text-[11px]/4 text-amber-800 dark:text-amber-300">
+                {describeReconnect?.(account) ?? t('calendar.providers.reconnectRequired')}
+              </p>
+              {renderConnectForm && reconnectAccountId !== account.accountId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 w-fit px-2 text-[11px]/4"
+                  onClick={() => onReconnect(account.accountId)}
+                >
+                  {t('calendar.providers.reconnect')}
+                </Button>
+              )}
+              {renderConnectForm &&
+                reconnectAccountId === account.accountId &&
+                renderConnectForm({ onConnected, reconnect: account })}
+            </div>
+          )}
+          {account.status === 'error' && account.lastError && (
+            <p className="text-[11px]/4 text-destructive">{account.lastError}</p>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** The provider's calendars: show or hide each, retry a failed one. */
+function ProviderCalendarList({
+  calendars,
+  selectionPending,
+  retryPending,
+  onSelect,
+  onRetry
+}: {
+  calendars: CalendarSourceRecord[]
+  selectionPending: boolean
+  retryPending: boolean
+  onSelect: (input: { id: string; isSelected: boolean }) => void
+  onRetry: (sourceId: string) => void
+}): React.JSX.Element {
+  const { t } = useT('settings')
+  return (
+    <ul className="grid gap-1.5" aria-label={t('calendar.providers.calendars')}>
+      {calendars.map((source) => (
+        <li key={source.id} className="flex items-center justify-between gap-3">
+          <label className="flex min-w-0 items-center gap-2 text-xs text-foreground">
+            <Checkbox
+              checked={source.isSelected}
+              disabled={selectionPending}
+              onCheckedChange={(checked) =>
+                onSelect({ id: source.id, isSelected: checked === true })
+              }
+              aria-label={source.title}
+            />
+            <span className="truncate">{source.title}</span>
+          </label>
+          {source.syncStatus === 'error' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 shrink-0 px-2 text-[11px]/4"
+              disabled={retryPending}
+              onClick={() => onRetry(source.id)}
+            >
+              {t('calendar.providers.retry')}
+            </Button>
+          )}
+        </li>
+      ))}
+    </ul>
   )
 }
