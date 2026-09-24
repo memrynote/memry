@@ -6,7 +6,8 @@ import { hasPendingSaves } from '@/lib/save-registry'
 import type { Note } from '@memry/rpc/notes'
 
 const mocks = vi.hoisted(() => ({
-  update: vi.fn()
+  update: vi.fn(),
+  onMarkdownChange: null as ((markdown: string) => void) | null
 }))
 
 let currentNote: Note | null = null
@@ -27,13 +28,16 @@ vi.mock('@/components/note/content-area', () => ({
   }: {
     initialContent: string
     onMarkdownChange: (markdown: string) => void
-  }) => (
-    <div>
-      <span data-testid="initial-content">{initialContent}</span>
-      <button data-testid="edit" onClick={() => onMarkdownChange('edited body')} />
-      <button data-testid="edit-again" onClick={() => onMarkdownChange('edited again')} />
-    </div>
-  )
+  }) => {
+    mocks.onMarkdownChange = onMarkdownChange
+    return (
+      <div>
+        <span data-testid="initial-content">{initialContent}</span>
+        <button data-testid="edit" onClick={() => onMarkdownChange('edited body')} />
+        <button data-testid="edit-again" onClick={() => onMarkdownChange('edited again')} />
+      </div>
+    )
+  }
 }))
 
 function makeNote(overrides: Partial<Note> = {}): Note {
@@ -57,6 +61,7 @@ describe('EmbeddedNoteEditor', () => {
   beforeEach(() => {
     mocks.update.mockReset()
     mocks.update.mockResolvedValue({ success: true })
+    mocks.onMarkdownChange = null
     currentNote = null
   })
   afterEach(() => {
@@ -106,5 +111,19 @@ describe('EmbeddedNoteEditor', () => {
     unmount()
     expect(hasPendingSaves()).toBe(false)
     expect(mocks.update).toHaveBeenCalledWith({ id: 'n1', content: 'edited again' })
+  })
+
+  // The editor's teardown flush reports its last edit after this component's
+  // own unmount flush has already run (#1900).
+  it('saves an edit reported after unmount straight away', () => {
+    vi.useFakeTimers()
+    currentNote = makeNote()
+    const { unmount } = render(<EmbeddedNoteEditor noteId="n1" />)
+    const reportLateEdit = mocks.onMarkdownChange!
+
+    unmount()
+    reportLateEdit('typed while closing')
+
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'n1', content: 'typed while closing' })
   })
 })

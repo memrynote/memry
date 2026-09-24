@@ -170,6 +170,52 @@ describe('useJournalEntry dedicated hook', () => {
     })
   })
 
+  // The editor flushes its last debounced edit only after it has unmounted, and
+  // serializing is async, so that edit reaches `updateContent` after this hook
+  // has already switched dates and flushed the old one (#1900).
+  it('saves a late edit to the date it was typed on, not the date now open', async () => {
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const { result, rerender } = renderHook(({ date }) => useJournalEntry(date), {
+      wrapper,
+      initialProps: { date: '2026-05-10' }
+    })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    const updateTenth = result.current.updateContent
+
+    rerender({ date: '2026-05-11' })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-11'))
+    updateEntry.mockClear()
+
+    act(() => {
+      updateTenth('Typed on the tenth')
+    })
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync()
+    })
+
+    expect(updateEntry).toHaveBeenCalledWith({ date: '2026-05-10', content: 'Typed on the tenth' })
+    expect(updateEntry).not.toHaveBeenCalledWith(expect.objectContaining({ date: '2026-05-11' }))
+    expect(result.current.isDirty).toBe(false)
+  })
+
+  it('saves a late edit straight away once the journal has unmounted', async () => {
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    const updateTenth = result.current.updateContent
+
+    unmount()
+    updateEntry.mockClear()
+    updateTenth('Typed while closing')
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // No timer advanced: the unmount flush and the save registry are both gone,
+    // so a debounce parked now would be invisible to quit.
+    expect(updateEntry).toHaveBeenCalledWith({ date: '2026-05-10', content: 'Typed while closing' })
+  })
+
   it('handles created, updated, deleted, and external journal events', async () => {
     let created: ((event: any) => void) | null = null
     let updated: ((event: any) => void) | null = null

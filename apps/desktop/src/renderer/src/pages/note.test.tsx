@@ -53,6 +53,8 @@ const mocks = vi.hoisted(() => ({
   registerPendingSave: vi.fn(),
   unregisterPendingSave: vi.fn(),
   pickerOnValueChange: null as ((value: string) => void) | null,
+  /** The newest `onMarkdownChange` the editor was handed, kept for late calls. */
+  onMarkdownChange: null as ((markdown: string) => void) | null,
   contentAreaMounts: 0,
   /** What the tab would persist; the mind-map toggle lives in here. */
   tabViewState: {} as Record<string, unknown>,
@@ -450,6 +452,7 @@ vi.mock('@/components/note', () => ({
     focusAtEndRef: React.MutableRefObject<(() => void) | null>
     review?: { onEditorReady?: (editor: unknown) => void }
   }) => {
+    mocks.onMarkdownChange = onMarkdownChange
     const [content] = useState(initialContent)
     // A fresh mount mints a fresh editor, exactly as the real one does — which
     // is what makes "same instance across a round trip" a real assertion and
@@ -877,6 +880,7 @@ describe('NotePage', () => {
     mocks.setLocalOnly.mockResolvedValue({ success: true })
     mocks.notesUpdate.mockResolvedValue({ success: true })
     mocks.pickerOnValueChange = null
+    mocks.onMarkdownChange = null
     mocks.propertyOnBlocked = null
     mocks.contentAreaMounts = 0
     mocks.tabViewState = {}
@@ -1127,6 +1131,53 @@ describe('NotePage', () => {
 
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
     expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1')
+  })
+
+  // The editor's teardown flush serializes its last debounced edit async, so it
+  // lands after this page's cleanup already flushed and left the save registry
+  // (#1900).
+  it('saves an edit reported after the page unmounted straight to that note', async () => {
+    vi.useFakeTimers()
+    const view = renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Change markdown' })
+    const reportLateEdit = mocks.onMarkdownChange!
+
+    view.unmount()
+    mocks.updateNote.mockClear()
+    reportLateEdit('# Typed while closing')
+
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      content: '# Typed while closing'
+    })
+  })
+
+  it('keeps a late edit for the previous note out of the next note’s pending save', async () => {
+    vi.useFakeTimers()
+    const view = renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Change markdown' })
+    const reportLateEdit = mocks.onMarkdownChange!
+
+    view.rerender(<NotePage noteId="note-2" />)
+    mocks.updateNote.mockClear()
+    reportLateEdit('# Typed in note one')
+
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      content: '# Typed in note one'
+    })
+
+    // Quit flushes whatever note two has pending; note one's text is not it.
+    const flushNoteTwo = mocks.registerPendingSave.mock.calls.find(
+      ([key]) => key === 'note-page:note-2'
+    )?.[1] as (() => Promise<void>) | undefined
+    expect(flushNoteTwo).toBeInstanceOf(Function)
+    await act(async () => {
+      await flushNoteTwo?.()
+      await vi.runOnlyPendingTimersAsync()
+    })
+    expect(mocks.updateNote).not.toHaveBeenCalledWith(expect.objectContaining({ id: 'note-2' }))
+    expect(mocks.updateNote).toHaveBeenCalledTimes(1)
   })
 
   it('handles toolbar actions, external links, headings, and marquee focus', async () => {
