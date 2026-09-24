@@ -60,17 +60,25 @@ struct TaskFilterPresetButton: View {
 
     var body: some View {
         Button(action: action) {
-            Label(TasksCopy.presetLabel(preset), systemImage: preset.symbol)
-                .font(Tokens.Typography.label.font)
-                .foregroundStyle(isActive ? Tokens.Interaction.actionForeground.color : Tokens.Text.primary.color)
-                .padding(.horizontal, Tokens.Space.medium)
-                .frame(minHeight: Tokens.Size.minimumHitArea)
-                .background(
-                    isActive ? Tokens.Interaction.actionFill.color : Tokens.Canvas.surface.color,
-                    in: .capsule
-                )
-                .overlay(Capsule().stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline))
-                .contentShape(.capsule)
+            // Icon and text spelled out: a `Label` inside a form row takes the
+            // row's label style and drew icon-only capsules at odd heights.
+            HStack(spacing: Tokens.Space.tight) {
+                Image(systemName: preset.symbol)
+                    .accessibilityHidden(true)
+                Text(TasksCopy.presetLabel(preset))
+                    .lineLimit(1)
+            }
+            .fixedSize()
+            .font(Tokens.Typography.label.font)
+            .foregroundStyle(isActive ? Tokens.Interaction.actionForeground.color : Tokens.Text.primary.color)
+            .padding(.horizontal, Tokens.Space.medium)
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .background(
+                isActive ? Tokens.Interaction.actionFill.color : Tokens.Canvas.surface.color,
+                in: .capsule
+            )
+            .overlay(Capsule().stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline))
+            .contentShape(.capsule)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isActive ? .isSelected : [])
