@@ -66,15 +66,17 @@ export function digestAuthorization(input: {
     ? hash(challenge.algorithm, `${ha1}:${challenge.nonce}:${nc}:${cnonce}:${challenge.qop}:${ha2}`)
     : hash(challenge.algorithm, `${ha1}:${challenge.nonce}:${ha2}`)
 
+  // RFC 7616 quoted-string: backslash and double quote are escaped.
+  const quoted = (value: string): string => `"${value.replace(/[\\"]/g, '\\$&')}"`
   const parts = [
-    `username="${username.replace(/"/g, '\\"')}"`,
-    `realm="${challenge.realm}"`,
-    `nonce="${challenge.nonce}"`,
-    `uri="${uri}"`,
+    `username=${quoted(username)}`,
+    `realm=${quoted(challenge.realm)}`,
+    `nonce=${quoted(challenge.nonce)}`,
+    `uri=${quoted(uri)}`,
     `algorithm=${challenge.algorithm}`,
     `response="${response}"`
   ]
-  if (challenge.qop) parts.push(`qop=${challenge.qop}`, `nc=${nc}`, `cnonce="${cnonce}"`)
-  if (challenge.opaque !== null) parts.push(`opaque="${challenge.opaque}"`)
+  if (challenge.qop) parts.push(`qop=${challenge.qop}`, `nc=${nc}`, `cnonce=${quoted(cnonce)}`)
+  if (challenge.opaque !== null) parts.push(`opaque=${quoted(challenge.opaque)}`)
   return `Digest ${parts.join(', ')}`
 }

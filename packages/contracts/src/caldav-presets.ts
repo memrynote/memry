@@ -72,10 +72,9 @@ export function caldavPreset(id: string | null | undefined): CaldavPreset | null
 export function caldavPresetServerUrl(preset: CaldavPreset, typed: string): string {
   if (preset.serverUrl) return preset.serverUrl
   if (preset.hostTemplate) {
-    const host = typed
-      .trim()
-      .replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
-      .replace(/\/.*$/, '')
+    const withoutScheme = typed.trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
+    const slash = withoutScheme.indexOf('/')
+    const host = slash === -1 ? withoutScheme : withoutScheme.slice(0, slash)
     return host ? preset.hostTemplate.replace('{host}', host) : ''
   }
   return typed.trim()

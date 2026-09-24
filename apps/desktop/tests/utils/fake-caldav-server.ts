@@ -7,6 +7,7 @@
  * can be invalidated, `calendar-query`, `calendar-multiget`, and object
  * GET/PUT/DELETE with ETag preconditions.
  */
+import { randomUUID } from 'node:crypto'
 
 export interface FakeCalendar {
   path: string
@@ -111,7 +112,7 @@ export class FakeCaldavServer {
 
   /** Revoke the password, as resetting an Apple ID does to app passwords. */
   revokePassword(): void {
-    this.acceptedPassword = `revoked-${Math.random()}`
+    this.acceptedPassword = `revoked-${randomUUID()}`
   }
 
   /** Every token issued so far stops being valid. */

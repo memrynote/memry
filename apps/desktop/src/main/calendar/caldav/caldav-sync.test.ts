@@ -117,7 +117,9 @@ describe('CalDAV read adapter against a recorded fixture server (#1399)', () => 
     const server = iCloudLike({ wellKnownRedirectHost: 'evil.example.net' })
     await connect(server)
 
-    const toEvil = server.requests.filter((request) => request.url.includes('evil.example.net'))
+    const toEvil = server.requests.filter(
+      (request) => new URL(request.url).hostname === 'evil.example.net'
+    )
     expect(toEvil.length).toBeGreaterThan(0)
     expect(toEvil.every((request) => request.authorization === null)).toBe(true)
   })
