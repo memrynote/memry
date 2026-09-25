@@ -9,9 +9,10 @@
 //! Four rules, each load-bearing:
 //!
 //! - **The baseline rule** (§7.8). Fetch the snapshot first when the cursor is
-//!   `0`, or when the server advertises a snapshot ahead of the cursor whose
-//!   `revision` differs from the stored one. The rule exists because of
-//!   server-side pruning (§7.7): updates at or below the snapshot watermark
+//!   `0`, or when the server advertises a snapshot whose `revision` differs
+//!   from the stored one (#2299: not only one ahead of the cursor, because a
+//!   `coversThrough` push moves the watermark over rows it prunes). The rule
+//!   exists because of server-side pruning (§7.7): updates at or below the snapshot watermark
 //!   are answered with silence, so a `since` under the watermark **must** take
 //!   the snapshot first. When an old server advertises no `snapshotMeta` at
 //!   all and the cursor is not `0`, the reference does not fetch, and neither
@@ -260,25 +261,29 @@ impl BodyPull {
                 return Ok(report);
             }
         }
-        // §7.8, second clause, from the probe: the single-document route
-        // carries no `snapshotMeta`, so without it a snapshot that pruned the
-        // log above this cursor would leave the document silent forever.
+        // §7.8, second clause, from the probe: a server before #2299 sends no
+        // `snapshotMeta` on the single-document route, so without it a
+        // snapshot that pruned the log above this cursor would leave the
+        // document silent forever.
         if cursor > 0
             && let Some(meta) = probed
-            && self.baseline_due(doc_id, cursor, meta).await?
-            && self.fetch_baseline(doc_id, cursor, &mut report).await?
+            && self.baseline_due(doc_id, meta).await?
         {
-            cursor = self.read_cursor(doc_id).await?;
+            if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                cursor = self.read_cursor(doc_id).await?;
+            } else if !report.stopped.is_empty() {
+                return Ok(report);
+            }
         }
 
         let mut has_more = false;
         for _ in 0..MAX_PAGES_PER_DOCUMENT {
             let page = self.fetch_page(doc_id, cursor, &mut report).await?;
 
-            // §7.8, second clause: the server advertises a snapshot ahead of
-            // the cursor whose revision differs from the stored one.
+            // §7.8, second clause, widened by #2299: the server advertises a
+            // snapshot whose revision differs from the stored one.
             if let Some(meta) = page.snapshot_meta.as_ref()
-                && self.baseline_due(doc_id, cursor, meta).await?
+                && self.baseline_due(doc_id, meta).await?
             {
                 if self.fetch_baseline(doc_id, cursor, &mut report).await? {
                     cursor = self.read_cursor(doc_id).await?;
@@ -389,15 +394,11 @@ impl BodyPull {
     }
 
     /// §7.8's second clause, against the locally stored revision.
-    async fn baseline_due(
-        &self,
-        doc_id: &str,
-        cursor: i64,
-        meta: &SnapshotMeta,
-    ) -> Result<bool, BodyPullError> {
-        if meta.sequence_num <= cursor {
-            return Ok(false);
-        }
+    async fn baseline_due(&self, doc_id: &str, meta: &SnapshotMeta) -> Result<bool, BodyPullError> {
+        // #2299: a coversThrough push moves the watermark over rows it prunes,
+        // and a cursor between the old and the new one never re-reads them.
+        // Any snapshot whose revision this device does not hold is taken,
+        // whatever its sequence; a held one never is.
         let doc = doc_id.to_owned();
         let stored = self
             .db

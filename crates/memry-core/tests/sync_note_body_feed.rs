@@ -653,6 +653,60 @@ async fn a_loop_without_note_bodies_keeps_the_record_declaration() {
     assert_eq!(meta(&db, META_NOTE_BODY_LEGACY_PULL), None);
 }
 
+/// A record pull that lands no bodies, as the CLI runs it.
+async fn plain_pull(db: &Db, next_cursor: i64) {
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": next_cursor})
+            .to_string(),
+    )]);
+    let http = HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    );
+    PullLoop::new(
+        Arc::new(http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(NoRecords),
+    )
+    .pull_page()
+    .await
+    .expect("the page");
+}
+
+/// #2299: a page that served no bodies but moved the record cursor skipped
+/// body rows this device never saw, so a snapshot push must not claim that
+/// cursor (`coversThrough`). The legacy pull is re-armed, and the next page
+/// that serves bodies owes every held document again.
+#[tokio::test]
+async fn a_page_without_bodies_that_moves_the_cursor_re_arms_the_legacy_pull() {
+    let db = scratch_db("legacy-rearm");
+    seed_cursor(&db, "10");
+    hold(&db, NOTE_A, "1");
+
+    plain_pull(&db, 10).await;
+    assert_eq!(
+        meta(&db, META_NOTE_BODY_LEGACY_PULL).as_deref(),
+        Some("done")
+    );
+
+    plain_pull(&db, 20).await;
+    assert_eq!(stored_cursor(&db).as_deref(), Some("20"));
+    assert_eq!(meta(&db, META_NOTE_BODY_LEGACY_PULL), None);
+
+    pull(&db, vec![response(200, &body_page(vec![], &[], 21))]).await;
+    assert_eq!(
+        meta(&db, META_NOTE_BODY_LEGACY_PULL).as_deref(),
+        Some("done")
+    );
+    assert!(
+        db.call_blocking(|conn| body_debt::is_owed(conn, NOTE_A))
+            .expect("read the debt")
+    );
+}
+
 /// #2297 review A-4/B-3: an update at or below the held `crdt:<docId>` cursor
 /// is a replay. It costs no request and no decrypt, so a full re-read of the
 /// feed does not fetch or open what this device already holds.
