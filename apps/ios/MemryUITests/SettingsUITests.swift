@@ -68,7 +68,7 @@ final class SettingsUITests: XCTestCase {
     }
 
     func testATagIsRenamedEverywhereAndDeleted() throws {
-        try openTasksAndAdd("[agent] \(run) tag #\(run)")
+        try openTasksAndAdd("[agent] \(run) tag #\(run) @today")
         app.buttons["More"].firstMatch.tap()
         let tags = app.buttons["settings.row.tags"].firstMatch
         if !tags.waitForExistence(timeout: 3) {
@@ -97,6 +97,7 @@ final class SettingsUITests: XCTestCase {
         app.buttons["Delete"].firstMatch.tap()
         app.buttons["Delete tag"].firstMatch.tap()
         XCTAssertTrue(renamed.waitForNonExistence(timeout: 10))
+        deleteTask(containing: "[agent] \(run) tag")
     }
 
     // MARK: Helpers
@@ -144,6 +145,29 @@ final class SettingsUITests: XCTestCase {
         app.buttons["Tasks"].firstMatch.tap()
     }
 
+    /// Removes the test's own task: Tasks › filter search › swipe › Delete.
+    private func deleteTask(containing title: String) {
+        app.buttons["Tasks"].firstMatch.tap()
+        app.buttons["tasks.filterButton"].firstMatch.tap()
+        let search = app.textFields["tasks.filter.search"].firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.clearAndType(run)
+        app.buttons["tasks.filter.done"].firstMatch.tap()
+        let row = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'tasks.row.' AND label BEGINSWITH %@", title
+        )).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.swipeLeft()
+        app.buttons["tasks.row.swipe.delete"].firstMatch.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+        app.buttons["tasks.filterButton"].firstMatch.tap()
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.clearAndType("")
+        app.buttons["tasks.filter.done"].firstMatch.tap()
+    }
+
     private func rename(_ element: XCUIElement, to name: String) {
         element.press(forDuration: 1)
         app.buttons["Rename"].firstMatch.tap()
@@ -156,7 +180,7 @@ final class SettingsUITests: XCTestCase {
 
 private extension XCUIElement {
     func clearAndType(_ text: String) {
-        if let current = value as? String, !current.isEmpty {
+        if let current = value as? String, !current.isEmpty, current != placeholderValue {
             typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
         }
         typeText(text)

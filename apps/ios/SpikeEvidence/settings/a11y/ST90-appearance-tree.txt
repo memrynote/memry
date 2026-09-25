@@ -1,0 +1,143 @@
+Attributes: Application, 0x103686f80, pid: 11559, label: 'Memry'
+Element subtree:
+ →Application, 0x103686f80, pid: 11559, label: 'Memry'
+    Window (Main), 0x103687480, {{0.0, 0.0}, {393.0, 852.0}}
+      Other, 0x103687840, {{0.0, 0.0}, {393.0, 852.0}}
+        Other, 0x103687980, {{0.0, 0.0}, {393.0, 852.0}}
+          Other, 0x103687ac0, {{0.0, 0.0}, {393.0, 852.0}}
+            Other, 0x103687c00, {{0.0, 0.0}, {393.0, 852.0}}
+              Other, 0x103687e80, {{0.0, 0.0}, {393.0, 852.0}}
+                Other, 0x103687d40, {{0.0, 0.0}, {393.0, 852.0}}
+                  Other, 0x103687340, {{0.0, 0.0}, {393.0, 852.0}}
+                    Other, 0x103687200, {{0.0, 0.0}, {393.0, 852.0}}
+                      Other, 0x1036875c0, {{0.0, 0.0}, {393.0, 852.0}}
+                        Other, 0x103687700, {{0.0, 0.0}, {393.0, 852.0}}
+                          Other, 0x11293f340, {{0.0, 0.0}, {393.0, 852.0}}
+                            NavigationBar, 0x11293f480, {{0.0, 59.0}, {393.0, 54.0}}, identifier: 'Appearance'
+                              Button, 0x11293f5c0, {{16.0, 59.0}, {44.0, 44.0}}, identifier: 'BackButton', label: 'Settings'
+                              StaticText, 0x11293f700, {{148.3, 70.7}, {96.3, 20.7}}, label: 'Appearance'
+                            Other, 0x11293f840, {{0.0, 0.0}, {393.0, 852.0}}
+                              Other, 0x11293f980, {{0.0, 0.0}, {393.0, 852.0}}
+                                Other, 0x11293fac0, {{0.0, 0.0}, {393.0, 852.0}}
+                                  Other, 0x11293fc00, {{0.0, 0.0}, {393.0, 852.0}}
+                                    CollectionView, 0x11293fd40, {{0.0, 0.0}, {393.0, 852.0}}
+                                      Other, 0x11293fe80, {{-16.0, -1591.0}, {425.0, 1888.0}}
+                                      Other, 0x1120512c0, {{0.0, 0.0}, {393.0, 852.0}}
+                                      Other, 0x112051400, {{0.0, 0.0}, {393.0, 852.0}}
+                                      Cell, 0x112051540, {{16.0, 113.0}, {361.0, 40.3}}
+                                        Other, 0x112051cc0, {{16.0, 113.0}, {361.0, 40.3}}
+                                        Other, 0x112050500, {{16.0, 113.0}, {361.0, 40.3}}
+                                          Other, 0x112053340, {{16.0, 113.0}, {361.0, 40.3}}
+                                            Other, 0x112052580, {{16.0, 113.0}, {361.0, 40.3}}
+                                              StaticText, 0x112053200, {{16.0, 113.0}, {361.0, 40.3}}, label: 'Color Mode'
+                                      Cell, 0x1120526c0, {{16.0, 153.3}, {361.0, 126.0}}
+                                        Other, 0x112050640, {{16.0, 153.3}, {361.0, 126.0}}
+                                          Other, 0x112050a00, {{16.0, 153.3}, {361.0, 126.0}}
+                                        Other, 0x112053c00, {{16.0, 153.3}, {361.0, 126.0}}
+                                          Other, 0x112053e80, {{16.0, 153.3}, {361.0, 126.0}}
+                                            Other, 0x112053d40, {{16.0, 153.3}, {361.0, 126.0}}
+                                              Button, 0x112052940, {{32.0, 176.7}, {76.3, 79.7}}, identifier: 'settings.theme.system', label: 'System', Selected
+                                              Button, 0x112052a80, {{116.3, 176.7}, {76.3, 79.7}}, identifier: 'settings.theme.light', label: 'Warm'
+                                              Button, 0x112052800, {{200.7, 176.7}, {76.0, 79.7}}, identifier: 'settings.theme.white', label: 'White'
+                                              Button, 0x112052e40, {{284.7, 176.7}, {76.3, 79.7}}, identifier: 'settings.theme.dark', label: 'Dark'
+                                      Other, 0x112052f80, {{-16.0, 297.0}, {425.0, 242.0}}
+                                      Cell, 0x112053480, {{16.0, 297.0}, {361.0, 40.3}}
+                                        Other, 0x112050f00, {{16.0, 297.0}, {361.0, 40.3}}
+                                        Other, 0x112051040, {{16.0, 297.0}, {361.0, 40.3}}
+                                          Other, 0x112050140, {{16.0, 297.0}, {361.0, 40.3}}
+                                            Other, 0x1120517c0, {{16.0, 297.0}, {361.0, 40.3}}
+                                              StaticText, 0x112051680, {{16.0, 297.0}, {361.0, 40.3}}, label: 'Accent Color'
+                                      Cell, 0x112050000, {{16.0, 337.3}, {361.0, 126.0}}
+                                        Other, 0x112051a40, {{16.0, 337.3}, {361.0, 126.0}}
+                                          Other, 0x112051900, {{16.0, 337.3}, {361.0, 126.0}}
+                                        Other, 0x1120535c0, {{16.0, 337.3}, {361.0, 126.0}}
+                                          Other, 0x112052300, {{16.0, 337.3}, {361.0, 126.0}}
+                                            Other, 0x112051e00, {{16.0, 337.3}, {361.0, 126.0}}
+                                              Other, 0x1120503c0, {{34.0, 352.3}, {325.0, 96.0}}
+                                                Button, 0x112050280, {{34.0, 352.3}, {44.0, 44.0}}, identifier: 'settings.accent.Indigo', label: 'Indigo'
+                                                Button, 0x112050b40, {{90.3, 352.3}, {44.0, 44.0}}, identifier: 'settings.accent.Amber', label: 'Amber'
+                                                Button, 0x112050dc0, {{146.3, 352.3}, {44.0, 44.0}}, identifier: 'settings.accent.Emerald', label: 'Emerald'
+                                                Button, 0x112050c80, {{202.7, 352.3}, {44.0, 44.0}}, identifier: 'settings.accent.Red', label: 'Red'
+                                                Button, 0x112050780, {{258.7, 352.3}, {44.0, 44.0}}, identifier: 'settings.accent.Violet', label: 'Violet'
+                                                Button, 0x112051f40, {{315.0, 352.3}, {44.0, 44.0}}, identifier: 'settings.accent.Cyan', label: 'Cyan'
+                                                Button, 0x1120521c0, {{34.0, 404.3}, {44.0, 44.0}}, identifier: 'settings.accent.Pink', label: 'Pink'
+                                                Button, 0x1120508c0, {{90.3, 404.3}, {44.0, 44.0}}, identifier: 'settings.accent.Orange', label: 'Orange', Selected
+                                      Cell, 0x112052440, {{16.0, 463.3}, {361.0, 58.0}}
+                                        Other, 0x1120530c0, {{16.0, 463.3}, {361.0, 58.0}}
+                                          Other, 0x112052bc0, {{16.0, 463.3}, {361.0, 58.0}}
+                                        Other, 0x112052d00, {{16.0, 463.3}, {361.0, 58.0}}
+                                          Other, 0x112051b80, {{16.0, 463.3}, {361.0, 58.0}}
+                                            Other, 0x112053980, {{16.0, 463.3}, {361.0, 58.0}}
+                                              StaticText, 0x112053ac0, {{32.0, 482.2}, {104.7, 20.3}}, label: 'Custom Color'
+                                              Button, 0x112053700, {{32.0, 478.3}, {329.0, 28.0}}, identifier: 'settings.accent.custom', label: 'Custom Color', value: brown
+                                      Other, 0x112053840, {{32.0, 462.3}, {329.0, 1.0}}
+                                      Other, 0x11210cc80, {{-16.0, 538.7}, {425.0, 1866.0}}
+                                      Cell, 0x11210cdc0, {{16.0, 538.7}, {361.0, 40.3}}
+                                        Other, 0x11210cf00, {{16.0, 538.7}, {361.0, 40.3}}
+                                        Other, 0x11210d180, {{16.0, 538.7}, {361.0, 40.3}}
+                                          Other, 0x11210d2c0, {{16.0, 538.7}, {361.0, 40.3}}
+                                            Other, 0x11210c140, {{16.0, 538.7}, {361.0, 40.3}}
+                                              StaticText, 0x11210c280, {{16.0, 538.7}, {361.0, 40.3}}, label: 'Typography'
+                                      Cell, 0x11210c500, {{16.0, 579.0}, {361.0, 74.0}}
+                                        Other, 0x11210ca00, {{16.0, 579.0}, {361.0, 74.0}}
+                                          Other, 0x11210c780, {{16.0, 579.0}, {361.0, 74.0}}
+                                        Other, 0x11210c3c0, {{16.0, 579.0}, {361.0, 74.0}}
+                                          Other, 0x11210c000, {{16.0, 579.0}, {361.0, 74.0}}
+                                            Other, 0x11210c8c0, {{16.0, 579.0}, {361.0, 74.0}}
+                                              Button, 0x11210c640, {{16.0, 579.0}, {361.0, 74.0}}, identifier: 'settings.row.font', label: 'Font, System Default'
+                                                StaticText, 0x11210cb40, {{32.0, 605.8}, {307.0, 20.3}}, label: 'Font, System Default'
+                                                  StaticText, 0x11210d400, {{32.0, 605.8}, {34.3, 20.3}}, label: 'Font'
+                                                  StaticText, 0x11210d040, {{223.3, 605.8}, {115.7, 20.3}}, label: 'System Default'
+                                                Image, 0x11210d540, {{351.7, 610.0}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Cell, 0x11209c000, {{16.0, 653.0}, {361.0, 47.7}}
+                                        Other, 0x11209c140, {{16.0, 653.0}, {361.0, 47.7}}
+                                        Other, 0x11209c280, {{16.0, 653.0}, {361.0, 47.7}}
+                                          Other, 0x11209c3c0, {{16.0, 653.0}, {361.0, 47.7}}
+                                            Other, 0x11209c500, {{16.0, 653.0}, {361.0, 47.7}}
+                                              StaticText, 0x11209c640, {{16.0, 653.0}, {361.0, 47.7}}, label: 'Text size follows iOS Dynamic Type. Shared with your other devices.'
+                                      Other, 0x11209c780, {{360.0, 113.0}, {30.0, 656.0}}, label: 'Vertical scroll bar, 1 page', value: %0
+                                        Other, 0x11209c8c0, {{387.0, 184.3}, {3.0, 581.7}}
+                                      Other, 0x11209ca00, {{360.0, 113.0}, {30.0, 656.0}}, label: 'Vertical scroll bar, 1 page', value: %0
+                                        Other, 0x11209cb40, {{387.0, 184.3}, {3.0, 581.7}}
+                            Other, 0x11209cc80, {{0.0, 0.0}, {393.0, 852.0}}
+                              Other, 0x11209cdc0, {{0.0, 0.0}, {393.0, 852.0}}
+                Other, 0x11209cf00, {{0.0, 769.0}, {393.0, 83.0}}
+                  Other, 0x11209d040, {{0.0, 0.0}, {393.0, 852.0}}
+                    TabBar, 0x11209d180, {{0.0, 769.0}, {393.0, 83.0}}, label: 'Tab Bar'
+                      Other, 0x11209d2c0, {{21.0, 769.0}, {351.0, 62.0}}
+                        Other, 0x11209d400, {{21.0, 769.0}, {74.0, 54.0}}
+                        Other, 0x11209d540, {{21.0, 769.0}, {351.0, 62.0}}
+                          Button, 0x11209d680, {{25.0, 773.0}, {74.0, 54.0}}, identifier: 'doc.text', label: 'Notes'
+                            Image, 0x11209d7c0, {{49.0, 778.7}, {25.3, 28.7}}, identifier: 'text.document.fill', label: 'text.document.fill'
+                          Button, 0x11209d900, {{92.2, 773.0}, {74.0, 54.0}}, identifier: 'house', label: 'Home'
+                            Image, 0x11209da40, {{112.2, 779.0}, {33.3, 28.0}}, identifier: 'house.fill', label: 'home'
+                          Button, 0x11209db80, {{159.5, 773.0}, {74.0, 54.0}}, identifier: 'checkmark.circle', label: 'Tasks'
+                            Image, 0x11209dcc0, {{182.5, 779.3}, {27.3, 27.3}}, identifier: 'checkmark.circle.fill', label: 'selected'
+                          Button, 0x11209de00, {{226.8, 773.0}, {74.0, 54.0}}, identifier: 'book', label: 'Journal'
+                            Image, 0x11209df40, {{247.8, 780.3}, {32.3, 25.0}}, identifier: 'book.fill', label: 'bookmark'
+                          Button, 0x11209e080, {{294.0, 773.0}, {74.0, 54.0}}, identifier: 'ellipsis', label: 'More', Selected
+                            Image, 0x11209e1c0, {{319.0, 788.7}, {25.0, 8.7}}, identifier: 'ellipsis', label: 'More'
+                        Other, 0x11209e300, {{294.0, 773.0}, {74.0, 54.0}}
+                          Other, 0x11209e440, {{294.0, 773.0}, {74.0, 54.0}}
+                            Other, 0x11209e580, {{294.0, 773.0}, {74.0, 54.0}}
+                            Other, 0x11209e6c0, {{294.0, 773.0}, {74.0, 54.0}}
+                              Other, 0x11209e800, {{294.0, 773.0}, {74.0, 54.0}}
+                                Other, 0x11209e940, {{294.0, 773.0}, {74.0, 54.0}}
+                                  Other, 0x11209ea80, {{294.0, 773.0}, {74.0, 54.0}}
+                                Other, 0x11209ebc0, {{294.0, 773.0}, {74.0, 54.0}}
+                              Other, 0x11209ed00, {{294.0, 773.0}, {74.0, 54.0}}
+                  Other, 0x11209ee40, {{0.0, 769.0}, {393.0, 83.0}}
+                    Other, 0x11209ef80, {{0.0, 769.0}, {393.0, 83.0}}
+                      Other, 0x11209f0c0, {{0.0, 769.0}, {393.0, 83.0}}
+                        Other, 0x11209f200, {{0.0, 769.0}, {393.0, 83.0}}
+                          Other, 0x11209f340, {{0.0, 769.0}, {393.0, 83.0}}
+                            Other, 0x11209f480, {{0.0, 769.0}, {393.0, 83.0}}
+                        Other, 0x11209f5c0, {{0.0, 769.0}, {393.0, 83.0}}
+                          Other, 0x11209f700, {{0.0, 769.0}, {393.0, 83.0}}
+Path to element:
+ →Application, 0x103686f80, pid: 11559, label: 'Memry'
+Query chain:
+ →Find: Target Application 'com.memry.app'
+  Output: {
+    Application, 0x11209f840, pid: 11559, label: 'Memry'
+  }
