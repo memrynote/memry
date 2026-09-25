@@ -256,6 +256,7 @@ needed.
       Unit tests for meta and relative-time formatting.
       Evidence: `Design/{Chrome,UndoToast,TitleMenuHeader}.swift` shared with Tasks; `-only-testing:MemryTests/InboxFormattingTests` 7 tests passed (suite "Inbox formatting"; 9 tests in 2 suites total).
 - [x] IB033 Entry point (D1): More tab row with count.
+      Superseded by IB033b (§6): the Inbox is a tab and Home is removed.
       Evidence: memry-A signed in to MemryNote, More tab shows "Inbox 28", tapping opens the list "28 to process": `apps/ios/SpikeEvidence/inbox/IB033-more-row.png`.
 - [x] IB033a Deep-link route used by widget and notifications (verified with IB23).
       Evidence: memry-A, a Send-test notification tapped while the app was
@@ -591,7 +592,7 @@ Each item lists what it must carry. Verification per §0.7.
       `[agent] parent task` reminder rows. - Seed row: `inbox_lnk_0SyBQ1wUWU-R` unfiled with `undoFile`. - Notes: 17 deleted. These are everything under `Agent Test/` (the five
       empty "[agent] Photo" notes, the filed photos, links, desk one/five,
       parent task ×2, link target, swipe row), the root `agent make me a
-      note` and `agent remind me later`, and the root basil note the seed
+    note` and `agent remind me later`, and the root basil note the seed
       filing made. The empty `Agent Test` folder was removed too. - Tasks: 23 deleted. These are the three conversions (`dzAu…`, `MITX…`,
       `pzSi…`) and the `[agent] ui-*` Tasks UI rows created in this spec's
       two UI-plan windows (09:19–09:27 and 11:17–11:28 UTC). - Other: saved filters `GGoOX87…` and `zTFEo…` and the IB15 note
@@ -825,6 +826,7 @@ Each item lists what it must carry. Verification per §0.7.
 - 2026-09-25 — IB92 — Filing on iOS writes `filedTo` from the core note path, which keeps the title's brackets (`Agent Test/[agent] desk one….md`). Desktop writes that note to disk as `agent desk one….md` because it sanitizes the filename, and desktop's own filing writes that name. Desktop only shows `filedTo` (filing history, insights) and never opens it, so nothing breaks. Converging needs the core to use desktop's filename sanitizer; left as is.
 - 2026-09-25 — IB92 — `VaultBrowseWiringTests` "opening a vault points attachment paths…" flaked in the full Unit plan: `AttachmentPaths.imagesDirectory` is process-wide, and parallel suites open other vaults. The test now retries the open-and-read up to three times. The app opens one vault at a time, so the global stays.
 - 2026-09-25 — IB01a — The failure row covers failed reads and writes. A failed sync pass is logged, but the `refresh()` that follows it clears `failure`, so going offline shows nothing in the list. Desktop keeps sync status out of the inbox list too (sidebar sync indicator). Left that way.
+- 2026-09-25 — IB033b — Kaan changed D1 after the run: the Inbox is now a tab in the old Home slot, and Home is gone. Home was a "coming soon" placeholder; the home board stays desktop-only. The tab bar reads Notes · Inbox · Tasks · Journal · More. The list is the tab's root, and detail and settings push on its stack (`InboxTab`, `InboxRoute`). The More row and its `moreRowAccessibility` copy are removed. Notification and Share hand-offs select the Inbox tab (`InboxRouter.openInbox`). The tab has no badge: the subtitle already shows the count, and a red count on the bar goes against "calm". `VaultTab.home` became `.inbox`; it is an in-memory selection, never persisted, so nothing needs migrating. Evidence on memry-A: `IB033b-inbox-tab.png`, `IB033b-more-without-inbox.png`, and `IB033b-notification-opens-tab.png` (Send test tapped from the Tasks tab). `InboxUITests` 2/2 pass (they open the Inbox tab now); Inbox, formatting, failure and reminder unit suites 27/27 pass.
 
 ## 7. Blockers
 

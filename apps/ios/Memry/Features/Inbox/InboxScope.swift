@@ -2,32 +2,30 @@ import MemryCore
 import Observation
 import SwiftUI
 
-// IB033 (D1). Where the Inbox lives: a row at the top of the More tab with
-// the unprocessed count, opening a pushed screen; the tab bar is unchanged.
-// Notifications, the Share extension hand-off and (later) a widget open it
-// through ``InboxLinks``.
+// IB033 (D1, revised). Where the Inbox lives: its own tab, in the slot the
+// Home placeholder held; the list is the tab's root. Notifications, the Share
+// extension hand-off and (later) a widget open it through ``InboxLinks``.
 
-/// A place inside the More tab's stack.
-enum MoreRoute: Hashable, Sendable {
-    case inbox
+/// A place pushed on the Inbox tab's stack.
+enum InboxRoute: Hashable, Sendable {
     case item(String)
     case inboxSettings
 }
 
-/// The More tab's stack, so a notification can push the Inbox.
+/// The Inbox tab's stack, so a notification can open the Inbox.
 @MainActor
 @Observable
 final class InboxRouter {
-    var path: [MoreRoute] = []
+    var path: [InboxRoute] = []
 
     func openInbox(in tasks: TasksRouter) {
-        tasks.selectedTab = .more
-        path = [.inbox]
+        tasks.selectedTab = .inbox
+        path = []
     }
 
     func openItem(_ id: String, in tasks: TasksRouter) {
-        tasks.selectedTab = .more
-        path = [.inbox, .item(id)]
+        tasks.selectedTab = .inbox
+        path = [.item(id)]
     }
 }
 
@@ -108,43 +106,5 @@ struct VaultInboxScope<Content: View>: View {
         } catch {
             Log.core.error("the inbox could not be opened", .code(ErrorMapping.userFacing(error).code))
         }
-    }
-}
-
-/// The More tab's Inbox row (D1): glyph, name, unprocessed count.
-struct InboxMoreRow: View {
-    let store: InboxStore?
-    let open: () -> Void
-
-    var body: some View {
-        Button(action: open) {
-            HStack(spacing: Tokens.Space.medium) {
-                Image(systemName: "tray")
-                    .foregroundStyle(Tokens.Text.secondary.color)
-                    .accessibilityHidden(true)
-                Text(InboxCopy.title)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
-                Spacer(minLength: Tokens.Space.small)
-                if let count = store?.stats?.reviewable, count > 0 {
-                    Text("\(count)")
-                        .font(Tokens.Typography.supporting.font.monospacedDigit())
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                }
-                Image(systemName: "chevron.forward")
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                    .accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
-            .padding(.horizontal, Tokens.Space.inset)
-            .padding(.vertical, Tokens.Space.small)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel(InboxCopy.moreRowAccessibility(Int(store?.stats?.reviewable ?? 0)))
-        .accessibilityIdentifier("inbox.more.row")
-        .disabled(store == nil)
     }
 }

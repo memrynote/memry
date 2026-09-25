@@ -1,24 +1,34 @@
 import MemryCore
 import SwiftUI
 
-// IB01. The Inbox screen pushed from More (D1, Paper 01): the large title with
+// IB01. The Inbox tab's root screen (D1, Paper 01): the large title with
 // the views menu, the subtitle, one glass capsule (filter, more), the list
 // grouped by day, the floating "+" with the undo toast beside it. The title
 // menu switches to Snoozed & reminders, Archived and Insights in place.
 
-struct InboxDestination: View {
-    let route: MoreRoute
+/// The Inbox tab: the list at the root, detail and settings pushed on it.
+struct InboxTab: View {
     let store: InboxStore?
+    @Environment(InboxRouter.self) private var router
 
     var body: some View {
-        if let store {
-            switch route {
-            case .inbox: InboxScreen(store: store)
-            case let .item(id): InboxDetailView(itemId: id, store: store)
-            case .inboxSettings: InboxSettingsView(store: store)
+        @Bindable var router = router
+        NavigationStack(path: $router.path) {
+            Group {
+                if let store {
+                    InboxScreen(store: store)
+                } else {
+                    ProgressView(InboxCopy.loading)
+                }
             }
-        } else {
-            ProgressView(InboxCopy.loading)
+            .navigationDestination(for: InboxRoute.self) { route in
+                if let store {
+                    switch route {
+                    case let .item(id): InboxDetailView(itemId: id, store: store)
+                    case .inboxSettings: InboxSettingsView(store: store)
+                    }
+                }
+            }
         }
     }
 }

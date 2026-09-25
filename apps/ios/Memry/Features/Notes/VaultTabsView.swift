@@ -1,8 +1,8 @@
 import MemryCore
 import SwiftUI
 
-// The shell an opened vault lives in: the five tabs the product has, with the
-// four that are not built yet saying so.
+// The shell an opened vault lives in: Notes, Inbox, Tasks, Journal, More,
+// with the tabs that are not built yet saying so.
 //
 // **A tab that is not built says what is true, and is not removed.** Kaan's
 // call: ship the bar now. `DESIGN.md` forbids a dead control, not an honest
@@ -28,9 +28,10 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
     /// Cross-tab navigation: search, note task blocks and reminder taps open a
     /// task through it.
     @State private var router = TasksRouter()
-    /// The More tab's stack, where the Inbox is pushed (spec 006 D1).
+    /// The Inbox tab's stack (spec 006 D1).
     @State private var inboxRouter = InboxRouter()
     private let inboxLinks = InboxLinks.shared
+    @Environment(\.inboxStore) private var inboxStore
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
 
@@ -39,11 +40,8 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
             Tab("Notes", systemImage: "doc.text", value: VaultTab.notes) {
                 notes()
             }
-            Tab("Home", systemImage: "house", value: VaultTab.home) {
-                ComingSoonTab(
-                    title: "Home",
-                    detail: "The home board with your widgets is on your computer for now."
-                )
+            Tab(InboxCopy.title, systemImage: "tray", value: VaultTab.inbox) {
+                InboxTab(store: inboxStore)
             }
             Tab("Tasks", systemImage: "checkmark.circle", value: VaultTab.tasks) {
                 tasks()
@@ -88,14 +86,10 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
 private struct MoreTab: View {
     @Environment(AccountViewModel.self) private var account: AccountViewModel?
     @Environment(TasksRouter.self) private var router
-    @Environment(InboxRouter.self) private var inboxRouter
-    @Environment(\.inboxStore) private var inboxStore
 
     var body: some View {
-        @Bindable var inboxRouter = inboxRouter
-        NavigationStack(path: $inboxRouter.path) {
+        NavigationStack {
             VStack(spacing: 0) {
-                InboxMoreRow(store: inboxStore) { inboxRouter.path = [.inbox] }
                 tasksSettingsRow
                 ContentUnavailableView {
                     Label("More", systemImage: "hourglass")
@@ -108,9 +102,6 @@ private struct MoreTab: View {
             }
             .navigationTitle("More")
             .background(Tokens.Canvas.background.color)
-            .navigationDestination(for: MoreRoute.self) { route in
-                InboxDestination(route: route, store: inboxStore)
-            }
         }
     }
 

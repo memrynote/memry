@@ -77,9 +77,6 @@ enum InboxCopy {
     static let photo = "Photo"
     static let onAnotherDevice = "File on another device"
 
-    static func moreRowAccessibility(_ count: Int) -> String {
-        count == 0 ? title : (count == 1 ? "\(title), 1 item to process" : "\(title), \(count) items to process")
-    }
 
     static func pageCount(_ count: Int) -> String { count == 1 ? "1 page" : "\(count) pages" }
 

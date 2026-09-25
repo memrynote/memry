@@ -67,17 +67,17 @@ final class InboxUITests: XCTestCase {
 
     // MARK: Steps
 
-    /// Launches onto the Inbox list, through More.
+    /// Launches onto the Inbox tab.
     private func openInbox() throws {
         app.launch()
         // The staging vault's name is whatever a desktop peer last set it to;
         // `TEST_RUNNER_MEMRY_UI_VAULT` overrides the usual one.
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name]
-        let moreTab = app.buttons["More"].firstMatch
+        let inboxTab = app.tabBars.buttons["Inbox"].firstMatch
         let signIn = app.staticTexts["Sign in to Memry"]
         let deadline = Date().addingTimeInterval(60)
-        while Date() < deadline, !moreTab.exists {
+        while Date() < deadline, !inboxTab.exists {
             if signIn.exists {
                 XCTFail("Signed out: sign in to the staging test account first (tasks.md §0.3a).")
                 throw XCTSkip("signed out")
@@ -85,11 +85,8 @@ final class InboxUITests: XCTestCase {
             if vault.exists, vault.isHittable { vault.tap() }
             Thread.sleep(forTimeInterval: 0.5)
         }
-        XCTAssertTrue(moreTab.waitForExistence(timeout: 5), "the vault did not open")
-        moreTab.tap()
-        let inboxRow = app.descendants(matching: .any)["inbox.more.row"].firstMatch
-        XCTAssertTrue(inboxRow.waitForExistence(timeout: 10))
-        inboxRow.tap()
+        XCTAssertTrue(inboxTab.waitForExistence(timeout: 5), "the vault did not open")
+        inboxTab.tap()
         XCTAssertTrue(app.buttons["inbox.addButton"].firstMatch.waitForExistence(timeout: 20))
         if !app.buttons["inbox.addButton"].firstMatch.isHittable { selectView("inbox") }
     }
