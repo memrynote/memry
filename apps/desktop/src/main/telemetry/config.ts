@@ -12,6 +12,8 @@ export const TELEMETRY_CONFIG_FILENAME = 'telemetry.json'
 export interface TelemetryConfigOnDisk {
   installId?: string
   enabled?: boolean
+  /** Absent (older installs, fresh installs) means on; only an explicit false opts out. */
+  autoSendDiagnostics?: boolean
   lastRunVersion?: string
   diagnosticsSalt?: string
 }

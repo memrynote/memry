@@ -58,7 +58,8 @@ export interface TelemetryRuntime {
   track(event: TelemetryEvent): void
   flush(reason: TelemetryFlushReason): Promise<TelemetryFlushResult>
   setEnabled(enabled: boolean): void
-  getSettings(): { enabled: boolean }
+  setAutoSendDiagnostics(enabled: boolean): void
+  getSettings(): { enabled: boolean; autoSendDiagnostics: boolean }
   dispose(): Promise<void>
 }
 
@@ -122,6 +123,7 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
   const stored = readTelemetryConfig()
   const initialEnabled = computeInitialEnabled(stored.enabled, deps?.initialEnabled, channel)
   const endpoint = resolveEndpoint(deps?.endpoint, channel)
+  let autoSendDiagnostics = stored.autoSendDiagnostics !== false
 
   const context: TelemetryClientContext = {
     installId,
@@ -192,7 +194,11 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
       client.setEnabled(enabled)
       mergeTelemetryConfig({ enabled })
     },
-    getSettings: () => client.getSettings(),
+    setAutoSendDiagnostics: (enabled) => {
+      autoSendDiagnostics = enabled
+      mergeTelemetryConfig({ autoSendDiagnostics: enabled })
+    },
+    getSettings: () => ({ ...client.getSettings(), autoSendDiagnostics }),
     dispose: async () => {
       if (flushTimer) {
         clearInterval(flushTimer)

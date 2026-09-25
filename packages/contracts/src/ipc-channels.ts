@@ -1064,7 +1064,9 @@ export const TelemetryChannels = {
     /** Get the current telemetry settings (enabled flag) */
     GET_SETTINGS: 'telemetry:getSettings',
     /** Enable or disable telemetry collection */
-    SET_ENABLED: 'telemetry:setEnabled'
+    SET_ENABLED: 'telemetry:setEnabled',
+    /** Enable or disable automatic diagnostic reports when an error screen is shown */
+    SET_AUTO_SEND_DIAGNOSTICS: 'telemetry:setAutoSendDiagnostics'
   }
 } as const
 

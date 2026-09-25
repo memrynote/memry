@@ -141,6 +141,11 @@
         "description": "Sadece anonim metrikler — hiçbir not içeriği, arama sorgusu, dosya yolu, e-posta veya ham kimlik gönderilmez.",
         "error": "Telemetri ayarı güncellenemedi"
       },
+      "autoSendDiagnostics": {
+        "label": "Hata Raporlarını Otomatik Gönder",
+        "description": "Bir hata ekranı çıktığında, maskelenmiş bir tanılama raporunu otomatik gönderir. Not içeriği yoktur. Kapatırsan her seferinde sorulur.",
+        "error": "Hata raporu ayarı güncellenemedi"
+      },
       "diagnostics": {
         "building": "Rapor hazırlanıyor…",
         "consent": "Tek seferlik bir tanılama raporu gönderilsin mi? Yalnızca maskelenmiş teknik günlükler içerir — not içeriği yoktur.",

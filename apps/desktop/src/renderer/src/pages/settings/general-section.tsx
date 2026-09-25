@@ -50,7 +50,9 @@ export function GeneralSettings() {
   const {
     enabled: telemetryEnabled,
     isLoading: telemetryLoading,
-    setEnabled: setTelemetryEnabled
+    setEnabled: setTelemetryEnabled,
+    autoSendDiagnostics,
+    setAutoSendDiagnostics
   } = useTelemetrySettings()
   const {
     state: updateState,
@@ -130,6 +132,14 @@ export function GeneralSettings() {
       if (!success) toast.error(t('general.privacy.telemetry.error'))
     },
     [t, setTelemetryEnabled]
+  )
+
+  const handleAutoSendDiagnosticsChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await setAutoSendDiagnostics(enabled)
+      if (!success) toast.error(t('general.privacy.autoSendDiagnostics.error'))
+    },
+    [t, setAutoSendDiagnostics]
   )
 
   const handleClockFormatChange = useCallback(
@@ -523,6 +533,16 @@ export function GeneralSettings() {
           <Switch
             checked={telemetryEnabled}
             onCheckedChange={(checked) => void handleTelemetryChange(checked)}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+        <SettingRow
+          label={t('general.privacy.autoSendDiagnostics.label')}
+          description={t('general.privacy.autoSendDiagnostics.description')}
+        >
+          <Switch
+            checked={autoSendDiagnostics}
+            onCheckedChange={(checked) => void handleAutoSendDiagnosticsChange(checked)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>

@@ -67,6 +67,36 @@ describe('initializeTelemetryRuntime', () => {
     expect(runtimeB.context.sessionId).not.toBe(sessionA)
   })
 
+  it('auto-send diagnostics defaults on for installs that never set it', () => {
+    // #given an existing config written by an older version (no autoSendDiagnostics key)
+    fs.writeFileSync(
+      path.join(tempDir, TELEMETRY_CONFIG_FILENAME),
+      JSON.stringify({ enabled: false, lastRunVersion: '0.9.0' })
+    )
+    const { fetchMock } = createFetch()
+
+    // #when
+    const runtime = initializeTelemetryRuntime({ fetch: fetchMock, buildChannel: 'production' })
+
+    // #then on, independent of the telemetry flag
+    expect(runtime.getSettings()).toEqual({ enabled: false, autoSendDiagnostics: true })
+  })
+
+  it('persists an explicit auto-send opt-out across launches', async () => {
+    const { fetchMock } = createFetch()
+    const runtime = initializeTelemetryRuntime({ fetch: fetchMock, buildChannel: 'production' })
+
+    runtime.setAutoSendDiagnostics(false)
+    await disposeTelemetryRuntime()
+    const next = initializeTelemetryRuntime({ fetch: fetchMock, buildChannel: 'production' })
+
+    expect(next.getSettings().autoSendDiagnostics).toBe(false)
+    const onDisk = JSON.parse(
+      fs.readFileSync(path.join(tempDir, TELEMETRY_CONFIG_FILENAME), 'utf-8')
+    ) as { autoSendDiagnostics?: boolean }
+    expect(onDisk.autoSendDiagnostics).toBe(false)
+  })
+
   it('emits an app_started event after initialization', () => {
     const { fetchMock } = createFetch()
 

@@ -8,6 +8,8 @@ import { AlertTriangle, RefreshCw } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useReportIncident } from '@/components/diagnostics/incident-report-provider'
+import { isAutoSendDiagnosticsEnabled } from '@/hooks/use-telemetry-settings'
+import { diagnosticsService, type DiagnosticTrigger } from '@/services/diagnostics-service'
 import { useT } from '@memry/i18n/renderer'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
 
@@ -23,8 +25,13 @@ interface TabErrorBoundaryProps {
 }
 
 interface TabErrorBoundaryImplProps extends TabErrorBoundaryProps {
-  /** Fallback callback to offer a diagnostic incident report for the caught error */
+  /** Opens the consent dialog for a manual diagnostic report */
   onReport?: (error: Error) => void
+  /**
+   * Sends the report without asking when the user allows it. Resolves true when
+   * the report was handled automatically, false when the manual button is needed.
+   */
+  onAutoReport?: (error: Error) => Promise<boolean>
 }
 
 interface TabErrorBoundaryLabels {
@@ -38,6 +45,8 @@ interface TabErrorBoundaryLabels {
 interface TabErrorBoundaryState {
   hasError: boolean
   error: Error | null
+  /** pending: auto-send decision in flight; auto: handled; manual: show the Send button */
+  reportMode: 'pending' | 'auto' | 'manual'
 }
 
 /**
@@ -50,21 +59,32 @@ class TabErrorBoundaryImpl extends Component<
 > {
   constructor(props: TabErrorBoundaryImplProps & { labels: TabErrorBoundaryLabels }) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { hasError: false, error: null, reportMode: 'pending' }
   }
 
-  static getDerivedStateFromError(error: Error): TabErrorBoundaryState {
-    return { hasError: true, error }
+  static getDerivedStateFromError(error: Error): Partial<TabErrorBoundaryState> {
+    return { hasError: true, error, reportMode: 'pending' }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     log.error('Tab content error', error, errorInfo)
     trackRendererError('tab_error_boundary', error)
     this.props.onError?.(error, errorInfo)
+    const autoReport = this.props.onAutoReport
+    if (!autoReport) {
+      this.setState({ reportMode: 'manual' })
+      return
+    }
+    void autoReport(error)
+      .catch(() => false)
+      .then((handled) => {
+        if (this.state.error !== error) return
+        this.setState({ reportMode: handled ? 'auto' : 'manual' })
+      })
   }
 
   handleRetry = (): void => {
-    this.setState({ hasError: false, error: null })
+    this.setState({ hasError: false, error: null, reportMode: 'pending' })
   }
 
   handleReport = (): void => {
@@ -103,13 +123,15 @@ class TabErrorBoundaryImpl extends Component<
                 <RefreshCw className="w-4 h-4" />
                 {labels.tryAgain}
               </button>
-              <button
-                type="button"
-                onClick={this.handleReport}
-                className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors"
-              >
-                {labels.sendReport}
-              </button>
+              {this.state.reportMode === 'manual' && (
+                <button
+                  type="button"
+                  onClick={this.handleReport}
+                  className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors"
+                >
+                  {labels.sendReport}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -120,15 +142,37 @@ class TabErrorBoundaryImpl extends Component<
   }
 }
 
+const toTrigger = (error: Error): DiagnosticTrigger => ({
+  source: 'tab_error_boundary',
+  errorCode: toErrorCode(error),
+  stack: error.stack
+})
+
+/** Builds and sends the report without UI when the user allows it (Settings > Privacy). */
+async function autoSendReport(error: Error): Promise<boolean> {
+  if (!(await isAutoSendDiagnosticsEnabled())) return false
+  const preview = await diagnosticsService.previewReport(toTrigger(error))
+  if (!preview.success) {
+    log.warn('Auto diagnostic report preview failed', { error: preview.error })
+    return false
+  }
+  const sent = await diagnosticsService.sendReport(preview.report)
+  if (!sent.success) {
+    log.warn('Auto diagnostic report send failed', { error: sent.error })
+    return false
+  }
+  log.info('Auto diagnostic report sent', { incidentId: sent.incidentId })
+  return true
+}
+
 export function TabErrorBoundary(props: TabErrorBoundaryProps): ReactNode {
   const { t } = useT('common')
   const open = useReportIncident()
   return (
     <TabErrorBoundaryImpl
       {...props}
-      onReport={(error) =>
-        open({ source: 'tab_error_boundary', errorCode: toErrorCode(error), stack: error.stack })
-      }
+      onReport={(error) => open(toTrigger(error))}
+      onAutoReport={autoSendReport}
       labels={{
         somethingWentWrong: t('phaseF.componentsTabsTabErrorBoundary.somethingWentWrong'),
         errorOccurred: t(

@@ -390,6 +390,7 @@ export function createGeneratedRpcApi({
       "flush": (() => invoke("telemetry:flush")) as GeneratedRpcApi["telemetry"]["flush"],
       "getSettings": (() => invoke("telemetry:getSettings")) as GeneratedRpcApi["telemetry"]["getSettings"],
       "setEnabled": ((enabled) => invoke("telemetry:setEnabled", enabled)) as GeneratedRpcApi["telemetry"]["setEnabled"],
+      "setAutoSendDiagnostics": ((enabled) => invoke("telemetry:setAutoSendDiagnostics", enabled)) as GeneratedRpcApi["telemetry"]["setAutoSendDiagnostics"],
     },
     "feedback": {
       "submit": ((input) => invoke("feedback:submit", input)) as GeneratedRpcApi["feedback"]["submit"],

@@ -196,6 +196,11 @@
         "description": "It's only anon metrics — no note content, search queries, file paths, emails, or raw IDs are ever sent. Includes redacted diagnostic logs — no note content.",
         "error": "Failed to update telemetry setting"
       },
+      "autoSendDiagnostics": {
+        "label": "Automatically Send Error Reports",
+        "description": "When an error screen appears, send a redacted diagnostic report automatically. No note content. Turn off to be asked each time.",
+        "error": "Failed to update error report setting"
+      },
       "diagnostics": {
         "title": "Send a diagnostic report?",
         "consent": "Send a one-time diagnostic report? It contains redacted technical logs only — no note content.",

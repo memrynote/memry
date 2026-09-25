@@ -4,6 +4,12 @@ import { defineDomain, defineMethod, type RpcClient } from './schema.ts'
 
 export interface TelemetrySettings {
   enabled: boolean
+  /**
+   * Send a diagnostic report automatically when an error screen is shown.
+   * Optional so a response from an older main process still type-checks;
+   * absent means on (the default).
+   */
+  autoSendDiagnostics?: boolean
 }
 
 type SuccessResponse = Promise<{ success: boolean; error?: string }>
@@ -29,6 +35,10 @@ export const telemetryRpc = defineDomain({
     }),
     setEnabled: defineMethod<(enabled: boolean) => SuccessResponse>({
       channel: TelemetryChannels.invoke.SET_ENABLED,
+      params: ['enabled']
+    }),
+    setAutoSendDiagnostics: defineMethod<(enabled: boolean) => SuccessResponse>({
+      channel: TelemetryChannels.invoke.SET_AUTO_SEND_DIAGNOSTICS,
       params: ['enabled']
     })
   },

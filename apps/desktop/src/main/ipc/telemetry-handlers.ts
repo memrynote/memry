@@ -14,7 +14,8 @@ const TELEMETRY_CHANNELS = [
   TelemetryChannels.invoke.TRACK,
   TelemetryChannels.invoke.FLUSH,
   TelemetryChannels.invoke.GET_SETTINGS,
-  TelemetryChannels.invoke.SET_ENABLED
+  TelemetryChannels.invoke.SET_ENABLED,
+  TelemetryChannels.invoke.SET_AUTO_SEND_DIAGNOSTICS
 ] as const
 
 export const registerTelemetryHandlers = (): void => {
@@ -49,7 +50,7 @@ export const registerTelemetryHandlers = (): void => {
 
   ipcMain.handle(TelemetryChannels.invoke.GET_SETTINGS, async () => {
     const runtime = getTelemetryRuntime()
-    if (!runtime) return { enabled: false }
+    if (!runtime) return { enabled: false, autoSendDiagnostics: false }
     return runtime.getSettings()
   })
 
@@ -72,6 +73,29 @@ export const registerTelemetryHandlers = (): void => {
       }
     }
   })
+
+  ipcMain.handle(
+    TelemetryChannels.invoke.SET_AUTO_SEND_DIAGNOSTICS,
+    async (_event, enabled: unknown) => {
+      if (typeof enabled !== 'boolean') {
+        return { success: false, error: 'INVALID_ENABLED_VALUE' }
+      }
+
+      const runtime = getTelemetryRuntime()
+      if (!runtime) return { success: false, error: 'TELEMETRY_NOT_INITIALIZED' }
+
+      try {
+        runtime.setAutoSendDiagnostics(enabled)
+        return { success: true }
+      } catch (error) {
+        logger.error('Failed to set auto-send diagnostics flag', { error })
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'UNKNOWN_TELEMETRY_ERROR'
+        }
+      }
+    }
+  )
 
   registered = true
 }
