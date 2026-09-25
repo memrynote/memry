@@ -59,28 +59,6 @@ const MAX_SYNC_ENGINE_LISTENERS = 10
 // makes periodicPull skip forever, and only an app restart recovers.
 export const SYNC_LOCK_STALE_MS = 15 * 60 * 1000
 
-// How often a WebSocket reconnect may re-pull the CRDT docs the provider still
-// caches without an editor attached (up to inactiveDocLimit, currently 32).
-//
-// They cannot be dropped from reconnect recovery: a body-only remote edit
-// reaches this device as a `crdt_updated` broadcast and by no other route —
-// note records in the change feed carry no body — so an edit made while the
-// socket was down is discovered either here or by the vault-wide sweep at the
-// end of the next fullSync, and a socket-only reconnect does not run a
-// fullSync. They also cannot run on every reconnect: backoff caps at 30s
-// (websocket.ts), so a flapping connection buys a snapshot GET, paged
-// incrementals and a vault-key derivation per cached doc twice a minute, for as
-// long as the network misbehaves.
-//
-// 5 minutes therefore bounds the flapping case to roughly one cache pass per
-// five minutes instead of ten, while costing nothing on a healthy connection —
-// a stable socket delivers every edit live, and docs with a live editor stay on
-// the every-reconnect path regardless. A pass suppressed inside the window is
-// remembered and paid by the next reconnect or the periodic pull tick, so the
-// worst case is an editor-less doc going stale for a few extra minutes during
-// an outage, never a body that is not pulled at all.
-export const INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000
-
 // Floor between two pulls issued by the 60s tick while the socket has been
 // continuously up.
 //
@@ -90,8 +68,7 @@ export const INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000
 // been missed: the socket pings every 25s and terminates itself after 31s of
 // silence, so a half-open connection reports disconnected long before a tick
 // would trust it. The pull is then a guaranteed-empty request, once a minute,
-// per device, for the life of the app — and the same reasoning already decides
-// the reconnect CRDT sweep in full-sync-runner.ts.
+// per device, for the life of the app.
 //
 // Throttled rather than dropped, because one failure mode is not observable
 // from here: a server that stops broadcasting looks exactly like a quiet vault.
@@ -129,20 +106,26 @@ export class SyncEngine extends SyncEventEmitter {
   private cancelRequested = false
   private syncLockAcquiredAt: number | null = null
   private activeLockRelease: (() => void) | null = null
-  // Zero means "never swept by this engine", so the first reconnect after a
-  // start, vault switch or engine rebuild always sweeps. Instance state only:
-  // a timestamp from a previous process says nothing about this socket.
-  private lastInactiveCrdtSweepAt = 0
-  private inactiveCrdtSweepOwed = false
   // The socket generation the previous pull tick observed, and when the tick
   // last actually pulled. Both are instance state re-armed with the interval —
   // see armPeriodicPull.
   private lastPullTickWsGeneration: number | null = null
   private lastPullTickPullAt = 0
-  // True while a wake-driven pull is queued and has not started (#2290). More
-  // wakes add nothing: that pull reads the feed after they arrived. Cleared as
-  // the pull starts, so wakes during a running pull queue exactly one more.
-  private wakePullQueued = false
+  /**
+   * The highest cursor of the wakes no pull has taken yet (#2290, #2421);
+   * Infinity for a wake with no cursor, or a reconnect a full sync refused.
+   * Non-null means a wake pull is queued or a running full sync's `finally`
+   * schedules one, so more wakes only raise it. The queued pull takes and
+   * clears it as it starts, so wakes during a running pull queue exactly one
+   * more; a pull a full sync refused or overlapped puts it back.
+   */
+  private pendingWakeCursor: number | null = null
+  /**
+   * The highest `crdt_updated` wake cursor per note, session-only (#2421). The
+   * note is unmerged until LAST_CURSOR reaches it: from then on its body
+   * either landed or left the note flagged or owed.
+   */
+  private wakeCursorByNote = new Map<string, number>()
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -283,6 +266,9 @@ export class SyncEngine extends SyncEventEmitter {
 
     // Before any sync and whatever the auth or network state: the debts decide
     // which snapshot pushes may prune, and the first full sync pays them.
+    if (this.stateManager.reconcileNoteBodyFeedCursor()) {
+      log.info('LAST_CURSOR was moved by another build: the note-body legacy sweep re-arms')
+    }
     this.fullSyncRunner.loadCrdtBodyDebts()
     this.quarantine.loadState()
 
@@ -511,7 +497,14 @@ export class SyncEngine extends SyncEventEmitter {
    * is answered from `crdt_body_debts`, which `start()` hydrates (#2297).
    */
   hasUnmergedRemoteCrdtState(noteId: string): boolean {
-    return this.crdtSync.hasUnmergedRemoteState(noteId)
+    if (this.crdtSync.hasUnmergedRemoteState(noteId)) return true
+    const woken = this.wakeCursorByNote.get(noteId)
+    if (woken === undefined) return false
+    if (woken > Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? 0)) {
+      return true
+    }
+    this.wakeCursorByNote.delete(noteId)
+    return false
   }
 
   /**
@@ -533,7 +526,9 @@ export class SyncEngine extends SyncEventEmitter {
    * takes the non-pruning route. Rows below the cursor at first negotiation,
    * and NULL-cursor rows, were never served as bodies: until the legacy sweep
    * merged them all (`done`), no cursor is claimed and the push is exactly
-   * the pre-#2299 one.
+   * the pre-#2299 one. Nor while the debts are session-only (a lost debt
+   * would leave an unmerged note unflagged after a restart), nor for an id
+   * the feed dropped a body of as rowless (#2421).
    *
    * A note the server refused stays on the update route until this device's
    * feed has passed the refusing snapshot's cursor (so it has merged it), or
@@ -546,7 +541,11 @@ export class SyncEngine extends SyncEventEmitter {
     if (this.hasUnmergedRemoteCrdtState(noteId)) return { unmerged: true }
     const sweep = this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)
     const cursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? 0)
-    const claimable = sweep === NOTE_BODY_LEGACY_SWEEP_DONE && Number.isSafeInteger(cursor)
+    const claimable =
+      sweep === NOTE_BODY_LEGACY_SWEEP_DONE &&
+      Number.isSafeInteger(cursor) &&
+      this.crdtSync.debtsDurable &&
+      !this.crdtSync.isBodyWithheld(noteId)
     const refusal = this.snapshotRefusals.get(noteId)
     if (refusal) {
       const passed = refusal.claimed
@@ -577,8 +576,8 @@ export class SyncEngine extends SyncEventEmitter {
    * a note leaving local-only (#2299), whose change-feed bodies were skipped,
    * or remote updates a compaction dropped.
    */
-  oweCrdtPull(noteId: string, reason: 'local_only' | 'compaction'): void {
-    this.crdtSync.oweWholeBody(noteId, reason)
+  oweCrdtPull(noteId: string, reason: 'local_only' | 'compaction'): boolean {
+    return this.crdtSync.oweWholeBody(noteId, reason)
   }
 
   /**
@@ -595,10 +594,10 @@ export class SyncEngine extends SyncEventEmitter {
     this.crdtSync.clearUnmergedForDroppedNote(noteId)
   }
 
-  async fullSync(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {
+  async fullSync(): Promise<void> {
     const start = Date.now()
     try {
-      await this.fullSyncRunner.run(options)
+      await this.fullSyncRunner.run()
       trackMainEvent('sync_run_completed', {
         surface: 'sync',
         action: 'full_completed',
@@ -623,6 +622,9 @@ export class SyncEngine extends SyncEventEmitter {
       throw error
     } finally {
       this.pushCoordinator.onSyncCycleEnded()
+      const owed = this.pendingWakeCursor
+      this.pendingWakeCursor = null
+      if (owed !== null) this.scheduleWakePull(owed === Infinity ? undefined : owed)
     }
   }
 
@@ -773,15 +775,44 @@ export class SyncEngine extends SyncEventEmitter {
     // pull moves LAST_CURSOR (#2283): every row at or below it is applied here.
     const lastCursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? 0)
     if (typeof cursor === 'number' && cursor <= lastCursor) return
-    if (this.wakePullQueued) return
-    // Set before scheduling: with nothing in flight scheduleSync runs `fn`
-    // synchronously, and `fn` clears the flag as the pull starts.
-    this.wakePullQueued = true
-    const scheduled = this.scheduleSync(async () => {
-      this.wakePullQueued = false
-      await this.pull()
+    const queued = this.pendingWakeCursor !== null
+    this.raiseWakeCursor(typeof cursor === 'number' ? cursor : Infinity)
+    if (queued) return
+    // Refused only while a full sync runs, whose `finally` takes the cursor.
+    this.scheduleSync(async () => {
+      const taken = this.pendingWakeCursor
+      this.pendingWakeCursor = null
+      // A pull queued after another took the cursor: that one read the feed.
+      if (taken === null) return
+      const overlapped = this.ctx.fullSyncActive
+      await this.pullOutsideFullSync()
+      // A full sync that held the lock refused this pull, or started while it
+      // ran and may not have read past the wake: the cursor goes back.
+      if (overlapped || this.ctx.fullSyncActive) this.restoreWakeCursor(taken)
     })
-    if (!scheduled) this.wakePullQueued = false
+  }
+
+  private raiseWakeCursor(cursor: number): void {
+    this.pendingWakeCursor = Math.max(this.pendingWakeCursor ?? -Infinity, cursor)
+  }
+
+  /** A running full sync's `finally` takes it; one already over leaves it to a new pull. */
+  private restoreWakeCursor(cursor: number): void {
+    if (this.ctx.fullSyncActive) this.raiseWakeCursor(cursor)
+    else this.scheduleWakePull(cursor === Infinity ? undefined : cursor)
+  }
+
+  /**
+   * Every pull outside a full sync (a wake, a reconnect, the 60 s tick) ends
+   * with the paced drain of what it owed: a feed entry past the page's GET
+   * budget, a missing base (#2421). Not while a full sync runs, whose
+   * `finally` flushes anyway (its `scheduleSync` would drop the drained
+   * active-editor pulls), nor paused or cancelled.
+   */
+  private async pullOutsideFullSync(): Promise<void> {
+    await this.pull()
+    if (this.ctx.fullSyncActive || this.cancelRequested || this.stateManager.isPaused()) return
+    this.fullSyncRunner.flushPendingCrdtPulls()
   }
 
   private async acquireSyncLock(): Promise<(() => void) | null> {
@@ -810,10 +841,9 @@ export class SyncEngine extends SyncEventEmitter {
   }
 
   private runPullTick(): void {
-    // Both of these are in-process watchdogs with no network cost, and both
-    // must keep running every tick regardless of what the socket is doing.
+    // An in-process watchdog with no network cost: it must keep running every
+    // tick regardless of what the socket is doing.
     this.recoverStaleSyncLock()
-    this.payOwedInactiveCrdtSweep()
 
     const ws = this.ctx.deps.ws
     const generation = ws?.connectionGeneration ?? null
@@ -833,7 +863,7 @@ export class SyncEngine extends SyncEventEmitter {
     }
 
     this.lastPullTickPullAt = Date.now()
-    this.pullCoordinator.periodicPull()
+    this.pullCoordinator.periodicPull(() => this.pullOutsideFullSync())
   }
 
   // Last-resort watchdog. Request timeouts make a hung HTTP call settle on its
@@ -852,7 +882,7 @@ export class SyncEngine extends SyncEventEmitter {
     // An abandoned push must not hold the socket fast path off (#2300).
     this.pushCoordinator.resetPushInFlight()
     // A wake pull chained behind the abandoned sync may never run.
-    this.wakePullQueued = false
+    this.pendingWakeCursor = null
     this.activeLockRelease?.()
     this.releaseLock()
   }
@@ -967,16 +997,26 @@ export class SyncEngine extends SyncEventEmitter {
       case 'crdt_updated': {
         const { noteId } = message
         if (!this.ctx.deps.crdtProvider || this.stateManager.isPaused()) break
-        // Durable only until the legacy sweep is done (#2297): from then on the
-        // feed re-serves this body above LAST_CURSOR after a crash. A frame
-        // without a cursor is an old server's, which may not serve bodies in
-        // the feed, so it stays durable (#2297 round 2).
-        const durable =
-          message.cursor === undefined ||
-          this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) !==
+        // A wake once the legacy sweep is done and the frame carries a cursor
+        // (#2421): the feed serves every body row above LAST_CURSOR, and the
+        // cursor is only the #2290 skip filter, never a pull cursor. Before
+        // `done`, or from a server that sends no cursor (before #2420), the
+        // feed may not serve this body, so the note keeps its durable
+        // per-note pull.
+        if (
+          message.cursor !== undefined &&
+          this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) ===
             NOTE_BODY_LEGACY_SWEEP_DONE
+        ) {
+          // Unmerged until the feed passes the cursor, so no snapshot push
+          // prunes the write just announced (#2421, 07 §7.13.2).
+          const woken = this.wakeCursorByNote.get(noteId) ?? -Infinity
+          this.wakeCursorByNote.set(noteId, Math.max(woken, message.cursor))
+          this.scheduleWakePull(message.cursor)
+          break
+        }
         if (this.ctx.fullSyncActive) {
-          this.crdtSync.queuePulls([noteId], durable ? 'broadcast' : undefined)
+          this.crdtSync.queuePulls([noteId], 'broadcast')
         } else {
           // Marked before the pull is even scheduled. The broadcast is the
           // server telling us a peer's state for this note is not in our doc,
@@ -984,7 +1024,7 @@ export class SyncEngine extends SyncEventEmitter {
           // whole span is time in which the 30s snapshot scheduler would
           // otherwise push a snapshot and prune the very update we were just
           // told about. A clean pull clears it.
-          this.crdtSync.markRemoteStateUnmerged(noteId, durable)
+          this.crdtSync.markRemoteStateUnmerged(noteId)
           // The merged/failed answer is the replay's concern; a broadcast-driven
           // pull that fails is already owed a retry by the coordinator.
           this.scheduleSync(async () => {
@@ -1021,59 +1061,12 @@ export class SyncEngine extends SyncEventEmitter {
     }
   }
 
+  // A reconnect pulls the feed, which re-serves every body row above
+  // LAST_CURSOR (#2421); it re-pulls no note by itself.
   private handleWsConnected = (): void => {
-    if (!this.stateManager.isPaused()) {
-      this.scheduleSync(async () => {
-        await this.pull()
-
-        // Docs with a live editor are what the user is looking at right now:
-        // pulled on every reconnect, however often the socket flaps.
-        const activeNoteIds = this.ctx.deps.crdtProvider?.getOpenNoteIds({ active: true }) ?? []
-        for (const noteId of activeNoteIds) {
-          await this.crdtSync.pullCrdtForNote(noteId)
-        }
-
-        await this.sweepInactiveCrdtDocs()
-      })
-    }
-  }
-
-  /**
-   * Re-pull the cached CRDT docs no editor holds open, at most once per
-   * INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS. A pass the window suppresses is
-   * remembered rather than dropped — see the constant for why neither dropping
-   * it nor running it every reconnect is acceptable.
-   */
-  private async sweepInactiveCrdtDocs(): Promise<void> {
-    const crdtProvider = this.ctx.deps.crdtProvider
-    if (!crdtProvider) return
-
-    if (Date.now() - this.lastInactiveCrdtSweepAt < INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS) {
-      this.inactiveCrdtSweepOwed = true
-      return
-    }
-
-    this.lastInactiveCrdtSweepAt = Date.now()
-    this.inactiveCrdtSweepOwed = false
-
-    // Re-read both sets here rather than reusing the reconnect's snapshot: an
-    // editor may have opened or closed while the active pulls above ran.
-    const activeNoteIds = new Set(crdtProvider.getOpenNoteIds({ active: true }))
-    for (const noteId of crdtProvider.getOpenNoteIds()) {
-      if (activeNoteIds.has(noteId)) continue
-      await this.crdtSync.pullCrdtForNote(noteId)
-    }
-  }
-
-  /**
-   * Settles a sweep the window held back when no further reconnect arrives to
-   * carry it — a socket that flaps twice and then stabilises still owes one.
-   * Paused or mid-fullSync it stays owed: resume() and fullSync both end in the
-   * vault-wide CRDT sweep, and the flag survives for the next tick regardless.
-   */
-  private payOwedInactiveCrdtSweep(): void {
-    if (!this.inactiveCrdtSweepOwed || this.stateManager.isPaused()) return
-    if (Date.now() - this.lastInactiveCrdtSweepAt < INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS) return
-    this.scheduleSync(() => this.sweepInactiveCrdtDocs())
+    if (this.stateManager.isPaused()) return
+    // Refused by a running full sync, whose pull may have read the feed
+    // before the socket came back: its `finally` pulls again.
+    if (!this.scheduleSync(() => this.pullOutsideFullSync())) this.raiseWakeCursor(Infinity)
   }
 }

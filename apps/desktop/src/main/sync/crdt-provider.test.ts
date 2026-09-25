@@ -285,7 +285,8 @@ import type { SnapshotPushFn } from './crdt-provider'
 // into a real sync_queue and flushes them through a real outbox.
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { listCrdtBodyDebts } from './engine/crdt-body-debts'
 import { NoteBodyOutbox, type NoteBodyPushFn } from './note-body-outbox'
 // The real toggle, so the local-only suite crosses the seam for real.
 import { setNoteLocalOnlyState } from '../notes/runtime-effects'
@@ -1426,11 +1427,41 @@ describe('CrdtProvider', () => {
     expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction')
   })
 
-  // #2297 review B-H2, A-7: the watermark goes with the dropped updates, and
-  // with no sync runtime nothing is flagged; the full-state row or a sweep pays.
-  it('drops the watermark and owes nothing when a failed compaction has no sync runtime', async () => {
+  // #2297 review B-H2, A-7; #2421 ruling 6 (A-4): the watermark goes with the
+  // dropped updates, and with no sync runtime the note is owed durably through
+  // the data DB, for the next engine start to hydrate.
+  it('drops the watermark and owes a durable debt when a failed compaction has no sync runtime', async () => {
+    const testDb = createTestDataDb()
+    try {
+      mocks.dataDb = testDb.db
+      provider = new CrdtProvider()
+      await provider.init(queue as any, pushSnapshot)
+      provider.setOweRemoteMerge(null)
+      const forget = vi.spyOn(provider, 'forgetSnapshotWatermark')
+      mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+      await provider.open('note-1', undefined, { skipSeed: true })
+      provider.updateMeta('note-1', { title: 'Before compaction' })
+      pushSnapshot.mockImplementationOnce(async () => {
+        provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+        throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+      })
+
+      await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+
+      expect(forget).toHaveBeenCalledExactlyOnceWith('note-1')
+      expect(
+        listCrdtBodyDebts(asSyncDb(testDb.db)).map((d) => [d.noteId, d.reason, d.needsWalk])
+      ).toEqual([['note-1', 'compaction', 1]])
+    } finally {
+      testDb.close()
+    }
+  })
+
+  // #2421 ruling 6: with no data DB either, the store keeps the owed note, and
+  // the next runtime to attach owes it.
+  it('keeps a detached compaction owed in the store until a runtime attaches', async () => {
+    mocks.dataDb = null
     provider.setOweRemoteMerge(null)
-    const forget = vi.spyOn(provider, 'forgetSnapshotWatermark')
     mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
     await provider.open('note-1', undefined, { skipSeed: true })
     provider.updateMeta('note-1', { title: 'Before compaction' })
@@ -1438,10 +1469,96 @@ describe('CrdtProvider', () => {
       provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
       throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
     })
-
     await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+    const store = mocks.persistenceInstances.at(-1)!
+    const marker = store.setMeta.mock.calls.find(([, key]) => key === 'owedCompactions')
+    expect(marker?.[2]).toEqual(['note-1'])
 
-    expect(forget).toHaveBeenCalledExactlyOnceWith('note-1')
+    store.getMeta.mockImplementation(async (_doc: string, key: string) =>
+      key === 'owedCompactions' ? ['note-1'] : undefined
+    )
+    const owe = vi.fn(() => true)
+    provider.setOweRemoteMerge(owe)
+
+    await vi.waitFor(() => expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction'))
+    await vi.waitFor(() =>
+      expect(store.setMeta).toHaveBeenLastCalledWith(expect.any(String), 'owedCompactions', [])
+    )
+  })
+
+  // #2421 round 2 ruling 5 (A N-5, B-4): the data DB of the vault the store
+  // belongs to, never whichever vault is open when the compaction fails.
+  it('writes nothing to an incoming vault when the failed compaction outlived a switch', async () => {
+    const incoming = createTestDataDb()
+    try {
+      provider.setOweRemoteMerge(null)
+      mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+      await provider.open('note-1', undefined, { skipSeed: true })
+      provider.updateMeta('note-1', { title: 'Before compaction' })
+      pushSnapshot.mockImplementationOnce(async () => {
+        provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+        mocks.dataDb = incoming.db
+        throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+      })
+
+      await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+
+      const store = mocks.persistenceInstances.at(-1)!
+      await vi.waitFor(() =>
+        expect(store.setMeta).toHaveBeenCalledWith(expect.any(String), 'owedCompactions', [
+          'note-1'
+        ])
+      )
+      expect(listCrdtBodyDebts(asSyncDb(incoming.db))).toEqual([])
+    } finally {
+      incoming.close()
+    }
+  })
+
+  // #2421 round 2 ruling 5: the marker's read-modify-write and the attach
+  // that drains it run one at a time, and the marker clears only after owes
+  // that were durable.
+  it('loses no owed compaction when a runtime attaches during the detached write', async () => {
+    mocks.dataDb = null
+    provider.setOweRemoteMerge(null)
+    const store = mocks.persistenceInstances.at(-1)!
+    let marker: unknown = ['note-0']
+    const later = <T>(value: T): Promise<T> =>
+      new Promise((resolve) => setTimeout(() => resolve(value), 5))
+    store.getMeta.mockImplementation((_doc: string, key: string) =>
+      later(key === 'owedCompactions' ? marker : undefined)
+    )
+    store.setMeta.mockImplementation((_doc: string, key: string, value: unknown) => {
+      if (key === 'owedCompactions') marker = value
+      return later(undefined)
+    })
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+      throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+    })
+    await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+    const owed = new Set<string>()
+    provider.setOweRemoteMerge((noteId) => (owed.add(noteId), true))
+
+    await vi.waitFor(() => expect(owed).toEqual(new Set(['note-0', 'note-1'])))
+    await vi.waitFor(() => expect(marker).toEqual([]))
+  })
+
+  it('keeps the owed compactions in the store when the owe was not durable', async () => {
+    const store = mocks.persistenceInstances.at(-1)!
+    store.getMeta.mockImplementation(async (_doc: string, key: string) =>
+      key === 'owedCompactions' ? ['note-1'] : undefined
+    )
+    const owe = vi.fn(() => false)
+
+    provider.setOweRemoteMerge(owe)
+
+    await vi.waitFor(() => expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(store.setMeta).not.toHaveBeenCalledWith(expect.any(String), 'owedCompactions', [])
   })
 
   it('owes the note a pull when an abandoned compaction has no live doc for its buffer', async () => {

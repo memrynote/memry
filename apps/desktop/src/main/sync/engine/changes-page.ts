@@ -19,11 +19,11 @@ export interface PullSlice {
   /** The page's note bodies (#2297), on the last slice only: the cursor waits for that slice. */
   noteBodies?: PageNoteBodies
   /**
-   * The page's `skippedForRecord`, shared by every slice: a slice owes the
-   * bodies of the records it applied and removes them; the last slice owes
-   * the rest (#2297 round 2 b-M2).
+   * The page's note bodies, shared by every slice for their records (#2421):
+   * its `skippedForRecord` is owed per slice for the records the slice
+   * applied, and removed; the last slice owes the rest (#2297 round 2 b-M2).
    */
-  skippedForRecord?: Map<string, number | null>
+  feedPage?: PageNoteBodies
 }
 
 /**

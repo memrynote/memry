@@ -24,6 +24,7 @@
  */
 import { and, eq, gt, inArray, isNotNull, lte, max, or, sql } from 'drizzle-orm'
 import { crdtBodyDebts } from '@memry/db-schema/schema/crdt-body-debts'
+import { crdtBodyWithheld } from '@memry/db-schema/schema/crdt-body-withheld'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { createLogger } from '../../lib/logger'
@@ -43,7 +44,6 @@ export type CrdtBodyDebtReason =
   | 'snapshot_refused'
   | 'local_only'
   | 'compaction'
-  | 'sweep'
   | 'legacy'
 
 export interface CrdtBodyDebt {
@@ -96,6 +96,20 @@ export interface CrdtBodyDebtStore {
   list(): CrdtBodyDebt[]
   /** When each failing debt's backoff ends (epoch ms). */
   backoffUntil(): Map<string, number>
+  /**
+   * False when either table is unusable and its rows are tracked for this
+   * session only. Probed once per handle, then latched.
+   */
+  durable(): boolean
+  /**
+   * The feed dropped a body of this id because no row existed yet (#2421).
+   * Kept in `crdt_body_withheld`, apart from the debts: nothing pulls it.
+   */
+  withhold(noteId: string): void
+  /** The feed dropped a body of this id as rowless and no whole-body pull merged since. */
+  isWithheld(noteId: string): boolean
+  /** A whole-body walk merged these notes, or a delete tombstone applied. */
+  clearWithheld(noteIds: readonly string[]): void
 }
 
 /** For a coordinator with no data DB (unit tests of in-memory behaviour). */
@@ -106,10 +120,16 @@ export const SESSION_ONLY_CRDT_BODY_DEBTS: CrdtBodyDebtStore = {
   bumpGeneration: () => 0,
   needsWalk: () => new Set(),
   list: () => [],
-  backoffUntil: () => new Map()
+  backoffUntil: () => new Map(),
+  durable: () => false,
+  withhold: () => {},
+  isWithheld: () => false,
+  clearWithheld: () => {}
 }
 
 export function crdtBodyDebtStore(db: DrizzleDb): CrdtBodyDebtStore {
+  // The withheld ids of a handle without the table, for this session only.
+  const sessionWithheld = new Set<string>()
   return {
     owe: (noteIds, reason, options) => oweCrdtBodyDebts(db, noteIds, reason, options),
     settle: (noteIds, generation) => settleCrdtBodyDebts(db, noteIds, generation),
@@ -117,9 +137,51 @@ export function crdtBodyDebtStore(db: DrizzleDb): CrdtBodyDebtStore {
     bumpGeneration: () => guarded(db, 0, () => ++generationCounter(db, db).value),
     needsWalk: (noteIds) => crdtBodyDebtsNeedingWalk(db, noteIds),
     list: () => listCrdtBodyDebts(db),
-    backoffUntil: () => crdtBodyDebtBackoffUntil(db)
+    backoffUntil: () => crdtBodyDebtBackoffUntil(db),
+    durable: () => {
+      if (!probed.has(db)) {
+        probed.add(db)
+        guarded(db, undefined, () => db.all(sql`SELECT 1 FROM crdt_body_debts LIMIT 0`))
+        guardedWithheld(db, undefined, () => db.all(sql`SELECT 1 FROM crdt_body_withheld LIMIT 0`))
+      }
+      return !missingTable.has(db) && !missingWithheldTable.has(db)
+    },
+    withhold: (noteId) => {
+      const written = guardedWithheld(db, false, () => {
+        db.insert(crdtBodyWithheld)
+          .values({ noteId, createdAt: Date.now() })
+          .onConflictDoNothing()
+          .run()
+        return true
+      })
+      if (!written) sessionWithheld.add(noteId)
+    },
+    isWithheld: (noteId) =>
+      sessionWithheld.has(noteId) ||
+      guardedWithheld(
+        db,
+        false,
+        () =>
+          db
+            .select({ noteId: crdtBodyWithheld.noteId })
+            .from(crdtBodyWithheld)
+            .where(eq(crdtBodyWithheld.noteId, noteId))
+            .get() !== undefined
+      ),
+    clearWithheld: (noteIds) => {
+      if (noteIds.length === 0) return
+      for (const noteId of noteIds) sessionWithheld.delete(noteId)
+      guardedWithheld(db, undefined, () => {
+        db.delete(crdtBodyWithheld)
+          .where(inArray(crdtBodyWithheld.noteId, [...new Set(noteIds)]))
+          .run()
+      })
+    }
   }
 }
+
+/** Handles whose tables `durable()` has probed. */
+const probed = new WeakSet<object>()
 
 const MAX_BACKOFF_MINUTES = 32
 /** The longest a failing debt waits; also the cap on the retry timer. */
@@ -164,6 +226,25 @@ function healTableShape(db: DrizzleDb): void {
 /** A missing table, or one whose shape this build cannot use. */
 const UNUSABLE_TABLE = /no such table: crdt_body_debts|no such column|has no column named/
 
+/** Databases found without `crdt_body_withheld`; its ids live in the store's session set. */
+const missingWithheldTable = new WeakSet<object>()
+
+function guardedWithheld<T>(db: DrizzleDb, fallback: T, fn: () => T): T {
+  if (missingWithheldTable.has(db)) return fallback
+  try {
+    return fn()
+  } catch (err) {
+    if (!(err instanceof Error) || !/no such table: crdt_body_withheld/.test(err.message)) {
+      throw err
+    }
+    missingWithheldTable.add(db)
+    log.error('crdt_body_withheld is missing: rowless drops are tracked for this session only', {
+      error: err.message
+    })
+    return fallback
+  }
+}
+
 function guarded<T>(db: DrizzleDb, fallback: T, fn: () => T): T {
   if (missingTable.has(db)) return fallback
   try {
@@ -204,8 +285,7 @@ export function currentCrdtBodyDebtGeneration(db: DrizzleDb): number {
 /**
  * Raise a debt per note, in one transaction with the mirror. A second debt for
  * the same note keeps the first reason and the lower cursor, and NULL (whole
- * body) wins. Every debt
- * takes a new generation; only a `failed` one counts a failure and moves
+ * body) wins. Every debt takes a new generation; only a `failed` one counts a failure and moves
  * `last_failed_at`, so other debts never extend a backoff.
  */
 export function oweCrdtBodyDebts(
@@ -242,18 +322,19 @@ function oweInTx(
         .run()
       continue
     }
+    const row = {
+      noteId,
+      reason,
+      lowestCursor,
+      generation,
+      failures: failed ? 1 : 0,
+      lastFailedAt: failed ? now : null,
+      needsWalk: needsWalk ? 1 : 0,
+      createdAt: now,
+      updatedAt: now
+    }
     tx.insert(crdtBodyDebts)
-      .values({
-        noteId,
-        reason,
-        lowestCursor,
-        generation,
-        failures: failed ? 1 : 0,
-        lastFailedAt: failed ? now : null,
-        needsWalk: needsWalk ? 1 : 0,
-        createdAt: now,
-        updatedAt: now
-      })
+      .values(row)
       .onConflictDoUpdate({
         target: crdtBodyDebts.noteId,
         set: {

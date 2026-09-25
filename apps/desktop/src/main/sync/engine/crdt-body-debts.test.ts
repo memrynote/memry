@@ -97,7 +97,7 @@ describe('crdt body debts (#2297)', () => {
   // #2297 review A-2, B-M1
   it('never extends a backoff with a debt that is not a failure', () => {
     owe(['n1'], 'pull_failed', { failed: true, now: 1_000 })
-    owe(['n1'], 'sweep', { now: 50_000 })
+    owe(['n1'], 'legacy', { now: 50_000 })
     owe(['n1'], 'record', { now: 55_000 })
     expect(crdtBodyDebtBackoffUntil(db()).get('n1')).toBe(1_000 + MIN)
   })
@@ -120,6 +120,51 @@ describe('crdt body debts (#2297)', () => {
     expect(
       [...store.needsWalk(['record', 'compaction', 'failing', 'dropped', 'none'])].sort()
     ).toEqual(['compaction', 'dropped', 'failing'])
+  })
+
+  // #2421 round 2 ruling 2 (B-5a): the feed's rowless drop is remembered in
+  // its own table, apart from the debts. A real debt and the mark coexist,
+  // settling a debt leaves the mark, and only an explicit clear removes it.
+  it('keeps the withheld mark in its own table, beside a real debt', () => {
+    const store = crdtBodyDebtStore(db())
+    owe(['n1'], 'feed_owed', { lowestCursor: 5 })
+    store.withhold('n1')
+    store.withhold('n2')
+
+    expect(store.list().map((d) => [d.noteId, d.reason, d.lowestCursor])).toEqual([
+      ['n1', 'feed_owed', 5]
+    ])
+    expect([store.isWithheld('n1'), store.isWithheld('n2')]).toEqual([true, true])
+
+    store.settle(['n1', 'n2'])
+    expect(store.list()).toEqual([])
+    expect(store.isWithheld('n1')).toBe(true)
+
+    store.clearWithheld(['n1', 'n2'])
+    expect([store.isWithheld('n1'), store.isWithheld('n2')]).toEqual([false, false])
+  })
+
+  // #2421 round 2 ruling 2: a missing withheld table degrades to a session
+  // set, and the store stops reporting itself durable.
+  it('falls back to a session set without the withheld table', () => {
+    t.sqlite.exec('DROP TABLE crdt_body_withheld')
+    const store = crdtBodyDebtStore(db())
+    store.withhold('n1')
+
+    expect(store.isWithheld('n1')).toBe(true)
+    expect(store.durable()).toBe(false)
+  })
+
+  // #2421 ruling 6: only a usable table is durable.
+  // #2421 round 2 ruling 2: probed once per handle, then latched; a table
+  // found unusable later turns it off.
+  it('reports whether the store is durable', () => {
+    const store = crdtBodyDebtStore(db())
+    expect(store.durable()).toBe(true)
+    t.sqlite.exec('DROP TABLE crdt_body_debts')
+    expect(store.durable()).toBe(true)
+    store.list()
+    expect(store.durable()).toBe(false)
   })
 
   // #2297 round 2 b-L4: a session-only flag takes a generation from the same counter.

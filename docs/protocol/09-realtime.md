@@ -333,10 +333,21 @@ stored row's cursor. **It is omitted when the write stored nothing new**: a
 duplicate-only update retry (chapter 07, #2296), or a snapshot write re-read as
 committed after its batch answer was lost (chapter 07 §7.7.1). A refused
 snapshot write broadcasts nothing. The same rule as the `changes_available` cursor applies: **a client
-MUST NOT use it as its own pull cursor**; it exists for the skip filter above
-(#2421). Clients that predate it ignore the key, and a `crdt_updated` without
-one keeps meaning "pull this note". A client that reads a malformed `cursor`
-MUST drop the cursor and keep the frame, which still names a note to pull.
+MUST NOT use it as its own pull cursor**; it exists for the skip filter above.
+Clients that predate it ignore the key, and a `crdt_updated` without one keeps
+meaning "pull this note". A client that reads a malformed `cursor` MUST drop
+the cursor and keep the frame, which still names a note to pull.
+
+The desktop treats `crdt_updated` as a wake (#2421) once the change feed serves
+it every body row (its one-time legacy sweep is done, chapter 07 §7.17.5) and
+the frame carries a `cursor`: the same coalesced wake pull as
+`changes_available`, with the same skip filter, and no per-note pull. The feed
+delivers the body. Until `LAST_CURSOR` reaches the frame's cursor the note
+counts as unmerged, so no snapshot push prunes the write just announced. A
+wake refused because a full sync runs is latched and pulled when that sync
+ends, if the cursor is still ahead. Every pull outside a full sync, the wake's
+included, then pays the body debts it owed. Before `done`, and for a frame
+without `cursor`, it pulls the named note.
 
 **A device is excluded from its own broadcast** by `excludeDeviceId`
 (`apps/sync-server/src/durable-objects/user-sync-state.ts:233`), and a broadcast

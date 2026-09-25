@@ -4,7 +4,15 @@ import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { getDatabase, getIndexDatabase } from '../database/client'
+import {
+  getDatabase,
+  getIndexDatabase,
+  isDatabaseInitialized,
+  type DataDb
+} from '../database/client'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
 import type { NoteBodyOutbox } from './note-body-outbox'
 import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-client/queue'
@@ -43,6 +51,10 @@ import {
 } from '@memry/shared'
 
 const log = createLogger('CrdtProvider')
+
+/** A reserved y-leveldb meta doc: never in the doc list, never opened (#2421). */
+const OWED_COMPACTIONS_DOC = '__memry_owed_compactions__'
+const OWED_COMPACTIONS_KEY = 'owedCompactions'
 
 interface IpcOrigin {
   source: 'ipc'
@@ -205,8 +217,17 @@ export class CrdtProvider {
   private snapshotPushFn: SnapshotPushFn | null = null
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
   private snapshotCoverage: SnapshotCoverageReader = NO_COVERAGE
-  private oweRemoteMerge: ((noteId: string, reason: 'local_only' | 'compaction') => void) | null =
-    null
+  /** Answers whether the owe is durable (#2421). */
+  private oweRemoteMerge:
+    ((noteId: string, reason: 'local_only' | 'compaction') => boolean) | null = null
+  /**
+   * The data DB handle and vault the open store belongs to, bound at init
+   * (#2421): a detached compaction owes its debt there, and never to a vault
+   * opened since.
+   */
+  private boundVault: { db: DataDb; vaultUuid: string } | null = null
+  /** Runs the owed-compactions marker's read-modify-writes one at a time. */
+  private owedCompactions: Promise<void> = Promise.resolve()
   /**
    * Snapshot claims this session cannot vouch for (#2299, 07 §7.7.1): a claim
    * says the doc holds every body at or below LAST_CURSOR, which holds only for
@@ -291,9 +312,42 @@ export class CrdtProvider {
    * change feed skipped its bodies without flagging it.
    */
   setOweRemoteMerge(
-    owe: ((noteId: string, reason: 'local_only' | 'compaction') => void) | null
+    owe: ((noteId: string, reason: 'local_only' | 'compaction') => boolean) | null
   ): void {
     this.oweRemoteMerge = owe
+    if (owe) void this.oweStoredCompactions(owe)
+  }
+
+  /**
+   * Owe the compactions a detached provider could only record in its store
+   * (#2421). The marker is cleared only once every owe was durable.
+   */
+  private oweStoredCompactions(
+    owe: (noteId: string, reason: 'compaction') => boolean
+  ): Promise<void> {
+    return this.withOwedCompactions(async (persistence) => {
+      const owed = await persistence.getMeta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY)
+      if (!Array.isArray(owed) || owed.length === 0) return
+      let durable = true
+      for (const noteId of owed) {
+        if (typeof noteId === 'string' && !owe(noteId, 'compaction')) durable = false
+      }
+      if (durable) await persistence.setMeta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY, [])
+    }, 'Could not read the compactions owed while no sync runtime ran')
+  }
+
+  /** Chained after every earlier marker read-modify-write, so none loses another's ids. */
+  private withOwedCompactions(
+    fn: (persistence: CrdtPersistence) => Promise<void>,
+    failure: string
+  ): Promise<void> {
+    const persistence = this.persistence
+    if (!persistence) return Promise.resolve()
+    const run = this.owedCompactions
+      .then(() => fn(persistence))
+      .catch((err) => log.error(failure, { error: err }))
+    this.owedCompactions = run
+    return run
   }
 
   private canVouchFor(noteId: string): boolean {
@@ -415,6 +469,7 @@ export class CrdtProvider {
     // Preflight, quarantine and probe live in crdt-persistence.ts; null means
     // the store could not be trusted and this provider runs in-memory.
     this.persistence = await openCrdtPersistence(target.storagePath)
+    this.boundVault = { db: getDatabase(), vaultUuid: target.vaultUuid }
     if (this.persistence) {
       // Before anything can push from this store (#2299): a store without the
       // marker withholds snapshot claims until the vault is swept again.
@@ -1013,6 +1068,7 @@ export class CrdtProvider {
     // watermarks read out of that store now sees a different `storeId` and has
     // to throw its copy away — see the getter.
     this.storeIdentity = null
+    this.boundVault = null
     this.persistenceReady = false
 
     this.openLocks.clear()
@@ -1863,9 +1919,10 @@ export class CrdtProvider {
    * already recorded as applied and the feed cursor may be past them, so the
    * note is owed its whole server body and flagged until that merges (#2299).
    * The watermark is dropped either way, or a probe would call the note merged
-   * (#2297 review B-H2). With no runtime there is no one to owe: nothing is
-   * flagged, and the note's queued full-state row or the next vault sweep
-   * pulls it.
+   * (#2297 review B-H2). With no runtime the debt is written straight to the
+   * data DB of this store's vault, which the next engine start hydrates; with
+   * that DB closed or unusable it is kept in this store until a runtime
+   * attaches (#2421).
    */
   private oweDroppedRemoteUpdates(noteId: string): void {
     void this.forgetSnapshotWatermark(noteId)
@@ -1873,12 +1930,43 @@ export class CrdtProvider {
       log.warn('Dropped remote updates buffered during compaction with no sync runtime', {
         noteId
       })
+      void this.oweDetachedCompaction(noteId)
       return
     }
     log.warn('Dropped remote updates buffered during compaction; owing the note a pull', {
       noteId
     })
     this.oweRemoteMerge(noteId, 'compaction')
+  }
+
+  private oweDetachedCompaction(noteId: string): Promise<void> {
+    try {
+      const db = this.boundVaultDatabase()
+      const debts = db && crdtBodyDebtStore(db)
+      if (debts?.durable()) {
+        debts.owe([noteId], 'compaction', { needsWalk: true })
+        return Promise.resolve()
+      }
+    } catch (err) {
+      log.error('Could not owe a compaction in the data DB; keeping it in the store', {
+        noteId,
+        error: err
+      })
+    }
+    return this.withOwedCompactions(async (persistence) => {
+      const owed = await persistence.getMeta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY)
+      const noteIds = new Set(Array.isArray(owed) ? owed : [])
+      noteIds.add(noteId)
+      await persistence.setMeta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY, [...noteIds])
+    }, 'Could not record a compaction owed with no sync runtime')
+  }
+
+  /** The bound data DB, while it is the open one and still this store's vault. */
+  private boundVaultDatabase(): DrizzleDb | null {
+    const bound = this.boundVault
+    if (!bound || !isDatabaseInitialized() || getDatabase() !== bound.db) return null
+    if (getOrCreateVaultUuid(bound.db) !== bound.vaultUuid) return null
+    return bound.db as unknown as DrizzleDb
   }
 
   /**

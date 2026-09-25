@@ -15,6 +15,7 @@ import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 import {
   NOTE_BODY_ITEM_TYPE,
+  NOTE_BODY_LEGACY_SWEEP_DONE,
   NOTE_BODY_LEGACY_SWEEP_PENDING,
   SYNC_STATE_KEYS,
   type SyncContext
@@ -62,8 +63,19 @@ export interface PageNoteBodies {
    * that fails to apply still leaves its note owed and flagged (#2297 B-H1).
    */
   skippedForRecord?: Map<string, number | null>
+  /** `noteBodyLegacySweep` read `done` when the page was fetched (#2421). */
+  legacyDone?: boolean
   /** Every body failed to decrypt and the account key check says why; the cursor holds. */
   keyStop?: 'mismatch' | 'transition'
+}
+
+/** What `NoteBodyFeed.servesRecordBody` decides an applied record from (#2421). */
+export interface RecordBodyDecision {
+  page: PageNoteBodies
+  /** A note or journal row existed before the record applied. */
+  hadRowBefore: boolean
+  /** The record merged as a conflict. */
+  conflict: boolean
 }
 
 interface Packed {
@@ -133,7 +145,10 @@ export class NoteBodyFeed {
       refused: [],
       owed: [],
       cursors: new Map(),
-      skippedForRecord: new Map()
+      skippedForRecord: new Map(),
+      legacyDone:
+        this.deps.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) ===
+        NOTE_BODY_LEGACY_SWEEP_DONE
     }
     const provider = this.deps.ctx.deps.crdtProvider
     if (!provider) return page
@@ -144,10 +159,7 @@ export class NoteBodyFeed {
     const wanted = (noteId: string): boolean => {
       if (pageRecords.has(noteId) || provider.isNoteLocalOnly(noteId)) return false
       if (isKnownNote(this.deps.ctx.deps.db, noteId)) return true
-      // Dropped with no row, and the cursor moves past it. A note or journal
-      // (deterministic ids) created here later lacks this body, so it may not
-      // claim that cursor until a whole-body pull merges it (#2299, B-L4).
-      provider.withholdClaimUntilPulled(noteId)
+      this.dropRowlessBody(noteId)
       return false
     }
     const parsed: NoteBodyChange[] = []
@@ -253,11 +265,65 @@ export class NoteBodyFeed {
       this.deps.crdtSync().addPendingPull(noteId, 'feed_owed', page.cursors?.get(noteId) ?? null)
     }
     // What no slice applied a record for (filtered, quarantined, schema
-    // invalid, failed): no queued pull, and the note stays owed and flagged.
+    // invalid, failed): no batch walks it, so it is queued for this session's
+    // flush as well as owed and flagged (#2421). One with no row is dropped
+    // like any rowless body.
     const skipped = page.skippedForRecord ?? new Map<string, number | null>()
-    for (const noteId of this.withRows([...skipped.keys()])) {
-      this.deps.crdtSync().oweSkippedBody(noteId, skipped.get(noteId) ?? null)
+    const withRows = new Set(this.withRows([...skipped.keys()]))
+    for (const [noteId, cursor] of skipped) {
+      if (withRows.has(noteId)) this.deps.crdtSync().addPendingPull(noteId, 'feed_owed', cursor)
+      else this.dropRowlessBody(noteId)
     }
+  }
+
+  /**
+   * Read before a record applies (#2421): what `servesRecordBody` decides
+   * from, or undefined when the page serves no bodies or the item is not a
+   * note or journal.
+   */
+  recordBodyDecision(
+    page: PageNoteBodies | undefined,
+    item: { id: string; type: string }
+  ): RecordBodyDecision | undefined {
+    if (!page || (item.type !== 'note' && item.type !== 'journal')) return undefined
+    return { page, hadRowBefore: isKnownNote(this.deps.ctx.deps.db, item.id), conflict: false }
+  }
+
+  /**
+   * The feed serves this record's body, so the record owes no whole-body pull
+   * (#2421). Every body row of the note above LAST_CURSOR is then landed by
+   * the feed or owed by it, and every row at or below it was merged. True
+   * only when all hold: the page carries bodies, the legacy sweep is done,
+   * the row existed before the apply, no entry of the note is on the page,
+   * the record did not merge as a conflict, the note is not flagged, the
+   * debts are durable, and the feed never dropped a body of the id as
+   * rowless.
+   */
+  servesRecordBody(decision: RecordBodyDecision | undefined, noteId: string): boolean {
+    if (!decision) return false
+    const { page, hadRowBefore, conflict } = decision
+    const crdtSync = this.deps.crdtSync()
+    return (
+      page.legacyDone === true &&
+      hadRowBefore &&
+      page.skippedForRecord?.has(noteId) === false &&
+      !conflict &&
+      !crdtSync.isFlagged(noteId) &&
+      crdtSync.debtsDurable &&
+      !crdtSync.isBodyWithheld(noteId)
+    )
+  }
+
+  /**
+   * A body of this id dropped because no row existed, while the cursor moves
+   * past it. A note or journal (deterministic ids) created here later lacks
+   * this body, so it may not claim that cursor, nor skip its record's
+   * whole-body pull, until a whole-body pull merges it (#2299, B-L4; #2421,
+   * durable in `crdt_body_withheld`).
+   */
+  private dropRowlessBody(noteId: string): void {
+    this.deps.ctx.deps.crdtProvider?.withholdClaimUntilPulled(noteId)
+    this.deps.crdtSync().withholdBody(noteId)
   }
 
   /**
@@ -290,9 +356,7 @@ export class NoteBodyFeed {
           bodies.map((body) => body.update)
         )
         // A row deleted while the doc opened: dropped like one never there.
-        if (!merged && !isKnownNote(this.deps.ctx.deps.db, noteId)) {
-          provider.withholdClaimUntilPulled(noteId)
-        }
+        if (!merged && !isKnownNote(this.deps.ctx.deps.db, noteId)) this.dropRowlessBody(noteId)
         // Only a snapshot the doc now holds: a watermark for one it does not
         // makes the CRDT pull skip the baseline this note is owed.
         const snapshot = [...bodies].reverse().find((body) => body.snapshot)?.snapshot

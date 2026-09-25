@@ -50,6 +50,12 @@ export class CrdtPullLedger {
    */
   onDeferred: (() => void) | null = null
   /**
+   * Called when a pull that failed without evidence about the note (a rate
+   * limit, an abort) hands it back to `pendingPulls`, so the runner can arm a
+   * floor timer that pays it without waiting for an unrelated trigger (#2421).
+   */
+  onRequeued: (() => void) | null = null
+  /**
    * The generation a session-only flag was raised at. A walk that captured an
    * older generation did not see what raised it, so it may not clear it
    * (#2297 round 2 b-L4). Durable flags carry theirs in the row.
@@ -75,8 +81,8 @@ export class CrdtPullLedger {
    *   - a merge pass that failed outright — rate-limited or failed baseline,
    *     failed or dead-lettered incrementals, an aborted pass, missing token or
    *     vault key, a doc that would not open;
-   *   - a note the server named in a `crdt_updated` broadcast, or that a
-   *     vault-wide sweep queued, before its pull has run.
+   *   - a note the server named in a `crdt_updated` broadcast, or that the
+   *     legacy sweep queued, before its pull has run.
    *
    * Refusing to push at all is not an option for any of them. An unresolvable
    * signer can be permanent — `GET /auth/devices` only lists non-revoked
@@ -97,8 +103,7 @@ export class CrdtPullLedger {
    * Every flag raised on evidence is also a row in `crdt_body_debts` (#2297),
    * written before the cursor can move past that evidence, and `hydrateBodyDebts`
    * fills this set and `pendingPulls` from the table at engine start. A flag
-   * raised by a speculative sweep, by a broadcast once the legacy sweep is
-   * done, or by a rate-limited pull of a note with no debt has no row: it
+   * raised by a rate-limited pull of a note with no debt has no row: it
    * describes no known state, so a restart may drop it.
    */
   protected unmergedRemoteNotes = new Set<string>()
@@ -132,17 +137,13 @@ export class CrdtPullLedger {
     this.debts.owe([noteId], reason, { lowestCursor })
   }
 
-  /**
-   * Queue pulls, flagged. Session-only unless `durableReason` is given: a
-   * speculative sweep is not evidence that a note is unmerged, and a broadcast
-   * the feed re-serves after a crash needs no row (#2297).
-   */
-  queuePulls(noteIds: readonly string[], durableReason?: CrdtBodyDebtReason): void {
+  /** Queue pulls, flagged and owed durably: the legacy sweep, a broadcast. */
+  queuePulls(noteIds: readonly string[], reason: CrdtBodyDebtReason): void {
     for (const noteId of noteIds) {
       this.pendingPulls.add(noteId)
       this.unmergedRemoteNotes.add(noteId)
     }
-    if (durableReason) this.debts.owe(noteIds, durableReason)
+    this.debts.owe(noteIds, reason)
   }
 
   /**
@@ -153,16 +154,11 @@ export class CrdtPullLedger {
    * queued: the server has just named the note, so the state is unmerged from
    * that moment until that pull completes cleanly. Going through
    * `addPendingPull` there instead would buy the note a redundant second pull
-   * in the next sweep. `durable` is false once the legacy sweep is done: the
-   * feed then re-serves the body above `LAST_CURSOR` after a crash.
+   * in the next drain.
    */
-  markRemoteStateUnmerged(noteId: string, durable = true): void {
-    if (durable) {
-      this.unmergedRemoteNotes.add(noteId)
-      this.debts.owe([noteId], 'broadcast')
-    } else {
-      this.flagRemoteStateUnmerged(noteId)
-    }
+  markRemoteStateUnmerged(noteId: string): void {
+    this.unmergedRemoteNotes.add(noteId)
+    this.debts.owe([noteId], 'broadcast')
   }
 
   /**
@@ -188,6 +184,40 @@ export class CrdtPullLedger {
     if (!provider || provider.isNoteLocalOnly(noteId)) return
     this.unmergedRemoteNotes.add(noteId)
     this.debts.owe([noteId], 'record')
+  }
+
+  /** The note is flagged: known to hold server state its doc has not merged. */
+  isFlagged(noteId: string): boolean {
+    return this.unmergedRemoteNotes.has(noteId)
+  }
+
+  /** Debts survive a restart; false while the table is unusable (#2421). */
+  get debtsDurable(): boolean {
+    return this.debts.durable()
+  }
+
+  /**
+   * The feed dropped a body of this id because no row existed yet (#2421). A
+   * durable memory in `crdt_body_withheld`, not a debt: nothing pulls it. The
+   * whole-body walk of the note clears it, and so does a delete tombstone for
+   * the id; a rowless drop of a queued pull does not.
+   */
+  withholdBody(noteId: string): void {
+    this.debts.withhold(noteId)
+  }
+
+  isBodyWithheld(noteId: string): boolean {
+    return this.debts.isWithheld(noteId)
+  }
+
+  /** A delete tombstone for the id applied: no body of it is owed any more. */
+  releaseWithheldBody(noteId: string): void {
+    this.debts.clearWithheld([noteId])
+  }
+
+  /** Hand drained ids back to the pending set: the pull that took them was refused. */
+  returnPendingPulls(noteIds: readonly string[]): void {
+    for (const noteId of noteIds) this.pendingPulls.add(noteId)
   }
 
   /**
@@ -252,6 +282,7 @@ export class CrdtPullLedger {
     this.debts.owe([noteId], 'pull_failed', { failed, existingOnly: !counted, needsWalk })
     if (!counted) {
       this.pendingPulls.add(noteId)
+      this.onRequeued?.()
       return
     }
     // Deferred when counted, not at the next drain: a failing note left in
@@ -324,9 +355,11 @@ export class CrdtPullLedger {
    * below the stored watermark — including the rows this device never read,
    * which are by definition absent from the snapshot replacing them. Pushing
    * the same doc state to `/sync/crdt/updates` instead has neither effect.
+   * A withheld id (#2421) may lack body rows at or below any cursor, so it
+   * answers `true` too until its whole-body walk merges.
    */
   hasUnmergedRemoteState(noteId: string): boolean {
-    return this.unmergedRemoteNotes.has(noteId)
+    return this.unmergedRemoteNotes.has(noteId) || this.debts.isWithheld(noteId)
   }
 
   /**
@@ -343,9 +376,9 @@ export class CrdtPullLedger {
    *
    * The durable debts are settled in one transaction, guarded on the
    * generation the pass captured when it started: a debt raised while it ran
-   * stands, and so does the flag. A clean walk also lets a doc seeded or
-   * created without persisted state claim again (#2299,
-   * `CrdtProvider.recordWholeBodyMerged`).
+   * stands, and so does the flag; a withheld mark goes with the debt. A
+   * clean walk also lets a doc seeded or created without persisted state
+   * claim again (#2299, `CrdtProvider.recordWholeBodyMerged`).
    */
   protected settleMergedNotes(noteIds: readonly string[], generation: number): void {
     const clean = noteIds.filter(
@@ -355,6 +388,7 @@ export class CrdtPullLedger {
     )
     if (clean.length === 0) return
     const stillOwed = this.debts.settle(clean, generation)
+    this.debts.clearWithheld(clean.filter((noteId) => !stillOwed.has(noteId)))
     for (const noteId of clean) {
       this.ctx.deps.crdtProvider?.recordWholeBodyMerged(noteId)
       if (stillOwed.has(noteId)) continue
@@ -377,7 +411,8 @@ export class CrdtPullLedger {
 
   /**
    * The queued ids of notes with no row left are settled without a pull: the
-   * owed note was deleted, and nothing will ever pull it (#2297).
+   * owed note was deleted, and nothing will ever pull it (#2297). A withheld
+   * mark stays: the id may get a row again, and its body is still unmerged.
    */
   protected dropRowless(noteIds: readonly string[]): void {
     const dropped = noteIds.filter((noteId) => !this.pendingPulls.has(noteId))
