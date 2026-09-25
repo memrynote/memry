@@ -293,7 +293,6 @@ describe('main zero-covered runtime surfaces', () => {
     tags.syncTagDefinitionUpdate('tag')
     tags.syncTagDefinitionDelete('Tag', { name: 'Tag' })
     tags.syncMergedTagDefinitions('source', 'target', { name: 'source' })
-    tags.syncTaggedTasks(['task-1', 'task-2'])
 
     expect(mocks.publishProjectionEvent).toHaveBeenCalledWith({
       type: 'inbox.deleted',
@@ -311,7 +310,6 @@ describe('main zero-covered runtime surfaces', () => {
       '{"name":"Tag"}'
     )
     expect(mocks.enqueueLocalSyncCreate).not.toHaveBeenCalledWith('tag_definition', 'Ignored2')
-    expect(mocks.enqueueLocalSyncUpdate).toHaveBeenCalledWith('task', 'task-2')
   })
 
   it('syncs folder config create, update, rename, and delete mutations', async () => {

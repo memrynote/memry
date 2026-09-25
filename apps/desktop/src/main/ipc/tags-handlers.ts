@@ -72,13 +72,13 @@ import { atomicWrite } from '../vault/file-ops'
 import {
   syncMergedTagDefinitions,
   syncTaggedNote,
-  syncTaggedTasks,
   syncTagDefinitionDelete,
   syncTagDefinitionRename,
   syncTagDefinitionUpdate,
   syncTagCategoryCreate,
   syncTagCategoryUpdate,
-  syncTagCategoryDelete
+  syncTagCategoryDelete,
+  commitTaskRetag
 } from '../tags/runtime-effects'
 import { getMainI18n } from '../lib/main-i18n'
 
@@ -485,7 +485,10 @@ export function registerTagsHandlers(): void {
         }
 
         const noteResult = mergeTagInNotes(indexDb, input.source, input.target)
-        const taskResult = mergeTagInTasks(dataDb, input.source, input.target)
+        // Before the frontmatter writes below, which an app quit can interrupt.
+        const taskResult = commitTaskRetag(dataDb, () =>
+          mergeTagInTasks(dataDb, input.source, input.target)
+        )
 
         const sourceSnapshot = dataDb
           .select()
@@ -510,8 +513,6 @@ export function registerTagsHandlers(): void {
             })
           )
         )
-
-        syncTaggedTasks(taskResult.taskIds)
 
         emitTagEvent(TagsChannels.events.DELETED, {
           tag: normalizedSource,

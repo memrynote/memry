@@ -3,12 +3,15 @@ import {
   type ItemCorruptEvent,
   type ItemRecoveredEvent
 } from '@memry/contracts/ipc-events'
+import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { createLogger } from '../../lib/logger'
 import { trackMainLog } from '../../telemetry/diagnostics'
 import { sortByApplyOrder } from './apply-order'
 import { reportConflict } from './conflict-report'
 import type { CorruptItemTracker, ItemRef, RecoveredItem } from './corrupt-item-tracker'
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
+import type { OrphanRef } from './orphan-repair'
+import { PendingSyncIntentError } from '../pending-sync-intent-error'
 import type { SyncContext } from './sync-context'
 
 const log = createLogger('ItemRecovery')
@@ -32,6 +35,7 @@ export function applyRecoveredItems(
 ): void {
   const refused: ItemRef[] = []
   const settled: ItemRef[] = []
+  const waiting: ItemRef[] = []
   for (const dec of sortByApplyOrder(recovered)) {
     try {
       const operation = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
@@ -64,6 +68,11 @@ export function applyRecoveredItems(
       } satisfies ItemRecoveredEvent)
       log.info('Recovered item', { itemId: dec.id, type: dec.type })
     } catch (err) {
+      // Not corrupt: this device's own edit of the item is not clocked yet.
+      if (err instanceof PendingSyncIntentError) {
+        waiting.push(dec)
+        continue
+      }
       deps.tracker.markFailed(dec)
       log.error('Failed to apply recovered item', {
         itemId: dec.id,
@@ -77,7 +86,57 @@ export function applyRecoveredItems(
     }
   }
   deps.ledger.record(refused, 'payload')
+  deps.ledger.record(waiting, 'pending_intent')
   deps.ledger.resolve(settled)
+}
+
+/**
+ * A pull's deferred retry that threw again (extracted from PullCoordinator).
+ * A missing FK parent goes to orphan repair (#837). An item still waiting on
+ * this device's own sync intent goes to the ledger and is re-fetched after the
+ * next pull-start drain (#2301). Anything else is dropped until the item's
+ * next remote update, and counted.
+ */
+export function routeDeferredRetryFailure(
+  item: OrphanRef['item'],
+  error: unknown,
+  orphans: OrphanRef[],
+  ledger: SchemaInvalidLedger
+): void {
+  if (error instanceof MissingSyncParentError) {
+    // Not a dead end: the parent may simply sit outside this run's cursor
+    // window, or be gone everywhere. repairOrphans() tells them apart instead
+    // of dropping the item until some future remote update (which, for a
+    // cascade-deleted project, never comes).
+    orphans.push({ item, parentType: error.parentType, parentId: error.parentId })
+    log.warn('Pull: deferred retry still missing FK parent — queued for repair', {
+      itemId: item.id,
+      type: item.type,
+      parentType: error.parentType,
+      parentId: error.parentId
+    })
+    return
+  }
+  if (error instanceof PendingSyncIntentError) {
+    ledger.record([item], 'pending_intent')
+    log.info('Pull: item deferred behind a pending local sync intent', {
+      itemId: item.id,
+      type: item.type
+    })
+    return
+  }
+  log.error('Pull: deferred retry failed — item skipped until next remote update', {
+    itemId: item.id,
+    type: item.type,
+    error: error instanceof Error ? error.message : String(error)
+  })
+  // For an item that never gets another server-side update this is permanent
+  // absence on this device — count the drop per type.
+  trackMainLog('error', {
+    scope: 'PullCoordinator',
+    action: 'pull_apply_dropped',
+    errorCode: item.type
+  })
 }
 
 /**

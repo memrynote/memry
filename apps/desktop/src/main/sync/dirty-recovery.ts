@@ -1,5 +1,5 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
-import { and, gt, isNull, isNotNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, gt, isNull, isNotNull, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import { RECORD_SYNC_ITEM_TYPES, type RecordSyncItemType } from '@memry/contracts/sync-api'
 import { noteMetadata } from '@memry/db-schema/data-schema'
@@ -15,6 +15,8 @@ import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { NOTE_BODY_QUEUE_TYPE } from '@memry/sync-client/queue'
 import { getInboxSyncService } from '@memry/sync-client/inbox-sync'
 import { getFilterSyncService } from '@memry/sync-client/filter-sync'
 import { getBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
@@ -30,7 +32,9 @@ import { getNoteSyncService } from './note-sync'
 import { getProjectSyncService } from '@memry/sync-client/project-sync'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import { flushPendingLocalDeletes } from './local-mutations'
+import { drainPendingSyncIntents, listPendingIntentKeys, syncIntentItemKey } from './sync-intents'
 import { createLogger } from '../lib/logger'
+import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('DirtyRecovery')
 
@@ -439,6 +443,8 @@ const RELIES_ON_P4_2 = 'Relies on the transactional outbox, P4.2 (#2301).'
  * writes the row, then the clock, then the outbox row, in three transactions;
  * a crash between the last two, or any `increment*ClockOffline` fallback,
  * leaves a clocked row with no queue row and nothing else ever pushes it.
+ * Tasks and projects written through the tasks domain commit a sync intent
+ * with the row instead (#2301); for them this sweep is a second line of defence.
  *
  * Keyed by `RecordSyncItemType`, so a new type does not compile until it is
  * given a sweep or an exemption, and `dirty-recovery.test.ts` enumerates
@@ -500,6 +506,54 @@ export const DIRTY_RECOVERY: Record<RecordSyncItemType, DirtySweep | DirtySweepE
 }
 
 /**
+ * Items that already have a `sync_queue` row or a pending sync intent. A dirty
+ * row among them is on its way to the server; one outside them is a residual
+ * row, a local edit nothing would have pushed. Null when unreadable, so the
+ * sweep itself never depends on the probe.
+ */
+function readOwedItems(db: DrizzleDb): Set<string> | null {
+  try {
+    const queued = db
+      .select({ type: syncQueue.type, itemId: syncQueue.itemId })
+      .from(syncQueue)
+      .where(ne(syncQueue.type, NOTE_BODY_QUEUE_TYPE))
+      .all()
+    const keys = new Set(queued.map((row) => syncIntentItemKey(row.type, row.itemId)))
+    for (const key of listPendingIntentKeys(db)) keys.add(key)
+    return keys
+  } catch (err) {
+    log.warn('Dirty recovery could not read owed items; residual telemetry skipped', {
+      error: err
+    })
+    return null
+  }
+}
+
+function readIntentOwnedItems(db: DrizzleDb): Set<string> {
+  try {
+    return listPendingIntentKeys(db)
+  } catch (err) {
+    log.warn('Dirty recovery could not read pending sync intents', { error: err })
+    return new Set()
+  }
+}
+
+/**
+ * The P4.2 (#2301) gate instrument: per type, how many dirty rows had neither a
+ * queue row nor an intent. Offline edits (runtime down) are counted too; the
+ * soak compares migrated types against the rest. Numeric metrics only.
+ */
+function reportResidualRows(type: RecordSyncItemType, residual: number, recovered: number): void {
+  trackMainEvent('sync_run_completed', {
+    surface: 'sync',
+    action: 'dirty_recovery_residual',
+    objectType: type,
+    result: 'success',
+    metrics: { itemCount: residual, resultCount: recovered }
+  })
+}
+
+/**
  * Scans for locally-modified items that were never synced (e.g. edited while signed out).
  * Re-enqueues them for the next sync cycle, rebinding offline placeholder clocks when present.
  *
@@ -509,6 +563,14 @@ export const DIRTY_RECOVERY: Record<RecordSyncItemType, DirtySweep | DirtySweepE
  */
 export function recoverDirtyItems(db: DrizzleDb, adapters?: RecoveryAdapters): RecoveryResult {
   const byType: Partial<Record<RecordSyncItemType, number>> = {}
+  // First: an edit committed with its intent right before a crash is queued
+  // through its own clock rule. Every item that had an intent belongs to it:
+  // the sweep would push a failed one at its pre-edit clock, which the server
+  // refuses as a replay and stamps synced, and would stamp a replayed create a
+  // second time (#2301).
+  const intentOwned = readIntentOwnedItems(db)
+  drainPendingSyncIntents(db, 'startup')
+  const owed = readOwedItems(db)
 
   for (const type of RECORD_SYNC_ITEM_TYPES) {
     const entry = DIRTY_RECOVERY[type]
@@ -521,11 +583,16 @@ export function recoverDirtyItems(db: DrizzleDb, adapters?: RecoveryAdapters): R
     // cost every other type its sweep, or abort the start.
     try {
       let recovered = 0
+      let residual = 0
       for (const row of entry.select(db)) {
+        const key = syncIntentItemKey(type, row.id)
+        if (intentOwned.has(key)) continue
         log.debug('Recovering dirty item', { type, itemId: row.id, syncedAt: row.syncedAt })
+        if (!owed?.has(key)) residual++
         if (entry.enqueue(service, row)) recovered++
       }
       if (recovered > 0) byType[type] = recovered
+      if (owed && residual > 0) reportResidualRows(type, residual, recovered)
     } catch (err) {
       log.warn('Dirty recovery failed for a sync type', { type, error: err })
     }

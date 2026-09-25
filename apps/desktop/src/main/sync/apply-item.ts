@@ -3,6 +3,8 @@ import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
 import { hasPendingDelete } from './pending-deletes'
+import { PendingSyncIntentError } from './pending-sync-intent-error'
+import { settleItemSyncIntents } from './sync-intents'
 import type { PageApplyHandle } from './bulk-apply'
 import { recordUnknownPayloadFields } from './unknown-fields'
 import { createLogger } from '../lib/logger'
@@ -101,6 +103,15 @@ export class ItemApplier {
         itemId: input.itemId
       })
       return 'skipped'
+    }
+
+    // A local edit whose sync intent has not drained still carries its
+    // pre-edit clock; compared against that, a remote row would overwrite the
+    // edit. Drain it first. If it still cannot drain, throw: the pull defers
+    // the item to its end-of-run retry, then to the schema-invalid ledger as
+    // `pending_intent`, re-fetched after the next pull-start drain (#2301).
+    if (!settleItemSyncIntents(db, input.type, input.itemId)) {
+      throw new PendingSyncIntentError(input.type, input.itemId)
     }
 
     const decoded = new TextDecoder().decode(input.content)

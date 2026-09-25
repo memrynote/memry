@@ -16,15 +16,18 @@ const log = createLogger('SchemaInvalidLedger')
  * server holds the row live but lost its payload (#2302); nothing was applied
  * and the local row, if any, is kept. Held here so the manifest does not count
  * it server-only (a full re-pull every check), and retried on the cooldown
- * because a later push of the item heals it.
+ * because a later push of the item heals it. `pending_intent`: the item was
+ * refused because this device's own edit of it is not clocked yet (#2301); it
+ * is re-fetched at every pull start, right after the pending intents drain,
+ * and is not a quarantined item.
  */
-export type SchemaInvalidKind = 'payload' | 'envelope' | 'blob_missing'
+export type SchemaInvalidKind = 'payload' | 'envelope' | 'blob_missing' | 'pending_intent'
 
 const LedgerEntrySchema = z.object({
   id: z.string(),
   type: z.string(),
   // An older build reads a kind it does not know as 'payload' (never a throw).
-  kind: z.enum(['payload', 'envelope', 'blob_missing']).catch('payload'),
+  kind: z.enum(['payload', 'envelope', 'blob_missing', 'pending_intent']).catch('payload'),
   lastRefusedByVersion: z.string(),
   failedAt: z.number()
 })
@@ -65,7 +68,10 @@ export class SchemaInvalidLedger {
     if (Object.keys(entries).length !== before) this.write(entries)
   }
 
-  /** Entries another app version refused, and envelope or blob_missing entries past the cooldown. */
+  /**
+   * Entries another app version refused, envelope or blob_missing entries past
+   * the cooldown, and every pending_intent entry.
+   */
   retryable(): ItemRef[] {
     const entries = Object.values(this.read())
     if (entries.length === 0) return []
@@ -74,6 +80,7 @@ export class SchemaInvalidLedger {
     return entries
       .filter(
         (entry) =>
+          entry.kind === 'pending_intent' ||
           entry.lastRefusedByVersion !== version ||
           (entry.kind !== 'payload' && now - entry.failedAt > CORRUPT_ITEM_COOLDOWN_MS)
       )
@@ -85,7 +92,8 @@ export class SchemaInvalidLedger {
   }
 
   quarantinedItems(): QuarantinedItemInfo[] {
-    return Object.values(this.read()).map((entry) => ({
+    const entries = Object.values(this.read()).filter((entry) => entry.kind !== 'pending_intent')
+    return entries.map((entry) => ({
       itemId: entry.id,
       itemType: entry.type,
       signerDeviceId: '',

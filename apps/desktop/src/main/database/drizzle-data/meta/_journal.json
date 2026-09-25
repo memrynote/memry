@@ -414,6 +414,13 @@
       "when": 1787572359433,
       "tag": "0058_canvas_owner_note",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "6",
+      "when": 1787658759433,
+      "tag": "0059_sync_intents",
+      "breakpoints": true
     }
   ]
 }

@@ -1259,6 +1259,35 @@ describe('checkManifestIntegrity', () => {
       ).toEqual(['task-a', 'task-b'])
     })
 
+    // #2301 review r2 A-L2/B-2
+    it('#then a pending_intent ledger entry is not server-only, so no full re-pull loop', async () => {
+      const { SchemaInvalidLedger } = await import('./engine/schema-invalid-ledger')
+      const state = new Map<string, string>()
+      const ledger = new SchemaInvalidLedger(
+        {
+          getStateValue: (key: string) => state.get(key),
+          setStateValue: (key: string, value: string) => state.set(key, value)
+        } as unknown as ConstructorParameters<typeof SchemaInvalidLedger>[0],
+        () => '1.0.0'
+      )
+      ledger.record([{ id: 'task-waiting', type: 'task' }], 'pending_intent')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-waiting', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true,
+        isQuarantined: (itemId, itemType) => ledger.has(itemType, itemId)
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+    })
+
     it('#then a blob_missing ledger entry is not server-only, so no full re-pull loop', async () => {
       const { SchemaInvalidLedger } = await import('./engine/schema-invalid-ledger')
       const state = new Map<string, string>()

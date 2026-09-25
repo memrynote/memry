@@ -35,12 +35,8 @@ vi.mock('../sync/local-mutations', () => ({
 }))
 
 vi.mock('./runtime-effects', () => ({
-  syncTaskCreate: vi.fn(),
-  syncTaskUpdate: vi.fn(),
-  syncTaskDelete: vi.fn(),
-  syncProjectCreate: vi.fn(),
-  syncProjectUpdate: vi.fn(),
-  syncProjectDelete: vi.fn()
+  publishTaskChanged: vi.fn(),
+  publishTaskRemoved: vi.fn()
 }))
 
 vi.mock('../telemetry/track', () => ({ trackMainEvent: vi.fn() }))

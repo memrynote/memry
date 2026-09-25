@@ -148,6 +148,47 @@ describe('SyncQueueManager', () => {
     })
   })
 
+  // #2301: an enqueue inside a caller's transaction must not wake the push
+  // before that transaction commits, or the push reads a row that may still
+  // roll back.
+  describe('onItemEnqueued', () => {
+    it('fires only after the outer transaction commits', async () => {
+      const callback = vi.fn(() => ({
+        inTransaction: testDb.sqlite.inTransaction,
+        size: queue.getSize()
+      }))
+      queue.setOnItemEnqueued(callback)
+
+      testDb.db.transaction(() => {
+        queue.enqueue(makeInput({ itemId: 'item-1' }))
+        expect(callback).not.toHaveBeenCalled()
+      })
+      expect(callback).not.toHaveBeenCalled()
+
+      await Promise.resolve()
+
+      expect(callback).toHaveBeenCalledTimes(1)
+      expect(callback.mock.results[0]?.value).toEqual({ inTransaction: false, size: 1 })
+    })
+
+    it('wakes once for several enqueues in the same tick', async () => {
+      const callback = vi.fn()
+      queue.setOnItemEnqueued(callback)
+
+      queue.enqueue(makeInput({ itemId: 'item-1' }))
+      queue.enqueue(makeInput({ itemId: 'item-2' }))
+      queue.enqueue(makeInput({ itemId: 'item-3' }))
+      await Promise.resolve()
+
+      expect(callback).toHaveBeenCalledTimes(1)
+
+      queue.enqueue(makeInput({ itemId: 'item-4' }))
+      await Promise.resolve()
+
+      expect(callback).toHaveBeenCalledTimes(2)
+    })
+  })
+
   describe('dequeue', () => {
     it('returns highest priority first', () => {
       // #given items with different priorities

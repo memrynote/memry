@@ -8,7 +8,9 @@ const deleteProjectLink = vi.fn((_db, projectId: string, _itemType: string, item
   const index = linkRows.findIndex((row) => row.projectId === projectId && row.itemId === itemId)
   if (index >= 0) linkRows.splice(index, 1)
 })
-const syncProjectUpdate = vi.fn()
+// #2301 review A-3/B-5: every touched project's `links` update is a sync
+// intent committed with the link rows. Records (projectId, changedFields).
+const projectIntent = vi.fn()
 
 vi.mock('../../database', () => ({ getDatabase: () => ({}) }))
 vi.mock('../../database/queries/projects', () => ({
@@ -17,8 +19,15 @@ vi.mock('../../database/queries/projects', () => ({
   insertProjectLink: (...a: unknown[]) => insertProjectLink(...a),
   deleteProjectLink: (...a: unknown[]) => deleteProjectLink(...a)
 }))
-vi.mock('../../tasks/runtime-effects', () => ({
-  syncProjectUpdate: (...a: unknown[]) => syncProjectUpdate(...a)
+vi.mock('../../sync/sync-intents', () => ({
+  commitLocalChange: (
+    _db: unknown,
+    write: () => { value: unknown; intents: { itemId: string; args: unknown[] }[] }
+  ) => {
+    const change = write()
+    for (const intent of change.intents) projectIntent(intent.itemId, ...intent.args)
+    return change.value
+  }
 }))
 
 const markdownEvent = (properties: Record<string, unknown>) => ({
@@ -44,7 +53,7 @@ describe('note-project-links projector', () => {
     await createNoteProjectLinksProjector().project(markdownEvent({ project: ['Alpha'] }))
 
     expect(linkRows).toEqual([expect.objectContaining({ projectId: 'p1', itemId: 'n1' })])
-    expect(syncProjectUpdate).toHaveBeenCalledWith('p1', ['links'])
+    expect(projectIntent).toHaveBeenCalledWith('p1', ['links'])
   })
 
   it('deletes a link whose project is no longer named', async () => {
@@ -55,7 +64,7 @@ describe('note-project-links projector', () => {
     await createNoteProjectLinksProjector().project(markdownEvent({ project: [] }))
 
     expect(deleteProjectLink).toHaveBeenCalledWith({}, 'p1', 'note', 'n1')
-    expect(syncProjectUpdate).toHaveBeenCalledWith('p1', ['links'])
+    expect(projectIntent).toHaveBeenCalledWith('p1', ['links'])
   })
 
   it('leaves an unchanged link untouched so position and pinned survive', async () => {
@@ -67,7 +76,7 @@ describe('note-project-links projector', () => {
 
     expect(insertProjectLink).not.toHaveBeenCalled()
     expect(deleteProjectLink).not.toHaveBeenCalled()
-    expect(syncProjectUpdate).not.toHaveBeenCalled()
+    expect(projectIntent).not.toHaveBeenCalled()
   })
 
   it('drops a name that resolves to no project without touching links', async () => {
@@ -79,7 +88,7 @@ describe('note-project-links projector', () => {
 
     expect(insertProjectLink).not.toHaveBeenCalled()
     expect(deleteProjectLink).not.toHaveBeenCalled()
-    expect(syncProjectUpdate).not.toHaveBeenCalled()
+    expect(projectIntent).not.toHaveBeenCalled()
   })
 
   it('resolves a duplicate name to the oldest project', async () => {
@@ -193,8 +202,8 @@ describe('note-project-links projector', () => {
     )
     expect(deleteProjectLink).toHaveBeenCalledTimes(1)
     expect(deleteProjectLink).toHaveBeenCalledWith({}, 'p2', 'note', 'n1')
-    expect(syncProjectUpdate).toHaveBeenCalledWith('p3', ['links'])
-    expect(syncProjectUpdate).toHaveBeenCalledWith('p2', ['links'])
-    expect(syncProjectUpdate).not.toHaveBeenCalledWith('p1', ['links'])
+    expect(projectIntent).toHaveBeenCalledWith('p3', ['links'])
+    expect(projectIntent).toHaveBeenCalledWith('p2', ['links'])
+    expect(projectIntent).not.toHaveBeenCalledWith('p1', ['links'])
   })
 })

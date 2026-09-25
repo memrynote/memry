@@ -122,6 +122,19 @@ describe('SchemaInvalidLedger', () => {
     expect(h.ledger.quarantinedItems()[0].lastError).toBe('schema_invalid:payload (app 1.0.0)')
   })
 
+  // #2301 review r2 A-L2/B-2: an item deferred behind a local sync intent is
+  // re-fetched at every pull start, on the same build and with no cooldown,
+  // and held here so the manifest does not count it server-only. It is not a
+  // quarantined item: nothing is wrong with it.
+  it('offers a pending-intent entry at every pull and keeps it out of the quarantine list', () => {
+    const h = harness('1.0.0')
+    h.ledger.record([task('a')], 'pending_intent')
+
+    expect(h.ledger.retryable()).toEqual([task('a')])
+    expect(h.ledger.has('task', 'a')).toBe(true)
+    expect(h.ledger.quarantinedItems()).toEqual([])
+  })
+
   it('starts empty on an unreadable row instead of throwing into the pull', () => {
     const h = harness('1.0.0')
     h.state.set(SYNC_STATE_KEYS.SCHEMA_INVALID_ITEMS, '{not json')
