@@ -196,12 +196,10 @@ describe('CalendarBindingSyncService', () => {
       expect(JSON.parse(item.payload).clock).toEqual({ 'device-A': 5 })
     })
 
-    it('#then a delete with neither snapshot nor row still enqueues an id-only tombstone', () => {
+    it('#then a delete with neither snapshot nor row pushes no fresh-clock tombstone (#2423)', () => {
       service.enqueueDelete('bind-gone')
 
-      const [item] = queue.dequeue(1)
-      expect(item.operation).toBe('delete')
-      expect(JSON.parse(item.payload)).toEqual({ id: 'bind-gone', clock: { 'device-A': 1 } })
+      expect(queue.dequeue(1)).toEqual([])
     })
   })
 

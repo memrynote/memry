@@ -2,8 +2,9 @@ import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { deleteFromLocalRow } from './delete-fallback'
 import { nextLocalClock } from './tombstone-clocks'
 
 interface FolderConfigSyncDeps {
@@ -57,13 +58,13 @@ export class FolderConfigSyncService {
         return { ...local, clock: newClock }
       },
       serialize: (local) => local,
-      buildDeletePayload: ({ itemId, extra, deviceId }) => {
+      buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
         const snapshotPayload = extra[0]
         if (snapshotPayload) {
           return withIncrementedClock(snapshotPayload, deviceId)
         }
 
-        return JSON.stringify({ path: itemId, icon: null, clock: incrementClock({}, deviceId) })
+        return deleteFromLocalRow('folder_config', itemId, local, deviceId)
       }
     })
   }

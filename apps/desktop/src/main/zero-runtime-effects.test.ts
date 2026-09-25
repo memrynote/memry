@@ -402,16 +402,13 @@ describe('main zero-covered runtime surfaces', () => {
       '{"id":"item","clock":{}}'
     )
 
+    // #2423: with no snapshot and no clocked row there is no clock to delete at.
     const tagPayload = mocks.syncControllerOptions[0].buildDeletePayload({
       itemId: 'tag-a',
       extra: [],
       deviceId: 'device-1'
     })
-    expect(JSON.parse(tagPayload)).toEqual({
-      name: 'tag-a',
-      color: '',
-      clock: { 'device-1': 1 }
-    })
+    expect(tagPayload).toBeNull()
 
     const sourcePayload = mocks.syncControllerOptions[1].buildDeletePayload({
       itemId: 'source-1',
@@ -419,10 +416,7 @@ describe('main zero-covered runtime surfaces', () => {
       extra: [],
       deviceId: 'device-1'
     })
-    expect(JSON.parse(sourcePayload)).toEqual({
-      id: 'source-1',
-      clock: { 'device-1': 1 }
-    })
+    expect(sourcePayload).toBeNull()
 
     tagSync.resetTagDefinitionSyncService()
     sourceSync.resetCalendarSourceSyncService()

@@ -9,6 +9,8 @@ import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
 import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
 import {
   buildContentDeletePayload,
+  clearPendingDelete,
+  isSupersededByLiveRow,
   listPendingDeletes,
   recordPendingDelete
 } from './pending-deletes'
@@ -213,7 +215,8 @@ export function recordDeleteTombstone(
  * the server already applied is a no-op there, whereas clearing the tombstone
  * here would both destroy a replayed delete whose re-enqueue then failed and
  * re-open the resurrection window for the id. Only `checkManifestIntegrity`
- * retires a tombstone, once the server no longer lists the item.
+ * retires a tombstone, once the server no longer lists the item, and this pass
+ * retires one whose id is live here again (#2423).
  */
 export function flushPendingLocalDeletes(db: DrizzleDb): number {
   const pending = listPendingDeletes(db)
@@ -222,6 +225,18 @@ export function flushPendingLocalDeletes(db: DrizzleDb): number {
   let flushed = 0
   for (const item of pending) {
     try {
+      // #2423: a replayed delete would replace the re-create the dirty sweeps
+      // just queued (`coalesceSyncOperations`), or reach the server before the
+      // start-up seed queues it.
+      if (isSupersededByLiveRow(db, item.type, item.itemId)) {
+        clearPendingDelete(db, item.type, item.itemId)
+        log.info('Retired a pending delete; the item is live locally again', {
+          type: item.type,
+          itemId: item.itemId
+        })
+        continue
+      }
+
       if (item.type === 'note' || item.type === 'journal') {
         const service = item.type === 'note' ? getNoteSyncService() : getJournalSyncService()
         if (!service) continue

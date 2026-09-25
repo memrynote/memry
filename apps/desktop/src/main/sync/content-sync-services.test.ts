@@ -416,12 +416,13 @@ describe('content sync services', () => {
       clock: { 'dev-a': 1 }
     })
 
-    service.enqueueDelete('Inbox')
-    expect(JSON.parse(queue.items[3].payload)).toEqual({
-      path: 'Inbox',
-      icon: null,
-      clock: { 'dev-a': 1 }
-    })
+    // #2423: no snapshot and no row, so no `{dev-a: 1}` delete.
+    new FolderConfigSyncService({
+      queue: queue as never,
+      db: makeFolderDb(undefined) as never,
+      getDeviceId: () => 'dev-a'
+    }).enqueueDelete('Inbox')
+    expect(queue.items).toHaveLength(3)
 
     expect(getFolderConfigSyncService()).toBeNull()
     expect(

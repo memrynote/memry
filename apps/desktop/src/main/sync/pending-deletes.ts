@@ -1,9 +1,21 @@
-import { and, eq, inArray } from 'drizzle-orm'
-import { syncPendingDeletes } from '@memry/db-schema/data-schema'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
+import {
+  bookmarks,
+  calendarBindings,
+  calendarExternalEvents,
+  calendarSources,
+  noteMetadata,
+  syncPendingDeletes
+} from '@memry/db-schema/data-schema'
+import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { propertyDefinitions } from '@memry/db-schema/schema/notes-cache'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { incrementClock } from '@memry/sync-core'
-import type { SyncItemType } from '@memry/contracts/sync-api'
+import { RECREATABLE_AFTER_PURGE_ITEM_TYPES, type SyncItemType } from '@memry/contracts/sync-api'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
+import type { RecreatableItemType } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/client'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
@@ -107,6 +119,56 @@ export function hasPendingDelete(db: DrizzleDb, type: SyncItemType, itemId: stri
     .get()
 
   return row !== undefined
+}
+
+const liveNote = (db: DrizzleDb, itemId: string): boolean =>
+  db.select().from(noteMetadata).where(eq(noteMetadata.id, itemId)).get() !== undefined
+
+const LIVE_LOCAL_ROW: Record<RecreatableItemType, (db: DrizzleDb, itemId: string) => boolean> = {
+  note: liveNote,
+  journal: liveNote,
+  tag_definition: (db, id) =>
+    db.select().from(tagDefinitions).where(eq(tagDefinitions.name, id)).get() !== undefined,
+  property_definition: (db, id) =>
+    db.select().from(propertyDefinitions).where(eq(propertyDefinitions.name, id)).get() !==
+    undefined,
+  folder_config: (db, id) =>
+    db.select().from(folderConfigs).where(eq(folderConfigs.path, id)).get() !== undefined,
+  // A local canvas folder delete keeps the row with `deletedAt` set.
+  canvas_folder: (db, id) =>
+    db
+      .select()
+      .from(canvasFolders)
+      .where(and(eq(canvasFolders.id, id), isNull(canvasFolders.deletedAt)))
+      .get() !== undefined,
+  bookmark: (db, id) => db.select().from(bookmarks).where(eq(bookmarks.id, id)).get() !== undefined,
+  calendar_source: (db, id) =>
+    db.select().from(calendarSources).where(eq(calendarSources.id, id)).get() !== undefined,
+  calendar_external_event: (db, id) =>
+    db.select().from(calendarExternalEvents).where(eq(calendarExternalEvents.id, id)).get() !==
+    undefined,
+  calendar_binding: (db, id) =>
+    db.select().from(calendarBindings).where(eq(calendarBindings.id, id)).get() !== undefined
+}
+
+const isRecreatable = (type: SyncItemType): type is RecreatableItemType =>
+  (RECREATABLE_AFTER_PURGE_ITEM_TYPES as readonly SyncItemType[]).includes(type)
+
+/**
+ * #2423: the id of a pending delete is live on this device again, so the delete
+ * is stale and replaying it would remove the live item on every device. Every
+ * local delete of these types removes the row (a canvas folder is tombstoned
+ * instead), and the pull refuses to re-insert an id with a pending delete, so a
+ * live row means the id was re-created after the delete, or the local delete
+ * never completed. Either way the row is what the user has. The same rule as a
+ * stale delete intent (`dropStaleDelete` in sync-intents).
+ *
+ * Only re-creatable types: their ids are deterministic, and their live rows are
+ * never soft-deleted ones. Other types keep a soft-deleted row under a random
+ * id, which says nothing about a re-create.
+ */
+export function isSupersededByLiveRow(db: DrizzleDb, type: SyncItemType, itemId: string): boolean {
+  return isRecreatable(type) && LIVE_LOCAL_ROW[type](db, itemId)
 }
 
 export function clearPendingDelete(db: DrizzleDb, type: SyncItemType, itemId: string): void {

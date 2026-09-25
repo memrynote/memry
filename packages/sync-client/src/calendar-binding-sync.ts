@@ -2,8 +2,9 @@ import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { deleteFromLocalRow } from './delete-fallback'
 import { nextLocalClock } from './tombstone-clocks'
 
 interface CalendarBindingSyncDeps {
@@ -62,8 +63,7 @@ export class CalendarBindingSyncService {
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
         const snapshotPayload = extra[0]
         if (snapshotPayload) return withIncrementedClock(snapshotPayload, deviceId)
-        if (local) return withIncrementedClock(JSON.stringify(local), deviceId)
-        return JSON.stringify({ id: itemId, clock: incrementClock({}, deviceId) })
+        return deleteFromLocalRow('calendar_binding', itemId, local, deviceId)
       }
     })
   }
