@@ -15,6 +15,7 @@
 //! | the page breaker                    | §5.14, both halves                          |
 //! | tombstones                          | §5.12, §5.12.1                              |
 //! | inline payloads on the first page   | §5.11.2, #2292                              |
+//! | a pull body that is not an envelope | §5.14, #2285                                |
 //! | the drawn edges of every pass       | data-model §C.3                             |
 //! | blocked policy parks the outbox     | chapter 11 §11.9                            |
 //! | two passes serialised               | §C.3, "two concurrent passes race the cursor" |
@@ -544,6 +545,71 @@ async fn a_pull_with_no_stored_cursor_does_not_ask_inline() {
 
     pull.pull_first_page().await.expect("the page");
     assert!(urls(&transport)[0].ends_with("/sync/changes?limit=500"));
+}
+
+/// #2285: a `/sync/pull` body that is not a pull envelope is a server
+/// contract regression. The page is not applied, the cursor holds so the page
+/// is still there to re-pull once the server is fixed, and the run is refused.
+#[tokio::test]
+async fn a_pull_response_that_is_not_an_envelope_holds_the_cursor_and_refuses_the_run() {
+    let db = scratch_db("not-an-envelope");
+    seed_cursor(&db, "10");
+    let transport = FakeTransport::new(vec![
+        response(200, &changes(&[("note-a", "note")], &[], "20")),
+        response(200, &json!({"unexpected": true}).to_string()),
+    ]);
+    let cipher = ScriptedCipher::new(&[("note-a", r#"{"title":"x"}"#)]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    // `run` stops at the refusal: a third request would run off the script.
+    let report = pull.run(5).await.expect("the run");
+    assert!(report.refused, "the run is unsuccessful");
+    assert_eq!(report.dropped_pages, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.cursor.as_deref(), Some("10"));
+    assert_eq!(
+        stored_cursor(&db).as_deref(),
+        Some("10"),
+        "the cursor did not move past the page"
+    );
+    assert_eq!(transport.call_count(), 2);
+}
+
+/// #2285 with #2292: a bad remainder pull refuses the page even when some of
+/// it arrived inline, and nothing from the page is applied.
+#[tokio::test]
+async fn a_non_envelope_remainder_refuses_the_page_even_with_inline_items() {
+    let db = scratch_db("inline-bad-remainder");
+    seed_cursor(&db, "10");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({
+                "items": [{"id": "note-a", "type": "note"}, {"id": "note-b", "type": "note"}],
+                "deleted": [],
+                "hasMore": false,
+                "nextCursor": 20,
+                "inline": [envelope("note-a", "note")],
+            })
+            .to_string(),
+        ),
+        response(200, "[]"),
+    ]);
+    let cipher = ScriptedCipher::new(&[
+        ("note-a", r#"{"title":"x"}"#),
+        ("note-b", r#"{"title":"y"}"#),
+    ]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    let report = pull.pull_first_page().await.expect("the page");
+    assert!(report.refused);
+    assert_eq!(report.applied, 0);
+    assert_eq!(stored_cursor(&db).as_deref(), Some("10"));
+    db.call_blocking(|conn| {
+        assert!(sync_items::load(conn, "note", "note-a")?.is_none());
+        Ok(())
+    })
+    .expect("read back");
 }
 
 #[tokio::test]

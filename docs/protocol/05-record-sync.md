@@ -645,10 +645,10 @@ every item sharing a chunk with one bad row.
   cursor; the run is refused (#2285). Such a body is a server contract
   regression, not a poisoned item: it is fixed on the server, and the page must
   still be there to re-pull when it is. Dropping it lost every item on the page.
-  Desktop: `apps/desktop/src/main/sync/engine/pull-envelope.ts`. The shared
-  pull engine (`packages/sync-client/src/pull/engine.ts:199-205`) and the Rust
-  core (`crates/memry-core/src/sync/pull.rs`) still drop and advance; #2304
-  tracks bringing them in line.
+  Desktop: `apps/desktop/src/main/sync/engine/pull-envelope.ts`; Rust core:
+  `crates/memry-core/src/sync/pull.rs`, which applies nothing from the page.
+  The shared pull engine (`packages/sync-client/src/pull/engine.ts:199-205`)
+  still drops and advances.
 - An item that fails its schema (the envelope schema, or the handler's payload
   schema) is recorded, not dropped: the cursor moves on, and the client
   re-fetches it by id after an app update (#2285).

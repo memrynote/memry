@@ -6,7 +6,7 @@
 //! page of an incremental run asks for inline payloads (§5.11.2), and only the
 //! ids no inline item names go to `POST /sync/pull`.
 //!
-//! Four rules shape every branch below, and three of them are about not losing
+//! Five rules shape every branch below, and four of them are about not losing
 //! a user's data on a page that went wrong:
 //!
 //! - **One global record cursor per device** (§5.11), a decimal string,
@@ -22,6 +22,9 @@
 //!   *and* refuses the run, so no success state is written. Advancing without
 //!   refusing loses data silently; refusing without advancing wedges the device
 //!   on one poisoned page forever. Both halves or neither.
+//! - **A `/sync/pull` body that is not a pull envelope refuses the run and
+//!   holds the cursor** (§5.14, #2285). That is a server fault, not a poisoned
+//!   item: the page must still be there to re-pull once the server is fixed.
 //! - **A tombstone's body is never decoded** (§5.12). A present `deletedAt`
 //!   overrides the declared `operation`, and an id in `deleted` with no ref row
 //!   has no type on the wire at all (§5.12.1).
@@ -100,13 +103,15 @@ pub struct PullReport {
     /// Past the 90-day `task_activity` horizon (chapter 13 §13.12). **Not
     /// corrupt**: the row is expired and the cursor still advances past it.
     pub expired: usize,
-    /// Responses that were not a pull envelope at all (§5.14).
+    /// Responses that were not a pull envelope at all (§5.14). Such a page
+    /// holds the cursor and refuses the run (#2285).
     pub dropped_pages: u32,
     /// The cursor now stored, after applying.
     pub cursor: Option<String>,
     pub has_more: bool,
-    /// The breaker tripped: the run is unsuccessful and **no success state may
-    /// be written**, even though the cursor advanced.
+    /// The run is unsuccessful and **no success state may be written**:
+    /// either the breaker tripped, and the cursor advanced, or a pull response
+    /// was not an envelope, and the cursor held.
     pub refused: bool,
     /// The documents whose body log a tombstone on this pass actually emptied
     /// (chapter 07 §7.15).
@@ -183,7 +188,8 @@ impl PullLoop {
     ///
     /// A refusal stops the loop deliberately: the cursor has moved past a page
     /// that produced only corruption, and continuing would report a successful
-    /// run that skipped it.
+    /// run that skipped it. After a non-envelope pull body the cursor held, and
+    /// continuing would re-read the same page.
     pub async fn run(&self, max_pages: u32) -> Result<PullReport, PullError> {
         self.restart_on_new_declaration().await?;
         let mut total = PullReport::default();
@@ -305,10 +311,14 @@ impl PullLoop {
         for chunk in fetch.chunks(MAX_PULL_IDS) {
             let body = self.fetch_bodies(chunk).await?;
             let Some(items) = body.get("items").and_then(Json::as_array) else {
-                // §5.14: not a pull envelope at all. The chunk is dropped and
-                // the cursor still advances past it.
+                // §5.14 (#2285): not a pull envelope at all, which is a server
+                // contract regression. Nothing from the page is applied and the
+                // cursor holds, so the page is still there to re-pull once the
+                // server is fixed; the run is refused so no success is written.
                 report.dropped_pages += 1;
-                continue;
+                report.refused = true;
+                report.cursor = cursor;
+                return Ok(report);
             };
             self.take_items(items, &mut report, &mut pending).await?;
         }
