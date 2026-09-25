@@ -16,6 +16,7 @@
 //! | [`push`]          | 05 §5.6, 07 §7.2       | one wave: order, seal, send, ack                  |
 //! | [`policy`]        | 11                     | the write gate and the entitlement, three states  |
 //! | [`body_pull`]     | 07 §7.8 – §7.11        | the downward CRDT feed: bodies into `yjs_updates` |
+//! | [`body_debt`]     | 05 §5.11, 07 §7.13.2   | the documents owed a whole-body pull              |
 //! | [`crdt_wire`]     | 07 §7.11               | that feed's wire shapes, read tolerantly          |
 //! | [`bootstrap`]     | 10                     | the elevated window, and the silent fallback      |
 //! | [`socket`]        | 09                     | the hint channel, which is never a data path      |
@@ -30,6 +31,7 @@
 //! rather than a convenience.
 
 pub mod apply;
+pub mod body_debt;
 pub mod body_pull;
 pub mod bootstrap;
 mod changes_page;

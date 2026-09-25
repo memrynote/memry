@@ -47,6 +47,7 @@ use crate::storage::Db;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 
 use super::apply::{self, ApplyTotals, Pending};
+use super::body_debt;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
@@ -311,7 +312,7 @@ impl PullLoop {
             .cloned()
             .collect();
 
-        let outcomes = self.apply_all(pending, untyped).await?;
+        let outcomes = self.apply_all(pending, untyped, true).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -368,7 +369,7 @@ impl PullLoop {
         }
 
         pending.sort_by_key(|item| apply_rank(item.item_type()));
-        let outcomes = self.apply_all(pending, Vec::new()).await?;
+        let outcomes = self.apply_all(pending, Vec::new(), false).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -509,16 +510,36 @@ impl PullLoop {
 
     /// Hands the page to [`apply`], which owns every decision about what an
     /// item's type means. The loop's only remaining job is the clock it is
-    /// applied at.
+    /// applied at, and on a feed page the body debt of its documents.
+    ///
+    /// The debt is written **before** the apply (#2294): a page re-pulled
+    /// after a crash skips its identical records (chapter 06 §6.5.2 P4), so a
+    /// debt written after them would be lost with the crash. A debt this page
+    /// created for a record it then skipped is taken back; one an earlier
+    /// page left is kept.
     async fn apply_all(
         &self,
         pending: Vec<Pending>,
         untyped: Vec<String>,
+        owe_bodies: bool,
     ) -> Result<ApplyTotals, PullError> {
         let now = now_ms();
         Ok(self
             .db
-            .call(move |conn| apply::apply_page(conn, pending, untyped, now))
+            .call(move |conn| {
+                let owed_here = if owe_bodies {
+                    body_debt::owe_page(conn, &pending)?
+                } else {
+                    Vec::new()
+                };
+                let totals = apply::apply_page(conn, pending, untyped, now)?;
+                for doc_id in &owed_here {
+                    if !totals.applied_documents.contains(doc_id) {
+                        body_debt::settle(conn, doc_id)?;
+                    }
+                }
+                Ok(totals)
+            })
             .await?)
     }
 }

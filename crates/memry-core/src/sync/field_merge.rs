@@ -183,19 +183,25 @@ pub fn merge_fields(
 pub enum DocumentResolution {
     /// Apply the remote wholesale, storing its field clocks verbatim.
     Apply,
-    /// The local clock dominates: skip the remote entirely.
+    /// The local clock dominates, or an equal clock holds an identical
+    /// payload (§6.5.2 P4): skip the remote entirely.
     Skip,
     /// Concurrent. Merge, and store the union clock.
     Merge { merged_clock: VectorClock },
 }
 
-/// `resolveClockConflict(localClock, remoteClock)` (§6.3.1).
+/// `resolveClockConflict(localClock, remoteClock, isLocalPayloadIdentical)`
+/// (§6.3.1).
 ///
 /// **Remote wins on `equal` here too**, which is the same default the field
-/// tie-break has.
+/// tie-break has. The one exception is §6.5.2 P4's (#2294): an equal clock
+/// whose remote payload is identical to the one this device would push is a
+/// skip. `identical` is asked only on `equal`, and a caller that cannot build
+/// the local payload answers `false`, so any doubt applies.
 pub fn resolve_clock_conflict(
     local_clock: Option<&VectorClock>,
     remote_clock: &VectorClock,
+    identical: impl FnOnce() -> bool,
 ) -> DocumentResolution {
     let Some(local_clock) = local_clock else {
         return DocumentResolution::Apply;
@@ -205,8 +211,19 @@ pub fn resolve_clock_conflict(
         ClockOrder::Concurrent => DocumentResolution::Merge {
             merged_clock: merge(local_clock, remote_clock),
         },
+        ClockOrder::Equal if identical() => DocumentResolution::Skip,
         ClockOrder::Before | ClockOrder::Equal => DocumentResolution::Apply,
     }
+}
+
+/// Whether two payloads are equal under §6.4.2's canonical form: the
+/// comparison §6.5.2 P4's equal-clock skip has to pass.
+pub fn payloads_identical(local: &JsonMap<String, Json>, remote: &JsonMap<String, Json>) -> bool {
+    let mut local_form = String::new();
+    let mut remote_form = String::new();
+    write_canonical_object(local, &mut local_form);
+    write_canonical_object(remote, &mut remote_form);
+    local_form == remote_form
 }
 
 /// Seeds **every listed field** with a copy of the document clock (§6.7).
@@ -273,27 +290,29 @@ fn write_canonical(value: &Json, out: &mut String) {
             }
             out.push(']');
         }
-        Json::Object(fields) => {
-            // Rule 1: sort by the UTF-16 code-unit sequence, not by UTF-8
-            // bytes. The two disagree above U+FFFF, where UTF-16 surrogates
-            // sort below U+E000..U+FFFF and UTF-8 sorts above.
-            let mut keys: Vec<&String> = fields.keys().collect();
-            keys.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
-            out.push('{');
-            for (index, key) in keys.into_iter().enumerate() {
-                if index > 0 {
-                    out.push(',');
-                }
-                out.push_str(&Json::String(key.clone()).to_string());
-                out.push(':');
-                // Rule 3: a key whose value is `null` is present and encodes as
-                // `null`. There is no `undefined` inside a `serde_json` value,
-                // so nothing is omitted here.
-                write_canonical(&fields[key], out);
-            }
-            out.push('}');
-        }
+        Json::Object(fields) => write_canonical_object(fields, out),
     }
+}
+
+fn write_canonical_object(fields: &JsonMap<String, Json>, out: &mut String) {
+    // Rule 1: sort by the UTF-16 code-unit sequence, not by UTF-8 bytes. The
+    // two disagree above U+FFFF, where UTF-16 surrogates sort below
+    // U+E000..U+FFFF and UTF-8 sorts above.
+    let mut keys: Vec<&String> = fields.keys().collect();
+    keys.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
+    out.push('{');
+    for (index, key) in keys.into_iter().enumerate() {
+        if index > 0 {
+            out.push(',');
+        }
+        out.push_str(&Json::String(key.clone()).to_string());
+        out.push(':');
+        // Rule 3: a key whose value is `null` is present and encodes as
+        // `null`. There is no `undefined` inside a `serde_json` value, so
+        // nothing is omitted here.
+        write_canonical(&fields[key], out);
+    }
+    out.push('}');
 }
 
 #[cfg(test)]
@@ -376,23 +395,48 @@ mod tests {
     fn the_document_gate_lets_remote_win_on_equal() {
         let clock = clock_of([("device-a", 1)]);
         assert_eq!(
-            resolve_clock_conflict(Some(&clock), &clock),
+            resolve_clock_conflict(Some(&clock), &clock, || false),
             DocumentResolution::Apply
         );
         assert_eq!(
-            resolve_clock_conflict(None, &clock),
+            resolve_clock_conflict(None, &clock, || true),
             DocumentResolution::Apply
         );
         assert_eq!(
-            resolve_clock_conflict(Some(&clock_of([("device-a", 2)])), &clock),
+            resolve_clock_conflict(Some(&clock_of([("device-a", 2)])), &clock, || false),
             DocumentResolution::Skip
         );
         assert_eq!(
-            resolve_clock_conflict(Some(&clock_of([("device-b", 1)])), &clock),
+            resolve_clock_conflict(Some(&clock_of([("device-b", 1)])), &clock, || true),
             DocumentResolution::Merge {
                 merged_clock: clock_of([("device-a", 1), ("device-b", 1)])
             }
         );
+    }
+
+    #[test]
+    fn an_equal_clock_skips_only_an_identical_payload() {
+        // #2294, §6.5.2 P4: equal and identical is a skip, equal and
+        // different still applies, and `identical` is never asked off `equal`.
+        let clock = clock_of([("device-a", 1)]);
+        assert_eq!(
+            resolve_clock_conflict(Some(&clock), &clock, || true),
+            DocumentResolution::Skip
+        );
+        assert_eq!(
+            resolve_clock_conflict(Some(&clock_of([("device-a", 0)])), &clock, || {
+                panic!("asked on `before`")
+            }),
+            DocumentResolution::Apply
+        );
+        assert!(payloads_identical(
+            &object(json!({"a": 1, "b": {"c": null}})),
+            &object(json!({"b": {"c": null}, "a": 1.0}))
+        ));
+        assert!(!payloads_identical(
+            &object(json!({"a": 1})),
+            &object(json!({"a": 1, "b": null}))
+        ));
     }
 
     #[test]

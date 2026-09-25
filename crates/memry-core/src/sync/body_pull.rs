@@ -148,6 +148,12 @@ pub struct BodyPullReport {
     /// The same shape as [`crate::sync::pull::PullReport::purged_documents`]:
     /// name the ids, let the caller that owns the registry act.
     pub advanced_documents: Vec<String>,
+    /// Documents whose pull yielded at [`MAX_PAGES_PER_DOCUMENT`] with the
+    /// server still reporting `hasMore`. Nothing was skipped, but the log does
+    /// not reach the server's head yet, so a body debt is not settled.
+    pub incomplete: Vec<String>,
+    /// Requests this pull sent, so a caller can hold a per-pass budget.
+    pub requests: usize,
 }
 
 impl BodyPullReport {
@@ -158,6 +164,14 @@ impl BodyPullReport {
         self.replays += other.replays;
         self.stopped.extend(other.stopped);
         self.advanced_documents.extend(other.advanced_documents);
+        self.incomplete.extend(other.incomplete);
+        self.requests += other.requests;
+    }
+
+    /// Whether every document this report covers reached the server's head
+    /// and stored everything on the way: the only pull that settles a debt.
+    pub fn merged(&self) -> bool {
+        self.stopped.is_empty() && self.incomplete.is_empty()
     }
 }
 
@@ -202,7 +216,7 @@ impl BodyPull {
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut total = BodyPullReport::default();
         for chunk in doc_ids.chunks(PROBE_CHUNK) {
-            let probed = self.probe_snapshot_meta(chunk).await?;
+            let probed = self.probe_snapshot_meta(chunk, &mut total.requests).await?;
             for doc_id in chunk {
                 total.absorb(self.pull_with(doc_id, probed.get(doc_id)).await?);
             }
@@ -212,8 +226,13 @@ impl BodyPull {
 
     /// One document: baseline if §7.8 says so, then incrementals.
     pub async fn pull_document(&self, doc_id: &str) -> Result<BodyPullReport, BodyPullError> {
-        let probed = self.probe_snapshot_meta(&[doc_id.to_owned()]).await?;
-        self.pull_with(doc_id, probed.get(doc_id)).await
+        let mut probes = 0;
+        let probed = self
+            .probe_snapshot_meta(&[doc_id.to_owned()], &mut probes)
+            .await?;
+        let mut report = self.pull_with(doc_id, probed.get(doc_id)).await?;
+        report.requests += probes;
+        Ok(report)
     }
 
     async fn pull_with(
@@ -230,8 +249,15 @@ impl BodyPull {
         // §7.8, first clause: a cursor of 0 always takes the snapshot first.
         // There is no incremental that could have told us about it, because
         // everything at or below the watermark is answered with silence.
-        if cursor == 0 && self.fetch_baseline(doc_id, cursor, &mut report).await? {
-            cursor = self.read_cursor(doc_id).await?;
+        if cursor == 0 {
+            if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                cursor = self.read_cursor(doc_id).await?;
+            } else if !report.stopped.is_empty() {
+                // A baseline that exists and could not be used: paging on
+                // from 0 would store the updates above the watermark and move
+                // the cursor past the state below it for good.
+                return Ok(report);
+            }
         }
         // §7.8, second clause, from the probe: the single-document route
         // carries no `snapshotMeta`, so without it a snapshot that pruned the
@@ -244,16 +270,20 @@ impl BodyPull {
             cursor = self.read_cursor(doc_id).await?;
         }
 
+        let mut has_more = false;
         for _ in 0..MAX_PAGES_PER_DOCUMENT {
-            let page = self.fetch_page(doc_id, cursor).await?;
+            let page = self.fetch_page(doc_id, cursor, &mut report).await?;
 
             // §7.8, second clause: the server advertises a snapshot ahead of
             // the cursor whose revision differs from the stored one.
             if let Some(meta) = page.snapshot_meta.as_ref()
                 && self.baseline_due(doc_id, cursor, meta).await?
-                && self.fetch_baseline(doc_id, cursor, &mut report).await?
             {
-                cursor = self.read_cursor(doc_id).await?;
+                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                    cursor = self.read_cursor(doc_id).await?;
+                } else if !report.stopped.is_empty() {
+                    return Ok(report);
+                }
             }
 
             let mut stopped = false;
@@ -290,9 +320,13 @@ impl BodyPull {
                 }
             }
 
+            has_more = page.has_more;
             if stopped || !page.has_more {
                 break;
             }
+        }
+        if has_more && report.stopped.is_empty() {
+            report.incomplete.push(doc_id.to_owned());
         }
 
         Ok(report)
@@ -306,6 +340,7 @@ impl BodyPull {
         cursor: i64,
         report: &mut BodyPullReport,
     ) -> Result<bool, BodyPullError> {
+        report.requests += 1;
         let body: Json = self
             .http
             .send_json(
@@ -320,6 +355,7 @@ impl BodyPull {
             return Ok(false);
         };
         let Ok(packed) = BASE64.decode(encoded) else {
+            report.stopped.push(doc_id.to_owned());
             return Ok(false);
         };
         let sequence_num = body
@@ -390,6 +426,7 @@ impl BodyPull {
     async fn probe_snapshot_meta(
         &self,
         doc_ids: &[String],
+        requests: &mut usize,
     ) -> Result<HashMap<String, SnapshotMeta>, BodyPullError> {
         let mut notes = Vec::new();
         let mut seen = std::collections::HashSet::new();
@@ -406,6 +443,8 @@ impl BodyPull {
         if notes.is_empty() {
             return Ok(HashMap::new());
         }
+        // Counted against the caller's per-pass budget like any other request.
+        *requests += 1;
         let request = self
             .request("POST", "/sync/crdt/updates/batch")
             .json(&json!({ "notes": notes, "limit": 1 }))
@@ -425,7 +464,13 @@ impl BodyPull {
             .collect())
     }
 
-    async fn fetch_page(&self, doc_id: &str, since: i64) -> Result<UpdatePage, BodyPullError> {
+    async fn fetch_page(
+        &self,
+        doc_id: &str,
+        since: i64,
+        report: &mut BodyPullReport,
+    ) -> Result<UpdatePage, BodyPullError> {
+        report.requests += 1;
         let path = format!(
             "/sync/crdt/updates?note_id={doc_id}&since={since}&limit={CRDT_UPDATES_PAGE_LIMIT}"
         );

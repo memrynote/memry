@@ -49,7 +49,8 @@ use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::clock::{self, OFFLINE_CLOCK_DEVICE_ID, VectorClock};
 use crate::sync::field_merge::{
-    DocumentResolution, init_all_field_clocks, merge_fields, resolve_clock_conflict,
+    DocumentResolution, init_all_field_clocks, merge_fields, payloads_identical,
+    resolve_clock_conflict,
 };
 
 /// What §6.3.1's document-level gate decided about one inbound record.
@@ -62,8 +63,9 @@ pub(crate) enum Gate {
     /// §6.3.1 rows 1 and 4, plus the cases with nothing to compare: apply the
     /// remote wholesale, its field clocks stored verbatim.
     Wholesale,
-    /// §6.3.1 row 2 (`after`): the local clock dominates, so the remote is not
-    /// applied at all and nothing is written.
+    /// §6.3.1 row 2 (`after`): the local clock dominates, or §6.5.2 P4's
+    /// equal clock over an identical payload. The remote is not applied at
+    /// all and nothing is written.
     Skip,
     /// §6.3.1 row 3 (`concurrent`): `merged_clock` is `merge(local, remote)`.
     Merge {
@@ -97,7 +99,7 @@ pub(crate) fn document_gate(
     if record.deleted_at.is_some() {
         return Ok(Gate::Wholesale);
     }
-    let Some(local) = live_payload(conn, record)? else {
+    let Some((local, pushable)) = live_payload(conn, record)? else {
         return Ok(Gate::Wholesale);
     };
     let Ok(remote) = StoredPayload::parse(&record.payload_json) else {
@@ -106,8 +108,13 @@ pub(crate) fn document_gate(
 
     let local_clock = stored_clock(local.object())?;
     let remote_clock = stored_clock(remote.object())?.unwrap_or_default();
+    // §6.5.2 P4 (#2294): an equal clock is a skip only when the row this
+    // device would push is the row being pulled. The stored payload is the
+    // push payload (P2), so it is the comparison; a deleted or corrupt local
+    // row cannot answer, so it applies.
+    let identical = || pushable && payloads_identical(local.object(), remote.object());
     Ok(
-        match resolve_clock_conflict(local_clock.as_ref(), &remote_clock) {
+        match resolve_clock_conflict(local_clock.as_ref(), &remote_clock, identical) {
             DocumentResolution::Apply => Gate::Wholesale,
             DocumentResolution::Skip => Gate::Skip,
             DocumentResolution::Merge { merged_clock } => Gate::Merge {
@@ -210,21 +217,25 @@ pub(crate) fn apply_remote_merged(
     })
 }
 
-/// The stored payload of a live row that has one, or `None` when there is
-/// nothing local to merge against.
+/// The stored payload of a row that has one, or `None` when there is nothing
+/// local to merge against, and whether that payload is what a push would send
+/// (the row is neither deleted nor flagged corrupt).
 fn live_payload(
     conn: &Connection,
     record: &InboundRecord,
-) -> Result<Option<StoredPayload>, StorageError> {
+) -> Result<Option<(StoredPayload, bool)>, StorageError> {
     let Some(row) = sync_items::load(conn, &record.item_type, &record.item_id)? else {
         return Ok(None);
     };
+    let pushable = row.deleted_at.is_none() && row.corrupt_reason.is_none();
     let Some(raw) = row.payload else {
         return Ok(None);
     };
     // A local row that will not parse is already flagged corrupt; the remote
     // is the better copy, so it applies wholesale rather than failing the pull.
-    Ok(StoredPayload::parse(&raw).ok())
+    Ok(StoredPayload::parse(&raw)
+        .ok()
+        .map(|payload| (payload, pushable)))
 }
 
 /// §6.3.1's apply branch: the remote's bytes and its field clocks, verbatim.

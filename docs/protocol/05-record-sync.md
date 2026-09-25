@@ -434,6 +434,17 @@ commit can only lose the note files (healed by the bulk-apply journal) and the
 index rows of that slice (healed by the vault re-index on the next open). A page
 with no refs has no transaction to join and stores its cursor alone.
 
+**Rust core** (#2304). Each record applies in its own transaction, so the
+cursor is written after the page's last row, as its own statement. The
+post-apply work a re-pull would not redo is the body pull of the page's notes
+and journals: a skipped identical row is not re-applied, so it no longer marks
+the note as touched. The page therefore records a durable body debt, one
+`meta` row `sync.body_owed:<docId>` per note or journal record, **before** it
+applies the page, and takes back only the debts it created for records it then
+skipped. A debt is cleared only after a whole-body pull of that document that
+merged (`crates/memry-core/src/sync/body_debt.rs`), and a snapshot push refuses
+a document that is still owed one (chapter 07 §7.13.2).
+
 Because cursors are assigned in commit order (§5.5) and the cursor moves only
 after apply, a client MAY drop a realtime wake whose `cursor` is at or below its
 applied cursor (chapter 09 §9.11). The wake's cursor is only compared, never

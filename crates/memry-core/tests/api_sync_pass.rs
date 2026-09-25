@@ -20,6 +20,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crypto::{keys, sodium};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
+use memry_core::sync::body_debt;
 use serde_json::json;
 
 const BASE: &str = "https://sync.example.com";
@@ -288,4 +289,83 @@ async fn overlapping_passes_over_one_vault_push_a_row_once() {
     assert_eq!(a.pushed + b.pushed, 1);
     assert_eq!(a.rejected + b.rejected, 0);
     assert_eq!(b.pending, 0);
+}
+
+/// #2294: the body step pulls every document owed a whole-body pull, settles
+/// the ones whose pull merged, and keeps the debt of one that stopped at a gap.
+#[tokio::test]
+async fn the_pass_pulls_owed_bodies_and_settles_only_the_merged_ones() {
+    let (public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
+    let device_id = "server-device-1";
+    let store = FakeSecureStore::new();
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &jwt(json!({"sub": "user-1", "device_id": device_id, "type": "access", "exp": 9_999_999_999u64})),
+    );
+    store
+        .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+        .expect("plant the master key");
+    store
+        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
+        .expect("plant the signing key");
+
+    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
+    let dir: PathBuf = std::env::temp_dir().join(format!(
+        "memry-api-sync-pass-owed-{}-{unique}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).expect("the scratch directory");
+    let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
+    let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
+    side.call_blocking(|conn| {
+        body_debt::owe(conn, "goodnote1234")?;
+        body_debt::owe(conn, "stopnote1234")
+    })
+    .expect("owe two bodies");
+
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"devices": [{"id": device_id, "signingPublicKey": BASE64.encode(&public)}]})
+                .to_string(),
+        ),
+        response(
+            200,
+            &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null}).to_string(),
+        ),
+        // goodnote1234: no snapshot, no updates. A clean pull.
+        response(200, &json!({"snapshot": null}).to_string()),
+        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
+        // stopnote1234: an update this device cannot open, so a stop at the gap.
+        response(200, &json!({"snapshot": null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{"sequenceNum": 1, "data": "AAAA", "signerDeviceId": device_id}], "hasMore": false})
+                .to_string(),
+        ),
+    ]);
+    let session = Arc::new(
+        AuthSession::new(
+            transport.clone(),
+            store,
+            BASE.to_string(),
+            "ios".to_string(),
+            DeviceDescriptor {
+                name: "Phone".to_string(),
+                platform: DevicePlatform::Ios,
+                os_version: None,
+                app_version: "1.0.0".to_string(),
+                vault_id: None,
+            },
+        )
+        .expect("a session"),
+    );
+
+    let summary = vault.sync(session).sync_now().await.expect("the pass");
+
+    assert_eq!(summary.bodies, 2, "{summary:?}");
+    let owed = side
+        .call_blocking(|conn| body_debt::owed(conn))
+        .expect("the owed documents");
+    assert_eq!(owed, ["stopnote1234"], "only the merged pull settles");
 }

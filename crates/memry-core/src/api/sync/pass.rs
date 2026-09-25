@@ -9,8 +9,10 @@
 //! 1. Records: `GET /sync/changes` + `POST /sync/pull` from the stored cursor
 //!    to the end ([`PullLoop::run`]).
 //! 2. Bodies: the CRDT log of every note or journal whose record arrived in
-//!    step 1, so a checkbox flipped in a note on desktop reaches the phone's
-//!    copy of that note (FR-058) without waiting for the note to be opened.
+//!    step 1, or that is still owed a whole-body pull
+//!    ([`crate::sync::body_debt`]), so a checkbox flipped in a note on desktop
+//!    reaches the phone's copy of that note (FR-058) without waiting for the
+//!    note to be opened.
 //! 3. Push: the outbox drained by [`PushCoordinator`], sealed with this
 //!    device's identity ([`AccountSealer`]).
 
@@ -25,7 +27,8 @@ use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner};
 use crate::protocol::types::Declaration;
-use crate::sync::body_pull::BodyPull;
+use crate::sync::body_debt;
+use crate::sync::body_pull::{BodyPull, BodyPullReport};
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
 
@@ -112,7 +115,7 @@ impl VaultSync {
         .run(MAX_PULL_PAGES)
         .await?;
 
-        let touched = self
+        let mut touched = self
             .db
             .call(move |conn| {
                 let mut statement = conn
@@ -136,15 +139,33 @@ impl VaultSync {
                 Ok(ids)
             })
             .await?;
-        let bodies = BodyPull::new(
+        // The owed documents too: a page re-pulled after a crash skips its
+        // identical records, so only the debt says their bodies are still due.
+        let owed = self.db.call(|conn| body_debt::owed(conn)).await?;
+        for doc_id in owed {
+            if !touched.contains(&doc_id) {
+                touched.push(doc_id);
+            }
+        }
+        let body_pull = BodyPull::new(
             Arc::clone(&http),
             self.db.clone(),
             Declaration::subscribed(),
             cipher,
         )
-        .with_vault(&self.vault_id)
-        .pull_documents(&touched)
-        .await?;
+        .with_vault(&self.vault_id);
+        let mut bodies = BodyPullReport::default();
+        for doc_id in &touched {
+            let pulled = body_pull.pull_document(doc_id).await?;
+            // Settled only once the pull merged: a stop at a gap keeps it owed.
+            if pulled.stopped.is_empty() {
+                let settled = doc_id.clone();
+                self.db
+                    .call(move |conn| body_debt::settle(conn, &settled))
+                    .await?;
+            }
+            bodies.absorb(pulled);
+        }
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());

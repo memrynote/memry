@@ -35,7 +35,8 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use rusqlite::{Connection, params};
 use serde_json::{Value as Json, json};
-use yrs::ReadTxn as _;
+use yrs::updates::decoder::Decode as _;
+use yrs::{ReadTxn as _, Transact as _, Update};
 
 use crate::api::errors::{ApiError, StorageError};
 use crate::protocol::envelope::EnvelopeError;
@@ -44,6 +45,7 @@ use crate::protocol::http::{
 };
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
+use crate::sync::body_debt;
 
 use super::errors::CrdtError;
 use super::registry::Document;
@@ -233,6 +235,32 @@ impl SnapshotPusher {
         gate: SnapshotGate,
         now_ms: i64,
     ) -> Result<SnapshotOutcome, SnapshotError> {
+        // §7.13.2 condition 1, from the durable side: a document owed a
+        // whole-body pull has not merged the updates this snapshot would
+        // prune, whatever the caller's gate says.
+        let owed_id = document.id().to_owned();
+        if self
+            .db
+            .call(move |conn| body_debt::is_owed(conn, &owed_id))
+            .await?
+        {
+            return Ok(SnapshotOutcome::Refused(Refusal::UnmergedRemoteState));
+        }
+        // The other half: a settled debt means the rows are in the log, not
+        // that this resident document has loaded them. A feed page can land
+        // an update while the document is open (chapter 07 §7.17.4).
+        let plan_id = document.id().to_owned();
+        let plan = self
+            .db
+            .call(move |conn| {
+                update_log::load_plan(conn, &plan_id).map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })
+            })
+            .await?;
+        if !holds_every_logged_update(document, &plan)? {
+            return Ok(SnapshotOutcome::Refused(Refusal::UnmergedRemoteState));
+        }
         let state = match gate.check(document)? {
             Ok(state) => state,
             Err(refusal) => return Ok(SnapshotOutcome::Refused(refusal)),
@@ -279,6 +307,32 @@ impl SnapshotPusher {
         }
         request
     }
+}
+
+/// Whether the resident document already holds everything its update log
+/// holds: its state and delete set are unchanged by replaying the log over it.
+/// A log row that will not decode answers `false`, so the push refuses.
+fn holds_every_logged_update(
+    document: &Document,
+    plan: &update_log::LoadPlan,
+) -> Result<bool, CrdtError> {
+    if plan.is_empty() {
+        return Ok(true);
+    }
+    let resident = document.read(|txn| txn.snapshot())?;
+    let replayed = yrs::Doc::new();
+    {
+        let mut txn = replayed.transact_mut();
+        for blob in std::iter::once(document.encode_state()?.as_slice()).chain(plan.blobs()) {
+            let Ok(update) = Update::decode_v1(blob) else {
+                return Ok(false);
+            };
+            if txn.apply_update(update).is_err() {
+                return Ok(false);
+            }
+        }
+    }
+    Ok(replayed.transact().snapshot() == resident)
 }
 
 /// §7.6, applied to the local row: the watermark a document's snapshot sits at
