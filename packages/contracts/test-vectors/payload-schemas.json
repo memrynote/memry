@@ -20,10 +20,11 @@
       "task_activity",
       "reminder",
       "settings",
-      "filter"
+      "filter",
+      "inbox"
     ],
     "obligation": "a payload schema is a READER over a preserved string, never the storage shape (FR-033)",
-    "caseCount": 56
+    "caseCount": 60
   },
   "groups": [
     {
@@ -1613,6 +1614,141 @@
           "name": "filter: verbatim round trip of the unknown-field instance",
           "storedPayloadJson": "{\"name\":\"Due this week\",\"config\":{\"filters\":{\"search\":\"\",\"projectIds\":[\"proj-1\"],\"priorities\":[\"high\"],\"tags\":[],\"dueDate\":{\"type\":\"this-week\",\"customStart\":null,\"customEnd\":null},\"statusIds\":[],\"completion\":\"active\",\"repeatType\":\"all\",\"hasTime\":\"all\"},\"sort\":{\"field\":\"dueDate\",\"direction\":\"asc\"},\"starred\":true},\"position\":2,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "expectedPushedPayloadJson": "{\"name\":\"Due this week\",\"config\":{\"filters\":{\"search\":\"\",\"projectIds\":[\"proj-1\"],\"priorities\":[\"high\"],\"tags\":[],\"dueDate\":{\"type\":\"this-week\",\"customStart\":null,\"customEnd\":null},\"statusIds\":[],\"completion\":\"active\",\"repeatType\":\"all\",\"hasTime\":\"all\"},\"sort\":{\"field\":\"dueDate\",\"direction\":\"asc\"},\"starred\":true},\"position\":2,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "inbox",
+      "cases": [
+        {
+          "name": "inbox: valid, every modelled field populated",
+          "payload": {
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "type": "link",
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": null,
+            "archivedAt": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "type": "link",
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": null,
+            "archivedAt": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "inbox: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "title": "",
+            "content": null,
+            "metadata": null,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "title": "",
+            "content": null,
+            "metadata": null,
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "inbox: an unknown field a newer client wrote",
+          "payload": {
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "type": "link",
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": null,
+            "archivedAt": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z",
+            "transcription": "Pick up the cable before Friday."
+          },
+          "expectedParsed": {
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "type": "link",
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": null,
+            "archivedAt": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "transcription"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "inbox: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"title\":\"How Linear builds product\",\"content\":\"Small teams, short cycles.\",\"type\":\"link\",\"metadata\":{\"url\":\"https://example.com/agent/1\",\"fetchStatus\":\"complete\",\"siteName\":\"Linear\"},\"filedAt\":null,\"filedTo\":null,\"filedAction\":null,\"snoozedUntil\":\"2026-04-17T09:00:00.000Z\",\"snoozeReason\":null,\"archivedAt\":null,\"sourceUrl\":\"https://example.com/agent/1\",\"sourceTitle\":null,\"captureSource\":\"inline\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"transcription\":\"Pick up the cable before Friday.\"}",
+          "expectedPushedPayloadJson": "{\"title\":\"How Linear builds product\",\"content\":\"Small teams, short cycles.\",\"type\":\"link\",\"metadata\":{\"url\":\"https://example.com/agent/1\",\"fetchStatus\":\"complete\",\"siteName\":\"Linear\"},\"filedAt\":null,\"filedTo\":null,\"filedAction\":null,\"snoozedUntil\":\"2026-04-17T09:00:00.000Z\",\"snoozeReason\":null,\"archivedAt\":null,\"sourceUrl\":\"https://example.com/agent/1\",\"sourceTitle\":null,\"captureSource\":\"inline\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"transcription\":\"Pick up the cable before Friday.\"}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

@@ -3044,6 +3044,870 @@ public func FfiConverterTypeFileProtection_lower(_ value: FileProtection) -> UIn
 
 
 /**
+ * The inbox surface over one opened vault.
+ */
+public protocol InboxProtocol: AnyObject, Sendable {
+    
+    /**
+     * Archived captures, most recently archived first; `search` matches
+     * title or content.
+     */
+    func archived(search: String?, limit: Int64, offset: Int64) throws  -> [InboxItemRecord]
+    
+    /**
+     * The live capture already holding `url`, if any.
+     */
+    func duplicateByUrl(url: String) throws  -> InboxItemRecord?
+    
+    /**
+     * Filed captures, most recently filed first.
+     */
+    func filingHistory(limit: Int64) throws  -> [InboxItemRecord]
+    
+    /**
+     * One capture, or `nil` when none by that id is live here.
+     */
+    func get(id: String) throws  -> InboxItemRecord?
+    
+    /**
+     * The inbox list: unfiled, unarchived and (unless `include_snoozed`) not
+     * snoozed, newest first.
+     */
+    func list(includeSnoozed: Bool) throws  -> [InboxItemRecord]
+    
+    /**
+     * The Snoozed & reminders view at `now_ms`.
+     */
+    func panel(nowMs: Int64) throws  -> InboxPanelRecord
+    
+    /**
+     * The capture heatmap and type shares over the last 84 days.
+     */
+    func patterns(nowMs: Int64) throws  -> InboxPatternRecord
+    
+    /**
+     * Folders captures were recently filed to, most recent first.
+     */
+    func recentFolders(limit: UInt32) throws  -> [String]
+    
+    /**
+     * Snoozed, unfiled captures, soonest first.
+     */
+    func snoozed() throws  -> [InboxItemRecord]
+    
+    /**
+     * Every statistic the chrome, Insights and Inbox Zero read, at `now_ms`
+     * with `stale_days` (desktop's default is 7).
+     */
+    func stats(nowMs: Int64, staleDays: Int64) throws  -> InboxStatsRecord
+    
+    /**
+     * Every device-local tag with its count, most used first.
+     */
+    func tags() throws  -> [InboxTypeCount]
+    
+    /**
+     * Active captures per type, all nine types, zeros included.
+     */
+    func typeCounts() throws  -> [InboxTypeCount]
+    
+    func addTag(id: String, tag: String) throws 
+    
+    func archive(id: String) throws  -> InboxItemRecord
+    
+    func bulkArchive(ids: [String]) throws  -> InboxBulkResult
+    
+    func bulkFile(ids: [String], folder: String?, tags: [String], localNow: String) throws  -> InboxBulkResult
+    
+    func bulkSnooze(ids: [String], untilMs: Int64, reason: String?) throws  -> InboxBulkResult
+    
+    func bulkTag(ids: [String], tags: [String]) throws  -> InboxBulkResult
+    
+    /**
+     * A file already stored at `attachment_path` (vault-relative). The title
+     * is the filename without its extension; `metadata_json` adds keys
+     * (`width`, `height`, `format`, `pageCount`, `duration`, ...).
+     */
+    func captureFile(id: String, mimeType: String, filename: String, size: UInt64, attachmentPath: String, thumbnailPath: String?, metadataJson: String?, captureSource: String?) throws  -> InboxItemRecord
+    
+    /**
+     * A link (or social post) capture awaiting enrichment.
+     */
+    func captureLink(url: String, captureSource: String?, force: Bool) throws  -> InboxCaptureOutcome
+    
+    /**
+     * A text capture; a duplicate of a live one comes back unless `force`.
+     */
+    func captureText(content: String, title: String?, captureSource: String?, force: Bool) throws  -> InboxCaptureOutcome
+    
+    /**
+     * A voice memo stored at `attachment_path`. `transcription_status` is
+     * `pending` when on-device transcription will run, `failed` when it
+     * cannot (D4), `None` when the user turned it off.
+     */
+    func captureVoice(id: String, durationSeconds: Double, format: String, size: UInt64, attachmentPath: String, waveform: [Double], transcriptionStatus: String?, captureSource: String?) throws  -> InboxItemRecord
+    
+    /**
+     * The capture type a MIME type becomes, or the error desktop's store
+     * gives (unsupported type, empty, over 50 MB).
+     */
+    func checkFile(mimeType: String, size: UInt64) throws  -> String
+    
+    /**
+     * The on-device link preview's result (D3): never overwrites a richer
+     * value a peer wrote.
+     */
+    func completeLink(id: String, title: String?, description: String?, metadataJson: String) throws  -> InboxItemRecord
+    
+    /**
+     * Convert → Note: a note at the vault root.
+     */
+    func convertToNote(id: String, localNow: String) throws  -> InboxFiled
+    
+    func convertToReminder(id: String, remindAtMs: Int64, localNow: String) throws  -> InboxFiled
+    
+    func convertToTask(id: String, projectId: String?, dueDate: String?, dueTime: String?, priority: Int64, localNow: String) throws  -> InboxFiled
+    
+    /**
+     * The empty note a file capture is filed into; the shell uploads the file
+     * into it, then calls [`Inbox::mark_filed`].
+     */
+    func createNoteForFile(id: String, folder: String?, tags: [String], localNow: String) throws  -> InboxFiled
+    
+    /**
+     * A tombstone. The shell removes the capture's files.
+     */
+    func deletePermanently(id: String) throws 
+    
+    /**
+     * Files a text capture into `folder` (`nil` = vault root) as a new note.
+     */
+    func fileToFolder(id: String, folder: String?, tags: [String], localNow: String) throws  -> InboxFiled
+    
+    /**
+     * Links a capture into notes (existing or new, in order).
+     */
+    func linkToNotes(id: String, targets: [InboxLinkTarget], tags: [String], folder: String?, localNow: String) throws  -> [String]
+    
+    /**
+     * Marks a capture filed (the shell's half of filing a file capture).
+     */
+    func markFiled(id: String, filedTo: String, action: String) throws  -> InboxItemRecord
+    
+    func markViewed(id: String) throws  -> InboxItemRecord
+    
+    /**
+     * A fresh capture id, for a file the shell stores under
+     * `attachments/inbox/{id}/` before capturing it.
+     */
+    func newId()  -> String
+    
+    func removeTag(id: String, tag: String) throws 
+    
+    func rename(id: String, title: String) throws  -> InboxItemRecord
+    
+    /**
+     * The snooze scheduler's pass: due snoozes cleared and pushed.
+     */
+    func resurfaceDue() throws  -> [InboxItemRecord]
+    
+    /**
+     * A note capture's body; `nil` clears it (an explicit `null`).
+     */
+    func setContent(id: String, content: String?) throws  -> InboxItemRecord
+    
+    func setTranscription(id: String, transcription: String?, status: String) throws  -> InboxItemRecord
+    
+    func snooze(id: String, untilMs: Int64, reason: String?) throws  -> InboxItemRecord
+    
+    func unarchive(id: String) throws  -> InboxItemRecord
+    
+    func undoFile(id: String) throws  -> InboxItemRecord
+    
+    func unsnooze(id: String) throws  -> InboxItemRecord
+    
+}
+/**
+ * The inbox surface over one opened vault.
+ */
+open class Inbox: InboxProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_inbox(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_inbox(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Archived captures, most recently archived first; `search` matches
+     * title or content.
+     */
+open func archived(search: String?, limit: Int64, offset: Int64)throws  -> [InboxItemRecord]  {
+    return try  FfiConverterSequenceTypeInboxItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_archived(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionString.lower(search),
+        FfiConverterInt64.lower(limit),
+        FfiConverterInt64.lower(offset),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The live capture already holding `url`, if any.
+     */
+open func duplicateByUrl(url: String)throws  -> InboxItemRecord?  {
+    return try  FfiConverterOptionTypeInboxItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_duplicate_by_url(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(url),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Filed captures, most recently filed first.
+     */
+open func filingHistory(limit: Int64)throws  -> [InboxItemRecord]  {
+    return try  FfiConverterSequenceTypeInboxItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_filing_history(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(limit),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * One capture, or `nil` when none by that id is live here.
+     */
+open func get(id: String)throws  -> InboxItemRecord?  {
+    return try  FfiConverterOptionTypeInboxItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_get(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The inbox list: unfiled, unarchived and (unless `include_snoozed`) not
+     * snoozed, newest first.
+     */
+open func list(includeSnoozed: Bool)throws  -> [InboxItemRecord]  {
+    return try  FfiConverterSequenceTypeInboxItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_list(
+            self.uniffiCloneHandle(),
+        FfiConverterBool.lower(includeSnoozed),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The Snoozed & reminders view at `now_ms`.
+     */
+open func panel(nowMs: Int64)throws  -> InboxPanelRecord  {
+    return try  FfiConverterTypeInboxPanelRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_panel(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(nowMs),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The capture heatmap and type shares over the last 84 days.
+     */
+open func patterns(nowMs: Int64)throws  -> InboxPatternRecord  {
+    return try  FfiConverterTypeInboxPatternRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_patterns(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(nowMs),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Folders captures were recently filed to, most recent first.
+     */
+open func recentFolders(limit: UInt32)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_recent_folders(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt32.lower(limit),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Snoozed, unfiled captures, soonest first.
+     */
+open func snoozed()throws  -> [InboxItemRecord]  {
+    return try  FfiConverterSequenceTypeInboxItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_snoozed(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every statistic the chrome, Insights and Inbox Zero read, at `now_ms`
+     * with `stale_days` (desktop's default is 7).
+     */
+open func stats(nowMs: Int64, staleDays: Int64)throws  -> InboxStatsRecord  {
+    return try  FfiConverterTypeInboxStatsRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_stats(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(nowMs),
+        FfiConverterInt64.lower(staleDays),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every device-local tag with its count, most used first.
+     */
+open func tags()throws  -> [InboxTypeCount]  {
+    return try  FfiConverterSequenceTypeInboxTypeCount.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_tags(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Active captures per type, all nine types, zeros included.
+     */
+open func typeCounts()throws  -> [InboxTypeCount]  {
+    return try  FfiConverterSequenceTypeInboxTypeCount.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_type_counts(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+open func addTag(id: String, tag: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_add_tag(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(tag),uniffiCallStatus
+    )
+}
+}
+    
+open func archive(id: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_archive(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkArchive(ids: [String])throws  -> InboxBulkResult  {
+    return try  FfiConverterTypeInboxBulkResult_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_bulk_archive(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkFile(ids: [String], folder: String?, tags: [String], localNow: String)throws  -> InboxBulkResult  {
+    return try  FfiConverterTypeInboxBulkResult_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_bulk_file(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),
+        FfiConverterOptionString.lower(folder),
+        FfiConverterSequenceString.lower(tags),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkSnooze(ids: [String], untilMs: Int64, reason: String?)throws  -> InboxBulkResult  {
+    return try  FfiConverterTypeInboxBulkResult_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_bulk_snooze(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),
+        FfiConverterInt64.lower(untilMs),
+        FfiConverterOptionString.lower(reason),uniffiCallStatus
+    )
+})
+}
+    
+open func bulkTag(ids: [String], tags: [String])throws  -> InboxBulkResult  {
+    return try  FfiConverterTypeInboxBulkResult_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_bulk_tag(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(ids),
+        FfiConverterSequenceString.lower(tags),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A file already stored at `attachment_path` (vault-relative). The title
+     * is the filename without its extension; `metadata_json` adds keys
+     * (`width`, `height`, `format`, `pageCount`, `duration`, ...).
+     */
+open func captureFile(id: String, mimeType: String, filename: String, size: UInt64, attachmentPath: String, thumbnailPath: String?, metadataJson: String?, captureSource: String?)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_capture_file(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(mimeType),
+        FfiConverterString.lower(filename),
+        FfiConverterUInt64.lower(size),
+        FfiConverterString.lower(attachmentPath),
+        FfiConverterOptionString.lower(thumbnailPath),
+        FfiConverterOptionString.lower(metadataJson),
+        FfiConverterOptionString.lower(captureSource),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A link (or social post) capture awaiting enrichment.
+     */
+open func captureLink(url: String, captureSource: String?, force: Bool)throws  -> InboxCaptureOutcome  {
+    return try  FfiConverterTypeInboxCaptureOutcome_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_capture_link(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(url),
+        FfiConverterOptionString.lower(captureSource),
+        FfiConverterBool.lower(force),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A text capture; a duplicate of a live one comes back unless `force`.
+     */
+open func captureText(content: String, title: String?, captureSource: String?, force: Bool)throws  -> InboxCaptureOutcome  {
+    return try  FfiConverterTypeInboxCaptureOutcome_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_capture_text(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(content),
+        FfiConverterOptionString.lower(title),
+        FfiConverterOptionString.lower(captureSource),
+        FfiConverterBool.lower(force),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A voice memo stored at `attachment_path`. `transcription_status` is
+     * `pending` when on-device transcription will run, `failed` when it
+     * cannot (D4), `None` when the user turned it off.
+     */
+open func captureVoice(id: String, durationSeconds: Double, format: String, size: UInt64, attachmentPath: String, waveform: [Double], transcriptionStatus: String?, captureSource: String?)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_capture_voice(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterDouble.lower(durationSeconds),
+        FfiConverterString.lower(format),
+        FfiConverterUInt64.lower(size),
+        FfiConverterString.lower(attachmentPath),
+        FfiConverterSequenceDouble.lower(waveform),
+        FfiConverterOptionString.lower(transcriptionStatus),
+        FfiConverterOptionString.lower(captureSource),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The capture type a MIME type becomes, or the error desktop's store
+     * gives (unsupported type, empty, over 50 MB).
+     */
+open func checkFile(mimeType: String, size: UInt64)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_check_file(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(mimeType),
+        FfiConverterUInt64.lower(size),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The on-device link preview's result (D3): never overwrites a richer
+     * value a peer wrote.
+     */
+open func completeLink(id: String, title: String?, description: String?, metadataJson: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_complete_link(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(title),
+        FfiConverterOptionString.lower(description),
+        FfiConverterString.lower(metadataJson),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Convert → Note: a note at the vault root.
+     */
+open func convertToNote(id: String, localNow: String)throws  -> InboxFiled  {
+    return try  FfiConverterTypeInboxFiled_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_convert_to_note(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+open func convertToReminder(id: String, remindAtMs: Int64, localNow: String)throws  -> InboxFiled  {
+    return try  FfiConverterTypeInboxFiled_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_convert_to_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterInt64.lower(remindAtMs),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+open func convertToTask(id: String, projectId: String?, dueDate: String?, dueTime: String?, priority: Int64, localNow: String)throws  -> InboxFiled  {
+    return try  FfiConverterTypeInboxFiled_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_convert_to_task(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(projectId),
+        FfiConverterOptionString.lower(dueDate),
+        FfiConverterOptionString.lower(dueTime),
+        FfiConverterInt64.lower(priority),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The empty note a file capture is filed into; the shell uploads the file
+     * into it, then calls [`Inbox::mark_filed`].
+     */
+open func createNoteForFile(id: String, folder: String?, tags: [String], localNow: String)throws  -> InboxFiled  {
+    return try  FfiConverterTypeInboxFiled_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_create_note_for_file(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(folder),
+        FfiConverterSequenceString.lower(tags),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A tombstone. The shell removes the capture's files.
+     */
+open func deletePermanently(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_delete_permanently(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Files a text capture into `folder` (`nil` = vault root) as a new note.
+     */
+open func fileToFolder(id: String, folder: String?, tags: [String], localNow: String)throws  -> InboxFiled  {
+    return try  FfiConverterTypeInboxFiled_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_file_to_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(folder),
+        FfiConverterSequenceString.lower(tags),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Links a capture into notes (existing or new, in order).
+     */
+open func linkToNotes(id: String, targets: [InboxLinkTarget], tags: [String], folder: String?, localNow: String)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_link_to_notes(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceTypeInboxLinkTarget.lower(targets),
+        FfiConverterSequenceString.lower(tags),
+        FfiConverterOptionString.lower(folder),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Marks a capture filed (the shell's half of filing a file capture).
+     */
+open func markFiled(id: String, filedTo: String, action: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_mark_filed(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(filedTo),
+        FfiConverterString.lower(action),uniffiCallStatus
+    )
+})
+}
+    
+open func markViewed(id: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_mark_viewed(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A fresh capture id, for a file the shell stores under
+     * `attachments/inbox/{id}/` before capturing it.
+     */
+open func newId() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_new_id(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+open func removeTag(id: String, tag: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_remove_tag(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(tag),uniffiCallStatus
+    )
+}
+}
+    
+open func rename(id: String, title: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_rename(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(title),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The snooze scheduler's pass: due snoozes cleared and pushed.
+     */
+open func resurfaceDue()throws  -> [InboxItemRecord]  {
+    return try  FfiConverterSequenceTypeInboxItemRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_resurface_due(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A note capture's body; `nil` clears it (an explicit `null`).
+     */
+open func setContent(id: String, content: String?)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_set_content(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(content),uniffiCallStatus
+    )
+})
+}
+    
+open func setTranscription(id: String, transcription: String?, status: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_set_transcription(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(transcription),
+        FfiConverterString.lower(status),uniffiCallStatus
+    )
+})
+}
+    
+open func snooze(id: String, untilMs: Int64, reason: String?)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_snooze(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterInt64.lower(untilMs),
+        FfiConverterOptionString.lower(reason),uniffiCallStatus
+    )
+})
+}
+    
+open func unarchive(id: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_unarchive(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+open func undoFile(id: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_undo_file(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+open func unsnooze(id: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_unsnooze(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInbox: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Inbox
+
+    public static func lift(_ handle: UInt64) throws -> Inbox {
+        return Inbox(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Inbox) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Inbox {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Inbox, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInbox_lift(_ handle: UInt64) throws -> Inbox {
+    return try FfiConverterTypeInbox.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInbox_lower(_ value: Inbox) -> UInt64 {
+    return FfiConverterTypeInbox.lower(value)
+}
+
+
+
+
+
+
+/**
  * The core's side of the same seam: what the shell calls when the platform
  * tells it something changed.
  *
@@ -8561,6 +9425,12 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func id()  -> String
     
     /**
+     * Every inbox read and write over this vault (spec 006). Needs the
+     * keychain for the same reason [`Vault::tasks`] does.
+     */
+    func inbox(store: SecureStore) throws  -> Inbox
+    
+    /**
      * The note and folder reads over **this** vault's database.
      *
      * A clone of the same handle, not a second connection: see the module doc.
@@ -8707,6 +9577,20 @@ open func id() -> String  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_id(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every inbox read and write over this vault (spec 006). Needs the
+     * keychain for the same reason [`Vault::tasks`] does.
+     */
+open func inbox(store: SecureStore)throws  -> Inbox  {
+    return try  FfiConverterTypeInbox_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_inbox(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
     )
 })
 }
@@ -10908,6 +11792,886 @@ public func FfiConverterTypeHttpResponse_lift(_ buf: RustBuffer) throws -> HttpR
 #endif
 public func FfiConverterTypeHttpResponse_lower(_ value: HttpResponse) -> RustBuffer {
     return FfiConverterTypeHttpResponse.lower(value)
+}
+
+
+/**
+ * Desktop's `BulkResponse`.
+ */
+public struct InboxBulkResult: Equatable, Hashable {
+    public var processed: UInt32
+    public var failedIds: [String]
+    public var errors: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(processed: UInt32, failedIds: [String], errors: [String]) {
+        self.processed = processed
+        self.failedIds = failedIds
+        self.errors = errors
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxBulkResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxBulkResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxBulkResult {
+        return
+            try InboxBulkResult(
+                processed: FfiConverterUInt32.read(from: &buf), 
+                failedIds: FfiConverterSequenceString.read(from: &buf), 
+                errors: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxBulkResult, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.processed, into: &buf)
+        FfiConverterSequenceString.write(value.failedIds, into: &buf)
+        FfiConverterSequenceString.write(value.errors, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxBulkResult_lift(_ buf: RustBuffer) throws -> InboxBulkResult {
+    return try FfiConverterTypeInboxBulkResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxBulkResult_lower(_ value: InboxBulkResult) -> RustBuffer {
+    return FfiConverterTypeInboxBulkResult.lower(value)
+}
+
+
+/**
+ * A capture, or the live one it would duplicate (`duplicate = true`).
+ */
+public struct InboxCaptureOutcome: Equatable, Hashable {
+    public var item: InboxItemRecord
+    public var duplicate: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(item: InboxItemRecord, duplicate: Bool) {
+        self.item = item
+        self.duplicate = duplicate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxCaptureOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxCaptureOutcome: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxCaptureOutcome {
+        return
+            try InboxCaptureOutcome(
+                item: FfiConverterTypeInboxItemRecord.read(from: &buf), 
+                duplicate: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxCaptureOutcome, into buf: inout [UInt8]) {
+        FfiConverterTypeInboxItemRecord.write(value.item, into: &buf)
+        FfiConverterBool.write(value.duplicate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxCaptureOutcome_lift(_ buf: RustBuffer) throws -> InboxCaptureOutcome {
+    return try FfiConverterTypeInboxCaptureOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxCaptureOutcome_lower(_ value: InboxCaptureOutcome) -> RustBuffer {
+    return FfiConverterTypeInboxCaptureOutcome.lower(value)
+}
+
+
+/**
+ * Where a filing landed.
+ */
+public struct InboxFiled: Equatable, Hashable {
+    /**
+     * The note (or task) created, when there is one.
+     */
+    public var targetId: String?
+    /**
+     * What `filedTo` now says.
+     */
+    public var filedTo: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The note (or task) created, when there is one.
+         */targetId: String?, 
+        /**
+         * What `filedTo` now says.
+         */filedTo: String) {
+        self.targetId = targetId
+        self.filedTo = filedTo
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxFiled: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxFiled: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxFiled {
+        return
+            try InboxFiled(
+                targetId: FfiConverterOptionString.read(from: &buf), 
+                filedTo: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxFiled, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.targetId, into: &buf)
+        FfiConverterString.write(value.filedTo, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxFiled_lift(_ buf: RustBuffer) throws -> InboxFiled {
+    return try FfiConverterTypeInboxFiled.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxFiled_lower(_ value: InboxFiled) -> RustBuffer {
+    return FfiConverterTypeInboxFiled.lower(value)
+}
+
+
+/**
+ * One capture.
+ */
+public struct InboxItemRecord: Equatable, Hashable {
+    public var id: String
+    /**
+     * `link | note | image | voice | video | clip | pdf | social | reminder`,
+     * or what a newer build wrote.
+     */
+    public var itemType: String
+    public var title: String
+    public var content: String?
+    public var metadataJson: String?
+    public var filedAtMs: Int64?
+    public var filedTo: String?
+    public var filedAction: String?
+    public var snoozedUntilMs: Int64?
+    public var snoozeReason: String?
+    public var archivedAtMs: Int64?
+    public var viewedAtMs: Int64?
+    public var sourceUrl: String?
+    public var sourceTitle: String?
+    public var captureSource: String?
+    public var processingStatus: String?
+    public var transcription: String?
+    public var transcriptionStatus: String?
+    /**
+     * Vault-relative; the file exists only on the capturing device.
+     */
+    public var attachmentPath: String?
+    public var thumbnailPath: String?
+    public var createdAtMs: Int64
+    public var modifiedAtMs: Int64?
+    public var tags: [String]
+    /**
+     * Desktop's `isNoteOnlyType`: no task, event or reminder.
+     */
+    public var isNoteOnly: Bool
+    /**
+     * Desktop's `isBinaryType`: the capture is a file.
+     */
+    public var isBinary: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * `link | note | image | voice | video | clip | pdf | social | reminder`,
+         * or what a newer build wrote.
+         */itemType: String, title: String, content: String?, metadataJson: String?, filedAtMs: Int64?, filedTo: String?, filedAction: String?, snoozedUntilMs: Int64?, snoozeReason: String?, archivedAtMs: Int64?, viewedAtMs: Int64?, sourceUrl: String?, sourceTitle: String?, captureSource: String?, processingStatus: String?, transcription: String?, transcriptionStatus: String?, 
+        /**
+         * Vault-relative; the file exists only on the capturing device.
+         */attachmentPath: String?, thumbnailPath: String?, createdAtMs: Int64, modifiedAtMs: Int64?, tags: [String], 
+        /**
+         * Desktop's `isNoteOnlyType`: no task, event or reminder.
+         */isNoteOnly: Bool, 
+        /**
+         * Desktop's `isBinaryType`: the capture is a file.
+         */isBinary: Bool) {
+        self.id = id
+        self.itemType = itemType
+        self.title = title
+        self.content = content
+        self.metadataJson = metadataJson
+        self.filedAtMs = filedAtMs
+        self.filedTo = filedTo
+        self.filedAction = filedAction
+        self.snoozedUntilMs = snoozedUntilMs
+        self.snoozeReason = snoozeReason
+        self.archivedAtMs = archivedAtMs
+        self.viewedAtMs = viewedAtMs
+        self.sourceUrl = sourceUrl
+        self.sourceTitle = sourceTitle
+        self.captureSource = captureSource
+        self.processingStatus = processingStatus
+        self.transcription = transcription
+        self.transcriptionStatus = transcriptionStatus
+        self.attachmentPath = attachmentPath
+        self.thumbnailPath = thumbnailPath
+        self.createdAtMs = createdAtMs
+        self.modifiedAtMs = modifiedAtMs
+        self.tags = tags
+        self.isNoteOnly = isNoteOnly
+        self.isBinary = isBinary
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxItemRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxItemRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxItemRecord {
+        return
+            try InboxItemRecord(
+                id: FfiConverterString.read(from: &buf), 
+                itemType: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                content: FfiConverterOptionString.read(from: &buf), 
+                metadataJson: FfiConverterOptionString.read(from: &buf), 
+                filedAtMs: FfiConverterOptionInt64.read(from: &buf), 
+                filedTo: FfiConverterOptionString.read(from: &buf), 
+                filedAction: FfiConverterOptionString.read(from: &buf), 
+                snoozedUntilMs: FfiConverterOptionInt64.read(from: &buf), 
+                snoozeReason: FfiConverterOptionString.read(from: &buf), 
+                archivedAtMs: FfiConverterOptionInt64.read(from: &buf), 
+                viewedAtMs: FfiConverterOptionInt64.read(from: &buf), 
+                sourceUrl: FfiConverterOptionString.read(from: &buf), 
+                sourceTitle: FfiConverterOptionString.read(from: &buf), 
+                captureSource: FfiConverterOptionString.read(from: &buf), 
+                processingStatus: FfiConverterOptionString.read(from: &buf), 
+                transcription: FfiConverterOptionString.read(from: &buf), 
+                transcriptionStatus: FfiConverterOptionString.read(from: &buf), 
+                attachmentPath: FfiConverterOptionString.read(from: &buf), 
+                thumbnailPath: FfiConverterOptionString.read(from: &buf), 
+                createdAtMs: FfiConverterInt64.read(from: &buf), 
+                modifiedAtMs: FfiConverterOptionInt64.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                isNoteOnly: FfiConverterBool.read(from: &buf), 
+                isBinary: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxItemRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.itemType, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.content, into: &buf)
+        FfiConverterOptionString.write(value.metadataJson, into: &buf)
+        FfiConverterOptionInt64.write(value.filedAtMs, into: &buf)
+        FfiConverterOptionString.write(value.filedTo, into: &buf)
+        FfiConverterOptionString.write(value.filedAction, into: &buf)
+        FfiConverterOptionInt64.write(value.snoozedUntilMs, into: &buf)
+        FfiConverterOptionString.write(value.snoozeReason, into: &buf)
+        FfiConverterOptionInt64.write(value.archivedAtMs, into: &buf)
+        FfiConverterOptionInt64.write(value.viewedAtMs, into: &buf)
+        FfiConverterOptionString.write(value.sourceUrl, into: &buf)
+        FfiConverterOptionString.write(value.sourceTitle, into: &buf)
+        FfiConverterOptionString.write(value.captureSource, into: &buf)
+        FfiConverterOptionString.write(value.processingStatus, into: &buf)
+        FfiConverterOptionString.write(value.transcription, into: &buf)
+        FfiConverterOptionString.write(value.transcriptionStatus, into: &buf)
+        FfiConverterOptionString.write(value.attachmentPath, into: &buf)
+        FfiConverterOptionString.write(value.thumbnailPath, into: &buf)
+        FfiConverterInt64.write(value.createdAtMs, into: &buf)
+        FfiConverterOptionInt64.write(value.modifiedAtMs, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterBool.write(value.isNoteOnly, into: &buf)
+        FfiConverterBool.write(value.isBinary, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxItemRecord_lift(_ buf: RustBuffer) throws -> InboxItemRecord {
+    return try FfiConverterTypeInboxItemRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxItemRecord_lower(_ value: InboxItemRecord) -> RustBuffer {
+    return FfiConverterTypeInboxItemRecord.lower(value)
+}
+
+
+/**
+ * One link target: an existing note by id, or a new one by title.
+ */
+public struct InboxLinkTarget: Equatable, Hashable {
+    public var noteId: String?
+    public var newTitle: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(noteId: String?, newTitle: String?) {
+        self.noteId = noteId
+        self.newTitle = newTitle
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxLinkTarget: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxLinkTarget: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxLinkTarget {
+        return
+            try InboxLinkTarget(
+                noteId: FfiConverterOptionString.read(from: &buf), 
+                newTitle: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxLinkTarget, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.noteId, into: &buf)
+        FfiConverterOptionString.write(value.newTitle, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxLinkTarget_lift(_ buf: RustBuffer) throws -> InboxLinkTarget {
+    return try FfiConverterTypeInboxLinkTarget.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxLinkTarget_lower(_ value: InboxLinkTarget) -> RustBuffer {
+    return FfiConverterTypeInboxLinkTarget.lower(value)
+}
+
+
+/**
+ * One row of Snoozed & reminders.
+ */
+public struct InboxPanelEntry: Equatable, Hashable {
+    public var key: String
+    public var timeMs: Int64
+    /**
+     * `note | journal | task | highlight | note_date`, or `None` for a
+     * snoozed capture that opens its own detail.
+     */
+    public var targetType: String?
+    public var targetId: String?
+    public var targetTitle: String?
+    public var projectId: String?
+    public var item: InboxItemRecord?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(key: String, timeMs: Int64, 
+        /**
+         * `note | journal | task | highlight | note_date`, or `None` for a
+         * snoozed capture that opens its own detail.
+         */targetType: String?, targetId: String?, targetTitle: String?, projectId: String?, item: InboxItemRecord?) {
+        self.key = key
+        self.timeMs = timeMs
+        self.targetType = targetType
+        self.targetId = targetId
+        self.targetTitle = targetTitle
+        self.projectId = projectId
+        self.item = item
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxPanelEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxPanelEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxPanelEntry {
+        return
+            try InboxPanelEntry(
+                key: FfiConverterString.read(from: &buf), 
+                timeMs: FfiConverterInt64.read(from: &buf), 
+                targetType: FfiConverterOptionString.read(from: &buf), 
+                targetId: FfiConverterOptionString.read(from: &buf), 
+                targetTitle: FfiConverterOptionString.read(from: &buf), 
+                projectId: FfiConverterOptionString.read(from: &buf), 
+                item: FfiConverterOptionTypeInboxItemRecord.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxPanelEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.key, into: &buf)
+        FfiConverterInt64.write(value.timeMs, into: &buf)
+        FfiConverterOptionString.write(value.targetType, into: &buf)
+        FfiConverterOptionString.write(value.targetId, into: &buf)
+        FfiConverterOptionString.write(value.targetTitle, into: &buf)
+        FfiConverterOptionString.write(value.projectId, into: &buf)
+        FfiConverterOptionTypeInboxItemRecord.write(value.item, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxPanelEntry_lift(_ buf: RustBuffer) throws -> InboxPanelEntry {
+    return try FfiConverterTypeInboxPanelEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxPanelEntry_lower(_ value: InboxPanelEntry) -> RustBuffer {
+    return FfiConverterTypeInboxPanelEntry.lower(value)
+}
+
+
+public struct InboxPanelRecord: Equatable, Hashable {
+    public var upcoming: [InboxPanelEntry]
+    public var past: [InboxPanelEntry]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(upcoming: [InboxPanelEntry], past: [InboxPanelEntry]) {
+        self.upcoming = upcoming
+        self.past = past
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxPanelRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxPanelRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxPanelRecord {
+        return
+            try InboxPanelRecord(
+                upcoming: FfiConverterSequenceTypeInboxPanelEntry.read(from: &buf), 
+                past: FfiConverterSequenceTypeInboxPanelEntry.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxPanelRecord, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeInboxPanelEntry.write(value.upcoming, into: &buf)
+        FfiConverterSequenceTypeInboxPanelEntry.write(value.past, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxPanelRecord_lift(_ buf: RustBuffer) throws -> InboxPanelRecord {
+    return try FfiConverterTypeInboxPanelRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxPanelRecord_lower(_ value: InboxPanelRecord) -> RustBuffer {
+    return FfiConverterTypeInboxPanelRecord.lower(value)
+}
+
+
+/**
+ * The capture heatmap: 24 rows of 7 (Monday first), UTC.
+ */
+public struct InboxPatternRecord: Equatable, Hashable {
+    public var heatmap: [[Int64]]
+    public var types: [InboxTypeShare]
+    /**
+     * Monday = 0.
+     */
+    public var peakDay: UInt32?
+    public var peakHour: UInt32?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(heatmap: [[Int64]], types: [InboxTypeShare], 
+        /**
+         * Monday = 0.
+         */peakDay: UInt32?, peakHour: UInt32?) {
+        self.heatmap = heatmap
+        self.types = types
+        self.peakDay = peakDay
+        self.peakHour = peakHour
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxPatternRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxPatternRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxPatternRecord {
+        return
+            try InboxPatternRecord(
+                heatmap: FfiConverterSequenceSequenceInt64.read(from: &buf), 
+                types: FfiConverterSequenceTypeInboxTypeShare.read(from: &buf), 
+                peakDay: FfiConverterOptionUInt32.read(from: &buf), 
+                peakHour: FfiConverterOptionUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxPatternRecord, into buf: inout [UInt8]) {
+        FfiConverterSequenceSequenceInt64.write(value.heatmap, into: &buf)
+        FfiConverterSequenceTypeInboxTypeShare.write(value.types, into: &buf)
+        FfiConverterOptionUInt32.write(value.peakDay, into: &buf)
+        FfiConverterOptionUInt32.write(value.peakHour, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxPatternRecord_lift(_ buf: RustBuffer) throws -> InboxPatternRecord {
+    return try FfiConverterTypeInboxPatternRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxPatternRecord_lower(_ value: InboxPatternRecord) -> RustBuffer {
+    return FfiConverterTypeInboxPatternRecord.lower(value)
+}
+
+
+/**
+ * Desktop's `InboxStats` plus the Insights rate and the Inbox Zero week.
+ */
+public struct InboxStatsRecord: Equatable, Hashable {
+    public var totalItems: Int64
+    public var staleCount: Int64
+    public var snoozedCount: Int64
+    public var capturedToday: Int64
+    public var processedToday: Int64
+    public var avgTimeToProcessMinutes: Int64
+    public var capturedThisWeek: Int64
+    public var processedThisWeek: Int64
+    public var captureProcessRatioTenths: Int64
+    public var processRate: Int64
+    public var ageFresh: Int64
+    public var ageAging: Int64
+    public var ageStale: Int64
+    public var oldestItemDays: Int64
+    public var currentStreak: Int64
+    public var filedThisWeek: Int64
+    /**
+     * Active captures still fetching link metadata.
+     */
+    public var fetching: Int64
+    /**
+     * Active captures minus viewed reminder captures.
+     */
+    public var reviewable: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(totalItems: Int64, staleCount: Int64, snoozedCount: Int64, capturedToday: Int64, processedToday: Int64, avgTimeToProcessMinutes: Int64, capturedThisWeek: Int64, processedThisWeek: Int64, captureProcessRatioTenths: Int64, processRate: Int64, ageFresh: Int64, ageAging: Int64, ageStale: Int64, oldestItemDays: Int64, currentStreak: Int64, filedThisWeek: Int64, 
+        /**
+         * Active captures still fetching link metadata.
+         */fetching: Int64, 
+        /**
+         * Active captures minus viewed reminder captures.
+         */reviewable: Int64) {
+        self.totalItems = totalItems
+        self.staleCount = staleCount
+        self.snoozedCount = snoozedCount
+        self.capturedToday = capturedToday
+        self.processedToday = processedToday
+        self.avgTimeToProcessMinutes = avgTimeToProcessMinutes
+        self.capturedThisWeek = capturedThisWeek
+        self.processedThisWeek = processedThisWeek
+        self.captureProcessRatioTenths = captureProcessRatioTenths
+        self.processRate = processRate
+        self.ageFresh = ageFresh
+        self.ageAging = ageAging
+        self.ageStale = ageStale
+        self.oldestItemDays = oldestItemDays
+        self.currentStreak = currentStreak
+        self.filedThisWeek = filedThisWeek
+        self.fetching = fetching
+        self.reviewable = reviewable
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxStatsRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxStatsRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxStatsRecord {
+        return
+            try InboxStatsRecord(
+                totalItems: FfiConverterInt64.read(from: &buf), 
+                staleCount: FfiConverterInt64.read(from: &buf), 
+                snoozedCount: FfiConverterInt64.read(from: &buf), 
+                capturedToday: FfiConverterInt64.read(from: &buf), 
+                processedToday: FfiConverterInt64.read(from: &buf), 
+                avgTimeToProcessMinutes: FfiConverterInt64.read(from: &buf), 
+                capturedThisWeek: FfiConverterInt64.read(from: &buf), 
+                processedThisWeek: FfiConverterInt64.read(from: &buf), 
+                captureProcessRatioTenths: FfiConverterInt64.read(from: &buf), 
+                processRate: FfiConverterInt64.read(from: &buf), 
+                ageFresh: FfiConverterInt64.read(from: &buf), 
+                ageAging: FfiConverterInt64.read(from: &buf), 
+                ageStale: FfiConverterInt64.read(from: &buf), 
+                oldestItemDays: FfiConverterInt64.read(from: &buf), 
+                currentStreak: FfiConverterInt64.read(from: &buf), 
+                filedThisWeek: FfiConverterInt64.read(from: &buf), 
+                fetching: FfiConverterInt64.read(from: &buf), 
+                reviewable: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxStatsRecord, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.totalItems, into: &buf)
+        FfiConverterInt64.write(value.staleCount, into: &buf)
+        FfiConverterInt64.write(value.snoozedCount, into: &buf)
+        FfiConverterInt64.write(value.capturedToday, into: &buf)
+        FfiConverterInt64.write(value.processedToday, into: &buf)
+        FfiConverterInt64.write(value.avgTimeToProcessMinutes, into: &buf)
+        FfiConverterInt64.write(value.capturedThisWeek, into: &buf)
+        FfiConverterInt64.write(value.processedThisWeek, into: &buf)
+        FfiConverterInt64.write(value.captureProcessRatioTenths, into: &buf)
+        FfiConverterInt64.write(value.processRate, into: &buf)
+        FfiConverterInt64.write(value.ageFresh, into: &buf)
+        FfiConverterInt64.write(value.ageAging, into: &buf)
+        FfiConverterInt64.write(value.ageStale, into: &buf)
+        FfiConverterInt64.write(value.oldestItemDays, into: &buf)
+        FfiConverterInt64.write(value.currentStreak, into: &buf)
+        FfiConverterInt64.write(value.filedThisWeek, into: &buf)
+        FfiConverterInt64.write(value.fetching, into: &buf)
+        FfiConverterInt64.write(value.reviewable, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxStatsRecord_lift(_ buf: RustBuffer) throws -> InboxStatsRecord {
+    return try FfiConverterTypeInboxStatsRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxStatsRecord_lower(_ value: InboxStatsRecord) -> RustBuffer {
+    return FfiConverterTypeInboxStatsRecord.lower(value)
+}
+
+
+/**
+ * A type and how many active captures have it.
+ */
+public struct InboxTypeCount: Equatable, Hashable {
+    public var itemType: String
+    public var count: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(itemType: String, count: Int64) {
+        self.itemType = itemType
+        self.count = count
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxTypeCount: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxTypeCount: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxTypeCount {
+        return
+            try InboxTypeCount(
+                itemType: FfiConverterString.read(from: &buf), 
+                count: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxTypeCount, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.itemType, into: &buf)
+        FfiConverterInt64.write(value.count, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxTypeCount_lift(_ buf: RustBuffer) throws -> InboxTypeCount {
+    return try FfiConverterTypeInboxTypeCount.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxTypeCount_lower(_ value: InboxTypeCount) -> RustBuffer {
+    return FfiConverterTypeInboxTypeCount.lower(value)
+}
+
+
+/**
+ * One bar of the By type chart.
+ */
+public struct InboxTypeShare: Equatable, Hashable {
+    public var itemType: String
+    public var count: Int64
+    public var percentage: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(itemType: String, count: Int64, percentage: Int64) {
+        self.itemType = itemType
+        self.count = count
+        self.percentage = percentage
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxTypeShare: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxTypeShare: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxTypeShare {
+        return
+            try InboxTypeShare(
+                itemType: FfiConverterString.read(from: &buf), 
+                count: FfiConverterInt64.read(from: &buf), 
+                percentage: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxTypeShare, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.itemType, into: &buf)
+        FfiConverterInt64.write(value.count, into: &buf)
+        FfiConverterInt64.write(value.percentage, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxTypeShare_lift(_ buf: RustBuffer) throws -> InboxTypeShare {
+    return try FfiConverterTypeInboxTypeShare.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxTypeShare_lower(_ value: InboxTypeShare) -> RustBuffer {
+    return FfiConverterTypeInboxTypeShare.lower(value)
 }
 
 
@@ -19698,6 +21462,30 @@ public func FfiConverterTypeTransportError_lower(_ value: TransportError) -> Rus
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
+    typealias SwiftType = UInt32?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt32.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt32.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
     typealias SwiftType = UInt64?
 
@@ -19834,6 +21622,30 @@ fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustB
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeSyncProgressListener.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeInboxItemRecord: FfiConverterRustBuffer {
+    typealias SwiftType = InboxItemRecord?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeInboxItemRecord.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeInboxItemRecord.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -20155,6 +21967,31 @@ fileprivate struct FfiConverterSequenceInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceDouble: FfiConverterRustBuffer {
+    typealias SwiftType = [Double]
+
+    public static func write(_ value: [Double], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterDouble.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Double] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Double]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterDouble.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
@@ -20397,6 +22234,131 @@ fileprivate struct FfiConverterSequenceTypeFolderSummary: FfiConverterRustBuffer
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeFolderSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxItemRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxItemRecord]
+
+    public static func write(_ value: [InboxItemRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxItemRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxItemRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxItemRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxItemRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxLinkTarget: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxLinkTarget]
+
+    public static func write(_ value: [InboxLinkTarget], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxLinkTarget.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxLinkTarget] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxLinkTarget]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxLinkTarget.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxPanelEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxPanelEntry]
+
+    public static func write(_ value: [InboxPanelEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxPanelEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxPanelEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxPanelEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxPanelEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxTypeCount: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxTypeCount]
+
+    public static func write(_ value: [InboxTypeCount], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxTypeCount.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxTypeCount] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxTypeCount]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxTypeCount.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxTypeShare: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxTypeShare]
+
+    public static func write(_ value: [InboxTypeShare], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxTypeShare.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxTypeShare] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxTypeShare]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxTypeShare.read(from: &buf))
         }
         return seq
     }
@@ -21080,6 +23042,31 @@ fileprivate struct FfiConverterSequenceOptionDouble: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceSequenceInt64: FfiConverterRustBuffer {
+    typealias SwiftType = [[Int64]]
+
+    public static func write(_ value: [[Int64]], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterSequenceInt64.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [[Int64]] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [[Int64]]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterSequenceInt64.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
     public static func write(_ value: [String: String], into buf: inout [UInt8]) {
         let len = Int32(value.count)
@@ -21480,6 +23467,19 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 })
 }
 /**
+ * `inbox.json` evaluated by the core: `{apply: [{name, actual}], views}`,
+ * each `actual` in the shape of the file's `expected`. A failure is reported
+ * in the JSON (`error`), never a panic.
+ */
+public func inboxConformance(vectorJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_inbox_conformance(
+        FfiConverterString.lower(vectorJson),uniffiCallStatus
+    )
+})
+}
+/**
  * The `dueWindows` section of `task-parsing.json` evaluated at every `at`
  * entry's `now`, in the file's own shape.
  */
@@ -21653,6 +23653,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_func_inbox_conformance() != 10056) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -21729,6 +23732,135 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_restore() != 38013) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_duplicate_by_url() != 54505) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_filing_history() != 46197) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_get() != 58439) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_list() != 4928) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_panel() != 11165) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_patterns() != 59700) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_recent_folders() != 4954) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_snoozed() != 16778) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_stats() != 13195) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_tags() != 1817) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_type_counts() != 46362) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_add_tag() != 59207) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_archive() != 57060) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_bulk_archive() != 48640) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_bulk_file() != 15026) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_bulk_snooze() != 55900) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_bulk_tag() != 26668) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_capture_file() != 58559) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_capture_link() != 29296) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_capture_text() != 49684) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_capture_voice() != 10692) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_check_file() != 43407) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_complete_link() != 9937) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_convert_to_note() != 24326) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_convert_to_reminder() != 29440) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_convert_to_task() != 4527) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_create_note_for_file() != 28624) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_delete_permanently() != 65483) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_file_to_folder() != 58082) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_link_to_notes() != 45749) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_mark_filed() != 45882) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_mark_viewed() != 5503) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_new_id() != 25451) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_remove_tag() != 41400) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_rename() != 18479) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_resurface_due() != 14903) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_set_content() != 36456) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_set_transcription() != 24120) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_snooze() != 14037) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_unarchive() != 60834) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_undo_file() != 58211) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_unsnooze() != 24252) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_devicelink_cancel() != 46216) {
@@ -22116,6 +24248,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_inbox() != 16342) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_notes() != 15357) {

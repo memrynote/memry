@@ -53,6 +53,7 @@
 //! runs, so a malformed icon payload is recorded corrupt like any other.
 
 pub mod filters;
+pub mod inbox;
 pub mod notes;
 pub mod projects;
 pub mod reminders;
@@ -103,6 +104,7 @@ pub fn read(item_type: &str, parsed: &Object) -> Result<Object, ProjectionError>
         "reminder" => reminders::read_reminder(parsed),
         "settings" => settings::read_settings(parsed),
         "filter" => filters::read_filter(parsed),
+        "inbox" => inbox::read_inbox(parsed),
         other => Err(ProjectionError::UnknownType {
             item_type: other.to_owned(),
         }),
@@ -132,6 +134,7 @@ pub fn project(
         "reminder" => reminders::project_reminder(conn, item, view),
         "settings" => settings::project_settings(conn, item, view),
         "filter" => filters::project_filter(conn, item, view),
+        "inbox" => inbox::project_inbox(conn, item, view),
         // Unreachable: `read` refused the type before the caller got here.
         other => Err(StorageError::Failed {
             what: format!("no projector for item type `{other}`"),
@@ -218,6 +221,7 @@ fn delete_targets(item_type: &str) -> &'static [(&'static str, Option<&'static s
         "reminder" => &[("reminders", Some("id"))],
         "settings" => &[("settings", None)],
         "filter" => &[("saved_filters", Some("id"))],
+        "inbox" => &[("inbox_items", Some("id"))],
         _ => &[],
     }
 }

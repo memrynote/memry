@@ -32,13 +32,15 @@ use thiserror::Error;
 /// string-matches its own constants has to match the right spelling.
 pub const SYNC_TYPES_HEADER: &str = "X-Memry-Sync-Types";
 
-/// The fourteen types this client subscribes to, chapter 13 §13.1.
+/// The fifteen types this client subscribes to, chapter 13 §13.1.
 ///
 /// The set spec.md's Assumptions name, in the chapter's order, plus `filter`
-/// (saved task filters, spec 004 TP022) appended last. Adding
+/// (saved task filters, spec 004 TP022) and `inbox` (captures, spec 006
+/// IB012, subscribed once its projector and desktop's merge rule landed)
+/// appended last. Adding
 /// a type here without a projector that understands it is worse than omitting
 /// it: the server would start serving rows this client cannot apply.
-pub const SUBSCRIBED_ITEM_TYPES: [&str; 14] = [
+pub const SUBSCRIBED_ITEM_TYPES: [&str; 15] = [
     "note",
     "journal",
     "folder_config",
@@ -53,16 +55,16 @@ pub const SUBSCRIBED_ITEM_TYPES: [&str; 14] = [
     "reminder",
     "settings",
     "filter",
+    "inbox",
 ];
 
-/// The eleven record types the server serves and this client does **not**
+/// The ten record types the server serves and this client does **not**
 /// subscribe to, chapter 13 §13.1.
 ///
 /// Listed rather than implied because "recognised" and "subscribed" are
 /// different questions: these are recognised names a declaration may legally
 /// carry, and omitting them from the header is what stops them arriving.
-pub const UNSUBSCRIBED_RECORD_ITEM_TYPES: [&str; 11] = [
-    "inbox",
+pub const UNSUBSCRIBED_RECORD_ITEM_TYPES: [&str; 10] = [
     "calendar_event",
     "calendar_source",
     "calendar_binding",
@@ -124,9 +126,9 @@ pub struct Declaration {
 }
 
 impl Declaration {
-    /// The fourteen subscribed types, chapter 13 §13.1.
+    /// The fifteen subscribed types, chapter 13 §13.1.
     pub fn subscribed() -> Self {
-        Self::declare(&SUBSCRIBED_ITEM_TYPES).expect("the subscribed fourteen are all recognised")
+        Self::declare(&SUBSCRIBED_ITEM_TYPES).expect("the subscribed fifteen are all recognised")
     }
 
     /// Resolves a declaration the way the server will resolve it.
@@ -248,13 +250,13 @@ mod tests {
     }
 
     #[test]
-    fn the_subscribed_declaration_is_the_fourteen_in_chapter_order() {
+    fn the_subscribed_declaration_is_the_fifteen_in_chapter_order() {
         let declaration = Declaration::subscribed();
         assert_eq!(declaration.types(), SUBSCRIBED_ITEM_TYPES);
         assert_eq!(
             declaration.header_value(),
             "note,journal,folder_config,custom_icon,tag_definition,tag_category,\
-property_definition,template,task,project,task_activity,reminder,settings,filter"
+property_definition,template,task,project,task_activity,reminder,settings,filter,inbox"
         );
         assert!(!declaration.header_value().contains(' '));
         assert_eq!(RECORD_SYNC_ITEM_TYPE_COUNT, 25);

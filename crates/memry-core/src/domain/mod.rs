@@ -13,6 +13,7 @@ pub mod attachments;
 pub mod body_write;
 pub mod calendar;
 pub mod folders;
+pub mod inbox;
 pub mod journal;
 pub mod note_meta;
 pub mod note_tasks;

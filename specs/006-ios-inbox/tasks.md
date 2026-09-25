@@ -172,59 +172,74 @@ needed.
 
 ## Phase 1: core read side (Rust)
 
-- [ ] IB010 Inbox record model in core: every `InboxSyncPayloadSchema` field,
+- [x] IB010 Inbox record model in core: every `InboxSyncPayloadSchema` field,
       plus the desktop-local columns the UI reads (`transcription`,
       `transcriptionStatus`, `viewedAt`, `duration`, `pageCount`,
       `thumbnailUrl` / attachment ref) mapped from where desktop actually
       keeps them (§5 F1, F3).
-- [ ] IB011 Projector: apply remote `inbox` items with desktop's merge rule
+      Evidence: migration `0004_inbox.sql` (`inbox_items` = the 13 schema keys + `inbox_item_tags` + `inbox_view` reading desktop's local keys from the payload), projector `storage/repositories/projectors/inbox.rs`, model `domain/inbox/mod.rs` (`InboxItem` incl. transcription, viewedAt, duration/pageCount via metadata, attachment/thumbnail paths); `cargo test -p memry-core --test domain_inbox_sync` a_desktop_full_row_payload_projects_verbatim ok.
+- [x] IB011 Projector: apply remote `inbox` items with desktop's merge rule
       (D2). Unit tests: absent key keeps, explicit null clears (unsnooze,
       unarchive, unfile), older payload without new keys, deleted item.
-- [ ] IB012 Subscribe `inbox`: move it from `UNSUBSCRIBED_RECORD_ITEM_TYPES`
+      Evidence: `domain/inbox/merge.rs` hooked in `sync/apply.rs` `apply_inbound`; `cargo test -p memry-core --test domain_inbox_sync` 8 passed (absent key keeps, explicit null unsnoozes/unarchives/unfiles, older payload, null title/type keeps, stale skip, concurrent union clock, tombstone) + 3 lib unit tests.
+- [x] IB012 Subscribe `inbox`: move it from `UNSUBSCRIBED_RECORD_ITEM_TYPES`
       to `SUBSCRIBED_ITEM_TYPES` only after IB011 is green (the constant's own
       comment). Initial seed pulls existing inbox rows.
-- [ ] IB013 Queries (UniFFI): list (active, excluding filed/archived/snoozed;
+      Evidence: `protocol/types.rs` SUBSCRIBED 15 (`inbox` last), UNSUBSCRIBED 10; docs/protocol 00, 05, 13 (§13.1, §13.7.15); the_declaration_subscribes_to_inbox ok; `payload-schemas.json` regenerated with an `inbox` group (60 cases), `cargo test --test vectors` 7 passed.
+- [x] IB013 Queries (UniFFI): list (active, excluding filed/archived/snoozed;
       include-snoozed variant), by type counts, item detail, archived list
       with search, snoozed + reminder panel entries (Upcoming/Past, viewed),
       stats (captured, processed today/this week, rate, stale count with
       desktop's threshold, avg time to file, heatmap buckets, by type, recent
       filings, streak). Same numbers as desktop for the same data.
-- [ ] IB014 Conformance vectors in `packages/contracts`: payload fixtures from
+      Evidence: `domain/inbox/{queries,stats,panel}.rs` + UniFFI `api/inbox.rs` (list, get, typeCounts, archived, snoozed, panel, stats, patterns, filingHistory, recentFolders, tags, duplicateByUrl); `cargo test --test domain_inbox_queries` 4 passed (list order, type counts, archived search, snoozed/due, history, recent folders, duplicates, every stat vs desktop's definitions, Upcoming/Past).
+- [x] IB014 Conformance vectors in `packages/contracts`: payload fixtures from
       desktop (current and one older shape) → expected projected row and
       list/stats output. `vectors:check` green; `MemryConformanceTests` gains
       an Inbox suite.
+      Evidence: `packages/contracts/scripts/vectors/inbox.ts` (+ `inbox-cases.ts`) → `test-vectors/inbox.json` (7 apply sequences, one views fixture), registered in `gen-protocol-vectors.ts`; seam `api/inbox_conformance.rs`; `cargo test --test inbox_vectors` 2 passed; `vectors:check` passed (17 classes); `apps/ios/MemryConformanceTests/InboxConformanceTests.swift`: `xcodebuild test -testPlan Conformance` on memry-A → 29 tests in 8 suites passed (was 27/7), suite "inbox.json — spec 006 IB011, IB013" passed.
 
 ## Phase 2: core write side (Rust)
 
-- [ ] IB020 Capture: text, link (normalized URL, `sourceUrl`), image, voice,
+- [x] IB020 Capture: text, link (normalized URL, `sourceUrl`), image, voice,
       PDF, video, file; `captureSource = "ios"` or desktop's value set
       (§5 F4). Duplicate check by URL and by content, same rules as
       `main/inbox/duplicates.ts`, returning the existing item.
-- [ ] IB021 Attachments: store under the same vault path desktop uses
+      Evidence: `domain/inbox/write.rs` (capture, capture_text with content-hash duplicate, capture_link with URL duplicate + social, check_file/type_for_mime, voice title) + `urls.rs`; UniFFI `captureText/captureLink/captureFile/captureVoice/checkFile/newId`; `cargo test --test domain_inbox_write` a_text_capture…, a_duplicate…, a_link_capture… ok; `--test api_inbox` 3 passed.
+- [x] IB021 Attachments: store under the same vault path desktop uses
       (`attachments/inbox/{itemId}/`), same size and MIME limits (50 MB
       images), and sync them the way desktop does (§5 F3). Round-trip test.
-- [ ] IB022 Update: title, content (debounced by the UI), metadata merge
+      Evidence: path `attachments/inbox/{id}/…` recorded as `attachmentPath` (the shell writes the bytes), 50 MB and MIME allow-lists in `write::check_file`; no sync of inbox attachments, as desktop (§5 F3, §6 IB001/F3); `api_inbox` a_file_capture_carries_its_attachment_path_and_metadata ok (payload round-trips `attachmentPath` and metadata).
+- [x] IB022 Update: title, content (debounced by the UI), metadata merge
       (D3), transcription fields, mark viewed.
-- [ ] IB023 Snooze / unsnooze with desktop's presets computed on-device;
+      Evidence: `write::update` (rename / set_content, explicit null clears), `enrich.rs` (merge_metadata, complete_link with D3 rule, set_transcription with first-sentence title), `states::mark_viewed`; tests a_link_capture_awaits_enrichment…, a_voice_memo_is_titled_and_transcribed, snooze_unsnooze… ok.
+- [x] IB023 Snooze / unsnooze with desktop's presets computed on-device;
       snooze-due returns items to the list (desktop scheduler semantics,
       §5 F7).
-- [ ] IB024 Archive / restore / delete permanently, with undo for archive.
-- [ ] IB025 File: to folder (new note from the item, `generateNoteContent`
+      Evidence: `states::snooze` (future only, not filed), `unsnooze` (explicit nulls), `resurface_due` (scheduler pass); presets are computed in the shell (IB09); test snooze_unsnooze_archive_unarchive_push_explicit_nulls ok (incl. due snooze returns to the list).
+- [x] IB024 Archive / restore / delete permanently, with undo for archive.
+      Evidence: `states::{archive, unarchive, delete_permanent}` (tombstone + outbox delete + local tags removed), undo = unarchive; tests snooze_unsnooze_archive…, a_delete_tombstones_and_queues_a_delete ok.
+- [x] IB025 File: to folder (new note from the item, `generateNoteContent`
       semantics), link to existing notes, link to new notes, tags, image mode
       embed vs link with desktop's fallback. Writes `filedAt`, `filedTo`,
       `filedAction` exactly as desktop (§5 F5). Uses the existing notes write
       path in core.
-- [ ] IB026 Convert: to note, to task (priority, due, reminder, project) via
+      Evidence: `domain/inbox/filing.rs` (note title/body as blocks, ensure folder, merged tags + `inbox`, properties) + `convert::link_to_notes` (existing or new targets, `## Inbox Captures` + `[[title]]` bullet) + `states::mark_filed/undo_file`; `createNoteForFile` for file captures (§6 IB025); tests filing_to_a_folder…, a_link_files_as_a_link_mention…, linking_appends_under_inbox_captures ok.
+- [x] IB026 Convert: to note, to task (priority, due, reminder, project) via
       the tasks write path; to reminder via the reminder path; to event per
       D6. Same `filedAction` values as desktop.
-- [ ] IB027 Bulk: file, tag, snooze, archive; partial-failure counts as
+      Evidence: `convert::convert_to_task` (inbox project default, priority/due/time, tags + inbox, activity row, filedTo = taskId) and `convert_to_reminder` (note + note-target reminder, refuses note-only types and past times); Event hidden per D6; test convert_to_task_and_to_reminder ok.
+- [x] IB027 Bulk: file, tag, snooze, archive; partial-failure counts as
       desktop (`processedCount`, `errors`).
-- [ ] IB028 Every write enqueues a sync push; payload built with the exact
+      Evidence: `convert::{bulk_archive, bulk_snooze, bulk_tag, bulk_file}` with desktop's processed/errors; UniFFI `bulk*` → `InboxBulkResult`; test bulk_counts_partial_failures ok (2 processed, 1 error each).
+- [x] IB028 Every write enqueues a sync push; payload built with the exact
       keys desktop sends (explicit null for clears). Test: an iOS payload
       parses with `InboxSyncPayloadSchema` (vector) and applies on desktop's
       handler test.
-- [ ] IB029 Gate: `cargo test -p memry-core`, clippy `-D warnings`,
+      Evidence: every write goes through `outbox::commit`; new captures carry desktop's full row keys with explicit nulls (test a_text_capture_writes_desktops_full_row_and_queues_it); lifecycle payloads pinned in `test-vectors/inbox-ios-payloads.json` (the_lifecycle_payloads_match_the_committed_fixture ok) and applied by desktop's handler: `vitest run --project main src/main/sync/item-handlers/inbox-handler-ios.test.ts` 3 passed (parse, lifecycle incl. explicit-null clears, stale replay skipped); existing `inbox-handler.test.ts` 14 passed.
+- [x] IB029 Gate: `cargo test -p memry-core`, clippy `-D warnings`,
       `vectors:check`, xcframework rebuilt, Conformance plan green.
+      Evidence: `cargo fmt --check` 0; `cargo test -p memry-core` 71 binaries, 958 passed / 0 failed / 1 ignored; `cargo clippy -p memry-core --all-targets -D warnings` clean; `node scripts/check-line-ceilings.mjs` passed (382 files); `vectors:check` passed (17 classes); `build-xcframework.sh --release` exit 0; Conformance plan 29 tests in 8 suites passed on memry-A.
 
 ## Phase 3: iOS foundations (serial)
 
@@ -473,6 +488,17 @@ Each item lists what it must carry. Verification per §0.7.
 - 2026-09-25 — IB001/F8 — D5 resolves to "no suggestions on iOS": the gating AI setting is device-local on desktop and the inputs (embeddings, filing history) never sync. The File sheet and the row menu show Recent folders (derived from synced filed rows, labelled Recent, no match strength), the swipe and bottom bar read "File…", the cluster pill is hidden.
 - 2026-09-25 — IB001/F9 — D6: the Event segment is hidden on iOS (event conversion writes a `calendar_event` record, a type iOS does not subscribe to). Task and Reminder ship.
 - 2026-09-25 — IB001/F11 — Review reminder enabled/time use the synced `inbox` settings group; image filing mode and "ask again" are device-local on iOS (UserDefaults), as on desktop.
+- 2026-09-25 — IB010 — Desktop's local columns (`viewedAt`, `processingStatus`, `transcription`, `transcriptionStatus`, `attachmentPath`, `thumbnailPath`) are **not** projection columns: the `payload-schemas` vector requires a projector's read view to equal the schema's parse, which strips them. `inbox_view` (migration 0004, additive) reads them from the verbatim payload with `json_extract`.
+- 2026-09-25 — IB011 — Found while generating the vector: a payload with `title: null` or `type: null` **fails** `InboxSyncPayloadSchema` (`z.string().optional()`), so desktop skips it whole. iOS never writes either as `null`; the core's projector still tolerates one (substitute-never-refuse).
+- 2026-09-25 — IB012 — `inbox` is appended to the subscribed declaration (15 types). Existing installs backfill inbox rows through the wider-declaration feed restart spec 004 TP092/S5 added. Protocol chapters 00, 05, 13 (§13.1, new §13.7.15) updated.
+- 2026-09-25 — IB013 — Stale threshold: desktop reads the device-local `inbox.staleThresholdDays` (default 7), not a synced key, so iOS uses 7. Stats follow `rebuildInboxStatsTable` exactly, including that `video` captures are not counted in captured totals (desktop's stats table has no video column). Upcoming reminders keep only those still to fire: desktop marks a fired reminder `triggered` locally and syncs it back as `pending`, so a synced past `pending` reminder is in Past through its reminder capture instead.
+- 2026-09-25 — IB014 — Desktop's handler and stats need its Electron database, so `inbox.json`'s expectations are produced by the real `InboxSyncPayloadSchema` plus the handler/stats rules restated in the generator (cited per line). The phone's own writes are pinned the other way round: `inbox-ios-payloads.json` is produced by the Rust core and consumed by a new desktop test, `inbox-handler-ios.test.ts` (test only, no desktop product code).
+- 2026-09-25 — IB020 — Social detection, title-from-URL and the Tweet title follow desktop's URL rules with a small parser in the core (no new dependency). HEIC is not in desktop's image allow-list; the shell converts photos to JPEG before capture so desktop can file them.
+- 2026-09-25 — IB022 — D3 merge: `complete_link` only replaces the title while it is still the URL-derived default, writes `content` only when empty, and adds metadata keys only where the stored value is missing or empty (`fetchStatus` always moves). A richer desktop value is never overwritten.
+- 2026-09-25 — IB025 — A filed text capture's note body is written as CRDT blocks (link mention, quote, meta lines, divider, italic "Filed from Inbox on …") instead of desktop's markdown `content`: the core parses no markdown and every phone-created note carries `content: ""`. Marks are applied only over ASCII ranges (yrs offsets are bytes). YouTube links file as a link mention, not an embed. `filedTo` for a note is `folder/Title.md`, desktop's file path shape.
+- 2026-09-25 — IB025 — File captures (image, voice, PDF, video) are filed by the shell: `createNoteForFile` makes the note, the shell uploads the file into it as a note attachment, then `markFiled`. The phone has no binary-note writer, so "File in the sidebar" (image mode `link`) falls back to embedding, the same fallback desktop takes when its attachment store refuses (`fellBackToLink`), reported to the user.
+- 2026-09-25 — IB026 — Convert → Task resolves the project's default status (the core's task create) where desktop inserts `statusId: null`; both read as To Do. A voice memo's transcript becomes the task description when it has no content.
+- 2026-09-25 — IB029 — Phases 1 and 2 are one commit: Phase 1's conformance evidence (IB014, the Swift suite) needs the rebuilt xcframework, which is IB029's gate step, and both phases edit the same `domain/inbox/mod.rs` and `api/mod.rs`.
 
 ## 7. Blockers
 
