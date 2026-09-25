@@ -128,6 +128,33 @@ final class RevocationWatch: AuthSessionProtocol, @unchecked Sendable {
         try await watching { try await session.vaults() }
     }
 
+    // Spec 006: the Settings account calls. A revoked device learns it here
+    // too, so every one is watched.
+
+    func devices() async throws -> [AccountDevice] {
+        try await watching { try await session.devices() }
+    }
+
+    func renameDevice(id: String, name: String) async throws {
+        try await watching { try await session.renameDevice(id: id, name: name) }
+    }
+
+    func revokeDevice(id: String) async throws {
+        try await watching { try await session.revokeDevice(id: id) }
+    }
+
+    func storage() async throws -> StorageUsage {
+        try await watching { try await session.storage() }
+    }
+
+    func billing() async throws -> BillingStatus {
+        try await watching { try await session.billing() }
+    }
+
+    func deleteVault(vaultId: String) async throws {
+        try await watching { try await session.deleteVault(vaultId: vaultId) }
+    }
+
     func refresh() async throws -> AuthState {
         try await watching { try await session.refresh() }
     }
@@ -175,6 +202,10 @@ final class RevocationWatch: AuthSessionProtocol, @unchecked Sendable {
     // is a server answer, so none of them can raise one.
 
     func state() -> AuthState { session.state() }
+
+    /// Builds the approver over the same session; its own calls are single
+    /// linking round trips the Link sheet reports itself.
+    func deviceApprover() -> DeviceApprover { session.deviceApprover() }
 
     func restore() throws -> AuthState { try session.restore() }
 
