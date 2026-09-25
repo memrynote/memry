@@ -171,6 +171,16 @@ impl Settings {
         })
     }
 
+    /// Drops one leaf so a receiver keeps its own value (§13.4). Ticks the
+    /// path's clock like any write.
+    pub fn remove(&self, path: String) -> Result<(), StorageError> {
+        let device = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            settings::remove(conn, &path, &device, now_ms())?;
+            Ok(())
+        })
+    }
+
     /// The settings row's `updated_at`, or 0 when there is none. Moves on every
     /// local write and every applied inbound merge.
     pub fn revision(&self) -> Result<i64, StorageError> {
@@ -351,6 +361,8 @@ mod tests {
             Some("null".into())
         );
         assert!(s.set("general.theme".into(), "not json".into()).is_err());
+        s.remove("journal.defaultTemplate".into()).expect("remove");
+        assert_eq!(s.get("journal.defaultTemplate".into()).expect("get"), None);
     }
 
     #[test]

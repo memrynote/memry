@@ -47,6 +47,8 @@ pub struct StorageUsage {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BillingStatus {
+    /// The account's email, as `GET /auth/billing` reports it.
+    pub email: Option<String>,
     pub plan: String,
     pub status: String,
     pub cadence: Option<String>,
@@ -123,6 +125,7 @@ pub(crate) fn read_storage(body: &Json) -> Option<StorageUsage> {
 pub(crate) fn read_billing(body: &Json) -> Option<BillingStatus> {
     let limits = body.get("limits")?;
     Some(BillingStatus {
+        email: text(body, "email"),
         plan: text(body, "plan")?,
         status: text(body, "status")?,
         cadence: text(body, "cadence"),

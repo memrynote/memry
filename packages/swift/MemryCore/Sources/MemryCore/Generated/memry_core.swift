@@ -6663,6 +6663,12 @@ public protocol SettingsProtocol: AnyObject, Sendable {
     
     func journalTemplates() throws  -> JournalTemplateSettings
     
+    /**
+     * Drops one leaf so a receiver keeps its own value (§13.4). Ticks the
+     * path's clock like any write.
+     */
+    func remove(path: String) throws 
+    
     func reviewReminder() throws  -> ReviewReminderSettings
     
     /**
@@ -6789,6 +6795,19 @@ open func journalTemplates()throws  -> JournalTemplateSettings  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Drops one leaf so a receiver keeps its own value (§13.4). Ticks the
+     * path's clock like any write.
+     */
+open func remove(path: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_remove(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),uniffiCallStatus
+    )
+}
 }
     
 open func reviewReminder()throws  -> ReviewReminderSettings  {
@@ -10883,6 +10902,10 @@ public func FfiConverterTypeBacklink_lower(_ value: Backlink) -> RustBuffer {
 
 
 public struct BillingStatus: Equatable, Hashable {
+    /**
+     * The account's email, as `GET /auth/billing` reports it.
+     */
+    public var email: String?
     public var plan: String
     public var status: String
     public var cadence: String?
@@ -10895,7 +10918,11 @@ public struct BillingStatus: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(plan: String, status: String, cadence: String?, storageLimit: Int64, storageUsed: Int64, maxFileSize: Int64, maxVaults: Int64, versionHistoryDays: Int64, expiresAt: Int64?) {
+    public init(
+        /**
+         * The account's email, as `GET /auth/billing` reports it.
+         */email: String?, plan: String, status: String, cadence: String?, storageLimit: Int64, storageUsed: Int64, maxFileSize: Int64, maxVaults: Int64, versionHistoryDays: Int64, expiresAt: Int64?) {
+        self.email = email
         self.plan = plan
         self.status = status
         self.cadence = cadence
@@ -10923,6 +10950,7 @@ public struct FfiConverterTypeBillingStatus: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BillingStatus {
         return
             try BillingStatus(
+                email: FfiConverterOptionString.read(from: &buf), 
                 plan: FfiConverterString.read(from: &buf), 
                 status: FfiConverterString.read(from: &buf), 
                 cadence: FfiConverterOptionString.read(from: &buf), 
@@ -10936,6 +10964,7 @@ public struct FfiConverterTypeBillingStatus: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: BillingStatus, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.email, into: &buf)
         FfiConverterString.write(value.plan, into: &buf)
         FfiConverterString.write(value.status, into: &buf)
         FfiConverterOptionString.write(value.cadence, into: &buf)
@@ -24009,6 +24038,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_journal_templates() != 16210) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_remove() != 61907) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_review_reminder() != 35387) {

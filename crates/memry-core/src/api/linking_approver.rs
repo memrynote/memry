@@ -143,7 +143,7 @@ impl AuthSession {
     pub fn device_approver(&self) -> Arc<DeviceApprover> {
         Arc::new(DeviceApprover {
             http: self.http(),
-            store: self.secure_store(),
+            store: self.store.clone(),
             pending: Mutex::new(None),
         })
     }

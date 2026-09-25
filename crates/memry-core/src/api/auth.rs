@@ -186,7 +186,7 @@ struct PendingSignIn {
 pub struct AuthSession {
     http: Arc<HttpClient>,
     tokens: Arc<TokenManager>,
-    store: Arc<dyn SecureStore>,
+    pub(crate) store: Arc<dyn SecureStore>,
     device: DeviceDescriptor,
     state: Mutex<AuthState>,
     pending: Mutex<PendingSignIn>,
@@ -202,11 +202,6 @@ impl AuthSession {
     /// Not part of the FFI surface — `HttpClient` is internal to the core.
     pub fn http(&self) -> Arc<HttpClient> {
         self.http.clone()
-    }
-
-    /// The secure store this session was built over. Internal, like `http`.
-    pub(crate) fn secure_store(&self) -> Arc<dyn SecureStore> {
-        self.store.clone()
     }
 
     /// The master key this device unlocked with, or `None` when nothing has
