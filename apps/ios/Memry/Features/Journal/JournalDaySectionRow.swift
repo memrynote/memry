@@ -27,7 +27,7 @@ struct JournalDayTaskRow: View {
             TaskStatusLane(
                 action: toggleComplete,
                 label: task.isDone ? TasksCopy.rowReopen : TasksCopy.rowComplete,
-                identifier: "journal.day.task.status"
+                identifier: "journal.day.task.status.\(task.id)"
             ) {
                 TaskStatusIcon(
                     statusType: task.statusType,

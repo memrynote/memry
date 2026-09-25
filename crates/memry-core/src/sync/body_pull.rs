@@ -392,7 +392,12 @@ impl BodyPull {
         doc_ids: &[String],
     ) -> Result<HashMap<String, SnapshotMeta>, BodyPullError> {
         let mut notes = Vec::new();
+        let mut seen = std::collections::HashSet::new();
         for doc_id in doc_ids {
+            // The server refuses a batch naming an id twice.
+            if !seen.insert(doc_id.as_str()) {
+                continue;
+            }
             let cursor = self.read_cursor(doc_id).await?;
             if cursor > 0 {
                 notes.push(json!({ "noteId": doc_id, "since": cursor }));
@@ -404,7 +409,9 @@ impl BodyPull {
         let request = self
             .request("POST", "/sync/crdt/updates/batch")
             .json(&json!({ "notes": notes, "limit": 1 }))
-            .retry(RetryPolicy::polled());
+            // No retries: a failed probe only means the pull goes on without
+            // the meta, so waiting through backoff buys nothing.
+            .retry(RetryPolicy::never());
         let Ok(body) = self.http.send_json::<Json>(request).await else {
             return Ok(HashMap::new());
         };

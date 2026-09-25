@@ -68,6 +68,12 @@ pub fn weekday_of(iso_date: &str) -> Option<u32> {
     let mut parts = iso_date.split('-');
     let mut next = || parts.next().and_then(js_number);
     let (year, month, day) = (next()?, next()?, next()?);
+    // Past JS `Date`'s range (±8.64e15 ms, about ±275760 years) JS answers
+    // NaN; here the month arithmetic would also overflow. Bounds are generous
+    // for the month and day rollover, tight enough that nothing overflows.
+    if year.abs() > 275_760 || month.abs() > 3_309_120 || day.abs() > 100_000_000 {
+        return None;
+    }
     let year = if (0..=99).contains(&year) {
         year + 1900
     } else {
@@ -246,6 +252,11 @@ mod tests {
     #[test]
     fn weekday_of_rolls_over_like_date_utc() {
         assert_eq!(weekday_of("2099-06-15"), Some(1));
+        assert_eq!(
+            weekday_of("9223372036854775807-01-01"),
+            None,
+            "out of range is NaN, not a panic"
+        );
         assert_eq!(weekday_of("2099-02-29"), weekday_of("2099-03-01"));
         assert_eq!(weekday_of("2099-xx-01"), None);
         assert_eq!(weekday_of("99-01-01"), weekday_of("1999-01-01"));

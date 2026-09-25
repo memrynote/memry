@@ -128,7 +128,7 @@ struct JournalDayPage: View {
             switch model.read.phase {
             case let .unreadable(error):
                 ErrorNotice(error: error, code: nil)
-                Button("Try again") { Task { await model.read.reload() } }
+                Button(JournalCopy.tryAgain) { Task { await model.read.reload() } }
                     .memrySecondaryAction()
                     .accessibilityIdentifier("journal.day.retry")
             case .missing:

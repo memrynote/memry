@@ -25,9 +25,8 @@ struct JournalMonthScreen: View {
                         JournalMonthRow(model: JournalMonthRowModel(day)) { router.showDay(day.date) }
                     }
                 } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, Tokens.Space.section)
+                    JournalLoadState(store: store) { await store.loadMonth(year: year, month: month) }
+                        .padding(.horizontal, Tokens.Space.screenInline - Tokens.Space.tight)
                 }
             }
             .padding(.horizontal, Tokens.Space.tight)

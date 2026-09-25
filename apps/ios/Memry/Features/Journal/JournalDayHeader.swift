@@ -157,10 +157,13 @@ struct JournalDayFirstLine: View {
             .focused($focused)
             .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .topLeading)
             .onChange(of: text) { _, value in
-                // Return in a vertical field is a newline: treat it as done.
                 guard value.contains("\n") else { return }
-                text = value.replacingOccurrences(of: "\n", with: "")
-                commit()
+                // Return in a vertical field is a trailing newline: treat it
+                // as done. Newlines inside pasted text become spaces rather
+                // than gluing the lines together.
+                let isReturn = value.hasSuffix("\n")
+                text = value.trimmingCharacters(in: .newlines).replacingOccurrences(of: "\n", with: " ")
+                if isReturn { commit() }
             }
             .onChange(of: focused) { _, isFocused in
                 if !isFocused { commit() }
@@ -180,7 +183,11 @@ struct JournalDayFirstLine: View {
         guard !line.isEmpty, !committing else { return }
         committing = true
         Task {
-            if await write(line) { text = "" }
+            // Keeps whatever was typed while the write ran.
+            if await write(line) {
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                text = trimmed.hasPrefix(line) ? String(trimmed.dropFirst(line.count)) : trimmed
+            }
             committing = false
         }
     }

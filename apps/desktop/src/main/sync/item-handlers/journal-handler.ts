@@ -39,6 +39,10 @@ const log = createLogger('JournalHandler')
  * the heatmap lost it until the next body edit. An empty or missing `content`
  * now keeps the body the file already holds; a non-empty one is written as
  * before (a create seeded from a template).
+ *
+ * Known limitation: the read and the write are not under one lock, so a CRDT
+ * write-back landing between them can be overwritten by the older body. The
+ * Y.Doc keeps the text and the next body edit rewrites the file.
  */
 async function writeSyncedJournal(
   date: string,

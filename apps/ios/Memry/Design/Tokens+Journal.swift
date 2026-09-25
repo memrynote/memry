@@ -42,6 +42,10 @@ extension Tokens {
         static let fogNight = AdaptiveColor(light: 0x4F_46_E5, dark: 0x63_66_F1)
         /// Paper J01 draws the fog at 14–22 % over the canvas.
         static let fogAlpha: Double = 0.22
+        /// The ring on the current month's Year card.
+        static let currentMonthRingAlpha: Double = 0.4
+        /// A future month's Year card.
+        static let futureAlpha: Double = 0.55
 
         /// Desktop's hour buckets.
         static func fog(hour: Int) -> AdaptiveColor {

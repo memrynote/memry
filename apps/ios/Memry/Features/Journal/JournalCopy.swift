@@ -10,6 +10,8 @@ import Foundation
 enum JournalCopy {
     static let title = "Journal"
     static let loading = "Opening the journal"
+    static let tryAgain = "Try again"
+    static let dismiss = "Dismiss"
 
     // MARK: Dates (journal.json `date.*`)
 

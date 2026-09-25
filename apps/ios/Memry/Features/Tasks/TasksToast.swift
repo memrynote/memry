@@ -71,7 +71,7 @@ struct TasksToast: View {
 /// half, which is what `DesignTokensTests` measures for contrast. (The dark
 /// halves are read directly: an `AdaptiveColor` resolves through UIKit's
 /// trait collection, which a SwiftUI `colorScheme` override does not reach.)
-private struct TasksToastCard: View {
+struct TasksToastCard: View {
     let message: String
     let undo: (() -> Void)?
 

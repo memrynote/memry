@@ -19,7 +19,10 @@ final class JournalClock {
     /// The instant source; tests inject one.
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private let pinned: String?
-    @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    // `nonisolated(unsafe)`: written once on the main actor in `start`, read
+    // only by `deinit`, which runs after the last reference is gone.
+    @ObservationIgnored private nonisolated(unsafe) var observers: [NSObjectProtocol] = []
+    @ObservationIgnored private nonisolated(unsafe) var center: NotificationCenter?
 
     init(now: @escaping @Sendable () -> Date = { Date() }, pinned: String? = JournalClock.debugPin()) {
         self.now = now
@@ -30,6 +33,7 @@ final class JournalClock {
     /// Starts following midnight and time-zone changes. Idempotent.
     func start(center: NotificationCenter = .default) {
         guard observers.isEmpty else { return }
+        self.center = center
         let names: [Notification.Name] = [
             .NSCalendarDayChanged,
             .NSSystemTimeZoneDidChange,
@@ -40,6 +44,11 @@ final class JournalClock {
                 MainActor.assumeIsolated { self?.refresh() }
             }
         }
+    }
+
+    deinit {
+        // A vault reopen builds a new clock; the old one's tokens go with it.
+        for observer in observers { center?.removeObserver(observer) }
     }
 
     /// Re-reads today (also called when the app returns to the foreground).

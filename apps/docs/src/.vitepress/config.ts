@@ -84,7 +84,8 @@ function unifiedSidebar() {
           items: [
             { text: 'Daily Entries', link: '/user-guide/journal/daily-entries' },
             { text: 'Calendar Navigation', link: '/user-guide/journal/calendar-navigation' },
-            { text: 'Templates & Settings', link: '/user-guide/journal/templates-settings' }
+            { text: 'Templates & Settings', link: '/user-guide/journal/templates-settings' },
+            { text: 'Journal on iPhone', link: '/user-guide/journal/on-iphone' }
           ]
         },
         {

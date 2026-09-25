@@ -28,6 +28,14 @@ struct JournalTabContent: View {
             if let store {
                 JournalRootView(store: store)
                     .environment(\.journalTasks, tasksStore)
+                    // Once for the tab: the Day screen keeps three pages
+                    // alive, and each binding its own would present twice.
+                    .modifier(JournalSubtaskPrompts(tasks: tasksStore))
+                    .overlay(alignment: .bottom) {
+                        JournalToast(store: store)
+                            .padding(.horizontal, Tokens.Space.inset)
+                            .padding(.bottom, Tokens.Space.medium)
+                    }
             } else if let failure {
                 NavigationStack {
                     ErrorNotice(error: failure, code: nil)

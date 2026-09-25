@@ -310,9 +310,7 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry \
 
 Desktop change first, so the vectors come from real code.
 
-Evidence: `packages/domain-notes/src/journal/{preview,stats,streak,templates,index}.ts` (export `@memry/domain-notes/journal`); desktop now imports it from `vault/journal.ts` (extractPreview), `journal-queries.ts` (streak with its UTC today, year stats), `lib/journal-utils.ts` (getDaysInMonth, getMonthStats), `lib/journal-template-resolution.ts`, `hooks/use-journal-entry.ts` (Intl strings passed in). Existing tests unchanged and green: `test:renderer` 793 files / 10102 passed; `test:main` 642 files / 9170 passed; `pnpm lint` 0 errors; `pnpm typecheck` ok.
-
-- [ ] JP010 Move the pure logic into `packages/domain-notes/src/journal/` (no
+- [x] JP010 Move the pure logic into `packages/domain-notes/src/journal/` (no
       React, no i18n, no `Date.now()`; every clock-dependent function takes
       `today` or `now`): `extractPreview` (`main/vault/journal.ts`), the streak
       walk over a set of dates (`journal-queries.ts` `getJournalStreak`; the SQL
@@ -325,6 +323,7 @@ Evidence: `packages/domain-notes/src/journal/{preview,stats,streak,templates,ind
       `calculateActivityLevel` stay in `@memry/contracts` and are vectored as
       they are. Desktop imports from the package. Existing desktop tests pass
       unchanged.
+      Evidence: `packages/domain-notes/src/journal/{preview,stats,streak,templates,index}.ts` (export `@memry/domain-notes/journal`); desktop now imports it from `vault/journal.ts` (extractPreview), `journal-queries.ts` (streak with its UTC today, year stats), `lib/journal-utils.ts` (getDaysInMonth, getMonthStats), `lib/journal-template-resolution.ts`, `hooks/use-journal-entry.ts` (Intl strings passed in). Existing tests unchanged and green: `test:renderer` 793 files / 10102 passed; `test:main` 642 files / 9170 passed; `pnpm lint` 0 errors; `pnpm typecheck` ok.
 - [x] JP011 Vector generator `packages/contracts/scripts/vectors/journal.ts` →
       `test-vectors/journal.json`, registered in `gen-protocol-vectors` and
       `package.json` exports. Case families:
@@ -361,9 +360,7 @@ G1 result (2026-09-25): GREEN. `vectors:check passed (17 classes)`; `cargo test 
 JP020–JP026 are separate modules and run in parallel. JP027 is serial after
 all of them: it owns the UniFFI surface and the generated Swift.
 
-Evidence: `domain/journal_ops/body.rs` `edit_day`/`edit_entry`, shared `body_write::{author,append_in}`; `journal::open_day_in` creates/revives inside the edit transaction. `tests/journal_body.rs` 6/6: first edit creates `j<date>` with one upsert + one crdt-update (keyed `journal`), tombstone revives under its id, a desktop non-`j` id is edited under that id, a failing edit writes no row of any kind, a no-op edit writes and creates nothing.
-
-- [ ] JP020 [P] **Body writes.** A block edit addressed by date:
+- [x] JP020 [P] **Body writes.** A block edit addressed by date:
       `edit_day(date, edit)` resolves the id through `entry_for` (the existing
       id wins, D5), runs `open_day` when the day has no live entry (D2, revive
       included), and applies the edit to the journal's document. The change is
@@ -373,6 +370,7 @@ Evidence: `domain/journal_ops/body.rs` `edit_day`/`edit_entry`, shared `body_wri
       first edit creates `j<date>`, a tombstoned day revives under its id, a
       day desktop created under a non-`j` id is edited under that id, an edit
       that fails creates nothing, a no-op edit writes nothing.
+      Evidence: `domain/journal_ops/body.rs` `edit_day`/`edit_entry`, shared `body_write::{author,append_in}`; `journal::open_day_in` creates/revives inside the edit transaction. `tests/journal_body.rs` 6/6: first edit creates `j<date>` with one upsert + one crdt-update (keyed `journal`), tombstone revives under its id, a desktop non-`j` id is edited under that id, a failing edit writes no row of any kind, a no-op edit writes and creates nothing.
 - [x] JP021 [P] **Metadata writes** for a day: set tags, set and clear a
       property (typed as notes are, the `date` property reserved and refused),
       each creating the day first when absent (D2). The payload follows D5:
@@ -475,15 +473,14 @@ desktop builds (JP029), fixed on `main` by JP029a; phone journal tag/property wr
 
 ## Phase 3: iOS foundations (serial)
 
-Evidence: `Features/Journal/JournalStore.swift` (reads never write; `perform` re-reads the day/month/year/reminders it touched, bumps `generation`, calls `requestSync`; errors via `ErrorMapping`, logs via `Log`), `JournalClock.swift` (local calendar today, follows NSCalendarDayChanged / time-zone / clock changes, DEBUG-only `MEMRY_JOURNAL_TODAY` env or launch argument), `JournalWriteGate` (D5). Refresh on sync: `JournalTabContent` re-reads when the vault pass ends. Tests `MemryTests/JournalStoreTests.swift` (JournalStoreTests 5, JournalClockTests 4) over a scratch vault: pass (xcodebuild -only-testing, 14 tests incl. routing).
-
-- [ ] JP030 `apps/ios/Memry/Features/Journal/`: `JournalStore` (`@Observable`)
+- [x] JP030 `apps/ios/Memry/Features/Journal/`: `JournalStore` (`@Observable`)
       over the `Journal` API. Refresh on core sync events. Every write calls
       `requestVaultSync`. Errors go through `ErrorMapping.swift` (new cases as
       needed), logging through `Core/Log.swift`. `JournalClock` gives the local
       today (D3) and follows day rollover and time-zone changes. In debug builds
       it honors `MEMRY_JOURNAL_TODAY` (§0.5), and it does nothing in release.
       Unit tests over a scratch vault (`TasksTestVault` pattern).
+      Evidence: `Features/Journal/JournalStore.swift` (reads never write; `perform` re-reads the day/month/year/reminders it touched, bumps `generation`, calls `requestSync`; errors via `ErrorMapping`, logs via `Log`), `JournalClock.swift` (local calendar today, follows NSCalendarDayChanged / time-zone / clock changes, DEBUG-only `MEMRY_JOURNAL_TODAY` env or launch argument), `JournalWriteGate` (D5). Refresh on sync: `JournalTabContent` re-reads when the vault pass ends. Tests `MemryTests/JournalStoreTests.swift` (JournalStoreTests 5, JournalClockTests 4) over a scratch vault: pass (xcodebuild -only-testing, 14 tests incl. routing).
 - [x] JP031 Replace the Journal `ComingSoonTab` in `VaultTabsView.swift`, and
       add `JournalRoute(date)` plus a `JournalRouter` that selects the tab and
       pushes the day. Wire a journal reminder tap to it:
@@ -516,9 +513,7 @@ saved to `apps/ios/SpikeEvidence/journal-parity/<id>-*.png`, compared side by
 side with `paper_get_screenshot` of its artboard: spacing, lanes, type roles,
 colors, glass placement, what is shown and what is hidden.
 
-Evidence: memry-B, today pinned 2099-06-15: apps/ios/SpikeEvidence/journal-parity/JP040-J01-today-empty.png, JP040-J02-first-edit-created.png (typed line created j2099-06-15, synced to /tmp/MemryNote/journal/2099-06-15.md), JP051-J03-footer-day-section.png, JP040-J10-past-day.png (no Back, bell visible) compared with Paper J01/J02/J03/J10; desktop edit to 06-16 landed in place after the day pull (JP052-day-links-resolved.png); inline title after scroll (JP057-ax5); 'Not on this phone yet' for 06-06; JournalDayTests 13/13; unit-safe 741/741.
-
-- [ ] JP040 [P] **Day page** (J01, J02, J03, J10). The date header has a
+- [x] JP040 [P] **Day page** (J01, J02, J03, J10). The date header has a
       weekday line (a relative "N days ago" off today), the TODAY badge, and a
       serif date title (`Tokens.Typography` serif role; add a journal title
       token when three call sites share it) with the title-menu chevron. The
@@ -534,6 +529,7 @@ Evidence: memry-B, today pinned 2099-06-15: apps/ios/SpikeEvidence/journal-parit
       Carries: artboard 00 section C rows (Reuse and New), external updates
       landing in place (same path as notes), autosave and save errors through
       the note editor path.
+      Evidence: memry-B, today pinned 2099-06-15: apps/ios/SpikeEvidence/journal-parity/JP040-J01-today-empty.png, JP040-J02-first-edit-created.png (typed line created j2099-06-15, synced to /tmp/MemryNote/journal/2099-06-15.md), JP051-J03-footer-day-section.png, JP040-J10-past-day.png (no Back, bell visible) compared with Paper J01/J02/J03/J10; desktop edit to 06-16 landed in place after the day pull (JP052-day-links-resolved.png); inline title after scroll (JP057-ax5); 'Not on this phone yet' for 06-06; JournalDayTests 13/13; unit-safe 741/741.
 - [x] JP041 [P] **Moving between days**: horizontal paging to the adjacent
       day, ‹ › buttons, a "Today" capsule when the page is off today,
       hardware ← / → when no text field is focused, and Esc drilling up to
@@ -620,11 +616,10 @@ Evidence: memry-B, today pinned 2099-06-15: apps/ios/SpikeEvidence/journal-parit
 
 ## Phase 5: verification (serial)
 
-Evidence: journal_conformance FFI added (api/journal_conformance.rs, generated Swift diff additive: journalConformance + checksum); Conformance plan: 29 tests in 8 suites passed, suite 'journal.json — spec 005-journal JP080' passed.
-
-- [ ] JP080 Conformance:
+- [x] JP080 Conformance:
       `apps/ios/MemryConformanceTests/JournalConformanceTests.swift` runs
       `journal.json` through the FFI. Conformance plan green.
+      Evidence: journal_conformance FFI added (api/journal_conformance.rs, generated Swift diff additive: journalConformance + checksum); Conformance plan: 29 tests in 8 suites passed, suite 'journal.json — spec 005-journal JP080' passed.
 - [x] JP081 UI tests `apps/ios/MemryUITests/JournalUITests.swift`, with today
       pinned to an agent day. The flows are: open Journal and land on today;
       type on an empty day and confirm the day now exists (Month shows a dot);
@@ -659,25 +654,65 @@ test:e2e` for the journal specs.
 - [ ] JP090 `pnpm docs:impact --base <branch base> --strict`; add
       `apps/docs/src/user-guide/journal/on-iphone.md` (and sidebar entry) and
       update what it reports; `pnpm docs:build`.
-- [ ] JP091 `apps/ios/AGENTS.md` rules that came out of this work;
+- [x] JP091 `apps/ios/AGENTS.md` rules that came out of this work;
       `specs/002-native-foundation-ios/compliance.md` for FR-053–FR-055.
-- [ ] JP092 Review pass by review subagents over the full branch diff (Rust
+      Evidence: apps/ios/AGENTS.md: JournalUITests preconditions, text-view value matching, ⌘. for cancelAction (Tests); body pull on show/sync, reindex for backlinks, address days by date, metadata write gate, in-place setText (Data). specs/002-native-foundation-ios/compliance.md §10 FR-053..FR-055 status with task ids.
+- [x] JP092 Review pass by review subagents over the full branch diff (Rust
       core, iOS Swift, TypeScript), checking: compat (D5), no `!`/`try!`
       outside tests, no raw error strings, logical layout, no entry text in
       notifications. Fix what they find.
-- [ ] JP093 Parity audit: one row per artboard 00 row marked Reuse, New or
+      Evidence: Workflow 43a31e1c: rust / swift / ts reviewers (anthropic/claude-opus-5-5:medium) over the branch diff against 77d23f213; 0 blockers; should-fix and quick nits fixed (list in §6), the revived-day authoring gap logged in §7. After the fixes: cargo workspace 1063 passed, clippy clean, ceilings ok, xcframework regenerated (Generated/ unchanged), unit-safe 741 passed, JournalUITests 6/6, desktop journal-handler + markdown-seed vitest 36 passed, domain-notes tests ok, vectors:check 18 classes, typecheck ok.
+- [x] JP093 Parity audit: one row per artboard 00 row marked Reuse, New or
       Core, each with its new location and simulator evidence (table below).
-- [ ] JP094 Final report in §8: what shipped, evidence index, what is left in
+      Evidence: §JP093 audit table: 35 rows (every Reuse / New / Core row of artboard 00, Desktop and Out rows excluded), each with its iOS location and evidence; C14 outline not built and C12 review comments not exercised, both logged in §6.
+- [x] JP094 Final report in §8: what shipped, evidence index, what is left in
       §7.
-- [ ] JP095 Clean-up (§0.5): delete every agent day through desktop IPC, every
+      Evidence: §8 Final report written: what shipped, fixes outside the plan, numbers against JP001, evidence index with commits, the three §7 items left open.
+- [x] JP095 Clean-up (§0.5): delete every agent day through desktop IPC, every
       agent reminder, `Agent Test …` template and `[agent] ` task; confirm on
       desktop and on the phone that none remain; journal settings match their
       recorded pre-run values.
+      Evidence: Desktop IPC (CDP): journal.deleteEntry for all 32 agent days (2099-06-01 … 2099-12-12, including legacyagent0609 and the random JournalUITests days), reminders.delete for 7 journal reminders on 2099 dates, templates.delete 'Agent Test Journal', tasks.delete for 42 '[agent] ' tasks, deleteProject 'Agent Test Redesign' (empty, made by TasksUITests during this run); /tmp/MemryNote/journal has no 2099 file. Phone after a sync: 0 live 2099 journal_entries, all 7 reminders and the template tombstoned, 0 live '[agent] ' tasks, outbox 0; Year 2099 reads '0 days'. Settings: desktop defaultTemplate null, weekdayTemplates {3: null, 5: null} (null = unset; the pre-run {} cannot be restored by omission under per-key clocks), phone Settings 'None' and '0 of 7 set', device-local stats footer back off (/JP095-settings-restored.png). Vault name is MemryNote.
 
 ### JP093 audit table
 
-| 00 row | iOS location | Evidence |
-| ------ | ------------ | -------- |
+| 00 row                                                           | iOS location                                                                                                   | Evidence                                                                                                                                              |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1 one entry per day, existing id wins (Core)                    | `domain/journal.rs`, `api/journal.rs` (`Journal`), `JournalNoteBridge.dayId`                                   | JP022 tests; JP082 day `legacyagent0609` edited under its id                                                                                          |
+| A2 created on first edit, or by template (Core)                  | `journal_ops/body.rs` `edit_day`, `journal_ops/seed.rs`; `JournalDayPageModel.writeFirstLine` / `seedIfNeeded` | `SpikeEvidence/journal-parity/JP040-J02-first-edit-created.png`, `JP049-template-seeded.png`                                                          |
+| A3 markdown + frontmatter payload (Reuse)                        | core record + CRDT body; tolerant `api/journal_records.rs`                                                     | JP082 desktop files `journal/2099-06-*.md`                                                                                                            |
+| A4 sync handler, body in the CRDT feed (Reuse)                   | core pull/projection, outbox via `JournalStore.perform`, day body pull `JournalDayPageModel.pullRemoteBody`    | JP082 both directions                                                                                                                                 |
+| B1 opens on today, remembers level (New)                         | `JournalRootView`, `JournalRouting` (SceneStorage `saved`)                                                     | `SpikeEvidence/journal-parity/JP040-J01-today-empty.png`                                                                                              |
+| B2 previous / next, Today pill (New)                             | `JournalDayScreen` (paging, ‹ ›, Today, ←/→)                                                                   | `SpikeEvidence/journal-parity/JP040-J10-past-day.png`; JP041                                                                                          |
+| B3 Year > Month > Day, Esc drills up (New)                       | `JournalRouter.drillUp`, `JournalTitleMenu`                                                                    | `SpikeEvidence/journal-parity/JP042-J04-title-menu.png`, `JP042-go-to-date.png`                                                                       |
+| B4 Month view (New + Core)                                       | `JournalMonthScreen`, `JournalMonthRow`; `journal_ops/reads.rs` month                                          | `SpikeEvidence/journal-parity/JP043-J05-month.png`, `JP043-J05-month-entries.png`                                                                     |
+| B5 Year view (New + Core)                                        | `JournalYearScreen`, `JournalYearCard`; year stats read                                                        | `SpikeEvidence/journal-parity/JP044-J06-year.png`                                                                                                     |
+| B6 activity level 0-4 (Core)                                     | `domain/journal_rules`, pinned by `journal.json`                                                               | JP080 Conformance suite                                                                                                                               |
+| B7 openers: search, backlink, reminder, link, related item (New) | `JournalRouter.openDay`, `NoteReadView` j-link wrap, `TaskRelatedSection`, reminder routing                    | `SpikeEvidence/journal-parity/JP052-search-hit.png`, `JP052-backlink-opens-day.png`, `JP052-day-links-resolved.png`, `JP052-task-related-journal.png` |
+| C1 date heading over time-of-day fog (New)                       | `JournalDayHeader`, `Tokens+Journal`                                                                           | `SpikeEvidence/journal-parity/JP040-J01-today-empty.png`; fog off under Reduce Transparency (JP057)                                                   |
+| C2 today / past / future placeholder (New)                       | `JournalCopy+Day`, `JournalDayFirstLine`                                                                       | `SpikeEvidence/journal-parity/JP040-J01-today-empty.png`, `JP040-J10-past-day.png`                                                                    |
+| C3 body: the note editor (Reuse)                                 | `NotePageContent` over `JournalNoteBridge`                                                                     | `SpikeEvidence/journal-parity/JP040-J02-first-edit-created.png`; JP082 edits                                                                          |
+| C4 autosave, late edit stays on its day (Reuse)                  | per-page models (`JournalDayPages`)                                                                            | JP041; `JournalDayTests.a_bridge_edit_lands_on_its_own_date`                                                                                          |
+| C5 external updates land in place (Reuse)                        | `pullRemoteBody` + `store.generation` reload                                                                   | `SpikeEvidence/journal-parity/xdevice-phone-live-edit-keeps-cursor.png`                                                                               |
+| C6 tags row (Reuse)                                              | read-only under D5: `JournalDayReadOnlyMetadata`                                                               | `SpikeEvidence/journal-parity/JP045-J02-tags-readonly.png`                                                                                            |
+| C7 properties, date hidden (Reuse)                               | `NoteMetaView` via `JournalNoteBridge.metadata`, read-only                                                     | `SpikeEvidence/journal-parity/JP049-template-seeded.png` (agentmood)                                                                                  |
+| C8 ghost row + Tag / + Property (Reuse)                          | disabled ghost with the limitation line                                                                        | `SpikeEvidence/journal-parity/JP045-J02-tags-readonly.png`                                                                                            |
+| C9 backlinks and outgoing links (Reuse)                          | `BacklinksSection` over `Search.linksTo`                                                                       | `SpikeEvidence/journal-parity/JP052-backlink-opens-day.png`                                                                                           |
+| C10 wiki links (Reuse)                                           | `NoteInline`, `JournalLink` date targets                                                                       | `SpikeEvidence/journal-parity/JP052-day-links-resolved.png`                                                                                           |
+| C11 linked tasks (Reuse)                                         | `LinkedTasksSection` in `NotePageContent`                                                                      | 06-15 page 'Linked Tasks, 1' (tree, JP082)                                                                                                            |
+| C12 review comments (Reuse)                                      | `NotePageContent` review section, same as notes                                                                | shared section; no comment was placed on an agent day (not exercised)                                                                                 |
+| C13 find in page (Reuse)                                         | `JournalMoreMenu` → note find panel                                                                            | `SpikeEvidence/journal-parity/JP047-find-in-page.png`                                                                                                 |
+| C14 outline panel + stats (New)                                  | not built: 00 allows 'leave for later' and the note page lacks it too (§6)                                     | —                                                                                                                                                     |
+| C15 stats footer (New)                                           | `JournalStatsFooter`                                                                                           | `SpikeEvidence/journal-parity/JP051-J03-footer-day-section.png`                                                                                       |
+| D1 reminder bell, presets, sheet (Reuse + New)                   | `JournalBellButton`, `JournalReminderSheet`, `JournalReminderPresets`, `JournalStore+Reminders`                | `SpikeEvidence/journal-parity/JP046-J07-bell-menu.png`, `JP046-J08-reminder-sheet.png`, `xdevice-phone-reminder-dismiss.png`                          |
+| D2 export (Reuse)                                                | `JournalMoreMenu` export (desktop `export.noteTitle`)                                                          | `SpikeEvidence/journal-parity/JP047-export.png`                                                                                                       |
+| D3 journal settings shortcut (New)                               | `JournalMoreMenu` → `JournalRoute.settings`                                                                    | `SpikeEvidence/journal-parity/JP047-J09-more-menu.png`                                                                                                |
+| E1 default + weekday templates (Core)                            | `JournalSettingsScreen`, `JournalStore+Settings`, core settings merge                                          | `SpikeEvidence/journal-parity/JP048-J11-settings.png`, `JP048-J12-saturday.png`; JP082 settings both ways                                             |
+| E2 seeding with template strings (Core + New)                    | `journal_ops/seed.rs`, `crdt/markdown_seed`, `JournalSeedStrings`                                              | `SpikeEvidence/journal-parity/JP049-template-seeded.png`                                                                                              |
+| E3 stats footer toggle (New)                                     | `JournalPreferences` (device-local, D9)                                                                        | `SpikeEvidence/journal-parity/JP048-J11-settings-footer.png`                                                                                          |
+| F1 day panel: tasks due, overdue (New)                           | `JournalDaySection`, `JournalDaySectionRow`                                                                    | `SpikeEvidence/journal-parity/JP050-J01-day-section.png`, `JP050-overdue-opens-tasks.png`                                                             |
+| F2 streak current / best (Core)                                  | streak read, Month and Year subtitles                                                                          | `SpikeEvidence/journal-parity/JP043-J05-month.png`, `JP044-J06-year.png`                                                                              |
+| F3 search with journals (Reuse)                                  | `VaultSearch` journal hits → Journal tab                                                                       | `SpikeEvidence/journal-parity/JP052-search-hit.png`                                                                                                   |
 
 ---
 
@@ -858,6 +893,9 @@ note by `name → value`.
 - 2026-09-25 — JP082 — Core fix: `BlockEdit::SetText` on a block holding one plain run edits that run in place (common prefix/suffix, UTF-8 byte offsets, the document's offset kind) instead of deleting and re-inserting it, so a peer's concurrent insert into the same paragraph survives. Marked runs and inline nodes keep the documented replace. `tests/body_edit_ops.rs` a_set_text_keeps_a_concurrent_insert_into_the_same_block.
 - 2026-09-25 — JP082 — The phone has no socket listener (spec 002 design): remote changes land on the next sync pass (launch, return to foreground, or the phone's own write), not live. "Concurrent offline" was driven by desktop `syncOps.pause()` since neither side's network can be cut alone; the non-`j` day was pushed by the CLI core as a legacy-shaped record (current desktop always derives `j<date>`), then given a desktop body.
 - 2026-09-25 — JP084 — `pnpm --filter @memry/desktop test:desktop` does not exist; renderer and main ran separately (JP083). Marquee-selection e2e fails in this environment for journal and plain notes alike (the drag overlay never appears); the journal specs that exercise this branch's desktop changes (journal, reminders, Home widgets) pass.
+- 2026-09-25 — JP093 — Artboard 00 row C14 (outline panel with document stats) is not built. 00 itself offers 'build once for both, or leave for later' and the iOS note page has no outline either. Review comments (C12) come with the shared note page section and were not exercised on an agent day.
+- 2026-09-25 — JP092 — Review (three read-only reviewers, Rust / Swift / TS, anthropic/claude-opus-5-5): no blockers. Fixed: Journal failures and confirmations now reach the user (`JournalStatus.swift`: load-state with retry on Month/Year, failure banner on Day, a toast host); subtask prompts bound once for the tab; pasted newlines in the first line become spaces; typing during the first write is kept; clock observers removed on deinit; opacity values moved to tokens; per-row accessibility ids; the tombstone purge also drops the document's body cursor; the snapshot-meta probe dedupes ids and does not retry; `weekday_of` answers `None` past JS `Date` range; a multibyte in-place `SetText` test; the vector generator imports `ServerBlockNoteEditor` through `@memry/editor-schema/server`; doc comments for the NULL `character_count` level and the journal-handler read/write window. Left as is, with the reason: `scenePhase` inside the tab (same as the Tasks tab today), the raw `@ScaledMetric` sizes, the broken-link alert literals (same copy as the note page), `journal_exists` reading a DB error as "no entry", the CLI's usage message for an unknown journal subcommand.
+- 2026-09-25 — JP094 — The tick helper's `^(\s*)` matched the blank line before a phase's first task, so JP010, JP020, JP030, JP040 and JP080 had their Evidence written above an unticked box. Found at the final check; each box was ticked with the evidence recorded at the time and moved under its task.
 - 2026-09-25 — Phase 4 — Screenshots: what looked like stale simulator frames was the agent image viewer caching by file path; every preview now gets a unique name, and each evidence PNG was re-checked that way. The accessibility tree stays the reference for state.
 - 2026-09-25 — JP001 — Found, not fixed (outside this plan): on the recovery-phrase unlock screen, with the keyboard up, the chooser's "Sign out" button (frame y 480-532) overlays the "Unlock" button (y 478-530), so a centred tap on Unlock opens the sign-out confirmation. The driver taps Unlock at `dy: 0.01`. Vault rows still need their label tapped (spec 004 §6 TP001). Screenshots from `XCUIScreen` can lag a few seconds; the accessibility tree is the reference for state.
 - 2026-09-25 — JP003 — JP022a is in scope: the phone has no markdown → Y.Doc path, so a template-seeded day would be unwritable (or lossy on desktop's next write-back) on the phone that seeded it (§5 c).
@@ -883,6 +921,8 @@ note by `name → value`.
 
 ## 7. Blockers
 
+- 2026-09-25 — JP092 — Open, core: writing to a journal day after it was deleted and revived, before its body is pulled again, authors a new top-level `blockGroup` next to the history the server still holds; y-prosemirror drops one of the two. The purge now drops the body cursor so the history comes back on the next pull, but a pull-before-author path for revived documents (notes too) is still owed. Found by the Rust review; not reproduced on the simulator.
+
 - 2026-09-25 — JP082 — Desktop defect, not fixed here: with sync paused (`syncOps.pause()`, the Settings pause), desktop still pushes CRDT snapshots (`Pushed CRDT snapshot j2099-06-05` at 16:06:16, while paused). The snapshot's `sequenceNum` (24) covered a phone update desktop had never pulled, and the server's `pruneUpdatesBeforeSnapshot` deleted that update, so the phone's concurrent edit on agent day 2099-06-05 now exists only on the phone. Needed on desktop: no snapshot push while paused, and a snapshot's sequence number must be the highest one the doc has applied. Retry after a desktop build with that fix; evidence in `/tmp/jp-desktop4.log` 16:05–16:08 and `SpikeEvidence/journal-parity/xdevice-concurrent-*.png` (the clean re-run on 06-08).
 
 <!-- date — task id — what — evidence — next retry -->
@@ -892,3 +932,66 @@ note by `name → value`.
 ## 8. Final report
 
 <!-- JP094: what shipped, bugs fixed outside the plan, evidence index, left open -->
+
+**What shipped.** The iPhone app has a Journal tab at parity with desktop's journal, except where §7 says otherwise.
+
+- **Day page.** Date header over the time-of-day fog. The first line creates the day. The body uses the note editor. Read-only tags and properties (D5). Backlinks and links, linked tasks, a Day section with the tasks due and the overdue count, and the stats footer.
+- **Navigation.** Paging, ‹ ›, Today, and ←/→/⌘. on a keyboard. The title menu leads to Month, Year and Go to date.
+- **Month, Year and streaks.** Computed by the core with desktop's rules, pinned by the `journal.json` vectors.
+- **Reminders.** Desktop presets, the Change-reminder sheet, notifications that carry the date only, and a tap that opens the day.
+- **Templates.** Seeded once per day through the core's markdown seed.
+- **Settings › Journal.** Reached from the More tab and from the day's … menu.
+- **Cross-tab routes.** Search, backlinks, wiki links, task Related items and reminders all open the day.
+
+Shared rules live in `@memry/domain-notes/journal` (desktop imports them) and `domain/journal_rules` (Rust). Two new vector classes pin them: 18 in total, up from 16.
+
+**Fixed outside the plan.** Found while verifying:
+
+- **Desktop, JP029a.** A record-only journal write no longer empties the vault file.
+- **Core, pulled body stamps.** Pulled body updates are stamped at apply time, so their links index. A one-time `stamps.version` rebuild covers installs made before the fix.
+- **Core, pruned documents.** The snapshot-meta probe lets a document the server pruned past this device's cursor recover.
+- **Core, in-place `SetText`.** A peer's concurrent typing in the same paragraph now survives.
+- **Core, tombstone purge.** The purge now also drops the body cursor.
+- **iOS, desktop body edits.** They reach the shown day: it pulls its own body on show and after each sync.
+- **iOS, date wiki links.** They draw as resolved.
+- **iOS, AX sizes.** The shared backlinks header stacks instead of breaking words.
+
+**Numbers against JP001.**
+
+| Check                   | JP001 | Now                              |
+| ----------------------- | ----- | -------------------------------- |
+| cargo tests (workspace) | 920   | 1063 passed, 0 failed, 1 ignored |
+| iOS Unit                | 689   | 765                              |
+| iOS Conformance         | 27    | 29                               |
+| iOS UI                  | 8     | 14 run, 1 skipped (Journal +6)   |
+| Vector classes          | 16    | 18                               |
+| desktop `test:main`     | 9170  | 9200                             |
+
+`test:renderer` is 10102. All §0.6 gates are green (JP083, re-run after the JP092 fixes).
+
+**Evidence index.**
+
+- **Screenshots** in `apps/ios/SpikeEvidence/journal-parity/`:
+  - `JP040`–`JP052`: flows, compared with Paper J01–J13.
+  - `JP057`: AX5 and RTL.
+  - `JP058`: dark mode.
+  - `xdevice-*`: JP082 cross-device.
+  - `JP095`: settings restored.
+- **Per-row audit:** the JP093 table.
+- **Per-task commands and counts:** the Evidence line under each task.
+- **Commits** (`feat/ios-journal-parity`, not pushed):
+  - `92561e904` docs(ios): journal parity phase 0 facts and FR-054 supersession
+  - `ddb8d6d2e` feat(ios): shared journal rules pinned by journal vectors
+  - `5ce666334` feat(ios): journal core surface, markdown seed and G0 desktop fix
+  - `2ee8d09cc` feat(ios): journal store, tab, routes, copy and shared note page
+  - `3b0e68bc3` feat(ios): journal day, month, year, reminders, settings and routes
+  - `95d61fab4` feat(ios): journal UI tests, cross-device fixes for body pull and edits
+  - the Phase 6 commit (docs, AGENTS.md, compliance, review fixes, this report)
+
+**Left open (§7).**
+
+1. **Shipped desktops up to 2026.919.1** empty a journal file on a record-only change. Journal tag and property writes on the phone therefore stay off. Once a desktop with JP029a is the oldest in use, flip `JournalWriteGate.metadataWrites`. G0 S4 against a released desktop build could not run.
+2. **Desktop pause-sync still pushes CRDT snapshots.** The server's prune can then drop a peer's update that desktop never applied. This lost one agent edit in JP082. It needs a desktop fix.
+3. **Core, revived documents.** Authoring into a revived document before its body is re-pulled can duplicate the top-level group. A pull-before-author path is owed.
+
+Known visual deltas against Paper are listed in §6: the fog is a band rather than a blob, the tab tint, and the Month and Year title glyphs. The outline panel (00 row C14) was not built.

@@ -1722,3 +1722,21 @@ fn a_set_text_on_a_marked_block_still_replaces_it() {
     let blocks = extract_blocks(&document).expect("blocks");
     assert_eq!(text_of(&blocks[0]), "fresh");
 }
+
+#[test]
+fn an_in_place_set_text_edits_at_byte_offsets_around_multibyte_text() {
+    // The document's offsets are UTF-8 bytes; the common prefix and suffix are
+    // taken at char boundaries, so emoji and CJK on either side stay whole.
+    let base = body(&[("b1", "paragraph", "日記 🌙 end")]);
+    let document = opened(&base);
+    apply(
+        &document,
+        &BlockEdit::SetText {
+            block_id: "b1".into(),
+            text: "日記 🌙☀️ the end".into(),
+        },
+    )
+    .expect("edit");
+    let blocks = extract_blocks(&document).expect("blocks");
+    assert_eq!(text_of(&blocks[0]), "日記 🌙☀️ the end");
+}

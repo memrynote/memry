@@ -32,11 +32,14 @@ import { createMemrySchema } from '@memry/editor-schema'
 import { splitMarkdownByToggles } from '@memry/editor-schema/blocks'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
-import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 // `@blocknote/server-util` is a dependency of `@memry/editor-schema`, not of
-// this package; its ESM entry is imported by path so it shares that package's
-// `@blocknote/core` instance with the schema built above.
-import { ServerBlockNoteEditor } from '../../../editor-schema/node_modules/@blocknote/server-util/dist/blocknote-server-util.js'
+// this package; the schema package re-exports it so both share one
+// `@blocknote/core` instance.
+import {
+  ServerBlockNoteEditor,
+  createServerBlockSpecs,
+  createServerInlineSpecs
+} from '@memry/editor-schema/server'
 import { splitMarkdownPreservingBlanks } from '../../../shared/src/empty-lines.ts'
 import { listCodeFenceInfoStrings } from '../../../shared/src/markdown-fences.ts'
 

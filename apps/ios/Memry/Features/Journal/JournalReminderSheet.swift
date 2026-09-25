@@ -113,7 +113,7 @@ struct JournalReminderSheet: View {
         .accessibilityHint(TasksCopy.reminderEdit)
         .accessibilityAction(named: TasksCopy.reminderDismiss) { dismissReminder(reminder) }
         .accessibilityAction(named: TasksCopy.reminderDelete) { deleteReminder(reminder) }
-        .accessibilityIdentifier("journal.reminder.row")
+        .accessibilityIdentifier("journal.reminder.row.\(reminder.id)")
         .swipeActions(edge: .trailing) {
             Button(TasksCopy.reminderDelete, systemImage: "trash", role: .destructive) { deleteReminder(reminder) }
                 .accessibilityIdentifier("journal.reminder.delete")

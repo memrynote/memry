@@ -411,6 +411,16 @@ pub fn purge_in(conn: &Connection, doc_id: &str) -> Result<usize, CrdtError> {
             )
             .map_err(failed("purge a snapshot"))?;
     }
+    // The document's body cursor goes with its log. Kept, it would make a
+    // later pull of a revived document ask only for what came after it, and
+    // the history the server still holds would never come back to this
+    // device (spec 005-journal JP092). Not counted in `removed`: a cursor is
+    // not body.
+    conn.execute(
+        "DELETE FROM sync_cursors WHERE scope = 'crdt:' || ?1",
+        params![doc_id],
+    )
+    .map_err(failed("reset the body cursor"))?;
     Ok(removed)
 }
 

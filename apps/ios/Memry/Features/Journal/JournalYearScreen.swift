@@ -28,9 +28,7 @@ struct JournalYearScreen: View {
                     totals(record)
                         .padding(.top, Tokens.Space.section)
                 } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, Tokens.Space.section)
+                    JournalLoadState(store: store) { await store.loadYear(year) }
                 }
             }
             .padding(.horizontal, Tokens.Space.screenInline)

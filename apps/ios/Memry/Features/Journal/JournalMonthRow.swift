@@ -84,7 +84,7 @@ struct JournalMonthRow: View {
                 .foregroundStyle(Tokens.Text.tint.color)
                 .padding(.horizontal, Tokens.Space.small)
                 .padding(.vertical, Tokens.Space.tight / 2)
-                .background(Tokens.Tint.base.color.opacity(0.13), in: .capsule)
+                .background(Tokens.Tint.base.color.opacity(Tokens.Palette.chipFillAlpha), in: .capsule)
         }
     }
 

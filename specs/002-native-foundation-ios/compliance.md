@@ -179,3 +179,13 @@ the task requirements' status to be written here too. Evidence is in
 | FR-060 projects read-only on phone        | Superseded by spec 004 D2: projects are created, edited, reordered, archived and deleted on the phone                                                                                | TP021, TP052, TP082 |
 | FR-061 reminders fire, tap opens the item | Met: a reminder fired with the app backgrounded and the tap opened the task; a task completed or deleted elsewhere opens its done or missing state                                   | TP053               |
 | FR-062 reminder window                    | Met in the shell rather than the core: the nearest 60 are scheduled, refilled on open, foreground, sync and every task change, and the limit is stated in the app and the docs       | TP053, TP090        |
+
+## 10. Spec 005-journal status for FR-053..FR-055
+
+Evidence is in `specs/005-ios-journal-parity/tasks.md` under the task ids named.
+
+| Requirement                    | Status after spec 005-journal                                                                                                                                                                                                   | Evidence                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| FR-053 search covers journals  | Met: journal days are indexed with notes, a hit opens the day in the Journal tab, and journal backlinks and outgoing links are answered (`Search.linksTo` / `linksFrom`); pulled bodies re-index (apply-time stamps)            | JP027, JP052, JP082        |
+| FR-054 one entry per day       | Met as desktop's rule (spec-defect 142): at most one live entry per date, created by the first edit or template seed rather than on open; today is the Journal tab's landing page and any date is one title-menu step away      | JP022, JP040, JP042, JP049 |
+| FR-055 journal editing = notes | Met for the body: the note page's editor, find, export, links, tasks and review comments. Tag and property writes are read-only on the phone until a desktop with JP029a is the oldest in use (spec 005-journal D5, §7 blocker) | JP040, JP045, JP047        |

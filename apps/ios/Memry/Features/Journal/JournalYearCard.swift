@@ -37,11 +37,11 @@ struct JournalYearCard: View {
             .overlay {
                 if model.isCurrent {
                     RoundedRectangle(cornerRadius: Tokens.Radius.card, style: .continuous)
-                        .strokeBorder(Tokens.Text.tint.color.opacity(0.4), lineWidth: Tokens.Size.hairline)
+                        .strokeBorder(Tokens.Text.tint.color.opacity(Tokens.Journal.currentMonthRingAlpha), lineWidth: Tokens.Size.hairline)
                 }
             }
             .contentShape(.rect(cornerRadius: Tokens.Radius.card))
-            .opacity(model.isFuture ? 0.55 : 1)
+            .opacity(model.isFuture ? Tokens.Journal.futureAlpha : 1)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)

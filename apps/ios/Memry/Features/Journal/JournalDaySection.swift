@@ -86,7 +86,6 @@ private struct JournalDueTasks: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .calmAnimation(.normal, value: due.map(\.id))
-        .subtaskPrompts(store: tasks)
         .task {
             // The Tasks tab loads the store when it first shows; a journal
             // opened first reads it here.

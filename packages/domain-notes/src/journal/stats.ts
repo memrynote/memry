@@ -115,6 +115,8 @@ export function monthActivity(
 }
 
 /** Mean activity level of a set of days, rounded to two decimals; 0 when empty. */
+// A NULL `character_count` counts as 0 here. Desktop's old SQL `CASE` fell
+// through to level 4 for NULL; 0 is the honest reading and matches the core.
 export function averageActivityLevel(characterCounts: ReadonlyArray<number | null>): number {
   if (characterCounts.length === 0) return 0
   const sum = characterCounts.reduce<number>(
