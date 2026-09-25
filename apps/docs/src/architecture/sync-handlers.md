@@ -431,19 +431,83 @@ is sent as-is. This stamp is **not** persisted, because the cases that reach it 
 persist to; it matches the `{ id, clock: increment({}, deviceId) }` fallback `buildDeletePayload`
 already uses. It is a queue-unblocking backstop, not a substitute for stamping at write time.
 
+### Sync intents: row and push obligation in one transaction
+
+Tasks and projects written through the tasks domain do not enqueue from the publisher. Each command
+runs its synchronous write phase inside a unit of work (`main/tasks/domain.ts`), which commits the
+rows and one `sync_intents` row per owed mutation in a single SQLite transaction
+(`commitLocalChange`, `main/sync/sync-intents.ts`). The event-to-intent mapping lives only in
+`main/tasks/sync-intents.ts`. Right after COMMIT, `drainSyncIntents` hands each intent to the ordinary
+local sync adapter (clock bump, `sync_queue` row, offline fallback) and deletes the intent in that same
+transaction. The publisher (IPC, activity log, projections, source-note edits) runs after both; a
+failing publisher call is logged and skipped, it neither drops the remaining events nor rejects the
+command, because the write has already committed.
+
+- A throw in the write phase rolls back the rows and the intents. A throw in the sync step never
+  undoes the edit: the intent stays pending (`attempts`, `last_error`) and later intents for the same
+  item wait behind it.
+- A delete's `sync_pending_deletes` tombstone is written in the write transaction, next to its intent,
+  so a failed sync step cannot roll back the guard that keeps a pull from re-creating the item.
+- A cascade commits its tombstones with the delete. `deleteProject` writes the project delete intent
+  and one task delete intent per cascaded task, each built from `getTask` so it carries the task's
+  real clock.
+- Pending intents are drained at runtime start (`recoverDirtyItems`, before its sweep) and at the start
+  of every pull. The dirty sweep skips every item that had an intent: a failed one still carries its
+  pre-edit clock, and a sweep push at that clock is refused by the server as a replay and stamped
+  synced.
+- A remote upsert for an item with a pending intent drains that item first (`ItemApplier`). If the
+  intent still cannot drain, the apply throws `PendingSyncIntentError`; the pull defers the item to its
+  end-of-run retry and then to the schema-invalid ledger as `pending_intent`. That entry is re-fetched
+  by id at every pull start, right after the intents drain, and merges field by field once the local
+  edit is clocked. It keeps the manifest from counting the item server-only and is not listed as
+  quarantined. The remote row never overwrites the un-clocked local edit.
+- A delete intent whose row exists locally again is stale (a downgrade round trip): it is dropped with
+  its tombstone and the row is kept.
+- Only the runtime-start replay spends an intent's attempt budget; pull-start, per-item and per-edit
+  drains retry without counting. Past five start-up attempts nothing is given up: the intent stays
+  pending, so it keeps deferring remote rows for its item and keeps the sweep off it, and each start
+  reports it as over cap. The retry always uses the intent's own fields, never an all-field bump.
+- An intent this build cannot read (unknown type or op, bad `args`) belongs to a newer build. It is
+  left pending and untouched so a re-upgrade replays it, and this build ignores it: it does not own,
+  guard or block the item. It is logged once per session.
+- A tag merge retag owes `['tags']` per task and a status change owes the project `['statuses']`, the
+  same field names `updateTask` and `updateProject` report.
+- `onItemEnqueued` (the push wake-up) is deferred one microtask and coalesced, so it fires after the
+  caller's outermost COMMIT.
+
+The task and project writers outside the tasks domain use the same path: inbox task conversion
+(`inbox/filing.ts`), the note-project-links projector and the tag merge retag
+(`commitTaskRetag`, `tags/runtime-effects.ts`). The activity log's `task_activity` rows and every other
+type still enqueue after their own commit.
+
 ### Dirty recovery
 
-A local edit writes the row, the clock and the outbox row in three transactions. A crash between the
-last two, or an `increment*ClockOffline` fallback while the runtime is down, leaves a clocked row with
-no queue row. `recoverDirtyItems` runs at every sync runtime start and re-enqueues those rows, driven
+Outside the sync-intent path, a local edit writes the row, the clock and the outbox row in three
+transactions. A crash between the last two, or an `increment*ClockOffline` fallback while the runtime
+is down, leaves a clocked row with no queue row. `recoverDirtyItems` runs at every sync runtime start
+and re-enqueues those rows, driven
 by `DIRTY_RECOVERY`: one entry per record sync item type, either a sweep (select the rows with
 `syncedAt IS NULL` or a modification time past `syncedAt`, then hand each to the type's local sync
 service) or an exemption naming why the type has no usable dirty marker. Clock-less rows are left to
 `seedUnclocked`. A never-synced row goes out as a create; a modified one as a recovered update at its
 stored clock. Both rebind `_offline` ticks first through `recoverPendingChange`, so the placeholder
 device id never reaches the wire. Exempt types (settings, tag definitions and categories, folder
-configs, property definitions, the calendar types, canvases, agent chat) rely on the transactional
-outbox planned in #2301.
+configs, property definitions, the calendar types, canvases) are not on the sync-intent path yet and
+wait for its per-type rollout (#2301); agent chat has no local push path.
+
+Three `sync_run_completed` events carry the P4.2 gate signal, with numeric metrics only:
+
+- `action: 'sync_intents_replayed'`, from the runtime-start drain whenever it finds intents, and from a
+  pull-start drain only when one applied or was dropped as stale: `itemCount` attempted, `resultCount`
+  applied, `retryCount` failed and kept, `value` stale deletes dropped.
+- `action: 'sync_intents_over_cap'` (`result: 'failed'`), once per runtime start: `itemCount` intents
+  still failing after five start-up replays.
+- `action: 'dirty_recovery_residual'` per type, with `objectType` set to the sync type: `itemCount`
+  dirty rows that had neither a queue row nor a pending intent, `resultCount` rows re-enqueued.
+
+Offline edits count as residual too, so compare migrated types against the rest. The residual count
+only sees rows whose write moves the modification time; `task_tags` and `project_links` writes do not,
+which is why the three writers above now go through intents.
 
 Handlers that persist locally encrypted fields must receive the vault key from the sync engine during
 pull apply and push payload encoding. Agent conversation and message handlers use that key to decrypt
