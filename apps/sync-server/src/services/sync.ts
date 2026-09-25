@@ -952,6 +952,103 @@ export const getManifest = async (
   }
 }
 
+/** One `sync_items` row as the changes feed reads it: the ref columns plus the pull columns. */
+type ChangesRow = StoredSyncItemPullRow & {
+  version: number
+  updated_at: number
+  size_bytes: number
+  committed_at_ms: number | null
+}
+
+/** `GET /sync/changes?inline=1` (#2292): `inline` holds exactly what `/sync/pull` returns. */
+export type RecordInlineChangesResponse = Omit<RecordChangesResponse, 'inline'> & {
+  inline: RecordPullItemResponse[]
+}
+
+/** Rows per `?inline=1` page: ≤ 100 × 64 KiB of stored JSON, about 6.5 MB per response. */
+const MAX_INLINE_CHANGES_LIMIT = 100
+/** A row is inlined only when its stored R2 object (`size_bytes`) is at most this. */
+const INLINE_MAX_BLOB_BYTES = 64 * 1024
+
+/** One SELECT for both changes modes: `server_cursor > ?`, `pageLimit + 1` rows to learn hasMore. */
+const selectChangesRows = async (
+  db: D1Database,
+  userId: string,
+  vaultId: string,
+  cursor: number,
+  types: readonly RecordSyncItemType[],
+  pageLimit: number
+): Promise<{ rows: ChangesRow[]; hasMore: boolean }> => {
+  const result = await db
+    .prepare(
+      `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at,
+              committed_at_ms, blob_key, crypto_version, operation, signer_device_id, signature, clock
+       FROM sync_items
+       WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${placeholdersFor(types)})
+       ORDER BY server_cursor ASC
+       LIMIT ?`
+    )
+    .bind(userId, vaultId, cursor, ...types, pageLimit + 1)
+    .all<ChangesRow>()
+
+  const allRows = result.results ?? []
+  const hasMore = allRows.length > pageLimit
+  return { rows: hasMore ? allRows.slice(0, pageLimit) : allRows, hasMore }
+}
+
+/**
+ * Rows `?inline=1` may inline. Coverage is by id because `/sync/pull` ids are
+ * untyped (protocol 05 §5.11.2): an id qualifies only when every page row with
+ * that id is small enough, so no un-inlined sibling of another type is
+ * stranded behind an id the reader treats as delivered.
+ */
+const selectInlineRows = (rows: ChangesRow[]): ChangesRow[] => {
+  const oversized = new Set(
+    rows.filter((row) => row.size_bytes > INLINE_MAX_BLOB_BYTES).map((row) => row.item_id)
+  )
+  return rows.filter((row) => !oversized.has(row.item_id))
+}
+
+const mapInWindows = async <T, R>(
+  items: readonly T[],
+  width: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> => {
+  const out: R[] = []
+  for (let i = 0; i < items.length; i += width) {
+    out.push(...(await Promise.all(items.slice(i, i + width).map(fn))))
+  }
+  return out
+}
+
+/**
+ * Inlining never fails a page. A row that reads as null (missing blob,
+ * unsupported type) or throws (missing signer metadata, corrupt clock or blob)
+ * takes every other row of its id out of `inline` too, so the reader fetches
+ * that id through `/sync/pull`, which answers exactly as it does today.
+ */
+const readInlineItems = async (
+  storage: R2Bucket,
+  userId: string,
+  rows: ChangesRow[]
+): Promise<RecordPullItemResponse[]> => {
+  const eligible = selectInlineRows(rows)
+  const read = await mapInWindows(eligible, R2_CONCURRENCY, (row) =>
+    toPullItemResponse(storage, userId, row).catch((error: unknown) => {
+      // Code and type only: an item id can be a tag name or a folder path.
+      logger.warn('Inline changes: row left to /sync/pull', {
+        itemType: row.item_type,
+        code: error instanceof AppError ? error.code : 'unknown'
+      })
+      return null
+    })
+  )
+  const failedIds = new Set(eligible.filter((_, i) => read[i] === null).map((row) => row.item_id))
+  return read.filter(
+    (item): item is RecordPullItemResponse => item !== null && !failedIds.has(item.id)
+  )
+}
+
 export const getChanges = async (
   db: D1Database,
   userId: string,
@@ -965,33 +1062,49 @@ export const getChanges = async (
   }
 
   const effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)
+  const { rows, hasMore } = await selectChangesRows(
+    db,
+    userId,
+    vaultId,
+    cursor,
+    types,
+    effectiveLimit
+  )
+  return toChangesResponse(rows, hasMore, cursor)
+}
 
-  const rows = await db
-    .prepare(
-      `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at,
-              committed_at_ms
-       FROM sync_items
-       WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${placeholdersFor(types)})
-       ORDER BY server_cursor ASC
-       LIMIT ?`
-    )
-    .bind(userId, vaultId, cursor, ...types, effectiveLimit + 1)
-    .all<{
-      item_id: string
-      item_type: string
-      version: number
-      updated_at: number
-      size_bytes: number
-      state_vector: string | null
-      server_cursor: number
-      deleted_at: number | null
-      committed_at_ms: number | null
-    }>()
+/**
+ * `GET /sync/changes?inline=1` (#2292): getChanges' page clamped to
+ * MAX_INLINE_CHANGES_LIMIT rows (clamped, never rejected, §5.10.1), plus the
+ * `/sync/pull` items of the ids it could inline. Refs and payloads come from
+ * one SELECT, so an inline item is always the version its ref names.
+ */
+export const getInlineChanges = async (
+  db: D1Database,
+  storage: R2Bucket,
+  userId: string,
+  cursor: number,
+  limit: number | undefined,
+  vaultId: string,
+  types: readonly RecordSyncItemType[]
+): Promise<RecordInlineChangesResponse> => {
+  if (types.length === 0) {
+    return { items: [], deleted: [], hasMore: false, nextCursor: cursor, inline: [] }
+  }
 
-  const allRows = rows.results ?? []
-  const hasMore = allRows.length > effectiveLimit
-  const pageRows = hasMore ? allRows.slice(0, effectiveLimit) : allRows
+  const pageLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_INLINE_CHANGES_LIMIT)
+  const { rows, hasMore } = await selectChangesRows(db, userId, vaultId, cursor, types, pageLimit)
+  return {
+    ...toChangesResponse(rows, hasMore, cursor),
+    inline: await readInlineItems(storage, userId, rows)
+  }
+}
 
+const toChangesResponse = (
+  pageRows: ChangesRow[],
+  hasMore: boolean,
+  cursor: number
+): RecordChangesResponse => {
   const items: RecordChangesResponse['items'] = []
   const deleted: string[] = []
 
@@ -1120,13 +1233,9 @@ export const pullItems = async (
   // already server_cursor-sorted allDbRows in fixed-size windows and concatenate
   // window results in order, so output ordering is preserved while at most
   // R2_CONCURRENCY reads are in flight at once.
-  const settled: Array<RecordPullItemResponse | null> = []
-
-  for (let i = 0; i < allDbRows.length; i += R2_CONCURRENCY) {
-    const window = allDbRows.slice(i, i + R2_CONCURRENCY)
-    const part = await Promise.all(window.map((row) => toPullItemResponse(storage, userId, row)))
-    settled.push(...part)
-  }
+  const settled = await mapInWindows(allDbRows, R2_CONCURRENCY, (row) =>
+    toPullItemResponse(storage, userId, row)
+  )
 
   return settled.filter((item): item is RecordPullItemResponse => item !== null)
 }

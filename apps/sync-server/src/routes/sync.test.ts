@@ -27,6 +27,13 @@ vi.mock('../services/sync', () => ({
     hasMore: false,
     nextCursor: 0
   }),
+  getInlineChanges: vi.fn().mockResolvedValue({
+    items: [],
+    deleted: [],
+    hasMore: false,
+    nextCursor: 0,
+    inline: []
+  }),
   processRecordPushBatch: vi.fn().mockResolvedValue({
     accepted: ['550e8400-e29b-41d4-a716-446655440000'],
     rejected: [],
@@ -137,6 +144,7 @@ import {
   getSyncStatus,
   getManifest,
   getChanges,
+  getInlineChanges,
   processRecordPushBatch,
   pullItems,
   getItem,
@@ -639,6 +647,45 @@ describe('sync routes', () => {
       expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
         ...LEGACY_RECORD_SYNC_ITEM_TYPES
       ])
+      expect(getInlineChanges).not.toHaveBeenCalled()
+    })
+
+    // #2292
+    it('reads the inline page with R2 when asked with inline=1', async () => {
+      const res = await app.request(
+        '/sync/changes?cursor=5&limit=500&inline=1',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(getInlineChanges).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        5,
+        500,
+        'vault-1',
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES]
+      )
+      expect(getChanges).not.toHaveBeenCalled()
+      await expect(res.json()).resolves.toMatchObject({ inline: [] })
+    })
+
+    // #2292
+    it('should return 400 for an inline value other than 1', async () => {
+      const res = await app.request(
+        '/sync/changes?inline=true',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(getInlineChanges).not.toHaveBeenCalled()
     })
 
     it('should return 400 for non-numeric cursor', async () => {

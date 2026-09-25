@@ -505,7 +505,16 @@ export const RecordChangesResponseSchema = z.object({
   hasMore: z.boolean(),
   nextCursor: z.number().int().min(0),
   /** Server epoch ms when the page was answered; clock-offset reference (#2280). */
-  serverTimeMs: z.number().int().min(0).optional()
+  serverTimeMs: z.number().int().min(0).optional(),
+  /**
+   * Present only on `GET /sync/changes?inline=1` (#2292, protocol 05 §5.11.2):
+   * `/sync/pull` items for some of this page's `items` and `deleted` ids,
+   * byte-identical to what `/sync/pull` returns for them. The reader pulls only
+   * the ids no element names. `unknown` on purpose: each element is validated
+   * with RecordPullItemResponseSchema on its own (§5.14), so one bad element
+   * never fails the page.
+   */
+  inline: z.array(z.unknown()).optional()
 })
 
 export const ClientPlatformSchema = z.enum(CLIENT_PLATFORMS)

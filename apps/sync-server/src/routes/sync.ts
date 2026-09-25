@@ -20,6 +20,7 @@ import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { syncTypesMiddleware } from '../middleware/sync-types'
 import {
   getChanges,
+  getInlineChanges,
   getItem,
   getManifest,
   getSyncStatus,
@@ -366,7 +367,18 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
     logQueryValidationFailure('record', endpoint, 'Invalid limit value')
   }
 
-  const changes = await getChanges(c.env.DB, userId, cursor, limit, vaultId, c.get('syncTypes')!)
+  // Opt-in and strict (#2292, protocol 05 §5.11.2): absent keeps today's bytes,
+  // `1` inlines, anything else is a 400 rather than a silently ignored value.
+  const inlineParam = c.req.query('inline')
+  if (inlineParam !== undefined && inlineParam !== '1') {
+    logQueryValidationFailure('record', endpoint, 'Invalid inline value')
+  }
+
+  const types = c.get('syncTypes')!
+  const changes =
+    inlineParam === '1'
+      ? await getInlineChanges(c.env.DB, c.env.STORAGE, userId, cursor, limit, vaultId, types)
+      : await getChanges(c.env.DB, userId, cursor, limit, vaultId, types)
 
   if (changes.items.length > 0 || changes.deleted.length > 0) {
     await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor, vaultId)

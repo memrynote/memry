@@ -115,7 +115,7 @@ export const createSqliteD1 = (): SqliteD1 => {
   return { db, raw: sqlite, close: () => sqlite.close() }
 }
 
-/** In-memory R2. The compat suite asserts on D1 rows, not on blob bytes. */
+/** In-memory R2. `body` is what the pull path reads a stored payload through. */
 export const createMemoryR2 = (): R2Bucket => {
   const objects = new Map<string, ArrayBuffer>()
   return {
@@ -126,7 +126,16 @@ export const createMemoryR2 = (): R2Bucket => {
     },
     get: async (key: string) => {
       const value = objects.get(key)
-      return value ? ({ key, arrayBuffer: async () => value } as unknown as R2ObjectBody) : null
+      return value
+        ? ({
+            key,
+            arrayBuffer: async () => value,
+            // Lazy: the pack tests count large allocations, and only the pull path reads `body`.
+            get body() {
+              return new Response(value).body
+            }
+          } as unknown as R2ObjectBody)
+        : null
     },
     delete: async (key: string | string[]) => {
       for (const k of Array.isArray(key) ? key : [key]) objects.delete(k)
