@@ -266,7 +266,8 @@ async fn one_hint_triggers_exactly_one_pull_and_carries_no_data() {
         hints.seen(),
         vec![Hint::CrdtUpdated {
             note_id: "abc123def456".into(),
-            vault_id: None
+            vault_id: None,
+            cursor: None
         }],
         "exactly one hint, and it is an id — never bytes"
     );

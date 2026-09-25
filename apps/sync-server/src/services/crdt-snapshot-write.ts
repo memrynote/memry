@@ -33,10 +33,11 @@ export interface SnapshotBatchInput {
  * Discriminated so a caller cannot read `sequenceNum` off a rejection: the
  * accepted branch always carries the watermark, the rejected branch always
  * carries an ErrorCodes value. A CRDT_SNAPSHOT_NOT_COVERED rejection also
- * carries the refusing snapshot's cursor.
+ * carries the refusing snapshot's cursor. `cursor` is the stored row's
+ * server_cursor, present only when this write applied (#2420).
  */
 export type SnapshotBatchOutcome =
-  | { noteId: string; accepted: true; sequenceNum: number; revision: string }
+  | { noteId: string; accepted: true; sequenceNum: number; revision: string; cursor?: number }
   | { noteId: string; accepted: false; reason: string; blockingCursor?: number }
 
 /**
@@ -180,7 +181,8 @@ interface PlannedWrite {
 }
 
 type WriteResult =
-  { ok: true; sequenceNum: number; revision: string } | { ok: false; error: unknown }
+  | { ok: true; sequenceNum: number; revision: string; cursor?: number }
+  | { ok: false; error: unknown }
 
 const chunk = <T>(items: T[], size: number): T[][] => {
   const chunks: T[][] = []
@@ -455,7 +457,8 @@ const writeSnapshots = async (
         results[entry.index] = {
           ok: true,
           sequenceNum: entry.sequenceNum,
-          revision: entry.revision
+          revision: entry.revision,
+          cursor: cursors.cursorAt(batch, position)
         }
       }
     } catch (error) {
@@ -535,7 +538,8 @@ const writeSnapshots = async (
 /**
  * One note's snapshot. Throws a typed AppError for anything the batch would
  * report per note: an R2 failure, a failed commit, or the #2299 refusal
- * (`SnapshotNotCoveredError`, 409).
+ * (`SnapshotNotCoveredError`, 409). `cursor` is the stored row's server_cursor
+ * (#2420), absent when a commit whose answer was lost is re-read as committed.
  */
 export const storeSnapshot = async (
   db: D1Database,
@@ -547,7 +551,7 @@ export const storeSnapshot = async (
   snapshotData: ArrayBuffer,
   client: ClientIdentity | null = null,
   claim?: SnapshotClaim
-): Promise<{ sequenceNum: number; revision: string }> => {
+): Promise<{ sequenceNum: number; revision: string; cursor?: number }> => {
   const [result] = await writeSnapshots(
     db,
     storage,
@@ -558,7 +562,8 @@ export const storeSnapshot = async (
     client
   )
   if (!result.ok) throw result.error
-  return { sequenceNum: result.sequenceNum, revision: result.revision }
+  const { sequenceNum, revision, cursor } = result
+  return cursor === undefined ? { sequenceNum, revision } : { sequenceNum, revision, cursor }
 }
 
 /**
@@ -588,7 +593,10 @@ export const storeSnapshotBatch = async (
   return results.map((result, index): SnapshotBatchOutcome => {
     const noteId = snapshots[index].noteId
     if (result.ok) {
-      return { noteId, accepted: true, sequenceNum: result.sequenceNum, revision: result.revision }
+      const { sequenceNum, revision, cursor } = result
+      return cursor === undefined
+        ? { noteId, accepted: true, sequenceNum, revision }
+        : { noteId, accepted: true, sequenceNum, revision, cursor }
     }
     if (result.error instanceof SnapshotNotCoveredError) {
       return {

@@ -466,6 +466,7 @@ describe('CRDT storage accounting', () => {
     const { db, statements } = createRecordingDatabase({
       first: (sql, bindings) => {
         if (sql.includes('INTO crdt_updates')) insertedId = bindings[0]
+        if (sql.includes('RETURNING current_cursor')) return { current_cursor: 2 }
         if (sql.startsWith('SELECT id, sequence_num FROM crdt_updates')) {
           return { id: insertedId, sequence_num: 1 }
         }

@@ -62,7 +62,11 @@ const ChangesAvailableSchema = z.object({
 })
 const CrdtUpdatedSchema = z.object({
   vaultId: z.string().optional(),
-  noteId: z.string().min(1)
+  noteId: z.string().min(1),
+  // #2420: the highest server_cursor the write reserved, omitted when it stored
+  // nothing new. Never a pull cursor (protocol 09 §9.11). A malformed value is
+  // dropped, never the frame: the frame still names a note body to pull.
+  cursor: z.number().int().nonnegative().optional().catch(undefined)
 })
 const CalendarChangesAvailableSchema = z.object({ sourceId: z.string().min(1) })
 const LinkingRequestSchema = z.object({
@@ -88,7 +92,7 @@ const ErrorSchema = z.object({ code: z.string().optional(), message: z.string().
  */
 export type SyncSocketEvent =
   | { kind: 'changes_available'; vaultId?: string; cursor?: number }
-  | { kind: 'crdt_updated'; vaultId?: string; noteId: string }
+  | { kind: 'crdt_updated'; vaultId?: string; noteId: string; cursor?: number }
   | { kind: 'calendar_changes_available'; sourceId: string }
   | {
       kind: 'linking_request'

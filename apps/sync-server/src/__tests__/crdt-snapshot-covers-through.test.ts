@@ -650,8 +650,21 @@ describe('storeSnapshotBatch (#2299)', () => {
     ])
 
     expect(outcomes).toEqual([
-      { noteId: 'note-covered', accepted: true, sequenceNum: 1, revision: expect.any(String) },
-      { noteId: 'note-plain', accepted: true, sequenceNum: 1, revision: expect.any(String) },
+      // #2420: an applied write names its row's cursor; the older encode wrote none.
+      {
+        noteId: 'note-covered',
+        accepted: true,
+        sequenceNum: 1,
+        revision: expect.any(String),
+        cursor: 63
+      },
+      {
+        noteId: 'note-plain',
+        accepted: true,
+        sequenceNum: 1,
+        revision: expect.any(String),
+        cursor: 64
+      },
       {
         noteId: 'note-unseen',
         accepted: false,

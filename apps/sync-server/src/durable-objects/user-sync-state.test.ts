@@ -329,6 +329,43 @@ describe('UserSyncState', () => {
       infoSpy.mockRestore()
     })
 
+    // #2420: crdt_updated now carries a cursor too; the #2280 trace stays record-push-only.
+    it('forwards the cursor of a crdt_updated frame without logging the record trace', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      const doObj = createDO()
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-2',
+        exp: Math.floor(Date.now() / 1000) + 900
+      })
+      await doObj.fetch(connectRequest('token-2', '1.0.0', 'vault-a'))
+
+      const res = await doObj.fetch(
+        new Request('https://do.internal/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            excludeDeviceId: 'device-1',
+            vaultId: 'vault-a',
+            type: 'crdt_updated',
+            noteId: 'n',
+            cursor: 42
+          })
+        })
+      )
+
+      expect(await res.json()).toEqual({ sent: 1 })
+      const ws = getCtx(doObj).getWebSockets('device:device-2')[0] as unknown as MockWebSocket
+      expect(ws.sentMessages).toContainEqual(
+        JSON.stringify({
+          type: 'crdt_updated',
+          payload: { cursor: 42, vaultId: 'vault-a', noteId: 'n' }
+        })
+      )
+      expect(infoSpy).not.toHaveBeenCalled()
+      infoSpy.mockRestore()
+    })
+
     it('carries sourceId through to payload for calendar push fan-out', async () => {
       // #given a single connected socket for the user
       const doObj = createDO()

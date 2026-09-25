@@ -27,6 +27,9 @@ pub enum Hint {
     CrdtUpdated {
         note_id: String,
         vault_id: Option<String>,
+        /// The highest cursor the write reserved (#2420), absent when it stored
+        /// nothing new. Never stored: §9.11 forbids using it as the device cursor.
+        cursor: Option<i64>,
     },
     CalendarChangesAvailable {
         source_id: String,
@@ -81,6 +84,7 @@ pub fn parse_frame(payload: &[u8]) -> Option<Hint> {
             Some(note_id) => Hint::CrdtUpdated {
                 note_id,
                 vault_id: text("vaultId"),
+                cursor: payload.and_then(|p| p.get("cursor")).and_then(Json::as_i64),
             },
             // §9.12: a known type whose payload does not carry what it needs
             // is ignored, not rejected.
@@ -162,6 +166,30 @@ mod tests {
             parse_frame(br#"{"type":"changes_available","payload":{"vaultId":"v"}}"#),
             Some(Hint::ChangesAvailable {
                 vault_id: Some("v".into()),
+                cursor: None
+            })
+        );
+    }
+
+    #[test]
+    fn a_crdt_updated_frame_carries_the_cursor_its_write_reserved() {
+        // #2420: exposed for the wake filter; §9.11 forbids storing it.
+        assert_eq!(
+            parse_frame(
+                br#"{"type":"crdt_updated","payload":{"noteId":"n","vaultId":"v","cursor":43}}"#
+            ),
+            Some(Hint::CrdtUpdated {
+                note_id: "n".into(),
+                vault_id: Some("v".into()),
+                cursor: Some(43)
+            })
+        );
+        // A duplicate-only retry and an old server send none.
+        assert_eq!(
+            parse_frame(br#"{"type":"crdt_updated","payload":{"noteId":"n"}}"#),
+            Some(Hint::CrdtUpdated {
+                note_id: "n".into(),
+                vault_id: None,
                 cursor: None
             })
         );
