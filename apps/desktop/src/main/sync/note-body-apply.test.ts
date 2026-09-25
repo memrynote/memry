@@ -45,6 +45,7 @@ function fakeProvider(
     mergeRemoteUpdate: vi.fn(async (noteId: string, update: Uint8Array) => {
       calls.push(`merge:${noteId}:${update.byteLength}`)
       Y.applyUpdate(openDocs.get(noteId)!, update)
+      return true
     }),
     closeIfInactive: vi.fn(async (noteId: string) => {
       calls.push(`close:${noteId}`)
@@ -90,6 +91,19 @@ describe('landNoteBody (#2297)', () => {
 
     expect(provider.closeIfInactive).not.toHaveBeenCalled()
     expect(editorDoc.getText('t').toString()).toBe('ab')
+  })
+
+  // #2299 review round 2 (B-M4): a body buffered by a running compaction is
+  // in neither the doc nor the store, and the compaction may drop it.
+  it('#given the doc is compacting #then the body is owed, never reported landed', async () => {
+    const { base, delta } = textUpdates()
+    const provider = fakeProvider(new Map(), new Map([['note-1', base]]))
+    provider.mergeRemoteUpdate.mockResolvedValueOnce(false)
+    const landingDeps = deps(provider, ['note-1'])
+
+    await expect(landNoteBody(landingDeps, 'note-1', [delta])).resolves.toBe(false)
+
+    expect(landingDeps.onMissingBase).toHaveBeenCalledExactlyOnceWith('note-1')
   })
 
   // #2297 review: a rowless id is dropped, neither stored nor owed. Stored bytes

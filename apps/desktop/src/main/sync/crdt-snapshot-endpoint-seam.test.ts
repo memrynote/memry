@@ -37,6 +37,7 @@ const runtimeMocks = vi.hoisted(() => {
     setOnItemEnqueued = vi.fn((cb: () => void) => {
       this.onItemEnqueued = cb
     })
+    listFullStateNoteBodyNoteIds = vi.fn((): string[] => [])
   }
 
   class NoteBodyOutbox {
@@ -178,6 +179,8 @@ const runtimeMocks = vi.hoisted(() => {
       isNoteLocalOnly: vi.fn(() => false),
       isNoteSyncable: vi.fn(() => true),
       init: vi.fn(),
+      setSnapshotCoverage: vi.fn(),
+      setOweRemoteMerge: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushAllSnapshots: vi.fn(),
@@ -191,6 +194,7 @@ const runtimeMocks = vi.hoisted(() => {
       applyRemoteUpdate: vi.fn(),
       getStateVector: vi.fn(() => new Uint8Array([1, 2, 3, 4])),
       seedFromMarkdownPublic: vi.fn(async () => undefined),
+      recordWholeBodyMerged: vi.fn(),
       getOpenNoteIds: vi.fn(() => [])
     },
     browserSend: vi.fn(),
@@ -298,6 +302,7 @@ vi.mock('../telemetry/diagnostics', () => ({
 }))
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
 vi.mock('./note-body-outbox', () => ({
+  NoteBodyFlushDeferredError: class NoteBodyFlushDeferredError extends Error {},
   NoteBodyOutbox: runtimeMocks.NoteBodyOutbox,
   importLegacyPendingCrdtNotes: runtimeMocks.importLegacyPendingCrdtNotes
 }))
@@ -433,6 +438,8 @@ vi.mock('./http-client', () => ({
   getFromServer: runtimeMocks.getFromServer,
   fetchCrdtSnapshot: runtimeMocks.fetchCrdtSnapshot,
   SyncServerError: runtimeMocks.SyncServerError,
+  isSnapshotNotCovered: () => false,
+  snapshotRefusalCursor: () => null,
   // runtime.ts → sync-errors.ts imports these; they only need to exist here.
   NetworkError: class NetworkError extends Error {},
   RateLimitError: class RateLimitError extends Error {},
@@ -567,18 +574,26 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   async function bootRuntime(): Promise<{
     engine: { mergeRemoteCrdtForNote: (noteId: string) => Promise<boolean> }
     snapshotPush: (noteId: string, state: Uint8Array) => Promise<void>
+    readCoverage: (noteId: string) => { unmerged: boolean; coversThrough?: number }
     stop: () => Promise<void>
   }> {
     const runtime = await loadRuntime()
     await runtime.startSyncRuntime()
     const engine = runtime.getSyncEngine()
     if (!engine) throw new Error('sync runtime did not start')
+    // The provider reads coverage at the encode (#2299); drive the same reader.
+    const readCoverage = runtimeMocks.crdtProvider.setSnapshotCoverage.mock.calls.at(-1)![0] as (
+      noteId: string
+    ) => { unmerged: boolean; coversThrough?: number }
+    const push = runtimeMocks.crdtProvider.init.mock.calls[0][1] as (
+      noteId: string,
+      state: Uint8Array,
+      coverage: { unmerged: boolean; coversThrough?: number }
+    ) => Promise<void>
     return {
       engine,
-      snapshotPush: runtimeMocks.crdtProvider.init.mock.calls[0][1] as (
-        noteId: string,
-        state: Uint8Array
-      ) => Promise<void>,
+      snapshotPush: (noteId, state) => push(noteId, state, readCoverage(noteId)),
+      readCoverage,
       stop: () => runtime.stopSyncRuntime()
     }
   }
@@ -639,8 +654,23 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     expect(runtimeMocks.pushCrdtSnapshot).toHaveBeenCalledWith(
       'note-merged',
       new Uint8Array([10, 11]),
-      'access-token'
+      'access-token',
+      { unmerged: false }
     )
+
+    await stop()
+  })
+
+  // #2299: the reader the provider calls at the encode answers from the same
+  // real coordinator, so a note flagged there never claims a cursor.
+  it('reads a flagged note as unmerged at the encode, and a clean one as claiming nothing yet', async () => {
+    const { engine, readCoverage, stop } = await bootRuntime()
+    runtimeMocks.getFromServer.mockRejectedValue(new runtimeMocks.SyncServerError(429))
+    await engine.mergeRemoteCrdtForNote('note-unmerged')
+
+    expect(readCoverage('note-unmerged')).toEqual({ unmerged: true })
+    // No legacy sweep recorded `done` here, so the push stays the pre-#2299 one.
+    expect(readCoverage('note-clean')).toEqual({ unmerged: false })
 
     await stop()
   })
@@ -686,7 +716,8 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     expect(runtimeMocks.pushCrdtSnapshot).toHaveBeenCalledWith(
       'note-untouched',
       new Uint8Array([10, 11]),
-      'access-token'
+      'access-token',
+      { unmerged: false }
     )
 
     await stop()

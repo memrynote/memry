@@ -123,7 +123,9 @@ function fakeProvider(
     mergeRemoteUpdate: vi.fn(async (noteId: string, bytes: Uint8Array) => {
       if (opts.failStore?.(noteId)) throw new Error('the store refused the write')
       stored.push([noteId, [...bytes]])
-    })
+      return true
+    }),
+    withholdClaimUntilPulled: vi.fn()
   }
   return provider
 }
@@ -250,6 +252,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
     provider.mergeRemoteUpdate.mockImplementation(async (noteId: string, bytes: Uint8Array) => {
       cursorAtLanding.push(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR))
       provider.stored.push([noteId, [...bytes]])
+      return true
     })
 
     await engine.pull()

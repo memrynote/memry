@@ -40,7 +40,11 @@ import {
   getFromServer,
   deleteFromServer,
   pushCrdtFullUpdate,
+  pushCrdtSnapshot,
   pushCrdtSnapshotBatch,
+  fetchCrdtSnapshot,
+  isSnapshotNotCovered,
+  snapshotRefusalCursor,
   SyncServerError,
   NetworkError,
   RateLimitError,
@@ -395,6 +399,91 @@ describe('http-client', () => {
         'CRDT state too large'
       )
       expect(mockFetch).not.toHaveBeenCalled()
+    })
+  })
+
+  // #2299
+  // #2299 review round 2 (A-4, B-L1): the server answers a snapshot row whose
+  // object is missing with a 503. That is a transport failure, never "no
+  // snapshot": the caller would take null as verified-empty and seed.
+  describe('fetchCrdtSnapshot', () => {
+    it('throws on a 503 and answers null only for a snapshot the server says is absent', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createJsonResponse({ error: { code: 'STORAGE_BLOB_NOT_FOUND' } }, 503)
+      )
+      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).rejects.toThrow()
+
+      mockFetch.mockResolvedValueOnce(
+        createJsonResponse({ snapshot: null, sequenceNum: 0, signerDeviceId: null, revision: null })
+      )
+      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).resolves.toBeNull()
+    })
+  })
+
+  describe('pushCrdtSnapshot coversThrough', () => {
+    it('sends coversThrough when claimed and omits the key when not', async () => {
+      mockFetch.mockResolvedValue(createJsonResponse({ sequenceNum: 1, revision: 'r' }))
+
+      await pushCrdtSnapshot('note-1', new Uint8Array([1]), 'token-1', {
+        coversThrough: 50,
+        baseRevision: 'rev-7'
+      })
+      await pushCrdtSnapshot('note-1', new Uint8Array([1]), 'token-1')
+
+      const bodies = mockFetch.mock.calls.map((call) =>
+        JSON.parse((call[1] as { body: string }).body)
+      )
+      expect(bodies[0]).toEqual({
+        noteId: 'note-1',
+        snapshot: 'AQ==',
+        coversThrough: 50,
+        baseRevision: 'rev-7'
+      })
+      expect(bodies[1]).toEqual({ noteId: 'note-1', snapshot: 'AQ==' })
+      expect(bodies[1]).not.toHaveProperty('coversThrough')
+    })
+
+    it('sends coversThrough per batch entry', async () => {
+      mockFetch.mockResolvedValue(createJsonResponse({ results: [] }))
+
+      await pushCrdtSnapshotBatch(
+        [
+          { noteId: 'note-a', snapshot: new Uint8Array([1]), coversThrough: 50, baseRevision: 'r' },
+          { noteId: 'note-b', snapshot: new Uint8Array([1]) }
+        ],
+        'token-1'
+      )
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as { body: string }).body)
+      expect(body.snapshots).toEqual([
+        { noteId: 'note-a', snapshot: 'AQ==', coversThrough: 50, baseRevision: 'r' },
+        { noteId: 'note-b', snapshot: 'AQ==' }
+      ])
+    })
+
+    it('recognises the not-covered refusal by status and code', async () => {
+      mockFetch.mockResolvedValue(
+        createJsonResponse(
+          {
+            error: {
+              code: 'CRDT_SNAPSHOT_NOT_COVERED',
+              message: 'above coversThrough',
+              blockingCursor: 61
+            }
+          },
+          409
+        )
+      )
+
+      const err = await pushCrdtSnapshot('note-1', new Uint8Array([1]), 'token-1', {
+        coversThrough: 50
+      }).catch((e: unknown) => e)
+
+      expect(isSnapshotNotCovered(err)).toBe(true)
+      expect(snapshotRefusalCursor(err)).toBe(61)
+      expect(snapshotRefusalCursor(new SyncServerError('conflict', 409, 'X: y'))).toBeNull()
+      expect(isSnapshotNotCovered(new SyncServerError('conflict', 409, 'OTHER: x'))).toBe(false)
+      expect(isSnapshotNotCovered(new Error('CRDT_SNAPSHOT_NOT_COVERED'))).toBe(false)
     })
   })
 

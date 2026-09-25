@@ -62,6 +62,11 @@ const runtimeMocks = vi.hoisted(() => {
     listNoteBodyNoteIds(): string[] {
       return [...new Set(SyncQueueManager.rows.map((r) => r.itemId))]
     }
+    listFullStateNoteBodyNoteIds(): string[] {
+      return [
+        ...new Set(SyncQueueManager.rows.filter((r) => r.payload === '').map((r) => r.itemId))
+      ]
+    }
     countNoteBodyRows(): number {
       return SyncQueueManager.rows.length
     }
@@ -175,6 +180,8 @@ const runtimeMocks = vi.hoisted(() => {
     syncGoogleCalendarSource: vi.fn(),
     crdtProvider: {
       init: vi.fn(),
+      setSnapshotCoverage: vi.fn(),
+      setOweRemoteMerge: vi.fn(),
       seedExistingDocs: vi.fn(),
       // `open` is what the issue is about, so it is a plain spy on a fake doc
       // rather than real Y.Doc machinery: the question is WHICH notes it is
@@ -193,6 +200,7 @@ const runtimeMocks = vi.hoisted(() => {
       applyRemoteUpdate: vi.fn(),
       getStateVector: vi.fn(() => new Uint8Array([1, 2, 3, 4])),
       seedFromMarkdownPublic: vi.fn(async () => undefined),
+      recordWholeBodyMerged: vi.fn(),
       getOpenNoteIds: vi.fn(() => [])
     },
     browserSend: vi.fn(),
@@ -438,11 +446,16 @@ function createDb() {
   return {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({ get: vi.fn(() => runtimeMocks.currentDevice) }))
+        // `all`: the sync_state reads behind the unmerged-debt write (#2299).
+        where: vi.fn(() => ({ get: vi.fn(() => runtimeMocks.currentDevice), all: vi.fn(() => []) }))
       }))
     })),
     update: vi.fn(() => ({
       set: vi.fn(() => ({ where: vi.fn(() => ({ run: vi.fn() })) }))
+    })),
+    // The unmerged-debt write a full-state note's owed pull raises (#2299).
+    insert: vi.fn(() => ({
+      values: vi.fn(() => ({ onConflictDoUpdate: vi.fn(() => ({ run: vi.fn() })) }))
     }))
   }
 }
@@ -589,6 +602,11 @@ describe('full-state flush liveness, stopSyncRuntime to the note-body outbox', (
     )
     expect(openedNotes()).toEqual(['note-a'])
     expect(pushedBodies()).toEqual(['note-a'])
+    // #2299 review round 2 (A-7): both notes were flagged at start; the
+    // flush's merge clears note-a, and the drop clears note-local.
+    const engine = runtime.getSyncEngine()!
+    expect(engine.hasUnmergedRemoteCrdtState('note-a')).toBe(false)
+    expect(engine.hasUnmergedRemoteCrdtState('note-local')).toBe(false)
     expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
 
     await runtime.stopSyncRuntime()
@@ -606,6 +624,10 @@ describe('full-state flush liveness, stopSyncRuntime to the note-body outbox', (
     await runtime.startSyncRuntime()
     await gate.reached
     expect(openedNotes()).toEqual(['note-a'])
+    // #2299 review round 2 (A-7): flagged from the start until its own flush
+    // merges, so no snapshot push claims over bodies the feed skipped.
+    expect(runtime.getSyncEngine()!.hasUnmergedRemoteCrdtState('note-a')).toBe(true)
+    expect(runtime.getSyncEngine()!.hasUnmergedRemoteCrdtState('note-b')).toBe(true)
 
     // #when the session is torn down — sign-out, vault switch, quit — which does
     // NOT await the flush

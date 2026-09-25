@@ -94,6 +94,7 @@ const mocks = vi.hoisted(() => {
     markdownToYFragment: vi.fn(),
     repairEmptyBlockIds: vi.fn((..._args: unknown[]) => 0),
     compactYDoc: vi.fn(),
+    reconcileCrdtStoreEpoch: vi.fn(async (..._args: unknown[]) => false),
     scheduleWriteback: vi.fn(),
     cancelWriteback: vi.fn(),
     flushPendingWritebacks: vi.fn(),
@@ -154,6 +155,10 @@ vi.mock('y-leveldb', () => ({
       mocks.persistenceInstances.push(this)
     }
   }
+}))
+
+vi.mock('./crdt-store-epoch', () => ({
+  reconcileCrdtStoreEpoch: (...args: unknown[]) => mocks.reconcileCrdtStoreEpoch(...args)
 }))
 
 vi.mock('../database/client', () => ({
@@ -309,6 +314,15 @@ const makeRemoteUpdate = (text: string): Uint8Array => {
   const doc = new Y.Doc()
   doc.getMap('meta').set('title', text)
   return Y.encodeStateAsUpdate(doc)
+}
+
+/** The store holds merged state for the next doc it opens, so that doc can vouch for a claim. */
+const withPersistedDoc = (): void => {
+  mocks.persistenceInstances[0].getYDoc.mockImplementationOnce(async (noteId: string) => {
+    const doc = new Y.Doc({ guid: `${noteId}:persisted` })
+    doc.getMap('meta').set('merged', true)
+    return doc
+  })
 }
 
 describe('CrdtProvider', () => {
@@ -541,7 +555,9 @@ describe('CrdtProvider', () => {
   it('pushes snapshots for markdown notes and skips binary or empty docs', async () => {
     await provider.initForNote('note-1', { title: 'Snapshot' }, ['tag-a'])
     expect(await provider.pushSnapshotForNote('note-1')).toBe(true)
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
 
     mocks.getNoteCacheById.mockReturnValueOnce({
       id: 'pdf-note',
@@ -559,6 +575,207 @@ describe('CrdtProvider', () => {
     expect(await provider.pushSnapshotForNote('empty-note')).toBe(false)
   })
 
+  // #2299: coverage is read before the encode and travels with that state.
+  it('reads snapshot coverage before encoding and hands it to the push', async () => {
+    withPersistedDoc()
+    await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    // A change made while coverage is read stands in for a body that landed
+    // just before the cursor was read: the pushed state must hold it.
+    provider.setSnapshotCoverage((noteId) => {
+      provider.updateMeta(noteId, { title: 'landed before the cursor read' })
+      return { unmerged: false, coversThrough: 50 }
+    })
+
+    expect(await provider.pushSnapshotForNote('note-1')).toBe(true)
+
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false,
+      coversThrough: 50
+    })
+    const pushed = new Y.Doc()
+    Y.applyUpdate(pushed, pushSnapshot.mock.calls.at(-1)![1] as Uint8Array)
+    expect(pushed.getMap('meta').get('title')).toBe('landed before the cursor read')
+
+    provider.setSnapshotCoverage(null)
+    pushSnapshot.mockClear()
+    provider.updateMeta('note-1', { title: 'Edited' })
+    await provider.pushSnapshotForNote('note-1')
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
+  })
+
+  // #2299 review A-7/B-3: the store that just opened is reconciled against the
+  // vault's sync state before anything can push from it.
+  it('reconciles the CRDT store marker when the store opens', () => {
+    expect(mocks.reconcileCrdtStoreEpoch).toHaveBeenCalledWith(
+      mocks.persistenceInstances[0],
+      mocks.dataDb
+    )
+  })
+
+  // #2299 review A-9/B-4: the revision this doc merged is read before the
+  // encode and sent as the base of a claimed push, never with an unclaimed one.
+  it('sends the merged snapshot revision as the base of a claimed push only', async () => {
+    withPersistedDoc()
+    await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    mocks.persistenceInstances[0].getMeta.mockImplementation(async (doc: string) =>
+      doc === 'note-1' ? { appliedSequence: 3, snapshotRevision: 'rev-merged' } : undefined
+    )
+    provider.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+
+    await provider.pushSnapshotForNote('note-1')
+    expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false,
+      coversThrough: 50,
+      baseRevision: 'rev-merged'
+    })
+
+    provider.setSnapshotCoverage(() => ({ unmerged: true }))
+    provider.updateMeta('note-1', { title: 'Edited' })
+    await provider.pushSnapshotForNote('note-1')
+    expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: true
+    })
+  })
+
+  // #2299 review round 2 (A-6, B-M2, B-L4): a doc that cannot vouch for
+  // itself claims nothing; the push is the plain unclaimed one.
+  describe('claims withheld when the doc cannot vouch for itself', () => {
+    const claimFifty = (): void =>
+      provider.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+
+    it('claims for a doc loaded from the store', async () => {
+      withPersistedDoc()
+      await provider.open('note-1')
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false,
+        coversThrough: 50
+      })
+    })
+
+    it('withholds the claim for a doc seeded from markdown until a whole-body pull merges', async () => {
+      await provider.open('note-1')
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+
+      provider.recordWholeBodyMerged('note-1')
+      provider.updateMeta('note-1', { title: 'Edited' })
+      await provider.pushSnapshotForNote('note-1')
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false,
+        coversThrough: 50
+      })
+    })
+
+    it('withholds the claim for a locally created note', async () => {
+      mocks.safeRead.mockResolvedValue('')
+      await provider.initForNote('note-1', { title: 'New' }, [])
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+    })
+
+    it('withholds the claim for a doc whose store read failed', async () => {
+      mocks.persistenceInstances[0].getYDoc.mockRejectedValueOnce(new Error('LEVEL_IO_ERROR'))
+      await provider.open('note-1')
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+    })
+
+    it('withholds the claim for a note the feed dropped as rowless', async () => {
+      withPersistedDoc()
+      await provider.open('note-1')
+      provider.withholdClaimUntilPulled('note-1')
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+    })
+
+    it('withholds every claim when the store reconcile threw this session', async () => {
+      mocks.reconcileCrdtStoreEpoch.mockRejectedValueOnce(new Error('data DB closed'))
+      const failed = new CrdtProvider()
+      await failed.init(queue as any, pushSnapshot)
+      withPersistedDoc()
+      await failed.open('note-1')
+      failed.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+
+      await failed.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+      await failed.destroy()
+    })
+
+    it('withholds every claim in in-memory mode', async () => {
+      await provider.destroy()
+      mocks.persistenceBehavior.mode = 'reject'
+      const inMemory = new CrdtProvider()
+      await inMemory.init(queue as any, pushSnapshot)
+      await inMemory.open('note-1')
+      inMemory.recordWholeBodyMerged('note-1')
+      inMemory.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+
+      await inMemory.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+      await inMemory.destroy()
+    })
+  })
+
+  // #2299 review A-11: a coverage reader that throws must not strand close().
+  it('claims nothing and still closes the doc when the coverage reader throws', async () => {
+    await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    provider.updateMeta('note-1', { title: 'Edited before close' })
+    provider.setSnapshotCoverage(() => {
+      throw new Error('state DB closed')
+    })
+
+    await provider.close('note-1')
+
+    expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: true
+    })
+    expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  // #2299 review A-4: the feed skipped the bodies of a local-only note without
+  // flagging it, so leaving local-only owes the note a merge before any claim.
+  it('owes a note leaving local-only a remote merge', async () => {
+    const owe = vi.fn()
+    provider.setOweRemoteMerge(owe)
+
+    provider.setNoteLocalOnly('note-1', true)
+    expect(owe).not.toHaveBeenCalled()
+    provider.setNoteLocalOnly('note-1', false)
+
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1')
+  })
+
   it('keeps the pending snapshot for retry when the snapshot push fails', async () => {
     await provider.initForNote('note-1', { title: 'Snapshot' }, [])
     provider.updateMeta('note-1', { title: 'Edited before push' })
@@ -569,7 +786,9 @@ describe('CrdtProvider', () => {
     pushSnapshot.mockClear()
     pushSnapshot.mockResolvedValue(undefined)
     await expect(provider.pushAllSnapshots()).resolves.toBe(1)
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
   })
 
   it('seeds existing docs in batches, validates CRDT eligibility, purges, and destroys storage', async () => {
@@ -772,7 +991,9 @@ describe('CrdtProvider', () => {
     provider.updateMeta('note-1', { title: 'Pending snapshot' })
 
     await expect(provider.pushAllSnapshots()).resolves.toBe(1)
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
 
     pushSnapshot.mockClear()
     await expect(provider.pushAllSnapshots()).resolves.toBe(0)
@@ -866,7 +1087,7 @@ describe('CrdtProvider', () => {
 
     await provider.compactDoc('note-1')
 
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', compacted)
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', compacted, { unmerged: false })
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalledWith('note-1', compacted)
     expect(mocks.persistenceInstances[0].flushDocument).toHaveBeenCalledWith('note-1')
     expect(provider.getDocSizeMetrics()[0]).toEqual(
@@ -1116,7 +1337,8 @@ describe('CrdtProvider', () => {
         })
     )
     const closePromise = provider.close('note-1')
-    await Promise.resolve()
+    // close() reads the push base (#2299) before it encodes and pushes.
+    await vi.waitFor(() => expect(releaseClosePush).toBeDefined())
 
     mocks.compactYDoc.mockClear()
     await provider.compactDoc('note-1')
@@ -1161,6 +1383,80 @@ describe('CrdtProvider', () => {
     releaseCloseFlush?.()
     await closePromise
     expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  // #2299 review round 2 (B-M4): a feed body merged while the doc compacts is
+  // only buffered, so it is never reported landed.
+  it('reports a feed body merged during compaction as not landed', async () => {
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    const store = mocks.persistenceInstances[0]
+    const update = makeRemoteUpdate('landed during compaction')
+    let landed: boolean | undefined
+    let storedWhileCompacting: unknown[][] = []
+    pushSnapshot.mockImplementationOnce(async () => {
+      store.storeUpdate.mockClear()
+      landed = await provider.mergeRemoteUpdate('note-1', update)
+      storedWhileCompacting = [...store.storeUpdate.mock.calls]
+    })
+
+    await provider.compactDoc('note-1')
+
+    expect(landed).toBe(false)
+    expect(storedWhileCompacting).toEqual([])
+    await expect(provider.mergeRemoteUpdate('note-1', makeRemoteUpdate('after'))).resolves.toBe(
+      true
+    )
+  })
+
+  it('owes the note a pull when a failed compaction drops its buffered updates', async () => {
+    const owe = vi.fn()
+    provider.setOweRemoteMerge(owe)
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+      throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+    })
+
+    await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1')
+  })
+
+  it('owes the note a pull when an abandoned compaction has no live doc for its buffer', async () => {
+    const owe = vi.fn()
+    provider.setOweRemoteMerge(owe)
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+      await provider.close('note-1')
+    })
+
+    await provider.compactDoc('note-1')
+
+    expect(provider.getDoc('note-1')).toBeUndefined()
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1')
+  })
+
+  it('owes nothing when a compaction replays its buffer onto the live doc', async () => {
+    const owe = vi.fn()
+    provider.setOweRemoteMerge(owe)
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+    })
+
+    await provider.compactDoc('note-1')
+
+    expect(owe).not.toHaveBeenCalled()
+    expect(provider.getDoc('note-1')?.getMap('meta').get('title')).toBe('buffered')
   })
 
   it('replays buffered remote updates onto the live doc when a reopen replaces the entry mid-compaction', async () => {
@@ -1386,7 +1682,9 @@ describe('CrdtProvider', () => {
 
     await provider.close('note-1')
 
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
     expect(provider.getDoc('note-1')).toBeUndefined()
 
     await provider.open('note-1', undefined, { skipSeed: true })
@@ -1852,7 +2150,9 @@ describe('CrdtProvider', () => {
       expect(queue.enqueue).toHaveBeenCalledTimes(1)
 
       await provider.close('note-1', 1)
-      expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+      expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
     })
 
     // Crosses the seam for real: the toggle is the shipped function, the flag

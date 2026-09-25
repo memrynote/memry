@@ -25,6 +25,7 @@ import { ItemApplier } from './apply-item'
 import { FullSyncRunner } from './engine/full-sync-runner'
 import type { SyncContext, SyncEngineDeps, SyncEngineOptions } from './engine/sync-context'
 import {
+  NOTE_BODY_LEGACY_SWEEP_DONE,
   PUSH_BATCH_SIZE,
   PULL_PAGE_LIMIT,
   STALE_CURSOR_THRESHOLD_MS,
@@ -38,6 +39,7 @@ import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
 import { trackMainEvent } from '../telemetry/track'
+import type { SnapshotCoverage, SnapshotRefusal } from './crdt-provider'
 
 export type { SyncEngineDeps, SyncEngineOptions }
 
@@ -476,6 +478,86 @@ export class SyncEngine extends SyncEventEmitter {
     return (
       this.fullSyncRunner.crdtUnmergedStateUnknown || this.crdtSync.hasUnmergedRemoteState(noteId)
     )
+  }
+
+  /**
+   * Snapshot refusals this session has seen (#2299), by note: the refusing
+   * snapshot's feed cursor, whether the refused push carried a claim, and the
+   * held snapshot revision it was encoded against. Session-only on purpose: a
+   * push after a restart meets the same refusal once, which re-records it.
+   */
+  private snapshotRefusals = new Map<string, SnapshotRefusal>()
+
+  /**
+   * What a snapshot push of this note may claim, read at its encode (#2299).
+   *
+   * `coversThrough = LAST_CURSOR` is safe only while every note_body row at or
+   * below it either landed in the doc or left the note flagged: the cursor is
+   * written after the page's bodies land, and every body that did not land
+   * (refused, owed, missing base, failed landing) flags the note first. A
+   * flagged note has no known lowest unmerged cursor, so it claims nothing and
+   * takes the non-pruning route. Rows below the cursor at first negotiation,
+   * and NULL-cursor rows, were never served as bodies: until the legacy sweep
+   * merged them all (`done`), no cursor is claimed and the push is exactly
+   * the pre-#2299 one.
+   *
+   * A note the server refused stays on the update route until this device's
+   * feed has passed the refusing snapshot's cursor (so it has merged it), or
+   * its held snapshot revision (`heldRevision`, read before the encode) moved
+   * off the one the refused push carried: a pull merged a newer snapshot, so
+   * the push's `baseRevision` compare-and-swap passes. A refused unclaimed
+   * push waits until the note can claim at all.
+   */
+  snapshotCoverage(noteId: string, heldRevision?: string): SnapshotCoverage {
+    if (this.hasUnmergedRemoteCrdtState(noteId)) return { unmerged: true }
+    const sweep = this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)
+    const cursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? 0)
+    const claimable = sweep === NOTE_BODY_LEGACY_SWEEP_DONE && Number.isSafeInteger(cursor)
+    const refusal = this.snapshotRefusals.get(noteId)
+    if (refusal) {
+      const passed = refusal.claimed
+        ? refusal.cursor === null ||
+          cursor >= refusal.cursor ||
+          (heldRevision !== undefined && heldRevision !== refusal.baseRevision)
+        : claimable && cursor > 0
+      if (!passed) return { unmerged: true }
+      this.snapshotRefusals.delete(noteId)
+    }
+    if (!claimable || cursor <= 0) return { unmerged: false }
+    return { unmerged: false, coversThrough: cursor }
+  }
+
+  /**
+   * The server refused a snapshot push (#2299): the stored snapshot holds state
+   * the push does not cover. The note is owed a pull, which merges it, and
+   * routes to the update endpoint until `snapshotCoverage` sees the feed past
+   * the refusing snapshot, so the refusal is never met again on the spot.
+   */
+  recordSnapshotRefusal(noteId: string, refusal: SnapshotRefusal): void {
+    this.snapshotRefusals.set(noteId, refusal)
+    this.crdtSync.addPendingPull(noteId)
+  }
+
+  /**
+   * Owe a note a whole-body pull and flag it until that pull merges: for a note
+   * leaving local-only (#2299), whose change-feed bodies were skipped.
+   */
+  oweCrdtPull(noteId: string): void {
+    this.crdtSync.addPendingPull(noteId)
+  }
+
+  /**
+   * Flag a note without owing it a pull (#2299): a queued full-state row at
+   * runtime start, whose own flush merges the server state before it pushes
+   * and clears the flag.
+   */
+  markCrdtRemoteStateUnmerged(noteId: string): void {
+    this.crdtSync.markRemoteStateUnmerged(noteId)
+  }
+
+  /** The full-state flush dropped a note that no longer syncs: nothing will clear its flag. */
+  clearCrdtUnmergedForDroppedNote(noteId: string): void {
+    this.crdtSync.clearUnmergedForDroppedNote(noteId)
   }
 
   async fullSync(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {
