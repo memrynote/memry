@@ -12,6 +12,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { noteRelativeRef } from '@/lib/resolve-note-relative-url'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
+import { DEFAULT_IMAGE_PREVIEW_WIDTH } from '@memry/editor-schema/blocks'
 
 const log = createLogger('Hook:EditorFileUpload')
 
@@ -139,7 +140,7 @@ export function useEditorFileUpload({
                   props: {
                     url: result.path,
                     caption: result.name || file.name,
-                    previewWidth: 600
+                    previewWidth: DEFAULT_IMAGE_PREVIEW_WIDTH
                   }
                 }
               ],
@@ -217,7 +218,12 @@ export function useEditorFileUpload({
 
         if (file.fileType === 'image' || mimeType.startsWith('image/')) {
           editor.insertBlocks(
-            [{ type: 'image', props: { url, caption: name, previewWidth: 600 } }],
+            [
+              {
+                type: 'image',
+                props: { url, caption: name, previewWidth: DEFAULT_IMAGE_PREVIEW_WIDTH }
+              }
+            ],
             referenceBlockId,
             placement
           )

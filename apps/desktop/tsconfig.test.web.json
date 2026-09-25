@@ -38,7 +38,6 @@
     "src/renderer/src/components/component-major-surfaces.test.tsx",
     "src/renderer/src/components/folder-view/column-header.test.tsx",
     "src/renderer/src/components/folder-view/folder-emoji-chip.test.tsx",
-    "src/renderer/src/components/graph/graph-canvas.test.tsx",
     "src/renderer/src/components/graph/local-graph-panel-sigma-lifecycle.test.tsx",
     "src/renderer/src/components/hint-overlay/hint-overlay.test.tsx",
     "src/renderer/src/components/hooks/use-tree-drag-drop.test.tsx",

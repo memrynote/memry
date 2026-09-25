@@ -14,6 +14,7 @@ A row under the title shows the note's free-form labels.
 - Comma or space confirms
 - Tags are global — the same tag on two notes is the same tag
 - Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
+- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
 
 Tags appear in the sidebar **Tags** section, grouped by category (see
 [Tag Categories](#tag-categories) below). Click any tag — in the sidebar, on a note, or in

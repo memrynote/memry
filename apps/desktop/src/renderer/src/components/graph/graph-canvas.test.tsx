@@ -284,7 +284,7 @@ describe('GraphCanvas', () => {
     )
 
     const settingsFromSigma = graphCanvasMocks.sigmaContainerProps?.settings
-    expect(settingsFromSigma.labelRenderedSizeThreshold).toBe(6)
+    expect(settingsFromSigma.labelRenderedSizeThreshold).toBe(2.5)
     expect(settingsFromSigma.labelColor).toEqual({ color: '#111111' })
 
     const graph = graphCanvasMocks.sigmaContainerProps?.graph
@@ -401,7 +401,10 @@ describe('GraphCanvas', () => {
         onFocusNode={vi.fn()}
       />
     )
-    expect(graphCanvasMocks.sigma.setSetting).toHaveBeenCalledWith('labelRenderedSizeThreshold', 6)
+    expect(graphCanvasMocks.sigma.setSetting).toHaveBeenCalledWith(
+      'labelRenderedSizeThreshold',
+      2.5
+    )
   })
 
   it('syncs sigma settings and hides nodes outside the focus set', () => {
@@ -579,7 +582,7 @@ describe('GraphCanvas', () => {
         // Sigma reduces with whatever reducer was last pushed into its settings.
         const reducer = (key: 'nodeReducer' | 'edgeReducer'): any => {
           const pushed = graphCanvasMocks.sigma.setSetting.mock.calls.filter(
-            ([setting]: [string]) => setting === key
+            ([setting]) => setting === key
           )
           return pushed.length > 0
             ? pushed[pushed.length - 1][1]

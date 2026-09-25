@@ -444,6 +444,7 @@
       "loading": "Loading notes...",
       "empty": "No notes found",
       "date": "Date",
+      "now": "Now",
       "remindMe": "Remind me",
       "dateHint": "Keep typing a date…",
       "showMore": "Show more",

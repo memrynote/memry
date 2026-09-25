@@ -3,7 +3,9 @@ import {
   buildDateSuggestions,
   buildDateMentionEntry,
   predictDateCompletion,
-  isTimeInProgress
+  isTimeInProgress,
+  isNowQuery,
+  buildNowMentionValue
 } from './date-suggestions'
 
 // parseNaturalDate reads the real clock internally, so drive everything from a
@@ -218,5 +220,31 @@ describe('isTimeInProgress', () => {
     expect(isTimeInProgress('meeting at 5p')).toBe(false)
     expect(isTimeInProgress('next monday foo')).toBe(false)
     expect(isTimeInProgress('today')).toBe(false)
+  })
+})
+
+describe('isNowQuery / buildNowMentionValue', () => {
+  it('matches "now" and the partial "no", case-insensitively, but not a lone "n"', () => {
+    expect(isNowQuery('now')).toBe(true)
+    expect(isNowQuery('no')).toBe(true)
+    expect(isNowQuery('NoW')).toBe(true)
+    expect(isNowQuery('n')).toBe(false)
+    expect(isNowQuery('')).toBe(false)
+    expect(isNowQuery('nowhere')).toBe(false)
+    expect(isNowQuery('nov')).toBe(false)
+  })
+
+  it('builds a timed, reminder-free pill for today at the current minute', () => {
+    expect(buildNowMentionValue(new Date('2026-06-17T01:24:37.500'))).toEqual({
+      dateISO: new Date('2026-06-17T01:24:00').toISOString(),
+      hasTime: true,
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system'
+    })
+  })
+
+  it('leaves "now" unparsed as a date, so no date-only suggestion competes with it', () => {
+    expect(buildDateSuggestions('now')).toBeNull()
   })
 })

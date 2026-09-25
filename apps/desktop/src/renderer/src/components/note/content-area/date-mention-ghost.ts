@@ -4,12 +4,24 @@
  * `date-mention-ghost-plugin.ts` wires these into editor decorations + keymap.
  */
 
-import { predictDateCompletion, buildDateSuggestions, isTimeInProgress } from './date-suggestions'
+import {
+  predictDateCompletion,
+  buildDateSuggestions,
+  buildNowMentionValue,
+  isNowQuery,
+  isTimeInProgress
+} from './date-suggestions'
 import type { DateMentionValue } from './date-mention-popover'
 
 // BlockNote serializes inline atoms (existing pills) to the object-replacement
 // character in `textBetween`; we treat it as a hard boundary.
 const ATOM = '￼'
+
+// `@no` / `@now` complete to "Now", the same item the `@` menu puts on top, so
+// the ghost and the menu's Tab agree. Everything else keeps the date grammar.
+function predictMentionCompletion(query: string, now: Date): string | null {
+  return isNowQuery(query) ? 'Now' : predictDateCompletion(query, now)
+}
 
 export interface ActiveDateQuery {
   /** Index of the `@` within the scanned text. */
@@ -42,7 +54,7 @@ export function findActiveDateQuery(
     if (!validStart) continue
     const query = textBeforeCursor.slice(i + 1)
     if (query.includes(ATOM) || query.includes('\n')) return null
-    const prediction = predictDateCompletion(query, now)
+    const prediction = predictMentionCompletion(query, now)
     // Active when there is a completion to preview, the query already parses as a
     // date (a complete "today 12:00" keeps the highlight, sans ghost), or a time
     // is mid-entry ("today at", "today 23:3") with nothing confident to ghost.
@@ -65,10 +77,12 @@ export type TabAction = { kind: 'fill'; text: string } | { kind: 'pill'; value: 
  * is complete. Null when there is neither a completion nor a parseable date.
  */
 export function resolveTabAction(query: string, now: Date = new Date()): TabAction | null {
-  const prediction = predictDateCompletion(query, now)
+  const prediction = predictMentionCompletion(query, now)
   if (prediction !== null && prediction.slice(query.length).length > 0) {
     return { kind: 'fill', text: prediction }
   }
+  // A completed `@now` commits today at the current minute, never a date-only pill.
+  if (query.toLowerCase() === 'now') return { kind: 'pill', value: buildNowMentionValue(now) }
   const suggestion = buildDateSuggestions(query, now)
   return suggestion ? { kind: 'pill', value: suggestion.dateValue } : null
 }

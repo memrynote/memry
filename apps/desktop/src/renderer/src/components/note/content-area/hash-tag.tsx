@@ -156,11 +156,30 @@ function splitTextWithHashTags(
   return { segments, didChange: true }
 }
 
+export interface NormalizeHashTagsOptions {
+  /**
+   * Promote only in text runs that carry no mark at all.
+   *
+   * A `hashTag` node has no `styles`, so promoting inside a marked run drops
+   * the mark: `**Nested #work**` serializes back as `**Nested** #work`. On the
+   * collaborative open path that change would reach the vault file through
+   * main's write-back, and opening a note must not rewrite it (#1434). An
+   * unmarked run is the byte-neutral case: the node serializes to the exact
+   * `#tag` it was promoted from.
+   */
+  unmarkedRunsOnly?: boolean
+}
+
+function hasAnyMark(styles: Record<string, unknown>): boolean {
+  return Object.values(styles).some(Boolean)
+}
+
 function normalizeInlineContentHashTags(
   content: string | Array<any>,
   noteTags: Set<string>,
   tagColorMap: Map<string, string>,
-  tagIconMap?: Map<string, string>
+  tagIconMap?: Map<string, string>,
+  options?: NormalizeHashTagsOptions
 ): { content: string | Array<any>; didChange: boolean } {
   if (typeof content === 'string') {
     const { segments, didChange } = splitTextWithHashTags(
@@ -197,6 +216,11 @@ function normalizeInlineContentHashTags(
 
     if (item?.type === 'text') {
       const itemStyles = item.styles ?? {}
+      // Inline code is literal: a chip would lose the backticks on save.
+      if (itemStyles.code || (options?.unmarkedRunsOnly && hasAnyMark(itemStyles))) {
+        next.push(item)
+        continue
+      }
       const { segments, didChange: itemChanged } = splitTextWithHashTags(
         item.text ?? '',
         noteTags,
@@ -228,7 +252,8 @@ export function normalizeHashTags(
   blocks: Block[],
   noteTags: Set<string>,
   tagColorMap: Map<string, string>,
-  tagIconMap?: Map<string, string>
+  tagIconMap?: Map<string, string>,
+  options?: NormalizeHashTagsOptions
 ): { blocks: Block[]; didChange: boolean } {
   if (noteTags.size === 0) return { blocks, didChange: false }
 
@@ -251,7 +276,8 @@ export function normalizeHashTags(
         block.content as any,
         noteTags,
         tagColorMap,
-        tagIconMap
+        tagIconMap,
+        options
       )
       if (normalized.didChange) {
         blockChanged = true
@@ -264,7 +290,8 @@ export function normalizeHashTags(
         block.children as Block[],
         noteTags,
         tagColorMap,
-        tagIconMap
+        tagIconMap,
+        options
       )
       if (normalizedChildren.didChange) {
         blockChanged = true
