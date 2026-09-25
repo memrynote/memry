@@ -46,6 +46,7 @@ use crate::storage::repositories::{
 };
 use crate::sync::clock::{self, OFFLINE_CLOCK_DEVICE_ID, VectorClock};
 use crate::sync::outbox::{self, Durable};
+use crate::sync::store;
 
 mod attachments;
 mod metadata;
@@ -301,8 +302,10 @@ pub(crate) fn tombstone_local(
         return Ok(());
     }
     let changes = stamp(tx, item_type, item_id, device_id, now_ms)?;
-    sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)?;
-    Ok(())
+    let merged = sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)?;
+    // #2409: the clock a later re-create of this id must happen after.
+    let parsed = StoredPayload::parse(&merged).map_err(refuse(item_type, item_id))?;
+    store::record_tombstone_clock(tx, item_type, item_id, &clock_in(parsed.object())?, now_ms)
 }
 
 /// The two keys every local edit carries: the advanced clock and `modifiedAt`.
@@ -361,19 +364,24 @@ pub(crate) fn next_clock(stored: &Object, device_id: &str) -> Result<Value, Stor
             what: format!("`{device_id}` is not a usable device id (chapter 06 §6.6)"),
         });
     }
-    let current: VectorClock = match stored.get("clock") {
-        None | Some(Value::Null) => VectorClock::new(),
-        Some(value) => {
-            serde_json::from_value(value.clone()).map_err(|error| StorageError::Failed {
-                what: format!("stored clock is not a vector clock: {error}"),
-            })?
-        }
-    };
-    serde_json::to_value(clock::increment(&current, device_id)).map_err(|error| {
+    serde_json::to_value(clock::increment(&clock_in(stored)?, device_id)).map_err(|error| {
         StorageError::Failed {
             what: format!("clock will not serialise: {error}"),
         }
     })
+}
+
+/// A payload's `clock`: absent or `null` reads as empty, anything that is not a
+/// vector clock is an error (see [`next_clock`]).
+pub(crate) fn clock_in(stored: &Object) -> Result<VectorClock, StorageError> {
+    match stored.get("clock") {
+        None | Some(Value::Null) => Ok(VectorClock::new()),
+        Some(value) => {
+            serde_json::from_value(value.clone()).map_err(|error| StorageError::Failed {
+                what: format!("stored clock is not a vector clock: {error}"),
+            })
+        }
+    }
 }
 
 /// An instant in the string shape a conforming client emits (§13.5).

@@ -335,7 +335,7 @@ Notes and journals share one tombstone family. Desktop keeps `T` in
 `sync_tombstone_clocks` (data migration `0061`) and mints every first clock of
 a `RECREATABLE_AFTER_PURGE_ITEM_TYPES` type through `nextLocalClock`
 (`packages/sync-client/src/tombstone-clocks.ts`); the Rust core keeps it in
-`sync_tombstone_clocks` (core migration `0004`) and seeds journal and folder
+`sync_tombstone_clocks` (core migration `0005`) and seeds journal and folder
 re-creates in `crates/memry-core/src/domain/recreate.rs`. The core also skips a
 clocked tombstone its live row strictly dominates (the client rule above); a
 tombstone without a clock still applies unconditionally. A client with no `T`

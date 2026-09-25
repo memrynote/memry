@@ -58,6 +58,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "inbox",
         sql: include_str!("migrations/data/0004_inbox.sql"),
     },
+    Migration {
+        version: 5,
+        name: "tombstone_clocks",
+        sql: include_str!("migrations/data/0005_tombstone_clocks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -179,7 +184,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 4);
+        assert_eq!(version, 5);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -191,6 +196,7 @@ mod tests {
             "outbox",
             "sync_cursors",
             "sync_items",
+            "sync_tombstone_clocks",
             "yjs_snapshots",
             "yjs_updates",
         ] {
@@ -279,7 +285,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 4);
+        assert_eq!(version, 5);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -297,9 +303,15 @@ mod tests {
         assert_eq!(count, 1);
         // Verbatim, §A.1: a migration is not an excuse to re-serialise a payload.
         assert_eq!(payload, "{\"unmodelled\":1}");
-        // The projections 0002 and 0003 added are present and empty.
+        // The projections 0002 and 0003 added are present and empty, and so is
+        // 0004's tombstone-clock table (#2409).
         assert!(table_names(&db).iter().any(|n| n == "notes"));
         assert!(table_names(&db).iter().any(|n| n == "saved_filters"));
+        assert!(
+            table_names(&db)
+                .iter()
+                .any(|n| n == "sync_tombstone_clocks")
+        );
     }
 
     #[test]

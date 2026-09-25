@@ -213,3 +213,27 @@ fn a_day_with_a_live_entry_is_reported_without_a_write() {
     })
     .expect("entry_for");
 }
+
+// #2409: a day this device only ever saw as a metadata-only tombstone (the
+// delete arrived before the record) is still reachable in one interaction.
+#[test]
+fn reopening_a_day_seen_only_as_a_metadata_only_tombstone_succeeds() {
+    let db = open("journal-metadata-tombstone");
+    db.call_blocking(|conn| {
+        memry_core::sync::store::mark_deleted(conn, "journal", "j2026-04-16", 5, None, 5)?;
+
+        let opened = journal::open_day(conn, DAY, DEVICE, NOW)?;
+
+        assert_eq!(opened.id, "j2026-04-16");
+        assert!(opened.created);
+        let row = sync_items::load(conn, "journal", "j2026-04-16")?.expect("the row");
+        assert_eq!(row.deleted_at, None);
+        assert_eq!(
+            payload_of(conn, "j2026-04-16")["clock"],
+            json!({"device-a": 1})
+        );
+        assert_eq!(queued(conn), 1);
+        Ok(())
+    })
+    .expect("open over a metadata-only tombstone");
+}

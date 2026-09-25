@@ -301,3 +301,31 @@ fn a_delete_refuses_while_the_subtree_still_holds_a_note_and_then_takes_the_subt
     })
     .expect("delete");
 }
+
+// #2409: a folder re-created at a deleted path is a create over its own
+// tombstone, and its clock happens strictly after the delete's.
+#[test]
+fn a_folder_re_created_at_a_deleted_path_succeeds_and_is_after_its_tombstone() {
+    use memry_core::sync::clock::{ClockOrder, VectorClock, compare};
+    let db = open("folders-recreate");
+    db.call_blocking(|conn| {
+        folders::create(conn, "Notes", Some("book"), DEVICE, NOW)?.acknowledge();
+        folders::delete(conn, "Notes", DEVICE, NOW + 1)?;
+        let tombstone: VectorClock =
+            serde_json::from_value(payload_of(conn, "folder_config", "Notes")["clock"].clone())
+                .expect("a clock");
+
+        folders::create(conn, "Notes", None, DEVICE, NOW + 2)?.acknowledge();
+
+        let recreated = payload_of(conn, "folder_config", "Notes");
+        let clock: VectorClock =
+            serde_json::from_value(recreated["clock"].clone()).expect("a clock");
+        assert_eq!(compare(&clock, &tombstone), ClockOrder::After);
+        assert_eq!(recreated["icon"], Value::Null, "a create, not a revival");
+        let row = sync_items::load(conn, "folder_config", "Notes")?.expect("the row");
+        assert_eq!(row.deleted_at, None);
+        assert_eq!(live_folders(conn), vec!["Notes".to_owned()]);
+        Ok(())
+    })
+    .expect("re-create");
+}

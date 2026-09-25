@@ -11,6 +11,8 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::api::errors::StorageError;
 
+use super::clock::{VectorClock, merge};
+
 /// The one global record cursor (§5.11). `crdt:<docId>` is the other scope
 /// this table carries; per-**type** cursors are forbidden — the feed is one
 /// ordered stream.
@@ -94,6 +96,67 @@ pub fn mark_deleted(
     )
     .map_err(failed)?;
     Ok(())
+}
+
+/// Remembers a delete clock for `(type, id)`, merged into what is already
+/// there, so the store only ever grows (#2409).
+///
+/// The one thing a re-create of the id reads ([`tombstone_clock`]): a create
+/// over a tombstone must happen strictly after it or the server refuses it
+/// (chapter 05 §5.8). An empty clock carries nothing and is not stored.
+pub fn record_tombstone_clock(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    clock: &VectorClock,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    if clock.is_empty() {
+        return Ok(());
+    }
+    let merged = match tombstone_clock(conn, item_type, item_id)? {
+        Some(stored) => merge(&stored, clock),
+        None => clock.clone(),
+    };
+    let text = serde_json::to_string(&merged).map_err(|error| StorageError::Failed {
+        what: format!("tombstone clock will not serialise: {error}"),
+    })?;
+    conn.execute(
+        "INSERT INTO sync_tombstone_clocks (item_type, item_id, clock, updated_at)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(item_type, item_id) DO UPDATE SET
+             clock = excluded.clock,
+             updated_at = excluded.updated_at",
+        params![item_type, item_id, text, now_ms],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// The highest delete clock recorded for `(type, id)`, or `None` when this
+/// device never saw one (a delete from before #2409 included).
+///
+/// A stored clock that does not parse is a **hard error**: reading it as
+/// absent would mint a re-create the tombstone dominates.
+pub fn tombstone_clock(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<Option<VectorClock>, StorageError> {
+    let text = conn
+        .query_row(
+            "SELECT clock FROM sync_tombstone_clocks WHERE item_type = ?1 AND item_id = ?2",
+            params![item_type, item_id],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    text.map(|text| {
+        serde_json::from_str(&text).map_err(|error| StorageError::Failed {
+            what: format!("stored tombstone clock is not a vector clock: {error}"),
+        })
+    })
+    .transpose()
 }
 
 /// Applies an id from `deleted` that arrived with **no type on the wire**

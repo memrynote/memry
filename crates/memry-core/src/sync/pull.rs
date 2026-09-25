@@ -471,6 +471,7 @@ impl PullLoop {
                 item_id: envelope.id.clone(),
                 deleted_at,
                 server_cursor: server_cursor(item),
+                clock: envelope.clock.clone(),
             });
         }
 

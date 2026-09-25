@@ -13,13 +13,12 @@
 
 use std::collections::BTreeMap;
 
-use rusqlite::{Connection, params};
+use rusqlite::Connection;
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
-use crate::domain::notes::{
-    self, edit, failed, insert_local, iso, next_clock, object, tombstone_local,
-};
+use crate::domain::notes::{self, edit, failed, iso, object, tombstone_local};
+use crate::domain::recreate::write_over_tombstone;
 use crate::domain::{tags, tasks};
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -287,14 +286,6 @@ fn upsert_definition(
         }
         return Ok(());
     }
-    // A tombstoned row with the same id must be revived rather than inserted.
-    if sync_items::load(conn, DEFINITION_TYPE, &id)?.is_some() {
-        conn.execute(
-            "DELETE FROM sync_items WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NOT NULL",
-            params![DEFINITION_TYPE, id],
-        )
-        .map_err(failed)?;
-    }
     let mut payload = template.cloned().unwrap_or_else(|| json!({}));
     let map = payload
         .as_object_mut()
@@ -315,7 +306,10 @@ fn upsert_definition(
             }
         }
     }
-    map.insert("clock".into(), next_clock(&Default::default(), device_id)?);
+    // A template is another name's definition: its clock is not this id's
+    // lineage. The id is deterministic, so a name deleted before is created
+    // over its own tombstone with a clock past the delete (#2409).
+    map.remove("clock");
     map.insert("createdAt".into(), json!(iso(now_ms)?));
     map.remove("modifiedAt");
     let payload = object(payload);
@@ -323,7 +317,7 @@ fn upsert_definition(
         conn,
         &outbox::Change::upsert(DEFINITION_TYPE, &id),
         now_ms,
-        |tx| insert_local(tx, DEFINITION_TYPE, &id, payload, now_ms),
+        |tx| write_over_tombstone(tx, DEFINITION_TYPE, &id, payload, device_id, now_ms),
     )?
     .acknowledge();
     Ok(())
