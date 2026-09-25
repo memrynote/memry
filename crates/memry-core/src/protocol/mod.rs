@@ -2,6 +2,7 @@
 //! surface above them.
 
 pub mod account;
+pub mod account_admin;
 pub mod attachment_manifest;
 pub mod attachment_upload;
 pub mod attachments;

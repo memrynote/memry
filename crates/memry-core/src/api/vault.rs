@@ -150,6 +150,18 @@ impl Vault {
         Ok(Arc::new(Tasks::over(self.db.clone(), &store)?))
     }
 
+    /// The synced settings item over this vault (spec 006 ST10). Needs the
+    /// keychain for the device identity its writes tick.
+    pub fn settings(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<Arc<crate::api::settings::Settings>, AuthError> {
+        Ok(Arc::new(crate::api::settings::Settings::over(
+            self.db.clone(),
+            &store,
+        )?))
+    }
+
     /// The full-text search over this vault.
     ///
     /// **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it

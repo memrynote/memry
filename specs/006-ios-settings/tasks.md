@@ -79,17 +79,28 @@ Each agent session gets its own simulator, created once with `xcrun simctl creat
 
 ## Phase 1: core (Rust + UniFFI)
 
-- [ ] ST10 `Settings` API: `snapshot`, `get(path)`, `set(path, json)`, `clear(path)`, built on `domain::settings`, plus a change notification after pull (a projector hook or the existing vault change stream).
+- [x] ST10 `Settings` API: `snapshot`, `get(path)`, `set(path, json)`, `clear(path)`, built on `domain::settings`, plus a change notification after pull (a projector hook or the existing vault change stream).
   - Tests: a write to `general.theme` leaves `general.minimizeToTray`, `sidebar.*` and an unknown group byte-identical; `null` and absent stay distinct; `journal.weekdayTemplates.3` gets its own clock; concurrent edits to different days merge.
-- [ ] ST11 Journal template settings helpers (`default_template`, `set_default_template(Option)`, `weekday_templates`, `set_weekday_template(day, Option)`), sanitized to days 0–6 exactly as desktop `journal-template-keys.ts` does.
-- [ ] ST12 Inbox review settings helpers (`review_reminder`, `set_review_reminder(enabled, time "HH:mm")`), with the time format validated like desktop.
-- [ ] ST13 Account: `devices`, `rename_device`, `revoke_device`, `storage`, `billing` (read-only), `delete_vault`. Errors map to typed `ApiError`s.
-- [ ] ST14 Linking, approver side: `initiate` (QR payload, short code, expiry), `poll`, `approve`, `cancel`. Vault keys are wrapped exactly as desktop's approver does. Tested against the recorded conformance vectors, if any exist.
-- [ ] ST15 Sync status snapshot (state, last synced, pending count) if not already exposed; `large_notes()` using `NOTE_SYNC_MAX_BYTES` and a warning ratio of 0.8.
-- [ ] ST16 Tags: `tag_definitions` (name, color, icon, count), `rename_tag`, `merge_tag(source, target)`, `delete_tag`, `set_tag_color`, `set_tag_icon`. Each touches notes, journals and tasks as desktop `tags-handlers.ts` does and enqueues sync for every changed item. Tests cover case-folding (`tags::same_tag`) and merge into an existing tag.
-- [ ] ST17 Properties: definition list with type and options; `rename_option`, `set_option_color`, `remove_option`, `reorder_options`, `add_option`, `delete_definition` (removes values from notes). Semantics match desktop `properties-section.tsx` and its handlers.
-- [ ] ST18 Templates: list with the built-in flag, `duplicate`, `update` (title, icon, tags, folder, body), `delete`; built-in templates are read-only.
-- [ ] ST19 Regenerate the Swift bindings; `cargo test -p memry-core` and clippy are green; the iOS build compiles against the new API. Commit `feat(core): settings, account, linking, tags, properties, templates API`.
+    Evidence: `cargo test -p memry-core --lib api::settings` 5 passed (theme write keeps minimizeToTray/fontSizePx/sidebar/experimental byte-identical; null vs absent; per-day clock; concurrent days merge via `settings_merge::apply_remote_merged`). Refresh = `Settings.revision()` (row `updated_at`).
+- [x] ST11 Journal template settings helpers (`default_template`, `set_default_template(Option)`, `weekday_templates`, `set_weekday_template(day, Option)`), sanitized to days 0–6 exactly as desktop `journal-template-keys.ts` does.
+      Evidence: `api/settings.rs` `journal_templates/set_default_template/set_weekday_template`; day >6 refused; tests above.
+- [x] ST12 Inbox review settings helpers (`review_reminder`, `set_review_reminder(enabled, time "HH:mm")`), with the time format validated like desktop.
+      Evidence: `is_review_time` = desktop `REVIEW_REMINDER_TIME_PATTERN`; `review_reminder_is_validated_like_desktop` green.
+- [x] ST13 Account: `devices`, `rename_device`, `revoke_device`, `storage`, `billing` (read-only), `delete_vault`. Errors map to typed `ApiError`s.
+      Evidence: `protocol/account_admin.rs` + `AuthSession.devices/rename_device/revoke_device/storage/billing/delete_vault`; `cargo test account_admin` 3 passed.
+- [x] ST14 Linking, approver side: `initiate` (QR payload, short code, expiry), `poll`, `approve`, `cancel`. Vault keys are wrapped exactly as desktop's approver does. Tested against the recorded conformance vectors, if any exist.
+      Evidence: `api/linking_approver.rs` `DeviceApprover.initiate/status/approve/cancel`; `an_approval_round_trips_through_the_new_device_half` opens the body with the new-device code (`receive_master_key`, `open_vault_transfer`); bad confirm refused. No recorded approver vectors exist.
+- [x] ST15 Sync status snapshot (state, last synced, pending count) if not already exposed; `large_notes()` using `NOTE_SYNC_MAX_BYTES` and a warning ratio of 0.8.
+      Evidence: `VaultSync.pending_changes()`, `Notes.large_notes()` (3_826_919 / warn 3_061_535); `cargo test large_notes` green.
+- [x] ST16 Tags: `tag_definitions` (name, color, icon, count), `rename_tag`, `merge_tag(source, target)`, `delete_tag`, `set_tag_color`, `set_tag_icon`. Each touches notes, journals and tasks as desktop `tags-handlers.ts` does and enqueues sync for every changed item. Tests cover case-folding (`tags::same_tag`) and merge into an existing tag.
+      Evidence: `domain/tag_admin.rs` + `Tasks.tag_list/rename_tag/merge_tag/delete_tag/set_tag_color/set_tag_icon`; 5 tests (case-fold, merge into existing, definition move).
+- [x] ST17 Properties: definition list with type and options; `rename_option`, `set_option_color`, `remove_option`, `reorder_options`, `add_option`, `delete_definition` (removes values from notes). Semantics match desktop `properties-section.tsx` and its handlers.
+      Evidence: `domain/property_admin.rs` + `Tasks.property_definitions/add|rename|remove|reorder_property_option(s)/set_property_option_color/delete_property_definition`; 4 tests (select + status shapes, unknown option keys survive).
+- [x] ST18 Templates: list with the built-in flag, `duplicate`, `update` (title, icon, tags, folder, body), `delete`; built-in templates are read-only.
+      Evidence: `domain/template_admin.rs` (desktop built-ins ported, read-only) + `Tasks.template_list/create_template/duplicate_template/update_template/delete_template`; 2 tests.
+- [x] ST19 Regenerate the Swift bindings; `cargo test -p memry-core` and clippy are green; the iOS build compiles against the new API. Commit `feat(core): settings, account, linking, tags, properties, templates API`.
+
+  Evidence: `cargo fmt`; `cargo clippy -p memry-core --all-targets -D warnings` clean; `cargo test -p memry-core` all suites 0 failed; `build-xcframework.sh --release` ok; `xcodebuild build-for-testing -testPlan Unit` on memry-C exit 0.
 
 ## Phase 2: shell and primitives
 
@@ -191,6 +202,14 @@ Each agent session gets its own simulator, created once with `xcrun simctl creat
 - 2026-09-25 — goal — Voice memos settings skipped (F4); Paper artboards 22 and 22a are not built.
 - 2026-09-25 — ST00a — Kaan redirected this session from memry-B to a new simulator memry-C (`0E5C90DE-62A7-42F7-94EB-82ECEBE99A59`, iPhone 16, iOS 26.5), DerivedData `/tmp/memry-dd-C`. goal.md and §0.3/§0.4 updated.
 - 2026-09-25 — goal — Sync scope follows desktop (F2), which overrides Paper's "This iPhone" / "Shared" footers (F3).
+
+- 2026-09-25 — ST10 — Inbound refresh is `Settings.revision()` (the settings row's `updated_at`), compared by the shell after each sync pass, instead of a callback across the FFI.
+- 2026-09-25 — ST13 — Account calls sit on `AuthSession` (one token manager), and `RevocationWatch` watches all six. Test fakes get refusing defaults (`MemryTests/AuthSessionFakeDefaults.swift`).
+- 2026-09-25 — ST14 — The approver's vault transfer lists `GET /sync/vaults` ids only (`{vaultUuid}`); when that list is empty or unreachable the block is omitted, which the new device treats as "fetch the list after registering" (desktop falls back to its current vault, which the phone core cannot name). Provider auth is not sent (no calendar on iOS).
+- 2026-09-25 — ST15 — "Last synced" is kept by the shell (the time of the last successful `sync_now`), device-local; the core has no stored timestamp.
+- 2026-09-25 — ST16 — Desktop's rename/delete rewrite notes (and journals via the note index) but not tasks; merge also rewrites tasks. goal.md asks for notes, journals and tasks on all three, so the core rewrites tasks on rename and delete too (a task keeping a deleted tag would otherwise resurrect it in the list). Nested `parent/child` tag definitions are not re-parented on rename (desktop renames children); left open.
+- 2026-09-25 — ST17 — Desktop's option rename and definition delete leave note values untouched; the core does the same. Paper 29b's "removed from 38 notes, with its values" copy is replaced by desktop's behavior (notes keep their values).
+- 2026-09-25 — ST18 — Built-in templates are desktop code, not synced: ported verbatim into `template_admin::BUILT_INS`, read-only. Desktop templates have no folder field, so the Paper editor's Folder pill is not built. "+ New" uses `templates::create` with an empty body.
 
 ## 7. Blockers
 

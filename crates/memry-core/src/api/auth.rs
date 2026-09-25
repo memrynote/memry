@@ -204,6 +204,11 @@ impl AuthSession {
         self.http.clone()
     }
 
+    /// The secure store this session was built over. Internal, like `http`.
+    pub(crate) fn secure_store(&self) -> Arc<dyn SecureStore> {
+        self.store.clone()
+    }
+
     /// The master key this device unlocked with, or `None` when nothing has
     /// unlocked it.
     ///
