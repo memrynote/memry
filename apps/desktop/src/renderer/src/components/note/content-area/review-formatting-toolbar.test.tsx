@@ -47,6 +47,14 @@ vi.mock('./wiki-link-edit-plugin', () => ({
   openWikiLinkForSelection: vi.fn(() => true)
 }))
 
+vi.mock('./toolbar-more-menu', () => ({
+  ToolbarMoreMenu: ({ isPinned }: { isPinned: boolean }) => (
+    <button type="button" data-pinned={String(isPinned)}>
+      more
+    </button>
+  )
+}))
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string) => {
@@ -79,14 +87,8 @@ vi.mock('@blocknote/react', () => ({
   BasicTextStyleButton: ({ basicTextStyle }: { basicTextStyle: string }) => (
     <button type="button">{basicTextStyle}</button>
   ),
-  TextAlignButton: ({ textAlignment }: { textAlignment: string }) => (
-    <button type="button">{textAlignment}</button>
-  ),
   ColorStyleButton: () => <button type="button">color</button>,
-  NestBlockButton: () => <button type="button">nest</button>,
-  UnnestBlockButton: () => <button type="button">unnest</button>,
   CreateLinkButton: () => <button type="button">link</button>,
-  getFormattingToolbarItems: () => [<button key="default">default</button>],
   useBlockNoteEditor: () => toolbarMocks.editor,
   useEditorState: ({ selector }: { selector: (payload: { editor: unknown }) => unknown }) =>
     selector({ editor: toolbarMocks.editor }),
@@ -287,6 +289,20 @@ describe('ReviewFormattingToolbar', () => {
     expect(screen.getByLabelText('Bulleted list')).toBeInTheDocument()
     expect(screen.getByLabelText('Numbered list')).toBeInTheDocument()
     expect(screen.getByLabelText('Check list')).toBeInTheDocument()
+  })
+
+  // Both variants render the same row, so pinning the toolbar never changes
+  // which actions exist or where they sit.
+  it('renders the same actions in the sticky and floating variants', () => {
+    const { unmount } = render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    const floating = screen.getAllByRole('button').map((button) => button.textContent)
+    unmount()
+
+    render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
+    const sticky = screen.getAllByRole('button').map((button) => button.textContent)
+
+    expect(sticky).toEqual(floating)
+    expect(screen.getByText('more')).toHaveAttribute('data-pinned', 'true')
   })
 
   it('offers the list toggles in the sticky toolbar too', () => {

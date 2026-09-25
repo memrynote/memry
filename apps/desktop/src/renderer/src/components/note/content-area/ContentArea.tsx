@@ -323,6 +323,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   placeholder,
   editable = true,
   stickyToolbar = false,
+  onStickyToolbarChange,
   spellCheck,
   onContentChange,
   onMarkdownChange,
@@ -2186,9 +2187,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               one has no list toggles, so the template editor used to be the odd
               one out with no visible way to turn selected lines into a list. */}
             {stickyToolbar ? (
-              <ReviewFormattingToolbar variant="sticky" onAddComment={review?.onAddComment} />
+              <ReviewFormattingToolbar
+                variant="sticky"
+                onAddComment={review?.onAddComment}
+                onStickyChange={onStickyToolbarChange}
+              />
             ) : (
-              <ReviewFormattingToolbarController onAddComment={review?.onAddComment} />
+              <ReviewFormattingToolbarController
+                onAddComment={review?.onAddComment}
+                onStickyChange={onStickyToolbarChange}
+              />
             )}
             {/* Memry's block menu: BlockNote's stock drag-handle menu carries
               only Delete + Colors. This one keeps both and adds Turn into,

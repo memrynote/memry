@@ -228,7 +228,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Editor settings — width follows the global setting (Normal / Full) unless
   // the user overrides it for Journal, which applies to every journal page.
-  const { settings: editorSettings } = useEditorSettings()
+  const { settings: editorSettings, updateSettings: updateEditorSettings } = useEditorSettings()
 
   const [journalWidthOverride, setJournalWidthOverride] = useState<boolean | null>(() => {
     const saved = localStorage.getItem('memry_journal_full_width')
@@ -1097,6 +1097,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                     : t('editor.placeholder.past')
                               }
                               stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                              onStickyToolbarChange={(sticky) =>
+                                void updateEditorSettings({
+                                  toolbarMode: sticky ? 'sticky' : 'floating'
+                                })
+                              }
                               spellCheck={editorSettings.spellCheck}
                               onContentChange={handleContentChange}
                               onMarkdownChange={handleMarkdownChange}

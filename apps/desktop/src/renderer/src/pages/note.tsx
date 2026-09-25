@@ -403,7 +403,7 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   // Editor settings (toolbar mode, width)
-  const { settings: editorSettings } = useEditorSettings()
+  const { settings: editorSettings, updateSettings: updateEditorSettings } = useEditorSettings()
 
   // Width follows the global setting (Normal / Full) unless this note has an
   // explicit per-note override in frontmatter (`fullWidth`), which wins.
@@ -1941,6 +1941,9 @@ export function NotePage({ noteId }: NotePageProps) {
                 externalContentRevision={externalUpdateCount}
                 placeholder={t('editor.content.placeholder')}
                 stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                onStickyToolbarChange={(sticky) =>
+                  void updateEditorSettings({ toolbarMode: sticky ? 'sticky' : 'floating' })
+                }
                 spellCheck={editorSettings.spellCheck}
                 onContentChange={handleContentChange}
                 onMarkdownChange={handleMarkdownChange}

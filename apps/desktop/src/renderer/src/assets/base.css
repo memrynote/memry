@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 
 /* BlockNote shadcn styles source */
-@source "../../../node_modules/@blocknote/shadcn";
-@source "../../../node_modules/streamdown/dist/*.js";
+@source "../../../../node_modules/@blocknote/shadcn/src";
+@source "../../../../node_modules/streamdown/dist/*.js";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -861,9 +861,10 @@
   inset: 0;
   z-index: -1;
   /* Same solid color as the note body — the bar reads as part of the note,
-     not a separate floating panel, so no seam/divider against the content
-     scrolling under it. */
+     not a separate floating panel; a hairline marks where the text scrolls
+     under it. */
   background: var(--background);
+  box-shadow: inset 0 -1px 0 var(--border);
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar > div {
@@ -884,91 +885,142 @@
   height: 28px !important;
 }
 
-.content-area .bn-formatting-toolbar:has(.review-formatting-toolbar-compact) {
-  min-width: 168px !important;
-  width: 168px !important;
-  padding: 6px !important;
+/* ===== Formatting toolbar =====
+   One row, grouped by intent, shared by the floating popup and the pinned bar.
+   Quiet at rest: neutral glyphs, a neutral tint on hover, the user's accent
+   only for a mark that is on. */
+.memry-format-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.content-area .bn-formatting-toolbar:has(.memry-format-toolbar[data-variant='floating']) {
+  width: auto !important;
+  max-width: calc(100vw - 32px) !important;
+  padding: 3px !important;
+  gap: 0 !important;
   border: 1px solid var(--border) !important;
   border-radius: 10px !important;
   background: var(--popover) !important;
   color: var(--popover-foreground) !important;
-  box-shadow: 0 16px 40px color-mix(in srgb, black 24%, transparent) !important;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, black 6%, transparent),
+    0 8px 24px -8px color-mix(in srgb, black 18%, transparent) !important;
 }
 
-.review-formatting-toolbar-compact {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  gap: 6px;
+.memry-format-toolbar[data-variant='sticky'] {
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 
-.review-formatting-toolbar-block-type {
-  padding-bottom: 6px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+.memry-format-toolbar-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin-inline: 4px;
+  background: var(--border);
 }
 
-/* BlockTypeSelect renders nothing when the current block has no entry in the
-   block type list, so collapse the row instead of leaving its gap behind. */
-.review-formatting-toolbar-block-type:empty {
+/* Block types without a select entry render nothing: drop the slot and the
+   divider that separates it from the marks. */
+.memry-format-toolbar-block-type:empty,
+.memry-format-toolbar-block-type:empty + .memry-format-toolbar-divider {
   display: none;
 }
 
-/* The shadcn select trigger ships `w-fit h-9`; match the compact popover. */
-.review-formatting-toolbar-block-type > button {
-  width: 100% !important;
+.memry-format-toolbar > *,
+.memry-format-toolbar .review-formatting-toolbar-action {
+  flex-shrink: 0;
+}
+
+.memry-format-toolbar .bn-button,
+.memry-format-toolbar-block-type > button {
   height: 28px !important;
-  padding: 0 8px !important;
-  border-radius: 7px !important;
-  font-size: 12px !important;
-  color: inherit !important;
-}
-
-.review-formatting-toolbar-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 28px);
-  justify-content: center;
-  gap: 4px;
-}
-
-.review-formatting-toolbar-compact .bn-button {
-  width: 28px !important;
   min-width: 28px !important;
-  height: 28px !important;
-  justify-content: center;
-  padding: 0 !important;
-  border-radius: 7px !important;
-  color: inherit !important;
-}
-
-.review-formatting-toolbar-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
-  padding-top: 6px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-}
-
-/* The button sits inside a pointer-capture span, so the span is the grid item
-   and has to stretch before `width: 100%` on the button means anything. This
-   is compact-popup only — in the sticky toolbar the same span must stay an
-   inline flex item, or `width: 100%` claims the whole row width and forces
-   the icon-only button onto its own line. */
-.review-formatting-toolbar-compact .review-formatting-toolbar-action {
-  display: block;
-  width: 100%;
-}
-
-.review-formatting-toolbar-actions .bn-button {
-  display: flex !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  height: 28px !important;
-  justify-content: center;
+  padding: 0 6px !important;
   gap: 6px;
-  padding: 0 8px !important;
-  font-size: 12px !important;
-  line-height: 1;
-  white-space: nowrap;
+  border: none !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: color-mix(in srgb, var(--foreground) 78%, transparent) !important;
+  font-size: 13px !important;
+  font-weight: 450;
+  justify-content: center;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.memry-format-toolbar .bn-button:hover:not(:disabled),
+.memry-format-toolbar-block-type > button:hover,
+.memry-format-toolbar .bn-button[aria-expanded='true'],
+.memry-format-toolbar-block-type > button[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent) !important;
+  color: var(--foreground) !important;
+}
+
+.memry-format-toolbar .bn-button[aria-pressed='true'] {
+  background: var(--tint-lighter) !important;
+  color: var(--tint) !important;
+}
+
+.memry-format-toolbar .bn-button:disabled {
+  opacity: 0.4;
+  background: transparent !important;
+}
+
+.memry-format-toolbar .bn-button:focus-visible,
+.memry-format-toolbar-block-type > button:focus-visible {
+  outline: 2px solid var(--tint-ring);
+  outline-offset: 0;
+}
+
+.memry-format-toolbar .bn-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.memry-format-toolbar-block-type > button {
+  padding-inline: 8px 6px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memry-format-toolbar .bn-button,
+  .memry-format-toolbar-block-type > button {
+    transition: none;
+  }
+}
+
+/* Toolbar tooltips: one line, name then shortcut, lifted clear of the row.
+   BlockNote stacks main/secondary tooltip spans in a column and draws an arrow
+   that lands on the button under the pointer; both are replaced here. */
+.bn-root [data-slot='tooltip-content'] {
+  flex-direction: row !important;
+  gap: 8px;
+  padding: 4px 6px 4px 8px !important;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap !important;
+  translate: 0 -4px;
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, black 20%, transparent);
+}
+
+.bn-root [data-slot='tooltip-content'] > span + span {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--background) 16%, transparent);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.bn-root [data-slot='tooltip-content'] > :not(span) {
+  display: none;
 }
 
 .critic-mark-inline {
