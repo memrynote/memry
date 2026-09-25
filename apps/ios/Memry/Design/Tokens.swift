@@ -519,6 +519,38 @@ enum Tokens {
         }
     }
 
+    /// Inbox capture types (spec 006 IB032): the glyph colours of Paper "Inbox
+    /// iOS" artboard 01 in light, desktop's `TYPE_ICON_COLORS` dark shades
+    /// (`components/inbox/inbox-type-icon.tsx`). Decorative only: every row
+    /// also names its type to VoiceOver and in its meta line.
+    enum Inbox {
+        static let link = Task.dueUpcoming
+        static let voice = Task.dueToday
+        static let image = Task.complete
+        static let note = AdaptiveColor(light: 0x6F_6C_66, dark: 0x96_93_8D)
+        static let pdf = Task.dueOverdue
+        static let social = AdaptiveColor(light: 0x03_69_A1, dark: 0x7D_D3_FC)
+        static let video = AdaptiveColor(light: 0x02_84_C7, dark: 0x38_BD_F8)
+        static let clip = AdaptiveColor(light: 0x7C_5C_C4, dark: 0xD8_B4_FE)
+        static let reminder = Task.dueToday
+        /// A stale row's amber age and the "fetching" line (Paper 01).
+        static let stale = Task.dueToday
+
+        static func type(_ type: String) -> AdaptiveColor {
+            switch type {
+            case "link": link
+            case "voice": voice
+            case "image": image
+            case "pdf": pdf
+            case "social": social
+            case "video": video
+            case "clip": clip
+            case "reminder": reminder
+            default: note
+            }
+        }
+    }
+
     enum Palette {
         static let chipFillAlpha = 0.12
 

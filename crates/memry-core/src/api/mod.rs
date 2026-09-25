@@ -8,6 +8,7 @@ pub mod errors;
 pub mod inbox;
 pub mod inbox_conformance;
 pub mod inbox_records;
+pub mod inbox_settings;
 pub mod inbox_write;
 pub mod linking;
 pub mod notes;

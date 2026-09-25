@@ -148,3 +148,36 @@ fn text_captures_file_and_convert_through_the_surface() {
     assert_eq!(inbox.filing_history(5).expect("history").len(), 1);
     assert_eq!(inbox.recent_folders(5).expect("recent"), ["Agent Test"]);
 }
+
+#[test]
+fn the_review_reminder_reads_desktops_defaults_and_writes_the_synced_keys() {
+    use memry_core::api::inbox_settings::InboxReviewSettings;
+    let (vault, inbox) = open();
+    let defaults = inbox.review_settings().expect("read");
+    assert_eq!((defaults.enabled, defaults.time.as_str()), (false, "18:00"));
+    assert!(
+        inbox
+            .set_review_settings(InboxReviewSettings {
+                enabled: true,
+                time: "25:00".into()
+            })
+            .is_err()
+    );
+    inbox
+        .set_review_settings(InboxReviewSettings {
+            enabled: true,
+            time: "07:30".into(),
+        })
+        .expect("write");
+    let read = inbox.review_settings().expect("read back");
+    assert_eq!((read.enabled, read.time.as_str()), (true, "07:30"));
+    let payload: Value = vault
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(sync_items::push_payload(conn, "settings", "synced_settings")?.expect("payload"))
+        })
+        .map(|raw| serde_json::from_str(&raw).expect("json"))
+        .expect("settings");
+    assert_eq!(payload["settings"]["inbox"]["reviewReminderTime"], "07:30");
+    assert!(payload["fieldClocks"]["inbox.reviewReminderEnabled"].is_object());
+}

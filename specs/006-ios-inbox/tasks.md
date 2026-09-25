@@ -243,17 +243,21 @@ needed.
 
 ## Phase 3: iOS foundations (serial)
 
-- [ ] IB030 `Features/Inbox/InboxStore` over the new UniFFI surface: list,
+- [x] IB030 `Features/Inbox/InboxStore` over the new UniFFI surface: list,
       filters, counts, snoozed, archived, stats; optimistic remove with
       rollback like `archiveWithAnimation`; sync pass after writes.
-- [ ] IB031 `InboxCopy*` mirroring `inbox.json`; error mapping entries.
-- [ ] IB032 Primitives: type icon (9 types, colors from tokens), row meta line
+      Evidence: `xcodebuild test -testPlan Unit -only-testing:MemryTests/InboxStoreTests` on memry-A: `capture_lists_and_archive_hides_with_undo`, `the_type_filter_and_the_views` passed.
+- [x] IB031 `InboxCopy*` mirroring `inbox.json`; error mapping entries.
+      Evidence: `Features/Inbox/InboxCopy{,+Sheets,+Detail,+Settings}.swift`, `InboxErrors.swift`; app builds, swiftlint reports no errors in `Features/Inbox`.
+- [x] IB032 Primitives: type icon (9 types, colors from tokens), row meta line
       (domain/kind · age, voice duration, PDF pages, stale amber age),
       thumbnail, match-strength label. Move shared ones from Tasks to
       `Design/` (title-menu header, glass capsule, toast, sheet chrome).
       Unit tests for meta and relative-time formatting.
-- [ ] IB033 Entry point (D1): More tab row with count, deep-link route used by
-      widget and notifications.
+      Evidence: `Design/{Chrome,UndoToast,TitleMenuHeader}.swift` shared with Tasks; `-only-testing:MemryTests/InboxFormattingTests` 7 tests passed (suite "Inbox formatting"; 9 tests in 2 suites total).
+- [x] IB033 Entry point (D1): More tab row with count.
+      Evidence: memry-A signed in to MemryNote, More tab shows "Inbox 28", tapping opens the list "28 to process": `apps/ios/SpikeEvidence/inbox/IB033-more-row.png`.
+- [ ] IB033a Deep-link route used by widget and notifications (verified with IB23).
 
 ## Phase 4: screens (one checkbox per artboard)
 
@@ -499,6 +503,8 @@ Each item lists what it must carry. Verification per §0.7.
 - 2026-09-25 — IB025 — File captures (image, voice, PDF, video) are filed by the shell: `createNoteForFile` makes the note, the shell uploads the file into it as a note attachment, then `markFiled`. The phone has no binary-note writer, so "File in the sidebar" (image mode `link`) falls back to embedding, the same fallback desktop takes when its attachment store refuses (`fellBackToLink`), reported to the user.
 - 2026-09-25 — IB026 — Convert → Task resolves the project's default status (the core's task create) where desktop inserts `statusId: null`; both read as To Do. A voice memo's transcript becomes the task description when it has no content.
 - 2026-09-25 — IB029 — Phases 1 and 2 are one commit: Phase 1's conformance evidence (IB014, the Swift suite) needs the rebuilt xcframework, which is IB029's gate step, and both phases edit the same `domain/inbox/mod.rs` and `api/mod.rs`.
+- 2026-09-25 — IB033 — The Phase 3 commit also carries the Phase 4 screen code: the screens share the store, copy and primitives files and were written together. Phase 4 boxes are ticked only after each artboard's simulator check. The review reminder settings API (`api/inbox_settings.rs`) was split out of `api/inbox_write.rs` to stay under the 600-line ceiling.
+- 2026-09-25 — IB033a — Split from IB033. The notification deep link (`memry.inbox` userInfo → `InboxLinks`) can only be checked end to end once IB23 schedules the review reminder.
 
 ## 7. Blockers
 

@@ -63,7 +63,7 @@ struct ProjectsListView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if editMode.isEditing {
-                    TaskSheetConfirmButton(label: Copy.doneReordering) { editMode = .inactive }
+                    SheetConfirmButton(label: Copy.doneReordering) { editMode = .inactive }
                         .accessibilityIdentifier("tasks.projects.reorder")
                 } else {
                     Button {

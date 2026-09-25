@@ -3111,6 +3111,13 @@ public protocol InboxProtocol: AnyObject, Sendable {
      */
     func typeCounts() throws  -> [InboxTypeCount]
     
+    func reviewSettings() throws  -> InboxReviewSettings
+    
+    /**
+     * Writes both keys (each carries its own field clock, §6.9).
+     */
+    func setReviewSettings(settings: InboxReviewSettings) throws 
+    
     func addTag(id: String, tag: String) throws 
     
     func archive(id: String) throws  -> InboxItemRecord
@@ -3440,6 +3447,27 @@ open func typeCounts()throws  -> [InboxTypeCount]  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+open func reviewSettings()throws  -> InboxReviewSettings  {
+    return try  FfiConverterTypeInboxReviewSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_review_settings(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Writes both keys (each carries its own field clock, §6.9).
+     */
+open func setReviewSettings(settings: InboxReviewSettings)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_set_review_settings(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeInboxReviewSettings_lower(settings),uniffiCallStatus
+    )
+}
 }
     
 open func addTag(id: String, tag: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -12421,6 +12449,71 @@ public func FfiConverterTypeInboxPatternRecord_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeInboxPatternRecord_lower(_ value: InboxPatternRecord) -> RustBuffer {
     return FfiConverterTypeInboxPatternRecord.lower(value)
+}
+
+
+/**
+ * The daily review reminder (spec 006 IB23, §5 F11): the synced
+ * `inbox.reviewReminderEnabled` / `inbox.reviewReminderTime`, at desktop's
+ * defaults (off, `18:00`) when no device has set them.
+ */
+public struct InboxReviewSettings: Equatable, Hashable {
+    public var enabled: Bool
+    /**
+     * 24h `HH:MM`, local wall clock.
+     */
+    public var time: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(enabled: Bool, 
+        /**
+         * 24h `HH:MM`, local wall clock.
+         */time: String) {
+        self.enabled = enabled
+        self.time = time
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxReviewSettings: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxReviewSettings: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxReviewSettings {
+        return
+            try InboxReviewSettings(
+                enabled: FfiConverterBool.read(from: &buf), 
+                time: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxReviewSettings, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.enabled, into: &buf)
+        FfiConverterString.write(value.time, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxReviewSettings_lift(_ buf: RustBuffer) throws -> InboxReviewSettings {
+    return try FfiConverterTypeInboxReviewSettings.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxReviewSettings_lower(_ value: InboxReviewSettings) -> RustBuffer {
+    return FfiConverterTypeInboxReviewSettings.lower(value)
 }
 
 
@@ -23768,6 +23861,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_type_counts() != 46362) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_review_settings() != 48359) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_set_review_settings() != 10488) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_add_tag() != 59207) {

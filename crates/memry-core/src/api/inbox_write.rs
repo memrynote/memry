@@ -90,7 +90,7 @@ fn metadata_object(json_text: Option<&str>) -> Result<Map<String, Value>, Storag
 }
 
 impl Inbox {
-    fn write<T, F>(&self, f: F) -> Result<T, StorageError>
+    pub(crate) fn write<T, F>(&self, f: F) -> Result<T, StorageError>
     where
         F: FnOnce(&rusqlite::Connection, &str, i64) -> Result<T, StorageError> + Send + 'static,
         T: Send + 'static,

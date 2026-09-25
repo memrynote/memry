@@ -28,6 +28,9 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
     /// Cross-tab navigation: search, note task blocks and reminder taps open a
     /// task through it.
     @State private var router = TasksRouter()
+    /// The More tab's stack, where the Inbox is pushed (spec 006 D1).
+    @State private var inboxRouter = InboxRouter()
+    private let inboxLinks = InboxLinks.shared
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
 
@@ -56,6 +59,11 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
             }
         }
         .environment(router)
+        .environment(inboxRouter)
+        // A tapped inbox notification or a Share hand-off opens the Inbox.
+        .onChange(of: inboxLinks.pending, initial: true) {
+            if inboxLinks.take() { inboxRouter.openInbox(in: router) }
+        }
         // A tapped reminder opens its task; a tap from a cold start waits in
         // `ReminderTaps` until this shell exists, hence `initial: true`.
         .onChange(of: reminderTaps.pending, initial: true) {
@@ -64,7 +72,10 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
         // The vault closed or the account signed out: no reminder text may
         // outlive it on the lock screen. The next vault refills its own window.
         .onDisappear {
-            Task { await ReminderScheduler.shared.clearAll() }
+            Task {
+                await ReminderScheduler.shared.clearAll()
+                await InboxNotifications.clearAll()
+            }
         }
         // The More tab holds the way out, so the shell stops drawing it over
         // every screen of the vault.
@@ -77,10 +88,14 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
 private struct MoreTab: View {
     @Environment(AccountViewModel.self) private var account: AccountViewModel?
     @Environment(TasksRouter.self) private var router
+    @Environment(InboxRouter.self) private var inboxRouter
+    @Environment(\.inboxStore) private var inboxStore
 
     var body: some View {
-        NavigationStack {
+        @Bindable var inboxRouter = inboxRouter
+        NavigationStack(path: $inboxRouter.path) {
             VStack(spacing: 0) {
+                InboxMoreRow(store: inboxStore) { inboxRouter.path = [.inbox] }
                 tasksSettingsRow
                 ContentUnavailableView {
                     Label("More", systemImage: "hourglass")
@@ -93,6 +108,9 @@ private struct MoreTab: View {
             }
             .navigationTitle("More")
             .background(Tokens.Canvas.background.color)
+            .navigationDestination(for: MoreRoute.self) { route in
+                InboxDestination(route: route, store: inboxStore)
+            }
         }
     }
 
