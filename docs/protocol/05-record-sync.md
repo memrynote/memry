@@ -574,7 +574,9 @@ instead of two (`apps/sync-server/src/services/sync.ts:1096`).
   outside a full sync, which is the socket wake and the periodic pull; startup,
   "Sync now" and a first sync are full syncs and do not ask
   (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:292`). The Rust core
-  does not ask yet (#2304).
+  asks on the first page of a pull that starts from a stored cursor, and not
+  on a first sync or a pull from no cursor, both of which read backlog
+  (`crates/memry-core/src/sync/pull.rs` `pull_first_page`, #2304).
 - **With `note_body`.** A request may both ask `inline=1` and declare
   `note_body` (#2295, §5.3). The page is then one merged page of records and
   body rows, clamped to 100 rows, and it carries both `inline` and

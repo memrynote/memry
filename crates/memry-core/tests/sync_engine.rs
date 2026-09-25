@@ -14,6 +14,7 @@
 //! | one malformed item                  | §5.14, §13.2 rule 5, FR-032, data-model §D.3 |
 //! | the page breaker                    | §5.14, both halves                          |
 //! | tombstones                          | §5.12, §5.12.1                              |
+//! | inline payloads on the first page   | §5.11.2, #2292                              |
 //! | the drawn edges of every pass       | data-model §C.3                             |
 //! | blocked policy parks the outbox     | chapter 11 §11.9                            |
 //! | two passes serialised               | §C.3, "two concurrent passes race the cursor" |
@@ -364,6 +365,187 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_decoded() {
     .expect("read back");
 }
 
+// ------------------------------------ inline payloads and a bad pull body
+
+fn seed_cursor(db: &Db, cursor: &str) {
+    let cursor = cursor.to_owned();
+    db.call_blocking(move |conn| {
+        store::write_cursor(conn, RECORD_CURSOR_SCOPE, Some(&cursor), 1)?;
+        // `run` restarts the feed when no declaration was recorded.
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+            [
+                memry_core::sync::pull::META_RECORD_DECLARATION,
+                Declaration::subscribed().header_value().as_str(),
+            ],
+        )
+        .expect("record the declaration");
+        Ok(())
+    })
+    .expect("seed the cursor");
+}
+
+fn stored_cursor(db: &Db) -> Option<String> {
+    db.call_blocking(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
+        .expect("read the cursor")
+}
+
+fn urls(transport: &FakeTransport) -> Vec<String> {
+    transport.calls().into_iter().map(|call| call.url).collect()
+}
+
+/// The ids a `POST /sync/pull` asked for.
+fn pulled_ids(transport: &FakeTransport) -> Vec<Vec<String>> {
+    transport
+        .calls_to("/sync/pull")
+        .into_iter()
+        .map(|call| {
+            let body: Json = serde_json::from_slice(&call.body.expect("a body")).expect("json");
+            serde_json::from_value(body["itemIds"].clone()).expect("itemIds")
+        })
+        .collect()
+}
+
+/// #2292: the first page of an incremental pull asks `inline=1`, applies what
+/// arrived inline, and pulls only the page ids no inline element names. An
+/// inline element that fails its envelope is corrupt, never re-pulled.
+#[tokio::test]
+async fn an_incremental_first_page_applies_inline_items_and_pulls_only_the_rest() {
+    let db = scratch_db("inline-mixed");
+    seed_cursor(&db, "10");
+    let mut broken = envelope("note-bad", "note");
+    broken.as_object_mut().unwrap().remove("signature");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({
+                "items": [
+                    {"id": "note-a", "type": "note"},
+                    {"id": "note-b", "type": "note"},
+                    {"id": "note-bad", "type": "note"},
+                ],
+                "deleted": ["note-gone"],
+                "hasMore": false,
+                "nextCursor": 20,
+                "inline": [
+                    envelope("note-a", "note"),
+                    broken,
+                    tombstone("note-gone", "note", 1_700_000_000_000i64),
+                ],
+            })
+            .to_string(),
+        ),
+        response(
+            200,
+            &json!({"items": [envelope("note-b", "note")]}).to_string(),
+        ),
+    ]);
+    let cipher = ScriptedCipher::new(&[
+        ("note-a", r#"{"title":"Inline"}"#),
+        ("note-b", r#"{"title":"Pulled"}"#),
+    ]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    let report = pull.pull_first_page().await.expect("the page");
+    assert_eq!(report.applied, 2);
+    assert_eq!(report.deleted, 1);
+    assert_eq!(report.corrupt, 1);
+    assert!(!report.refused);
+    assert_eq!(stored_cursor(&db).as_deref(), Some("20"));
+
+    assert!(
+        urls(&transport)[0].ends_with("/sync/changes?limit=500&cursor=10&inline=1"),
+        "{:?}",
+        urls(&transport)
+    );
+    assert_eq!(
+        pulled_ids(&transport),
+        vec![vec!["note-b".to_owned()]],
+        "only the id no inline element named"
+    );
+    db.call_blocking(|conn| {
+        assert!(sync_items::load(conn, "note", "note-a")?.is_some());
+        let gone = sync_items::load(conn, "note", "note-gone")?.expect("the tombstone");
+        assert_eq!(gone.deleted_at, Some(1_700_000_000_000));
+        let bad = sync_items::load(conn, "note", "note-bad")?.expect("the corrupt row");
+        assert!(bad.corrupt_reason.is_some());
+        Ok(())
+    })
+    .expect("read back");
+}
+
+/// #2292: a page that arrived entirely inline costs one request.
+#[tokio::test]
+async fn an_all_inline_page_makes_no_pull_request() {
+    let db = scratch_db("inline-all");
+    seed_cursor(&db, "10");
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({
+            "items": [{"id": "note-a", "type": "note"}],
+            "deleted": [],
+            "hasMore": false,
+            "nextCursor": 11,
+            "inline": [envelope("note-a", "note")],
+        })
+        .to_string(),
+    )]);
+    let cipher = ScriptedCipher::new(&[("note-a", r#"{"title":"Inline"}"#)]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    let report = pull.pull_first_page().await.expect("the page");
+    assert_eq!(report.applied, 1);
+    assert_eq!(transport.call_count(), 1, "no POST /sync/pull");
+    assert_eq!(stored_cursor(&db).as_deref(), Some("11"));
+}
+
+/// #2292: only a run's first page asks, and a server that ignores the query
+/// (no `inline` key) is pulled exactly as before.
+#[tokio::test]
+async fn only_the_first_page_of_an_incremental_run_asks_inline() {
+    let db = scratch_db("inline-first-page");
+    seed_cursor(&db, "10");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({
+                "items": [{"id": "note-a", "type": "note"}],
+                "deleted": [],
+                "hasMore": true,
+                "nextCursor": 20,
+            })
+            .to_string(),
+        ),
+        response(
+            200,
+            &json!({"items": [envelope("note-a", "note")]}).to_string(),
+        ),
+        response(200, &changes(&[], &[], "30")),
+    ]);
+    let cipher = ScriptedCipher::new(&[("note-a", r#"{"title":"Old server"}"#)]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    let report = pull.run(5).await.expect("the run");
+    assert_eq!(report.applied, 1);
+    assert_eq!(pulled_ids(&transport), vec![vec!["note-a".to_owned()]]);
+    let urls = urls(&transport);
+    assert!(urls[0].ends_with("&cursor=10&inline=1"), "{urls:?}");
+    assert!(urls[2].ends_with("&cursor=20"), "{urls:?}");
+    assert_eq!(stored_cursor(&db).as_deref(), Some("30"));
+}
+
+/// #2292: with no stored cursor the pull reads the feed from the start, which
+/// is backlog, so it keeps 500-ref pages (protocol 05 §5.11.2).
+#[tokio::test]
+async fn a_pull_with_no_stored_cursor_does_not_ask_inline() {
+    let db = scratch_db("inline-no-cursor");
+    let transport = FakeTransport::new(vec![response(200, &changes(&[], &[], "5"))]);
+    let pull = loop_for(transport.clone(), db.clone(), ScriptedCipher::new(&[]));
+
+    pull.pull_first_page().await.expect("the page");
+    assert!(urls(&transport)[0].ends_with("/sync/changes?limit=500"));
+}
+
 #[tokio::test]
 async fn a_pass_walks_the_edges_c3_draws_and_ends_idle() {
     let db = scratch_db("engine-idle");
@@ -630,7 +812,8 @@ async fn two_concurrent_passes_serialise_so_the_second_sees_the_first_cursor() {
         "the first pass started from no cursor: {urls:?}"
     );
     assert!(
-        urls[2].ends_with("/sync/changes?limit=500&cursor=100"),
+        // #2292: a first page with a stored cursor asks for inline payloads.
+        urls[2].ends_with("/sync/changes?limit=500&cursor=100&inline=1"),
         "the second pass read the cursor the first one committed: {urls:?}"
     );
 

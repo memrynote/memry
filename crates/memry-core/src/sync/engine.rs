@@ -235,9 +235,14 @@ impl SyncEngine {
     /// per page.
     async fn pull_pages(&self, trail: &mut Trail) -> (PullReport, bool) {
         let mut total = PullReport::default();
-        for _ in 0..MAX_PAGES_PER_PASS {
+        for index in 0..MAX_PAGES_PER_PASS {
             trail.enter(SyncState::Pulling);
-            let page = match self.pull.pull_page().await {
+            let page = if index == 0 {
+                self.pull.pull_first_page().await
+            } else {
+                self.pull.pull_page().await
+            };
+            let page = match page {
                 Ok(page) => page,
                 Err(error) => {
                     // §11.7.1: `Unentitled` is entered reactively on a `402`

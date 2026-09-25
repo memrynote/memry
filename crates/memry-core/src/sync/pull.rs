@@ -2,7 +2,9 @@
 //!
 //! One page is: `GET /sync/changes` for the refs, `POST /sync/pull` for the
 //! bodies of those refs **unioned with the page's `deleted` ids**, apply in
-//! rank order, then advance the cursor. In that order and no other.
+//! rank order, then advance the cursor. In that order and no other. The first
+//! page of an incremental run asks for inline payloads (§5.11.2), and only the
+//! ids no inline item names go to `POST /sync/pull`.
 //!
 //! Four rules shape every branch below, and three of them are about not losing
 //! a user's data on a page that went wrong:
@@ -130,6 +132,9 @@ struct ChangesPage {
     deleted: Vec<String>,
     has_more: bool,
     next_cursor: Option<String>,
+    /// `/sync/pull` items the page carried inline (§5.11.2), unparsed:
+    /// validation stays per item.
+    inline: Vec<Json>,
 }
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
@@ -182,8 +187,12 @@ impl PullLoop {
     pub async fn run(&self, max_pages: u32) -> Result<PullReport, PullError> {
         self.restart_on_new_declaration().await?;
         let mut total = PullReport::default();
-        for _ in 0..max_pages {
-            let page = self.pull_page().await?;
+        for index in 0..max_pages {
+            let page = if index == 0 {
+                self.pull_first_page().await?
+            } else {
+                self.pull_page().await?
+            };
             total.pages += page.pages;
             total.applied += page.applied;
             total.deleted += page.deleted;
@@ -248,12 +257,27 @@ impl PullLoop {
 
     /// One page: refs, bodies, apply, advance.
     pub async fn pull_page(&self) -> Result<PullReport, PullError> {
+        self.page(false).await
+    }
+
+    /// The first page of a run. When a cursor is stored the pull is
+    /// incremental, so it asks `GET /sync/changes?inline=1` (chapter 05
+    /// §5.11.2, #2292) and a small page applies without a `POST /sync/pull`.
+    /// With no cursor the feed is read from the start, which is backlog and
+    /// keeps 500-ref pages. A server that ignores the query sends no `inline`
+    /// and the page is pulled exactly as [`PullLoop::pull_page`] pulls it.
+    pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
+        self.page(true).await
+    }
+
+    async fn page(&self, ask_inline: bool) -> Result<PullReport, PullError> {
         let cursor = self
             .db
             .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
             .await?;
 
-        let page = self.fetch_changes(cursor.as_deref()).await?;
+        let inline = ask_inline && cursor.is_some();
+        let page = self.fetch_changes(cursor.as_deref(), inline).await?;
         let mut report = PullReport {
             pages: 1,
             has_more: page.has_more,
@@ -262,9 +286,23 @@ impl PullLoop {
 
         let ids = requested_ids(&page);
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
-        let mut typed: Vec<String> = Vec::new();
 
-        for chunk in ids.chunks(MAX_PULL_IDS) {
+        // §5.11.2: coverage is by id, so an id an inline element names is not
+        // pulled again, even when that element fails to decode.
+        let covered: Vec<&str> = page
+            .inline
+            .iter()
+            .filter_map(|item| item.get("id").and_then(Json::as_str))
+            .collect();
+        let fetch: Vec<String> = ids
+            .iter()
+            .filter(|id| !covered.contains(&id.as_str()))
+            .cloned()
+            .collect();
+
+        self.take_items(&page.inline, &mut report, &mut pending)
+            .await?;
+        for chunk in fetch.chunks(MAX_PULL_IDS) {
             let body = self.fetch_bodies(chunk).await?;
             let Some(items) = body.get("items").and_then(Json::as_array) else {
                 // §5.14: not a pull envelope at all. The chunk is dropped and
@@ -272,18 +310,7 @@ impl PullLoop {
                 report.dropped_pages += 1;
                 continue;
             };
-            for item in items {
-                match self.decode(item) {
-                    Ok(decoded) => {
-                        typed.push(decoded.item_type().to_owned());
-                        pending.push(decoded);
-                    }
-                    Err(corrupt) => {
-                        report.corrupt += 1;
-                        self.record_corrupt(item, &corrupt).await?;
-                    }
-                }
-            }
+            self.take_items(items, &mut report, &mut pending).await?;
         }
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
@@ -367,11 +394,38 @@ impl PullLoop {
         Ok(report)
     }
 
-    async fn fetch_changes(&self, cursor: Option<&str>) -> Result<ChangesPage, PullError> {
+    /// Decodes pulled items per item (§5.14): each one is pending or one
+    /// recorded corrupt item.
+    async fn take_items(
+        &self,
+        items: &[Json],
+        report: &mut PullReport,
+        pending: &mut Vec<Pending>,
+    ) -> Result<(), PullError> {
+        for item in items {
+            match self.decode(item) {
+                Ok(decoded) => pending.push(decoded),
+                Err(corrupt) => {
+                    report.corrupt += 1;
+                    self.record_corrupt(item, &corrupt).await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn fetch_changes(
+        &self,
+        cursor: Option<&str>,
+        inline: bool,
+    ) -> Result<ChangesPage, PullError> {
         let mut path = format!("/sync/changes?limit={PULL_PAGE_LIMIT}");
         if let Some(cursor) = cursor {
             path.push_str("&cursor=");
             path.push_str(cursor);
+        }
+        if inline {
+            path.push_str("&inline=1");
         }
         let body: Json = self.http.send_json(self.request("GET", &path)).await?;
         Ok(read_changes_page(&body))
@@ -548,6 +602,11 @@ fn read_changes_page(body: &Json) -> ChangesPage {
             Some(Json::Number(number)) => Some(number.to_string()),
             _ => None,
         },
+        inline: body
+            .get("inline")
+            .and_then(Json::as_array)
+            .cloned()
+            .unwrap_or_default(),
     }
 }
 
@@ -582,6 +641,7 @@ mod tests {
             deleted: vec!["b".into(), "c".into()],
             has_more: false,
             next_cursor: None,
+            inline: Vec::new(),
         };
         assert_eq!(requested_ids(&page), ["a", "b", "c"]);
     }
