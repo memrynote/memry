@@ -823,8 +823,10 @@
 .sticky-toolbar-enabled .bn-formatting-toolbar {
   order: -1;
   position: sticky !important;
-  /* Stick below the floating note chrome (var set by NoteLayout, 0 elsewhere) */
-  top: var(--note-chrome-height, 0px) !important;
+  /* Stick below the floating note chrome (var set by NoteLayout and the
+     journal page, 0 elsewhere), with a gap so the bar never sits on the
+     chrome's scroll-edge hairline. */
+  top: calc(var(--note-chrome-height, 0px) + 8px) !important;
   /* position + z-index makes this element a stacking context, so its
      un-portaled Select/Tooltip/Popover popper content (see the ::before
      comment below) paints within THIS context's z-order, not the viewport's.
@@ -839,8 +841,8 @@
   max-width: none !important;
   overflow: visible !important;
   flex-wrap: wrap !important;
-  margin: 0 0 8px 0 !important;
-  padding: 4px 0 8px 0 !important;
+  margin: 0 0 12px 0 !important;
+  padding: 3px 6px !important;
   /* Background lives on ::before (below) rather than here: a background/
      backdrop-filter on this element would make it the CSS containing block
      for its own descendants' position: fixed content. BlockNote's shadcn
@@ -860,11 +862,23 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  /* Same solid color as the note body — the bar reads as part of the note,
-     not a separate floating panel; a hairline marks where the text scrolls
-     under it. */
-  background: var(--background);
-  box-shadow: inset 0 -1px 0 var(--border);
+  /* Same translucent material as .note-chrome, as a floating pill. A
+     backdrop-filter on a pseudo-element does not make the toolbar a
+     containing block, so the un-portaled poppers above stay unaffected. */
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background) 65%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.12);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sticky-toolbar-enabled .bn-formatting-toolbar::before {
+    background: var(--background);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar > div {
