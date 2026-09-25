@@ -272,10 +272,12 @@ import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { NOTE_MAX_BYTES } from '@memry/shared/markdown-class'
 import { CrdtProvider, getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import type { SnapshotPushFn } from './crdt-provider'
-// Deliberately NOT mocked: the point of the signed-out suite below is that the
-// recorder and the replay meet on the same durable store, so both halves run
-// for real against the temp userData dir.
-import { drainPendingCrdtNotes, readPendingCrdtNotes } from './crdt-pending-notes'
+// Deliberately NOT mocked: the signed-out suite below writes full-state rows
+// into a real sync_queue and flushes them through a real outbox.
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
+import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { NoteBodyOutbox, type NoteBodyPushFn } from './note-body-outbox'
 // The real toggle, so the local-only suite crosses the seam for real.
 import { setNoteLocalOnlyState } from '../notes/runtime-effects'
 
@@ -307,7 +309,11 @@ const makeRemoteUpdate = (text: string): Uint8Array => {
 
 describe('CrdtProvider', () => {
   let provider: CrdtProvider
-  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
+  let queue: {
+    enqueue: ReturnType<typeof vi.fn>
+    enqueueFullState: ReturnType<typeof vi.fn>
+    dropNote: ReturnType<typeof vi.fn>
+  }
   let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
 
   beforeEach(async () => {
@@ -338,7 +344,7 @@ describe('CrdtProvider', () => {
       }
     )
     mocks.compactYDoc.mockReturnValue(null)
-    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
+    queue = { enqueue: vi.fn(), enqueueFullState: vi.fn(), dropNote: vi.fn() }
     pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     provider = new CrdtProvider()
     await provider.init(queue as any, pushSnapshot)
@@ -1543,25 +1549,27 @@ describe('CrdtProvider', () => {
   })
 
   // An edit made with no session reaches the doc and the local store — that has
-  // been true since the provider stopped being gated on a session. What it did
-  // NOT reach was anything that remembers the server is owed it: `init(queue)`
-  // runs only from startSyncRuntime, so signed out there is no update queue,
-  // and the queue's own shutdown recorder can only report updates it accepted.
-  // The edit was safe locally and invisible to every other device forever.
+  // been true since the provider stopped being gated on a session. What it must
+  // also reach is something that remembers the server is owed it: `init(outbox)`
+  // runs only from startSyncRuntime, so signed out there is no outbox, and the
+  // edit would be safe locally and invisible to every other device forever.
   describe('signed-out CRDT backlog', () => {
-    const pendingStoreFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+    let testDb: TestDatabaseResult
+    const owedNotes = (): string[] =>
+      new SyncQueueManager(testDb.db as unknown as DrizzleDb).listNoteBodyNoteIds()
 
     beforeEach(() => {
-      fs.rmSync(pendingStoreFile(), { force: true })
+      testDb = createTestDataDb()
+      mocks.dataDb = testDb.db
     })
 
     afterEach(() => {
-      fs.rmSync(pendingStoreFile(), { force: true })
+      testDb.close()
     })
 
     it('pushes an edit made with no session once the session comes back, with no further input', async () => {
       // #given the provider as it exists after sign-out: persistence re-opened
-      // (session-teardown does that), no update queue, no snapshot push fn
+      // (session-teardown does that), no outbox, no snapshot push fn
       const signedOut = new CrdtProvider()
       await signedOut.init()
 
@@ -1569,155 +1577,66 @@ describe('CrdtProvider', () => {
       const doc = await signedOut.open('note-1', 1, { skipSeed: true })
       doc.getMap('meta').set('title', 'typed while signed out')
 
-      // #then nothing in the live sync path saw it — there is nothing to see it
+      // #then nothing in the live sync path saw it, and the debt is durable
       expect(queue.enqueue).not.toHaveBeenCalled()
-      // #and the debt is durable, which is the only thing that can outlive this
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      expect(owedNotes()).toEqual(['note-1'])
 
-      // #when the user signs back in. startSyncRuntime calls init() on THIS
-      // instance — sign-out already reset the singleton, sign-in does not — and
-      // then fires the replay. No editing, no clicking, no restart.
-      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
-      await signedOut.init(queue as any, pushAfterSignIn)
-      const replayed = await drainPendingCrdtNotes({
-        mergeRemote: async () => true,
-        pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
-        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
+      // #when the user signs back in: startSyncRuntime hands THIS instance an
+      // outbox over the same vault database and enables full-state flushes
+      const push = vi.fn<NoteBodyPushFn>().mockResolvedValue(undefined)
+      const outbox = new NoteBodyOutbox({
+        queue: new SyncQueueManager(testDb.db as unknown as DrizzleDb),
+        push
       })
+      await signedOut.init(outbox, pushSnapshot)
+      outbox.start()
+      outbox.enableFullStateFlush((noteId) => signedOut.readSyncableState(noteId))
 
-      // #then the note's full state reaches the server. Full state is the only
-      // shape available: a queue-less edit produced no incrementals to replay.
-      expect(replayed).toEqual({ cleared: 1, retained: 0 })
-      expect(pushAfterSignIn).toHaveBeenCalledTimes(1)
-      expect(pushAfterSignIn.mock.calls[0]![0]).toBe('note-1')
-
+      // #then the note's full state reaches the server as an update
+      await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(1))
+      expect(push.mock.calls[0]![0]).toBe('note-1')
       const received = new Y.Doc()
-      Y.applyUpdate(received, pushAfterSignIn.mock.calls[0]![1])
+      for (const update of push.mock.calls[0]![1]) Y.applyUpdate(received, update)
       expect(received.getMap('meta').get('title')).toBe('typed while signed out')
+      expect(pushSnapshot).not.toHaveBeenCalled()
 
-      // #and the debt is settled, so the next replay does not pay for it again
-      expect(readPendingCrdtNotes()).toEqual([])
-
+      // #and the debt is settled
+      await vi.waitFor(() => expect(owedNotes()).toEqual([]))
+      outbox.stop()
       await signedOut.destroy()
     })
 
-    // The server prunes every crdt_updates row at or below a stored snapshot's
-    // sequence number, so a snapshot is an assertion that it contains
-    // everything up to that point. Push one for a note whose peer edits this
-    // device has not merged and those edits are deleted server-side AND absent
-    // from the snapshot — destroyed for every device. The pending list is
-    // precisely the notes this device edited while it could not push, so it is
-    // also the population most likely to have diverged from a peer.
-    it('keeps both sides of a note edited on two devices across a sign-out', async () => {
-      // #given the same note edited on the peer while this device was signed out
-      const peer = new Y.Doc()
-      peer.getMap('meta').set('fromPeer', 'edited on device A')
-      const peerUpdate = Y.encodeStateAsUpdate(peer)
-
-      // #and this device's own signed-out edit, recorded with no queue
-      const signedOut = new CrdtProvider()
-      await signedOut.init()
-      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
-      doc.getMap('meta').set('fromThisDevice', 'edited while signed out')
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
-
-      // #when the user signs in and the replay runs. mergeRemote stands in for
-      // engine.mergeRemoteCrdtForNote, whose only effect on the doc is the
-      // applyRemoteUpdate this performs.
-      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
-      await signedOut.init(queue as any, pushAfterSignIn)
-
-      const order: string[] = []
-      await drainPendingCrdtNotes({
-        mergeRemote: async (noteId) => {
-          order.push('merge')
-          await signedOut.open(noteId, undefined, { skipSeed: true })
-          signedOut.applyRemoteUpdate(noteId, peerUpdate)
-          return true
-        },
-        pushSnapshot: async (noteId) => {
-          order.push('push')
-          return signedOut.pushSnapshotForNote(noteId)
-        },
-        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
-      })
-
-      // #then the pull happened first — after the push it would be worthless,
-      // the destructive prune has already run server-side by then.
-      expect(order).toEqual(['merge', 'push'])
-
-      // #and the snapshot the server is told to keep carries BOTH edits, so the
-      // prune that follows it deletes nothing that is not already inside it.
-      expect(pushAfterSignIn).toHaveBeenCalledTimes(1)
-      const stored = new Y.Doc()
-      Y.applyUpdate(stored, pushAfterSignIn.mock.calls[0]![1])
-      expect(stored.getMap('meta').get('fromThisDevice')).toBe('edited while signed out')
-      expect(stored.getMap('meta').get('fromPeer')).toBe('edited on device A')
-
-      await signedOut.destroy()
-    })
-
-    it('does not push a note whose pre-push pull failed, and keeps it pending', async () => {
-      const signedOut = new CrdtProvider()
-      await signedOut.init()
-      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
-      doc.getMap('meta').set('title', 'typed while signed out')
-
-      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
-      await signedOut.init(queue as any, pushAfterSignIn)
-
-      const replayed = await drainPendingCrdtNotes({
-        // What an offline start, an expired token, or a 429 on the baseline GET
-        // looks like from here.
-        mergeRemote: async () => false,
-        pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
-        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
-      })
-
-      expect(pushAfterSignIn).not.toHaveBeenCalled()
-      expect(replayed).toEqual({ cleared: 0, retained: 1 })
-      // Still owed, so the next start or reconnect tries again rather than
-      // dropping this device's signed-out edit.
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
-
-      await signedOut.destroy()
-    })
-
-    it('records nothing when there is an update queue to take the edit', async () => {
-      // The queue owns the update from here: it flushes it as an incremental,
-      // and its own stop()/budget paths record it if that flush never lands.
-      // Recording here too would mean a redundant full-snapshot push per note.
+    it('records nothing when there is an outbox to take the edit', async () => {
       const doc = await provider.open('note-1', 1, { skipSeed: true })
       doc.getMap('meta').set('title', 'typed while signed in')
 
       expect(queue.enqueue).toHaveBeenCalledTimes(1)
-      expect(readPendingCrdtNotes()).toEqual([])
+      expect(owedNotes()).toEqual([])
     })
 
     it('writes once per note touched, not once per update', async () => {
-      // This fires on roughly every keystroke, and recordPendingCrdtNotes is a
-      // synchronous read-modify-write of a file in userData. Per update that is
-      // a disk write per keystroke; per note it is negligible.
+      // This fires on roughly every keystroke. One full-state row per note
+      // covers every later edit to it, so a row per update would only grow
+      // sync_queue on an install that is not syncing.
       const signedOut = new CrdtProvider()
       await signedOut.init()
       const doc = await signedOut.open('note-1', 1, { skipSeed: true })
 
       doc.getMap('meta').set('title', 'first')
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      expect(owedNotes()).toEqual(['note-1'])
 
-      // Blank the store behind the provider's back: any further write for this
-      // note would put the id back, so the file staying empty is proof that no
-      // second write happened.
-      fs.writeFileSync(pendingStoreFile(), '[]', 'utf8')
+      // Remove the row behind the provider's back: any further write for this
+      // note would put it back, so its absence proves no second write happened.
+      new SyncQueueManager(testDb.db as unknown as DrizzleDb).removeNoteBody('note-1')
       for (const title of ['second', 'third', 'fourth', 'fifth']) {
         doc.getMap('meta').set('title', title)
       }
-      expect(readPendingCrdtNotes()).toEqual([])
+      expect(owedNotes()).toEqual([])
 
       // A different note is still a different debt.
       const other = await signedOut.open('note-2', 1, { skipSeed: true })
       other.getMap('meta').set('title', 'other note')
-      expect(readPendingCrdtNotes()).toEqual(['note-2'])
+      expect(owedNotes()).toEqual(['note-2'])
 
       await signedOut.destroy()
     })
@@ -1730,7 +1649,9 @@ describe('CrdtProvider', () => {
   // confidentiality breach, but "local-only" reads as a promise, and the UI hid
   // the gap because the metadata genuinely did not sync.
   describe('a local-only note', () => {
-    const pendingStoreFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+    let testDb: TestDatabaseResult
+    const owedNotes = (): string[] =>
+      new SyncQueueManager(testDb.db as unknown as DrizzleDb).listNoteBodyNoteIds()
 
     const noteRow = (localOnly: boolean): Record<string, unknown> => ({
       id: 'note-1',
@@ -1741,11 +1662,12 @@ describe('CrdtProvider', () => {
     })
 
     beforeEach(() => {
-      fs.rmSync(pendingStoreFile(), { force: true })
+      testDb = createTestDataDb()
+      mocks.dataDb = testDb.db
     })
 
     afterEach(() => {
-      fs.rmSync(pendingStoreFile(), { force: true })
+      testDb.close()
     })
 
     it('never hands an edit to the update queue', async () => {
@@ -1768,7 +1690,7 @@ describe('CrdtProvider', () => {
 
       doc.getMap('meta').set('title', 'typed while signed out')
 
-      expect(readPendingCrdtNotes()).toEqual([])
+      expect(owedNotes()).toEqual([])
       await signedOut.destroy()
     })
 
@@ -1889,23 +1811,14 @@ describe('CrdtProvider', () => {
       // `operation === 'create'` and this raised an `update`, an update payload
       // carries `content: null`, and the vault sweep only pulls — so an
       // incremental carrying the last keystroke alone would leave every peer
-      // with a body frozen where the server last saw it.
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
-      const replayed = await drainPendingCrdtNotes({
-        mergeRemote: async () => true,
-        pushSnapshot: (noteId) => singleton.pushSnapshotForNote(noteId),
-        isSyncable: (noteId) => singleton.validateNoteForCrdt(noteId).ok
-      })
-
-      expect(replayed).toEqual({ cleared: 1, retained: 0 })
-      const received = new Y.Doc()
-      Y.applyUpdate(received, pushSnapshot.mock.calls.at(-1)![1])
-      expect(received.getMap('meta').get('title')).toBe('written after un-toggling')
+      // with a body frozen where the server last saw it. A full-state row
+      // carries the whole doc instead.
+      expect(queue.enqueueFullState).toHaveBeenCalledWith('note-1')
 
       await singleton.destroy()
     })
 
-    it('hands its body to the merge-first replay when the toggle clears, not to a blind close()', async () => {
+    it('hands its body to a full-state outbox row when the toggle clears, not to a blind close()', async () => {
       const singleton = getCrdtProvider()
       await singleton.init(queue as never, pushSnapshot)
       const row = noteRow(true)
@@ -1924,18 +1837,17 @@ describe('CrdtProvider', () => {
       // close() pushes blind — it never pulls first — and a snapshot asserts
       // completeness, so the server prunes every incremental below it. A note
       // that has just stopped being local-only is the population most likely to
-      // have diverged from a peer, so its body goes up through
-      // drainPendingCrdtNotes, which merges before it pushes.
+      // have diverged from a peer, so its body goes up as a full-state row,
+      // which the outbox pushes after merging the server's state.
       expect(pushSnapshot).not.toHaveBeenCalled()
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      expect(queue.enqueueFullState).toHaveBeenCalledWith('note-1')
       await singleton.destroy()
     })
 
-    it('empties the update queue buffer the toggle cannot otherwise reach', async () => {
-      // The guard is at enqueue time (`onDocUpdate`) but the queue flushes on a
-      // ~1s loop, so everything typed in the second before the toggle is already
-      // buffered and past it. `setNoteLocalOnlyState` clears the pending-note
-      // store and zeroes the snapshot debt; neither reaches into the buffer.
+    it('drops the queued body rows the toggle cannot otherwise reach', async () => {
+      // The guard is at enqueue time (`onDocUpdate`) but the outbox flushes on
+      // a ~1s window, so everything typed in the second before the toggle is
+      // already queued and past it.
       const singleton = getCrdtProvider()
       await singleton.init(queue as never, pushSnapshot)
 
@@ -1958,10 +1870,10 @@ describe('CrdtProvider', () => {
       await singleton.destroy()
     })
 
-    it('drops the queue buffer even for a note whose doc the LRU already evicted', async () => {
+    it('drops the queued body rows even for a note whose doc the LRU already evicted', async () => {
       // `setNoteLocalOnly` returns early when there is no open doc, so the drop
       // has to happen ahead of that lookup: a note can be enqueued and then have
-      // its doc closed underneath it, leaving the buffer as the only holder.
+      // its doc closed underneath it, leaving the rows as the only holder.
       const singleton = getCrdtProvider()
       await singleton.init(queue as never, pushSnapshot)
 
@@ -1978,9 +1890,9 @@ describe('CrdtProvider', () => {
     })
 
     it('drops a CRDT backlog the server is no longer owed when the real toggle sets it', async () => {
-      // The CRDT twin of `removePendingNoteSyncItems`. Nothing is lost: the
-      // updates stay in the local store, and clearing the flag re-records the
-      // note, whose replay pushes full doc state and supersedes them.
+      // The CRDT twin of `removePendingNoteSyncItems`, with no sync runtime.
+      // Nothing is lost: the updates stay in the local store, and clearing the
+      // flag queues a full-state row that supersedes them.
       const singleton = getCrdtProvider()
       await singleton.init()
 
@@ -1992,11 +1904,11 @@ describe('CrdtProvider', () => {
 
       const doc = await singleton.open('note-1', undefined, { skipSeed: true })
       doc.getMap('meta').set('title', 'typed while signed out')
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      expect(owedNotes()).toEqual(['note-1'])
 
       setNoteLocalOnlyState('note-1', true)
 
-      expect(readPendingCrdtNotes()).toEqual([])
+      expect(owedNotes()).toEqual([])
       expect(mocks.removePendingNoteSyncItems).toHaveBeenCalledWith('note-1')
       await singleton.destroy()
     })
@@ -2470,7 +2382,11 @@ describe('CrdtProvider persistence resilience', () => {
 
 describe('CrdtProvider bootstrap doc-capacity raise', () => {
   let provider: CrdtProvider
-  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
+  let queue: {
+    enqueue: ReturnType<typeof vi.fn>
+    enqueueFullState: ReturnType<typeof vi.fn>
+    dropNote: ReturnType<typeof vi.fn>
+  }
   let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
 
   beforeEach(async () => {
@@ -2500,7 +2416,7 @@ describe('CrdtProvider bootstrap doc-capacity raise', () => {
       }
     )
     mocks.compactYDoc.mockReturnValue(null)
-    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
+    queue = { enqueue: vi.fn(), enqueueFullState: vi.fn(), dropNote: vi.fn() }
     pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     // Steady state of 2, the smallest size that can prove a raise above it.
     provider = new CrdtProvider({ inactiveDocLimit: 2 })
@@ -2572,7 +2488,11 @@ describe('CrdtProvider bootstrap doc-capacity raise', () => {
  */
 describe('CrdtProvider batched snapshot pushes', () => {
   let provider: CrdtProvider
-  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
+  let queue: {
+    enqueue: ReturnType<typeof vi.fn>
+    enqueueFullState: ReturnType<typeof vi.fn>
+    dropNote: ReturnType<typeof vi.fn>
+  }
   let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
   let pushBatch: ReturnType<typeof vi.fn>
   /** noteId -> accepted. Anything absent is accepted, like a healthy server. */
@@ -2607,7 +2527,7 @@ describe('CrdtProvider batched snapshot pushes', () => {
     )
     mocks.compactYDoc.mockReturnValue(null)
 
-    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
+    queue = { enqueue: vi.fn(), enqueueFullState: vi.fn(), dropNote: vi.fn() }
     pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     rejected = new Set<string>()
     pushBatch = vi.fn(async (entries: Array<{ noteId: string }>) => {

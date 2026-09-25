@@ -229,7 +229,7 @@ and a client that breaks any of them reintroduces divergence.**
   (`apps/desktop/src/main/sync/engine/conflict-report.ts:56-61`, called from
   `apps/desktop/src/main/sync/engine/pull-coordinator.ts:861-864`, `:559-562`,
   `:648-651` and `:942`), and an enqueue requests a push
-  (`apps/desktop/src/main/sync/runtime.ts:949`). The queued row is rebuilt from
+  (`apps/desktop/src/main/sync/runtime.ts:893`). The queued row is rebuilt from
   the live — merged — row by P2, and its union clock has one component the
   stored row lacks, so `detectReplay` accepts it.
 - **P4 — an EQUAL incoming clock applies the remote row, it does not skip it.**

@@ -394,8 +394,8 @@ describe('SyncEngine', () => {
         hasMore: false
       })
 
-      // #when — the exact entry point drainPendingCrdtNotes uses before it
-      // decides to push
+      // #when — the exact entry point the note-body outbox's full-state
+      // reader uses before it pushes
       await engine.mergeRemoteCrdtForNote('note-1')
 
       // #then a `return false` here sends the note back to /sync/crdt/snapshot,

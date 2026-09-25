@@ -16,7 +16,7 @@ const EXPLICIT = {
   'sync/websocket.ts': 'HttpClient',
   'sync/certificate-pinning.ts': 'CertificatePinning',
   'sync/crdt-persistence.ts': 'CrdtPersistence',
-  'sync/crdt-pending-notes.ts': 'CrdtPersistence',
+  'sync/note-body-outbox.ts': 'CrdtPersistence',
   'sync/crdt-store-path.ts': 'CrdtStorePath',
   'sync/crdt-store-move.ts': 'CrdtStorePath',
   'sync/crdt-preflight.ts': 'CrdtPreflight',
@@ -70,7 +70,8 @@ for (const r of roots) {
     let seam = EXPLICIT[k]
     // The adapter layer is the sanctioned platform edge (T020): electron/node
     // imports are legal there by design, not an extraction gap.
-    if (!seam && k.startsWith('sync/adapters/')) seam = 'desktop adapter layer (platform imports legal)'
+    if (!seam && k.startsWith('sync/adapters/'))
+      seam = 'desktop adapter layer (platform imports legal)'
     if (!seam) {
       if (specs.every(([s, t]) => s.startsWith('drizzle-orm/better-sqlite3') && t))
         seam = 'none — Drizzle type only'

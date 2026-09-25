@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { createTestDataDb, trackPreparedSql, type TestDatabaseResult } from '@tests/utils/test-db'
-import { DEFAULT_MAX_ATTEMPTS, SyncQueueManager, type EnqueueInput } from '@memry/sync-client/queue'
+import {
+  DEFAULT_MAX_ATTEMPTS,
+  NOTE_BODY_FULL_STATE_PAYLOAD,
+  SyncQueueManager,
+  type EnqueueInput
+} from '@memry/sync-client/queue'
 
 const makeInput = (overrides: Partial<EnqueueInput> = {}): EnqueueInput => ({
   type: 'note',
@@ -639,6 +644,57 @@ describe('SyncQueueManager', () => {
       const items = queue.dequeue(100)
       expect(pending).toBe(items.length)
       expect(items.length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  // #2298: a note's CRDT body rides sync_queue as `note_body` rows. `enqueue`
+  // coalesces on (itemId, type) and overwrites the payload, which would drop
+  // every unflushed Yjs update but the last, so these rows are append-only.
+  describe('note body rows', () => {
+    it('keeps two updates enqueued for one note before a flush as two rows, in order (#2298)', () => {
+      queue.enqueueNoteBody('note-1', 'dXBkYXRlLTE=')
+      queue.enqueueNoteBody('note-1', 'dXBkYXRlLTI=')
+
+      expect(queue.takeNoteBodyRows('note-1', 10).map((row) => row.payload)).toEqual([
+        'dXBkYXRlLTE=',
+        'dXBkYXRlLTI='
+      ])
+      expect(queue.countNoteBodyRows()).toBe(2)
+    })
+
+    it('keeps note body rows away from every record push method (#2298)', () => {
+      queue.enqueue(makeInput({ itemId: 'note-1', operation: 'update' }))
+      queue.enqueueNoteBody('note-1', 'dXBkYXRl')
+
+      expect(queue.dequeue(10).map((row) => row.type)).toEqual(['note'])
+      expect(queue.peek(10).map((row) => row.type)).toEqual(['note'])
+      expect(queue.getPendingCount()).toBe(1)
+      expect(queue.getRawPendingCount()).toBe(1)
+      expect(queue.getSize()).toBe(1)
+      expect(queue.getQueueStats()).toMatchObject({ pending: 1, total: 1 })
+      expect(queue.countNoteBodyRows()).toBe(1)
+    })
+
+    it('holds at most one unsent full-state row per note (#2298)', () => {
+      queue.enqueueNoteBody('note-1', NOTE_BODY_FULL_STATE_PAYLOAD)
+      queue.enqueueNoteBody('note-1', NOTE_BODY_FULL_STATE_PAYLOAD)
+      queue.enqueueNoteBody('note-2', NOTE_BODY_FULL_STATE_PAYLOAD)
+
+      expect(queue.takeNoteBodyRows('note-1', 10)).toHaveLength(1)
+      expect(queue.listNoteBodyNoteIds().sort()).toEqual(['note-1', 'note-2'])
+    })
+
+    it('removes exactly the acknowledged rows and leaves a later one queued', () => {
+      queue.enqueueNoteBody('note-1', 'Zmlyc3Q=')
+      const [pushed] = queue.takeNoteBodyRows('note-1', 10)
+      queue.enqueueNoteBody('note-1', 'c2Vjb25k')
+
+      queue.removeNoteBodyRows([pushed.id])
+
+      expect(queue.takeNoteBodyRows('note-1', 10).map((row) => row.payload)).toEqual(['c2Vjb25k'])
+      expect(queue.hasNoteBody('note-1')).toBe(true)
+      expect(queue.removeNoteBody('note-1')).toBe(1)
+      expect(queue.hasNoteBody('note-1')).toBe(false)
     })
   })
 })

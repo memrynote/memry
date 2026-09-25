@@ -11,7 +11,7 @@ import {
 import { readMarkdownSourceFromYDoc } from '@memry/shared/markdown-source'
 import { getCrdtProvider, resetCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
-import { getCrdtQueue, getNetworkMonitor, startSyncRuntime } from './sync/runtime'
+import { getNetworkMonitor, getNoteBodyOutbox, startSyncRuntime } from './sync/runtime'
 import { syncStateTestHooks, type SyncStateTestHooks } from './sync/sync-test-hooks'
 import { getDatabase } from './database'
 import { sql } from 'drizzle-orm'
@@ -336,7 +336,7 @@ export function registerTestHooks(): void {
     },
 
     async getCrdtPendingCount(): Promise<number> {
-      return getCrdtQueue()?.getOutstandingCount() ?? 0
+      return getNoteBodyOutbox()?.getOutstandingCount() ?? 0
     },
 
     async seedCalendarProjection(input: CalendarProjectionSeedInput): Promise<void> {

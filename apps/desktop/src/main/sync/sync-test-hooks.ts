@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { getSyncEngine, getSyncWebSocket } from './runtime'
+import { getSyncEngine, getSyncWebSocket, startSyncRuntime, stopSyncRuntime } from './runtime'
 import type { SyncEngine } from './engine'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
 import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
@@ -119,6 +119,16 @@ export const syncStateTestHooks = {
 
   async getSyncWakeProbeForTests(): Promise<SyncWakeProbeCounts> {
     return { wakes: wakeProbe.wakes, pulls: wakeProbe.pulls }
+  },
+
+  /**
+   * Stop and start this device's sync runtime without the shutdown snapshot
+   * push, so queued CRDT body rows are the only carrier of edits that had not
+   * flushed (#2298).
+   */
+  async restartSyncRuntimeForTests(): Promise<void> {
+    await stopSyncRuntime({ skipFinalSync: true })
+    await startSyncRuntime()
   }
 }
 

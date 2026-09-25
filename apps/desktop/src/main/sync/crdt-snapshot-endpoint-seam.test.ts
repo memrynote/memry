@@ -39,17 +39,17 @@ const runtimeMocks = vi.hoisted(() => {
     })
   }
 
-  class CrdtUpdateQueue {
-    static instances: CrdtUpdateQueue[] = []
-    onBatch: ((noteId: string, updates: Uint8Array[]) => Promise<void>) | null = null
-    start = vi.fn((cb: (noteId: string, updates: Uint8Array[]) => Promise<void>) => {
-      this.onBatch = cb
-    })
+  class NoteBodyOutbox {
+    static instances: NoteBodyOutbox[] = []
+    onBatch: (noteId: string, updates: Uint8Array[]) => Promise<void>
+    start = vi.fn()
     pause = vi.fn()
     resume = vi.fn()
     stop = vi.fn()
-    constructor() {
-      CrdtUpdateQueue.instances.push(this)
+    enableFullStateFlush = vi.fn()
+    constructor(deps: { push: (noteId: string, updates: Uint8Array[]) => Promise<void> }) {
+      this.onBatch = deps.push
+      NoteBodyOutbox.instances.push(this)
     }
   }
 
@@ -99,7 +99,7 @@ const runtimeMocks = vi.hoisted(() => {
   return {
     SyncServerError,
     SyncQueueManager,
-    CrdtUpdateQueue,
+    NoteBodyOutbox,
     NetworkMonitor,
     WebSocketManager,
     SyncWorkerBridge,
@@ -168,14 +168,7 @@ const runtimeMocks = vi.hoisted(() => {
     createCrdtSyncAdapter: vi.fn((type: string, options: unknown) => ({ type, options })),
     getRemoteSyncAdapter: vi.fn((type: string) => ({ remote: type })),
     getDeviceSigningKey: vi.fn(),
-    recordPendingCrdtNotes: vi.fn(),
-    drainPendingCrdtNotes: vi.fn(
-      async (_deps: {
-        mergeRemote: (noteId: string) => Promise<boolean>
-        pushSnapshot: (noteId: string) => Promise<boolean>
-        isSyncable: (noteId: string) => boolean
-      }) => ({ cleared: 0, retained: 0 })
-    ),
+    importLegacyPendingCrdtNotes: vi.fn(() => 0),
     resetCrdtProvider: vi.fn(),
     /** Notes the engine reports as holding server state it could not verify. */
     unverifiedCrdtNotes: new Set<string>(),
@@ -206,7 +199,7 @@ const runtimeMocks = vi.hoisted(() => {
 })
 
 vi.mock('electron', () => ({
-  app: { getVersion: vi.fn(() => '1.2.3') },
+  app: { getVersion: vi.fn(() => '1.2.3'), getPath: vi.fn(() => '/user-data') },
   BrowserWindow: {
     getAllWindows: vi.fn(() => [
       {
@@ -303,7 +296,10 @@ vi.mock('../telemetry/diagnostics', () => ({
   trackMainError: runtimeMocks.trackMainError
 }))
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
-vi.mock('./crdt-queue', () => ({ CrdtUpdateQueue: runtimeMocks.CrdtUpdateQueue }))
+vi.mock('./note-body-outbox', () => ({
+  NoteBodyOutbox: runtimeMocks.NoteBodyOutbox,
+  importLegacyPendingCrdtNotes: runtimeMocks.importLegacyPendingCrdtNotes
+}))
 
 vi.mock('@memry/sync-client/task-sync', () => ({
   initTaskSyncService: runtimeMocks.taskSync.init,
@@ -412,11 +408,6 @@ vi.mock('./device-keys', () => ({
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: vi.fn(() => runtimeMocks.crdtProvider),
   resetCrdtProvider: runtimeMocks.resetCrdtProvider
-}))
-
-vi.mock('./crdt-pending-notes', () => ({
-  recordPendingCrdtNotes: runtimeMocks.recordPendingCrdtNotes,
-  drainPendingCrdtNotes: runtimeMocks.drainPendingCrdtNotes
 }))
 
 vi.mock('./dirty-recovery', () => ({
@@ -528,7 +519,7 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     vi.resetModules()
     vi.clearAllMocks()
     runtimeMocks.SyncQueueManager.instances = []
-    runtimeMocks.CrdtUpdateQueue.instances = []
+    runtimeMocks.NoteBodyOutbox.instances = []
     runtimeMocks.NetworkMonitor.instances = []
     runtimeMocks.WebSocketManager.instances = []
     runtimeMocks.SyncWorkerBridge.instances = []

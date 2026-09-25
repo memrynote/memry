@@ -297,6 +297,45 @@ device-local work (`apps/sync-server/src/routes/sync.ts:582-620`):
 | `crdt_pull`       | 600 per 60 s (`:605-607`) |
 | `crdt_batch_pull` | 30 per 60 s (`:616-618`)  |
 
+### 7.10.1 The client push outbox (#2298)
+
+Client-side only; the wire shape is the §7.4.1 update push, unchanged.
+
+**A client MUST make every local update durable before it is considered
+queued**, and MUST NOT drop it until a push carrying it has succeeded. Desktop
+writes one `sync_queue` row per Yjs update, `type = 'note_body'`, payload the
+base64 update, append-only (`packages/sync-client/src/queue.ts:400`). Rows are
+never coalesced into each other: the record queue's coalescing overwrites the
+payload, which for updates would keep only the last unflushed one. The record
+push (chapter 05) never dequeues these rows
+(`packages/sync-client/src/queue.ts:51`).
+
+**Flush.** Per document, the outbox reads its rows in enqueue order, packs them
+into `Y.mergeUpdates` runs of at most 256 KiB, sends up to 512 KiB per flush to
+`POST /sync/crdt/updates`, and deletes exactly the rows it sent once the push
+succeeds (`apps/desktop/src/main/sync/note-body-outbox.ts:24-26`, `:189`,
+`:206`, `:262`). Rows enqueued
+while a push is in flight stay queued. A push that succeeds but whose ack is
+lost to a crash is sent again; applying an update twice is a Yjs no-op.
+
+**Pacing.** A document's first update after a quiet second flushes at once;
+later ones wait for one trailing flush per second
+(`apps/desktop/src/main/sync/note-body-outbox.ts:19`, `:152`). A 429 holds
+**every** document until `Retry-After`, because `crdt_push` is one per-device
+bucket (§7.10; `note-body-outbox.ts:235`). A 401 or a storage-quota 413 pauses
+the outbox until a token refresh or reconnect resumes it; any other 4xx drops
+the rows it sent.
+
+**Full-state rows.** A `note_body` row with an empty payload owes the
+document's whole state: edits made while no sync runtime ran (signed out,
+unpaid), a note leaving local-only, and ids imported once from the pre-#2298
+`crdt-pending-notes.json` (`note-body-outbox.ts:295`). The client merges the
+server's state for that document first, then pushes `Y.encodeStateAsUpdate(doc)`
+as an update, one document at a time (`note-body-outbox.ts:76`;
+`apps/desktop/src/main/sync/runtime.ts:957-965`); a merge that does not
+complete keeps the row. State too large for the incremental route goes to the
+snapshot endpoint under the §7.13.2 gate.
+
 ## 7.11 Wire shapes
 
 **Normative** (`packages/sync-client/src/pull/crdt-pull.ts:29-46`):
@@ -315,7 +354,7 @@ device-local work (`apps/sync-server/src/routes/sync.ts:582-620`):
 that exist).
 
 **Snapshots use the identical packed envelope as updates. There is no separate
-snapshot envelope** (`apps/desktop/src/main/sync/runtime.ts:634` packs
+snapshot envelope** (`apps/desktop/src/main/sync/runtime.ts:624` packs
 `Y.encodeStateAsUpdate(doc)` through the same
 `apps/desktop/src/main/sync/crdt-encrypt.ts` path).
 
@@ -346,11 +385,11 @@ must never be told to pull while the pre-snapshot updates are still being
 removed. Delivery is best-effort, because the write already succeeded and a
 failed broadcast must not become an error the client retries.
 
-**A snapshot push MUST broadcast.** A device that edited while signed out never
-enqueued those edits as updates — they exist only as document state — so a
-snapshot is the only shape that backlog can leave in, and a silently stored
-snapshot stays invisible on every other device until the next vault sweep, up to
-15 minutes away (`apps/sync-server/src/routes/sync.ts:905-913`).
+**A snapshot push MUST broadcast.** A snapshot can be the only carrier of edits
+no peer has seen (the fallback for an update too large for the incremental
+route, §7.10.1), and a silently stored snapshot stays invisible on every other
+device until the next vault sweep, up to 15 minutes away
+(`apps/sync-server/src/routes/sync.ts:905-913`).
 
 ## 7.13 The client snapshot obligation — Q07.2
 
@@ -386,9 +425,9 @@ form for a document **only when all of**:
 
 **Otherwise the client MUST NOT use the snapshot endpoint.** It MAY push the same
 full state to `POST /sync/crdt/updates`, which prunes nothing
-(`apps/desktop/src/main/sync/runtime.ts:674-681`). The payload either way is
+(`apps/desktop/src/main/sync/runtime.ts:663-670`). The payload either way is
 `Y.encodeStateAsUpdate(doc)` in the packed envelope
-(`apps/desktop/src/main/sync/runtime.ts:634`).
+(`apps/desktop/src/main/sync/runtime.ts:624`).
 
 The gate is pinned by
 `apps/sync-server/src/__tests__/crdt-snapshot-batch.test.ts:188` and
@@ -401,11 +440,11 @@ edited document's log does not grow unboundedly:
 
 | Trigger                         | Rule                                                               | Source                                                                                                                                                                                                |
 | ------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| after its own incremental batch | 30 s quiet, 120 s cap from the first request                       | `packages/sync-client/src/crdt-snapshot-scheduler.ts:9` (`SNAPSHOT_QUIET_MS = 30_000`), `:16` (`SNAPSHOT_MAX_WAIT_MS = 120_000`), `:51`; requested at `apps/desktop/src/main/sync/runtime.ts:585-591` |
+| after its own incremental batch | 30 s quiet, 120 s cap from the first request                       | `packages/sync-client/src/crdt-snapshot-scheduler.ts:9` (`SNAPSHOT_QUIET_MS = 30_000`), `:16` (`SNAPSHOT_MAX_WAIT_MS = 120_000`), `:51`; requested at `apps/desktop/src/main/sync/runtime.ts:577-580` |
 | document close                  | when `pendingSnapshotBytes > 0` and the document is not local-only | `apps/desktop/src/main/sync/crdt-provider.ts:559-565`; debt is bytes of non-network-origin updates, `:1249-1252`                                                                                      |
 | shutdown                        | `pushAllSnapshots` for documents holding debt                      | `apps/desktop/src/main/sync/crdt-provider.ts:809-823`                                                                                                                                                 |
 | local compaction                | encoded size over 1 MiB, no editor open, 60 s check interval       | `apps/desktop/src/main/sync/crdt-provider.ts:47-49`, `:1385-1400`                                                                                                                                     |
-| oversized incremental           | the snapshot is the compaction point                               | `apps/desktop/src/main/sync/runtime.ts:578-585`                                                                                                                                                       |
+| oversized incremental           | the snapshot is the compaction point                               | `apps/desktop/src/main/sync/runtime.ts:554-575`                                                                                                                                                       |
 
 ### 7.13.4 What the platform-free engine does today, and #2187
 

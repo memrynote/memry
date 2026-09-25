@@ -4,7 +4,8 @@ import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { syncHistory } from '@memry/db-schema/schema/sync-history'
-import { eq } from 'drizzle-orm'
+import { eq, ne } from 'drizzle-orm'
+import { NOTE_BODY_QUEUE_TYPE } from '@memry/sync-client/queue'
 import { stopSyncRuntime } from './runtime'
 import { markSyncIneligible } from '@memry/sync-client/sync-eligibility'
 import { resetTokenManagerState } from './token-manager'
@@ -103,7 +104,9 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
       db.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true)).run()
     } else {
       db.transaction((tx) => {
-        tx.delete(syncQueue).run()
+        // Queued note bodies stay, like the CRDT store below: an edit made
+        // before or after sign-out still reaches the server on the next sign-in.
+        tx.delete(syncQueue).where(ne(syncQueue.type, NOTE_BODY_QUEUE_TYPE)).run()
         tx.delete(syncDevices).run()
         tx.delete(syncState).run()
         tx.delete(syncHistory).run()

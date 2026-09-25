@@ -2,20 +2,22 @@
  * The teardown abort, driven end to end.
  *
  * The #1514 fix spans three layers: `stopSyncRuntime` trips an AbortController,
- * `PendingCrdtDrainDeps.signal` carries it, and `drainOnce` short-circuits its
- * loop on it. Each half is trivially testable against a mock of the other, and
- * #1489 already showed where that ends — its two halves were each tested against
- * a mock of the other, and a mutation that disabled the fix outright left 2217
- * tests green.
+ * the runtime's full-state reader checks it around its merge, and the note-body
+ * outbox keeps a row whose read threw. Each half is trivially testable against
+ * a mock of the other, and #1489 already showed where that ends — its two
+ * halves were each tested against a mock of the other, and a mutation that
+ * disabled the fix outright left 2217 tests green.
  *
  * So nothing between the ends is mocked here: a REAL `stopSyncRuntime` on the
- * REAL runtime, tripping a REAL `drainPendingCrdtNotes` that is genuinely
- * in flight against the REAL on-disk store, with a REAL SyncEngine and
- * CrdtSyncCoordinator doing the merge. Only the HTTP layer, the CrdtProvider's
- * Y.Doc mechanics and the process-level infrastructure are mocked — and
- * `crdtProvider.open` is the assertion target precisely because it is the call
- * the issue is about: after `destroy()` the provider has no persistence, so
- * every server update it applies lands in a doc nothing will ever save.
+ * REAL runtime, tripping a REAL `NoteBodyOutbox` full-state flush that is
+ * genuinely in flight, fed by the REAL import of the pre-#2298 pending-note
+ * file, with a REAL SyncEngine and CrdtSyncCoordinator doing the merge. Only
+ * the HTTP layer, the sync_queue rows (an in-memory stand-in), the
+ * CrdtProvider's Y.Doc mechanics and the process-level infrastructure are
+ * mocked — and `crdtProvider.open` is the assertion target precisely because it
+ * is the call the issue is about: after `destroy()` the provider has no
+ * persistence, so every server update it applies lands in a doc nothing will
+ * ever save.
  *
  * Modelled on crdt-snapshot-endpoint-seam.test.ts, which stands the same runtime
  * up for #1503.
@@ -34,22 +36,43 @@ const runtimeMocks = vi.hoisted(() => {
     }
   }
 
+  /** The note_body rows of sync_queue, shared by every instance like the table. */
   class SyncQueueManager {
+    static rows: Array<{ id: string; itemId: string; payload: string }> = []
+    static nextId = 0
     onItemEnqueued: (() => void) | null = null
     constructor(public db: unknown) {}
     setOnItemEnqueued = vi.fn((cb: () => void) => {
       this.onItemEnqueued = cb
     })
-  }
-
-  class CrdtUpdateQueue {
-    onBatch: ((noteId: string, updates: Uint8Array[]) => Promise<void>) | null = null
-    start = vi.fn((cb: (noteId: string, updates: Uint8Array[]) => Promise<void>) => {
-      this.onBatch = cb
-    })
-    pause = vi.fn()
-    resume = vi.fn()
-    stop = vi.fn()
+    enqueueNoteBody(noteId: string, payload: string): void {
+      const rows = SyncQueueManager.rows
+      if (payload === '' && rows.some((r) => r.itemId === noteId && r.payload === '')) return
+      rows.push({ id: `row-${SyncQueueManager.nextId++}`, itemId: noteId, payload })
+    }
+    takeNoteBodyRows(noteId: string, limit: number): Array<{ id: string; payload: string }> {
+      return SyncQueueManager.rows
+        .filter((r) => r.itemId === noteId)
+        .slice(0, limit)
+        .map(({ id, payload }) => ({ id, payload }))
+    }
+    hasNoteBody(noteId: string): boolean {
+      return SyncQueueManager.rows.some((r) => r.itemId === noteId)
+    }
+    listNoteBodyNoteIds(): string[] {
+      return [...new Set(SyncQueueManager.rows.map((r) => r.itemId))]
+    }
+    countNoteBodyRows(): number {
+      return SyncQueueManager.rows.length
+    }
+    removeNoteBodyRows(ids: string[]): void {
+      SyncQueueManager.rows = SyncQueueManager.rows.filter((r) => !ids.includes(r.id))
+    }
+    removeNoteBody(noteId: string): number {
+      const before = SyncQueueManager.rows.length
+      SyncQueueManager.rows = SyncQueueManager.rows.filter((r) => r.itemId !== noteId)
+      return before - SyncQueueManager.rows.length
+    }
   }
 
   class NetworkMonitor {
@@ -88,7 +111,6 @@ const runtimeMocks = vi.hoisted(() => {
   return {
     SyncServerError,
     SyncQueueManager,
-    CrdtUpdateQueue,
     NetworkMonitor,
     WebSocketManager,
     SyncWorkerBridge,
@@ -113,7 +135,7 @@ const runtimeMocks = vi.hoisted(() => {
     calendarSourceSync: service('calendar_source'),
     calendarBindingSync: service('calendar_binding'),
     calendarExternalEventSync: service('calendar_external_event'),
-    /** Where the real pending-note store writes; a fresh temp dir per test. */
+    /** Where the retired pending-note file lives; a fresh temp dir per test. */
     userDataDir: '',
     indexRows: [] as Array<{ id: string; title: string; date: string | null }>,
     currentDevice: { id: 'device-1', signingPublicKey: null as string | null },
@@ -159,6 +181,7 @@ const runtimeMocks = vi.hoisted(() => {
       // called for after teardown, not what the doc ends up holding.
       open: vi.fn(async () => ({})),
       pushSnapshotForNote: vi.fn(async () => true),
+      readSyncableState: vi.fn(async (_noteId: string) => new Uint8Array([1, 2, 3, 4, 5])),
       validateNoteForCrdt: vi.fn(() => ({ ok: true })),
       isNoteSyncable: vi.fn((_noteId: string) => true),
       isNoteLocalOnly: vi.fn((_noteId: string) => false),
@@ -181,7 +204,7 @@ const runtimeMocks = vi.hoisted(() => {
 vi.mock('electron', () => ({
   app: {
     getVersion: vi.fn(() => '1.2.3'),
-    // The real crdt-pending-notes store, on a real temp directory.
+    // Where the retired crdt-pending-notes.json is imported from.
     getPath: vi.fn(() => runtimeMocks.userDataDir)
   },
   BrowserWindow: {
@@ -237,7 +260,10 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-vi.mock('@memry/sync-client/queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
+vi.mock('@memry/sync-client/queue', () => ({
+  SyncQueueManager: runtimeMocks.SyncQueueManager,
+  NOTE_BODY_FULL_STATE_PAYLOAD: ''
+}))
 vi.mock('./network', () => ({ NetworkMonitor: runtimeMocks.NetworkMonitor }))
 vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager }))
 
@@ -258,7 +284,6 @@ vi.mock('./engine', async () => {
 
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: runtimeMocks.trackMainError }))
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
-vi.mock('./crdt-queue', () => ({ CrdtUpdateQueue: runtimeMocks.CrdtUpdateQueue }))
 
 vi.mock('@memry/sync-client/task-sync', () => ({
   initTaskSyncService: runtimeMocks.taskSync.init,
@@ -363,8 +388,8 @@ vi.mock('./crdt-provider', () => ({
   resetCrdtProvider: runtimeMocks.resetCrdtProvider
 }))
 
-// NOTE: './crdt-pending-notes' is deliberately NOT mocked. It is one half of the
-// seam under test, and it is the durable store the other assertions read.
+// NOTE: './note-body-outbox' is deliberately NOT mocked. It is one half of the
+// seam under test.
 
 vi.mock('./dirty-recovery', () => ({ recoverDirtyItems: runtimeMocks.recoverDirtyItems }))
 
@@ -449,11 +474,12 @@ async function settle(): Promise<void> {
   for (let i = 0; i < 25; i++) await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', () => {
+describe('full-state flush liveness, stopSyncRuntime to the note-body outbox', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
     runtimeMocks.NetworkMonitor.instances = []
+    runtimeMocks.SyncQueueManager.rows = []
     runtimeMocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-drain-seam-'))
     runtimeMocks.indexRows = [{ id: 'note-a', title: 'Note A', date: null }]
     runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: null }
@@ -523,14 +549,26 @@ describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', ()
     return { reached, release: letGo }
   }
 
-  it('clears a local-only id from the durable store instead of retaining it every session', async () => {
-    // An id can reach the store and then have its note marked local-only — the
-    // toggle races the queue's ~1s flush, and the queue's shutdown path records
-    // whatever it still holds. `pushSnapshotForNote` correctly refuses a
-    // local-only note, so before this the drain could never clear the id: it was
-    // retained, warned about once per session, and never settled.
-    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
-    recordPendingCrdtNotes(['note-local', 'note-a'])
+  /** What an older build left in userData, imported once by startSyncRuntime. */
+  function writeLegacyPendingNotes(noteIds: string[]): void {
+    fs.writeFileSync(
+      path.join(runtimeMocks.userDataDir, 'crdt-pending-notes.json'),
+      JSON.stringify(noteIds)
+    )
+  }
+
+  const owedNotes = (): string[] => [
+    ...new Set(runtimeMocks.SyncQueueManager.rows.map((row) => row.itemId))
+  ]
+
+  const pushedBodies = (): string[] =>
+    runtimeMocks.postToServer.mock.calls
+      .filter((call) => call[0] === '/sync/crdt/updates')
+      .map((call) => (call[1] as { noteId: string }).noteId)
+
+  // #2298
+  it('pushes the notes an older build left owed, and drops a local-only one instead of retaining it', async () => {
+    writeLegacyPendingNotes(['note-local', 'note-a'])
     runtimeMocks.crdtProvider.isNoteLocalOnly.mockImplementation(
       (noteId: string) => noteId === 'note-local'
     )
@@ -540,38 +578,40 @@ describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', ()
 
     const runtime = await import('./runtime')
 
-    // #when the startup replay runs
+    // #when the runtime starts on the upgraded build
     await runtime.startSyncRuntime()
-    await vi.waitFor(() => expect(readPendingCrdtNotes()).toEqual([]))
+    await vi.waitFor(() => expect(owedNotes()).toEqual([]))
 
-    // #then the local-only note is neither merged nor pushed — it is simply not
-    // this store's business any more — while the note that can sync is.
+    // #then the file is retired, the syncable note is merged and pushed as an
+    // update, and the local-only note is neither merged nor pushed
+    expect(fs.existsSync(path.join(runtimeMocks.userDataDir, 'crdt-pending-notes.json'))).toBe(
+      false
+    )
     expect(openedNotes()).toEqual(['note-a'])
-    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalledWith('note-local')
-    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-a')
+    expect(pushedBodies()).toEqual(['note-a'])
+    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
 
     await runtime.stopSyncRuntime()
   })
 
   it('stops merging the rest of the backlog the moment its runtime is torn down', async () => {
-    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
-    // Two notes recorded by an earlier session: edits made while signed out or
-    // offline, whose ids are the only record that the server is owed them.
-    recordPendingCrdtNotes(['note-a', 'note-b'])
+    // Two notes an earlier session owed the server: edits made while signed out
+    // or offline, whose rows are the only record that the server is owed them.
+    writeLegacyPendingNotes(['note-a', 'note-b'])
 
     const gate = holdFirstPull()
     const runtime = await import('./runtime')
 
-    // #given a runtime whose startup replay is mid-pull on note-a
+    // #given a runtime whose first full-state flush is mid-pull on note-a
     await runtime.startSyncRuntime()
     await gate.reached
     expect(openedNotes()).toEqual(['note-a'])
 
     // #when the session is torn down — sign-out, vault switch, quit — which does
-    // NOT await the replay
+    // NOT await the flush
     await runtime.stopSyncRuntime()
     gate.release()
-    await vi.waitFor(() => expect(readPendingCrdtNotes()).toEqual(['note-b']))
+    await settle()
 
     // #then note-b is never opened on the destroyed provider. `destroy()` nulls
     // persistence, so `open` would build a doc from markdown, apply the server's
@@ -579,60 +619,46 @@ describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', ()
     // longer own.
     expect(openedNotes()).toEqual(['note-a'])
 
-    // #and its id survives in the durable store. An aborted drain must not clear
-    // what it did not push; leaving note-b for the next session is the point.
-    expect(readPendingCrdtNotes()).toEqual(['note-b'])
+    // #and both rows survive: the aborted flush pushed nothing, and a row is
+    // only deleted by the ack of a push that landed.
+    expect(pushedBodies()).toEqual([])
+    expect(owedNotes()).toEqual(['note-a', 'note-b'])
   })
 
-  it('aborts a replay triggered by a reconnect that lands mid-teardown', async () => {
-    // The window is real, and it is wide. `stopSyncRuntime` clears the module
-    // slot early — `runtimeAbortController = null`, before it destroys anything
-    // — but it does not remove the network listener until the very end, after
-    // `await pushAllSnapshots()`, `await engine.stop()` and
-    // `await workerBridge.stop()`. NetworkMonitor's poll timer is still running
-    // for that whole stretch (`network.stop()` is the line after
-    // `removeListener`), and a pre-shutdown snapshot push is a real R2 round
-    // trip per dirty note — seconds on a flaky connection, which is exactly the
-    // connection an offline→online transition comes from.
-    //
-    // So `replayPendingCrdtNotes` CAN be invoked with the slot already null. It
-    // rebuilds its deps object on every call, so reading the slot instead of the
-    // captured local would hand the drain `signal: undefined` — no liveness
-    // check at all — and it would merge the whole backlog into a provider this
-    // same teardown destroys three lines later.
-    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
+  it('aborts a flush triggered by a reconnect that lands mid-teardown', async () => {
+    // The window is real, and it is wide. `stopSyncRuntime` trips the abort
+    // early but does not remove the network listener or stop the outbox until
+    // after `await pushAllSnapshots()` and `await engine.stop()`. A reconnect
+    // in that stretch resumes the outbox, which flushes every queued note.
     const runtime = await import('./runtime')
 
-    // #given a session that started with nothing owed, so the startup replay is
-    // a no-op and this test observes only the teardown-window drain
+    // #given a session that started with nothing owed, then went offline
     await runtime.startSyncRuntime()
     await settle()
     expect(openedNotes()).toEqual([])
+    const network = runtimeMocks.NetworkMonitor.instances.at(-1)!
+    network.listeners.get('status-changed')!({ online: false })
 
-    // #and an edit recorded during the session with no queue to take it
-    recordPendingCrdtNotes(['note-x'])
+    // #and a note that became owed in full while offline
+    new runtimeMocks.SyncQueueManager(null).enqueueNoteBody('note-x', '')
 
     // #when the device comes back online while teardown is awaiting the
     // pre-shutdown snapshot push
-    const network = runtimeMocks.NetworkMonitor.instances.at(-1)!
     runtimeMocks.crdtProvider.pushAllSnapshots.mockImplementation(async () => {
-      const onStatusChanged = network.listeners.get('status-changed')
-      expect(onStatusChanged).toBeDefined()
-      onStatusChanged!({ online: true })
+      network.listeners.get('status-changed')!({ online: true })
       return 0
     })
     await runtime.stopSyncRuntime()
     await settle()
 
-    // #then the replay that reconnect triggered reads the torn-down runtime's
+    // #then the flush that reconnect triggered reads the torn-down runtime's
     // own signal — already tripped — and never opens the note.
     expect(openedNotes()).toEqual([])
-    expect(readPendingCrdtNotes()).toEqual(['note-x'])
+    expect(owedNotes()).toEqual(['note-x'])
   })
 
-  it('replays the surviving backlog under the next runtime, which the old signal must not abort', async () => {
-    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
-    recordPendingCrdtNotes(['note-a', 'note-b'])
+  it('pushes the surviving backlog under the next runtime, which the old signal must not abort', async () => {
+    writeLegacyPendingNotes(['note-a', 'note-b'])
 
     const gate = holdFirstPull()
     const runtime = await import('./runtime')
@@ -640,18 +666,19 @@ describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', ()
     await gate.reached
     await runtime.stopSyncRuntime()
     gate.release()
-    await vi.waitFor(() => expect(readPendingCrdtNotes()).toEqual(['note-b']))
+    await settle()
+    expect(owedNotes()).toEqual(['note-a', 'note-b'])
     runtimeMocks.crdtProvider.open.mockClear()
 
     // #when the user signs back in, or the next launch starts sync
     await runtime.startSyncRuntime()
 
-    // #then note-b is picked up and pushed. A liveness flag kept in module state
-    // rather than on the deps would latch on the first teardown and silently
-    // strand every backlog for the rest of the process — a fix that looks like
-    // this one and never syncs anything again.
-    await vi.waitFor(() => expect(readPendingCrdtNotes()).toEqual([]))
-    expect(openedNotes()).toEqual(['note-b'])
+    // #then both notes are merged and pushed. A liveness flag kept in module
+    // state rather than per runtime would latch on the first teardown and
+    // silently strand every backlog for the rest of the process.
+    await vi.waitFor(() => expect(owedNotes()).toEqual([]))
+    expect(openedNotes()).toEqual(['note-a', 'note-b'])
+    expect(pushedBodies()).toEqual(['note-a', 'note-b'])
 
     await runtime.stopSyncRuntime()
   })
