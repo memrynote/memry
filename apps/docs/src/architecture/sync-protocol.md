@@ -704,8 +704,12 @@ is now the join key at every hop (#2280).
 | -------------- | ------------------------------------------ | --------------------------------------------------------------------------- |
 | origin queue   | desktop A, PostHog                         | `sync_run_completed` `action=push_lag`, `durationMs`, `value` = `maxCursor` |
 | push accept    | Worker log `Record sync push processed`    | `vaultId`, `cursorRange: [min, max]`, `itemCount`                           |
-| broadcast      | Worker log `Record changes broadcast` (DO) | `vaultId`, `cursor`, `sent`                                                 |
+| broadcast      | Worker log `Record changes broadcast` (DO) | `vaultId`, `cursor`, `sent`, `itemsSent` when the push carried socket items |
 | receiver apply | desktop B, PostHog                         | `sync_run_completed` `action=e2e_latency`, `durationMs`, `value` = cursor   |
+
+`e2e_latency` carries `source=pull` for rows a pull applied and `source=socket` for rows applied from
+socket items (below). The socket path emits one event per frame, with the frame's cursor as `value`,
+and borrows the clock offset of the latest pull; before the first pull it emits nothing.
 
 The join: B's `value` falls inside the push line's `cursorRange` and is at most the broadcast
 `cursor`; A's `value` is the push response's `maxCursor`, the top of the same range. Cursors are
@@ -771,6 +775,66 @@ retryable network error instead of pinning the sync lock forever. If the lock is
 15 minutes anyway, a watchdog on the periodic tick force-releases it, aborts the in-flight run,
 and lets the next pull proceed. Skipped periodic pulls log `Periodic pull skipped` with the
 blocking flags, which is the first thing to look for when a device shows stale data.
+
+### Socket items
+
+The last hop after a wake is still one HTTP round trip, for bytes the Worker held in memory when it
+broadcast. A socket can opt in to receiving them: desktop sends `X-Memry-Socket-Items: 1` and the
+same `X-Memry-Sync-Types` its HTTP requests carry on the WebSocket handshake. When a record push
+commits at most 64 KiB of items, that socket's `changes_available` frame also carries `items` (each
+exactly what `POST /sync/pull` returns for the row) and `committedAtMs`, filtered to the types the
+socket declared. A larger push, a socket that did not opt in, a socket whose token has expired, and
+every socket accepted before this shipped get the old hint-only frame byte for byte. The Worker
+decides from the payload sizes before it builds any item, so an over-budget push costs nothing
+extra, and `SYNC_SOCKET_ITEMS_MAX_BYTES="0"` turns items off without a client release. A device
+revoked while the revoke call fails can keep receiving items until the revocation alarm closes its
+socket, at most a minute later.
+
+The items are advisory. The wake pull is scheduled for every frame, with or without items, and it
+still owns `LAST_CURSOR`, quarantine, the schema-invalid ledger, corrupt re-fetch and the breaker.
+The socket applier only applies, one frame at a time in arrival order and at most 50 items per
+frame. It skips a frame while paused, offline or in a full sync, and when the frame's cursor is at
+or below the larger of `LAST_CURSOR` and the owned-through mark. That mark is the highest
+`nextCursor` of a changes page a pull has read, kept until `LAST_CURSOR` reaches it, even when the
+run stops mid-page: a pull commits a page's rows before its cursor, so without it an older socket
+item could re-create a row a tombstone had just deleted, and nothing would re-deliver the
+tombstone. A frame that meets a local push waits for it to settle, because a conflict requeue
+coalesced into a row an in-flight push dequeued would be deleted by that push's ack. Only the push
+that set that gate clears it, and the stale-lock watchdog resets it for a push it abandons.
+
+The reverse order is an accepted transient: a frame that deletes a row after the pull fetched an
+older version of it, but before the page applied, is followed by the page re-creating the row. The
+frame's own wake pull re-delivers the tombstone within one cycle.
+
+It decrypts and verifies signatures with the pull's batch decrypt and applies what verified through
+the pull's `ItemApplier`, so pending local deletes, vector clocks, conflict push-back, tombstone
+clock recording on deletes and the sync-intent deferral behave as in a pull. The frame runs in its
+own page session like a pull page: each item's row, conflict requeue and body debt commit together
+on a savepoint or not at all, and note file writes and unlinks are journaled before the commit and
+landed in the same synchronous run. A failed unlink (a file held open on Windows) stays journaled
+and the next pull's replay removes the file, so the indexer never re-adopts it as a new note.
+Renderer events go out after the commit and only for rows that changed. Anything that fails (signature, decrypt, schema, a missing FK parent, an
+undrained sync intent) is dropped without a record and reaches the device through the pull. The
+re-delivery of an item that did land is an equal-clock, identical-payload skip.
+
+A frame never carries a note body or a purged tombstone: both are feed-only, and a purged tombstone
+applies only from `POST /sync/pull` with its delete attestation. A note or journal record applied
+from a frame and changed (applied or merged) owes its whole body exactly as a pulled one: a durable
+`record` debt plus the unmerged flag, so no snapshot push claims `coversThrough` past a body this
+device has not merged. A frame item skipped as already applied owes nothing. The wake pull
+re-delivers the record and its CRDT batch pays the debt.
+
+The apply must not race a pull page. A page commits its rows and then writes note files in an async
+flush, so a socket write to the same file in between would leave the older file under the newer row.
+The applier loops until no page transaction is open, every journaled file op has landed and no push
+is in flight (at most 5 seconds, then it drops the frame and logs once per session with the cause),
+and the last check runs in the same synchronous run as the apply: nothing is awaited between it and
+the last file write. The journal replay at the start of each pull clears the ops it healed from
+memory, so one failed flush does not turn the applier off until a restart.
+
+Socket latency events are one per changed row, like the pull's, capped at 20 per minute. The #2300
+merge gate reads the combined `e2e_latency` p50 of both sources, not the socket source alone: the
+socket source sees only the frames it applied.
 
 ## Runtime Emitters and Listener Budgets
 
