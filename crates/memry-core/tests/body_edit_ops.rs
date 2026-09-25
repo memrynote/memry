@@ -1662,3 +1662,63 @@ fn an_impossible_range_is_refused() {
     }
     assert_eq!(canonical(&document), before);
 }
+
+#[test]
+fn a_set_text_keeps_a_concurrent_insert_into_the_same_block() {
+    // Spec 005-journal JP082: the phone and desktop both typed into one
+    // paragraph while apart. Replacing the whole run deleted the peer's text;
+    // the in-place edit keeps both.
+    let base = body(&[("b1", "paragraph", "Hello world.")]);
+    let phone = opened(&base);
+    // Its own device: two writers sharing a client id collide.
+    let sink: UpdateSink = Arc::new(|_, _| {});
+    let desk = DocumentRegistry::new("device-desk", sink)
+        .get_or_open("abc123def456")
+        .expect("open");
+    desk.apply_durable_update(&base).expect("apply");
+    apply(
+        &phone,
+        &BlockEdit::SetText {
+            block_id: "b1".into(),
+            text: "Hello world. Phone side.".into(),
+        },
+    )
+    .expect("phone edit");
+    apply(
+        &desk,
+        &BlockEdit::SetText {
+            block_id: "b1".into(),
+            text: "Desk: Hello world.".into(),
+        },
+    )
+    .expect("desk edit");
+
+    desk.apply_durable_update(&phone.encode_state().expect("phone state"))
+        .expect("merge");
+    phone
+        .apply_durable_update(&desk.encode_state().expect("desk state"))
+        .expect("merge");
+
+    for document in [&phone, &desk] {
+        let blocks = extract_blocks(document).expect("blocks");
+        assert_eq!(text_of(&blocks[0]), "Desk: Hello world. Phone side.");
+    }
+}
+
+#[test]
+fn a_set_text_on_a_marked_block_still_replaces_it() {
+    // The in-place path is for one plain run only; anything else keeps the
+    // documented replace (marks on that block are lost).
+    let base = body(&[("b1", "paragraph", "")]);
+    let document = opened(&base);
+    apply(
+        &document,
+        &BlockEdit::SetText {
+            block_id: "b1".into(),
+            text: "fresh".into(),
+        },
+    )
+    .expect("edit");
+    let blocks = extract_blocks(&document).expect("blocks");
+    assert_eq!(text_of(&blocks[0]), "fresh");
+}

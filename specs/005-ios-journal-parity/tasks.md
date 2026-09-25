@@ -625,14 +625,15 @@ Evidence: journal_conformance FFI added (api/journal_conformance.rs, generated S
 - [ ] JP080 Conformance:
       `apps/ios/MemryConformanceTests/JournalConformanceTests.swift` runs
       `journal.json` through the FFI. Conformance plan green.
-- [ ] JP081 UI tests `apps/ios/MemryUITests/JournalUITests.swift`, with today
+- [x] JP081 UI tests `apps/ios/MemryUITests/JournalUITests.swift`, with today
       pinned to an agent day. The flows are: open Journal and land on today;
       type on an empty day and confirm the day now exists (Month shows a dot);
       page to yesterday and back; Month and Year drill down and back; set a
       preset reminder and see the bell filled; a template-seeded day opens with
       the template text; the Settings weekday row reads the resolved default.
       UI plan green.
-- [ ] JP082 Cross-device against staging with the desktop peer, agent days only:
+      Evidence: apps/ios/MemryUITests/JournalUITests.swift, 6 flows with today pinned to a random 2099 agent day (today + paging, first line creates the day and Month shows 'entry', Year->Month->Day->Month->Year, preset reminder fills the bell, Wednesday template seeded, Settings weekday rows 'Default · …' / 'Agent Test Journal'). UI plan: 14 tests, 1 skipped (AgentDriver), 0 failures (8 baseline + 6).
+- [x] JP082 Cross-device against staging with the desktop peer, agent days only:
   - phone → desktop: create by typing, body edits, tags, properties,
     template seeding, reminder set, moved and dismissed, settings
     default and weekday template
@@ -643,10 +644,13 @@ Evidence: journal_conformance FFI added (api/journal_conformance.rs, generated S
   - a day desktop created under a non-`j` id is edited on the phone under that
     id
   - screenshots from both sides in `SpikeEvidence/journal-parity/xdevice-*`
-- [ ] JP083 Full gates: §0.6 in full. Record counts against the JP001 baseline.
-- [ ] JP084 Desktop regression: `pnpm --filter @memry/desktop test:desktop`
+    Evidence: Staging, desktop peer /tmp/MemryNote, agent days only. Phone->desktop: typed day 06-15 created + body edit ('Phone edit xdev.') in journal/2099-06-15.md; template seeding 06-17 file matches; reminder set/moved (09:00->10:00, remindAt 07:00Z)/dismissed seen by desktop reminders.list (apps/ios/SpikeEvidence/journal-parity/xdevice-phone-reminder-dismiss.png); settings default template + Wednesday in getJournalSettings. Tags/properties: read-only on the phone (G0, D5). Desktop->phone: 06-16 created, body edit landed after the day pull, tag agentdesk + property + reminder (set, moved 11:00, dismissed) on the phone (apps/ios/SpikeEvidence/journal-parity/xdevice-phone-desktop-tags-reminder.png, apps/ios/SpikeEvidence/journal-parity/xdevice-desktop-tags-from-desktop.png); desktop-seeded 06-24 shows once; settings default/weekday; edit landing in an open day with the caret kept (apps/ios/SpikeEvidence/journal-parity/xdevice-phone-live-edit-keeps-cursor.png, apps/ios/SpikeEvidence/journal-parity/xdevice-desktop-live-edit.png). Concurrent 06-08 (desktop sync paused): both sides 'Desk: Base line for concurrency. Phone side.' (apps/ios/SpikeEvidence/journal-parity/xdevice-concurrent-phone.png, apps/ios/SpikeEvidence/journal-parity/xdevice-concurrent-desktop.png); 06-05 metadata: desktop tag + core property both kept. Non-j id legacyagent0609 (2099-06-09) edited on the phone under that id, no j2099-06-09 created. Two core fixes came out of it (§6); one desktop defect in §7.
+- [x] JP083 Full gates: §0.6 in full. Record counts against the JP001 baseline.
+      Evidence: §0.6 in full on 2026-09-25: cargo fmt --all --check ok; clippy -D warnings clean; cargo test -p memry-core 1028 passed / 0 failed / 1 ignored (workspace 1060, baseline 920); line ceilings 433 files; build-xcframework --release ok, Generated/ unchanged; vectors:generate + vectors:check 18 classes (baseline 16); pnpm lint 0 errors (3 pre-existing warnings; run with the untracked CDP scratch apps/desktop/.cdp-tmp.mjs ignored, which is not committed and removed at JP095), typecheck ok; test:renderer 793 files / 10102 passed; test:main 643 files / 9200 passed (+30 vs 9170); i18n:check, check:architecture, check:contracts ok; git diff --check clean. iOS memry-B: Unit 765 tests / 111 suites (baseline 689), Conformance 29 / 8 suites (baseline 27), UI 14 run / 1 skipped / 0 failures (baseline 8 + JournalUITests 6), after a fresh §0.4 sign-in (OTP 14:03).
+- [x] JP084 Desktop regression: `pnpm --filter @memry/desktop test:desktop`
       green, then `electron-vite build` and `pnpm --filter @memry/desktop
 test:e2e` for the journal specs.
+      Evidence: No test:desktop script exists; its halves ran in JP083 (test:renderer 10102 passed, test:main 9200 passed). rebuild:electron + MEMRY_ENV=production electron-vite build ok. Journal e2e (journal, journal-reminder-edit, journal-reminder-navigation, home-journal-widget-refresh/-upcoming, marquee-selection-journal): 30 passed, 3 failed, all 3 in marquee-selection-journal (overlay never appears). marquee-selection.e2e.ts (no journal code) fails the same way here, 7/19, and the branch's desktop diff (9 files, journal queries/handler/utils/hooks) touches no marquee code, so this is the headless drag environment, logged in §6.
 
 ---
 
@@ -849,6 +853,11 @@ note by `name → value`.
 - 2026-09-25 — Phase 4 — Journal settings before this run (for JP095): defaultTemplate null, weekdayTemplates {}, the device-local stats footer off. Changed during Phase 4: Wednesday -> "Agent Test Journal", stats footer on.
 - 2026-09-25 — JP052 — A wiki link to a bare date with no entry opens that empty day (sectionF), as the Journal's own navigation does; desktop's link picker offers only notes, so there is no desktop behavior to copy.
 - 2026-09-25 — Phase 4 — Known visual deltas against Paper, not fixed: the header fog renders as a horizontal band, not Paper's radial blob; the tab bar tint is the app-wide blue, not Paper's accent; the Month title lacks Paper's chevron and flame glyph, and the Year title its chevron. Task toasts raised from the Journal's day section are not shown on the Journal tab.
+- 2026-09-25 — JP081 — JournalUITests needs the synced journal settings JP049 left (Wednesday -> Agent Test Journal, no default template); JP095 removes that template, after the last UI run (JP083). An editable block is a text view whose text is its accessibility value (VoiceOver reads it); the tests match label or value.
+- 2026-09-25 — JP082 — Core fix: `BodyPull` probes `snapshotMeta` through `POST /sync/crdt/updates/batch` (one request per hundred documents that already hold a cursor, `limit: 1`) before paging the single-document route, which carries none. Without it a document whose server log a peer's snapshot pruned past this device's cursor went silent for good (§7.8's second clause could never fire). A failed probe (batch rate limit 30/min, an old server) falls back to the old behavior. `tests/sync_first_sync.rs` a_snapshot_that_pruned_past_the_cursor_is_taken_from_the_probe.
+- 2026-09-25 — JP082 — Core fix: `BlockEdit::SetText` on a block holding one plain run edits that run in place (common prefix/suffix, UTF-8 byte offsets, the document's offset kind) instead of deleting and re-inserting it, so a peer's concurrent insert into the same paragraph survives. Marked runs and inline nodes keep the documented replace. `tests/body_edit_ops.rs` a_set_text_keeps_a_concurrent_insert_into_the_same_block.
+- 2026-09-25 — JP082 — The phone has no socket listener (spec 002 design): remote changes land on the next sync pass (launch, return to foreground, or the phone's own write), not live. "Concurrent offline" was driven by desktop `syncOps.pause()` since neither side's network can be cut alone; the non-`j` day was pushed by the CLI core as a legacy-shaped record (current desktop always derives `j<date>`), then given a desktop body.
+- 2026-09-25 — JP084 — `pnpm --filter @memry/desktop test:desktop` does not exist; renderer and main ran separately (JP083). Marquee-selection e2e fails in this environment for journal and plain notes alike (the drag overlay never appears); the journal specs that exercise this branch's desktop changes (journal, reminders, Home widgets) pass.
 - 2026-09-25 — Phase 4 — Screenshots: what looked like stale simulator frames was the agent image viewer caching by file path; every preview now gets a unique name, and each evidence PNG was re-checked that way. The accessibility tree stays the reference for state.
 - 2026-09-25 — JP001 — Found, not fixed (outside this plan): on the recovery-phrase unlock screen, with the keyboard up, the chooser's "Sign out" button (frame y 480-532) overlays the "Unlock" button (y 478-530), so a centred tap on Unlock opens the sign-out confirmation. The driver taps Unlock at `dy: 0.01`. Vault rows still need their label tapped (spec 004 §6 TP001). Screenshots from `XCUIScreen` can lag a few seconds; the accessibility tree is the reference for state.
 - 2026-09-25 — JP003 — JP022a is in scope: the phone has no markdown → Y.Doc path, so a template-seeded day would be unwritable (or lossy on desktop's next write-back) on the phone that seeded it (§5 c).
@@ -873,6 +882,8 @@ note by `name → value`.
 - 2026-09-25 — JP040 — A note opened from a day (backlink, wiki link) is pushed inside the Journal stack (`JournalRoute.note`) with the same note page the Notes tab uses; there is still no cross-tab note route.
 
 ## 7. Blockers
+
+- 2026-09-25 — JP082 — Desktop defect, not fixed here: with sync paused (`syncOps.pause()`, the Settings pause), desktop still pushes CRDT snapshots (`Pushed CRDT snapshot j2099-06-05` at 16:06:16, while paused). The snapshot's `sequenceNum` (24) covered a phone update desktop had never pulled, and the server's `pruneUpdatesBeforeSnapshot` deleted that update, so the phone's concurrent edit on agent day 2099-06-05 now exists only on the phone. Needed on desktop: no snapshot push while paused, and a snapshot's sequence number must be the highest one the doc has applied. Retry after a desktop build with that fix; evidence in `/tmp/jp-desktop4.log` 16:05–16:08 and `SpikeEvidence/journal-parity/xdevice-concurrent-*.png` (the clean re-run on 06-08).
 
 <!-- date — task id — what — evidence — next retry -->
 
