@@ -4,6 +4,7 @@ import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import { SyncEngine, type SyncEngineDeps } from '../engine'
 import { CorruptItemTracker } from './corrupt-item-tracker'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
+import { listCrdtBodyDebts } from './crdt-body-debts'
 import { SYNC_STATE_KEYS } from './sync-context'
 import { ItemApplier } from '../apply-item'
 import * as bulkApply from '../bulk-apply'
@@ -78,12 +79,12 @@ const filterEvents = (emit: unknown): string[] =>
     .filter(([channel]) => FILTER_EVENTS.has(channel))
     .map(([, data]) => (data as { id: string }).id)
 
-/** Records LAST_CURSOR (and CRDT debt) as each slice commit starts. */
+/** Records LAST_CURSOR (and the durable CRDT debts) as each slice commit starts. */
 function recordAtCommit(
   engine: SyncEngine,
   opts: { untransacted?: boolean } = {}
-): Array<{ cursor?: string; debt?: string }> {
-  const seen: Array<{ cursor?: string; debt?: string }> = []
+): Array<{ cursor?: string; debts?: number }> {
+  const seen: Array<{ cursor?: string; debts?: number }> = []
   const begin = bulkApply.beginPageApply
   vi.spyOn(bulkApply, 'beginPageApply').mockImplementation((db) => {
     const handle = begin(db)
@@ -92,7 +93,7 @@ function recordAtCommit(
     handle.commit = () => {
       seen.push({
         cursor: engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR),
-        debt: engine.getStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)
+        debts: listCrdtBodyDebts(engine['ctx'].deps.db).length
       })
       commit()
     }
@@ -380,7 +381,13 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
     vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation((input) => {
       getDb()
         .db.insert(noteMetadata)
-        .values({ id: input.itemId, path: 'n.md', title: 'n', createdAt: 'x', modifiedAt: 'x' })
+        .values({
+          id: input.itemId,
+          path: `${input.itemId}.md`,
+          title: 'n',
+          createdAt: 'x',
+          modifiedAt: 'x'
+        })
         .run()
       return 'applied'
     })
@@ -392,8 +399,8 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
     await engine.pull()
 
     expect(crdtBatch).toHaveBeenCalledOnce()
-    expect(seen).toEqual([{ cursor: '0', debt: '1' }])
+    expect(seen).toEqual([{ cursor: '0', debts: 3 }])
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('0')
-    expect(engine.getStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toBe('1')
+    expect(listCrdtBodyDebts(engine['ctx'].deps.db)).toHaveLength(3)
   })
 })

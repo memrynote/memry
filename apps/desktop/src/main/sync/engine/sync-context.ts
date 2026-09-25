@@ -94,20 +94,18 @@ export const SYNC_STATE_KEYS = {
   // `lastCrdtSweepAt` is retired (#2421): its row stays for older builds, which
   // read it as their vault-sweep throttle. Never reuse the name.
   /**
-   * Write-only mirror of the `crdt_body_debts` table (#2297): `'1'` while it
-   * has a row, `'0'` once it is empty. This build never routes on it; builds
-   * before the table read it as "some note is unmerged" and route every
-   * snapshot push around the prune, so a downgrade stays safe.
-   *
-   * A `'1'` this build did not write (an older build after a downgrade, or a
-   * CRDT store that lost its sync marker) is converted once at engine start
-   * into a debt for every note; see `convertUnmergedDebtMirror`.
+   * Builds before the `crdt_body_debts` table read `'1'` as "some note is
+   * unmerged". Builds from #2297 to #2421 part b mirrored the table into it;
+   * this build no longer writes it. A `'1'` it did not account for (an older
+   * build, or a CRDT store that lost its sync marker) is converted once at
+   * engine start into a debt for every note; see `convertUnmergedDebtMirror`.
    */
   CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt',
   /**
-   * `sync_state.updated_at` (epoch ms) of the last `CRDT_UNMERGED_DEBT` write
-   * this build made. A `'1'` whose row time differs, or with no marker, was
-   * written by someone else.
+   * `sync_state.updated_at` (epoch ms) of the `CRDT_UNMERGED_DEBT` row this
+   * app has accounted for: its own mirror write in an earlier build, or a
+   * `'1'` it converted. A `'1'` whose row time differs, or with no marker, is
+   * converted.
    */
   CRDT_BODY_DEBT_MIRROR_AT: 'crdtBodyDebtMirrorAt',
   /**

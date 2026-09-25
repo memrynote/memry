@@ -373,6 +373,9 @@ Cost: a note whose pre-`0011` rows sit above its pinned watermark keeps them.
   reached counts), the debt tables are usable, the feed never dropped a body of
   the id as rowless (a `crdt_body_withheld` row), and no refusal of this note is outstanding
   (`SyncEngine.snapshotCoverage`, `apps/desktop/src/main/sync/engine.ts:511`).
+  The legacy sweep is the only writer of `done`, so it stays (#2421): a new
+  device, a device whose run from cursor 0 or rollback deleted the key, and a
+  device after a CRDT store epoch reset claim again only once it has run.
   - `encodeForPush` (`apps/desktop/src/main/sync/crdt-provider.ts:326`) is the
     only way to produce push bytes: it reads the base revision first (the
     persisted snapshot watermark, `readPushBase`, `:314`), then the claim and
@@ -1225,7 +1228,10 @@ Per page of a declaring run
     two paths converges; the cost is one duplicate fetch.
 - **The legacy sweep.** Rows written before migration `0011` carry no cursor,
   and rows below the device cursor at first negotiation were never served as
-  bodies.
+  bodies. The sweep is not removed with the other sweeps (#2421): its `done`
+  is what licenses a coverage claim (§7.7.1), and every run from cursor 0,
+  rollback page and store epoch reset needs it again before the device may
+  claim.
   - The first page that carries a `noteBodies` array sets the sync-state key
     `noteBodyLegacySweep` to `pending` (`note-body-feed.ts:274`).
   - A full sync whose pull delivered (ran to `hasMore: false` without a refused
@@ -1375,21 +1381,24 @@ that its doc has not merged
     It cannot be told apart from an ordinary first upgrade, so nothing is
     reset, and those rows reach the doc only through a later whole-body pull
     of the note.
-- **`crdtUnmergedDebt` is a write-only mirror.** It reads `'1'` while the table
-  has a row and `'0'` once it is empty, for builds before the table, which
-  route every push around the prune on `'1'`. `crdtBodyDebtMirrorAt` records the
-  `sync_state.updated_at` of each mirror write. At engine start a `'1'` with no
-  marker, or whose row time differs from it, was written by someone else: an
-  older build after a downgrade, or a CRDT store whose epoch does not match the
-  data DB's (the reset deletes the marker and writes `'1'` in one transaction). It is converted once into a
-  `legacy` debt for every syncable note and journal of the data DB and the
-  index cache. The column has second precision, so a foreign write in the same
-  second as this build's own reads as its own.
+- **`crdtUnmergedDebt` is no longer written on owe or settle (#2421 part c).**
+  Builds before the table read `'1'` as "some note is unmerged"; builds up to
+  #2421 part b mirrored the table into it and recorded each write's
+  `sync_state.updated_at` in `crdtBodyDebtMirrorAt`. The rows an earlier build
+  left stay as they are. At engine start a `'1'` with no marker, or whose row
+  time differs from it, was written by someone else: an older build after a
+  downgrade, or a CRDT store whose epoch does not match the data DB's (the
+  reset deletes the marker and writes `'1'` in one transaction). It is
+  converted once into a `legacy` debt for every syncable note and journal of
+  the data DB and the index cache, and its row time is recorded in the marker
+  so it is not converted again; the row itself keeps its value. The column has
+  second precision, so a foreign write in the same second as the recorded one
+  reads as recorded.
   - The conversion runs at engine start only. A store epoch reset that lands
     after the engine started (a runtime started while the store init was
     deferred) is converted at the next start; until then its notes are not
     flagged. The base had the same window once its latch had been read.
-- **Still to delete (#2421 part c, gated on `minWriteVersion`).** The legacy
-  sweep, the `noteBodyLegacySweep` key, the `crdtUnmergedDebt` mirror, and the
-  batch probe with the sequence half of the watermarks, which only the legacy
-  sweep's warm pass still needs.
+- **Kept after #2421.** The legacy sweep and its `noteBodyLegacySweep` key,
+  the only licence for coverage claims (§7.7.1), and the batch probe with the
+  sequence half of the watermarks, which keeps that sweep warm after every run
+  from cursor 0 and settles hydrated debts without a snapshot GET.

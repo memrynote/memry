@@ -19,8 +19,10 @@
  * without the table (a migration that did not run) degrades to session-only
  * tracking with one logged error; sync keeps running.
  *
- * `crdtUnmergedDebt` in `sync_state` is kept as a mirror of "the table has a
- * row" for builds that predate the table.
+ * `crdtUnmergedDebt` in `sync_state` is no longer written (#2421): it was a
+ * mirror of "the table has a row" for builds that predate the table, which
+ * the minWriteVersion gate has retired. A `'1'` this build did not write is
+ * still converted into debts; see `convertUnmergedDebtMirror`.
  */
 import { and, eq, gt, inArray, isNotNull, lte, max, or, sql } from 'drizzle-orm'
 import { crdtBodyDebts } from '@memry/db-schema/schema/crdt-body-debts'
@@ -283,9 +285,9 @@ export function currentCrdtBodyDebtGeneration(db: DrizzleDb): number {
 }
 
 /**
- * Raise a debt per note, in one transaction with the mirror. A second debt for
- * the same note keeps the first reason and the lower cursor, and NULL (whole
- * body) wins. Every debt takes a new generation; only a `failed` one counts a failure and moves
+ * Raise a debt per note, in one transaction. A second debt for the same note
+ * keeps the first reason and the lower cursor, and NULL (whole body) wins.
+ * Every debt takes a new generation; only a `failed` one counts a failure and moves
  * `last_failed_at`, so other debts never extend a backoff.
  */
 export function oweCrdtBodyDebts(
@@ -309,8 +311,7 @@ function oweInTx(
     existingOnly = false,
     needsWalk = false,
     now = Date.now()
-  }: OweCrdtBodyDebtOptions,
-  writeMirror = true
+  }: OweCrdtBodyDebtOptions
 ): void {
   const counter = generationCounter(root, tx)
   for (const noteId of new Set(noteIds)) {
@@ -347,7 +348,6 @@ function oweInTx(
       })
       .run()
   }
-  if (writeMirror && !existingOnly) writeUnmergedDebtMirror(tx, true, now)
 }
 
 /**
@@ -359,20 +359,18 @@ function oweInTx(
 export function settleCrdtBodyDebts(
   db: DrizzleDb,
   noteIds: readonly string[],
-  generation?: number,
-  now = Date.now()
+  generation?: number
 ): Set<string> {
   if (noteIds.length === 0) return new Set()
   return guarded(db, new Set<string>(), () =>
     db.transaction((tx) => {
       const byIds = inArray(crdtBodyDebts.noteId, [...new Set(noteIds)])
-      const { changes } = tx
-        .delete(crdtBodyDebts)
+      tx.delete(crdtBodyDebts)
         .where(
           generation === undefined ? byIds : and(byIds, lte(crdtBodyDebts.generation, generation))
         )
         .run()
-      const remaining = new Set(
+      return new Set(
         tx
           .select({ noteId: crdtBodyDebts.noteId })
           .from(crdtBodyDebts)
@@ -380,8 +378,6 @@ export function settleCrdtBodyDebts(
           .all()
           .map((row) => row.noteId)
       )
-      if (changes > 0 && !hasDebtsInTx(tx)) writeUnmergedDebtMirror(tx, false, now)
-      return remaining
     })
   )
 }
@@ -454,29 +450,32 @@ export function crdtBodyDebtsNeedingWalk(db: DrizzleDb, noteIds: readonly string
 
 /**
  * Engine start: turn a `crdtUnmergedDebt = '1'` this build did not write into a
- * whole-body debt for every note in `noteIds()`, then make the mirror match the
- * table. Before the table existed that key was the only record of unmerged
- * state, naming no notes; a downgraded build, or a CRDT store whose epoch does
- * not match the data DB, writes it the same way. Returns how many debts it
- * raised.
+ * whole-body debt for every note in `noteIds()`. That key was the only record
+ * of unmerged state before the table existed, naming no notes; an older build
+ * after a downgrade, or a CRDT store whose epoch does not match the data DB,
+ * writes it. Returns how many debts it raised.
  *
- * Ours is recognised by `crdtBodyDebtMirrorAt` matching the row's
- * `updated_at`. That column has second precision, so a foreign write in the
- * same second as ours reads as ours.
+ * The mirror row itself is never written here (#2421). A converted row is
+ * recorded by storing its `updated_at` in `crdtBodyDebtMirrorAt`, which is also
+ * where builds that still wrote the mirror recorded their own writes, so a row
+ * whose time matches the marker is not converted again. That column has second
+ * precision: a foreign write in the same second as the recorded one reads as
+ * recorded.
  */
-export function convertUnmergedDebtMirror(
-  db: DrizzleDb,
-  noteIds: () => string[],
-  now = Date.now()
-): number {
+export function convertUnmergedDebtMirror(db: DrizzleDb, noteIds: () => string[]): number {
   return guarded(db, 0, () =>
     db.transaction((tx) => {
       const mirror = readState(tx, SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)
       const mirrorAt = readState(tx, SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)?.value
-      const foreign = mirror?.value === '1' && mirrorAt !== String(mirror.updatedAt.getTime())
-      const ids = foreign ? [...new Set(noteIds())] : []
-      if (ids.length > 0) oweInTx(db, tx, ids, 'legacy', { now }, false)
-      writeUnmergedDebtMirror(tx, hasDebtsInTx(tx), now, foreign)
+      const rowAt = mirror ? String(mirror.updatedAt.getTime()) : undefined
+      if (mirror?.value !== '1' || mirrorAt === rowAt) return 0
+      const ids = [...new Set(noteIds())]
+      if (ids.length > 0) oweInTx(db, tx, ids, 'legacy', {})
+      const updatedAt = new Date()
+      tx.insert(syncState)
+        .values({ key: SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT, value: rowAt!, updatedAt })
+        .onConflictDoUpdate({ target: syncState.key, set: { value: rowAt!, updatedAt } })
+        .run()
       return ids.length
     })
   )
@@ -488,25 +487,4 @@ function readState(db: DrizzleDb, key: string): { value: string; updatedAt: Date
     .from(syncState)
     .where(eq(syncState.key, key))
     .get()
-}
-
-function writeUnmergedDebtMirror(
-  db: DrizzleDb,
-  hasDebt: boolean,
-  now: number,
-  force = false
-): void {
-  const value = hasDebt ? '1' : '0'
-  if (!force && readState(db, SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)?.value === value) return
-  // `updated_at` is stored in whole seconds; the marker must equal what reads back.
-  const updatedAt = new Date(Math.floor(now / 1000) * 1000)
-  for (const [key, v] of [
-    [SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, value],
-    [SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT, String(updatedAt.getTime())]
-  ] as const) {
-    db.insert(syncState)
-      .values({ key, value: v, updatedAt })
-      .onConflictDoUpdate({ target: syncState.key, set: { value: v, updatedAt } })
-      .run()
-  }
 }
