@@ -113,7 +113,8 @@ function unifiedSidebar() {
             { text: 'Daily Review Reminder', link: '/user-guide/inbox/review-reminder' },
             { text: 'Filters & Views', link: '/user-guide/inbox/filters' },
             { text: 'Snooze & Archive', link: '/user-guide/inbox/snooze-archive' },
-            { text: 'Health', link: '/user-guide/inbox/health' }
+            { text: 'Health', link: '/user-guide/inbox/health' },
+            { text: 'Inbox on iPhone', link: '/user-guide/inbox/on-iphone' }
           ]
         },
         {
