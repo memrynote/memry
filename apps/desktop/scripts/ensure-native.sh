@@ -111,6 +111,99 @@ native_ready() {
   [ "$TARGET" != "electron" ] || has_electron_binary
 }
 
+# Per-runtime binary cache.
+#
+# Node (vitest) and Electron (dev/e2e) need different ABIs, and both builds write
+# the same <module>/build/Release/*.node files. Without a cache every switch
+# between `pnpm test` and `pnpm dev` recompiles everything, classic-level's
+# LevelDB from source included. After each successful build we snapshot the
+# .node files under a key that pins the runtime ABI, and on a later switch we
+# restore that snapshot instead of rebuilding.
+#
+# The key includes platform/arch and the Node ABI or Electron version; module
+# versions are covered by the .pnpm path (e.g. classic-level@1.4.1), so a
+# dependency or runtime bump misses the cache and falls through to a rebuild.
+CACHE_ROOT="$APP_ROOT/node_modules/.native-cache"
+
+cache_key() {
+  local target="$1" platform runtime
+  platform="$(node -p 'process.platform + "-" + process.arch')"
+  if [ "$target" = "electron" ]; then
+    runtime="electron-$(node -p "require('$ELECTRON_DIR/package.json').version")"
+  else
+    runtime="node-abi$(node -p 'process.versions.modules')"
+  fi
+  echo "$platform-$runtime"
+}
+
+native_module_dirs() {
+  local dir
+  for dir in \
+    "$REPO_ROOT"/node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3 \
+    "$REPO_ROOT"/node_modules/.pnpm/keytar@*/node_modules/keytar \
+    "$REPO_ROOT"/node_modules/.pnpm/classic-level@*/node_modules/classic-level; do
+    [ -d "$dir" ] && echo "$dir"
+  done
+}
+
+save_cache() {
+  local target="$1" cache_dir dir rel file
+  cache_dir="$CACHE_ROOT/$(cache_key "$target")"
+  rm -rf "$cache_dir"
+  while IFS= read -r dir; do
+    rel="${dir#"$REPO_ROOT/"}"
+    for file in "$dir"/build/Release/*.node; do
+      [ -f "$file" ] || continue
+      mkdir -p "$cache_dir/$rel"
+      cp "$file" "$cache_dir/$rel/"
+    done
+    # Every module must have a binary, or the snapshot is incomplete and useless.
+    if [ ! -d "$cache_dir/$rel" ]; then
+      rm -rf "$cache_dir"
+      return 0
+    fi
+  done < <(native_module_dirs)
+  touch "$cache_dir/.complete"
+  echo "[native] cached $target binaries ($(basename "$cache_dir"))"
+}
+
+# @electron/rebuild writes build/Release/.forge-meta ("<arch>--<abi>") and skips
+# any module whose marker matches, even with -f. The node build and a cache
+# restore replace the .node files but not the marker, so a stale "electron ABI"
+# marker would make the next Electron rebuild skip better-sqlite3 and keytar and
+# leave Node-ABI binaries behind. Drop the markers whenever the binaries change.
+clear_forge_meta() {
+  local dir
+  while IFS= read -r dir; do
+    rm -f "$dir/build/Release/.forge-meta"
+  done < <(native_module_dirs)
+}
+
+restore_cache() {
+  local target="$1" cache_dir dir rel file dest
+  cache_dir="$CACHE_ROOT/$(cache_key "$target")"
+  [ -f "$cache_dir/.complete" ] || return 1
+
+  while IFS= read -r dir; do
+    rel="${dir#"$REPO_ROOT/"}"
+    compgen -G "$cache_dir/$rel/*.node" >/dev/null || return 1
+  done < <(native_module_dirs)
+
+  while IFS= read -r dir; do
+    rel="${dir#"$REPO_ROOT/"}"
+    mkdir -p "$dir/build/Release"
+    for file in "$cache_dir/$rel"/*.node; do
+      dest="$dir/build/Release/$(basename "$file")"
+      # Copy then rename: a new inode, so a still-running process that has the
+      # old binary mapped is not handed a file rewritten underneath it.
+      cp "$file" "$dest.tmp.$$"
+      mv -f "$dest.tmp.$$" "$dest"
+    done
+  done < <(native_module_dirs)
+  clear_forge_meta
+  echo "[native] restored cached $target binaries ($(basename "$cache_dir"))"
+}
+
 if native_ready; then
   echo "[native] already built for $TARGET — skipping"
   exit 0
@@ -123,6 +216,24 @@ CURRENT_STAMP="$(read_stamp)"
 
 if native_ready; then
   echo "[native] already built for $TARGET — skipping"
+  exit 0
+fi
+
+# Before overwriting the other runtime's build, snapshot it if it is not cached
+# yet, so switching back later is a copy instead of a recompile. This also seeds
+# the cache on installs that predate it.
+if [ -n "$CURRENT_STAMP" ] && [ "$CURRENT_STAMP" != "$TARGET" ] && has_native_binary &&
+  [ ! -f "$CACHE_ROOT/$(cache_key "$CURRENT_STAMP")/.complete" ]; then
+  save_cache "$CURRENT_STAMP"
+fi
+
+if [ "$TARGET" = "electron" ] && ! has_electron_binary; then
+  echo "[electron] binary missing — installing..."
+  install_electron_binary
+fi
+
+if restore_cache "$TARGET"; then
+  echo "$TARGET" >"$STAMP_FILE"
   exit 0
 fi
 
@@ -150,6 +261,7 @@ if [ "$TARGET" = "electron" ]; then
   fi
 
   echo "[native] rebuilding $MODULES for Electron..."
+  clear_forge_meta
   # Run @electron/rebuild's CLI directly with node instead of `pnpm exec`:
   # pnpm's pre-exec deps-status check can decide to `pnpm install --production`,
   # which prunes devDependencies — and the build toolchain (electron, vite,
@@ -162,9 +274,14 @@ if [ "$TARGET" = "electron" ]; then
     const i = main.lastIndexOf(marker)
     process.stdout.write(path.join(main.slice(0, i + marker.length), 'lib', 'cli.js'))
   ")"
-  node "$ELECTRON_REBUILD_CLI" -f -o "$MODULES"
 
-  # That call leaves classic-level as the upstream Node prebuild, for two
+  # Every module is driven by --module-dir; a dependency walk from $APP_ROOT is
+  # not used because under pnpm it misses them. Its scan of apps/desktop/node_modules
+  # does not follow the pnpm symlinks, so `-o better-sqlite3,keytar,classic-level`
+  # only ever built the dev-only classic-level 3.x and left better-sqlite3 and
+  # keytar on whatever ABI they last had (Node, after `pnpm test`).
+  #
+  # classic-level additionally needs --build-from-source, for two
   # independent reasons. v2026.903.2 shipped to Windows that way: better-sqlite3
   # and keytar had build/Release binaries in the package, classic-level had none,
   # so the CRDT store ran on prebuilds/win32-x64/node.napi.node.
@@ -181,11 +298,15 @@ if [ "$TARGET" = "electron" ]; then
   # So drive each copy in the store directly: --module-dir is always a rebuild
   # candidate regardless of the walk, and --build-from-source skips the prebuild
   # short-circuit. Same reasoning as the node branch below.
-  for classic_dir in "$REPO_ROOT"/node_modules/.pnpm/classic-level@*/node_modules/classic-level; do
-    [ -d "$classic_dir" ] || continue
-    echo "[native] force-building ${classic_dir#"$REPO_ROOT/"} for Electron"
-    node "$ELECTRON_REBUILD_CLI" -f --build-from-source --only classic-level --module-dir "$classic_dir"
-  done
+  while IFS= read -r module_dir; do
+    module_name="$(basename "$module_dir")"
+    echo "[native] force-building ${module_dir#"$REPO_ROOT/"} for Electron"
+    if [ "$module_name" = "classic-level" ]; then
+      node "$ELECTRON_REBUILD_CLI" -f --build-from-source --only classic-level --module-dir "$module_dir"
+    else
+      node "$ELECTRON_REBUILD_CLI" -f --only "$module_name" --module-dir "$module_dir"
+    fi
+  done < <(native_module_dirs)
 else
   echo "[native] rebuilding $MODULES for Node $(node -v)..."
   for mod in ${MODULES//,/ }; do
@@ -209,4 +330,5 @@ else
   done
 fi
 
+save_cache "$TARGET"
 echo "$TARGET" >"$STAMP_FILE"
