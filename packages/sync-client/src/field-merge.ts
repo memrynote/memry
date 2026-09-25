@@ -54,7 +54,7 @@ export function initAllFieldClocks(docClock: VectorClock, fields: readonly strin
  * forever. Arrays stay order-significant, `undefined` counts as an absent key,
  * and `null` stays distinct from `undefined`.
  */
-function valuesEqual(a: unknown, b: unknown): boolean {
+export function valuesEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true
   if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false
 

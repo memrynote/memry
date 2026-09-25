@@ -56,7 +56,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     let mergedClock = remoteClock
     let result: ApplyResult = 'applied'
     if (existing) {
-      const resolution = this.resolveClock(existing.clock, remoteClock)
+      const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
       if (resolution.action === 'skip') {
         log.info('Skipping remote journal update, local is newer', { itemId })
         return 'skipped'

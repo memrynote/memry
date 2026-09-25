@@ -70,6 +70,7 @@ describe('bulk apply page session', () => {
             .run(id, `v-${id}`)
         })
       }
+      expect(page.transacted).toBe(true)
       page.commit()
 
       expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 2 })
@@ -548,6 +549,32 @@ describe('bulk apply page session', () => {
       expect(order.indexOf('data:COMMIT')).toBeLessThan(order.indexOf('index:COMMIT'))
     })
 
+    // #2294 review: the page's last slice now carries the pull cursor, so a
+    // journal write that throws must roll the page back, not leave it open.
+    it('#then a journal write that fails rolls both DBs back and drops the notifications', () => {
+      const { db, raw } = makeDb()
+      const page = beginPageApply(db)
+      page.db.transaction(() => {
+        raw.prepare("INSERT INTO t (id, v) VALUES ('a', '1')").run()
+      })
+      writeSyncedVaultFile(path.join(userDataDir, 'no-space.md'), 'bytes')
+      const notify = vi.fn()
+      page.afterCommit(notify)
+      const openSpy = vi.spyOn(fs, 'openSync').mockImplementationOnce(() => {
+        throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
+      })
+
+      expect(() => page.commit()).toThrow('ENOSPC')
+      openSpy.mockRestore()
+
+      expect(raw.inTransaction).toBe(false)
+      expect(indexRaw.inTransaction).toBe(false)
+      expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 0 })
+      expect(notify).not.toHaveBeenCalled()
+      expect(() => raw.exec('BEGIN IMMEDIATE')).not.toThrow()
+      raw.exec('ROLLBACK')
+    })
+
     it('#then a failed index COMMIT rolls back and leaves the index connection usable', () => {
       const { db } = makeDb()
       const page = beginPageApply(db)
@@ -625,6 +652,8 @@ describe('bulk apply page session', () => {
         expect(logger.warn).toHaveBeenCalledWith(
           'Data DB already in a transaction — page apply runs untransacted'
         )
+        // #2294 review: the pull must not treat this page as atomic with its cursor.
+        expect(page.transacted).toBe(false)
         expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 1 })
         // The page never opened the transaction, so it must not close it either.
         expect(raw.inTransaction).toBe(true)
@@ -646,6 +675,69 @@ describe('bulk apply page session', () => {
       } finally {
         if (raw.inTransaction) raw.exec('ROLLBACK')
       }
+    })
+  })
+
+  // #2294: a window must never hear "applied" for rows that roll back.
+  describe('#given renderer notifications queued during a page', () => {
+    it('#then they run only after the data COMMIT, in queue order', () => {
+      const { db, raw } = makeDb()
+      const page = beginPageApply(db)
+      const seen: string[] = []
+      page.afterCommit(() => seen.push(`first:${raw.inTransaction}`))
+      page.afterCommit(() => seen.push('second'))
+      expect(seen).toEqual([])
+
+      page.commit()
+
+      expect(seen).toEqual(['first:false', 'second'])
+    })
+
+    it('#then a rolled-back page drops them', () => {
+      const { db } = makeDb()
+      const page = beginPageApply(db)
+      const notify = vi.fn()
+      page.afterCommit(notify)
+
+      page.rollback()
+      page.commit()
+
+      expect(notify).not.toHaveBeenCalled()
+    })
+
+    it('#then a page whose data COMMIT throws drops them', () => {
+      const { db, raw } = makeDb()
+      const page = beginPageApply(db)
+      const notify = vi.fn()
+      page.afterCommit(notify)
+      const origExec = raw.exec.bind(raw)
+      raw.exec = ((sql: string) => {
+        if (sql === 'COMMIT') throw new Error('data commit boom')
+        return origExec(sql)
+      }) as typeof raw.exec
+
+      expect(() => page.commit()).toThrow('data commit boom')
+      raw.exec = origExec
+
+      expect(notify).not.toHaveBeenCalled()
+    })
+
+    it('#then one throwing notification neither fails the commit nor skips the rest', () => {
+      const { db, raw } = makeDb()
+      const page = beginPageApply(db)
+      const later = vi.fn()
+      page.afterCommit(() => {
+        throw new Error('window destroyed')
+      })
+      page.afterCommit(later)
+      page.db.transaction(() => {
+        raw.prepare("INSERT INTO t (id, v) VALUES ('a', 'x')").run()
+      })
+
+      expect(() => page.commit()).not.toThrow()
+
+      expect(later).toHaveBeenCalledOnce()
+      expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 1 })
     })
   })
 })

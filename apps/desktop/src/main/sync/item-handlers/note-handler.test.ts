@@ -803,6 +803,30 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
     expect(downloadEvents).toEqual([])
   })
 
+  // #2294 review: an identical equal-clock re-delivery writes nothing, but it is
+  // the only re-request for downloads that died with the process.
+  it('re-requests attachments for an identical equal-clock re-delivery it skips', () => {
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-att-echo',
+      path: path.join('a1', 'a1.md'),
+      title: 'a1',
+      emoji: null,
+      fileType: 'markdown',
+      clock: { d1: 2 },
+      attachmentReferences: ['att-a']
+    } as unknown as ReturnType<typeof mockGetNoteMetadataById>)
+    const payload = makeNotePayload({ attachmentReferences: ['att-a'] })
+    vi.mocked(buildNotePushPayload).mockReturnValueOnce(JSON.stringify(payload))
+    resetAttachmentDownloadSession()
+
+    const result = noteHandler.applyUpsert(ctx, 'note-att-echo', payload, { d1: 2 })
+
+    expect(result).toBe('skipped')
+    expect(mockUpdateNoteMetadata).not.toHaveBeenCalled()
+    expect(ctx.emit).not.toHaveBeenCalled()
+    expect(downloadEvents.map((e) => e.attachmentId)).toEqual(['att-a'])
+  })
+
   it('leaves the stored reference list untouched when the payload carries none', () => {
     const result = noteHandler.applyUpsert(ctx, 'note-att-none', makeNotePayload(), {})
 

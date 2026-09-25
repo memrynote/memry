@@ -32,7 +32,13 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveUpsertClock(
+          ctx,
+          itemId,
+          existing.clock as VectorClock | null,
+          remoteClock,
+          data
+        )
         if (resolution.action === 'skip') {
           log.info('Skipping remote tag definition update, local is newer', { itemId })
           return 'skipped'

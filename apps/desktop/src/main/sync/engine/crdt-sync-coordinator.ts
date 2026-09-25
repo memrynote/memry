@@ -241,6 +241,34 @@ export class CrdtSyncCoordinator {
     this.reportUnmergedDebt()
   }
 
+  /**
+   * Flag a record page's notes inside the page transaction, before the pull
+   * cursor can move past them (#2294). `applyCrdtBatch` raises the same flags,
+   * but only after the page committed: a crash in between left the notes looking
+   * merged, with nothing left to re-pull them, and their next snapshot push
+   * could prune a peer's body updates. The debt write this may trigger runs on
+   * the page's connection, so it commits with the page's rows. Local-only notes
+   * are skipped for the same reason `applyCrdtBatch` skips them: no walk would
+   * ever clear their flag.
+   */
+  markRecordPageNotesUnmerged(noteIds: readonly string[]): void {
+    const provider = this.ctx.deps.crdtProvider
+    if (!provider) return
+    for (const noteId of noteIds) {
+      if (!provider.isNoteLocalOnly(noteId)) this.markRemoteStateUnmerged(noteId)
+    }
+  }
+
+  /**
+   * Write the debt again after a page transaction that raised it rolled back:
+   * the in-memory flags survive the rollback, the persisted `'1'` does not, and
+   * transitions alone would never write it again.
+   */
+  repersistUnmergedDebt(): void {
+    this.reportedUnmergedDebt = !this.hasUnmergedNotes
+    this.reportUnmergedDebt()
+  }
+
   /** Does this device hold debt for any note at all? */
   get hasUnmergedNotes(): boolean {
     return this.unmergedRemoteNotes.size > 0

@@ -141,7 +141,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock, remoteClock)
+        const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
 
         if (resolution.action === 'skip') {
           return 'skipped'
@@ -226,13 +226,16 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
             if (JSON.stringify(conflict.mergedValue) === JSON.stringify(conflict.localValue)) {
               continue
             }
-            recordTaskSuperseded({
-              taskId: itemId,
-              field: conflict.field,
-              losingValue: conflict.localValue,
-              winningValue: conflict.mergedValue,
-              mergedClock: conflict.mergedClock
-            })
+            recordTaskSuperseded(
+              {
+                taskId: itemId,
+                field: conflict.field,
+                losingValue: conflict.localValue,
+                winningValue: conflict.mergedValue,
+                mergedClock: conflict.mergedClock
+              },
+              ctx.emit
+            )
           }
 
           const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()

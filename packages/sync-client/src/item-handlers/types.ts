@@ -55,14 +55,25 @@ export interface ClockResolution {
   mergedClock: VectorClock
 }
 
+/**
+ * An EQUAL clock skips only when `isLocalPayloadIdentical` says the local row
+ * already carries the remote payload (a device pulling back its own push).
+ * Equal with different content MUST apply: that is how two devices whose merge
+ * re-pushes collided converge (protocol 06 §6.5.2 P4, #2294). Without the
+ * predicate an equal clock applies.
+ */
 export function resolveClockConflict(
   localClock: VectorClock | null | undefined,
-  remoteClock: VectorClock
+  remoteClock: VectorClock,
+  isLocalPayloadIdentical?: () => boolean
 ): ClockResolution {
   if (!localClock) return { action: 'apply', mergedClock: remoteClock }
 
   const cmp = compare(localClock, remoteClock)
   if (cmp === 'after') return { action: 'skip', mergedClock: localClock }
   if (cmp === 'concurrent') return { action: 'merge', mergedClock: merge(localClock, remoteClock) }
+  if (cmp === 'equal' && isLocalPayloadIdentical?.()) {
+    return { action: 'skip', mergedClock: localClock }
+  }
   return { action: 'apply', mergedClock: remoteClock }
 }

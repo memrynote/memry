@@ -29,7 +29,7 @@ class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock, remoteClock)
+        const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
         if (resolution.action === 'skip') {
           log.info('Skipping remote inbox update, local is newer', { itemId })
           return 'skipped'

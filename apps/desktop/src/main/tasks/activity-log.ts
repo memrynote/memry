@@ -83,7 +83,10 @@ function auditableFields(changedFields: string[] | undefined): string[] {
   return (changedFields ?? []).filter(isAuditableField)
 }
 
-function writeRows(rows: ActivityRowInput[]): void {
+function writeRows(
+  rows: ActivityRowInput[],
+  announce: (channel: string, data: unknown) => void = broadcastToAllWindows
+): void {
   if (rows.length === 0) return
 
   let db: ReturnType<typeof getDatabase>
@@ -142,7 +145,7 @@ function writeRows(rows: ActivityRowInput[]): void {
   // activity rows still land. So the write itself announces.
   for (const taskId of touchedTaskIds) {
     try {
-      broadcastToAllWindows(TaskActivityChannels.events.CREATED, { taskId })
+      announce(TaskActivityChannels.events.CREATED, { taskId })
     } catch (err) {
       log.warn('Failed to announce task activity', { error: err, taskId })
     }
@@ -366,13 +369,17 @@ export function taskSupersededActivityId(
  * devices write a row and the first one to land wins the shared id; both
  * describe the same conflict on the same field, so the survivor is still true.
  */
-export function recordTaskSuperseded(conflict: {
-  taskId: string
-  field: string
-  losingValue: unknown
-  winningValue: unknown
-  mergedClock: Record<string, number>
-}): void {
+export function recordTaskSuperseded(
+  conflict: {
+    taskId: string
+    field: string
+    losingValue: unknown
+    winningValue: unknown
+    mergedClock: Record<string, number>
+  },
+  /** The sync apply's `ctx.emit`, held until a pull page commits (#2294). */
+  announce?: (channel: string, data: unknown) => void
+): void {
   // `position` is a syncable field, so two devices reordering the same project
   // offline produce one conflict per task. Those are exactly the rows the noise
   // rule exists to suppress, and here they would each become a sync item too.
@@ -380,22 +387,25 @@ export function recordTaskSuperseded(conflict: {
 
   const isLengthOnly = LENGTH_ONLY_FIELDS.has(conflict.field)
 
-  writeRows([
-    {
-      id: taskSupersededActivityId(conflict.taskId, conflict.field, conflict.mergedClock),
-      taskId: conflict.taskId,
-      action: TaskActivityActions.SUPERSEDED,
-      field: conflict.field,
-      // A losing description is still a description: storing it here would put
-      // note-sized markdown into an encrypted sync payload, which is the one
-      // thing this table promises never to do.
-      oldValue: isLengthOnly ? null : encodeValue(conflict.losingValue),
-      newValue: isLengthOnly
-        ? JSON.stringify({
-            delta: textLength(conflict.winningValue) - textLength(conflict.losingValue)
-          })
-        : encodeValue(conflict.winningValue),
-      actor: TaskActivityActors.SYNC
-    }
-  ])
+  writeRows(
+    [
+      {
+        id: taskSupersededActivityId(conflict.taskId, conflict.field, conflict.mergedClock),
+        taskId: conflict.taskId,
+        action: TaskActivityActions.SUPERSEDED,
+        field: conflict.field,
+        // A losing description is still a description: storing it here would put
+        // note-sized markdown into an encrypted sync payload, which is the one
+        // thing this table promises never to do.
+        oldValue: isLengthOnly ? null : encodeValue(conflict.losingValue),
+        newValue: isLengthOnly
+          ? JSON.stringify({
+              delta: textLength(conflict.winningValue) - textLength(conflict.losingValue)
+            })
+          : encodeValue(conflict.winningValue),
+        actor: TaskActivityActors.SYNC
+      }
+    ],
+    announce
+  )
 }

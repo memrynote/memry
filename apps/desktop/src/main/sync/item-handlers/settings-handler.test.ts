@@ -94,7 +94,7 @@ import { settingsHandler } from './settings-handler'
 describe('settingsHandler.applyUpsert', () => {
   const ctx: ApplyContext = {
     db: {} as unknown as DrizzleDb,
-    emit: vi.fn()
+    emit: (channel, data) => mockSend(channel, data)
   }
   const clock: VectorClock = { 'device-B': 3 }
   let testDb: TestDatabaseResult
@@ -269,6 +269,25 @@ describe('settingsHandler.applyUpsert', () => {
       (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('changed')
     )
     expect(changedCalls.length).toBeGreaterThanOrEqual(1)
+  })
+
+  // #2294 review: inside a pull page `ctx.emit` holds the event until the page
+  // commits; a direct window broadcast would announce a rolled-back value.
+  it('#given applyUpsert called #then every CHANGED event goes through ctx.emit, none straight to a window', () => {
+    const heldEmit = vi.fn()
+    const data: SettingsSyncPayload = {
+      settings: { general: { theme: 'dark' } },
+      fieldClocks: { 'general.theme': { 'device-B': 3 } }
+    }
+    mockGetSettings.mockReturnValue({ general: { theme: 'dark' } })
+    mockSend.mockClear()
+
+    settingsHandler.applyUpsert({ ...ctx, emit: heldEmit }, 'synced_settings', data, clock)
+
+    expect(heldEmit).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, expect.anything())
+    expect(
+      mockSend.mock.calls.filter((c: unknown[]) => c[0] === SettingsChannels.events.CHANGED)
+    ).toEqual([])
   })
 
   it('#given no vault path #then skips config.json write but still merges', () => {
@@ -465,7 +484,7 @@ describe('settingsHandler.applyUpsert', () => {
 describe('settingsHandler.applyUpsert — synced locale', () => {
   const ctx: ApplyContext = {
     db: {} as unknown as DrizzleDb,
-    emit: vi.fn()
+    emit: (channel, data) => mockSend(channel, data)
   }
   const clock: VectorClock = { 'device-B': 7 }
   let testDb: TestDatabaseResult
