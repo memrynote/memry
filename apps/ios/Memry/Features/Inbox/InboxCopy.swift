@@ -20,6 +20,12 @@ enum InboxCopy {
     static let loadFailed = "Failed to load inbox"
     static let tryAgain = "Try again"
     static let itemCaptured = "Item captured"
+    static let sharedAlreadyCaptured = "Already captured"
+
+    /// Drops from the Share extension, captured on open (IB22).
+    static func savedFromShare(_ count: Int) -> String {
+        count == 1 ? "1 shared item saved" : "\(count) shared items saved"
+    }
     static let untitled = "Untitled"
 
     // MARK: Types (`type.*`)

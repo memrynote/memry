@@ -8,6 +8,12 @@
 	<key>com.apple.developer.default-data-protection</key>
 	<string>NSFileProtectionCompleteUntilFirstUserAuthentication</string>
 
+	<!-- IB22: the Share extension's queue and the inbox's link digests. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.memry.app</string>
+	</array>
+
 	<key>keychain-access-groups</key>
 	<array>
 		<string>$(AppIdentifierPrefix)com.memry.app</string>

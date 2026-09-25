@@ -11,6 +11,7 @@
 		B1000003 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000002 /* MemryCore */; };
 		B1000005 /* test-vectors in Resources */ = {isa = PBXBuildFile; fileRef = A0000040 /* test-vectors */; };
 		B1000007 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = B1000006 /* Inject */; };
+		B1000009 /* MemryShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A0000014 /* MemryShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,13 +36,35 @@
 			remoteGlobalIDString = F0000001;
 			remoteInfo = Memry;
 		};
+		B8D3F09E30631FE60094AA8B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 12000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F0000005;
+			remoteInfo = MemryShare;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D3000001 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B1000009 /* MemryShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		A0000010 /* Memry.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memry.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000011 /* MemryTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000012 /* MemryUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000013 /* MemryConformanceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemryConformanceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0000014 /* MemryShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MemryShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000020 /* MemryCore */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = MemryCore; path = ../../packages/swift/MemryCore; sourceTree = SOURCE_ROOT; };
 		A0000030 /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
 		A0000040 /* test-vectors */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "test-vectors"; path = "../../packages/contracts/test-vectors"; sourceTree = SOURCE_ROOT; };
@@ -62,6 +85,28 @@
 			);
 			target = F0000001 /* Memry */;
 		};
+		C1000002 /* Exceptions for "MemryShare" folder in "MemryShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				MemryShare.entitlements,
+			);
+			target = F0000005 /* MemryShare */;
+		};
+		C1000003 /* Exceptions for "MemryShare" folder in "Memry" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ShareQueue.swift,
+			);
+			target = F0000001 /* Memry */;
+		};
+		C1000004 /* Exceptions for "Memry" folder in "MemryShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Design/Tokens.swift,
+			);
+			target = F0000005 /* MemryShare */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +114,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				C1000001 /* Exceptions for "Memry" folder in "Memry" target */,
+				C1000004 /* Exceptions for "Memry" folder in "MemryShare" target */,
 			);
 			path = Memry;
 			sourceTree = "<group>";
@@ -91,6 +137,15 @@
 		C0000005 /* MemryConformanceTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = MemryConformanceTests;
+			sourceTree = "<group>";
+		};
+		C0000006 /* MemryShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C1000002 /* Exceptions for "MemryShare" folder in "MemryShare" target */,
+				C1000003 /* Exceptions for "MemryShare" folder in "Memry" target */,
+			);
+			path = MemryShare;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -127,6 +182,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D0000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -138,6 +200,7 @@
 				C0000002 /* MemryTests */,
 				C0000003 /* MemryUITests */,
 				C0000005 /* MemryConformanceTests */,
+				C0000006 /* MemryShare */,
 				C0000004 /* TestPlans */,
 				E0000001 /* Packages */,
 				E0000002 /* Products */,
@@ -160,6 +223,7 @@
 				A0000011 /* MemryTests.xctest */,
 				A0000012 /* MemryUITests.xctest */,
 				A0000013 /* MemryConformanceTests.xctest */,
+				A0000014 /* MemryShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -174,10 +238,12 @@
 				D1000001 /* Sources */,
 				D0000001 /* Frameworks */,
 				D2000001 /* Resources */,
+				D3000001 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				11000004 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				C0000001 /* Memry */,
@@ -261,6 +327,28 @@
 			productReference = A0000013 /* MemryConformanceTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		F0000005 /* MemryShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10000005 /* Build configuration list for PBXNativeTarget "MemryShare" */;
+			buildPhases = (
+				D1000005 /* Sources */,
+				D0000005 /* Frameworks */,
+				D2000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C0000006 /* MemryShare */,
+			);
+			name = MemryShare;
+			packageProductDependencies = (
+			);
+			productName = MemryShare;
+			productReference = A0000014 /* MemryShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -279,6 +367,9 @@
 					};
 					F0000004 = {
 						TestTargetID = F0000001;
+					};
+					F0000005 = {
+						CreatedOnToolsVersion = 26.0;
 					};
 				};
 			};
@@ -304,6 +395,7 @@
 				F0000002 /* MemryTests */,
 				F0000003 /* MemryUITests */,
 				F0000004 /* MemryConformanceTests */,
+				F0000005 /* MemryShare */,
 			);
 		};
 /* End PBXProject section */
@@ -338,6 +430,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D2000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -369,6 +468,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D1000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -386,6 +492,11 @@
 			isa = PBXTargetDependency;
 			target = F0000001 /* Memry */;
 			targetProxy = B8D3F09D30631FE60094AA8B /* PBXContainerItemProxy */;
+		};
+		11000004 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F0000005 /* MemryShare */;
+			targetProxy = B8D3F09E30631FE60094AA8B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -573,6 +684,50 @@
 			};
 			name = Release;
 		};
+		14000051 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MemryShare/MemryShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MemryShare/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		14000052 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MemryShare/MemryShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MemryShare/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memry.app.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -617,6 +772,15 @@
 			buildConfigurations = (
 				14000041 /* Debug */,
 				14000042 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10000005 /* Build configuration list for PBXNativeTarget "MemryShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				14000051 /* Debug */,
+				14000052 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

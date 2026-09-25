@@ -175,7 +175,7 @@ struct InboxDetailView: View {
                         dismiss()
                     }
                 } pickDate: {
-                    sheets.snoozeIds = [item.id]
+                    sheets.snooze = InboxIdList(ids: [item.id])
                 }
             } label: {
                 Label(InboxCopy.snooze, systemImage: "moon.zzz")

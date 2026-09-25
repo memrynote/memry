@@ -197,6 +197,44 @@ struct InboxStoreTests {
         #expect(vault.store.history.count == 1)
     }
 
+    /// IB22: what the Share extension left is captured on load through the
+    /// composer's path (`quick-capture`), the queue empties, a duplicate link
+    /// is skipped unless "Capture anyway" was chosen, and the extension's
+    /// digests follow the inbox.
+    @Test func shared_drops_are_captured_on_load() async throws {
+        let vault = try InboxTestVault()
+        let root = vault.directory.appendingPathComponent("group", isDirectory: true)
+        vault.store.shareRoot = root
+        let link = "https://example.com/agent/share"
+        func drop(_ kind: ShareDrop.Kind, _ text: String?, force: Bool = false, at seconds: Double) -> ShareDrop {
+            ShareDrop(id: UUID().uuidString, kind: kind, text: text, force: force,
+                      createdAt: Date(timeIntervalSince1970: seconds))
+        }
+        try ShareQueue.enqueue(drop(.link, link, at: 1), payload: nil, root: root)
+        try ShareQueue.enqueue(drop(.text, "[agent] a thought shared from Safari", at: 2), payload: nil, root: root)
+        let png = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).png")
+        try Data(base64Encoded: Self.onePixelPNG)?.write(to: png)
+        var file = drop(.file, nil, at: 3)
+        file.filename = "[agent] shared.png"
+        file.mimeType = "image/png"
+        try ShareQueue.enqueue(file, payload: png, root: root)
+        try ShareQueue.enqueue(drop(.link, link, at: 4), payload: nil, root: root)
+
+        await vault.store.load()
+        #expect(Set(vault.store.items.map(\.itemType)) == ["link", "note", "image"])
+        #expect(vault.store.items.allSatisfy { $0.captureSource == "quick-capture" })
+        #expect(ShareQueue.pending(root: root).isEmpty)
+        #expect(ShareQueue.isKnown(link, root: root))
+        #expect(!ShareQueue.isKnown("https://example.com/agent/other", root: root))
+
+        try ShareQueue.enqueue(drop(.link, link, force: true, at: 5), payload: nil, root: root)
+        await vault.store.load()
+        #expect(vault.store.items.filter { $0.sourceUrl == link }.count == 2)
+    }
+
+    private static let onePixelPNG =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
     /// A memo left "pending" by a process that ended mid-transcription is
     /// picked up again: its audio is on this phone. One captured elsewhere
     /// (no local file) stays as it is.

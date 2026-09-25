@@ -63,6 +63,9 @@ final class InboxStore {
     @ObservationIgnored private var notificationTask: Task<Void, Never>?
     /// Voice memos being transcribed in this process.
     @ObservationIgnored var transcribing: Set<String> = []
+    /// The app group the Share extension writes to (D7); nil in tests and
+    /// wherever the entitlement is missing, which turns sharing off.
+    @ObservationIgnored var shareRoot: URL?
 
     // MARK: Dependencies
 
@@ -138,6 +141,7 @@ final class InboxStore {
     func load() async {
         await resurfaceDue()
         await refresh()
+        await ingestShared()
         let first = !hasLoaded
         hasLoaded = true
         if first { Task { await resumeTranscriptions() } }
@@ -194,6 +198,7 @@ final class InboxStore {
             }
             failure = nil
             scheduleNotifications()
+            publishKnownLinks()
         } catch {
             report(error)
         }

@@ -28,7 +28,9 @@ struct InboxConvertRequest: Identifiable, Equatable {
 struct InboxSheets: Equatable {
     var file: InboxFileRequest?
     var convert: InboxConvertRequest?
-    var snoozeIds: [String]?
+    /// Held as an identified list: a binding that wrapped bare ids made a
+    /// new identity on every read, and the sheet re-presented itself.
+    var snooze: InboxIdList?
     var rename: InboxItemRecord?
     var tag: InboxIdList?
     var archiveAll: [String]?
@@ -48,10 +50,7 @@ struct InboxSheetsModifier: ViewModifier {
             .sheet(item: $sheets.convert) { request in
                 InboxConvertSheet(store: store, item: request.item, start: request.target, done: afterExit)
             }
-            .sheet(item: Binding(
-                get: { sheets.snoozeIds.map { InboxIdList(ids: $0) } },
-                set: { sheets.snoozeIds = $0?.ids }
-            )) { list in
+            .sheet(item: $sheets.snooze) { list in
                 InboxSnoozeDateSheet(now: store.clock()) { date in
                     Task {
                         await store.snooze(list.ids, until: date)

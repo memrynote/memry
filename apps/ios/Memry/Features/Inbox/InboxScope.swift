@@ -102,6 +102,7 @@ struct VaultInboxScope<Content: View>: View {
                 writer: try? vault.notesWriter(store: secureStore),
                 tasks: try? vault.tasks(store: secureStore)
             )
+            made.shareRoot = ShareQueue.groupRoot()
             store = made
             await made.load()
         } catch {

@@ -36,7 +36,7 @@ struct InboxSettingsView: View {
                 .foregroundStyle(Tokens.Text.tint.color)
                 .accessibilityIdentifier("inbox.settings.test")
             } header: {
-                Text(InboxCopy.dailyReview)
+                sectionHeader(InboxCopy.dailyReview)
             } footer: {
                 Text(testDenied ? InboxCopy.testDenied : testSent ? InboxCopy.testSent : InboxCopy.reviewFooter)
             }
@@ -49,7 +49,7 @@ struct InboxSettingsView: View {
                 Toggle(InboxCopy.askWhenFiling, isOn: Binding(get: { !remembered }, set: { remembered = !$0 }))
                     .accessibilityIdentifier("inbox.settings.ask")
             } header: {
-                Text(InboxCopy.images)
+                sectionHeader(InboxCopy.images)
             } footer: {
                 Text(InboxCopy.imagesFooter)
             }
@@ -61,6 +61,15 @@ struct InboxSettingsView: View {
         .task { await load() }
         .onChange(of: enabled) { _, _ in save() }
         .onChange(of: time) { _, _ in save() }
+    }
+
+    /// Paper 23's grouped-list label: 13 pt, uppercase, tertiary ink (iOS 26
+    /// otherwise draws a larger sentence-case header).
+    private func sectionHeader(_ text: String) -> some View {
+        Text(text)
+            .font(Tokens.Typography.caption.font)
+            .textCase(.uppercase)
+            .foregroundStyle(Tokens.Text.tertiary.color)
     }
 
     private func load() async {

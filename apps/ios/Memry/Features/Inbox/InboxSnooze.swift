@@ -162,6 +162,9 @@ struct InboxSnoozeDateSheet: View {
                     }
                 }
         }
-        .presentationDetents([.medium, .large])
+        // Large only: at medium the graphical picker's time row sat below the
+        // fold with nothing to scroll, and the glass sheet let the detail's
+        // File button show through.
+        .presentationDetents([.large])
     }
 }

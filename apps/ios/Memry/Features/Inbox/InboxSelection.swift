@@ -36,7 +36,7 @@ struct InboxSelectionToolbar: ToolbarContent {
                             finish()
                         }
                     } pickDate: {
-                        sheets.snoozeIds = ids
+                        sheets.snooze = InboxIdList(ids: ids)
                     }
                 } label: {
                     TaskBulkActionLabel(title: InboxCopy.snooze, systemImage: "alarm")

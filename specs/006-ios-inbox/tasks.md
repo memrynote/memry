@@ -257,7 +257,10 @@ needed.
       Evidence: `Design/{Chrome,UndoToast,TitleMenuHeader}.swift` shared with Tasks; `-only-testing:MemryTests/InboxFormattingTests` 7 tests passed (suite "Inbox formatting"; 9 tests in 2 suites total).
 - [x] IB033 Entry point (D1): More tab row with count.
       Evidence: memry-A signed in to MemryNote, More tab shows "Inbox 28", tapping opens the list "28 to process": `apps/ios/SpikeEvidence/inbox/IB033-more-row.png`.
-- [ ] IB033a Deep-link route used by widget and notifications (verified with IB23).
+- [x] IB033a Deep-link route used by widget and notifications (verified with IB23).
+      Evidence: memry-A, a Send-test notification tapped while the app was
+      on the Tasks tab opened the Inbox list
+      (`SpikeEvidence/inbox/IB23-notification-opens-inbox.png`).
 
 ## Phase 4: screens (one checkbox per artboard)
 
@@ -476,13 +479,48 @@ Each item lists what it must carry. Verification per §0.7.
 
 ## Phase 5: outside the app
 
-- [ ] IB22 **Share extension** (D7): target + app group, activation for URL,
-      image, file, PDF, text; optional thought; duplicate notice; ingest on
+- [x] IB22 **Share extension** (D7): target + app group, activation for URL,
+      image, file, PDF, text; duplicate notice; ingest on
       foreground; locked-vault queue; extension memory limit respected.
-- [ ] IB23 **Settings › Inbox + notifications** (D8): review reminder on/off,
+      Evidence: memry-A. `MemryShare.appex` (app group
+      `group.com.memry.app`) shows as "Memry" in Safari's and Photos' share
+      sheets (`IB22-share-sheet-memry.png`); Paper 22 sheet with the link card
+      (`IB22-share-extension.png`) and the photo card with thumbnail and size
+      (`IB22-share-photo.png`). A drop made before any vault was open waited
+      in `inbox-share/` until MemryNote was opened past the vault picker, then
+      became link row `fpYOYJdYUlcDU8EB2Oegu` (`capture_source`
+      `quick-capture`) with the "1 shared item saved" toast
+      (`IB22-ingested-toast.png`). Sharing the same URL again showed "Already
+      captured" with Confirm disabled until Capture anyway
+      (`IB22-already-captured.png`, `IB22-capture-anyway.png`); foregrounding
+      the app ingested it as a second row (`1jvrwur4luXK_vLRFz-Lv`). The Photos
+      share became image row `4qz927pCscN7FUtZ9iI_X` (4.1 MB,
+      `IB22-photo-ingested.png`). Close enqueues nothing (queue empty).
+      Memory: the extension never loads a payload into memory; files are
+      copied from `loadFileRepresentation`, thumbnails come from ImageIO
+      downsampling, and anything over 50 MB is refused before the copy.
+      Unit `shared_drops_are_captured_on_load` (link, text, file, duplicate,
+      forced duplicate, digests) green with the Inbox suites (16/16).
+- [ ] IB22a Optional thought on a shared item. Not built; see §6 (no field on
+      the wire for it).
+- [x] IB23 **Settings › Inbox + notifications** (D8): review reminder on/off,
       time, send test; image filing mode, ask when filing; daily review
       nudge and snooze-due local notifications with counts only; tap opens
       the inbox (delegate rules from iOS AGENTS.md).
+      Evidence: memry-A, Paper 23 (9K0-0) after the header fix (§6):
+      More › Inbox › … › Inbox settings (`IB23-settings.png`). Turning the
+      reminder on asked for notification permission once and wrote the synced
+      `inbox` settings (`reviewReminderEnabled` true, `reviewReminderTime`
+      "18:00"); Send test showed "Time to review your inbox" as a banner
+      (`IB23-test-notification.png`); tapping it from the Tasks tab opened the
+      Inbox (`IB23-notification-opens-inbox.png`). Time set to 13:16 with the
+      app in the background fired "Time to review 31 items / Process today's
+      captures in one calm pass." at 13:16 (`IB23-review-nudge-fired.png`,
+      count only). `[agent] snooze due check` (`sgVekWr2b1138vFN9U0kv`) snoozed
+      through Pick date & time to 13:35 fired "1 snoozed item" at 13:35
+      (`IB23-snooze-due-fired.png`). Image lands as and Ask when filing are the
+      device-local preferences the File sheet reads (IB13). Restored to off,
+      18:00, Embedded (`IB23-settings-restored.png`).
 
 ## Phase 6: verification (serial)
 
@@ -686,6 +724,11 @@ Each item lists what it must carry. Verification per §0.7.
 - 2026-09-25 — Phase 4 gate — `TasksUITests` picks the vault by `TEST_RUNNER_MEMRY_UI_VAULT` (default "MemryNote"): the staging vault is now named "jp-desk" by a desktop peer (§7). Test harness only.
 - 2026-09-25 — IB13 — Vault picker rows now hit-test their full width (`contentShape`); a plain button only took taps on its text and chevron. Pre-existing, found when the driver's centre tap did nothing.
 - 2026-09-25 — IB13 — A failed file-capture filing tombstones the note it created for it (it used to leave one empty twin per retry). The Notes list re-reads its outline quietly when it comes back on screen, so a note the Inbox filed shows without a relaunch.
+- 2026-09-25 — IB22 — The Share extension queues drops in the app group (`inbox-share/<id>/drop.json` + `payload`, protection `completeUntilFirstUserAuthentication`, the vault's class) and the app captures them on every inbox `load()` (open and foreground) through the composer's path with `captureSource` `quick-capture`, desktop's value for its quick-capture window. A drop is removed once its capture ran, whatever the answer: a duplicate or a refused file answers the same on every retry. The duplicate notice reads SHA-256 digests of live link captures' `sourceUrl`s that the app publishes after each refresh (`inbox-known-links.json`), so no URL text sits outside the vault. The check runs again at ingest, so a stale digest file can only under-warn. No wire, schema or sync change.
+- 2026-09-25 — IB22a — No thought field on shared items. goal.md's row 22 lists an "optional thought", but Paper 22 draws none and desktop's quick-capture has none. There is also no field to carry it: a link's `content` is desktop's extracted description, which desktop's link job overwrites and filing quotes as the page's excerpt. A thought stored there would be lost or shown as the page's words. Adding one needs a synced field and a desktop reader; left open, not faked.
+- 2026-09-25 — IB22 — The agent driver's `app` selector takes any bundle id (Safari, Photos), so a share sheet can be driven from its host app. Test harness only.
+- 2026-09-25 — IB23 — Settings › Inbox section headers are 13 pt uppercase tertiary (Paper 23); iOS 26's default grouped header is larger and sentence case.
+- 2026-09-25 — IB09/IB23 — Found live: the Pick date & time sheet re-presented itself on every render, because its binding wrapped the ids in a new `InboxIdList` (new UUID) on each read. It flickered, collapsed to its toolbar or vanished. `InboxSheets.snooze` now holds the identified list, as `tag` already did. The sheet opens at `.large` only: at `.medium` the graphical picker's time row sat below the fold with nothing to scroll. Evidence `IB09-pick-date-sheet.png`.
 
 ## 7. Blockers
 
@@ -731,6 +774,18 @@ Each item lists what it must carry. Verification per §0.7.
   voice memos `ihA2Z_mg0XBRNsIbo-XGE`, `ac9JStVMkpGrLEmlCUibt`. IB93 deletes
   them by id with the `[agent]` data. The `default` vault holds
   `[agent] zero check` (`fNlHbLv_OxRZ8SQVWaQ2I`) filed to its root note.
+- 2026-09-25 — IB22 — Share test rows without the prefix (titles come from
+  the page and the photo): links `fpYOYJdYUlcDU8EB2Oegu`,
+  `1jvrwur4luXK_vLRFz-Lv` (https://example.com/agent/share1), image
+  `4qz927pCscN7FUtZ9iI_X` ("IMG_0111"). IB93 deletes them by id. On memry-A
+  the test runner kept the old appex after `build-for-testing`; an explicit
+  `simctl install` of the built app picked up the new one.
+- 2026-09-25 — IB23 — The review reminder check wrote Kaan's synced
+  `inbox` settings (on, 13:16), then set them back to off and 18:00. Those
+  are desktop's defaults, and the screen showed off before. The rows now
+  exist explicitly with those values. A mis-aimed tap opened the detail of a
+  real "Reminder: task" row, which only marks it viewed. The snooze check row
+  `sgVekWr2b1138vFN9U0kv` is `[agent]` and goes in IB93.
 
 ## 8. Final report
 

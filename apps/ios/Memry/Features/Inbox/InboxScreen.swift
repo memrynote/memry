@@ -102,7 +102,7 @@ struct InboxScreen: View {
             file: { sheets.file = InboxFileRequest(ids: [$0.id]) },
             quickFile: { item, folder in Task { await store.file(item, to: folder, tags: []) } },
             convert: { sheets.convert = InboxConvertRequest(item: $0, target: $1) },
-            pickSnooze: { sheets.snoozeIds = $0 },
+            pickSnooze: { sheets.snooze = InboxIdList(ids: $0) },
             rename: { sheets.rename = $0 },
             select: { item in
                 editMode = .active
