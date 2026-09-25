@@ -11,6 +11,10 @@ struct JournalTabContent: View {
     let secureStore: (any SecureStore)?
     /// The vault's sync pass is running; its end re-reads what is shown.
     let isSyncing: Bool
+    /// The vault's tasks store, for the Day section.
+    var tasksStore: TasksStore?
+    /// The vault's sync, for on-demand body fetches and attachments.
+    var filler: (any VaultFilling)?
 
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(JournalRouter.self) private var router
@@ -23,6 +27,7 @@ struct JournalTabContent: View {
         Group {
             if let store {
                 JournalRootView(store: store)
+                    .environment(\.journalTasks, tasksStore)
             } else if let failure {
                 NavigationStack {
                     ErrorNotice(error: failure, code: nil)
@@ -35,7 +40,14 @@ struct JournalTabContent: View {
         }
         .task(id: vault.id()) { make() }
         .onChange(of: isSyncing) { _, syncing in
-            if !syncing, let store { Task { await store.refresh() } }
+            if !syncing, let store {
+                Task {
+                    // Backlinks and link resolution read the search index,
+                    // which only a reindex brings up to date (incremental).
+                    await Self.reindex(store)
+                    await store.syncFinished()
+                }
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { store?.clock.refresh() }
@@ -56,7 +68,9 @@ struct JournalTabContent: View {
             clock.start()
             let made = JournalStore(core: try vault.journal(store: secureStore), clock: clock, vaultId: vault.id())
             made.requestSync = requestVaultSync
+            made.context = Self.context(vault: vault, secureStore: secureStore, filler: filler)
             store = made
+            Task { await Self.reindex(made) }
             // A route that arrived first (a reminder tap on a cold start) wins
             // over the saved stack; with neither, the tab opens on today.
             if router.path.isEmpty, !router.restore(savedStack) {
@@ -65,6 +79,37 @@ struct JournalTabContent: View {
         } catch {
             failure = ErrorMapping.userFacing(error)
         }
+    }
+}
+
+extension JournalTabContent {
+    /// Brings the search index up to date; a failure leaves a stale index,
+    /// which still answers.
+    static func reindex(_ store: JournalStore) async {
+        do {
+            try await store.context?.search?.reindex()
+        } catch {
+            Log.storage.error("the search index could not be brought up to date")
+        }
+    }
+
+    /// The note page's dependencies, built as `VaultBrowseViewModel` builds
+    /// them for the Notes tab.
+    static func context(
+        vault: Vault,
+        secureStore: any SecureStore,
+        filler: (any VaultFilling)?
+    ) -> JournalVaultContext {
+        let executor = CoreExecutor.shared
+        return JournalVaultContext(
+            reader: CoreNotesReader(vault: vault, executor: executor),
+            filler: filler,
+            writer: CoreNotesWriter(vault: vault, store: secureStore, executor: executor),
+            editor: CoreBlockEditor(vault: vault, store: secureStore, executor: executor),
+            metadataWriter: CoreNoteMetadataWriter(vault: vault, store: secureStore, executor: executor),
+            search: try? CoreVaultSearch(vault: vault, executor: executor),
+            noteTasks: CoreNoteTasks(vault: vault, store: secureStore, executor: executor)
+        )
     }
 }
 
@@ -83,6 +128,22 @@ struct JournalRootView: View {
                         JournalMonthScreen(store: store, year: year, month: month)
                     case let .day(date):
                         JournalDayScreen(store: store, date: date)
+                    case .settings:
+                        JournalSettingsScreen(store: store)
+                    case let .note(id):
+                        if let context = store.context {
+                            NoteReadView(
+                                route: NoteRoute(id: id),
+                                reader: context.reader,
+                                filler: context.filler,
+                                editor: context.editor,
+                                metadataWriter: context.metadataWriter,
+                                writer: context.writer,
+                                search: context.search,
+                                open: { router.path.append(.note($0.id)) },
+                                noteTasks: context.noteTasks
+                            )
+                        }
                     }
                 }
         }

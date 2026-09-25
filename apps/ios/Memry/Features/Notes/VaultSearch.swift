@@ -34,6 +34,9 @@ protocol VaultSearching: Sendable {
     func reindex() async throws
     /// Every note linking to this one (N800).
     func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink]
+    /// Every note or journal day linking to `targetId` (a note or journal
+    /// record id), each with its kind and, for a day, its date (JP052).
+    func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow]
 }
 
 /// The production searcher: the core's own `Search`, over the shell's serial
@@ -70,6 +73,13 @@ struct CoreVaultSearch: VaultSearching {
         let search = search
         return try await executor.run {
             try search.backlinks(noteId: noteId, order: order)
+        }
+    }
+
+    func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] {
+        let search = search
+        return try await executor.run {
+            try search.linksTo(targetId: targetId, order: order)
         }
     }
 }

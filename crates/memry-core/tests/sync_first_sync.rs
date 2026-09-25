@@ -447,6 +447,56 @@ async fn an_update_this_client_cannot_open_stops_the_document_at_that_update() {
 }
 
 #[tokio::test]
+async fn a_pulled_update_is_stamped_with_this_devices_clock_not_the_servers() {
+    // The search index reindexes a body whose `yjs_updates.created_at` is at
+    // or above its epoch-ms watermark. A server `createdAt` (here seconds,
+    // as the staging server sends) sat below it forever, so a body edited on
+    // another device never re-indexed and its links never became backlinks.
+    let db = scratch_db("apply-stamp");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[12u8; 32]).expect("keypair");
+    let transport = FakeTransport::new(vec![
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [
+                {"sequenceNum": 1, "data": packed_base64(NOTE, &body_update("first"), &secret_key), "createdAt": 1_700_000_000i64, "signerDeviceId": "device-a"}
+            ], "hasMore": false})
+            .to_string(),
+        ),
+    ]);
+    let bodies = BodyPull::new(
+        http(transport),
+        db.clone(),
+        Declaration::subscribed(),
+        RealCrdtCipher::with("device-a", public_key),
+    );
+    let before = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock")
+        .as_millis() as i64;
+
+    let report = bodies.pull_document(NOTE).await.expect("the pull");
+    assert_eq!(report.updates, 1);
+    let stamp: i64 = db
+        .call_blocking(|conn| {
+            conn.query_row(
+                "SELECT created_at FROM yjs_updates WHERE doc_id = ?1",
+                [NOTE],
+                |row| row.get(0),
+            )
+            .map_err(|e| memry_core::api::errors::StorageError::Failed {
+                what: e.to_string(),
+            })
+        })
+        .expect("the stored row");
+    assert!(
+        stamp >= before,
+        "stamped at apply time in epoch ms, got {stamp}"
+    );
+}
+
+#[tokio::test]
 async fn a_baseline_is_taken_when_the_advertised_revision_differs_and_not_otherwise() {
     let db = scratch_db("baseline");
     let (public_key, secret_key) =

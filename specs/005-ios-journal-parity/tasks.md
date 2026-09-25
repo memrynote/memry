@@ -516,6 +516,8 @@ saved to `apps/ios/SpikeEvidence/journal-parity/<id>-*.png`, compared side by
 side with `paper_get_screenshot` of its artboard: spacing, lanes, type roles,
 colors, glass placement, what is shown and what is hidden.
 
+Evidence: memry-B, today pinned 2099-06-15: apps/ios/SpikeEvidence/journal-parity/JP040-J01-today-empty.png, JP040-J02-first-edit-created.png (typed line created j2099-06-15, synced to /tmp/MemryNote/journal/2099-06-15.md), JP051-J03-footer-day-section.png, JP040-J10-past-day.png (no Back, bell visible) compared with Paper J01/J02/J03/J10; desktop edit to 06-16 landed in place after the day pull (JP052-day-links-resolved.png); inline title after scroll (JP057-ax5); 'Not on this phone yet' for 06-06; JournalDayTests 13/13; unit-safe 741/741.
+
 - [ ] JP040 [P] **Day page** (J01, J02, J03, J10). The date header has a
       weekday line (a relative "N days ago" off today), the TODAY badge, and a
       serif date title (`Tokens.Typography` serif role; add a journal title
@@ -532,62 +534,74 @@ colors, glass placement, what is shown and what is hidden.
       Carries: artboard 00 section C rows (Reuse and New), external updates
       landing in place (same path as notes), autosave and save errors through
       the note editor path.
-- [ ] JP041 [P] **Moving between days**: horizontal paging to the adjacent
+- [x] JP041 [P] **Moving between days**: horizontal paging to the adjacent
       day, ‹ › buttons, a "Today" capsule when the page is off today,
       hardware ← / → when no text field is focused, and Esc drilling up to
       Month (desktop keys). Adjacent days prefetch (desktop `PREFETCH_DAYS`
       = 1). A pending edit is never rerouted to another day.
-- [ ] JP042 [P] **Title menu and Go to date** (J04): Month, Year, and Go to
+      Evidence: Swipe left/right paged 06-17 -> 06-18 -> 06-17 (tree); ‹ › and the Today capsule shown off today (J10 shot); hardware ← moved 06-17 -> 06-16; ⌘. (the .cancelAction Esc maps to) drilled Day -> Month; XCUITest Esc not delivered (§6); per-page models (JournalDayTests a_bridge_edit_lands_on_its_own_date); window of neighbours (the_window_holds_the_neighbours...).
+- [x] JP042 [P] **Title menu and Go to date** (J04): Month, Year, and Go to
       date… (a graphical date picker sheet with the xmark / checkmark chrome
       of spec 005-redesign).
-- [ ] JP043 [P] **Month** (J05). Days of the month, newest first, with an
+      Evidence: apps/ios/SpikeEvidence/journal-parity/JP042-J04-title-menu.png (Month / Year / Go to date), apps/ios/SpikeEvidence/journal-parity/JP042-go-to-date.png (graphical picker, xmark/checkmark); picking June 3 + confirm opened 'Wednesday, June 3, 2099, 12 days ago'.
+- [x] JP043 [P] **Month** (J05). Days of the month, newest first, with an
       activity dot (level 1–4, hollow when empty), the day number, the
       weekday, and a preview. Today gets a badge, future days read "Future",
       empty past days read "No entry", and days whose body is not pulled get
       a not-on-this-phone line. The subtitle shows year, entry count and
       streak. ‹ › change the month, a tap opens the day.
-- [ ] JP044 [P] **Year** (J06): 3-column grid of months with entry count and
+      Evidence: apps/ios/SpikeEvidence/journal-parity/JP043-J05-month.png, JP043-J05-month-entries.png: subtitle '2099 · 10 entries · 1-day streak', Today badge, Future, No entry, 'Not on this phone yet', entry dots; ‹ › months; tap opened the day. JournalCalendarTests green. Preview/count deltas logged in §6.
+- [x] JP044 [P] **Year** (J06): 3-column grid of months with entry count and
       activity dots, current month highlighted, future months dimmed; totals
       (days with entries, thousands of characters), streak and best; ‹ ›
       years; tap → Month.
-- [ ] JP045 [P] **Tags and properties writes** on the day page (J02),
+      Evidence: apps/ios/SpikeEvidence/journal-parity/JP044-J06-year.png: 3-column grid, June current (highlighted), future months dimmed, totals '9 days with entries · 402 characters', streak and best 13; tap June -> Month; ‹ › years (2026 -> 2099 by next).
+- [x] JP045 [P] **Tags and properties writes** on the day page (J02),
       gated by G0 (D5): add, create with color, remove a tag; add, edit,
       rename, reorder and delete a property; the first write creates the day.
       If G0 failed, the rows are read-only with the limitation copy and this
       task records that.
-- [ ] JP046 [P] **Reminders** (J07, J08, J13). The bell menu offers the presets
+      Evidence: G0 failed (§7), so rows are read-only: apps/ios/SpikeEvidence/journal-parity/JP045-J02-tags-readonly.png (06-04 tags g0/fixed), ghost tap shows JournalCopy.metadataReadOnly; accessibility value 'Read-only on iPhone'; JournalDayTests hidden_metadata_reads_as_none.
+- [x] JP046 [P] **Reminders** (J07, J08, J13). The bell menu offers the presets
       with their resolved dates and a custom date and time. The sheet lists the
       active reminders for this day (edit, snooze, dismiss, delete) under
       "Change reminder" (D8). The bell is filled when a reminder is active,
       with a count when there are several. Local notifications go through the
       existing `ReminderScheduler` window. Title and body follow D8. A tap
       opens the day.
-- [ ] JP047 [P] **More menu** (J09): Find in page (note find), Export (note
+      Evidence: apps/ios/SpikeEvidence/journal-parity/JP046-J07-bell-menu.png (presets with resolved dates + custom), 'In 1 Week' set -> bell filled 'Reminder: Fri, Oct 2 · 9:00' (apps/ios/SpikeEvidence/journal-parity/JP046-J02-bell-filled.png), sheet under 'Change reminder' (apps/ios/SpikeEvidence/journal-parity/JP046-J08-reminder-sheet.png); JournalRemindersTests 8/8 incl. a_journal_notification_shows_the_date_only (J13 text) and JournalRoutingTests a_journal_reminder_tap_opens_its_day.
+- [x] JP047 [P] **More menu** (J09): Find in page (note find), Export (note
       export, the title from desktop's `export.noteTitle`), Journal settings.
-- [ ] JP048 [P] **Settings › Journal** (J11, J12). Reached from the More menu
+      Evidence: apps/ios/SpikeEvidence/journal-parity/JP047-J09-more-menu.png; Find in page 'lake' -> '1 match' (apps/ios/SpikeEvidence/journal-parity/JP047-find-in-page.png); Export -> share sheet 'Journal - June 15, 2099.txt' (apps/ios/SpikeEvidence/journal-parity/JP047-export.png); Journal Settings opens J11.
+- [x] JP048 [P] **Settings › Journal** (J11, J12). Reached from the More menu
       and from a Journal row on the More tab (next to the Tasks row). It has
       the default template, a template per weekday in first-day-of-week order
       bound to the absolute weekday (showing "Default · <name>" when a day is
       unset and "Deleted template" when a set template is missing), and the
       stats footer toggle (device-local, D9). No folder or filename settings
       (D7).
-- [ ] JP049 [P] **Template seeding** (D2, D10). Opening an empty day whose
+      Evidence: apps/ios/SpikeEvidence/journal-parity/JP048-J11-settings.png, JP048-J12-saturday.png, JP048-J11-settings-footer.png, JP048-more-tab-row.png (More tab row next to Tasks); Wednesday -> 'Agent Test Journal' synced to desktop getJournalSettings weekdayTemplates {3: g35t8rdy1a3l}; unset days read 'Default · none'; JournalSettingsTests green.
+- [x] JP049 [P] **Template seeding** (D2, D10). Opening an empty day whose
       date resolves to a template seeds it once. A template that has not
       arrived yet retries on the next open or sync, not in a loop. A day
       seeded on another device is never seeded twice. The locale strings are
       formatted with Foundation to match desktop's `Intl` output (D4).
-- [ ] JP050 [P] **Day section** (J01, J03, J10): tasks due on the day
+      Evidence: Desktop template 'Agent Test Journal' (g35t8rdy1a3l) on Wednesday; opening empty 2099-06-17 seeded it once: apps/ios/SpikeEvidence/journal-parity/JP049-template-seeded.png ('Wednesday check-in', 'Today is 17.06.2099.', agent tag, agentmood: calm) and desktop file journal/2099-06-17.md matches; JournalSeedTests 8/8 (retry after generation, never seeded twice, Intl strings).
+- [x] JP050 [P] **Day section** (J01, J03, J10): tasks due on the day
       from `TasksStore` (status toggle, priority, project meta), the overdue
       count on today opening the Tasks tab, a task tap opening its detail
       through `TasksRouter`. Hidden when there is nothing to show (desktop
       `JournalDayPanel`).
-- [ ] JP051 [P] **Stats footer** (J03): words, characters, reading time
+      Evidence: apps/ios/SpikeEvidence/journal-parity/JP050-J01-day-section.png, JP051-J03-footer-day-section.png: 'Due today 1', High priority, project meta, overdue pill; task tap -> TaskDetail ([agent] journal day task); overdue tap -> Tasks tab (apps/ios/SpikeEvidence/journal-parity/JP050-overdue-opens-tasks.png, desktop behaviour, §6); JournalSectionTests due/overdue rules; hidden on 06-12 with nothing due (J10).
+- [x] JP051 [P] **Stats footer** (J03): words, characters, reading time
       (desktop's 200 wpm, "< 1 min"), modified date, when the setting is on.
-- [ ] JP052 [P] **Cross-tab routes.** Every one of these opens the Journal tab
+      Evidence: Footer on with the device-local toggle: '7 words · 34 characters · 1 min read · Modified Sep 25, 2026' (apps/ios/SpikeEvidence/journal-parity/JP051-J03-footer-day-section.png); JournalDayTests reading_time_rounds_up_at_200_words_a_minute and the_stats_line_lists....
+- [x] JP052 [P] **Cross-tab routes.** Every one of these opens the Journal tab
       on the right day: a journal search hit, a journal backlink on a note, a
       wiki link to a day (per JP003g), a journal related item in the task detail
       (`TaskRelatedSection` kind `journal`), and a journal reminder tap.
-- [ ] JP057 Accessibility pass over every screen above. VoiceOver: the date
+      Evidence: Search hit 'walked to the lake' -> Journal tab on 06-15 (apps/ios/SpikeEvidence/journal-parity/JP052-search-hit.png); journal backlink on 06-15 -> 06-16 (apps/ios/SpikeEvidence/journal-parity/JP052-backlink-opens-day.png); wiki link [[2099-06-15]] in 06-16 -> 06-15 (apps/ios/SpikeEvidence/journal-parity/JP052-day-links-resolved.png); task related journal item -> Journal tab 06-15 (apps/ios/SpikeEvidence/journal-parity/JP052-task-related-journal.png); reminder tap: JournalRoutingTests a_journal_reminder_tap_opens_its_day.
+- [x] JP057 Accessibility pass over every screen above. VoiceOver: the date
       header reads as one heading. Month rows read "Thursday 24, entry,
       <preview>" and Year cells read "September, 17 days". Custom actions
       cover previous day, next day and today. Also check Dynamic Type at AX5
@@ -595,14 +609,18 @@ colors, glass placement, what is shown and what is hidden.
       Motion (paging and fog), Reduce Transparency, forced RTL (‹ › and paging
       mirror), and WCAG AA on the activity dots' text companions. Runs after
       JP040–JP052.
-- [ ] JP058 Dark mode: light and dark screenshots of J01, J02, J05, J06,
+      Evidence: Header reads as one element 'Monday, June 15, 2099, Today' with actions Previous day/Next day/Go to Today; Month rows 'Monday 15, entry, Agent day one…'; Year 'June, 9 days' (value Current month); AX5: apps/ios/SpikeEvidence/journal-parity/JP057-ax5-day.png, JP057-ax5-day-lower.png, JP057-ax5-month.png, JP057-ax5-year.png (ghost row and backlinks header stack, Year 2 columns); RTL apps/ios/SpikeEvidence/journal-parity/JP057-rtl-day.png (‹ › mirrored, swipe right = next day); Reduce Motion via Tokens.animation(reduceMotion:), fog absent under Reduce Transparency (JournalDayHeader); 44pt minimumHitArea.
+- [x] JP058 Dark mode: light and dark screenshots of J01, J02, J05, J06,
       J08, J11. Activity colors and fog tints derived for dark and checked.
+      Evidence: Dark: apps/ios/SpikeEvidence/journal-parity/JP058-dark-J01-today.png, JP058-dark-J02-tags.png, JP058-dark-J05-month.png, JP058-dark-J05-month-entries.png, JP058-dark-J06-year.png, JP058-dark-J08-reminders.png, JP058-dark-J11-settings.png; activity dots and fog read in dark; appearance restored to light.
 
 **Commit** after each block lands.
 
 ---
 
 ## Phase 5: verification (serial)
+
+Evidence: journal_conformance FFI added (api/journal_conformance.rs, generated Swift diff additive: journalConformance + checksum); Conformance plan: 29 tests in 8 suites passed, suite 'journal.json — spec 005-journal JP080' passed.
 
 - [ ] JP080 Conformance:
       `apps/ios/MemryConformanceTests/JournalConformanceTests.swift` runs
@@ -821,6 +839,17 @@ note by `name → value`.
 - 2026-09-25 — planning — Paper J08 originally drew "New reminder" as a second
   reminder. It now reads "Change reminder" with the one-reminder copy, to match
   desktop's set-or-replace rule (D8).
+- 2026-09-25 — Phase 4 — The account vault 87614a10 (MemryNote) came back from the server named "scratch" at about 14:05 and as "MemryNote" again by 15:00. Neither the phone nor the /tmp/MemryNote desktop peer renamed it (the peer config still says MemryNote), so another device did. Left as is; JP095 checks the name is MemryNote and does not rename a vault this run did not rename.
+- 2026-09-25 — JP050 — The overdue count opens the Tasks tab as it stands, as desktop's `handleNavigateToOverdue` opens `/tasks` without choosing a view. The block first forced Today, which the Tasks tab's first-appear default view then overrode, and which would also discard the view the user left.
+- 2026-09-25 — JP041 — Esc drill-up uses `.keyboardShortcut(.cancelAction)`, which a hardware Esc and ⌘. both trigger. XCUITest's `typeKey(.escape)` does not reach the app in this simulator (it does not close a sheet either), so the evidence uses ⌘.; ←/→ are shown directly.
+- 2026-09-25 — JP040 — Desktop pushes a journal body edit as CRDT updates only, and the phone's sync pass pulls bodies only for records it applied, so a desktop edit to a day never reached the phone. The shown day now pulls its own body (`fetchNoteBody`) when it becomes shown and after each sync pass, as a note page pulls its missing body. Found alongside: pulled update rows were stamped with the server's `createdAt` (seconds) instead of the apply time, below the search index's epoch-ms watermark, so pulled bodies were never re-indexed and their links never became backlinks. Fixed in `sync/body_pull.rs`; `index_meta` `stamps.version` forces one full rebuild on existing installs.
+- 2026-09-25 — JP052 — A wiki link whose title is a date draws as resolved (accent) because it always opens its journal day, an empty one included (sectionF's route). Desktop draws a day link in the accent too.
+- 2026-09-25 — JP040 — Journal pages reindex search on store creation and after each sync pass so backlinks and link targets are current; backlinks re-read with the page on every store generation.
+- 2026-09-25 — JP043/JP044 — Known deltas, not fixed. (1) A Month preview comes from the core's `extract_text`, which leaves out inline atoms, so a line with a wiki link reads "Follow-up on a …" where desktop's markdown-based preview keeps the link text. (2) A day whose body is not on this phone counts 0 characters, so Year's "days" (days with characters) can be one lower than Month's entry count (records) until that body is pulled.
+- 2026-09-25 — Phase 4 — Journal settings before this run (for JP095): defaultTemplate null, weekdayTemplates {}, the device-local stats footer off. Changed during Phase 4: Wednesday -> "Agent Test Journal", stats footer on.
+- 2026-09-25 — JP052 — A wiki link to a bare date with no entry opens that empty day (sectionF), as the Journal's own navigation does; desktop's link picker offers only notes, so there is no desktop behavior to copy.
+- 2026-09-25 — Phase 4 — Known visual deltas against Paper, not fixed: the header fog renders as a horizontal band, not Paper's radial blob; the tab bar tint is the app-wide blue, not Paper's accent; the Month title lacks Paper's chevron and flame glyph, and the Year title its chevron. Task toasts raised from the Journal's day section are not shown on the Journal tab.
+- 2026-09-25 — Phase 4 — Screenshots: what looked like stale simulator frames was the agent image viewer caching by file path; every preview now gets a unique name, and each evidence PNG was re-checked that way. The accessibility tree stays the reference for state.
 - 2026-09-25 — JP001 — Found, not fixed (outside this plan): on the recovery-phrase unlock screen, with the keyboard up, the chooser's "Sign out" button (frame y 480-532) overlays the "Unlock" button (y 478-530), so a centred tap on Unlock opens the sign-out confirmation. The driver taps Unlock at `dy: 0.01`. Vault rows still need their label tapped (spec 004 §6 TP001). Screenshots from `XCUIScreen` can lag a few seconds; the accessibility tree is the reference for state.
 - 2026-09-25 — JP003 — JP022a is in scope: the phone has no markdown → Y.Doc path, so a template-seeded day would be unwritable (or lossy on desktop's next write-back) on the phone that seeded it (§5 c).
 
@@ -839,6 +868,9 @@ note by `name → value`.
 
 - 2026-09-25 — JP033 — Unit runs that must keep memry-B signed in skip the five suites that touch the real keychain or expect a signed-out app (`RealKeychainSuite`, `SignOutWiringTests`, `VaultContentRemovalTests`, `SignOutServiceTests`, `SignInWiringTests`); the full plan runs at G2 and JP083. `SignInWiringTests` "the app root constructs a real session" fails when the simulator is signed in (it expects `.signedOut`): environmental, not a regression.
 - 2026-09-25 — JP030 — The Journal tab refreshes when the vault's sync pass ends (the pass lives in the tasks store); a debounced `requestVaultSync` follows every journal write. `PropertyWriteError` is internal to the generated module, so a Retyped refusal maps to the generic copy (pre-existing gap, notes have it too).
+
+- 2026-09-25 — Phase 4 — The thirteen blocks run as six parallel subagents grouped by the files they share: Day page (JP040, JP041, JP045, JP051), calendar (JP042, JP043, JP044), More menu + seeding (JP047, JP049), reminders (JP046), settings (JP048), Day section + routes (JP050, JP052). Each works in its own detached worktree and compiles only, with DerivedData under `/tmp/memry-dd-B/agents/<block>`; the orchestrator owns every simulator run (`/tmp/memry-dd-B`, memry-B). The orchestrator pre-landed the shared contracts (placeholder views with fixed signatures, `JournalVaultContext`, `JournalRoute.settings/.note`, `Tokens.Journal`, `JournalPreferences`, the `journalTasks` environment value).
+- 2026-09-25 — JP040 — A note opened from a day (backlink, wiki link) is pushed inside the Journal stack (`JournalRoute.note`) with the same note page the Notes tab uses; there is still no cross-tab note route.
 
 ## 7. Blockers
 

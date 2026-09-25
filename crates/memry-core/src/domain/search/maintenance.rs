@@ -48,6 +48,14 @@ pub const DATA_VERSION_KEY: &str = "data.user_version";
 pub const NOTES_WATERMARK_KEY: &str = "watermark.fts_notes";
 /// `index_meta` key: the `fts_tasks` watermark.
 pub const TASKS_WATERMARK_KEY: &str = "watermark.fts_tasks";
+/// `index_meta` key: the stamp rules the index was built under. Pulled body
+/// updates used to be stamped with the server's `createdAt`, which sat below
+/// the epoch-ms watermark, so an install that pulled bodies before the fix
+/// holds rows no incremental pass will ever see. A missing or older value
+/// forces one full rebuild.
+pub const STAMPS_KEY: &str = "stamps.version";
+/// The current [`STAMPS_KEY`]: body updates stamped at apply time.
+const STAMPS_VERSION: i64 = 1;
 
 /// The device id the read-only body materialisation opens documents under.
 ///
@@ -86,7 +94,12 @@ pub fn reindex(
     let notes_from = meta_number(&transaction, NOTES_WATERMARK_KEY)?;
     let tasks_from = meta_number(&transaction, TASKS_WATERMARK_KEY)?;
 
-    let full = indexed != Some(version) || notes_from.is_none() || tasks_from.is_none();
+    let stamps = meta_number(&transaction, STAMPS_KEY)?;
+
+    let full = indexed != Some(version)
+        || stamps != Some(STAMPS_VERSION)
+        || notes_from.is_none()
+        || tasks_from.is_none();
     if full {
         transaction
             .execute_batch("DELETE FROM fts_notes; DELETE FROM fts_tasks;")
@@ -109,6 +122,7 @@ pub fn reindex(
     }
 
     meta_set(&transaction, DATA_VERSION_KEY, &version.to_string())?;
+    meta_set(&transaction, STAMPS_KEY, &STAMPS_VERSION.to_string())?;
     meta_set(
         &transaction,
         NOTES_WATERMARK_KEY,

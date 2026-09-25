@@ -84,7 +84,9 @@ struct VaultListView: View {
                 JournalTabContent(
                     vault: vault,
                     secureStore: model.secureStore,
-                    isSyncing: tasksStore?.isSyncing ?? false
+                    isSyncing: tasksStore?.isSyncing ?? false,
+                    tasksStore: tasksStore,
+                    filler: filler
                 )
             })
         }

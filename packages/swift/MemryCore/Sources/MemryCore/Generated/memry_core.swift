@@ -23757,6 +23757,18 @@ public func journalWordCount(text: String) -> UInt64  {
 })
 }
 /**
+ * Every section of `journal.json`, computed: `{ section: [expected, ...] }`
+ * in case order, each `expected` in the file's own shape.
+ */
+public func journalConformance(fileJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_journal_conformance(
+        FfiConverterString.lower(fileJson),uniffiCallStatus
+    )
+})
+}
+/**
  * The `dueWindows` section of `task-parsing.json` evaluated at every `at`
  * entry's `now`, in the file's own shape.
  */
@@ -23937,6 +23949,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_journal_word_count() != 31447) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_journal_conformance() != 28402) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {

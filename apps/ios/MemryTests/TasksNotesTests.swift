@@ -238,4 +238,5 @@ private struct TaskSearchFake: VaultSearching {
     func reindex() async throws {}
 
     func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
+    func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] { [] }
 }

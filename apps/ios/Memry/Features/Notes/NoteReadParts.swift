@@ -98,20 +98,25 @@ extension NoteReadViewModel {
         return seen
     }
 
-    /// Where a `[[wiki link]]` leads, or `nil` when it names no note.
+    /// Where a `[[wiki link]]` leads, or `nil` when it names neither a note
+    /// nor a day.
     ///
     /// The lookup happens on the tap rather than on load: a note can hold many
     /// links, and resolving all of them to draw one screen would be a lookup
     /// per link for an answer most of them are never asked for.
+    ///
+    /// A note wins; a title naming no note that spells a day (`YYYY-MM-DD` or
+    /// `jYYYY-MM-DD`) comes back as the day's `j<date>` route, which the page
+    /// opens in the Journal tab (JP052, `JournalLink`).
     func wikiTarget(for title: String) async -> NoteRoute? {
         do {
-            guard let id = try await reader.resolveWikiTarget(title) else { return nil }
-            return NoteRoute(id: id)
+            if let id = try await reader.resolveWikiTarget(title) { return NoteRoute(id: id) }
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("a wiki link could not be resolved", .code(mapped.code))
             return nil
         }
+        return JournalLink.date(fromWikiTarget: title).map(JournalLink.route(forDay:))
     }
 
     /// The body, or `nil` in every phase that has no note.
@@ -123,11 +128,12 @@ extension NoteReadViewModel {
     /// Whether a wiki link's title names a note in this vault, or `nil` while
     /// the list is unread — which draws every link as whole rather than
     /// calling a good one broken. Titles only: a link naming a note by its
-    /// alias reads as broken here and still resolves on the tap.
+    /// alias reads as broken here and still resolves on the tap. A date title
+    /// always leads somewhere, its journal day (JP052), so it reads as whole.
     var titleExists: ((String) -> Bool)? {
         guard !vaultNotes.isEmpty else { return nil }
         let titles = vaultTitles
-        return { titles.contains($0.lowercased()) }
+        return { titles.contains($0.lowercased()) || JournalLink.date(fromWikiTarget: $0) != nil }
     }
 
     /// The note's text for an export (N802).

@@ -14,6 +14,10 @@ enum JournalRoute: Hashable, Codable, Sendable {
     case month(year: Int, month: Int)
     /// A day, `YYYY-MM-DD`.
     case day(String)
+    /// Settings › Journal (J11), pushed from the More menu.
+    case settings
+    /// A note opened from a day (a backlink, a wiki link, a linked item).
+    case note(String)
 }
 
 /// Navigation into and inside the Journal tab.
@@ -27,7 +31,7 @@ final class JournalRouter {
     /// The tab bar, so a route from another tab can switch here.
     @ObservationIgnored weak var tabs: TasksRouter?
 
-    init(today: String = JournalDates.key(Date()), tabs: TasksRouter? = nil) {
+    init(today: String = JournalClock.debugPin() ?? JournalDates.key(Date()), tabs: TasksRouter? = nil) {
         rootYear = JournalDates.yearMonth(today).year
         self.tabs = tabs
     }
@@ -36,6 +40,12 @@ final class JournalRouter {
     var shownDay: String? {
         if case let .day(date) = path.last { return date }
         return nil
+    }
+
+    /// Pushes Settings › Journal over whatever is shown.
+    func openSettings() {
+        tabs?.selectedTab = .journal
+        path.append(.settings)
     }
 
     /// Selects the Journal tab and shows `date` over its month and year.
@@ -102,6 +112,8 @@ final class JournalRouter {
 extension EnvironmentValues {
     /// Opens a day in the Journal tab from anywhere in the vault shell.
     @Entry var openJournalDay: (@MainActor (String) -> Void)?
+    /// The vault's tasks store, for the day page's Day section (JP050).
+    @Entry var journalTasks: TasksStore?
 }
 
 extension ReminderTap {

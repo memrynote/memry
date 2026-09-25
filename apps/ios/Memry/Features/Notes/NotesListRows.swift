@@ -25,11 +25,7 @@ struct SearchResultsSection: View {
         switch search?.phase {
         case let .results(hits) where !hits.isEmpty || !(search?.taskHits.isEmpty ?? true):
             ForEach(hits, id: \.id) { hit in
-                // Pushed by value, through the one registration on the stack
-                // root — the same route a browse row uses.
-                NavigationLink(value: NoteRoute(id: hit.id)) {
-                    SearchHitLabel(hit: hit)
-                }
+                SearchHitRow(hit: hit)
             }
             // TP056: the tasks the query matched, in their own section and
             // their own ranking, each opening in the Tasks tab.
@@ -115,6 +111,37 @@ struct TitleMatches: View {
         } else {
             ForEach(hits) { row in
                 BrowseRowView(row: row, toggle: toggle, model: model)
+            }
+        }
+    }
+}
+
+/// One note or journal hit. A note is pushed by value, through the one
+/// registration on the stack root — the same route a browse row uses. A
+/// journal hit opens its day in the Journal tab (JP052).
+struct SearchHitRow: View {
+    let hit: SearchResult
+
+    @Environment(\.openJournalDay) private var openJournalDay
+
+    var body: some View {
+        if hit.kind == "journal",
+           let date = hit.journalDate.flatMap(JournalLink.date(fromWikiTarget:)),
+           let openJournalDay {
+            Button {
+                openJournalDay(date)
+            } label: {
+                SearchHitLabel(hit: hit)
+                    .frame(minHeight: Tokens.Size.minimumHitArea)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityHint(JournalCopy.openInJournal)
+            .accessibilityIdentifier("notes.search.journal.\(date)")
+        } else {
+            NavigationLink(value: NoteRoute(id: hit.id)) {
+                SearchHitLabel(hit: hit)
             }
         }
     }

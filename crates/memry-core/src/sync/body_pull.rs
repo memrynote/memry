@@ -248,7 +248,7 @@ impl BodyPull {
                     stopped = true;
                     break;
                 };
-                self.store_update(doc_id, entry.sequence_num, update, entry.created_at)
+                self.store_update(doc_id, entry.sequence_num, update)
                     .await?;
                 cursor = entry.sequence_num;
                 report.updates += 1;
@@ -362,15 +362,22 @@ impl BodyPull {
     /// One update, durable **with** its cursor. §7.9 advances the watermark
     /// per update rather than per page, and the transaction is what makes a
     /// kill between the two impossible.
+    ///
+    /// The log row is stamped with **this device's** clock at apply time, not
+    /// the server's `createdAt`: the search index's incremental watermark
+    /// compares `yjs_updates.created_at` against its own epoch-ms stamps
+    /// (`domain::search::maintenance`), and a server stamp (seconds, or a
+    /// remote clock) sat below it, so a pulled body was never re-indexed and
+    /// its links never became backlinks.
     async fn store_update(
         &self,
         doc_id: &str,
         sequence_num: i64,
         update: Vec<u8>,
-        created_at: i64,
     ) -> Result<(), BodyPullError> {
         let doc = doc_id.to_owned();
         let scope = crdt_cursor_scope(doc_id);
+        let created_at = now_ms();
         self.db
             .call(move |conn| {
                 let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;

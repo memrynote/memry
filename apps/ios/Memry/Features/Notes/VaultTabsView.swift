@@ -82,11 +82,13 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View>: View {
 private struct MoreTab: View {
     @Environment(AccountViewModel.self) private var account: AccountViewModel?
     @Environment(TasksRouter.self) private var router
+    @Environment(JournalRouter.self) private var journalRouter
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 tasksSettingsRow
+                journalSettingsRow
                 ContentUnavailableView {
                     Label("More", systemImage: "hourglass")
                 } description: {
@@ -134,6 +136,44 @@ private struct MoreTab: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("tasks.more.settings")
+    }
+
+    /// Settings > Journal lives in the Journal tab's stack (JP048), so this
+    /// row switches there and pushes it, once.
+    private var journalSettingsRow: some View {
+        Button {
+            if journalRouter.path.last == .settings {
+                router.selectedTab = .journal
+            } else {
+                journalRouter.openSettings()
+            }
+        } label: {
+            HStack(spacing: Tokens.Space.medium) {
+                Image(systemName: "book")
+                    .foregroundStyle(Tokens.Text.secondary.color)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                    Text(JournalCopy.settingsMoreRow)
+                        .font(Tokens.Typography.body.font)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                    Text(JournalCopy.settingsMoreDetail)
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                }
+                Spacer(minLength: Tokens.Space.small)
+                Image(systemName: "chevron.forward")
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+            .padding(.horizontal, Tokens.Space.inset)
+            .padding(.vertical, Tokens.Space.small)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("journal.moreTab.settings")
     }
 }
 

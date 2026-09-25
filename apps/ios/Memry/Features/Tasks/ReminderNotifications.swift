@@ -54,20 +54,31 @@ struct ReminderSchedulePlan: Equatable, Sendable {
         let nowMs = Int64((now.timeIntervalSince1970 * 1000).rounded(.down))
         let eligible = due.filter { $0.targetExists && !$0.targetCompleted && $0.fireAtMs > nowMs }
         let notifications = eligible.prefix(window).map { item in
-            ReminderNotification(
+            let content = text(of: item)
+            return ReminderNotification(
                 reminderId: item.reminder.id,
                 targetType: item.reminder.targetType,
                 targetId: item.reminder.targetId,
-                title: nonEmpty(item.reminder.title) ?? nonEmpty(item.targetTitle)
-                    ?? TasksCopy.reminderNotificationDefault,
-                // Never the reminder's note: iOS stores notification text in
-                // plaintext outside the vault (spec 002 research R12), so the
-                // body stays generic. The title names what the reminder is for.
-                body: TasksCopy.reminderNotificationBody(targetType: item.reminder.targetType),
+                title: content.title,
+                body: content.body,
                 fireAt: Date(timeIntervalSince1970: TimeInterval(item.fireAtMs) / 1000)
             )
         }
         return ReminderSchedulePlan(notifications: notifications, beyondWindow: max(0, eligible.count - window))
+    }
+
+    /// Never the reminder's note: iOS stores notification text in plaintext
+    /// outside the vault (spec 002 research R12), so the body stays generic.
+    /// The title names what the reminder is for. A journal reminder (D8) is
+    /// "Journal reminder" / "Revisit Thursday, September 24": the date only,
+    /// never the note or the entry's text.
+    private static func text(of item: DueReminderItem) -> (title: String, body: String) {
+        if item.reminder.targetType == "journal",
+           let longDate = JournalCopy.notificationLongDate(item.reminder.targetId) {
+            return (JournalCopy.notificationTitle, JournalCopy.notificationBody(longDate: longDate))
+        }
+        let title = nonEmpty(item.reminder.title) ?? nonEmpty(item.targetTitle) ?? TasksCopy.reminderNotificationDefault
+        return (title, TasksCopy.reminderNotificationBody(targetType: item.reminder.targetType))
     }
 
     private static func nonEmpty(_ value: String?) -> String? {

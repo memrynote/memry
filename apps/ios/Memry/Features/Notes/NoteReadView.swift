@@ -155,6 +155,22 @@ struct NoteReadView: View {
     @State private var taskActions: NoteTaskActions
     /// Opens a task in the Tasks tab. Absent outside the vault shell.
     @Environment(TasksRouter.self) private var router: TasksRouter?
+    /// Opens a day in the Journal tab. Absent outside the vault shell.
+    @Environment(\.openJournalDay) private var openJournalDay
+
+    /// `open`, with a day's `j<date>` route (a wiki link to a day) sent to
+    /// the Journal tab instead of pushed as a note (JP052).
+    private var openRoute: ((NoteRoute) -> Void)? {
+        guard let open else { return nil }
+        let openJournalDay = openJournalDay
+        return { route in
+            if let openJournalDay, let date = JournalLink.date(fromJournalId: route.id) {
+                openJournalDay(date)
+            } else {
+                open(route)
+            }
+        }
+    }
     @Environment(\.requestVaultSync) private var requestVaultSync
 
     private var taskBridge: NoteTaskBridge {
@@ -243,7 +259,7 @@ struct NoteReadView: View {
                         backlinks: backlinks,
                         linkedTasks: linkedTasks,
                         taskBridge: taskBridge,
-                        open: open,
+                        open: openRoute,
                         openTag: openTag,
                         brokenLink: $brokenLink,
                         emptyBody: { preview in

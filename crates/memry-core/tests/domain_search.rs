@@ -17,7 +17,7 @@
 mod support;
 
 use memry_core::domain::search::{
-    self, HitKind, NOTES_WATERMARK_KEY, Reindexed, SearchHit, TASKS_WATERMARK_KEY,
+    self, HitKind, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, SearchHit, TASKS_WATERMARK_KEY,
 };
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
@@ -258,6 +258,24 @@ fn a_second_pass_touches_only_what_moved() {
         "old survived"
     );
     assert_eq!(ids(&notes(&data, &index, "Beta")), vec!["edge"]);
+}
+
+#[test]
+fn an_index_built_before_apply_time_stamps_is_rebuilt_once() {
+    // Pulled body updates used to carry the server's `createdAt`, below the
+    // epoch-ms watermark: such an install holds rows no incremental pass
+    // reads. An index without the stamps marker is rebuilt in full, once.
+    let (data, index) = databases();
+    put(&data, "note", "old", r#"{"title":"Alpha"}"#, NOW);
+    assert!(reindex(&data, &index, NOW).full);
+    index
+        .execute("DELETE FROM index_meta WHERE key = ?1", params![STAMPS_KEY])
+        .expect("an index from before the marker");
+
+    let healed = reindex(&data, &index, NOW + 1_000);
+    assert!(healed.full, "no stamps marker: one full rebuild");
+    let next = reindex(&data, &index, NOW + 2_000);
+    assert!(!next.full, "the marker is written, so it happens once");
 }
 
 #[test]

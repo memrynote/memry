@@ -6,6 +6,7 @@ pub mod conformance;
 pub mod crypto;
 pub mod errors;
 pub mod journal;
+pub mod journal_conformance;
 pub mod journal_records;
 pub mod linking;
 pub mod notes;

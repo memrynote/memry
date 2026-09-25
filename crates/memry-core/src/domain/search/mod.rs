@@ -64,7 +64,7 @@ use crate::api::errors::StorageError;
 mod maintenance;
 
 pub use maintenance::{
-    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, TASKS_WATERMARK_KEY, reindex,
+    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
 };
 
 /// The `fts_notes` ranking expression. Part of the contract (§A.5).

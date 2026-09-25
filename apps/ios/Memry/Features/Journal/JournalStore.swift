@@ -30,6 +30,19 @@ enum JournalWriteGate {
     static let metadataWrites = false
 }
 
+/// The note-page dependencies the day page composes (JP033): a day's body,
+/// review comments, attachments and tables are read through the note reader
+/// with the day's record id, and a note opened from a day uses the same set.
+struct JournalVaultContext {
+    let reader: any NotesReading
+    let filler: (any VaultFilling)?
+    let writer: (any NotesWriting)?
+    let editor: (any BlockEditing)?
+    let metadataWriter: (any NoteMetadataWriting)?
+    let search: (any VaultSearching)?
+    let noteTasks: (any NoteTaskWriting)?
+}
+
 @MainActor
 @Observable
 final class JournalStore {
@@ -48,6 +61,10 @@ final class JournalStore {
     /// Bumped after every write or sync, so a screen holding its own copy
     /// (the day page's body) knows to re-read.
     private(set) var generation = 0
+    /// Bumped once per finished sync pass. A body edited on another device
+    /// moves no record, so the pass pulls no body for it; the shown day
+    /// pulls its own on this signal (JP040 external updates).
+    private(set) var syncPasses = 0
 
     // MARK: State
 
@@ -65,6 +82,9 @@ final class JournalStore {
     private let executor: CoreExecutor
     /// The vault's debounced sync request. Set by the tab; `nil` in tests.
     var requestSync: (@MainActor () -> Void)?
+    /// The note page's readers and writers over this vault. Set by the tab;
+    /// `nil` in tests that do not render a page.
+    @ObservationIgnored var context: JournalVaultContext?
 
     init(core: any JournalProtocol, clock: JournalClock, vaultId: String, executor: CoreExecutor = .shared) {
         self.core = core
@@ -176,6 +196,12 @@ final class JournalStore {
         for date in reminders.keys { await loadReminders(date) }
         if settings != nil { await loadSettings() }
         generation += 1
+    }
+
+    /// A sync pass finished: re-read what is loaded and tell the shown day.
+    func syncFinished() async {
+        await refresh()
+        syncPasses += 1
     }
 
     // MARK: Writing
