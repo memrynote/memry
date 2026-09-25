@@ -1,7 +1,7 @@
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { InitialSyncProgressEvent, ItemCorruptEvent } from '@memry/contracts/ipc-events'
-import type { RecordChangesResponse, RecordPullItemResponse } from '@memry/contracts/sync-api'
+import type { RecordChangesResponse } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { beginPageApply, replayBulkApplyJournal } from '../bulk-apply'
@@ -9,7 +9,7 @@ import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { withRetry } from '@memry/sync-client/retry'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
-import { postToServer, getFromServer, RateLimitError } from '../http-client'
+import { getFromServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
@@ -31,12 +31,12 @@ import {
   type ItemRecoveryDeps
 } from './item-recovery'
 import { parsePullItems } from './pull-envelope'
+import { fetchSliceBody, planPullSlices, type PullSlice } from './changes-page'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
 import { PullLatencyTrace } from './sync-latency-telemetry'
 import {
   SYNC_STATE_KEYS,
-  PULL_REQUEST_MAX_IDS,
   YIELD_EVERY_N_ITEMS,
   yieldToEventLoop,
   itemRefKey,
@@ -287,7 +287,9 @@ export class PullCoordinator {
         changesResult = await prefetchedNext
         prefetchedNext = null
       } else {
-        changesResult = await this.fetchChangesPage(runState, cursor)
+        // Only a run's first page is fetched here, and only it asks for inline
+        // payloads: backlog and bootstrap keep 500-ref pages (#2292).
+        changesResult = await this.fetchChangesPage(runState, cursor, !this.ctx.fullSyncActive)
       }
 
       const changes = changesResult.value
@@ -342,11 +344,12 @@ export class PullCoordinator {
 
   private async fetchChangesPage(
     runState: PullRunState,
-    pageCursor: string | null | undefined
+    pageCursor: string | null | undefined,
+    inline = false
   ): ReturnType<typeof withRetry<RecordChangesResponse>> {
     return withRetry(
       () => {
-        const cp = pageCursor ? `&cursor=${pageCursor}` : ''
+        const cp = (pageCursor ? `&cursor=${pageCursor}` : '') + (inline ? '&inline=1' : '')
         return withAuthRetry(
           (authToken) =>
             runState.latency.timeChanges(() =>
@@ -373,10 +376,8 @@ export class PullCoordinator {
     changes: RecordChangesResponse,
     runState: PullRunState
   ): Promise<PageStopReason> {
-    const itemIds = Array.from(
-      new Set([...changes.items.map((item) => item.id), ...changes.deleted])
-    )
-    if (itemIds.length === 0) return 'none'
+    const slices = planPullSlices(changes)
+    if (slices.length === 0) return 'none'
     runState.latency.observePage(changes)
 
     // A changes page holds up to PULL_PAGE_LIMIT (500) refs, but POST
@@ -390,8 +391,7 @@ export class PullCoordinator {
     //   re-pulled nor marked corrupt — silent loss. Every slice runs (each
     //   marks its own failures), then the breaker is reported.
     let breakerTripped = false
-    for (let i = 0; i < itemIds.length; i += PULL_REQUEST_MAX_IDS) {
-      const slice = itemIds.slice(i, i + PULL_REQUEST_MAX_IDS)
+    for (const slice of slices) {
       const pageResult = await this.processPage(slice, runState)
       runState.pulledCount += pageResult.applied
       runState.totalConflictsResolved += pageResult.conflicts
@@ -656,30 +656,19 @@ export class PullCoordinator {
   }
 
   private async processPage(
-    itemIds: string[],
+    { fetchIds, inline }: PullSlice,
     runState: PullRunState
   ): Promise<{ applied: number; conflicts: number; stop: PageStopReason }> {
     const { vaultKey, timer, processedIds, crdtNoteIds } = runState
-    const pullResult = await withRetry(
-      () =>
-        withAuthRetry(
-          (authToken) =>
-            postToServer<{ items: RecordPullItemResponse[] }>('/sync/pull', { itemIds }, authToken),
-          runState.accessJwt,
-          engineAuthRetryDeps(this.ctx.deps),
-          (fresh) => {
-            runState.accessJwt = fresh
-          }
-        ),
-      { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
-    )
+    const requestedCount = fetchIds.length + inline.length
+    const pullBody = await fetchSliceBody(this.ctx, runState, fetchIds)
 
-    const parsed = parsePullItems(pullResult.value)
+    const parsed = parsePullItems(pullBody, inline)
     if (parsed.kind === 'not_envelope') {
       log.error('Invalid pull response from server: not a pull envelope')
       log.warn('pull_page_dropped', {
         reason: 'invalid_pull_response',
-        droppedCount: itemIds.length
+        droppedCount: requestedCount
       })
       // The cursor holds (#2285); without an error state the stall is invisible.
       this.ctx.lastError = 'The sync server returned an invalid pull response.'
@@ -694,7 +683,7 @@ export class PullCoordinator {
         action: 'pull_page_dropped',
         result: 'failed',
         errorCode: 'invalid_pull_response',
-        metrics: { itemCount: itemIds.length },
+        metrics: { itemCount: requestedCount },
         source: 'pull',
         dimensions: { transport: 'record' }
       })
@@ -704,7 +693,7 @@ export class PullCoordinator {
     if (parsed.unnamed > 0)
       log.error('Pull: dropped items with no id or type', { count: parsed.unnamed })
     log.debug('Pull: response parsed', {
-      requestedCount: itemIds.length,
+      requestedCount,
       receivedCount: parsed.items.length
     })
 

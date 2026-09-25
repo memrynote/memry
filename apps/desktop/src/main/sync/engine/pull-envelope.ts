@@ -12,15 +12,20 @@ export type ParsedPullBody =
  * Parses a `/sync/pull` response per item, never per page (protocol 05 §5.14).
  * An item that fails the envelope schema but names an id and type lands in
  * `invalid`; one that names neither is only counted.
+ *
+ * `inline` items from the same `/sync/changes` page (#2292) are parsed first,
+ * under the same rules. A body that is not a pull envelope is still
+ * `not_envelope` when inline items exist: the slice is refused and the cursor
+ * holds (#2285).
  */
-export function parsePullItems(body: unknown): ParsedPullBody {
+export function parsePullItems(body: unknown, inline: readonly unknown[] = []): ParsedPullBody {
   const rawItems = (body as { items?: unknown } | null)?.items
   if (!Array.isArray(rawItems)) return { kind: 'not_envelope' }
 
   const items: RecordPullItemResponse[] = []
   const invalid: ItemRef[] = []
   let unnamed = 0
-  for (const raw of rawItems) {
+  for (const raw of [...inline, ...rawItems]) {
     const parsed = RecordPullItemResponseSchema.safeParse(raw)
     if (parsed.success) {
       items.push(parsed.data)
