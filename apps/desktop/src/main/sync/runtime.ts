@@ -661,7 +661,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           // `engine` is referenced lazily: nothing invokes this fn between
           // `crdtProvider.init` below and the `const engine` assignment.
           const viaUpdates = engine.hasUnmergedRemoteCrdtState(noteId)
-          await withRetry(
+          const pushed = await withRetry(
             () =>
               withAuthRetry(
                 (authToken) =>
@@ -674,11 +674,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
                   token = fresh
                 }
               ),
-            {
-              maxRetries: 3,
-              baseDelayMs: 2000
-            }
+            { maxRetries: 3, baseDelayMs: 2000 }
           )
+          // The feed serves this device's own snapshot back (#2297); the
+          // recorded revision lets it skip the download.
+          if (!viaUpdates) await getCrdtProvider().recordPushedSnapshot(noteId, pushed.value ?? {})
           // Distinct message per endpoint on purpose: log triage greps these
           // strings, and the notes someone is grepping for are exactly the ones
           // that did not take the snapshot route.
@@ -722,6 +722,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getVaultKey: () => getOptionalRuntimeVaultKey(db, 'crdt snapshot batch push'),
         getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
         authRetryDeps: crdtAuthRetryDeps,
+        onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
           // reasons — see the comments in snapshotPushFn. A body-limit 413

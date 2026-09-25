@@ -59,7 +59,9 @@ describe('SyncEngine', () => {
 
       expect(getSpy).toHaveBeenCalledWith(
         expect.stringContaining('/sync/changes?limit=500'),
-        'test-token'
+        'test-token',
+        undefined,
+        expect.anything()
       )
 
       const pullCalls = postSpy.mock.calls.filter(([path]) => path === '/sync/pull')

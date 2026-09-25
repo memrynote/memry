@@ -105,6 +105,8 @@ const mocks = vi.hoisted(() => {
       destroy: ReturnType<typeof vi.fn>
       storeUpdate: ReturnType<typeof vi.fn>
       flushDocument: ReturnType<typeof vi.fn>
+      getMeta: ReturnType<typeof vi.fn>
+      setMeta: ReturnType<typeof vi.fn>
     }>
   }
 })
@@ -145,6 +147,8 @@ vi.mock('y-leveldb', () => ({
     destroy = vi.fn(async () => {})
     storeUpdate = vi.fn(() => mocks.persistenceOpFactory(() => undefined))
     flushDocument = vi.fn(() => mocks.persistenceOpFactory(() => undefined))
+    getMeta = vi.fn(async () => undefined)
+    setMeta = vi.fn(async () => {})
 
     constructor() {
       mocks.persistenceInstances.push(this)
@@ -395,6 +399,80 @@ describe('CrdtProvider', () => {
     expect(queue.enqueue).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
     expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+  })
+
+  // #2297 review (B-2, A-L3): the landing resolves only on the store's own
+  // answer, so a failed write is never reported as landed.
+  it('merges a feed update into an open doc, writes it back, and awaits its explicit store write', async () => {
+    await provider.open('note-1', undefined, { skipSeed: true })
+    const store = mocks.persistenceInstances[0]
+    store.storeUpdate.mockClear()
+    const update = makeRemoteUpdate('from the feed')
+
+    await provider.mergeRemoteUpdate('note-1', update)
+
+    expect(provider.getDoc('note-1')!.getMap('meta').get('title')).toBe('from the feed')
+    expect(store.storeUpdate).toHaveBeenCalledWith('note-1', update)
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(queue.enqueue).not.toHaveBeenCalled()
+  })
+
+  // #2297 round 2 (A-L1): this device's own update echoed back through the feed
+  // changes nothing, so it is not appended to the store again.
+  it('stores a feed update only when it changed the doc', async () => {
+    await provider.open('note-1', undefined, { skipSeed: true })
+    const store = mocks.persistenceInstances[0]
+    const update = makeRemoteUpdate('from the feed')
+    await provider.mergeRemoteUpdate('note-1', update)
+    store.storeUpdate.mockClear()
+
+    await provider.mergeRemoteUpdate('note-1', update)
+
+    expect(store.storeUpdate).not.toHaveBeenCalled()
+  })
+
+  // #2297 review (B-2)
+  it('rejects a feed merge whose store write fails', async () => {
+    await provider.open('note-1', undefined, { skipSeed: true })
+    const store = mocks.persistenceInstances[0]
+    store.storeUpdate.mockRejectedValue(new Error('disk full'))
+
+    await expect(
+      provider.mergeRemoteUpdate('note-1', makeRemoteUpdate('from the feed'))
+    ).rejects.toThrow('disk full')
+  })
+
+  // #2297: bytes stored without a live merge would suppress the write-back.
+  it('refuses to merge a feed update with no open doc and stores nothing', async () => {
+    const store = mocks.persistenceInstances[0]
+    store.storeUpdate.mockClear()
+
+    await expect(
+      provider.mergeRemoteUpdate('note-2', makeRemoteUpdate('from the feed'))
+    ).rejects.toThrow()
+    expect(store.storeUpdate).not.toHaveBeenCalled()
+  })
+
+  // #2297 review (B-2): an in-memory provider cannot hold a feed body.
+  it('refuses to report a feed body landed when there is no store', async () => {
+    const inMemory = new CrdtProvider()
+    const update = makeRemoteUpdate('from the feed')
+
+    await expect(inMemory.mergeRemoteUpdate('note-2', update)).rejects.toThrow()
+  })
+
+  // #2297 review (A-M6, B-7): this device's own snapshot comes back through the
+  // feed; the revision it pushed is recorded so that echo skips the GET.
+  it('records the revision of a snapshot it pushed in the note watermark', async () => {
+    const store = mocks.persistenceInstances[0]
+
+    await provider.recordPushedSnapshot('note-1', { sequenceNum: 9, revision: 'rev-9' })
+
+    expect(store.setMeta).toHaveBeenCalledWith(
+      'note-1',
+      expect.any(String),
+      expect.objectContaining({ appliedSequence: 9, snapshotRevision: 'rev-9' })
+    )
   })
 
   it('persists and writes back an edit made with no session, and pushes nothing', async () => {

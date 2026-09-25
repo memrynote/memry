@@ -1295,6 +1295,150 @@ describe('FullSyncRunner', () => {
     })
   })
 
+  // #2297 review: P3.1 did not backfill server_cursor, and rows below the device
+  // cursor at first negotiation were never served as bodies, so the first launch
+  // that negotiates note_body owes one full sweep. Only a drained sweep is done.
+  describe('#given the note-body legacy sweep is pending', () => {
+    function withLegacySweep(
+      h: Harness,
+      initial: Record<string, string> = {}
+    ): Map<string, string> {
+      const state = new Map(
+        Object.entries({
+          [SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP]: 'pending',
+          // Swept moments ago: the throttle alone would skip this cycle.
+          [SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT]: String(Date.now()),
+          ...initial
+        })
+      )
+      h.getStateValue.mockImplementation((key: string) => state.get(key))
+      h.setStateValue.mockImplementation((key: string, value: string) => {
+        h.calls.push(`setState:${key}`)
+        state.set(key, value)
+      })
+      return state
+    }
+
+    it('#then it sweeps every note despite the throttle and records done once the drain lands', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'j2026-09-25'])
+      const state = withLegacySweep(h)
+
+      await h.runner.run()
+
+      await vi.waitFor(() => expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done'))
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(
+        ['note-1', 'j2026-09-25'],
+        expect.anything()
+      )
+    })
+
+    it('#then a drain that owes notes back stays pending', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      const state = withLegacySweep(h)
+      h.crdtSync.pullCrdtForNotes.mockImplementation(async (noteIds: string[]) => {
+        for (const noteId of noteIds) h.crdtSync.addPendingPull(noteId)
+        return { snapshotGets: 0, batchPosts: 1 }
+      })
+
+      await h.runner.run()
+      await vi.waitFor(() => expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled())
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('pending')
+    })
+
+    // #2297 round 2 (A-L3, B-L1): a server rollback resets the key while the
+    // sweep drains; that drain did not cover what the rollback wrote.
+    it('#then a reset while the sweep drains records nothing', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      const state = withLegacySweep(h)
+      h.crdtSync.pullCrdtForNotes.mockImplementation(async () => {
+        state.delete(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)
+        h.runner.resetNoteBodyLegacySweep()
+        return { snapshotGets: 0, batchPosts: 1 }
+      })
+
+      await h.runner.run()
+      await vi.waitFor(() => expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled())
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(state.has(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe(false)
+    })
+
+    // #2297 round 2 (A-L3, B-L1): rolled back and forward again while the old
+    // drain runs; only a sweep queued after the re-arm may record done.
+    it('#then a key re-armed while the old sweep drains forces a new sweep', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      const state = withLegacySweep(h)
+      h.crdtSync.pullCrdtForNotes.mockImplementationOnce(async () => {
+        state.delete(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)
+        h.runner.resetNoteBodyLegacySweep()
+        state.set(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'pending')
+        return { snapshotGets: 0, batchPosts: 1 }
+      })
+
+      await h.runner.run()
+      await vi.waitFor(() => expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled())
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('pending')
+
+      mocks.getAllCrdtNoteIds.mockClear()
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).toHaveBeenCalled()
+      await vi.waitFor(() => expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done'))
+    })
+
+    // #2297 review (B-8): a sweep over a partly pulled vault misses the notes
+    // whose records have not arrived yet, so it may not record `done`.
+    it('#then a run whose pull did not deliver leaves it pending without sweeping', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      const state = withLegacySweep(h)
+      h.actions.pull.mockResolvedValue(false)
+
+      await h.runner.run()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+      expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('pending')
+    })
+
+    it('#then an offline cycle leaves it pending without sweeping', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: false })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      const state = withLegacySweep(h)
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+      expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('pending')
+    })
+
+    it('#then a device that never negotiated bodies is not forced to sweep', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      const state = withLegacySweep(h)
+      state.delete(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+      expect(state.has(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe(false)
+    })
+  })
+
   describe('#given the gate would otherwise skip #when the cycle demands a sweep', () => {
     it('#then a manifest re-pull forces the sweep even on a live socket', async () => {
       // Server rows this device has never seen (fresh install, restored vault,

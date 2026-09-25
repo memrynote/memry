@@ -182,6 +182,7 @@ const runtimeMocks = vi.hoisted(() => {
     unverifiedCrdtNotes: new Set<string>(),
     syncGoogleCalendarSource: vi.fn(),
     crdtProvider: {
+      recordPushedSnapshot: vi.fn(async () => {}),
       isNoteLocalOnly: vi.fn(() => false),
       isNoteSyncable: vi.fn(() => true),
       init: vi.fn(),
@@ -961,10 +962,22 @@ describe('sync runtime', () => {
     runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
     runtimeMocks.pushCrdtFullUpdate.mockClear()
     runtimeMocks.pushCrdtSnapshot.mockClear()
+    runtimeMocks.pushCrdtSnapshot.mockResolvedValueOnce({ sequenceNum: 4, revision: 'rev-4' })
+    // The real withRetry wraps the answer; the shared mock returns it bare.
+    runtimeMocks.withRetry.mockImplementationOnce(async (fn: () => Promise<unknown>) => ({
+      value: await fn(),
+      attempts: 1
+    }))
 
     // #when
     await snapshotPush('note-1', new Uint8Array([1, 2, 3]))
 
+    // #then #2297 review (A-M6, B-7): the pushed revision is recorded so the
+    // change feed skips this device's own snapshot.
+    expect(runtimeMocks.crdtProvider.recordPushedSnapshot).toHaveBeenCalledWith('note-1', {
+      sequenceNum: 4,
+      revision: 'rev-4'
+    })
     // #then the safe route must stay the exception. Routing every push through
     // the incremental endpoint would leave the server with an unbounded tail of
     // full-document updates and no compaction point at all.

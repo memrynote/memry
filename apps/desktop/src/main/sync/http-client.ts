@@ -1,5 +1,5 @@
 import { net } from 'electron'
-import { RECORD_SYNC_ITEM_TYPES, type FeedOnlySyncType } from '@memry/contracts/sync-api'
+import { NEGOTIABLE_SYNC_TYPES } from '@memry/contracts/sync-api'
 import { getMainI18n } from '../lib/main-i18n'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { withRetry } from '@memry/sync-client/retry'
@@ -10,8 +10,19 @@ import { getBootstrapTokenHeaders } from './bootstrap-session-state'
 // RecordPullResponseSchema would reject — one unknown type fails the whole-page
 // safeParse and silently drops the page. `purged_tombstones` (#2302) says this
 // build applies purged-tombstone markers; without it the server hides them.
-const PURGED_TOMBSTONES: FeedOnlySyncType = 'purged_tombstones'
-const SYNC_TYPES_HEADER_VALUE = [...RECORD_SYNC_ITEM_TYPES, PURGED_TOMBSTONES].join(',')
+const SYNC_TYPES_HEADER = 'X-Memry-Sync-Types'
+const SYNC_TYPES_HEADER_VALUE = NEGOTIABLE_SYNC_TYPES.filter((type) => type !== 'note_body').join(
+  ','
+)
+
+/**
+ * Headers for a GET /sync/changes that also takes note and journal bodies
+ * (#2297, protocol 07 §7.17.5). Sent only by a pull run that starts past
+ * cursor 0; a server that predates `note_body` ignores it.
+ */
+export const NOTE_BODY_FEED_HEADERS: Readonly<Record<string, string>> = {
+  [SYNC_TYPES_HEADER]: NEGOTIABLE_SYNC_TYPES.join(',')
+}
 
 export type FetchFn = typeof globalThis.fetch
 
@@ -70,7 +81,9 @@ export const syncFetch = async <T>(
   timeoutMs: number = SYNC_REQUEST_TIMEOUT_MS,
   /** Extra headers merged last (e.g. a bootstrap token already captured
    * before local session teardown — see bootstrap-session.ts close). */
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Readonly<Record<string, string>>,
+  /** The caller's abort, which also cancels the request in flight. */
+  signal?: AbortSignal
 ): Promise<T> => {
   // Resolved per call, never hoisted to a module-level const: dotenv runs in
   // index.ts *after* this module is imported, so capturing at import time
@@ -89,7 +102,7 @@ export const syncFetch = async <T>(
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
-    headers['X-Memry-Sync-Types'] = SYNC_TYPES_HEADER_VALUE
+    headers[SYNC_TYPES_HEADER] = SYNC_TYPES_HEADER_VALUE
     Object.assign(headers, await getSyncVaultHeaders())
     // Bootstrap elevation (#1837): an active fresh-device session rides along
     // on every authenticated request. Old servers ignore the unknown header;
@@ -106,9 +119,12 @@ export const syncFetch = async <T>(
       method,
       headers,
       body: body != null ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(timeoutMs)
+      signal: signal
+        ? AbortSignal.any([AbortSignal.timeout(timeoutMs), signal])
+        : AbortSignal.timeout(timeoutMs)
     })
   } catch (error) {
+    if (signal?.aborted) throw signal.reason
     if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
       throw new NetworkError(getMainI18n().t('errors:sync.requestTimedOut'))
     }
@@ -157,9 +173,19 @@ export const postToServer = async <T>(
 export const getFromServer = async <T>(
   path: string,
   token?: string,
-  fetchFn?: FetchFn
+  fetchFn?: FetchFn,
+  options: { headers?: Readonly<Record<string, string>>; signal?: AbortSignal } = {}
 ): Promise<T> => {
-  return syncFetch<T>('GET', path, undefined, token, fetchFn)
+  return syncFetch<T>(
+    'GET',
+    path,
+    undefined,
+    token,
+    fetchFn,
+    SYNC_REQUEST_TIMEOUT_MS,
+    options.headers,
+    options.signal
+  )
 }
 
 export const deleteFromServer = async <T>(
@@ -237,9 +263,9 @@ export async function pushCrdtSnapshot(
   noteId: string,
   encryptedSnapshot: Uint8Array,
   token: string
-): Promise<{ sequenceNum: number }> {
+): Promise<{ sequenceNum: number; revision?: string }> {
   const b64 = Buffer.from(encryptedSnapshot).toString('base64')
-  return postToServer<{ sequenceNum: number }>(
+  return postToServer<{ sequenceNum: number; revision?: string }>(
     '/sync/crdt/snapshot',
     { noteId, snapshot: b64 },
     token
@@ -251,6 +277,8 @@ export interface CrdtSnapshotBatchResult {
   noteId: string
   accepted: boolean
   sequenceNum?: number
+  /** The snapshot's new revision; absent from a server older than #2187. */
+  revision?: string
   reason?: string
 }
 
@@ -320,7 +348,8 @@ export async function pushCrdtFullUpdate(
 
 export async function fetchCrdtSnapshot(
   noteId: string,
-  token: string
+  token: string,
+  { signal, maxRetries = 3 }: { signal?: AbortSignal; maxRetries?: number } = {}
 ): Promise<{
   snapshot: Uint8Array
   sequenceNum: number
@@ -331,12 +360,14 @@ export async function fetchCrdtSnapshot(
     () =>
       getFromServer<CrdtSnapshotResponse>(
         `/sync/crdt/snapshot/${encodeURIComponent(noteId)}`,
-        token
+        token,
+        undefined,
+        { signal }
       ),
     // Snapshot baselines are fetched per note inside a serial loop, so honouring
     // Retry-After here would stall every remaining note. The sync pass cadence
     // is the retry.
-    { maxRetries: 3, baseDelayMs: 2000, retryOn429: false }
+    { maxRetries, baseDelayMs: 2000, retryOn429: false, signal }
   )
 
   if (!result.snapshot || !result.signerDeviceId) return null

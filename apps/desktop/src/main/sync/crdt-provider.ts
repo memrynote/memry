@@ -702,6 +702,55 @@ export class CrdtProvider {
     Y.applyUpdate(entry.doc, update, ORIGIN_NETWORK)
   }
 
+  /**
+   * Merge a remote update into the note's open doc, like `applyRemoteUpdate`,
+   * then store it explicitly and resolve on that write (#2297). The doc's own
+   * `onDocUpdate` write is fire-and-forget and swallows its error, so it cannot
+   * tell the change-feed landing whether the bytes reached the store; the
+   * duplicate append is cheap, and y-leveldb merges it on the next flush. An
+   * update that changed nothing (this device's own echo) is not stored again:
+   * Yjs emits `update` only for a change, deletions included.
+   *
+   * Rejects with no store, and with no open doc: bytes stored without a live
+   * merge make every later merge of the same state a no-op, so the write-back
+   * that writes the vault file would never run.
+   */
+  async mergeRemoteUpdate(noteId: string, update: Uint8Array): Promise<void> {
+    if (!this.persistence) throw new Error('No CRDT store to hold a change-feed body')
+    const entry = this.docs.get(noteId)
+    if (!entry || entry.closing) throw new Error('No open doc to merge a change-feed body into')
+    let changed = false
+    const onUpdate = (): void => {
+      changed = true
+    }
+    entry.doc.on('update', onUpdate)
+    try {
+      this.applyRemoteUpdate(noteId, update)
+    } finally {
+      entry.doc.off('update', onUpdate)
+    }
+    if (changed) await this.persistence.storeUpdate(noteId, update)
+  }
+
+  /**
+   * Record the snapshot this device just pushed as merged into its doc (#2297):
+   * the pushed state came from the doc, so it holds that blob and everything
+   * the push asserted up to `sequenceNum`. The change feed then skips this
+   * device's own snapshot instead of downloading it back. Ordered after the
+   * doc's own writes on the store, like `putSnapshotWatermark`.
+   */
+  async recordPushedSnapshot(
+    noteId: string,
+    pushed: { sequenceNum?: number; revision?: string }
+  ): Promise<void> {
+    if (!pushed.revision || typeof pushed.sequenceNum !== 'number') return
+    const held = await this.getSnapshotWatermark(noteId)
+    await this.putSnapshotWatermark(noteId, {
+      appliedSequence: Math.max(held?.appliedSequence ?? 0, pushed.sequenceNum),
+      snapshotRevision: pushed.revision
+    })
+  }
+
   getStateVector(noteId: string): Uint8Array | null {
     const entry = this.docs.get(noteId)
     if (!entry) return null

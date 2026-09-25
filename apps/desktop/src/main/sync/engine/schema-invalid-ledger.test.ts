@@ -141,4 +141,31 @@ describe('SchemaInvalidLedger', () => {
 
     expect(h.ledger.retryable()).toEqual([])
   })
+
+  // #2297 with #2302 and #2301: a refused body and the note record's own
+  // entry (a lost blob, an edit waiting on its intent) are separate entries.
+  // Round 2 (B-M2): a refused body heals itself and asks nothing of the user,
+  // so it is not a quarantined item.
+  it('keeps a note_body entry apart from the record kinds and out of the quarantine list', () => {
+    const h = harness('1.0.0')
+    h.ledger.record([{ id: 'note-1', type: 'note' }], 'blob_missing')
+    h.ledger.record([{ id: 'note-2', type: 'note' }], 'pending_intent')
+    h.ledger.record(
+      [
+        { id: 'note-1', type: 'note_body' },
+        { id: 'note-2', type: 'note_body' }
+      ],
+      'envelope'
+    )
+
+    // The manifest asks `has(type, id)` of records: a body entry never answers for one.
+    expect(h.ledger.has('note', 'note-1')).toBe(true)
+    expect(h.ledger.has('note', 'note-3')).toBe(false)
+    expect(h.ledger.has('note_body', 'note-1')).toBe(true)
+    // Same build, inside the cooldown: only the pending intent is retried.
+    expect(h.ledger.retryable()).toEqual([{ id: 'note-2', type: 'note' }])
+    expect(h.ledger.quarantinedItems().map((item) => `${item.itemType}:${item.itemId}`)).toEqual([
+      'note:note-1'
+    ])
+  })
 })

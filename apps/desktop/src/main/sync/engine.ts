@@ -33,6 +33,7 @@ import {
 import { SyncStateManager } from './engine/sync-state-manager'
 import { QuarantineManager } from './engine/quarantine-manager'
 import { CrdtSyncCoordinator } from './engine/crdt-sync-coordinator'
+import { isKnownNote } from './note-body-apply'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
@@ -181,8 +182,10 @@ export class SyncEngine extends SyncEventEmitter {
       null as unknown as CrdtSyncCoordinator,
       null as unknown as PushCoordinator
     )
-    this.crdtSync = new CrdtSyncCoordinator(this.ctx, (id) =>
-      this.pullCoordinator.resolveDeviceKey(id)
+    this.crdtSync = new CrdtSyncCoordinator(
+      this.ctx,
+      (id) => this.pullCoordinator.resolveDeviceKey(id),
+      (id) => isKnownNote(this.ctx.deps.db, id)
     )
     this.pushCoordinator = new PushCoordinator(this.ctx, this.stateManager)
     // Wire up the circular dependencies now that all collaborators exist
@@ -212,6 +215,8 @@ export class SyncEngine extends SyncEventEmitter {
     // and neither can be constructed holding the other.
     this.crdtSync.onUnmergedDebtChange = (hasDebt) =>
       this.fullSyncRunner.recordCrdtUnmergedDebt(hasDebt)
+    this.pullCoordinator.onNoteBodyLegacySweepReset = () =>
+      this.fullSyncRunner.resetNoteBodyLegacySweep()
     this.ctx.doPush = () => this.push()
     SyncEngine.activeInstance = this
   }

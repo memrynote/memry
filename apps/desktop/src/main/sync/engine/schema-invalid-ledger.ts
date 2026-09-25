@@ -4,7 +4,12 @@ import type { QuarantinedItemInfo } from '@memry/contracts/ipc-events'
 import { createLogger } from '../../lib/logger'
 import type { ItemRef } from './corrupt-item-tracker'
 import type { SyncStateManager } from './sync-state-manager'
-import { CORRUPT_ITEM_COOLDOWN_MS, SYNC_STATE_KEYS, itemRefKey } from './sync-context'
+import {
+  CORRUPT_ITEM_COOLDOWN_MS,
+  NOTE_BODY_ITEM_TYPE,
+  SYNC_STATE_KEYS,
+  itemRefKey
+} from './sync-context'
 
 const log = createLogger('SchemaInvalidLedger')
 
@@ -91,8 +96,15 @@ export class SchemaInvalidLedger {
     return itemRefKey(type, id) in this.read()
   }
 
+  /**
+   * Neither an edit waiting on its intent nor a refused change-feed body
+   * (#2297) is a quarantined item: each heals by itself and asks nothing of
+   * the user.
+   */
   quarantinedItems(): QuarantinedItemInfo[] {
-    const entries = Object.values(this.read()).filter((entry) => entry.kind !== 'pending_intent')
+    const entries = Object.values(this.read()).filter(
+      (entry) => entry.kind !== 'pending_intent' && entry.type !== NOTE_BODY_ITEM_TYPE
+    )
     return entries.map((entry) => ({
       itemId: entry.id,
       itemType: entry.type,

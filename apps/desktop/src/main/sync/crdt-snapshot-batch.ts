@@ -46,6 +46,10 @@ export interface CrdtSnapshotBatchDeps {
    * what it already does for a single push: pause the queue on 401, surface a
    * quota error on 413. */
   onBatchError?: (err: unknown) => void
+  /** Told the sequence and revision each accepted snapshot got, so the
+   * provider can record it and skip this device's own echo in the change feed
+   * (#2297). */
+  onPushed?: (noteId: string, pushed: { sequenceNum?: number; revision?: string }) => unknown
 }
 
 /**
@@ -153,6 +157,12 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
 
           for (const result of response.value.results ?? []) {
             results.set(result.noteId, result.accepted === true)
+            if (result.accepted === true) {
+              const pushed = { sequenceNum: result.sequenceNum, revision: result.revision }
+              await Promise.resolve(deps.onPushed?.(result.noteId, pushed)).catch((err) =>
+                log.warn('Could not record a pushed snapshot revision', { error: err })
+              )
+            }
             if (result.accepted !== true) {
               log.warn('Server rejected a snapshot inside a batch', {
                 noteId: result.noteId,

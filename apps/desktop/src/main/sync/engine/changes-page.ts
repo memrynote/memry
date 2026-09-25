@@ -3,6 +3,7 @@ import { withRetry } from '@memry/sync-client/retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer } from '../http-client'
 import { PULL_REQUEST_MAX_IDS, type SyncContext } from './sync-context'
+import type { PageNoteBodies } from './note-body-feed'
 
 /**
  * One decrypt + apply unit of a `/sync/changes` page: at most one POST
@@ -15,6 +16,8 @@ export interface PullSlice {
   fetchIds: string[]
   /** Raw `/sync/pull` items from `changes.inline`; parsePullItems validates each one (§5.14). */
   inline: unknown[]
+  /** The page's note bodies (#2297), on the last slice only: the cursor waits for that slice. */
+  noteBodies?: PageNoteBodies
 }
 
 /**

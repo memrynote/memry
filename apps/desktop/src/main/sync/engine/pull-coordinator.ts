@@ -10,10 +10,9 @@ import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { withRetry } from '@memry/sync-client/retry'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
-import { getFromServer, RateLimitError } from '../http-client'
+import { getFromServer, NOTE_BODY_FEED_HEADERS, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
-import { isBinaryFileType } from '@memry/shared/file-types'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainEvent } from '../../telemetry/track'
@@ -31,8 +30,9 @@ import {
   routeDeferredRetryFailure,
   type ItemRecoveryDeps
 } from './item-recovery'
-import { parsePullItems, purgedTombstoneApplyItems } from './pull-envelope'
+import { carriesCrdtBody, parsePullItems, purgedTombstoneApplyItems } from './pull-envelope'
 import { fetchSliceBody, planPullSlices, type PullSlice } from './changes-page'
+import { NoteBodyFeed } from './note-body-feed'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
 import { tripPullBreaker } from './pull-breaker'
@@ -91,11 +91,14 @@ export class PullCoordinator {
   private pushCoordinator: PushCoordinator
   private corruptTracker: CorruptItemTracker
   readonly schemaInvalid: SchemaInvalidLedger
+  private noteBodyFeed: NoteBodyFeed
   private deviceKeyCache = new Map<string, Uint8Array | null>()
   /** Items whose apply threw (e.g. FK parent not pulled yet) — retried once after all pages land */
   private pendingApplyRetries: DecryptedPullItem[] = []
   /** Items still missing an FK parent after the deferred retry — repaired at end of run (#837) */
   private orphanedItems: OrphanRef[] = []
+  /** Wired by the engine: the change feed reset the legacy note-body sweep (#2297). */
+  onNoteBodyLegacySweepReset: () => void = () => {}
 
   constructor(
     ctx: SyncContext,
@@ -111,6 +114,14 @@ export class PullCoordinator {
     this.pushCoordinator = pushCoordinator
     this.corruptTracker = new CorruptItemTracker(ctx, quarantine, (id) => this.resolveDeviceKey(id))
     this.schemaInvalid = new SchemaInvalidLedger(stateManager)
+    this.noteBodyFeed = new NoteBodyFeed({
+      ctx,
+      stateManager,
+      ledger: this.schemaInvalid,
+      crdtSync: () => this.crdtSync,
+      resolveDeviceKey: (id) => this.resolveDeviceKey(id),
+      onLegacySweepReset: () => this.onNoteBodyLegacySweepReset()
+    })
   }
 
   /**
@@ -159,15 +170,19 @@ export class PullCoordinator {
         // clock now, so remote rows compare against it (#2301).
         drainPendingSyncIntents(this.ctx.deps.db, 'pull')
         await retrySchemaInvalidItems(
-          this.recoveryDeps((item, op) =>
+          this.recoveryDeps((item, op) => {
             this.stateManager.emitItemSynced(item.id, item.type, 'pull', op)
-          ),
+            this.queueBodyPull(runState, item, op)
+          }),
           credentials.accessJwt,
           vaultKey
         )
         await this.pullChanges(runState)
         await this.applyDeferredRetries(runState)
         await this.repairOrphanedItems(runState)
+        // Records these applied off their page pull their whole bodies here: a
+        // rowless feed body on that page was dropped in reliance on it (#2297).
+        await this.applyCrdtBatch(runState)
         if (runState.refused) {
           // The run stopped on a page it could not apply. Recording a success
           // history row and a fresh lastSyncAt here is what made a failing
@@ -218,7 +233,13 @@ export class PullCoordinator {
   }
 
   private recoveryDeps(onChanged: ItemRecoveryDeps['onChanged']): ItemRecoveryDeps {
-    return { ctx: this.ctx, tracker: this.corruptTracker, ledger: this.schemaInvalid, onChanged }
+    return {
+      ctx: this.ctx,
+      tracker: this.corruptTracker,
+      ledger: this.schemaInvalid,
+      onChanged,
+      pullNoteBody: (noteId, token, key) => this.noteBodyFeed.heal(noteId, token, key)
+    }
   }
 
   clearCaches(): void {
@@ -368,7 +389,11 @@ export class PullCoordinator {
             runState.latency.timeChanges(() =>
               getFromServer<RecordChangesResponse>(
                 `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
-                authToken
+                authToken,
+                undefined,
+                // A run from cursor 0 keeps 500-row record pages; its record
+                // pages and the legacy sweep deliver the bodies (#2297).
+                { headers: runState.fromZero ? undefined : NOTE_BODY_FEED_HEADERS }
               )
             ),
           runState.accessJwt,
@@ -390,8 +415,22 @@ export class PullCoordinator {
     runState: PullRunState,
     nextCursor: string
   ): Promise<{ stop: PageStopReason; cursorCommitted: boolean }> {
+    // Fetched before any slice transaction opens: that apply loop stays
+    // synchronous (bulk-apply.ts), so the page's bodies must be in hand.
+    const noteBodies = await this.noteBodyFeed.fetchPage(
+      changes,
+      runState,
+      runState.vaultKey,
+      !runState.fromZero
+    )
+    if (noteBodies?.keyStop) return { stop: noteBodies.keyStop, cursorCommitted: false }
     const slices = planPullSlices(changes)
+    const { bodies = [], refused = [], owed = [] } = noteBodies ?? {}
+    if (slices.length === 0 && bodies.length + refused.length + owed.length > 0) {
+      slices.push({ fetchIds: [], inline: [] })
+    }
     if (slices.length === 0) return { stop: 'none', cursorCommitted: false }
+    if (noteBodies) slices[slices.length - 1].noteBodies = noteBodies
     runState.latency.observePage(changes)
 
     // A changes page holds up to PULL_PAGE_LIMIT (500) refs, but POST
@@ -587,20 +626,7 @@ export class PullCoordinator {
           runState.totalConflictsResolved++
         }
 
-        if (
-          (dec.type === 'note' || dec.type === 'journal') &&
-          this.ctx.deps.crdtProvider &&
-          itemOp !== 'delete'
-        ) {
-          let isBinary = false
-          try {
-            const p = JSON.parse(dec.content) as { fileType?: string }
-            if (p.fileType && isBinaryFileType(p.fileType)) isBinary = true
-          } catch {
-            /* safe to skip CRDT on parse failure */
-          }
-          if (!isBinary) runState.crdtNoteIds.push(dec.id)
-        }
+        this.queueBodyPull(runState, dec, itemOp)
 
         runState.processedIds.add(itemRefKey(dec.type, dec.id))
         runState.pulledCount++
@@ -646,9 +672,19 @@ export class PullCoordinator {
     // per-page tally, and a repair pass runs after the last page is logged.
     if (result === 'schema_invalid') return this.schemaInvalid.record([dec], 'payload')
     if (result === 'conflict') reportConflict(this.ctx.deps, dec)
+    this.queueBodyPull(runState, dec, itemOp)
     runState.processedIds.add(itemRefKey(dec.type, dec.id))
     runState.pulledCount++
     this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+  }
+
+  /** An applied note or journal record: its whole body joins the next CRDT batch. */
+  private queueBodyPull(
+    runState: PullRunState,
+    dec: { id: string; type: string; content: string },
+    op: string
+  ): void {
+    if (this.ctx.deps.crdtProvider && carriesCrdtBody(dec, op)) runState.crdtNoteIds.push(dec.id)
   }
 
   /**
@@ -658,7 +694,7 @@ export class PullCoordinator {
    * `cursorCommitted` whether the cursor went in.
    */
   private async processPage(
-    { fetchIds, inline }: PullSlice,
+    { fetchIds, inline, noteBodies }: PullSlice,
     runState: PullRunState,
     pageCursor: string | null
   ): Promise<{
@@ -896,20 +932,7 @@ export class PullCoordinator {
               pageConflicts++
             }
 
-            if (
-              (dec.type === 'note' || dec.type === 'journal') &&
-              this.ctx.deps.crdtProvider &&
-              itemOp !== 'delete'
-            ) {
-              let isBinary = false
-              try {
-                const p = JSON.parse(dec.content) as { fileType?: string }
-                if (p.fileType && isBinaryFileType(p.fileType)) isBinary = true
-              } catch {
-                /* safe to skip CRDT on parse failure */
-              }
-              if (!isBinary) crdtNoteIds.push(dec.id)
-            }
+            this.queueBodyPull(runState, dec, itemOp)
 
             processedIds.add(itemRefKey(dec.type, dec.id))
             pageApplied++
@@ -940,6 +963,7 @@ export class PullCoordinator {
         // Flagged before any cursor write, in this transaction: the CRDT batch
         // that pulls these bodies runs after the commit (#2294).
         this.crdtSync.markRecordPageNotesUnmerged(crdtNoteIds)
+        if (noteBodies) this.noteBodyFeed.recordInPage(noteBodies)
         // After the commit still run: the corrupt re-fetch and its recovered
         // applies, the CRDT batch, and deferred retries. A cursor committed
         // ahead of them survives a crash that loses them, and nothing re-pulls
@@ -948,6 +972,7 @@ export class PullCoordinator {
           failures.some((f) => f.isCryptoError) ||
           parseErrorIds.length > 0 ||
           crdtNoteIds.length > 0 ||
+          (noteBodies?.bodies.length ?? 0) > 0 ||
           this.pendingApplyRetries.length > 0
         // The page's last statement: the cursor commits with the page's last
         // rows or not at all (#2294, protocol 05 §5.11), and never after an
@@ -965,7 +990,7 @@ export class PullCoordinator {
         runState.latency.flush()
       } catch (pageError) {
         pageApply.rollback()
-        if (crdtNoteIds.length > 0) this.crdtSync.repersistUnmergedDebt()
+        if (crdtNoteIds.length > 0 || noteBodies) this.crdtSync.repersistUnmergedDebt()
         throw pageError
       }
     } finally {
@@ -976,10 +1001,15 @@ export class PullCoordinator {
     // CRDT apply that follows this page seeds absent docs from markdown, so the
     // page's deferred note files must be on disk before it runs.
     await pageApply.flushFiles()
+    // After the files, so a note created on this page is on disk when its body
+    // is merged and written back. The cursor waits for this (postCommitWork),
+    // so a crash before it re-pulls the page (#2297).
+    if (noteBodies) await this.noteBodyFeed.land(noteBodies)
 
     const refetchRefs = [...failures.filter((f) => f.isCryptoError), ...parseErrorIds]
     if (refetchRefs.length > 0 && pageApplied > 0) {
       const onChanged = (dec: RecoveredItem, itemOp: 'create' | 'update' | 'delete'): void => {
+        this.queueBodyPull(runState, dec, itemOp)
         processedIds.add(itemRefKey(dec.type, dec.id))
         pageApplied++
         pageFailed--

@@ -117,6 +117,33 @@ export const syncStateTestHooks = {
     }
   },
 
+  /**
+   * Stop every CRDT body pull that is not the change feed on this device: the
+   * `crdt_updated` pull, the pull after a record page, the reconnect pulls and
+   * the vault sweeps, until the runtime restarts (#2297 live lane). Patched on
+   * the coordinator instance, so it works against any engine build.
+   */
+  async disableCrdtBodyPullsForTests(): Promise<void> {
+    const engine = getSyncEngine()
+    if (!engine) {
+      throw new Error('Sync runtime is not initialized')
+    }
+    const crdtSync = engine['crdtSync']
+    crdtSync.pullCrdtForNote = async () => true
+    crdtSync.pullCrdtForNotes = async () => ({ snapshotGets: 0, batchPosts: 0 })
+    crdtSync.applyCrdtBatch = async () => ({ snapshotGets: 0, batchPosts: 0 })
+    crdtSync.applyCrdtIncrementals = async () => false
+  },
+
+  /** One record pull, the path a `changes_available` wake takes, never a full sync. */
+  async pullSyncForTests(): Promise<boolean> {
+    const engine = getSyncEngine()
+    if (!engine) {
+      throw new Error('Sync runtime is not initialized')
+    }
+    return engine.pull()
+  },
+
   async getSyncWakeProbeForTests(): Promise<SyncWakeProbeCounts> {
     return { wakes: wakeProbe.wakes, pulls: wakeProbe.pulls }
   },
