@@ -8,6 +8,7 @@ import { vaultService } from '@/services/vault-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { FolderField } from './folder-field'
 import { OnboardingStep } from './onboarding-step'
 
 interface SyncVaultPanelProps {
@@ -54,11 +55,67 @@ export function SyncVaultPanel({
   )
 }
 
+const KEY = 'phaseF.componentsVaultOnboarding.flow'
+
 type LoadState =
   | { kind: 'loading' }
   // Empty message: render the localized generic failure instead.
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; vaults: AccountVaultInfo[] }
+  | { kind: 'ready'; vaults: AccountVaultInfo[]; defaultParent: string }
+
+/** The account's vaults plus the default download folder. */
+function useAccountVaults(): { load: LoadState; reload: () => void } {
+  const [load, setLoad] = useState<LoadState>({ kind: 'loading' })
+  const fetchVaults = useCallback(async (): Promise<void> => {
+    setLoad({ kind: 'loading' })
+    try {
+      const [vaults, defaultParent] = await Promise.all([
+        vaultService.listAccount(),
+        vaultService.getDefaultParent()
+      ])
+      setLoad({ kind: 'ready', vaults, defaultParent })
+    } catch (err) {
+      setLoad({ kind: 'error', message: extractErrorMessage(err, '') })
+    }
+  }, [])
+  useEffect(() => {
+    void fetchVaults()
+  }, [fetchVaults])
+  return { load, reload: () => void fetchVaults() }
+}
+
+interface OpenAccountVault {
+  opening: boolean
+  openError: string | null
+  setOpenError: (message: string | null) => void
+  open: (vault: AccountVaultInfo, parent: string | null) => Promise<void>
+}
+
+/** Open the local copy when there is one, otherwise download into `parent`. */
+function useOpenAccountVault(onOpened: () => void): OpenAccountVault {
+  const { t } = useT('common')
+  const [opening, setOpening] = useState(false)
+  const [openError, setOpenError] = useState<string | null>(null)
+
+  const open = async (vault: AccountVaultInfo, parent: string | null): Promise<void> => {
+    if (opening) return
+    setOpening(true)
+    setOpenError(null)
+    try {
+      const result = vault.localPath
+        ? await vaultService.switch(vault.localPath)
+        : await vaultService.downloadRemote(vault.vaultUuid, parent ?? undefined)
+      if (result.success) onOpened()
+      else setOpenError(extractErrorMessage(result.error, t(`${KEY}.openFailed`)))
+    } catch (err) {
+      setOpenError(extractErrorMessage(err, t(`${KEY}.openFailed`)))
+    } finally {
+      setOpening(false)
+    }
+  }
+
+  return { opening, openError, setOpenError, open }
+}
 
 function AccountVaultPicker({
   email,
@@ -72,74 +129,17 @@ function AccountVaultPicker({
   onCreateVault: () => void
 }): React.JSX.Element {
   const { t } = useT('common')
-  const [load, setLoad] = useState<LoadState>({ kind: 'loading' })
-  const [selected, setSelected] = useState<string | null>(null)
-  const [parent, setParent] = useState<string | null>(null)
-  const [opening, setOpening] = useState(false)
-  const [openError, setOpenError] = useState<string | null>(null)
+  const { load, reload } = useAccountVaults()
 
-  const fetchVaults = useCallback(async (): Promise<void> => {
-    setLoad({ kind: 'loading' })
-    try {
-      const [vaults, defaultParent] = await Promise.all([
-        vaultService.listAccount(),
-        vaultService.getDefaultParent()
-      ])
-      setLoad({ kind: 'ready', vaults })
-      setSelected((current) => current ?? vaults[0]?.vaultUuid ?? null)
-      setParent((current) => current ?? defaultParent)
-    } catch (err) {
-      setLoad({ kind: 'error', message: extractErrorMessage(err, '') })
-    }
-  }, [])
-
-  useEffect(() => {
-    void fetchVaults()
-  }, [fetchVaults])
-
-  const vaults = load.kind === 'ready' ? load.vaults : []
-  const selectedVault = vaults.find((vault) => vault.vaultUuid === selected) ?? null
-
-  const chooseParent = async (): Promise<void> => {
-    try {
-      const { path } = await window.api.syncLinking.pickVaultFolder()
-      if (path) setParent(path)
-    } catch (err) {
-      setOpenError(extractErrorMessage(err, t('phaseF.componentsVaultOnboarding.flow.openFailed')))
-    }
-  }
-
-  const open = async (): Promise<void> => {
-    if (!selectedVault || opening) return
-    setOpening(true)
-    setOpenError(null)
-    try {
-      const result = selectedVault.localPath
-        ? await vaultService.switch(selectedVault.localPath)
-        : await vaultService.downloadRemote(selectedVault.vaultUuid, parent ?? undefined)
-      if (result.success) {
-        onOpened()
-        return
-      }
-      setOpenError(
-        extractErrorMessage(result.error, t('phaseF.componentsVaultOnboarding.flow.openFailed'))
-      )
-    } catch (err) {
-      setOpenError(extractErrorMessage(err, t('phaseF.componentsVaultOnboarding.flow.openFailed')))
-    } finally {
-      setOpening(false)
-    }
-  }
-
-  if (load.kind === 'ready' && vaults.length === 0) {
+  if (load.kind === 'ready' && load.vaults.length === 0) {
     return (
       <OnboardingStep
         onBack={onBack}
-        title={t('phaseF.componentsVaultOnboarding.flow.noVaultsTitle')}
-        subtitle={t('phaseF.componentsVaultOnboarding.flow.noVaultsDesc')}
+        title={t(`${KEY}.noVaultsTitle`)}
+        subtitle={t(`${KEY}.noVaultsDesc`)}
         footer={
           <Button size="sm" onClick={onCreateVault}>
-            {t('phaseF.componentsVaultOnboarding.flow.createCta')}
+            {t(`${KEY}.createCta`)}
           </Button>
         }
       >
@@ -148,92 +148,111 @@ function AccountVaultPicker({
     )
   }
 
+  if (load.kind === 'ready') {
+    return (
+      <AccountVaultChooser
+        email={email}
+        vaults={load.vaults}
+        defaultParent={load.defaultParent}
+        onBack={onBack}
+        onOpened={onOpened}
+      />
+    )
+  }
+
   return (
     <OnboardingStep
       onBack={onBack}
-      title={t('phaseF.componentsVaultOnboarding.flow.chooseTitle')}
-      subtitle={t('phaseF.componentsVaultOnboarding.flow.chooseSubtitle', { email: email ?? '' })}
-      footer={
-        load.kind === 'ready' ? (
-          <>
-            <span className="me-auto text-xs leading-4 text-text-tertiary">
-              {t('phaseF.componentsVaultOnboarding.flow.otherVaultsHint')}
-            </span>
-            <Button size="sm" disabled={!selectedVault || opening} onClick={() => void open()}>
-              {opening && <Loader2 className="animate-spin" />}
-              {opening
-                ? t('phaseF.componentsVaultOnboarding.flow.opening')
-                : t('phaseF.componentsVaultOnboarding.flow.openVault')}
-            </Button>
-          </>
-        ) : undefined
-      }
+      title={t(`${KEY}.chooseTitle`)}
+      subtitle={t(`${KEY}.chooseSubtitle`, { email: email ?? '' })}
     >
-      {load.kind === 'loading' && (
+      {load.kind === 'loading' ? (
         <div className="flex items-center gap-2 py-4 text-xs leading-4 text-text-tertiary">
           <Loader2 className="size-3.5 animate-spin" />
-          {t('phaseF.componentsVaultOnboarding.flow.loadingVaults')}
+          {t(`${KEY}.loadingVaults`)}
         </div>
-      )}
-
-      {load.kind === 'error' && (
+      ) : (
         <div className="flex flex-col items-start gap-3">
           <p role="alert" className="text-xs leading-4 text-destructive">
-            {load.message || t('phaseF.componentsVaultOnboarding.flow.loadFailed')}
+            {load.message || t(`${KEY}.loadFailed`)}
           </p>
-          <Button variant="outline" size="sm" onClick={() => void fetchVaults()}>
-            {t('phaseF.componentsVaultOnboarding.flow.retry')}
+          <Button variant="outline" size="sm" onClick={reload}>
+            {t(`${KEY}.retry`)}
           </Button>
         </div>
       )}
+    </OnboardingStep>
+  )
+}
 
-      {load.kind === 'ready' && (
+function AccountVaultChooser({
+  email,
+  vaults,
+  defaultParent,
+  onBack,
+  onOpened
+}: {
+  email: string | null
+  vaults: AccountVaultInfo[]
+  defaultParent: string
+  onBack: () => void
+  onOpened: () => void
+}): React.JSX.Element {
+  const { t } = useT('common')
+  const [selected, setSelected] = useState(vaults[0]?.vaultUuid ?? null)
+  const [parent, setParent] = useState(defaultParent)
+  const { opening, openError, setOpenError, open } = useOpenAccountVault(onOpened)
+  const selectedVault = vaults.find((vault) => vault.vaultUuid === selected) ?? null
+
+  return (
+    <OnboardingStep
+      onBack={onBack}
+      title={t(`${KEY}.chooseTitle`)}
+      subtitle={t(`${KEY}.chooseSubtitle`, { email: email ?? '' })}
+      footer={
         <>
-          <div
-            role="radiogroup"
-            aria-label={t('phaseF.componentsVaultOnboarding.flow.chooseTitle')}
-            className="flex flex-col gap-0.5 -mx-2"
+          <span className="me-auto text-xs leading-4 text-text-tertiary">
+            {t(`${KEY}.otherVaultsHint`)}
+          </span>
+          <Button
+            size="sm"
+            disabled={!selectedVault || opening}
+            onClick={() => selectedVault && void open(selectedVault, parent)}
           >
-            {vaults.map((vault) => (
-              <AccountVaultRow
-                key={vault.vaultUuid}
-                vault={vault}
-                checked={vault.vaultUuid === selected}
-                disabled={opening}
-                onSelect={() => setSelected(vault.vaultUuid)}
-              />
-            ))}
-          </div>
-
-          {selectedVault && !selectedVault.localPath && (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs leading-4 font-medium text-text-secondary">
-                {t('phaseF.componentsVaultOnboarding.flow.downloadTo')}
-              </span>
-              <div className="flex items-center h-9 gap-2 rounded-md border border-input ps-3 pe-1">
-                <span className="grow shrink basis-0 min-w-0 truncate font-mono text-xs text-foreground">
-                  {parent ?? ''}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2"
-                  disabled={opening}
-                  onClick={() => void chooseParent()}
-                >
-                  {t('phaseF.componentsVaultOnboarding.flow.change')}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {openError && (
-            <p role="alert" className="text-xs leading-4 text-destructive">
-              {openError}
-            </p>
-          )}
+            {opening && <Loader2 className="animate-spin" />}
+            {opening ? t(`${KEY}.opening`) : t(`${KEY}.openVault`)}
+          </Button>
         </>
+      }
+    >
+      <div
+        role="radiogroup"
+        aria-label={t(`${KEY}.chooseTitle`)}
+        className="flex flex-col gap-0.5 -mx-2"
+      >
+        {vaults.map((vault) => (
+          <AccountVaultRow
+            key={vault.vaultUuid}
+            vault={vault}
+            checked={vault.vaultUuid === selected}
+            disabled={opening}
+            onSelect={() => setSelected(vault.vaultUuid)}
+          />
+        ))}
+      </div>
+      {selectedVault && !selectedVault.localPath && (
+        <FolderField
+          label={t(`${KEY}.downloadTo`)}
+          path={parent}
+          disabled={opening}
+          onChange={setParent}
+          onError={setOpenError}
+        />
+      )}
+      {openError && (
+        <p role="alert" className="text-xs leading-4 text-destructive">
+          {openError}
+        </p>
       )}
     </OnboardingStep>
   )
