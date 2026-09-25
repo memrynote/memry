@@ -261,6 +261,13 @@ second is flushed at once, updates inside the window go out in one trailing flus
 lands while that note's push is in flight is flushed once when the push settles. The window stays at
 1 second because every CRDT push route shares one 300-per-minute `crdt_push` bucket per device.
 
+Body updates are queued durably in the same `sync_queue`, as append-only `note_body` rows the record
+push never dequeues (#2298). They are not coalesced like record rows: coalescing overwrites the
+payload, which would keep only the last of a note's unflushed Yjs updates. The note-body outbox
+merges a note's rows at flush time and deletes exactly the rows a push carried once it succeeds, so
+updates survive a crash or a quit while offline. Queued `note_body` rows survive sign-out; every
+other `sync_queue` row is cleared. See [CRDT & Notes Sync](/architecture/crdt#note-body-outbox).
+
 ### Push acknowledgements and in-flight mutations
 
 The push queue coalesces: a new mutation for an item that already has an unattempted row overwrites
@@ -715,7 +722,7 @@ the runtime keeps a reference to its `status-changed` handler so
 `stopSyncRuntime()` can remove it, and the attachment `UploadQueue` is disposed
 with the runtime that built it (see "Upload queue lifetime" under Note
 Attachments). A subscriber left attached does more than leak: it keeps the dead
-CRDT queue and provider reachable for the rest of the session.
+note-body outbox and provider reachable for the rest of the session.
 
 ## Manifest Integrity
 
