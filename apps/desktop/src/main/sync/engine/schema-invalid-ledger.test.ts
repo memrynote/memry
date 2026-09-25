@@ -81,6 +81,47 @@ describe('SchemaInvalidLedger', () => {
     expect(h.ledger.retryable()).toEqual([task('a')])
   })
 
+  // #2302: a lost blob is quarantined (so the manifest does not count it
+  // server-only) and retried on the corrupt-item cooldown, never deleted.
+  it('holds a blob_missing entry and offers it again only after the cooldown', () => {
+    vi.useFakeTimers()
+    const h = harness('1.0.0')
+    h.ledger.record([task('lost')], 'blob_missing')
+
+    expect(h.ledger.has('task', 'lost')).toBe(true)
+    expect(h.ledger.retryable()).toEqual([])
+    expect(h.ledger.quarantinedItems()).toEqual([
+      expect.objectContaining({
+        itemId: 'lost',
+        lastError: 'schema_invalid:blob_missing (app 1.0.0)'
+      })
+    ])
+
+    vi.advanceTimersByTime(CORRUPT_ITEM_COOLDOWN_MS + 1)
+
+    expect(h.ledger.retryable()).toEqual([task('lost')])
+  })
+
+  // #2302 downgrade: a kind this build does not know reads as 'payload', never a throw.
+  it('reads an unknown stored kind as payload', () => {
+    const h = harness('1.0.0')
+    h.state.set(
+      SYNC_STATE_KEYS.SCHEMA_INVALID_ITEMS,
+      JSON.stringify({
+        'task:a': {
+          id: 'a',
+          type: 'task',
+          kind: 'from_the_future',
+          lastRefusedByVersion: '1.0.0',
+          failedAt: 1
+        }
+      })
+    )
+
+    expect(h.ledger.has('task', 'a')).toBe(true)
+    expect(h.ledger.quarantinedItems()[0].lastError).toBe('schema_invalid:payload (app 1.0.0)')
+  })
+
   it('starts empty on an unreadable row instead of throwing into the pull', () => {
     const h = harness('1.0.0')
     h.state.set(SYNC_STATE_KEYS.SCHEMA_INVALID_ITEMS, '{not json')

@@ -453,6 +453,23 @@ describe('FullSyncRunner', () => {
       expect(arg.lastCheckAt).toBe(0)
     })
 
+    // #2302 review (A-F3, B-6): the pull is what applies a purged tombstone
+    // before the manifest diff; without a delivered pull a re-upload can
+    // resurrect a deleted recreatable item.
+    it("#then local re-upload is allowed only when this run's pull delivered", async () => {
+      const delivered = createHarness()
+      await delivered.runner.run()
+      const refused = createHarness()
+      refused.actions.pull.mockImplementation(async () => false)
+      await refused.runner.run()
+
+      const [first, second] = mocks.checkManifestIntegrity.mock.calls.map(
+        ([arg]) => (arg as { reuploadLocalOnly?: boolean }).reuploadLocalOnly
+      )
+      expect(first).toBe(true)
+      expect(second).toBe(false)
+    })
+
     it('#then the check is handed the quarantine predicate and the live online flag', async () => {
       const isQuarantined = vi.fn(() => false)
       const h = createHarness({ isQuarantined })

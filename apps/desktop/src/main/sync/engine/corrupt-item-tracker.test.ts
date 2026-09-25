@@ -5,6 +5,7 @@ import type { SyncContext } from './sync-context'
 import type { QuarantineManager } from './quarantine-manager'
 import { postToServer } from '../http-client'
 import { decryptPullBatch } from '../sync-crypto-batch'
+import { localTombstoneRefusal } from './purged-tombstone-guard'
 
 vi.mock('../../lib/logger', () => ({
   createLogger: () => ({
@@ -25,6 +26,11 @@ vi.mock('@memry/sync-client/retry', () => ({
 
 vi.mock('../sync-crypto-batch', () => ({
   decryptPullBatch: vi.fn()
+}))
+
+vi.mock('./purged-tombstone-guard', () => ({
+  readKnownDeviceIds: vi.fn(() => null),
+  localTombstoneRefusal: vi.fn(() => null)
 }))
 
 const createTracker = (): CorruptItemTracker => {
@@ -211,7 +217,19 @@ describe('CorruptItemTracker', () => {
           new Uint8Array(32)
         )
 
-        expect(result).toEqual({ recovered: [], permanentFailures: [], missing: [], invalid: [] })
+        // #2302 review (B-1): refs the cooldown kept from the request come back
+        // as `skipped`, never silently dropped (a caller read that as "gone").
+        expect(result).toEqual({
+          recovered: [],
+          permanentFailures: [],
+          missing: [],
+          invalid: [],
+          blobMissing: [],
+          skipped: [
+            { id: 'item-1', type: 'task' },
+            { id: 'item-2', type: 'task' }
+          ]
+        })
       })
     })
 
@@ -279,6 +297,95 @@ describe('CorruptItemTracker', () => {
         expect(decryptedInput[0].type).toBe('tag_definition')
         expect(result.recovered).toHaveLength(1)
         expect(result.permanentFailures).toHaveLength(0)
+      })
+    })
+
+    // #2302
+    describe('#given the server answers with #2302 sibling entries #when refetch runs', () => {
+      it('#then a purged tombstone is a recovered delete and a lost blob is neither recovered nor missing', async () => {
+        vi.mocked(postToServer).mockResolvedValue({
+          items: [],
+          purgedTombstones: [
+            {
+              id: 'task-dead',
+              type: 'task',
+              deletedAt: 5,
+              clock: { 'device-a': 2 },
+              serverCursor: 7
+            },
+            { id: 'task-clockless', type: 'task', deletedAt: 5, serverCursor: 8 },
+            {
+              id: 'inbox',
+              type: 'project',
+              deletedAt: 5,
+              clock: { 'device-a': 1 },
+              serverCursor: 9
+            }
+          ],
+          blobMissing: [{ id: 'task-lost', type: 'task', serverCursor: 3 }]
+        })
+        vi.mocked(decryptPullBatch).mockResolvedValue({ decrypted: [], failures: [] })
+        const tracker = createTracker()
+
+        const result = await tracker.refetch(
+          [
+            { id: 'task-dead', type: 'task' },
+            { id: 'task-clockless', type: 'task' },
+            { id: 'task-lost', type: 'task' },
+            { id: 'inbox', type: 'tag_definition' }
+          ],
+          'token',
+          new Uint8Array(32)
+        )
+
+        expect(result.recovered).toEqual([
+          {
+            id: 'task-dead',
+            type: 'task',
+            operation: 'delete',
+            content: '',
+            clock: { 'device-a': 2 },
+            deletedAt: 5,
+            signerDeviceId: ''
+          }
+        ])
+        expect(result.blobMissing).toEqual([{ id: 'task-lost', type: 'task' }])
+        // A refused (clockless) tombstone is not a live row the server holds, and
+        // the project row of a shared id was not asked for.
+        expect(result.missing).toEqual([
+          { id: 'task-clockless', type: 'task' },
+          { id: 'inbox', type: 'tag_definition' }
+        ])
+        expect(tracker.shouldRetry({ id: 'task-lost', type: 'task' })).toBe(false)
+        expect(result.skipped).toEqual([])
+      })
+
+      // #2302 review: a tombstone the local guard refuses is unknown, not gone.
+      it('#then a locally refused purged tombstone is skipped, neither recovered nor missing', async () => {
+        vi.mocked(localTombstoneRefusal).mockReturnValueOnce('local_clockless')
+        vi.mocked(postToServer).mockResolvedValue({
+          items: [],
+          purgedTombstones: [
+            {
+              id: 'task-dead',
+              type: 'task',
+              deletedAt: 5,
+              clock: { 'device-a': 2 },
+              serverCursor: 7
+            }
+          ]
+        })
+        vi.mocked(decryptPullBatch).mockResolvedValue({ decrypted: [], failures: [] })
+
+        const result = await createTracker().refetch(
+          [{ id: 'task-dead', type: 'task' }],
+          'token',
+          new Uint8Array(32)
+        )
+
+        expect(result.recovered).toEqual([])
+        expect(result.missing).toEqual([])
+        expect(result.skipped).toEqual([{ id: 'task-dead', type: 'task' }])
       })
     })
   })

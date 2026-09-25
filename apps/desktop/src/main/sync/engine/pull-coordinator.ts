@@ -30,7 +30,7 @@ import {
   retrySchemaInvalidItems,
   type ItemRecoveryDeps
 } from './item-recovery'
-import { parsePullItems } from './pull-envelope'
+import { parsePullItems, purgedTombstoneApplyItems } from './pull-envelope'
 import { fetchSliceBody, planPullSlices, type PullSlice } from './changes-page'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
@@ -78,6 +78,8 @@ interface PullRunState {
   latency: PullLatencyTrace
   /** Set when the run stopped on a page it could not apply — no success finalize. */
   refused?: boolean
+  /** The run started from cursor 0: it applies no purged tombstone (#2302). */
+  fromZero?: boolean
 }
 
 export class PullCoordinator {
@@ -269,6 +271,7 @@ export class PullCoordinator {
   private async pullChanges(runState: PullRunState): Promise<void> {
     let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
     let hasMore = true
+    runState.fromZero = !cursor || cursor === '0'
 
     type ChangesRetryResult = Awaited<ReturnType<typeof this.fetchChangesPage>>
     let changesResult: ChangesRetryResult
@@ -694,7 +697,7 @@ export class PullCoordinator {
     const requestedCount = fetchIds.length + inline.length
     const pullBody = await fetchSliceBody(this.ctx, runState, fetchIds)
 
-    const parsed = parsePullItems(pullBody, inline)
+    const parsed = parsePullItems(pullBody, inline, fetchIds)
     if (parsed.kind === 'not_envelope') {
       log.error('Invalid pull response from server: not a pull envelope')
       log.warn('pull_page_dropped', {
@@ -765,6 +768,15 @@ export class PullCoordinator {
       }
       return true
     })
+    // #2302: purged tombstones need no decrypt; they join the apply loop as deletes.
+    const purged = purgedTombstoneApplyItems(
+      parsed,
+      (t) =>
+        runState.fromZero === true ||
+        processedIds.has(itemRefKey(t.type, t.id)) ||
+        this.quarantine.isQuarantined(t.id, t.type),
+      this.ctx.deps.db
+    )
 
     timer.startPhase('encrypt')
     const { decrypted, failures } = await decryptPullBatch(itemsToProcess, vaultKey, {
@@ -852,7 +864,7 @@ export class PullCoordinator {
 
     timer.startPhase('apply')
     this.pushCoordinator.suppressPushDuringPull = true
-    const orderedDecrypted = sortByApplyOrder(decrypted)
+    const orderedDecrypted = sortByApplyOrder([...decrypted, ...purged])
     // One SQLite transaction per page on both DBs, with note file writes
     // deferred until after the commit (crash-safety contract in bulk-apply.ts).
     // The loop below is deliberately synchronous while the transaction is open
@@ -948,6 +960,7 @@ export class PullCoordinator {
         }
         this.schemaInvalid.record(refused, 'payload')
         this.schemaInvalid.record(parsed.invalid, 'envelope')
+        this.schemaInvalid.record(parsed.blobMissing, 'blob_missing')
         this.schemaInvalid.resolve(settled)
         // Flagged before any cursor write, in this transaction: the CRDT batch
         // that pulls these bodies runs after the commit (#2294).

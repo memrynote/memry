@@ -51,9 +51,12 @@ function parentExistsLocally(ctx: SyncContext, parentType: string, parentId: str
  * The parent is re-fetched by id, which is authoritative in a way the pull
  * cursor window is not:
  * - server still has it → apply the parent, then the child lands normally.
- * - server no longer has it → the parent is gone everywhere, so the child is a
- *   confirmed orphan. Tombstone it, which is what the cascade should have
+ * - server positively says it is gone (requested and no live row served, or
+ *   its delete applied here) → the parent is gone everywhere, so the child is
+ *   a confirmed orphan. Tombstone it, which is what the cascade should have
  *   pushed in the first place, and the loop ends on every device.
+ * - no answer (re-fetch cooldown, lost blob, a payload this build refuses) →
+ *   keep the child for a later run.
  */
 export async function repairOrphans(
   params: OrphanRepairParams
@@ -71,16 +74,22 @@ export async function repairOrphans(
   })
 
   corruptTracker.clearExpired()
-  const { recovered, invalid } = await corruptTracker.refetch(parentRefs, accessJwt, vaultKey)
-  // A live parent the server still has is not gone everywhere, even when this
-  // build cannot apply it: tombstoning its children would delete them on every
-  // device, including the newer one that wrote them (#2285).
-  const liveOnServer = new Set(
-    [...recovered.filter((parent) => !parent.deletedAt), ...invalid].map((ref) =>
-      itemRefKey(ref.type, ref.id)
-    )
+  const { recovered, invalid, blobMissing, missing, skipped } = await corruptTracker.refetch(
+    parentRefs,
+    accessJwt,
+    vaultKey
   )
   schemaInvalid.record(invalid, 'envelope')
+  schemaInvalid.record(blobMissing, 'blob_missing')
+
+  // A child is tombstoned only on a positive "gone" answer for its parent: the
+  // parent was requested and the server holds no live row for it, or its
+  // delete (signed, or an admitted purged tombstone) was just applied here.
+  // Everything else is unknown and keeps the child: a live parent this build
+  // cannot apply (#2285), a lost parent blob or one on the re-fetch cooldown
+  // (#2302), which a later run answers. Tombstoning on "not returned" pushed
+  // the child's delete to every device, the newer one that wrote it included.
+  const goneOnServer = new Set(missing.map((ref) => itemRefKey(ref.type, ref.id)))
 
   for (const parent of recovered) {
     try {
@@ -94,6 +103,9 @@ export async function repairOrphans(
         vaultKey
       })
       if (result === 'schema_invalid') schemaInvalid.record([parent], 'payload')
+      if (parent.deletedAt && result === 'applied') {
+        goneOnServer.add(itemRefKey(parent.type, parent.id))
+      }
     } catch (err) {
       log.warn('Failed to apply refetched FK parent', {
         itemId: parent.id,
@@ -101,6 +113,11 @@ export async function repairOrphans(
         error: err instanceof Error ? err.message : String(err)
       })
     }
+  }
+  if (skipped.length > 0) {
+    log.info('FK parents with no answer this run; their children are kept', {
+      count: skipped.length
+    })
   }
 
   // Only needed if something actually turns out to be a confirmed orphan, but
@@ -125,8 +142,11 @@ export async function repairOrphans(
       continue
     }
 
-    if (liveOnServer.has(itemRefKey(orphan.parentType, orphan.parentId))) {
-      log.warn('FK parent exists on the server but this build cannot apply it', {
+    if (
+      !goneOnServer.has(itemRefKey(orphan.parentType, orphan.parentId)) ||
+      schemaInvalid.has(orphan.parentType, orphan.parentId)
+    ) {
+      log.warn('FK parent not confirmed gone; keeping the child', {
         itemId: orphan.item.id,
         type: orphan.item.type,
         parentType: orphan.parentType
@@ -134,8 +154,8 @@ export async function repairOrphans(
       continue
     }
 
-    // Parent confirmed absent locally AND not returned by the server. The child
-    // can never be written, so stop the re-pull loop at its source by
+    // Parent confirmed absent locally AND confirmed gone on the server. The
+    // child can never be written, so stop the re-pull loop at its source by
     // tombstoning it server-side for every device.
     //
     // The clock has to be advanced first. `orphan.item.content` is what this

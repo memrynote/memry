@@ -202,7 +202,8 @@ describe('http-client', () => {
       )
     })
 
-    it('declares the supported record sync types when token provided', async () => {
+    // #2302: the build that applies purged-tombstone markers says so.
+    it('declares the supported record sync types and purged_tombstones when token provided', async () => {
       // #given
       mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
 
@@ -214,7 +215,7 @@ describe('http-client', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'X-Memry-Sync-Types': RECORD_SYNC_ITEM_TYPES.join(',')
+            'X-Memry-Sync-Types': [...RECORD_SYNC_ITEM_TYPES, 'purged_tombstones'].join(',')
           })
         })
       )

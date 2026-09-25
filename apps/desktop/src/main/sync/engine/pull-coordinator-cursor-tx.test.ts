@@ -289,9 +289,14 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
       if (input.id === 'filter-450') throw new Error('decryption failed: truncated read')
       return decryptOk(input)
     })
-    const refetch = vi
-      .spyOn(CorruptItemTracker.prototype, 'refetch')
-      .mockResolvedValue({ recovered: [], permanentFailures: [], missing: [], invalid: [] })
+    const refetch = vi.spyOn(CorruptItemTracker.prototype, 'refetch').mockResolvedValue({
+      recovered: [],
+      permanentFailures: [],
+      missing: [],
+      invalid: [],
+      blobMissing: [],
+      skipped: []
+    })
 
     await engine.pull()
 

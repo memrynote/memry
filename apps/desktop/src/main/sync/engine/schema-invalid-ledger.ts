@@ -12,14 +12,19 @@ const log = createLogger('SchemaInvalidLedger')
  * `payload`: the handler schema refused it, usually a newer peer's shape; only
  * a different app version can accept it. `envelope`: the pull envelope schema
  * refused it, usually a server fault; it is retried on the corrupt-item
- * cooldown too, since the fix can ship on the server.
+ * cooldown too, since the fix can ship on the server. `blob_missing`: the
+ * server holds the row live but lost its payload (#2302); nothing was applied
+ * and the local row, if any, is kept. Held here so the manifest does not count
+ * it server-only (a full re-pull every check), and retried on the cooldown
+ * because a later push of the item heals it.
  */
-export type SchemaInvalidKind = 'payload' | 'envelope'
+export type SchemaInvalidKind = 'payload' | 'envelope' | 'blob_missing'
 
 const LedgerEntrySchema = z.object({
   id: z.string(),
   type: z.string(),
-  kind: z.enum(['payload', 'envelope']).catch('payload'),
+  // An older build reads a kind it does not know as 'payload' (never a throw).
+  kind: z.enum(['payload', 'envelope', 'blob_missing']).catch('payload'),
   lastRefusedByVersion: z.string(),
   failedAt: z.number()
 })
@@ -60,7 +65,7 @@ export class SchemaInvalidLedger {
     if (Object.keys(entries).length !== before) this.write(entries)
   }
 
-  /** Entries another app version refused, and envelope failures past the cooldown. */
+  /** Entries another app version refused, and envelope or blob_missing entries past the cooldown. */
   retryable(): ItemRef[] {
     const entries = Object.values(this.read())
     if (entries.length === 0) return []
@@ -70,7 +75,7 @@ export class SchemaInvalidLedger {
       .filter(
         (entry) =>
           entry.lastRefusedByVersion !== version ||
-          (entry.kind === 'envelope' && now - entry.failedAt > CORRUPT_ITEM_COOLDOWN_MS)
+          (entry.kind !== 'payload' && now - entry.failedAt > CORRUPT_ITEM_COOLDOWN_MS)
       )
       .map(({ id, type }) => ({ id, type }))
   }

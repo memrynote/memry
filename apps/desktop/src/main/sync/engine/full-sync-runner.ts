@@ -545,7 +545,8 @@ export class FullSyncRunner {
       // nothing outside a unit test whose `pull` was a bare mock.
       const repairFrom = await this.beginCursorSkipRepair()
       const changedBeforePull = this.ctx.applier.changedCount
-      if (await this.actions.pull()) {
+      const pullDelivered = await this.actions.pull()
+      if (pullDelivered) {
         this.bootstrapPullSucceeded = true
         if (repairFrom !== null) {
           this.finishCursorSkipRepair(repairFrom, this.ctx.applier.changedCount - changedBeforePull)
@@ -607,7 +608,9 @@ export class FullSyncRunner {
         getAccessToken: this.ctx.deps.getAccessToken,
         isOnline: () => this.ctx.deps.network.online,
         lastCheckAt: Math.max(this.lastManifestCheckAt, persistedCheckAt),
-        isQuarantined: this.isQuarantined
+        isQuarantined: this.isQuarantined,
+        // #2302: no local re-upload unless this run's pull delivered first.
+        reuploadLocalOnly: pullDelivered
       })
       this.lastManifestCheckAt = manifestResult.checkedAt
       // Persist only when a manifest was actually fetched and diffed: stamping
