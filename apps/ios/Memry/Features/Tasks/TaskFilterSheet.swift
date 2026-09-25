@@ -65,7 +65,7 @@ struct TaskFilterSheet: View {
                         .accessibilityIdentifier("tasks.filter.close")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    TaskSheetConfirmButton(label: TasksCopy.filterDone) { dismiss() }
+                    SheetConfirmButton(label: TasksCopy.filterDone) { dismiss() }
                         .accessibilityIdentifier("tasks.filter.done")
                 }
             }

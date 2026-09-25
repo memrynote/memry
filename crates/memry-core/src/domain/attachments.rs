@@ -293,7 +293,14 @@ fn write_refs(conn: &Connection, attachment_id: &str, refs: &[String]) -> Result
 /// said so: it is also what a note whose references have never arrived looks
 /// like. The caller that needs the difference reads the note payload's own
 /// field, which is the only place the distinction lives (§14.7).
+///
+/// A row counts when its `note_refs` names the note **or** the note's own
+/// `attachmentReferences` names the row. The second is what an upload from
+/// this device writes (`add_attachment_reference`), and nothing copies it
+/// into `note_refs`, so without it a picture this phone just put into a note
+/// would never bind to its block.
 pub fn for_note(conn: &Connection, note_id: &str) -> Result<Vec<CachedAttachment>, StorageError> {
+    let referenced = crate::domain::notes::read_attachment_references(conn, note_id)?;
     let rows = conn
         .prepare(&format!("SELECT {COLUMNS} FROM attachments"))
         .map_err(failed)?
@@ -304,7 +311,9 @@ pub fn for_note(conn: &Connection, note_id: &str) -> Result<Vec<CachedAttachment
 
     Ok(rows
         .into_iter()
-        .filter(|row| row.note_refs.iter().any(|id| id == note_id))
+        .filter(|row| {
+            row.note_refs.iter().any(|id| id == note_id) || referenced.contains(&row.attachment_id)
+        })
         .collect())
 }
 

@@ -27,7 +27,7 @@ enum TasksRoute: Hashable, Sendable {
 
 /// The vault shell's tabs, so a route can switch to Tasks.
 enum VaultTab: Hashable, Sendable {
-    case notes, home, tasks, journal, more
+    case notes, inbox, tasks, journal, more
 }
 
 /// Cross-tab navigation into the Tasks tab.

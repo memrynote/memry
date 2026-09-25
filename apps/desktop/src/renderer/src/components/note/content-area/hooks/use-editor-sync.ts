@@ -135,9 +135,8 @@ function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void 
  * Idempotent by construction: a promoted `wikiLink` node carries its target in
  * props, so `[[` never reappears and `normalizeWikiLinks` stops matching. A
  * second open writes no CRDT update at all, which is what keeps "opening a note
- * must not rewrite it" (#1434) true. Hash tags still have no promoter here:
- * they need the note's tag list and colour map, so they must stay the bytes
- * they were opened with.
+ * must not rewrite it" (#1434) true. Hash tags have their own promoter below,
+ * `promoteHashTagsInSharedDoc`, because they need the note's tag list.
  */
 function promoteWikiLinksInSharedDoc(editor: any): void {
   const normalized = normalizeWikiLinks(editor.document as Block[], {
@@ -229,6 +228,41 @@ function promoteDateMentionsInSharedDoc(editor: any): void {
  */
 function promoteLinkMentionsInSharedDoc(editor: any): void {
   const normalized = normalizeLinkMentions(editor.document as Block[])
+  if (!normalized.didChange) return
+
+  editor.replaceBlocks(editor.document, normalized.blocks)
+}
+
+/**
+ * Promote the `#tag` text a collaborative document opens with.
+ *
+ * The same gap as the promoters above: a `hashTag` node serializes to plain
+ * `#tag` in the vault file, main seeds the shared doc from that file, and this
+ * path returns before the markdown path's `normalizeHashTags` ever runs. A note
+ * or journal entry whose CRDT doc was rebuilt from disk opened with its inline
+ * tags as plain text while the tag row above still listed them.
+ *
+ * Restricted exactly as the markdown path is (the caller checks): only tags in
+ * the note's own tag list, and only when the owner passed a colour map.
+ * Narrower in one way, on purpose: a tag inside a marked run stays text
+ * (`unmarkedRunsOnly`), because the node cannot carry the mark and promoting
+ * it would rewrite the file.
+ *
+ * Idempotent by construction: a promoted node leaves no `#tag` text in an
+ * unmarked run, and it serializes to the bytes it was promoted from, so a
+ * second open writes no CRDT update and "opening a note must not rewrite it"
+ * (#1434) holds.
+ */
+function promoteHashTagsInSharedDoc(
+  editor: any,
+  noteTags: string[],
+  tagColorMap: Map<string, string>,
+  tagIconMap: Map<string, string> | undefined
+): void {
+  const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
+  const options = { unmarkedRunsOnly: true }
+  const blocks = editor.document as Block[]
+  const normalized = normalizeHashTags(blocks, tagSet, tagColorMap, tagIconMap, options)
   if (!normalized.didChange) return
 
   editor.replaceBlocks(editor.document, normalized.blocks)
@@ -439,6 +473,10 @@ export function useEditorSync({
       promoteLinkMentionsInSharedDoc(editor)
       promoteInlineCheckboxesInSharedDoc(editor)
       promoteDateMentionsInSharedDoc(editor)
+      if (noteTags?.length && tagColorMap) {
+        promoteHashTagsInSharedDoc(editor, noteTags, tagColorMap, tagIconMap)
+        lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
+      }
       clearYjsUndoHistory(editor)
       isContentReadyRef.current = true
       if (onHeadingsChange) {

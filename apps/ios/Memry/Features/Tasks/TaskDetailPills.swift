@@ -252,7 +252,7 @@ struct TaskDetailPills: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            TaskSheetConfirmButton(label: TasksCopy.Detail.done) { self.sheet = nil }
+                            SheetConfirmButton(label: TasksCopy.Detail.done) { self.sheet = nil }
                         }
                     }
             }

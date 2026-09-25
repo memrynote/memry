@@ -85,7 +85,7 @@ struct TaskDateSheet: View {
                         .accessibilityIdentifier("tasks.date.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    TaskSheetConfirmButton(label: TasksCopy.dateDone) { commit(draftDate, draftTime) }
+                    SheetConfirmButton(label: TasksCopy.dateDone) { commit(draftDate, draftTime) }
                         .accessibilityIdentifier("tasks.date.done")
                 }
             }

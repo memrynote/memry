@@ -36,23 +36,23 @@ enum AppFeature: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
-/// F9: Journal and Inbox are not on iOS yet, so their settings rows and
-/// feature toggles stay hidden. A UI test can show them with the launch
-/// argument `-settings.showUnshipped`.
+/// F9: Journal is not on iOS yet, so its settings row stays hidden (a UI test
+/// can show it with `-settings.showUnshipped`). Inbox shipped (#2422) and has
+/// its own tab.
 enum SettingsFeatureGates {
     static var showsUnshipped: Bool {
         ProcessInfo.processInfo.arguments.contains("-settings.showUnshipped")
     }
 
     static var journal: Bool { showsUnshipped }
-    static var inbox: Bool { showsUnshipped }
+    static var inbox: Bool { true }
 
     /// Whether the feature has a tab on this phone, so its Features toggle
-    /// does something. Journal's tab exists (read as notes), Inbox's does not.
+    /// does something. Home has no tab since the Inbox replaced it.
     static func isShipped(_ feature: AppFeature) -> Bool {
         switch feature {
-        case .home, .tasks, .journal: true
-        case .inbox: inbox
+        case .inbox, .tasks, .journal: true
+        case .home: false
         }
     }
 }

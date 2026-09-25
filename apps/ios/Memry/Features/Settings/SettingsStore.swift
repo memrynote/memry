@@ -75,12 +75,9 @@ final class SettingsStore {
             // none synced means the app follows the system language.
             LanguageOverride.apply(languageRaw)
             self.journal = journal
-            let reviewChanged = self.review != review
             self.review = review
             self.revision = revision
             isLoaded = true
-            // An inbound synced change reschedules this device's reminder.
-            if reviewChanged { await ReviewReminder.reschedule(review) }
         } catch {
             report(error)
         }

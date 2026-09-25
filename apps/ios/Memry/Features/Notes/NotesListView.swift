@@ -168,6 +168,7 @@ struct NotesListView: View {
                     }
                 }
                 .task { await model.loadIfNeeded() }
+                .onAppear { Task { await model.refresh() } }
                 // A failed write is an alert over a screen that still holds
                 // the vault, not a replacement for it: the outline is still
                 // true, only the write did not happen.

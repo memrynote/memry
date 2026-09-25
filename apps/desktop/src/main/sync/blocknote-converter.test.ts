@@ -23,6 +23,7 @@ import {
   serializeYoutubeEmbed
 } from '@memry/editor-schema/blocks'
 import {
+  type Block,
   BlockNoteSchema,
   createInlineContentSpec,
   defaultBlockSpecs,
@@ -41,7 +42,11 @@ import { serializeBlockColorsMarker } from '@memry/shared/block-colors'
 // Identity for foreign spellings is asserted in `foreign-markdown-roundtrip`
 // and the conformance corpus.
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
-import { fileBlockCommentData, parseFileBlockMarker } from '@memry/editor-schema/blocks'
+import {
+  DEFAULT_IMAGE_PREVIEW_WIDTH,
+  fileBlockCommentData,
+  parseFileBlockMarker
+} from '@memry/editor-schema/blocks'
 
 describe('blocknote-converter code block language', () => {
   it('returns empty markdown for an empty Yjs fragment', async () => {
@@ -3839,5 +3844,144 @@ describe('table column widths survive the markdown round trip (#1936)', () => {
       backgroundColor: 'red'
     })
     expect(await blocksToMd(reparsed!)).toBe(saved)
+  })
+})
+
+describe('image width through the vault file', () => {
+  const IMAGE_URL = 'memry-file://local/v/attachments/n/diagram.png'
+
+  const image = (props: Record<string, unknown>) => ({
+    id: 'img',
+    type: 'image',
+    props: { backgroundColor: 'default', textAlignment: 'left', url: IMAGE_URL, ...props },
+    children: []
+  })
+
+  async function serialize(blocks: unknown[]): Promise<string> {
+    const doc = new Y.Doc()
+    expect(blocksToYFragment(blocks as never, doc.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
+    writeMarkdownSourceToYDoc(doc, null)
+    const markdown = await yDocToMarkdown(doc)
+    expect(markdown).not.toBeNull()
+    return markdown!
+  }
+
+  /** A Y.Doc re-seeded from the file, the way an external edit rebuilds it. */
+  async function reseed(markdown: string): Promise<Y.Doc> {
+    const doc = new Y.Doc()
+    expect(await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
+    writeMarkdownSourceToYDoc(doc, null)
+    return doc
+  }
+
+  async function firstImage(doc: Y.Doc): Promise<Record<string, unknown>> {
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    const find = (list: Block[]): Block | undefined => {
+      for (const block of list) {
+        if (block.type === 'image') return block
+        const nested = find((block.children ?? []) as Block[])
+        if (nested) return nested
+      }
+      return undefined
+    }
+    const found = find(blocks as Block[])
+    expect(found).toBeDefined()
+    return found!.props as Record<string, unknown>
+  }
+
+  it('keeps a resized captioned image width through a Y.Doc re-seed', async () => {
+    // #given the shape every pasted image has: caption = file name
+    const markdown = await serialize([image({ caption: 'diagram.png', previewWidth: 320 })])
+
+    // #then the width is on disk, in the alt text the reader already parses
+    expect(markdown).toBe(
+      `<figure><img alt="|320" src="${IMAGE_URL}"><figcaption>diagram.png</figcaption></figure>`
+    )
+
+    // #when the doc is rebuilt from the file
+    const doc = await reseed(markdown)
+
+    // #then the width comes back and the name stays empty
+    expect(await firstImage(doc)).toMatchObject({
+      previewWidth: 320,
+      name: '',
+      caption: 'diagram.png'
+    })
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it('keeps a resized image width without a caption as Obsidian `![name|320](url)`', async () => {
+    const markdown = await serialize([image({ name: 'diagram.png', previewWidth: 320 })])
+
+    expect(markdown).toBe(`![diagram.png|320](${IMAGE_URL})`)
+    const doc = await reseed(markdown)
+    expect(await firstImage(doc)).toMatchObject({ previewWidth: 320, name: 'diagram.png' })
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it('keeps the width of an image nested under a bullet', async () => {
+    const markdown = await serialize([
+      {
+        id: 'li',
+        type: 'bulletListItem',
+        props: {},
+        content: [{ type: 'text', text: 'Screenshots', styles: {} }],
+        children: [image({ caption: 'diagram.png', previewWidth: 240 })]
+      }
+    ])
+
+    const doc = await reseed(markdown)
+
+    expect(await firstImage(doc)).toMatchObject({ previewWidth: 240 })
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it('writes an image at the insert default exactly as one with no width', async () => {
+    // #given every image already in a vault: inserted at 600, never resized
+    const unsized = await serialize([image({ caption: 'diagram.png' })])
+    const atDefault = await serialize([
+      image({ caption: 'diagram.png', previewWidth: DEFAULT_IMAGE_PREVIEW_WIDTH })
+    ])
+    const namedAtDefault = await serialize([
+      image({ name: 'diagram.png', previewWidth: DEFAULT_IMAGE_PREVIEW_WIDTH })
+    ])
+
+    // #then today's bytes, so opening an old note rewrites nothing
+    expect(unsized).toBe(
+      `<figure><img src="${IMAGE_URL}"><figcaption>diagram.png</figcaption></figure>`
+    )
+    expect(atDefault).toBe(unsized)
+    expect(namedAtDefault).toBe(`![diagram.png](${IMAGE_URL})`)
+  })
+
+  it('writes a fractional drag width as whole pixels, stable across passes', async () => {
+    const first = await serialize([image({ name: 'a.png', previewWidth: 347.6 })])
+    expect(first).toBe(`![a.png|348](${IMAGE_URL})`)
+
+    let current = first
+    for (let pass = 0; pass < 3; pass++) {
+      current = (await yDocToMarkdown(await reseed(current)))!
+    }
+    expect(current).toBe(first)
+  })
+
+  it("reads another tool's `![alt|300](url)` as a width and writes it back unchanged", async () => {
+    const markdown = '![shot|300](assets/shot.png)'
+
+    const doc = await reseed(markdown)
+
+    expect(await firstImage(doc)).toMatchObject({ name: 'shot', previewWidth: 300 })
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it('leaves `|300x200` as alt text, since writing it back as `|300` would change it', async () => {
+    const markdown = '![shot|300x200](assets/shot.png)'
+
+    const doc = await reseed(markdown)
+
+    const props = await firstImage(doc)
+    expect(props.name).toBe('shot|300x200')
+    expect(props.previewWidth).toBeUndefined()
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 })

@@ -119,7 +119,13 @@ struct CoreVaultOpener: VaultOpening {
     func open(_ vaultId: String) async throws -> Vault {
         try await files.openingVault(vaultId) { directory in
             let path = directory.path
-            return try await executor.run { try Vault.open(vaultId: vaultId, directory: path) }
+            let vault = try await executor.run { try Vault.open(vaultId: vaultId, directory: path) }
+            // Where a cached attachment's relative `local_path` lives. Unset,
+            // every picture resolved under the temp directory and read as
+            // "could not be opened" over bytes that were on disk.
+            AttachmentPaths.imagesDirectory = directory
+                .appendingPathComponent(VaultFiles.imagesDirectoryName, isDirectory: true)
+            return vault
         }
     }
 }

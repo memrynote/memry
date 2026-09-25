@@ -176,7 +176,17 @@ download button.
 
 ## Image Attachments
 
-Images render as image blocks (not file blocks). Drag them to resize; double-click for the lightbox.
+Images render as image blocks (not file blocks). Double-click for the lightbox.
+
+**Resizing.** Hover the image, or click to select it, and drag the grip on either side. The grips
+stay up while the image is selected. This works the same for an image nested under a bullet, and an
+image never grows past its column, so a picture in an indented list stays inside the list.
+
+A width you set is saved into the note file as a suffix on the image's name, `![photo|320](...)`,
+the same convention Obsidian uses, so it survives syncing and reopening. Images at the default width
+are written exactly as before. An older version of Memry shows the picture at its default size and
+keeps the suffix when it saves, so the width is still there when you open the note in a newer
+version.
 
 ### Zooming and Panning
 

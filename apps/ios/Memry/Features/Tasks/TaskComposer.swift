@@ -77,7 +77,7 @@ struct TaskComposer: View {
         .padding(.leading, Tokens.Space.inset)
         .padding(.trailing, Tokens.Space.medium)
         .padding(.bottom, Tokens.Space.medium)
-        .taskGlass(in: .rect(cornerRadius: Tokens.Radius.container))
+        .chromeGlass(in: .rect(cornerRadius: Tokens.Radius.container))
         .padding(.horizontal, Tokens.Space.small)
         .padding(.bottom, Tokens.Space.small)
         .task(id: text) { await reparse() }

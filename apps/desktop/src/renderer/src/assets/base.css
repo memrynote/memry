@@ -371,6 +371,30 @@
   opacity: 1;
 }
 
+/* ===== IMAGE RESIZE ===== */
+/* BlockNote shows an image's two width grips only while the pointer is over
+   it, by toggling an inline `display: none`, so a clicked image gave no sign
+   it could be resized. Keep them up while the image is node-selected, as the
+   PDF brackets are. `!important` because the hide is an inline style; editable
+   only, because a read-only note never resizes. */
+.bn-editor[contenteditable='true']
+  .bn-block-content.ProseMirror-selectednode[data-content-type='image']
+  .bn-resize-handle,
+.bn-editor[contenteditable='true']
+  .ProseMirror-selectednode
+  > .bn-block-content[data-content-type='image']
+  .bn-resize-handle {
+  display: block !important;
+}
+
+/* The stored width is an inline px width on the wrapper (600 at insert). Under
+   a list item the block is narrower by the indent, and in a narrow pane the
+   picture ran past the column with its end grip out of reach. The width stays
+   the upper bound; the block's own width is the cap. */
+.bn-block-content[data-content-type='image'] > .bn-file-block-content-wrapper {
+  max-width: 100%;
+}
+
 /* ===== WHITEBOARD BLOCK ===== */
 /* The board is drawn inside ProseMirror's root, whose prose settings (kept
    spaces, no ligatures) every descendant inherits. Excalidraw's own UI is laid

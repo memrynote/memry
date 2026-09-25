@@ -1,9 +1,9 @@
 import MemryCore
 import SwiftUI
 
-// The shell an opened vault lives in: the five tabs the product has, with the
-// ones that are not built yet saying so. Home, Tasks and Journal hide when
-// turned off in Settings › Features (spec 006).
+// The shell an opened vault lives in: Notes, Inbox, Tasks, Journal, More,
+// with the tabs that are not built yet saying so. Inbox, Tasks and Journal hide
+// when turned off in Settings › Features (settings spec ST44).
 //
 // **A tab that is not built says what is true, and is not removed.** Kaan's
 // call: ship the bar now. `DESIGN.md` forbids a dead control, not an honest
@@ -26,14 +26,18 @@ struct VaultTabsView<Notes: View, Tasks: View, More: View>: View {
     /// The Tasks tab (spec 004 TP031), built by the caller that holds the
     /// vault, keychain and sync.
     @ViewBuilder let tasks: () -> Tasks
-    /// More › Settings (spec 006 F1), built by the caller with the vault's
-    /// settings context.
+    /// More › Settings (settings spec F1), built by the caller with the
+    /// vault's settings context.
     @ViewBuilder let more: () -> More
     /// Cross-tab navigation: search, note task blocks and reminder taps open a
     /// task through it.
     @State private var router = TasksRouter()
-    /// Features (spec 006 ST44): a module turned off loses its tab. Notes and
-    /// More are always there.
+    /// The Inbox tab's stack (inbox spec D1).
+    @State private var inboxRouter = InboxRouter()
+    private let inboxLinks = InboxLinks.shared
+    @Environment(\.inboxStore) private var inboxStore
+    /// Features (settings spec ST44): a module turned off loses its tab.
+    /// Notes and More are always there.
     @State private var local = LocalSettings.shared
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
@@ -43,12 +47,9 @@ struct VaultTabsView<Notes: View, Tasks: View, More: View>: View {
             Tab("Notes", systemImage: "doc.text", value: VaultTab.notes) {
                 notes()
             }
-            if local.isOn(.home) {
-                Tab("Home", systemImage: "house", value: VaultTab.home) {
-                    ComingSoonTab(
-                        title: "Home",
-                        detail: "The home board with your widgets is on your computer for now."
-                    )
+            if local.isOn(.inbox) {
+                Tab(InboxCopy.title, systemImage: "tray", value: VaultTab.inbox) {
+                    InboxTab(store: inboxStore)
                 }
             }
             if local.isOn(.tasks) {
@@ -69,6 +70,11 @@ struct VaultTabsView<Notes: View, Tasks: View, More: View>: View {
             }
         }
         .environment(router)
+        .environment(inboxRouter)
+        // A tapped inbox notification or a Share hand-off opens the Inbox.
+        .onChange(of: inboxLinks.pending, initial: true) {
+            if inboxLinks.take() { inboxRouter.openInbox(in: router) }
+        }
         // A tapped reminder opens its task; a tap from a cold start waits in
         // `ReminderTaps` until this shell exists, hence `initial: true`.
         .onChange(of: reminderTaps.pending, initial: true) {
@@ -77,11 +83,17 @@ struct VaultTabsView<Notes: View, Tasks: View, More: View>: View {
         // The vault closed or the account signed out: no reminder text may
         // outlive it on the lock screen. The next vault refills its own window.
         .onDisappear {
-            Task { await ReminderScheduler.shared.clearAll() }
+            Task {
+                await ReminderScheduler.shared.clearAll()
+                await InboxNotifications.clearAll()
+            }
         }
-        // Turning Tasks off stops its reminders on this phone (flow lane 06).
+        // Turning a module off stops its reminders on this phone (flow lane 06).
         .onChange(of: local.isOn(.tasks)) { _, on in
             if !on { Task { await ReminderScheduler.shared.clearAll() } }
+        }
+        .onChange(of: local.isOn(.inbox)) { _, on in
+            if !on { Task { await InboxNotifications.clearAll() } }
         }
         // Sign out lives on Settings › Account (F1), so the shell stops
         // drawing it over every screen of the vault.

@@ -376,7 +376,13 @@ impl HttpClient {
 
         let wire = HttpRequest {
             method: request.method.clone(),
-            url: format!("{}{}", self.base_url, request.path),
+            // A presigned R2 url (§14.6) is already absolute; prefixing it with
+            // the Worker's base would send it nowhere.
+            url: if request.path.starts_with("https://") || request.path.starts_with("http://") {
+                request.path.clone()
+            } else {
+                format!("{}{}", self.base_url, request.path)
+            },
             headers,
             body: request.body.clone(),
             timeout_ms: request.timeout_ms,

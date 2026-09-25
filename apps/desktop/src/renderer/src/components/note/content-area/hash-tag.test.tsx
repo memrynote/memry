@@ -88,6 +88,49 @@ describe('hash tag inline content', () => {
     ])
   })
 
+  it('never promotes a tag inside inline code', () => {
+    // A chip has no `code` mark, so `a `#work` b` would save as `a #work b`.
+    const content = [
+      { type: 'text', text: 'a ', styles: {} },
+      { type: 'text', text: '#work', styles: { code: true } },
+      { type: 'text', text: ' b', styles: {} }
+    ]
+    const result = normalizeHashTags(
+      [{ id: 'a', type: 'paragraph', content }] as any,
+      new Set(['work']),
+      new Map([['work', 'blue']])
+    )
+
+    expect(result.didChange).toBe(false)
+    expect((result.blocks[0] as any).content).toBe(content)
+  })
+
+  it('with unmarkedRunsOnly, leaves a tag inside a marked run as text', () => {
+    const result = normalizeHashTags(
+      [
+        {
+          id: 'a',
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Nested #work', styles: { bold: true } },
+            { type: 'text', text: ' and #work', styles: {} }
+          ]
+        }
+      ] as any,
+      new Set(['work']),
+      new Map([['work', 'blue']]),
+      undefined,
+      { unmarkedRunsOnly: true }
+    )
+
+    expect(result.didChange).toBe(true)
+    expect((result.blocks[0] as any).content).toEqual([
+      { type: 'text', text: 'Nested #work', styles: { bold: true } },
+      { type: 'text', text: ' and ', styles: {} },
+      { type: 'hashTag', props: { tag: 'work', color: 'blue', icon: '' } }
+    ])
+  })
+
   it('threads a per-tag icon from the icon map into hash tag props and renders it', () => {
     const result = normalizeHashTags(
       [{ id: 'a', type: 'paragraph', content: 'Read #books today' }] as any,

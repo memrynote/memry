@@ -5,7 +5,12 @@ import { fuzzySearch } from '@/lib/fuzzy-search'
 import { listTitledCanvases } from '@/lib/canvas-lookup'
 import { notesService } from '@/services/notes-service'
 import { createWikiLinkInlineContent } from '../wiki-link'
-import { buildDateMentionEntry, predictTime } from '../date-suggestions'
+import {
+  buildDateMentionEntry,
+  buildNowMentionValue,
+  isNowQuery,
+  predictTime
+} from '../date-suggestions'
 import type { DateMentionValue } from '../date-mention-popover'
 import {
   CANVAS_CHOICE_OPTIONS,
@@ -147,6 +152,8 @@ export function useMentionSuggestions(
         : hint
           ? [{ kind: 'date-hint' }]
           : []
+      // `@now` / `@no` lead the Date group with "Now" (today + current time).
+      if (isNowQuery(trimmed)) dateItems.unshift({ kind: 'now' })
 
       return [...dateItems, ...noteItems, ...canvasItems]
     },
@@ -183,6 +190,8 @@ export function useMentionSuggestions(
           position: caretPosition(editor, editorContainerRef.current),
           selectedIndex: 0
         })
+      } else if (item.kind === 'now') {
+        onInsertDate(buildNowMentionValue())
       } else {
         onInsertDate(item.value)
       }

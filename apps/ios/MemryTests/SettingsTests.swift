@@ -90,12 +90,12 @@ struct SettingsTests {
     @Test func the_last_feature_that_is_on_refuses_to_turn_off() throws {
         let defaults = try #require(UserDefaults(suiteName: "settings-\(UUID().uuidString)"))
         let local = LocalSettings(defaults: defaults)
-        #expect(local.shippedOn == [.home, .journal, .tasks])
-        #expect(local.set(.home, on: false))
+        #expect(local.shippedOn == [.inbox, .journal, .tasks])
+        #expect(local.set(.inbox, on: false))
         #expect(local.set(.journal, on: false))
         #expect(local.set(.tasks, on: false) == false)
         #expect(local.isOn(.tasks))
-        #expect(LocalSettings(defaults: defaults).isOn(.home) == false)
+        #expect(LocalSettings(defaults: defaults).isOn(.inbox) == false)
     }
 
     @Test func the_accent_keeps_its_ink_readable_in_both_styles() {
@@ -113,10 +113,6 @@ struct SettingsTests {
         #expect(AccentColor.normalized("#12") == nil)
     }
 
-    @Test func the_review_time_reads_and_writes_hh_mm() {
-        #expect(ReviewReminder.text(ReviewReminder.date("07:05")) == "07:05")
-        #expect(ReviewReminder.text(ReviewReminder.date("23:59")) == "23:59")
-    }
 }
 
 /// A core that refuses every write, for the revert path.

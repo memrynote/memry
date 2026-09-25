@@ -66,25 +66,27 @@ struct VaultListView: View {
         // The tab shell, not the notes screen directly: an opened vault is the
         // whole product surface, and Notes is one of its five tabs.
         VaultTasksScope(vault: vault, secureStore: model.secureStore, filler: filler) { tasksStore, tasksFailure in
-            VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
-            VaultTabsView(notes: {
-                NotesListView(
-                    vault: vault,
-                    title: VaultLabel(summary).text,
-                    executor: .shared,
-                    filler: filler,
-                    // The writes need this device's identity, and the keychain is
-                    // where its signing key lives. A screen built without one
-                    // browses and offers no write it cannot make.
-                    store: model.secureStore,
-                    switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
-                )
-            }, tasks: {
-                TasksTabContent(store: tasksStore, failure: tasksFailure)
-            }, more: {
-                // Spec 006: More › Settings, built next to the tasks store.
-                MoreTabView(context: settings, browse: browse)
-            })
+            VaultInboxScope(vault: vault, secureStore: model.secureStore, filler: filler) {
+                VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
+                    VaultTabsView(notes: {
+                        NotesListView(
+                            vault: vault,
+                            title: VaultLabel(summary).text,
+                            executor: .shared,
+                            filler: filler,
+                            // The writes need this device's identity, and the keychain is
+                            // where its signing key lives. A screen built without one
+                            // browses and offers no write it cannot make.
+                            store: model.secureStore,
+                            switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
+                        )
+                    }, tasks: {
+                        TasksTabContent(store: tasksStore, failure: tasksFailure)
+                    }, more: {
+                        // Settings spec: More › Settings, built next to the tasks store.
+                        MoreTabView(context: settings, browse: browse)
+                    })
+                }
             }
         }
     }
@@ -225,6 +227,9 @@ private struct VaultRowLabel: View {
         }
         .padding(Tokens.Space.inset)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // A plain button hit-tests only what it draws; without this the gap
+        // between the name and the chevron ignored taps.
+        .contentShape(.rect)
     }
 }
 

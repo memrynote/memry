@@ -62,12 +62,15 @@ impl VaultSync {
 
         // A failure part way leaves a session the server will expire on its
         // own; cancelling is the tidy path and is not load-bearing.
-        if let Err(error) = self.put_all(&session, &chunks).await {
-            let _ = attachment_upload::cancel(&self.session.http(), &session.session_id).await;
-            return Err(error);
-        }
+        let direct = match self.put_all(&session, &chunks).await {
+            Ok(direct) => direct,
+            Err(error) => {
+                let _ = attachment_upload::cancel(&self.session.http(), &session.session_id).await;
+                return Err(error);
+            }
+        };
 
-        attachment_upload::complete(&self.session.http(), &session.session_id)
+        attachment_upload::complete(&self.session.http(), &session.session_id, &direct)
             .await
             .map_err(attachment_error)?;
 
@@ -194,22 +197,24 @@ impl VaultSync {
         &self,
         session: &attachment_upload::UploadSession,
         chunks: &[attachment_upload::FramedChunk],
-    ) -> Result<(), SyncError> {
+    ) -> Result<Vec<attachment_upload::DirectChunk>, SyncError> {
+        let mut direct = Vec::new();
         for chunk in chunks {
-            match session.chunk_urls.get(&chunk.reference.encrypted_hash) {
-                Some(url) => {
-                    attachment_upload::put_chunk_presigned(&self.session.http(), url, chunk)
-                        .await
-                        .map_err(attachment_error)?
-                }
-                None => {
-                    attachment_upload::put_chunk(&self.session.http(), &session.session_id, chunk)
-                        .await
-                        .map_err(attachment_error)?
-                }
+            // A presigned PUT that fails goes through the Worker instead, as
+            // desktop does: a stale signature is not a failed upload.
+            if let Some(url) = session.chunk_urls.get(&chunk.reference.encrypted_hash)
+                && attachment_upload::put_chunk_presigned(&self.session.http(), url, chunk)
+                    .await
+                    .is_ok()
+            {
+                direct.push(attachment_upload::DirectChunk::of(chunk));
+                continue;
             }
+            attachment_upload::put_chunk(&self.session.http(), &session.session_id, chunk)
+                .await
+                .map_err(attachment_error)?;
         }
-        Ok(())
+        Ok(direct)
     }
 
     /// Every chunk, by whichever transfer path this deployment offers (§14.6).

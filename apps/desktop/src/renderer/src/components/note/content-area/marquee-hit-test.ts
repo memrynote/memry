@@ -95,6 +95,11 @@ export function isOutsideAllBlocks(target: Element): boolean {
  * whole surface is a link, so a marquee can never start from a bookmark's own
  * body. Clicking it should open the link; selecting it is reached from the
  * margin instead.
+ *
+ * `.bn-resize-handle` is an image's width grip. It is a bare div outside any
+ * text, so without the exclusion a drag on it started a marquee on top of the
+ * resize: a selection box over the note, the editor blurred, and the image
+ * left block-selected, where the next Backspace deletes it.
  */
 export function shouldStartMarquee(target: EventTarget | null): target is HTMLElement {
   if (!(target instanceof HTMLElement)) return false
@@ -102,7 +107,7 @@ export function shouldStartMarquee(target: EventTarget | null): target is HTMLEl
   if (target.closest('button, a, input, textarea, select, [role="button"]')) return false
   if (
     target.closest(
-      '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu'
+      '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-resize-handle'
     )
   ) {
     return false

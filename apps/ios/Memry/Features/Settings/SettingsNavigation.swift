@@ -36,9 +36,6 @@ struct MoreTabView: View {
         NavigationStack(path: $router.settingsPath) {
             List {
                 Section {
-                    if SettingsFeatureGates.inbox, LocalSettings.shared.isOn(.inbox) {
-                        SettingsRowLabel(title: SettingsCopy.inbox, symbol: "tray")
-                    }
                     NavigationLink(value: SettingsRoute.root) {
                         SettingsRowLabel(title: SettingsCopy.title, symbol: "gearshape")
                     }
@@ -79,6 +76,16 @@ struct MoreTabView: View {
     }
 }
 
+/// Settings › Inbox is the Inbox feature's own settings page (inbox spec),
+/// over the vault's inbox store.
+private struct InboxSettingsDestination: View {
+    @Environment(\.inboxStore) private var store
+
+    var body: some View {
+        if let store { InboxSettingsView(store: store) } else { ProgressView(SettingsCopy.loading) }
+    }
+}
+
 /// Maps a route to its page.
 struct SettingsDestination: View {
     let route: SettingsRoute
@@ -99,7 +106,7 @@ struct SettingsDestination: View {
         case .about: AboutScreen()
         case .journal: JournalSettingsScreen(context: context)
         case .perDayTemplates: PerDayTemplatesScreen(context: context)
-        case .inbox: InboxSettingsScreen(context: context)
+        case .inbox: InboxSettingsDestination()
         case .tasks: TaskSettingsView(store: context.tasks)
         case .templates: TemplatesScreen(context: context)
         case let .template(id): TemplateEditorScreen(context: context, templateId: id)

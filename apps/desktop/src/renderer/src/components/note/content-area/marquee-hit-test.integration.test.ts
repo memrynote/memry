@@ -23,20 +23,20 @@ afterEach(() => {
   }
 })
 
-function mountEditor(): HTMLElement {
-  const editor = BlockNoteEditor.create({
-    initialContent: [
-      { type: 'paragraph', content: 'Intro' },
-      {
-        type: 'table',
-        content: {
-          type: 'tableContent',
-          headerRows: 1,
-          rows: [{ cells: ['Task', 'Owner'] }, { cells: ['Ship it', 'Kaan'] }]
-        }
-      }
-    ] as never
-  })
+const DEFAULT_CONTENT = [
+  { type: 'paragraph', content: 'Intro' },
+  {
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      headerRows: 1,
+      rows: [{ cells: ['Task', 'Owner'] }, { cells: ['Ship it', 'Kaan'] }]
+    }
+  }
+]
+
+function mountEditor(initialContent: unknown[] = DEFAULT_CONTENT): HTMLElement {
+  const editor = BlockNoteEditor.create({ initialContent: initialContent as never })
   const el = document.createElement('div')
   document.body.appendChild(el)
   editor.mount(el)
@@ -83,5 +83,28 @@ describe('marquee hit-testing against real BlockNote markup', () => {
     // A table has to stay marquee-selectable as a whole block.
     expect(hasSelectableTextAt(table)).toBe(false)
     expect(shouldStartMarquee(table)).toBe(true)
+  })
+
+  it('leaves a drag on an image resize handle to the resize, top-level or nested', () => {
+    const url = 'memry-file://local/v/attachments/n/diagram.png'
+    const image = { type: 'image', props: { url, previewWidth: 600 } }
+    const root = mountEditor([
+      image,
+      { type: 'bulletListItem', content: 'Screenshots', children: [image] }
+    ])
+    const images = root.querySelectorAll('.bn-block-content[data-content-type="image"]')
+    expect(images).toHaveLength(2)
+
+    for (const block of images) {
+      const handles = block.querySelectorAll('.bn-resize-handle')
+      expect(handles).toHaveLength(2)
+      for (const handle of handles) {
+        expect(hasSelectableTextAt(handle)).toBe(false)
+        expect(shouldStartMarquee(handle)).toBe(false)
+      }
+      // The picture itself still starts one: that is how an image is
+      // marquee-selected as a block.
+      expect(shouldStartMarquee(query(block as HTMLElement, 'img'))).toBe(true)
+    }
   })
 })

@@ -207,6 +207,60 @@ describe('useMentionSuggestions', () => {
     expect(onInsertDate).toHaveBeenCalledWith(value)
     expect(editor.insertInlineContent).not.toHaveBeenCalled()
   })
+  it('leads the Date group with Now for @now and a partial @no, any case', async () => {
+    mocks.listNotes.mockResolvedValue({ notes: [{ id: 'a', title: 'Unrelated note' }] })
+    const editor = { insertInlineContent: vi.fn() }
+    const { result } = renderHook(() => useMentionSuggestions(editor, options()))
+
+    for (const query of ['now', 'no', 'NOW', 'No']) {
+      let items: MentionSuggestionItem[] = []
+      await act(async () => {
+        items = await result.current.getMentionItems(query)
+      })
+      expect(items[0]).toEqual({ kind: 'now' })
+      expect(items.filter((i) => i.kind === 'now')).toHaveLength(1)
+    }
+  })
+
+  it('offers no Now item for an empty query, a lone "n", or other words', async () => {
+    mocks.listNotes.mockResolvedValue({ notes: [{ id: 'a', title: 'Notes on nowhere' }] })
+    const editor = { insertInlineContent: vi.fn() }
+    const { result } = renderHook(() => useMentionSuggestions(editor, options()))
+
+    for (const query of ['', 'n', 'nowhere', 'today']) {
+      let items: MentionSuggestionItem[] = []
+      await act(async () => {
+        items = await result.current.getMentionItems(query)
+      })
+      expect(items.some((i) => i.kind === 'now')).toBe(false)
+    }
+  })
+
+  it('inserts today at the minute Now is picked (not when the menu opened), with a time', async () => {
+    const onInsertDate = vi.fn()
+    const editor = { insertInlineContent: vi.fn() }
+    const { result } = renderHook(() => useMentionSuggestions(editor, options({ onInsertDate })))
+
+    vi.setSystemTime(new Date('2026-05-10T01:23:10'))
+    let items: MentionSuggestionItem[] = []
+    await act(async () => {
+      items = await result.current.getMentionItems('now')
+    })
+    vi.setSystemTime(new Date('2026-05-10T01:24:37'))
+    act(() => {
+      result.current.handleMentionSelect(items[0])
+    })
+
+    expect(onInsertDate).toHaveBeenCalledTimes(1)
+    expect(onInsertDate).toHaveBeenCalledWith({
+      dateISO: new Date('2026-05-10T01:24:00').toISOString(),
+      hasTime: true,
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system'
+    })
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+  })
 })
 
 interface MockEditor {

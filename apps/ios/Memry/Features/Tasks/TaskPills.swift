@@ -7,8 +7,8 @@ import SwiftUI
 // - ``TaskComposerChip``: a composer property chip: neutral while unset,
 //   tinted by its value once set.
 // - ``TaskAddPill``: the dashed "+" that reveals the unset properties.
-// - ``taskGlass(in:)``: Liquid Glass for chrome the system does not draw
-//   itself (the composer), with a solid surface under Reduce Transparency.
+// (`chromeGlass(in:)` and `SheetConfirmButton` moved to `Design/` when the
+// Inbox needed them, spec 006 IB032.)
 //
 // Every capsule keeps a 44pt hit frame around a smaller visual, so touch
 // geometry stays native while the capsule reads light.
@@ -127,52 +127,5 @@ struct TaskAddPill: View {
             }
             .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
             .contentShape(.rect)
-    }
-}
-
-/// A sheet's commit (artboards 11, 13, 19): a glass-prominent checkmark in
-/// the tint with an ink glyph (the tint fills and never carries contrast;
-/// the system `confirm` role draws a white glyph on it).
-struct TaskSheetConfirmButton: View {
-    let label: String
-    var isEnabled = true
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "checkmark")
-                .fontWeight(.semibold)
-                .foregroundStyle(Tokens.Tint.foreground.color)
-        }
-        .buttonStyle(.glassProminent)
-        .tint(Tokens.Tint.base.color)
-        .disabled(!isEnabled)
-        .accessibilityLabel(label)
-    }
-}
-
-/// System Liquid Glass on a piece of chrome the system does not draw itself,
-/// or a solid surface with a hairline under Reduce Transparency.
-private struct TaskGlass<S: Shape>: ViewModifier {
-    let shape: S
-    let tint: Color?
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    func body(content: Content) -> some View {
-        if reduceTransparency {
-            content
-                .background(tint ?? Tokens.Canvas.background.color, in: shape)
-                .overlay { shape.stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline) }
-        } else {
-            content.glassEffect(tint.map { Glass.regular.tint($0) } ?? .regular, in: shape)
-        }
-    }
-}
-
-extension View {
-    /// Liquid Glass on chrome, solid under Reduce Transparency. A `tint`
-    /// colours the glass (and is the solid fill when transparency is off).
-    func taskGlass(in shape: some Shape, tint: Color? = nil) -> some View {
-        modifier(TaskGlass(shape: shape, tint: tint))
     }
 }

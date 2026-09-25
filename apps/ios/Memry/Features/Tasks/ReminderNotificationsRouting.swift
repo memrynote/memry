@@ -89,10 +89,14 @@ final class ReminderNotificationDelegate: NSObject, UNUserNotificationCenterDele
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let tap = ReminderTap(userInfo: response.notification.request.content.userInfo)
+        let userInfo = response.notification.request.content.userInfo
+        let tap = ReminderTap(userInfo: userInfo)
+        // The inbox's review nudge and snooze-due open the Inbox (spec 006 IB23).
+        let inbox = userInfo[InboxNotificationIds.routeKey] != nil
         let done = ReminderCompletion(completionHandler)
         Task { @MainActor in
             if let tap { ReminderTaps.shared.receive(tap) }
+            if inbox { InboxLinks.shared.request() }
             done.call()
         }
     }
