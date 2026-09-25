@@ -214,6 +214,15 @@ A `/sync/pull` body that is not a pull envelope at all is a server contract regr
 holds, the run is refused and sync shows a server error, so the page re-arrives once the server
 answers correctly.
 
+The first `/sync/changes` page of a pull outside a full sync (a socket wake or the periodic pull)
+asks for `inline=1`. The server then clamps the page to 100 refs and returns, in `inline`, the
+exact `/sync/pull` item for every id it could inline: rows up to 64 KiB, tombstones included, and
+only ids whose rows on the page all fit. The client pulls only the page ids that no inline item
+names, so a wake that delivers one small change makes no `/sync/pull` call. Inline and pulled items
+apply as one page, in one transaction and one apply order, and the cursor rules do not change.
+Later pages and full syncs (startup, Sync now, first sync) keep 500-ref pages without inline.
+Protocol 05 §5.11.2 has the full rules.
+
 Each pulled page applies inside one SQLite transaction. Handlers run synchronously inside it; the
 files they produce (a note or journal markdown file, a rewritten `.memry/properties.md` after a
 remote property-definition delete) are recorded in a crash journal just before the commit and
