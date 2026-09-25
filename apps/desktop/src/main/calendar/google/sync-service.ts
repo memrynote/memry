@@ -14,7 +14,7 @@ import {
 } from './oauth'
 import { resolveTargetGoogleAccountId } from './account-routing'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createGoogleCalendarClient } from './client'
 import { mapGoogleEventToExternalEventRecord } from './mappers'
 import {
@@ -546,8 +546,13 @@ async function syncGoogleCalendarSourceInner(
       // pending change on the device (#1215). Seed the same first clock
       // `seedUnclocked` assigns. With no device row yet (vault not registered)
       // there is no id to tick, so the clock stays NULL and the unclocked
-      // sweep/push repair still owns its first push.
-      clock: existing?.clock ?? (importDeviceId ? increment({}, importDeviceId) : undefined)
+      // sweep/push repair still owns its first push. The first clock is
+      // seeded from the id's last tombstone (#2409).
+      clock:
+        existing?.clock ??
+        (importDeviceId
+          ? nextLocalClock(db, 'calendar_external_event', record.id, null, importDeviceId, 'create')
+          : undefined)
     })
     markSyncedTableMutation('calendar_external_event', record.id, Boolean(existing))
     emitCalendarChanged({ entityType: 'calendar_external_event', id: record.id })

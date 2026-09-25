@@ -5,6 +5,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import { DEVICE_LOCAL_CALENDAR_PROVIDERS } from '@memry/contracts/calendar-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { nextLocalClock } from './tombstone-clocks'
 
 /**
  * A device-local provider's source row (`sourceScope: 'device'`, the macOS
@@ -61,9 +62,15 @@ export class CalendarSourceSyncService {
       load: (id) =>
         deps.db.select().from(calendarSources).where(eq(calendarSources.id, id)).get() as
           Record<string, unknown> | undefined,
-      applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
-        const nextClock = incrementClock(existingClock, deviceId)
+      applyLocalChange: ({ itemId, local, deviceId, operation }) => {
+        const nextClock = nextLocalClock(
+          deps.db,
+          'calendar_source',
+          itemId,
+          local.clock as VectorClock | null,
+          deviceId,
+          operation
+        )
 
         deps.db
           .update(calendarSources)

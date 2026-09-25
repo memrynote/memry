@@ -5,6 +5,7 @@ import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
 import { hasPendingDelete } from './pending-deletes'
 import { PendingSyncIntentError } from './pending-sync-intent-error'
 import { settleItemSyncIntents } from './sync-intents'
+import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import type { PageApplyHandle } from './bulk-apply'
 import { recordUnknownPayloadFields } from './unknown-fields'
 import { createLogger } from '../lib/logger'
@@ -79,7 +80,7 @@ export class ItemApplier {
     }
 
     if (input.operation === 'delete') {
-      return adapter
+      const result = adapter
         ? adapter.applyRemoteMutation({
             db,
             emit,
@@ -89,6 +90,11 @@ export class ItemApplier {
             vaultKey: input.vaultKey
           })
         : handler!.applyDelete(ctx, input.itemId, input.clock)
+      // #2409: recorded whatever the result, on the page's db so it commits with
+      // the delete and the cursor. An absent row is how a fresh install learns
+      // the clock; a skipped delete means the local row is already past it.
+      recordTombstoneClock(db, input.type, input.itemId, input.clock)
+      return result
     }
 
     // Tasks and notes are hard-deleted locally, so "no local row" means both

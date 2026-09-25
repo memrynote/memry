@@ -1,5 +1,6 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import { withIncrementedClock } from '@memry/sync-core'
+import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { getHandler } from '../item-handlers'
@@ -192,13 +193,22 @@ export async function repairOrphans(
       continue
     }
 
+    const payload = withIncrementedClock(orphan.item.content, tombstoneDeviceId)
     ctx.deps.queue.enqueue({
       type: orphan.item.type as SyncItemType,
       itemId: orphan.item.id,
       operation: 'delete',
-      payload: withIncrementedClock(orphan.item.content, tombstoneDeviceId),
+      payload,
       priority: 0
     })
+    // The only delete that bypasses local-mutations; a re-create must tick past it (#2409).
+    recordLocalDeleteClock(
+      ctx.deps.db,
+      orphan.item.type as SyncItemType,
+      orphan.item.id,
+      payload,
+      'final'
+    )
     tombstoned++
     log.warn('FK parent gone server-side — tombstoning orphaned item', {
       itemId: orphan.item.id,

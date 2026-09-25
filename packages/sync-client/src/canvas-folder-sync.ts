@@ -2,9 +2,10 @@ import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { canvasFolders } from '@memry/db-schema/data-schema'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
+import { nextLocalClock } from './tombstone-clocks'
 
 interface CanvasFolderSyncDeps {
   queue: SyncQueueManager
@@ -54,9 +55,15 @@ export class CanvasFolderSyncService {
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
       load,
-      applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
-        const newClock = incrementClock(existingClock, deviceId)
+      applyLocalChange: ({ itemId, local, deviceId, operation }) => {
+        const newClock = nextLocalClock(
+          deps.db,
+          'canvas_folder',
+          itemId,
+          local.clock as VectorClock | null,
+          deviceId,
+          operation
+        )
 
         deps.db
           .update(canvasFolders)

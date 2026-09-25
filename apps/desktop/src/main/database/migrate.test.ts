@@ -870,6 +870,85 @@ describe('0059_sync_intents migration', () => {
   })
 })
 
+// #2409
+describe('0061_sync_tombstone_clocks migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-tombstone-clocks-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function makePre0061Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0061')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0061_sync_tombstone_clocks')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('adds an empty table on a populated database and changes no row', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: makePre0061Folder() })
+    sqlite
+      .prepare(
+        "INSERT INTO tag_definitions (name, color, clock) VALUES ('work', 'red', '{\"a\":2}')"
+      )
+      .run()
+    sqlite
+      .prepare(
+        "INSERT INTO sync_pending_deletes (type, item_id, payload, created_at) VALUES ('journal', 'j2026-01-01', '{}', 1)"
+      )
+      .run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+    // Idempotent: a second run applies nothing and throws nothing.
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(sqlite.prepare('SELECT name, color, clock FROM tag_definitions').all()).toEqual([
+      { name: 'work', color: 'red', clock: '{"a":2}' }
+    ])
+    expect(sqlite.prepare('SELECT type, item_id FROM sync_pending_deletes').all()).toEqual([
+      { type: 'journal', item_id: 'j2026-01-01' }
+    ])
+    expect(sqlite.prepare('SELECT count(*) AS n FROM sync_tombstone_clocks').get()).toEqual({
+      n: 0
+    })
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite
+      .prepare(
+        "INSERT INTO sync_tombstone_clocks (type, item_id, clock, updated_at) VALUES ('tag_definition', 'work', '{\"a\":2}', 1)"
+      )
+      .run()
+
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0061Folder() })).not.toThrow()
+
+    expect(sqlite.prepare('SELECT count(*) AS n FROM sync_tombstone_clocks').get()).toEqual({
+      n: 1
+    })
+    sqlite.close()
+  })
+})
+
 // #2301 review B-6/A-8: drizzle applies a migration only when its `when` is
 // greater than the newest one already applied. Two stacked migrations that
 // share a `when` (or go backwards) make every install that has the first skip

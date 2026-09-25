@@ -4,7 +4,7 @@ import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-
+import { nextLocalClock } from './tombstone-clocks'
 
 interface TagDefinitionSyncDeps {
   queue: SyncQueueManager
@@ -83,11 +83,16 @@ export class TagDefinitionSyncService {
       getDeviceId: deps.getDeviceId,
       load: (name) =>
         deps.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get() as
-          | Record<string, unknown>
-          | undefined,
-      applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
-        const newClock = incrementClock(existingClock, deviceId)
+          Record<string, unknown> | undefined,
+      applyLocalChange: ({ itemId, local, deviceId, operation }) => {
+        const newClock = nextLocalClock(
+          deps.db,
+          'tag_definition',
+          itemId,
+          local.clock as VectorClock | null,
+          deviceId,
+          operation
+        )
 
         deps.db
           .update(tagDefinitions)

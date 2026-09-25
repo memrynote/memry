@@ -6,6 +6,7 @@ import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
+import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
 import {
   buildContentDeletePayload,
   listPendingDeletes,
@@ -186,6 +187,8 @@ export function recordDeleteTombstone(
     }
 
     recordPendingDelete(db, type, itemId, payload)
+    // #2409: the clock a later re-create of this id must happen after.
+    recordLocalDeleteClock(db, type, itemId, payload, snapshotPayload ? 'snapshot' : 'final')
   } catch (err) {
     log.warn('Failed to record a local delete tombstone', {
       type,

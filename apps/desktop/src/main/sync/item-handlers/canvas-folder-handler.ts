@@ -7,7 +7,7 @@ import {
 import { CanvasFolderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { removeEmptyCanvasFolderDirs } from '../../canvas/scene-file'
 import { getCanvasVaultPath } from '../../canvas/vault-path'
@@ -206,7 +206,7 @@ class CanvasFolderHandler extends BaseItemHandler<CanvasFolderSyncPayload> {
       .where(and(isNull(canvasFolders.clock), isNull(canvasFolders.deletedAt)))
       .all()
     for (const row of rows) {
-      const clock = increment({}, deviceId)
+      const clock = nextLocalClock(db, 'canvas_folder', row.id, null, deviceId, 'create')
       db.update(canvasFolders).set({ clock }).where(eq(canvasFolders.id, row.id)).run()
       queue.enqueue({
         type: 'canvas_folder',

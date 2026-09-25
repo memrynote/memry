@@ -5,7 +5,7 @@ import { BookmarksChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../logging'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -114,7 +114,7 @@ class BookmarkHandler extends BaseItemHandler<BookmarkSyncPayload> {
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(bookmarks).where(isNull(bookmarks.clock)).all()
     for (const item of items) {
-      const clock = increment({}, deviceId)
+      const clock = nextLocalClock(db, 'bookmark', item.id, null, deviceId, 'create')
       db.update(bookmarks).set({ clock }).where(eq(bookmarks.id, item.id)).run()
       queue.enqueue({
         type: 'bookmark',

@@ -8,7 +8,7 @@ import {
 import { PropertiesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { PropertyDefinitionsService } from '../../vault/property-definitions'
 import { writeSyncedVaultFile } from '../bulk-apply'
@@ -163,7 +163,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
       .where(isNull(propertyDefinitions.clock))
       .all()
     for (const item of items) {
-      const clock = increment({}, deviceId)
+      const clock = nextLocalClock(db, 'property_definition', item.name, null, deviceId, 'create')
       db.update(propertyDefinitions)
         .set({ clock })
         .where(eq(propertyDefinitions.name, item.name))

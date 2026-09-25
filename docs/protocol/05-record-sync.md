@@ -310,6 +310,38 @@ resolution for that conflict on both sides.
 A purged tombstone (§5.12.3) is applied under this same rule, through the same
 delete path.
 
+### A re-create seeds its clock from the tombstone (#2409)
+
+**Normative (client).** When a client writes an id it holds no clock for (a
+`create`, or the first write to a clockless row, whatever operation it is sent
+as) and it knows a tombstone clock `T` for that id, the new clock MUST be
+`increment(merge(local, T), device)`. An `update` of a row that already has a
+clock MUST NOT absorb `T`: that row survived the delete, and merging would turn
+a concurrent edit into one that dominates it. The rule is
+`recreateBaseClock` (`packages/sync-core/src/record-sync.ts`) and
+`recreate_base` (`crates/memry-core/src/sync/clock.rs`); chapter 06 §6.1.1
+pins both with `recreate-clock.json`.
+
+The re-create then happens strictly after the delete and passes this section
+and §5.7 unchanged, inside retention and over a marker alike. A stale device's
+unchanged pre-delete version is refused as `SYNC_REPLAY_DETECTED`; an edited one
+is concurrent with the re-create, and every client resolves it as a merge,
+never as a dominating apply. A client's own late tombstone no longer deletes its
+re-create, because the re-create's clock is strictly after it.
+
+`T` is the pointwise max of every delete clock the client has made or applied
+for the id, including a delete it applied to no local row and one it skipped.
+Notes and journals share one tombstone family. Desktop keeps `T` in
+`sync_tombstone_clocks` (data migration `0061`) and mints every first clock of
+a `RECREATABLE_AFTER_PURGE_ITEM_TYPES` type through `nextLocalClock`
+(`packages/sync-client/src/tombstone-clocks.ts`); the Rust core keeps it in
+`sync_tombstone_clocks` (core migration `0004`) and seeds journal and folder
+re-creates in `crates/memry-core/src/domain/recreate.rs`. The core also skips a
+clocked tombstone its live row strictly dominates (the client rule above); a
+tombstone without a clock still applies unconditionally. A client with no `T`
+for the id (a delete made before this rule, or one it never saw) mints exactly
+the clock it minted before.
+
 ## 5.9 Content hash and the stored blob — Q05.3
 
 **The same four fields are canonicalised twice, differently, and a client may
@@ -921,9 +953,14 @@ untyped-delete behaviour stays as documented there.
   for a recreatable type: the item comes back. The current desktop re-uploads
   only after a pull that delivered in the same run, and the pull is what
   applies the marker. This matches the pre-#2302 behaviour for these types.
-- A re-create stores a fresh clock that the old tombstone's clock dominated. A
-  device offline past retention with the old version and a higher clock can
-  overwrite the re-created item on its next update.
+- A re-create from a client that does not seed its clock (§5.8, #2409) stores a
+  fresh clock that the old tombstone's clock dominated. A device offline past
+  retention with the old version and a higher clock can overwrite the
+  re-created item on its next update. A seeding client's re-create happens
+  strictly after the tombstone and does not have this problem; the remaining
+  sources are older desktops and iOS builds, a client that never saw the
+  tombstone (markers are not served from cursor 0), and rows re-created before
+  the upgrade.
 - **Resolved for the desktop (#2408):** a purged tombstone used to be asserted
   by the server alone, so a malicious one could name a known device with a
   dominating clock and delete any note, task or journal. The desktop now
@@ -940,6 +977,14 @@ untyped-delete behaviour stays as documented there.
   purged tombstone counts as gone, exactly as a parent it omits, so the child is
   tombstoned. The attestation does not protect children of a parent the server
   claims is gone; a server that omits the parent achieves the same.
+
+**Removing the re-create allowance.** A seeded create passes §5.7 and §5.8
+without it, so the allowance only matters for the unseeded sources above. It
+may be narrowed or removed only when both hold: `minWriteVersion` (chapter 11)
+is past the first seeding release for desktop and for iOS, and a client that
+holds no `T` for an id can learn the marker's clock (for example a per-item
+rejection that carries it, followed by a re-seed and retry). Until then it
+stays exactly as specified above.
 
 ### 5.12.4 Rows whose payload is lost (#2302)
 

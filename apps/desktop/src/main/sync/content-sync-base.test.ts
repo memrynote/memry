@@ -27,6 +27,18 @@ vi.mock('../database/client', () => ({
   getDatabase: vi.fn(() => ({ __db: 'data' }))
 }))
 
+// The seeding itself (#2409) is covered by recreate-clock-seeding.test.ts; with
+// no recorded tombstone the mint is exactly `incrementClock(current)`.
+vi.mock('@memry/sync-client/tombstone-clocks', () => ({
+  nextLocalClock: (
+    _db: unknown,
+    _type: string,
+    _itemId: string,
+    current: Record<string, number> | null | undefined,
+    deviceId: string
+  ) => ({ ...(current ?? {}), [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
+}))
+
 vi.mock('@memry/storage-data', () => ({
   getNoteMetadataById: (...args: unknown[]) => mocks.getNoteMetadataById(...args),
   updateNoteMetadata: (...args: unknown[]) => mocks.updateNoteMetadata(...args)
@@ -70,7 +82,7 @@ type SnapshotCall = {
 }
 
 class TestContentSync extends ContentSyncService<Record<string, unknown>, []> {
-  readonly itemType: SyncItemType = 'note'
+  readonly itemType = 'note' as const
   protected readonly log = mocks.log as unknown as Logger.LogFunctions
   readonly snapshotCalls: SnapshotCall[] = []
   readonly deleteCalls: Array<{ cached: NoteMetadata | undefined; clock: VectorClock }> = []
@@ -96,7 +108,7 @@ class TestContentSync extends ContentSyncService<Record<string, unknown>, []> {
 
 /** Journal-shaped subclass: extra args (the journal date) must reach both builders. */
 class TestDatedContentSync extends ContentSyncService<Record<string, unknown>, [string]> {
-  readonly itemType: SyncItemType = 'journal'
+  readonly itemType = 'journal' as const
   protected readonly log = mocks.log as unknown as Logger.LogFunctions
   readonly extras: string[][] = []
 

@@ -15,7 +15,7 @@ import {
 } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../logging'
 import { BaseItemHandler } from './base-handler'
 import { MissingSyncParentError } from './types'
@@ -225,7 +225,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
    * server already acked — a replay the server drops, losing the edit.
    */
   private stampFirstClock(db: DrizzleDb, itemId: string, deviceId: string): VectorClock {
-    const clock = increment({}, deviceId)
+    const clock = nextLocalClock(db, 'calendar_external_event', itemId, null, deviceId, 'create')
     db.update(calendarExternalEvents)
       .set({ clock })
       .where(eq(calendarExternalEvents.id, itemId))

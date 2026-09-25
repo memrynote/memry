@@ -8,7 +8,7 @@ import {
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { readTagViews, writeTagViews } from '../../database/queries/tag-definitions'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
@@ -171,7 +171,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(tagDefinitions).where(isNull(tagDefinitions.clock)).all()
     for (const item of items) {
-      const clock = increment({}, deviceId)
+      const clock = nextLocalClock(db, 'tag_definition', item.name, null, deviceId, 'create')
       db.update(tagDefinitions).set({ clock }).where(eq(tagDefinitions.name, item.name)).run()
       queue.enqueue({
         type: 'tag_definition',

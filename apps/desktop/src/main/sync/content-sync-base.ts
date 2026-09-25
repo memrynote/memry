@@ -5,6 +5,7 @@ import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import type Logger from 'electron-log'
 import { getDatabase } from '../database/client'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 
 export interface ContentSyncDeps {
   queue: SyncQueueManager
@@ -26,7 +27,7 @@ export abstract class ContentSyncService<
 > {
   protected queue: SyncQueueManager
   protected abstract readonly log: Logger.LogFunctions
-  abstract readonly itemType: SyncItemType
+  abstract readonly itemType: Extract<SyncItemType, 'note' | 'journal'>
   private readonly getDeviceId: () => string | null
   private controller: RecordSyncController<NoteMetadata, TArgs, TArgs> | null = null
 
@@ -99,10 +100,18 @@ export abstract class ContentSyncService<
       handleMissingDevice: (itemId, operation) => {
         this.log.warn(`No device ID, skipping ${this.itemType} ${operation} enqueue`, { itemId })
       },
-      applyLocalChange: ({ itemId, local, deviceId }) => {
-        const nextClock = incrementClock((local.clock as VectorClock) ?? {}, deviceId)
+      applyLocalChange: ({ itemId, local, deviceId, operation }) => {
+        const db = getDatabase()
+        const nextClock = nextLocalClock(
+          db,
+          this.itemType,
+          itemId,
+          local.clock,
+          deviceId,
+          operation
+        )
         return (
-          updateNoteMetadata(getDatabase(), itemId, { clock: nextClock }) ?? {
+          updateNoteMetadata(db, itemId, { clock: nextClock }) ?? {
             ...local,
             clock: nextClock
           }

@@ -848,3 +848,68 @@ describe('a create over a marker re-creates a recreatable id, and only that (#23
     expect(res.body.rejected).toEqual([{ id: 'j2026-01-01', reason: 'SYNC_REPLAY_DETECTED' }])
   })
 })
+
+// #2409: a client seeds a re-create's clock from the id's last tombstone
+// (`merge(T) + tick`), so the create passes the ordinary §5.7/§5.8 rules and the
+// #2302 allowance is not the path. The server is unchanged; these pin it.
+describe('a re-create seeded from its tombstone clock (#2409)', () => {
+  it('accepts it inside retention, with no allowance, and serves it to another device', async () => {
+    const app = buildApp()
+    const id = 'j2026-04-16'
+    await push(app, [{ id, type: 'journal', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    await push(app, [{ id, type: 'journal', clock: { [DEVICE_ID]: 2 }, deletedAt: now() }])
+    const tombstone = row(id)
+
+    const res = await push(app, [
+      { id, type: 'journal', operation: 'create', clock: { [DEVICE_ID]: 3 } }
+    ])
+
+    expect(res.status).toBe(200)
+    expect(res.body.accepted).toEqual([id])
+    expect(row(id)).toMatchObject({ deleted_at: null, clock: JSON.stringify({ [DEVICE_ID]: 3 }) })
+    expect(row(id).server_cursor).toBeGreaterThan(tombstone.server_cursor)
+    const pulled = await pull(app, [id])
+    expect(pulled.body.items).toEqual([
+      expect.objectContaining({ id, type: 'journal', clock: { [DEVICE_ID]: 3 } })
+    ])
+  })
+
+  it('accepts a seeded create over a marker of a type the allowance does not cover', async () => {
+    const app = buildApp()
+    await expiredTombstone(app, 'task-t', 'task')
+    await cleanupExpiredTombstones(harness.db, storage)
+
+    const res = await push(app, [
+      { id: 'task-t', type: 'task', operation: 'create', clock: { [DEVICE_ID]: 3 } }
+    ])
+
+    expect(res.body.accepted).toEqual(['task-t'])
+    expect(row('task-t')).toMatchObject({ deleted_at: null, payload_purged_at: null })
+  })
+
+  it('refuses an unchanged pre-delete version as SYNC_REPLAY_DETECTED per item, HTTP 200', async () => {
+    const app = buildApp()
+    const id = 'work'
+    await push(app, [
+      { id, type: 'tag_definition', operation: 'create', clock: { [DEVICE_ID]: 1 } }
+    ])
+    await push(app, [{ id, type: 'tag_definition', clock: { [DEVICE_ID]: 2 }, deletedAt: now() }])
+    await push(app, [
+      { id, type: 'tag_definition', operation: 'create', clock: { [DEVICE_ID]: 3 } }
+    ])
+    const recreated = row(id)
+
+    const res = await push(app, [
+      { id, type: 'tag_definition', clock: { [DEVICE_ID]: 1 } },
+      { id: 'home', type: 'tag_definition', operation: 'create', clock: { [DEVICE_ID]: 1 } }
+    ])
+
+    expect(res.status).toBe(200)
+    expect(res.body.accepted).toEqual(['home'])
+    expect(res.body.rejected).toEqual([{ id, reason: 'SYNC_REPLAY_DETECTED' }])
+    expect(row(id)).toMatchObject({
+      clock: recreated.clock,
+      server_cursor: recreated.server_cursor
+    })
+  })
+})

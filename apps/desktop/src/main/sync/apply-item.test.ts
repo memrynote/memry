@@ -11,6 +11,8 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
+import { syncTombstoneClocks } from '@memry/db-schema/schema/sync-tombstone-clocks'
+import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { ItemApplier, type ApplyItemInput, type EmitToWindows } from './apply-item'
 import { SyncQueueManager } from '@memry/sync-client/queue'
@@ -1133,5 +1135,74 @@ describe('ItemApplier inside a pull page', () => {
 
     expect(page.afterCommit).not.toHaveBeenCalled()
     expect(emit).not.toHaveBeenCalled()
+  })
+})
+
+// #2409: every remote delete of a re-creatable id leaves its clock behind for a later re-create.
+describe('ItemApplier records the tombstone clock of a remote delete', () => {
+  let testDb: TestDatabaseResult
+  beforeEach(() => {
+    testDb = createTestDataDb()
+  })
+  afterEach(() => {
+    testDb.close()
+  })
+
+  const deleteWork = (clock: VectorClock): ApplyItemInput => ({
+    itemId: 'work',
+    type: 'tag_definition',
+    operation: 'delete',
+    content: new Uint8Array(),
+    clock
+  })
+  const recorded = () =>
+    testDb.db
+      .select({ clock: syncTombstoneClocks.clock })
+      .from(syncTombstoneClocks)
+      .where(eq(syncTombstoneClocks.itemId, 'work'))
+      .get()?.clock
+
+  it('records an applied, a skipped and an absent-row delete', () => {
+    const applier = new ItemApplier(asSyncDb(testDb.db), vi.fn())
+
+    expect(applier.apply(deleteWork({ 'device-B': 1 }))).toBe('skipped')
+    expect(recorded()).toEqual({ 'device-B': 1 })
+
+    testDb.db
+      .insert(tagDefinitions)
+      .values({ name: 'work', color: 'red', clock: { 'device-A': 1 } })
+      .run()
+    expect(applier.apply(deleteWork({ 'device-A': 1, 'device-B': 2 }))).toBe('applied')
+    expect(recorded()).toEqual({ 'device-A': 1, 'device-B': 2 })
+
+    testDb.db
+      .insert(tagDefinitions)
+      .values({ name: 'work', color: 'red', clock: { 'device-A': 9 } })
+      .run()
+    expect(applier.apply(deleteWork({ 'device-A': 3, 'device-C': 0 }))).toBe('skipped')
+    expect(recorded()).toEqual({ 'device-A': 3, 'device-B': 2, 'device-C': 0 })
+  })
+
+  it('does not record for a type whose ids never come back', () => {
+    new ItemApplier(asSyncDb(testDb.db), vi.fn()).apply({
+      ...deleteWork({ 'device-B': 1 }),
+      type: 'task'
+    })
+    expect(testDb.db.select().from(syncTombstoneClocks).all()).toEqual([])
+  })
+
+  it('rolls the record back with the page transaction', () => {
+    const db = asSyncDb(testDb.db)
+    expect(() =>
+      db.transaction(() => {
+        new ItemApplier(db, vi.fn()).apply(deleteWork({ 'device-B': 1 }), {
+          db,
+          afterCommit: vi.fn()
+        })
+        throw new Error('page failed')
+      })
+    ).toThrow('page failed')
+
+    expect(recorded()).toBeUndefined()
   })
 })

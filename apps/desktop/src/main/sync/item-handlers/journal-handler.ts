@@ -6,7 +6,7 @@ import { JournalChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { getIndexDatabase } from '../../database/client'
 import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import { saveCanonicalNote } from '@memry/domain-notes'
@@ -205,7 +205,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       .all()
 
     for (const item of items) {
-      const clock = increment({}, deviceId)
+      const clock = nextLocalClock(db, 'journal', item.id, null, deviceId, 'create')
       updateNoteMetadata(db, item.id, { clock })
       queue.enqueue({
         type: 'journal',
