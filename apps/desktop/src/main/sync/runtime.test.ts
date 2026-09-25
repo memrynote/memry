@@ -1188,8 +1188,9 @@ describe('sync runtime', () => {
     await expect(deps.getSigningKeys()).resolves.toBeNull()
     expect(runtimeMocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([4, 5, 6]))
 
+    // #2408: no token is a failure to look the key up, not an unknown device.
     runtimeMocks.getValidAccessToken.mockResolvedValueOnce(null)
-    await expect(deps.getDevicePublicKey('device-2')).resolves.toBeNull()
+    await expect(deps.getDevicePublicKey('device-2')).rejects.toThrow(/access token/)
     await expect(deps.getDevicePublicKey('device-2')).resolves.toBeUndefined()
     expect(runtimeMocks.getDeviceSigningKey).toHaveBeenCalledWith(
       runtimeMocks.db.db,

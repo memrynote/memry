@@ -164,20 +164,21 @@ decode, and throws `invalid base64 input` on a non-alphabet character
 **Normative.** `PushItem` (`packages/contracts/src/sync-api.ts:225-238`, schema
 `PushItemBaseSchema` at `:351-364`):
 
-| Field            | Type                               | Required |
-| ---------------- | ---------------------------------- | -------- |
-| `id`             | string                             | yes      |
-| `type`           | `SyncItemType`                     | yes      |
-| `operation`      | `create \| update \| delete`       | yes      |
-| `encryptedKey`   | base64                             | yes      |
-| `keyNonce`       | base64                             | yes      |
-| `encryptedData`  | base64                             | yes      |
-| `dataNonce`      | base64                             | yes      |
-| `signature`      | base64, 64 bytes decoded           | yes      |
-| `signerDeviceId` | string                             | yes      |
-| `clock`          | `Record<string, non-negative int>` | optional |
-| `stateVector`    | string                             | optional |
-| `deletedAt`      | non-negative int (epoch ms)        | optional |
+| Field               | Type                               | Required         |
+| ------------------- | ---------------------------------- | ---------------- |
+| `id`                | string                             | yes              |
+| `type`              | `SyncItemType`                     | yes              |
+| `operation`         | `create \| update \| delete`       | yes              |
+| `encryptedKey`      | base64                             | yes              |
+| `keyNonce`          | base64                             | yes              |
+| `encryptedData`     | base64                             | yes              |
+| `dataNonce`         | base64                             | yes              |
+| `signature`         | base64, 64 bytes decoded           | yes              |
+| `signerDeviceId`    | string                             | yes              |
+| `clock`             | `Record<string, non-negative int>` | optional         |
+| `stateVector`       | string                             | optional         |
+| `deletedAt`         | non-negative int (epoch ms)        | optional         |
+| `deleteAttestation` | base64, 64 bytes decoded           | optional; §4.8.4 |
 
 **`signerDeviceId` is the id of the device whose Ed25519 signing key produced
 `signature`, not the id of the device that authored the change and not the
@@ -287,7 +288,7 @@ field can be non-integral today.
 
 ### 4.7.3 The field-order lists
 
-**Normative**, verbatim from `packages/contracts/src/cbor-ordering.ts:1-26`. Each
+**Normative**, verbatim from `packages/contracts/src/cbor-ordering.ts:1-27`. Each
 is an **allowlist** for its payload.
 
 | Name                     | Fields                                                                                                      | Line     |
@@ -300,6 +301,7 @@ is an **allowlist** for its payload.
 | `PROVIDER_AUTH_CONFIRM`  | `sessionId, encryptedProviderAuth`                                                                          | `:18`    |
 | `VAULT_TRANSFER_CONFIRM` | `sessionId, encryptedVaultTransfer`                                                                         | `:19`    |
 | `ATTACHMENT_MANIFEST`    | `encryptedManifest, manifestNonce, encryptedFileKey, keyNonce`                                              | `:20-25` |
+| `DELETE_ATTESTATION`     | `purpose, id, type, deletedAt, clock`                                                                       | `:26`    |
 
 For `SYNC_ITEM` with every key present, the **encoded** order — verified
 empirically against this workspace's `cborg` — is
@@ -402,6 +404,59 @@ encodes under it. It is exercised only by the encoder's own insertion-order test
 
 **Disposition of Q04.6: answered** (this section).
 
+### 4.8.4 The delete attestation (#2408)
+
+A tombstone's `signature` covers its encrypted payload, and the server sheds
+that payload after `version_history_days` (chapter 05 §5.12.3). The delete
+attestation is a second, content-free Ed25519 signature that survives the
+shed, so a purged tombstone stays verifiable.
+
+**Normative — which writes carry one.** A push with `operation: 'delete'`, a
+`type` in `RECORD_CLOCK_REQUIRED_ITEM_TYPES`, a non-empty `clock` and a
+`deletedAt` MUST carry `deleteAttestation`. Every other write carries none
+(`deleteClaimOf`, `packages/contracts/src/delete-attestation.ts`, the one rule
+the signers and the server share). Without a pushed `deletedAt` the server
+stores its own time, which a device cannot sign in advance.
+
+**Normative — the bytes.** Encode, under the `DELETE_ATTESTATION` allowlist
+(§4.7.3), the map
+
+| Key         | Value                                                               |
+| ----------- | ------------------------------------------------------------------- |
+| `purpose`   | the text `memry-delete-attestation-v1`                              |
+| `id`        | the item id                                                         |
+| `type`      | the item type                                                       |
+| `deletedAt` | the pushed `deletedAt`, exactly as pushed (seconds or ms)           |
+| `clock`     | the pushed `clock`, exactly as pushed; a nested map, sorted by §4.7 |
+
+sign it Ed25519 detached with the same device key as `signature`, and base64
+the 64 bytes. The desktop pushes `deletedAt` in seconds and the Rust core in
+milliseconds; the server stores and serves the pushed value, so neither is
+normalised. Writers: `apps/desktop/src/main/sync/encrypt.ts`,
+`packages/sync-client/src/push/record-encrypt.ts`,
+`crates/memry-core/src/protocol/delete_attestation.rs`. Vectors:
+`packages/contracts/test-vectors/delete-attestation.json`.
+
+**Not bound:** `vaultId`, which the record signature does not bind either
+(chapter 01 §1.7), and `signerDeviceId`, which selects the verifying key, so a
+swapped id fails verification.
+
+**Domain separation.** The attestation always carries `purpose` and never the
+payload fields; the record signature always carries `operation`,
+`cryptoVersion` and the four payload fields and never `purpose`, which the
+`SYNC_ITEM` allowlist rejects. Canonical CBOR is injective, so no byte string is
+both. A CRDT update signature covers `noteId ‖ bytes`, whose first byte is an id
+character, never a map header.
+
+**Server.** It verifies the attestation per item, after the record signature,
+under the signer's `auth_public_key`. One that does not verify, or does not
+decode, is that item's `403 SYNC_INVALID_SIGNATURE` in `rejected[]`; the
+request is still a 200 and the neighbours commit (chapter 05 §5.4). An
+attestation on a write with no claim is ignored and not stored. An accepted
+write stores the verified attestation in `sync_items.delete_attestation`, or
+NULL, so any later accepted write without one clears it (migration
+`0015_sync_items_delete_attestation.sql`). The shed keeps the column.
+
 ## 4.9 Two divergences between the read and write sides
 
 **Normative.** Both are real and a second implementation MUST match the behaviour
@@ -433,11 +488,12 @@ described, not the one it would guess.
 Then, per item
 (`apps/sync-server/src/services/sync.ts:129-168`):
 
-| Condition                 | Answer                                |
-| ------------------------- | ------------------------------------- |
-| signer device unknown     | `404 AUTH_DEVICE_NOT_FOUND` (`:134`)  |
-| signer device revoked     | `403 AUTH_DEVICE_REVOKED` (`:137`)    |
-| signature does not verify | `403 SYNC_INVALID_SIGNATURE` (`:166`) |
+| Condition                                                                       | Answer                                |
+| ------------------------------------------------------------------------------- | ------------------------------------- |
+| signer device unknown                                                           | `404 AUTH_DEVICE_NOT_FOUND` (`:134`)  |
+| signer device revoked                                                           | `403 AUTH_DEVICE_REVOKED` (`:137`)    |
+| signature does not verify                                                       | `403 SYNC_INVALID_SIGNATURE` (`:166`) |
+| delete attestation present on an attestable delete and does not verify (§4.8.4) | `403 SYNC_INVALID_SIGNATURE`          |
 
 **Q04.5 — the server rewrites `cryptoVersion` to `1`.** It reconstructs the
 signature payload with `cryptoVersion: CRYPTO_VERSION`

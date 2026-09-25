@@ -43,6 +43,7 @@ import { buildMarkdownSeed } from './vectors/markdown-seed'
 import { buildAttachmentManifest } from './vectors/attachment-manifest'
 import { buildBlockEdit } from './vectors/block-edit'
 import { buildInbox } from './vectors/inbox'
+import { buildDeleteAttestation } from './vectors/delete-attestation'
 import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
@@ -94,6 +95,10 @@ const CLASSES: readonly VectorClass[] = [
   {
     name: 'attachment-manifest',
     files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]
+  },
+  {
+    name: 'delete-attestation',
+    files: [{ path: 'delete-attestation.json', build: buildDeleteAttestation }]
   },
   {
     name: 'markdown-roundtrip',

@@ -293,6 +293,8 @@ export interface PushItem {
   clock?: VectorClock
   stateVector?: string
   deletedAt?: number
+  /** Protocol 04 §4.8.4 (#2408): present only on an attestable delete (`deleteClaimOf`). */
+  deleteAttestation?: string
 }
 
 export interface PushRequest {
@@ -428,7 +430,8 @@ const PushItemBaseSchema = z.object({
   signerDeviceId: z.string().min(1),
   clock: VectorClockSchema.optional(),
   stateVector: z.string().optional(),
-  deletedAt: z.number().int().min(0).optional()
+  deletedAt: z.number().int().min(0).optional(),
+  deleteAttestation: z.string().min(1).optional()
 })
 
 const recordClockRequiredItemTypeSet = new Set<RecordSyncItemType>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
@@ -791,15 +794,19 @@ export type PullItemResponse = z.infer<typeof PullItemResponseSchema>
 /**
  * A tombstone whose signed payload the server shed after `version_history_days`
  * (#2302, protocol 05 §5.12.3). The row is kept as a marker so delete-wins keeps
- * refusing stale pushes; this entry carries the delete fact only and is
- * unsigned. `clock` is absent for a legacy tombstone stored without one.
+ * refusing stale pushes; this entry carries the delete fact only. `clock` is
+ * absent for a legacy tombstone stored without one. `signerDeviceId` and
+ * `deleteAttestation` (#2408, protocol 04 §4.8.4) are present together, only
+ * when the deleting device attested the delete; a client applies nothing else.
  */
 export const RecordPullPurgedTombstoneSchema = z.object({
   id: z.string().min(1),
   type: z.enum(RECORD_SYNC_ITEM_TYPES),
   deletedAt: z.number().int().min(0),
   clock: VectorClockSchema.optional(),
-  serverCursor: z.number().int().min(0)
+  serverCursor: z.number().int().min(0),
+  signerDeviceId: z.string().min(1).optional(),
+  deleteAttestation: z.string().min(1).optional()
 })
 
 /** A live row whose payload bytes are lost (#2302, protocol 05 §5.12.4). Nothing to apply. */

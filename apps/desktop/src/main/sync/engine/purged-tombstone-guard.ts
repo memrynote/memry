@@ -92,7 +92,9 @@ export function localTombstoneRefusal(
     const touched = [local.createdAt, local.modifiedAt, local.updatedAt]
       .map(toEpochSeconds)
       .filter((seconds): seconds is number => seconds !== null)
-    if (touched.some((seconds) => seconds > tombstone.deletedAt)) return 'local_newer'
+    // deletedAt is served as pushed: seconds from the desktop, ms from the Rust core.
+    const deletedAt = toEpochSeconds(tombstone.deletedAt) ?? tombstone.deletedAt
+    if (touched.some((seconds) => seconds > deletedAt)) return 'local_newer'
   }
 
   if (knownDevices) {

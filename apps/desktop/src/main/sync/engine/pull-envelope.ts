@@ -10,8 +10,14 @@ import {
 import { isBinaryFileType } from '@memry/shared/file-types'
 import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import { createLogger } from '../../lib/logger'
+import {
+  verifyTombstoneAttestation,
+  type AttestationRefusal,
+  type TombstoneAttestation,
+  type VerifiedAttestation
+} from '../delete-attestation'
 import type { DrizzleDb } from '../item-handlers'
-import type { ItemRef } from './corrupt-item-tracker'
+import type { ItemRef, ResolveDeviceKey } from './corrupt-item-tracker'
 import {
   localTombstoneRefusal,
   readKnownDeviceIds,
@@ -23,17 +29,21 @@ const log = createLogger('PullEnvelope')
 const CLOCK_REQUIRED_TYPES = new Set<string>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
 
 /**
- * A purged tombstone admitted for apply (#2302, protocol 05 §5.12.3). The
- * entry is unsigned, so admission is the whole policy: the slice asked for
- * the id, the type carries a required clock, and the clock is non-empty. The
- * clock then goes through the same §5.8 handler guard as a signed tombstone.
+ * A purged tombstone the envelope admitted (#2302, protocol 05 §5.12.3): the
+ * slice asked for the id, the type carries a required clock, and the clock is
+ * non-empty. Admission is not permission: only an AttestedTombstone applies.
  */
 export interface PurgedTombstone {
   id: string
   type: RecordClockRequiredItemType
   deletedAt: number
   clock: VectorClock
+  /** #2408: present only when the entry names both a signer and a signature. */
+  attestation?: TombstoneAttestation
 }
+
+/** A purged tombstone whose attestation verified over its own claim (#2408). */
+export type AttestedTombstone = PurgedTombstone & { verified: VerifiedAttestation }
 
 export type RefusedTombstoneReason = 'not_requested' | 'clockless' | 'type_not_clocked' | 'shape'
 
@@ -74,11 +84,19 @@ function admitTombstone(
       reason: 'shape'
     }
   }
-  const { id, type, deletedAt, clock } = parsed.data
+  const { id, type, deletedAt, clock, signerDeviceId, deleteAttestation } = parsed.data
   if (!requested.has(id)) return { id, type, reason: 'not_requested' }
   if (!CLOCK_REQUIRED_TYPES.has(type)) return { id, type, reason: 'type_not_clocked' }
   if (!clock || Object.keys(clock).length === 0) return { id, type, reason: 'clockless' }
-  return { id, type: type as RecordClockRequiredItemType, deletedAt, clock }
+  return {
+    id,
+    type: type as RecordClockRequiredItemType,
+    deletedAt,
+    clock,
+    ...(signerDeviceId && deleteAttestation
+      ? { attestation: { signerDeviceId, signature: deleteAttestation } }
+      : {})
+  }
 }
 
 /**
@@ -145,8 +163,12 @@ export function parsePullItems(
   }
 }
 
-/** The exact apply input a signed tombstone produces: a delete with its clock and no content. */
-export function purgedTombstoneToApplyItem(tombstone: PurgedTombstone): DecryptedPullItem {
+/**
+ * The exact apply input a signed tombstone produces: a delete with its clock
+ * and no content. Takes only an attested tombstone (#2408), so an entry no
+ * device signed cannot reach the applier.
+ */
+export function purgedTombstoneToApplyItem(tombstone: AttestedTombstone): DecryptedPullItem {
   return {
     id: tombstone.id,
     type: tombstone.type,
@@ -154,35 +176,62 @@ export function purgedTombstoneToApplyItem(tombstone: PurgedTombstone): Decrypte
     content: '',
     clock: tombstone.clock,
     deletedAt: tombstone.deletedAt,
-    // Never attributed to a device: the server, not a signer, asserts this delete.
-    signerDeviceId: ''
+    signerDeviceId: tombstone.verified.signerDeviceId
   }
 }
 
 /**
- * The admitted purged tombstones this device may apply (#2302): minus the refs
- * `skip` names, then minus every local refusal (localTombstoneRefusal).
- * Refusals are logged by reason and never applied.
+ * The single "may this purged tombstone delete" decision (#2302, #2408), in
+ * order: `skip`, the signer's attestation over the entry's own claim, then
+ * every local refusal (localTombstoneRefusal); the survivors go to the §5.8
+ * handler guard. Refusals are logged by reason and never applied.
+ *
+ * `unverified` entries carry no proof a device deleted the item, so a caller
+ * treats them like an entry the envelope refused. `refused` entries are
+ * attested but kept by local evidence. A key the resolver cannot fetch throws:
+ * a transient failure must hold the page, never become a refusal.
  */
-export function applicablePurgedTombstones(
+export async function applicablePurgedTombstones(
   db: DrizzleDb,
   tombstones: readonly PurgedTombstone[],
+  resolveKey: ResolveDeviceKey,
   skip: (ref: ItemRef) => boolean = () => false
-): {
-  apply: PurgedTombstone[]
-  refused: Array<PurgedTombstone & { reason: LocalTombstoneRefusal }>
-} {
-  const knownDevices = tombstones.length > 0 ? readKnownDeviceIds(db) : null
-  const apply: PurgedTombstone[] = []
-  const refused: Array<PurgedTombstone & { reason: LocalTombstoneRefusal }> = []
-  for (const tombstone of tombstones) {
-    if (skip(tombstone)) continue
+): Promise<{
+  apply: AttestedTombstone[]
+  unverified: Array<PurgedTombstone & { reason: AttestationRefusal }>
+  refused: Array<AttestedTombstone & { reason: LocalTombstoneRefusal }>
+}> {
+  const candidates = tombstones.filter((tombstone) => !skip(tombstone))
+  const keys = new Map<string, Uint8Array | null>()
+  for (const { attestation } of candidates) {
+    if (attestation && !keys.has(attestation.signerDeviceId)) {
+      keys.set(attestation.signerDeviceId, await resolveKey(attestation.signerDeviceId))
+    }
+  }
+
+  const unverified: Array<PurgedTombstone & { reason: AttestationRefusal }> = []
+  const attested: AttestedTombstone[] = []
+  for (const tombstone of candidates) {
+    const signer = tombstone.attestation?.signerDeviceId
+    const verified = verifyTombstoneAttestation(
+      tombstone,
+      signer ? (keys.get(signer) ?? null) : null
+    )
+    if (typeof verified === 'string') unverified.push({ ...tombstone, reason: verified })
+    else attested.push({ ...tombstone, verified })
+  }
+
+  const knownDevices = attested.length > 0 ? readKnownDeviceIds(db) : null
+  const apply: AttestedTombstone[] = []
+  const refused: Array<AttestedTombstone & { reason: LocalTombstoneRefusal }> = []
+  for (const tombstone of attested) {
     const reason = localTombstoneRefusal(db, tombstone, knownDevices)
     if (reason) refused.push({ ...tombstone, reason })
     else apply.push(tombstone)
   }
-  if (refused.length > 0) logRefusals(refused.map(({ reason }) => reason))
-  return { apply, refused }
+  const reasons = [...unverified, ...refused].map(({ reason }) => reason)
+  if (reasons.length > 0) logRefusals(reasons)
+  return { apply, unverified, refused }
 }
 
 const logRefusals = (reasons: readonly string[]): void => {
@@ -193,20 +242,24 @@ const logRefusals = (reasons: readonly string[]): void => {
 
 /**
  * The page's purged tombstones as apply items: envelope admission, `skip`
- * (already applied this run, quarantined, or a run from cursor 0), and the
- * local refusals. Never applied otherwise.
+ * (already applied this run, quarantined, or a run from cursor 0), the
+ * attestation (#2408), and the local refusals. Never applied otherwise.
  */
-export function purgedTombstoneApplyItems(
+export async function purgedTombstoneApplyItems(
   envelope: PullEnvelope,
   skip: (ref: ItemRef) => boolean,
-  db: DrizzleDb
-): DecryptedPullItem[] {
+  deps: { db: DrizzleDb; resolveKey: ResolveDeviceKey }
+): Promise<DecryptedPullItem[]> {
   if (envelope.refusedTombstones.length > 0) {
     logRefusals(envelope.refusedTombstones.map(({ reason }) => reason))
   }
-  return applicablePurgedTombstones(db, envelope.purgedTombstones, skip).apply.map(
-    purgedTombstoneToApplyItem
+  const { apply } = await applicablePurgedTombstones(
+    deps.db,
+    envelope.purgedTombstones,
+    deps.resolveKey,
+    skip
   )
+  return apply.map(purgedTombstoneToApplyItem)
 }
 
 /**

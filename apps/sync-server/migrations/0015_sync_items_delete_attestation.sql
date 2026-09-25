@@ -1,0 +1,16 @@
+-- #2408. The deleting device's Ed25519 signature over the content-free delete
+-- claim (purpose, id, type, deletedAt, clock), protocol 04 section 4.8.4. Set by
+-- an accepted delete push that carried a verified one, NULL for every other
+-- write. The #2302 shed does not touch it, so a purged tombstone stays
+-- verifiable by the device that pulls it.
+--
+-- Backward compatibility:
+--   * Nullable, no default, no backfill. Existing rows keep NULL, which is
+--     exactly what they are: unattested. Clients refuse an unattested purged
+--     tombstone, as they refused a hard-deleted row before #2302.
+--   * A Worker deployed before this migration (or rolled back after it) names
+--     its columns explicitly and never reads it. A rolled-back Worker's upsert
+--     leaves a stale value behind; it no longer verifies against the row's new
+--     clock or deletedAt, so clients refuse it (fail closed).
+--   * 0014 is reserved for a sibling change and may land after this file.
+ALTER TABLE sync_items ADD COLUMN delete_attestation TEXT;

@@ -225,9 +225,12 @@ export class CorruptItemTracker {
       // recovered, never failed, re-requested on every page forever. Mark it
       // failed (cooldown) and report it permanent so it surfaces once.
       const invalid = parsed.invalid.filter((ref) => requested.has(itemRefKey(ref.type, ref.id)))
-      const tombstones = applicablePurgedTombstones(
+      // #2408: an unverified entry is not in `returned`, so it counts as
+      // missing, like an entry the envelope refused.
+      const tombstones = await applicablePurgedTombstones(
         this.ctx.deps.db,
-        parsed.purgedTombstones.filter((t) => requested.has(itemRefKey(t.type, t.id)))
+        parsed.purgedTombstones.filter((t) => requested.has(itemRefKey(t.type, t.id))),
+        this.resolveDeviceKey
       )
       const blobMissing = parsed.blobMissing.filter((ref) =>
         requested.has(itemRefKey(ref.type, ref.id))

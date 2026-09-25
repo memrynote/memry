@@ -788,13 +788,13 @@ export class PullCoordinator {
       return true
     })
     // #2302: purged tombstones need no decrypt; they join the apply loop as deletes.
-    const purged = purgedTombstoneApplyItems(
+    const purged = await purgedTombstoneApplyItems(
       parsed,
       (t) =>
         runState.fromZero === true ||
         processedIds.has(itemRefKey(t.type, t.id)) ||
         this.quarantine.isQuarantined(t.id, t.type),
-      this.ctx.deps.db
+      { db: this.ctx.deps.db, resolveKey: (id) => this.resolveDeviceKey(id) }
     )
 
     timer.startPhase('encrypt')

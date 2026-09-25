@@ -1,4 +1,5 @@
 import { CRYPTO_VERSION, ED25519_PARAMS, XCHACHA20_PARAMS } from '@memry/contracts/crypto'
+import { deleteAttestationPayload, deleteClaimOf } from '@memry/contracts/delete-attestation'
 import type {
   EncryptedItemPayload,
   NoteBodyChange,
@@ -75,6 +76,8 @@ interface StoredSyncItemPullRow {
   clock: string | null
   deleted_at: number | null
   server_cursor: number
+  /** #2408. Selected by pullItems only; a changes-feed row never needs it. */
+  delete_attestation?: string | null
 }
 
 export interface RecordPushBatchOutcome {
@@ -140,7 +143,7 @@ export const validateEncryptedFields = (item: PushItemInput): void => {
 const verifySignatureWithDevice = async (
   device: Device | null,
   item: PushItemInput
-): Promise<void> => {
+): Promise<Device> => {
   if (!device) {
     throw new AppError(ErrorCodes.AUTH_DEVICE_NOT_FOUND, 'Signer device not found', 404)
   }
@@ -176,6 +179,34 @@ const verifySignatureWithDevice = async (
   if (!valid) {
     throw new AppError(ErrorCodes.SYNC_INVALID_SIGNATURE, 'Item signature verification failed', 403)
   }
+  return device
+}
+
+/**
+ * The verified delete attestation to store for `item` (#2408, protocol 04
+ * §4.8.4), or null when the write attests nothing: not an attestable delete
+ * (deleteClaimOf), or an old client that sent none. One that is present on an
+ * attestable delete and does not verify under the signer's key is the item's
+ * own SYNC_INVALID_SIGNATURE, like a bad item signature.
+ */
+const verifyDeleteAttestation = async (
+  device: Device,
+  item: PushItemInput
+): Promise<string | null> => {
+  const claim = deleteClaimOf(item)
+  if (!claim || item.deleteAttestation === undefined) return null
+  const message = encodeSignaturePayload(deleteAttestationPayload(claim), 'DELETE_ATTESTATION')
+  const valid = await verifyEd25519(device.auth_public_key, item.deleteAttestation, message).catch(
+    () => false
+  )
+  if (!valid) {
+    throw new AppError(
+      ErrorCodes.SYNC_INVALID_SIGNATURE,
+      'Delete attestation verification failed',
+      403
+    )
+  }
+  return item.deleteAttestation
 }
 
 export const verifyItemSignature = async (
@@ -355,12 +386,16 @@ const purgedTombstoneEntry = (
   row: StoredSyncItemPullRow & { item_type: RecordSyncItemType; deleted_at: number }
 ): RecordPullPurgedTombstone => {
   const clock = parseStoredClock(row.item_id, row.clock)
+  // #2408: served only whole. A client verifies it against the key of the
+  // named signer, so an attestation without a signer is no attestation.
+  const { signer_device_id: signerDeviceId, delete_attestation: deleteAttestation } = row
   return {
     id: row.item_id,
     type: row.item_type,
     deletedAt: row.deleted_at,
     ...(clock ? { clock } : {}),
-    serverCursor: row.server_cursor
+    serverCursor: row.server_cursor,
+    ...(signerDeviceId && deleteAttestation ? { signerDeviceId, deleteAttestation } : {})
   }
 }
 
@@ -476,6 +511,8 @@ interface PreparedPushItem {
   version: number
   sizeDelta: number
   reservedBytes: number
+  /** #2408: the verified attestation this write stores, or null, which clears the column. */
+  deleteAttestation: string | null
 }
 
 /**
@@ -551,13 +588,16 @@ const processPushWave = async (
     }
     return outcomes
   }
+  const attestations = new Map<number, string>()
   await Promise.all(
     alive().map(async (index) => {
       try {
-        await verifySignatureWithDevice(
+        const device = await verifySignatureWithDevice(
           devices.get(items[index].signerDeviceId) ?? null,
           items[index]
         )
+        const attestation = await verifyDeleteAttestation(device, items[index])
+        if (attestation) attestations.set(index, attestation)
       } catch (error) {
         rejectWithError(index, error)
       }
@@ -649,7 +689,8 @@ const processPushWave = async (
         blobKey: generateItemBlobKey(userId, item.type, item.id, vaultId, contentHash),
         version: existing ? existing.version + 1 : 1,
         sizeDelta: payloadBytes.byteLength - existingSize,
-        reservedBytes: 0
+        reservedBytes: 0,
+        deleteAttestation: attestations.get(index) ?? null
       })
     } catch (error) {
       rejectWithError(index, error)
@@ -722,8 +763,8 @@ const processPushWave = async (
               id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
               version, crypto_version, operation, server_cursor, signer_device_id, signature,
               state_vector, clock, created_at, updated_at, deleted_at,
-              client_platform, client_version, committed_at_ms
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cursors.cursorSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              client_platform, client_version, committed_at_ms, delete_attestation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cursors.cursorSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (user_id, vault_id, item_type, item_id) DO UPDATE SET
               blob_key = excluded.blob_key,
               size_bytes = excluded.size_bytes,
@@ -744,6 +785,9 @@ const processPushWave = async (
               client_platform = excluded.client_platform,
               client_version = excluded.client_version,
               committed_at_ms = excluded.committed_at_ms,
+              -- #2408: describes this write only. A non-attested write clears it,
+              -- so a stale attestation never outlives the delete it signed.
+              delete_attestation = excluded.delete_attestation,
               -- An accepted push is a new version with fresh bytes (#2302).
               payload_purged_at = NULL,
               blob_missing_at = NULL`
@@ -770,7 +814,8 @@ const processPushWave = async (
             deletedAt,
             client?.platform ?? null,
             client?.version ?? null,
-            committedAtMs
+            committedAtMs,
+            entry.deleteAttestation
           )
       )
       if (entry.sizeDelta < 0) {
@@ -1351,7 +1396,7 @@ export const pullItems = async (
     const rows = await db
       .prepare(
         `SELECT id, item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
-                state_vector, clock, deleted_at, server_cursor
+                state_vector, clock, deleted_at, server_cursor, delete_attestation
          FROM sync_items
          WHERE user_id = ? AND vault_id = ? AND item_type IN (${placeholdersFor(types)})
            AND item_id IN (${placeholders})
