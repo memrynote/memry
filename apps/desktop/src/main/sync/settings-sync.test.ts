@@ -134,7 +134,7 @@ describe('SettingsSyncManager', () => {
   })
 
   describe('#given concurrent edits on same field #when mergeRemote called', () => {
-    it('#then uses last-write-wins (higher max tick wins)', () => {
+    it('#then the higher tick sum wins (#2383)', () => {
       // #given — local: device-A:1, remote: device-B:2 (higher tick)
       manager.updateField('general.theme', 'dark')
 

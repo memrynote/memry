@@ -1,15 +1,15 @@
 import { eq } from 'drizzle-orm'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { settings } from '@memry/db-schema/schema/settings'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
 import type {
   SyncedSettings,
   FieldClockMap,
   SettingsSyncPayload
 } from '@memry/contracts/settings-sync'
-import { compare, merge, increment } from '@memry/sync-client/vector-clock'
+import { increment } from '@memry/sync-client/vector-clock'
 import { SyncQueueManager } from './queue'
+import { mergeSettingsPayloads, setSettingsPath } from './settings-merge'
 import { createLogger } from './logging'
 import {
   SETTINGS_SYNC_CLOCKS_KEY,
@@ -82,8 +82,7 @@ export class SettingsSyncManager {
     const current = this.loadSettings()
     const clocks = this.loadClocks()
 
-    const parts = fieldPath.split('.')
-    this.setNestedValue(current, parts, value)
+    setSettingsPath(current, fieldPath.split('.'), value)
 
     clocks[fieldPath] = increment(clocks[fieldPath] ?? {}, deviceId)
 
@@ -93,47 +92,24 @@ export class SettingsSyncManager {
     return true
   }
 
+  /**
+   * Chapter 06 §6.9.0 (#2383): each clocked path goes to §6.3's rule. A winner
+   * with no value at the path keeps the local value; removal waits for #2183.
+   */
   mergeRemote(remote: SettingsSyncPayload): void {
-    const local = this.loadSettings()
-    const localClocks = this.loadClocks()
-    const remoteClocks = remote.fieldClocks
+    const merged = mergeSettingsPayloads(
+      { settings: this.loadSettings(), fieldClocks: this.loadClocks() },
+      remote
+    )
 
-    const allFields = new Set([...Object.keys(localClocks), ...Object.keys(remoteClocks)])
-    let mergedConcurrent = false
-
-    for (const field of allFields) {
-      const localClock = localClocks[field] ?? {}
-      const remoteClock = remoteClocks[field] ?? {}
-      const cmp = compare(localClock, remoteClock)
-
-      if (cmp === 'before' || cmp === 'equal') {
-        const remoteValue = this.getNestedValue(remote.settings, field.split('.'))
-        if (remoteValue !== undefined) {
-          this.setNestedValue(local, field.split('.'), remoteValue)
-        }
-        localClocks[field] = remoteClock
-      } else if (cmp === 'concurrent') {
-        mergedConcurrent = true
-        const remoteCombined = this.getMaxTick(remoteClock)
-        const localCombined = this.getMaxTick(localClock)
-        if (remoteCombined > localCombined) {
-          const remoteValue = this.getNestedValue(remote.settings, field.split('.'))
-          if (remoteValue !== undefined) {
-            this.setNestedValue(local, field.split('.'), remoteValue)
-          }
-        }
-        localClocks[field] = merge(localClock, remoteClock)
-      }
-    }
-
-    this.saveSettings(local)
-    this.saveClocks(localClocks)
+    this.saveSettings(merged.settings)
+    this.saveClocks(merged.fieldClocks)
 
     // §6.5.2 P3 (#2287): the union clock must reach the server. Settings have
     // no buildPushPayload, so a queued row is pushed as frozen; without this a
     // device that kept its own value on a concurrent tie holds it alone while
     // the server keeps the peer's, and the two never converge.
-    if (mergedConcurrent) this.enqueueCurrentState()
+    if (merged.requeue) this.enqueueCurrentState()
   }
 
   getPayload(): SettingsSyncPayload {
@@ -185,33 +161,6 @@ export class SettingsSyncManager {
       .values({ key: CLOCKS_KEY, value: json, modifiedAt: now })
       .onConflictDoUpdate({ target: settings.key, set: { value: json, modifiedAt: now } })
       .run()
-  }
-
-  private setNestedValue(obj: Record<string, unknown>, parts: string[], value: unknown): void {
-    let current = obj
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (current[parts[i]] === undefined || typeof current[parts[i]] !== 'object') {
-        current[parts[i]] = {}
-      }
-      current = current[parts[i]] as Record<string, unknown>
-    }
-    current[parts[parts.length - 1]] = value
-  }
-
-  private getNestedValue(obj: Record<string, unknown>, parts: string[]): unknown {
-    let current: unknown = obj
-    for (const part of parts) {
-      if (current === null || current === undefined || typeof current !== 'object') {
-        return undefined
-      }
-      current = (current as Record<string, unknown>)[part]
-    }
-    return current
-  }
-
-  private getMaxTick(clock: VectorClock): number {
-    const ticks = Object.values(clock)
-    return ticks.length > 0 ? Math.max(...ticks) : 0
   }
 
   private enqueueCurrentState(): void {

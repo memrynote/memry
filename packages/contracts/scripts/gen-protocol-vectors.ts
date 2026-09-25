@@ -47,6 +47,7 @@ import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
 import { buildRecordEnvelope } from './vectors/record-envelope'
+import { buildSettingsMerge } from './vectors/settings-merge'
 import { buildTaskFiltering } from './vectors/task-filtering'
 import { buildTaskParsing } from './vectors/task-parsing'
 import { buildTextExtract } from './vectors/text-extract'
@@ -72,6 +73,7 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'cbor-canonical', files: [{ path: 'cbor-canonical.json', build: buildCborCanonical }] },
   { name: 'compression', files: [{ path: 'compression.json', build: buildCompression }] },
   { name: 'field-merge', files: [{ path: 'field-merge.json', build: buildFieldMerge }] },
+  { name: 'settings-merge', files: [{ path: 'settings-merge.json', build: buildSettingsMerge }] },
   { name: 'pack-container', files: [{ path: 'pack-container.json', build: buildPackContainer }] },
   {
     name: 'payload-schemas',

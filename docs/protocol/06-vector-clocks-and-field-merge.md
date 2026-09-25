@@ -471,7 +471,7 @@ arbitrary depth** — `general.theme`, `journal.weekdayTemplates.3`,
 `sidebar.sortModes.collections`
 (`packages/contracts/src/settings-sync.ts:78-93`, `:111-116`). The whole settings
 blob is **one sync item** with `itemId = 'synced_settings'`
-(`packages/sync-client/src/settings-sync.ts:222`,
+(`packages/sync-client/src/settings-sync.ts:171`,
 `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
@@ -513,21 +513,36 @@ list and `journal.weekdayTemplates.3` as a key per day. A port that derived the
 unit from a hard-coded list of paths instead would drift from the writer the
 first time a new setting was added.
 
-**Normative, and it diverges from §6.3.2 row 10 on purpose: when the winning
-side has no value at that path, the path is REMOVED from the merged settings.**
-Row 10 leaves a column untouched when the winner is `undefined`, because for a
-task field an absent value means "the sender does not model this" (§13.4) and
-overwriting would let an older build delete a newer build's data. **Settings are
-not like that.** §13.2 makes a settings payload carry every preference its sender
-holds, so an absent path is the sender saying the preference is gone, not that it
-cannot see it.
+Desktop runs this rule in `mergeSettingsPayloads`
+(`packages/sync-client/src/settings-merge.ts`), which calls `mergeFields` with
+the path list as the field list, so there is one tie rule, not two (#2383).
+Before #2383 desktop picked a concurrent winner by the **largest single tick**
+and kept the local value on a tie.
 
-The consequence of getting this wrong is not subtle. §6.9.1 requires a removal to
-tick its clock precisely so it can beat the peer still holding the old value; if
-a ticked removal then failed to remove, the peer's value would win on the next
-pull, the clearing device would re-clear, and the two would **diverge
-permanently** under FR-002. The tick and the removal are one mechanism and a port
-MUST implement both halves.
+**Normative, amended by #2383: when the winning side has no value at that path,
+the local value is kept, exactly as §6.3.2 row 10 does.** The rule this section
+first stated was the opposite — remove the path — on the premise that §13.2
+makes a settings payload carry every preference its sender holds, so an absent
+path could only mean a removal. **Desktop breaks that premise.** It parses a
+settings payload with a closed schema
+(`apps/desktop/src/main/sync/apply-item.ts`, `SettingsSyncPayloadSchema`), so a
+build that does not model a path strips its **value** while `fieldClocks`, a
+plain record, keeps its **clock**; the build then echoes that clock without the
+value on its next push. Removing on absence turns that echo into a deletion on
+every device that does model the path — the `inbox` group (#16), the `journal`
+group, and `sidebar.notesFirst` / `sidebar.showFiles` all have builds in the
+field that strip them. A receiver cannot tell the echo from a removal: a real
+removal ticks the clock (§6.9.1), but an old build that merged two concurrent
+peer clocks re-pushes their union, which dominates both, with no value.
+
+The cost is the case the removal rule existed for: a cleared preference does not
+reach a peer still holding the old value. The peer keeps its value under the
+clearing device's clock, and its next push brings the value back, because that
+clock ties and the remote wins. **Removal waits until desktop keeps unmodelled
+settings keys (#2183, the nesting ceiling of chapter 13 §13.2.1).** The Rust
+core already removes (`crates/memry-core/src/sync/settings_merge.rs`), so on an
+absent winner it and desktop disagree; the two cases are flagged `rustPending`
+in `settings-merge.json`.
 
 **A `fieldClocks` key that is not an addressable path** — `""`, or one with an
 empty segment such as `general.` — **rides along as a clock and arbitrates
@@ -536,12 +551,25 @@ rather than fail the payload; an unaddressable key is that rule's limiting case,
 and refusing the payload over one would stall every other synced setting.
 
 **A merge in which any path compared `concurrent` MUST re-queue the merged
-settings** (`packages/sync-client/src/settings-sync.ts:136`). This is §6.5.2 P3
+settings** (`packages/sync-client/src/settings-sync.ts:112`). This is §6.5.2 P3
 for settings, which reach it without the pull coordinator's conflict re-queue:
 the handler reports `applied`, and settings have no `buildPushPayload`, so the
 queued payload is what gets pushed. Without it, a device that kept its own value
 on a concurrent pair is the only one holding it; the server keeps the peer's row
 and the two devices stay on different values (#2287).
+
+**A mixed pair converges through that re-queue, not through the rule.** A #2287
+build (tick max, local keeps a tie) and a #2383 build can pick different winners
+for the same concurrent pair. Whichever device merges first re-pushes the union
+clock, which dominates the other device's clock for that path, so the other
+device takes the row as `before` and applies it under either rule. Pinned by
+`apps/desktop/src/main/sync/settings-sync.merge-rule.test.ts`, which runs the
+old rule as a peer.
+
+**The shared vectors are `settings-merge.json`**
+(`packages/contracts/test-vectors/`), generated from `mergeSettingsPayloads` and
+run by both the TypeScript verifier and the Rust core's `settings_merge.rs`
+tests.
 
 ### 6.9.1 Every clocked path is a leaf, including a removal
 
@@ -555,13 +583,13 @@ interleaving the per-day clock exists to allow. The single-clocked sub-objects
 above are single-clocked because their **declared** path is the whole object,
 not because a writer chose to clock higher.
 
-**Removing a key MUST tick that key's clock.** This is the one that is silently
-wrong if you do not think about it: a removal that ticks nothing loses to the
-peer still holding the old value, and the setting the user cleared comes back on
-the next pull. A removal is a write.
+**Removing a key MUST tick that key's clock.** A removal is a write. While §6.9.0
+keeps the local value on an absent winner, the tick does not yet carry the
+removal to a peer; it is still required, so the clearing device's clock is
+ahead when removal ships.
 
 **A write MUST tick the writing device's registered id, never a shared
-constant** (`packages/sync-client/src/settings-sync.ts:76`, `:88`). Desktop
+constant** (`packages/sync-client/src/settings-sync.ts:76`, `:87`). Desktop
 builds before #2287 ticked the literal key `local` on every device, so two
 concurrent edits compared `equal` and the pull took the remote with no merge.
 Stored `local` components stay where they are and are never rebound the way

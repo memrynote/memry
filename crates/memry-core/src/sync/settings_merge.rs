@@ -461,6 +461,44 @@ mod tests {
         );
     }
 
+    /// The shared `settings-merge` vectors (#2383), generated from desktop's
+    /// merge. [`merge`] is private, so the file is read here rather than from
+    /// `tests/`. Only `settings` and `fieldClocks` are asserted: `requeue` is
+    /// §6.9.0's re-queue, which this file does not do (see the module docs).
+    /// A `rustPending` case is one this core still resolves differently and
+    /// is asserted to differ, so fixing it here forces the flag off the case.
+    #[test]
+    fn the_shared_settings_merge_vectors_match_desktop() {
+        let file: Value = serde_json::from_str(include_str!(
+            "../../../../packages/contracts/test-vectors/settings-merge.json"
+        ))
+        .expect("the committed vector file");
+        let cases = file["cases"].as_array().expect("cases is an array");
+        assert_eq!(cases.len() as u64, file["meta"]["caseCount"]);
+
+        let mut pending = 0;
+        for case in cases {
+            let name = case["name"].as_str().expect("every case is named");
+            let outcome = merged(case["local"].clone(), case["remote"].clone());
+            let expected = &case["expected"];
+            let matches = Value::Object(outcome.settings) == expected["settings"]
+                && outcome.field_clocks == expected["fieldClocks"];
+            if case.get("rustPending").is_some() {
+                pending += 1;
+                assert!(
+                    !matches,
+                    "{name}: fixed here, remove its `rustPending` flag"
+                );
+            } else {
+                assert!(
+                    matches,
+                    "{name}: settings or field clocks differ from desktop"
+                );
+            }
+        }
+        assert_eq!(pending, 2, "the two absent-winner cases");
+    }
+
     #[test]
     fn the_union_of_both_clocks_is_written_back_on_every_path() {
         // §6.3 step 7, unconditionally and whichever branch won. Dropping the
