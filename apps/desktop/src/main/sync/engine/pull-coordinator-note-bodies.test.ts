@@ -4,7 +4,7 @@ import { SyncEngine } from '../engine'
 import { SYNC_STATE_KEYS } from './sync-context'
 import { SyncStateManager } from './sync-state-manager'
 import { NoteBodyFeed } from './note-body-feed'
-import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
 import type { CrdtProvider } from '../crdt-provider'
 import type { SyncEngineDeps } from './sync-context'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -1092,5 +1092,255 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
 
     expect(batched).toEqual([['note-y']])
     expect(provider.stored).toEqual([])
+  })
+})
+
+describe('Durable CRDT body debts across a record page (#2297)', () => {
+  const { getDb } = setupTestDb()
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const debts = () =>
+    getDb()
+      .sqlite.prepare(
+        'SELECT note_id AS noteId, reason, lowest_cursor AS lowestCursor FROM crdt_body_debts ORDER BY note_id'
+      )
+      .all()
+
+  /** A provider the real CRDT batch can merge into. */
+  function mergeableProvider() {
+    return Object.assign(fakeProvider(), {
+      applyRemoteUpdate: vi.fn(),
+      recordWholeBodyMerged: vi.fn(),
+      inactiveDocCapacity: 32,
+      raiseInactiveDocCapacity: vi.fn(() => null)
+    })
+  }
+
+  /** A record page carrying `noteId`'s record; the batch POST answers `batch`. */
+  async function mockRecordPage(noteId: string, batch: () => Promise<unknown>) {
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [{ id: noteId, type: 'note', version: 1, modifiedAt: 1, size: 10 }],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 3,
+      noteBodies: []
+    })
+    vi.spyOn(http, 'postToServer').mockImplementation(async (path: string) => {
+      if (path === '/sync/crdt/updates/batch') return batch()
+      return {
+        items: [
+          {
+            id: noteId,
+            type: 'note',
+            operation: 'update',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+            signature: 'sig',
+            signerDeviceId: 'device-2',
+            clock: { 'device-2': 2 }
+          }
+        ]
+      }
+    })
+    vi.spyOn(http, 'fetchCrdtSnapshot').mockResolvedValue(null)
+    vi.spyOn(await import('../decrypt'), 'decryptItemFromPull').mockReturnValue({
+      content: new TextEncoder().encode(JSON.stringify({ title: noteId })),
+      verified: true
+    })
+    const { ItemApplier } = await import('../apply-item')
+    vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+  }
+
+  // #2297: the page's CRDT batch fails after the page moved the cursor, and the
+  // app quits. The next engine must still pull the note: nothing else would
+  // until a vault sweep, while the old blanket only kept pushes off the prune.
+  it('a record debt the batch did not pay survives a restart and the next engine pays it', async () => {
+    const provider = mergeableProvider()
+    const first = engineWith(getDb, provider)
+    const { SyncServerError } = await import('../http-client')
+    await mockRecordPage('note-1', async () => {
+      throw new SyncServerError('Too many requests', 429, 'RATE_LIMITED')
+    })
+
+    await expect(first.pull()).resolves.toBe(true)
+    expect(first.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
+    await first.stop({ skipFinalPush: true })
+
+    const second = new SyncEngine(
+      createMockDeps(getDb(), {
+        crdtProvider: provider as unknown as CrdtProvider,
+        network: createMockNetwork(false)
+      })
+    )
+    await second.start()
+
+    expect(second.hasUnmergedRemoteCrdtState('note-1')).toBe(true)
+    const batch = vi.fn(async () => ({ notes: { 'note-1': { updates: [], hasMore: false } } }))
+    await mockRecordPage('note-1', batch)
+    // A rate limit is pacing, not a failed body pull: no backoff (#2297 A-2).
+    const owed = crdtSyncOf(second).drainPendingPulls()
+    expect(owed).toEqual(['note-1'])
+    await crdtSyncOf(second).pullCrdtForNotes(owed)
+
+    expect(batch).toHaveBeenCalledOnce()
+    expect(second.hasUnmergedRemoteCrdtState('note-1')).toBe(false)
+    // The same clean walk lets the doc vouch for claims again (#2299).
+    expect(provider.recordWholeBodyMerged).toHaveBeenCalledWith('note-1')
+    expect(debts()).toEqual([])
+    expect(second.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
+    expect(second.getStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toBe('0')
+  })
+
+  // #2297: the record debt is in the database before any cursor write.
+  it('writes a record debt with no cursor before the cursor moves past the page', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    await mockRecordPage('note-1', async () => ({ notes: {} }))
+    vi.spyOn(crdtSyncOf(engine), 'applyCrdtBatch').mockResolvedValue({
+      snapshotGets: 0,
+      batchPosts: 0
+    })
+    const atCursorWrite: unknown[] = []
+    const set = SyncStateManager.prototype.setStateValue
+    vi.spyOn(SyncStateManager.prototype, 'setStateValue').mockImplementation(function (
+      this: SyncStateManager,
+      key: string,
+      value: string
+    ) {
+      if (key === SYNC_STATE_KEYS.LAST_CURSOR) atCursorWrite.push(debts())
+      set.call(this, key, value)
+    })
+
+    await engine.pull()
+
+    expect(atCursorWrite).toEqual([[{ noteId: 'note-1', reason: 'record', lowestCursor: null }]])
+  })
+
+  // #2297: feed debts carry the lowest cursor of the note's entries on the
+  // page; an entry this build could not parse owes the whole body.
+  it('owes feed entries with their lowest page cursor, and NULL for an unparsable one', async () => {
+    const provider = fakeProvider()
+    const engine = engineWith(getDb, provider)
+    await mockServer([
+      {
+        noteBodies: [
+          update('note-2', 6),
+          update('note-2', 5),
+          update('note-3', 4, A),
+          { op: 'update', noteId: 'note-3', cursor: 'two' }
+        ],
+        nextCursor: 7
+      }
+    ])
+
+    await engine.pull()
+
+    expect(debts()).toEqual([
+      { noteId: 'note-2', reason: 'feed_owed', lowestCursor: 5 },
+      { noteId: 'note-3', reason: 'feed_refused', lowestCursor: null }
+    ])
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('7')
+  })
+
+  // #2297 review B-H1, A-3: bodies skipped because the record is on the page
+  // are owed in the page transaction, so a record that does not apply leaves
+  // its note owed and flagged, and the note never claims the cursor.
+  it('owes a note whose record on the same page did not apply, and it claims nothing', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+    const batch = vi.spyOn(crdtSyncOf(engine), 'applyCrdtBatch')
+    await mockRecordPage('note-1', async () => ({ notes: {} }))
+    const http = await import('../http-client')
+    vi.mocked(http.getFromServer).mockResolvedValue({
+      items: [{ id: 'note-1', type: 'note', version: 1, modifiedAt: 1, size: 10 }],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 9,
+      noteBodies: [update('note-1', 7, A), update('note-1', 8, B)]
+    })
+    const { ItemApplier } = await import('../apply-item')
+    vi.mocked(ItemApplier.prototype.apply).mockReturnValue('schema_invalid')
+
+    await engine.pull()
+
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
+    expect(debts()).toEqual([{ noteId: 'note-1', reason: 'feed_owed', lowestCursor: 7 }])
+    expect(engine.hasUnmergedRemoteCrdtState('note-1')).toBe(true)
+    expect(engine.snapshotCoverage('note-1')).toEqual({ unmerged: true })
+    expect(batch).not.toHaveBeenCalled()
+  })
+
+  // #2297 round 2 b-M2: on a multi-slice page the skipped body is owed in the
+  // slice that applied its record, before that slice's batch, so the batch's
+  // clean walk settles it. Owed in the last slice it would outlive the walk.
+  it('owes a skipped body in its record slice, so that slice batch settles it', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+    const batch = vi.fn(async () => ({ notes: { 'note-1': { updates: [], hasMore: false } } }))
+    await mockRecordPage('note-1', batch)
+    const tasks = Array.from({ length: 250 }, (_, i) => `task-${i}`)
+    const http = await import('../http-client')
+    vi.mocked(http.getFromServer).mockResolvedValue({
+      items: [
+        { id: 'note-1', type: 'note', version: 1, modifiedAt: 1, size: 10 },
+        ...tasks.map((id) => ({ id, type: 'task', version: 1, modifiedAt: 1, size: 10 }))
+      ],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 9,
+      noteBodies: [update('note-1', 7, A)]
+    })
+    const pulls: string[][] = []
+    vi.mocked(http.postToServer).mockImplementation(async (path: string, body: unknown) => {
+      if (path === '/sync/crdt/updates/batch') return batch()
+      const { itemIds } = body as { itemIds: string[] }
+      pulls.push(itemIds)
+      return {
+        items: itemIds.map((id) => ({
+          id,
+          type: id === 'note-1' ? 'note' : 'task',
+          operation: 'update',
+          cryptoVersion: 1,
+          blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+          signature: 'sig',
+          signerDeviceId: 'device-2',
+          clock: { 'device-2': 2 }
+        }))
+      }
+    })
+
+    await engine.pull()
+
+    expect(pulls).toHaveLength(3)
+    expect(pulls[0]).toContain('note-1')
+    expect(batch).toHaveBeenCalled()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
+    expect(debts()).toEqual([])
+    expect(engine.hasUnmergedRemoteCrdtState('note-1')).toBe(false)
+  })
+
+  // #2297: a missing base owes the whole body; a failed landing owes from its cursor.
+  it('owes a missing base with no cursor and a failed landing from its page cursor', async () => {
+    const provider = fakeProvider({ failStore: (noteId) => noteId === 'note-2' })
+    provider.getStateVector.mockImplementation((noteId: string) =>
+      noteId === 'note-1' ? new Uint8Array([0]) : new Uint8Array([1, 9, 1])
+    )
+    const engine = engineWith(getDb, provider)
+    await mockServer([
+      { noteBodies: [update('note-1', 3, A), update('note-2', 4, B)], nextCursor: 4 }
+    ])
+
+    await engine.pull()
+
+    expect(debts()).toEqual([
+      { noteId: 'note-1', reason: 'missing_base', lowestCursor: null },
+      { noteId: 'note-2', reason: 'land_failed', lowestCursor: 4 }
+    ])
   })
 })

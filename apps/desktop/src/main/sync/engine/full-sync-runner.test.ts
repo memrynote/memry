@@ -19,7 +19,12 @@ import {
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
-import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
+import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
+import { crdtBodyDebtStore, listCrdtBodyDebts, oweCrdtBodyDebts } from './crdt-body-debts'
+import { SyncServerError } from '@memry/sync-client/http-errors'
+import * as httpClient from '../http-client'
+import { syncState } from '@memry/db-schema/schema/sync-state'
+import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 // FullSyncRunner is the choreography of a complete sync cycle:
 // pull -> seed -> push -> manifest check -> (conditional re-pull) -> follow-up
@@ -60,7 +65,8 @@ vi.mock('../manifest-check', () => ({
 vi.mock('../bootstrap-metrics', () => ({
   beginBootstrap: (...args: unknown[]) => mocks.beginBootstrap(...args),
   markBootstrapFullText: (...args: unknown[]) => mocks.markBootstrapFullText(...args),
-  abandonBootstrap: (...args: unknown[]) => mocks.abandonBootstrap(...args)
+  abandonBootstrap: (...args: unknown[]) => mocks.abandonBootstrap(...args),
+  recordBootstrapBytes: vi.fn()
 }))
 
 // Previously unmocked, so the real module ran in every test here and
@@ -90,10 +96,20 @@ class FakeCrdtSync {
   private pending = new Set<string>()
   /**
    * Mirrors the real coordinator: a note queued for a pull is by definition one
-   * whose server state is not in the local doc yet, so it is flagged too. The
-   * runner reads this back after a sweep to re-state the persisted debt.
+   * whose server state is not in the local doc yet, so it is flagged too.
    */
   unmerged = new Set<string>()
+  /** The durable reason each sweep passed; `undefined` for a session-only sweep. */
+  sweepDebtReasons: Array<string | undefined> = []
+  hydrateBodyDebts = vi.fn(() => 0)
+  /** Notes waiting out a failure backoff; the real coordinator keeps them apart. */
+  deferred = new Set<string>()
+  deferredUntil: number | null = null
+  nextDeferredPullAt = vi.fn(() => (this.deferred.size > 0 ? this.deferredUntil : null))
+  requeueDeferredPulls = vi.fn(() => {
+    for (const noteId of this.deferred) this.pending.add(noteId)
+    this.deferred.clear()
+  })
   pullCrdtForNote = vi.fn(async () => {})
   /**
    * The real coordinator reports what the chunk spent, per rate-limit bucket,
@@ -109,13 +125,14 @@ class FakeCrdtSync {
     })
   )
 
-  get hasUnmergedNotes(): boolean {
-    return this.unmerged.size > 0
-  }
-
   addPendingPull(noteId: string): void {
     this.pending.add(noteId)
     this.unmerged.add(noteId)
+  }
+
+  queuePulls(noteIds: readonly string[], durableReason?: string): void {
+    for (const noteId of noteIds) this.addPendingPull(noteId)
+    this.sweepDebtReasons.push(durableReason)
   }
 
   get pendingPullCount(): number {
@@ -203,6 +220,9 @@ function createHarness(
     isQuarantined?: (itemId: string, itemType: string) => boolean
     online?: boolean
     ws?: FakeWebSocket | null
+    db?: unknown
+    /** A real coordinator in place of `FakeCrdtSync`, built on the harness ctx. */
+    crdtSync?: (ctx: SyncContext) => CrdtSyncCoordinator
   } = {}
 ): Harness {
   const calls: string[] = []
@@ -232,11 +252,12 @@ function createHarness(
 
   const ctx = {
     deps: {
-      db: { __db: 'data' },
+      db: options.db ?? { __db: 'data' },
       queue: { getPendingCount, purgeOldErrors },
       network: { online: options.online ?? true },
       ...(options.ws !== null && { ws }),
       getAccessToken: vi.fn(async () => 'token-1'),
+      getVaultKey: vi.fn(async () => new Uint8Array([9])),
       getSigningKeys: vi.fn(async () =>
         options.signingKeys === undefined ? { deviceId: 'dev-a' } : options.signingKeys
       ),
@@ -261,7 +282,7 @@ function createHarness(
   })
   const pushCoordinator = { clearPendingAfterFullSync } as unknown as PushCoordinator
 
-  const crdtSync = new FakeCrdtSync()
+  const crdtSync = (options.crdtSync?.(ctx) ?? new FakeCrdtSync()) as FakeCrdtSync
 
   const actions = {
     // Resolves TRUE: the real `SyncEngine.pull()` reports whether the pull
@@ -891,81 +912,342 @@ describe('FullSyncRunner', () => {
     })
   })
 
-  // The per-note unmerged set is in-memory and per session, so a note left
-  // unmerged at quit came back on the next launch looking merged — and a launch
-  // inside the sweep interval queues nothing that would re-raise it. One edit
-  // 30 s later then pushed a snapshot, and the server prunes every `crdt_updates`
-  // row at or below the new watermark, including the peer rows this device never
-  // read. Only the fact that debt existed is persisted; the ids are re-derived.
-  describe('#given the previous session ended holding unmerged notes', () => {
-    it('#then every note reads as unmerged until a sweep rebuilds the flags', () => {
-      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
-      h.getStateValue.mockImplementation((key: string) =>
-        key === SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT ? '1' : undefined
-      )
-
-      expect(h.runner.crdtUnmergedStateUnknown).toBe(true)
+  // #2297: the vault-wide blanket is gone. A `crdtUnmergedDebt = '1'` this
+  // build did not write is converted once, at engine start, into a whole-body
+  // debt per note; the drain then pays the vault note by note.
+  describe('#given a crdtUnmergedDebt this build did not write #when the engine loads its debts', () => {
+    let testDb: TestDatabaseResult
+    beforeEach(() => {
+      testDb = createTestDataDb()
     })
+    afterEach(() => testDb.close())
 
-    it('#then a clean set cannot clear the persisted debt before that sweep', () => {
-      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
-      h.getStateValue.mockImplementation((key: string) =>
-        key === SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT ? '1' : undefined
-      )
+    const legacyDebt = (atMs: number) =>
+      asSyncDb(testDb.db)
+        .insert(syncState)
+        .values({ key: SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, value: '1', updatedAt: new Date(atMs) })
+        .onConflictDoUpdate({
+          target: syncState.key,
+          set: { value: '1', updatedAt: new Date(atMs) }
+        })
+        .run()
+    const debts = () =>
+      listCrdtBodyDebts(asSyncDb(testDb.db)).map((d) => [d.noteId, d.reason, d.lowestCursor])
 
-      // An empty set here is the emptiness this session started with, not an
-      // answer about what the last one left behind.
-      h.runner.recordCrdtUnmergedDebt(false)
-
-      expect(h.setStateValue).not.toHaveBeenCalledWith(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '0')
-      expect(h.runner.crdtUnmergedStateUnknown).toBe(true)
-    })
-
-    it('#then the sweep drops the blanket only once every note carries its own flag', async () => {
-      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
-      h.getStateValue.mockImplementation((key: string) =>
-        key === SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT ? '1' : undefined
-      )
+    it('#then a legacy 1 owes every note the index or the data DB knows, then hydrates', () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), db: asSyncDb(testDb.db) })
+      legacyDebt(Date.now() - 60_000)
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+      mocks.getAllSyncableNoteMetadataIds.mockReturnValue(['note-2', 'j2026-09-25'])
 
-      await h.runner.run()
+      h.runner.loadCrdtBodyDebts()
 
-      expect(h.runner.crdtUnmergedStateUnknown).toBe(false)
-      expect(h.crdtSync.unmerged).toEqual(new Set(['note-1', 'note-2']))
-      // The vault's own set is authoritative from here, so the key is re-stated
-      // from it rather than left holding the previous session's answer.
-      expect(h.setStateValue).toHaveBeenCalledWith(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '1')
+      expect(debts()).toEqual([
+        ['note-1', 'legacy', null],
+        ['note-2', 'legacy', null],
+        ['j2026-09-25', 'legacy', null]
+      ])
+      expect(h.crdtSync.hydrateBodyDebts).toHaveBeenCalledOnce()
     })
 
-    it('#then a sweep that finds nothing to flag clears the carried-over debt', async () => {
-      // Otherwise an empty vault — or one whose notes all cleared before the key
-      // was written — blankets every launch from here on, forever.
-      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
-      h.getStateValue.mockImplementation((key: string) =>
-        key === SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT ? '1' : undefined
-      )
+    // #2297 round 2 a-L2: the standing rows are loaded whatever the conversion does.
+    it('#then a conversion that throws still hydrates and flags the standing debts', () => {
+      let coordinator!: CrdtSyncCoordinator
+      const h = createHarness({
+        crdtProvider: fakeCrdtProvider(),
+        db: asSyncDb(testDb.db),
+        crdtSync: (ctx) =>
+          (coordinator = new CrdtSyncCoordinator(
+            ctx,
+            vi.fn(),
+            () => true,
+            crdtBodyDebtStore(asSyncDb(testDb.db))
+          ))
+      })
+      oweCrdtBodyDebts(asSyncDb(testDb.db), ['note-9'], 'record', { now: 5_000 })
+      legacyDebt(Date.now() - 60_000)
+      mocks.getAllSyncableNoteMetadataIds.mockImplementation(() => {
+        throw new Error('database is locked')
+      })
+
+      expect(() => h.runner.loadCrdtBodyDebts()).not.toThrow()
+
+      expect(coordinator.hasUnmergedRemoteState('note-9')).toBe(true)
+      expect(coordinator.pendingPullCount).toBe(1)
+      expect(mocks.log.error).toHaveBeenCalled()
+    })
+
+    it('#then the data DB alone is enough while the index is not open', () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), db: asSyncDb(testDb.db) })
+      legacyDebt(Date.now() - 60_000)
+      mocks.getAllSyncableNoteMetadataIds.mockReturnValue(['note-3'])
+
+      h.runner.loadCrdtBodyDebts()
+
+      expect(debts()).toEqual([['note-3', 'legacy', null]])
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+    })
+
+    it('#then its own mirror converts nothing, and a 1 written after it converts again', () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), db: asSyncDb(testDb.db) })
+      mocks.getAllSyncableNoteMetadataIds.mockReturnValue(['note-1'])
+      oweCrdtBodyDebts(asSyncDb(testDb.db), ['note-9'], 'record', { now: 5_000 })
+
+      h.runner.loadCrdtBodyDebts()
+      expect(debts()).toEqual([['note-9', 'record', null]])
+
+      legacyDebt(20_000)
+      h.runner.loadCrdtBodyDebts()
+      expect(debts()).toEqual([
+        ['note-9', 'record', null],
+        ['note-1', 'legacy', null]
+      ])
+    })
+
+    // #2297 review B-L4
+    it('#then an unreadable index cache falls back to the data DB ids', () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), db: asSyncDb(testDb.db) })
+      legacyDebt(Date.now() - 60_000)
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
-      mocks.getAllCrdtNoteIds.mockReturnValue([])
+      mocks.getAllCrdtNoteIds.mockImplementation(() => {
+        throw new Error('database disk image is malformed')
+      })
+      mocks.getAllSyncableNoteMetadataIds.mockReturnValue(['note-3'])
 
-      await h.runner.run()
+      expect(() => h.runner.loadCrdtBodyDebts()).not.toThrow()
 
-      expect(h.setStateValue).toHaveBeenCalledWith(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '0')
-      expect(h.runner.crdtUnmergedStateUnknown).toBe(false)
+      expect(debts()).toEqual([['note-3', 'legacy', null]])
+      expect(mocks.log.error).toHaveBeenCalled()
+    })
+
+    // #2297 review A-1
+    it('#then a database without the table loads nothing and does not throw', () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), db: asSyncDb(testDb.db) })
+      testDb.sqlite.exec('DROP TABLE crdt_body_debts')
+      legacyDebt(Date.now() - 60_000)
+      mocks.getAllSyncableNoteMetadataIds.mockReturnValue(['note-3'])
+
+      expect(() => h.runner.loadCrdtBodyDebts()).not.toThrow()
+      expect(h.crdtSync.hydrateBodyDebts).toHaveBeenCalledOnce()
     })
   })
 
-  describe('#given no carried-over debt #when the coordinator reports a transition', () => {
-    it('#then it is persisted as it happens, not at teardown', () => {
-      // A session that is killed rather than stopped never runs a teardown, and
-      // that is exactly the session whose debt has to survive.
-      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+  describe('#given a vault sweep #when it queues the vault', () => {
+    it('#then it owes nothing durably once the legacy sweep is done', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ws: null })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP ? 'done' : undefined
+      )
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
 
-      h.runner.recordCrdtUnmergedDebt(true)
-      h.runner.recordCrdtUnmergedDebt(false)
+      await h.runner.run()
 
-      expect(h.setStateValue).toHaveBeenNthCalledWith(1, SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '1')
-      expect(h.setStateValue).toHaveBeenNthCalledWith(2, SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '0')
+      expect(h.crdtSync.sweepDebtReasons).toEqual([undefined])
+      expect(h.crdtSync.unmerged).toEqual(new Set(['note-1']))
+    })
+
+    it('#then it owes durably while the legacy sweep is pending (#2297 R1)', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ws: null })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP ? 'pending' : undefined
+      )
+      // An undelivered pull does not force the legacy sweep, so this is an
+      // ordinary interval sweep.
+      h.actions.pull.mockResolvedValue(false)
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+
+      await h.runner.run()
+
+      expect(h.crdtSync.sweepDebtReasons).toEqual(['sweep'])
+    })
+
+    // #2297 review A-6, B-L5: a server that never served the feed has no key.
+    it('#then it owes nothing durably when the feed never served bodies', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ws: null })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+
+      await h.runner.run()
+
+      expect(h.crdtSync.sweepDebtReasons).toEqual([undefined])
+    })
+  })
+
+  // #2297 review A-2, B-M1
+  describe('#given a note waiting out a failure backoff', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('#then a timer drains it once the backoff ends', async () => {
+      vi.useFakeTimers()
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ws: null })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now()) : undefined
+      )
+      h.crdtSync.deferred.add('note-failing')
+      h.crdtSync.deferredUntil = Date.now() + 60_000
+
+      await h.runner.run()
+      expect(h.crdtSync.pullCrdtForNotes).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(h.crdtSync.requeueDeferredPulls).toHaveBeenCalledOnce()
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-failing'], expect.anything())
+    })
+
+    // #2297 round 2 a-M2: a delay past setTimeout's 2^31 ms cap fires after
+    // 1 ms, so a backoff dated 30 days ahead would spin; it is capped at 32 min.
+    it('#then a backoff dated 30 days ahead fires within 32 minutes, not at once', async () => {
+      vi.useFakeTimers()
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ws: null })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now()) : undefined
+      )
+      h.crdtSync.deferred.add('note-failing')
+      h.crdtSync.deferredUntil = Date.now() + 30 * 24 * 60 * 60_000
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(10)
+      expect(h.crdtSync.requeueDeferredPulls).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(32 * 60_000)
+      expect(h.crdtSync.requeueDeferredPulls).toHaveBeenCalled()
+      h.runner.dispose()
+    })
+
+    // #2297 round 2 a-L1, b-L2: a timer firing inside a full sync only hands
+    // the notes back; the full sync's own flush drains them.
+    it('#then a timer that fires during a full sync only requeues', async () => {
+      vi.useFakeTimers()
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ws: null })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now()) : undefined
+      )
+      h.crdtSync.deferred.add('note-failing')
+      h.crdtSync.deferredUntil = Date.now() + 60_000
+      await h.runner.run()
+
+      h.ctx.fullSyncActive = true
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(h.crdtSync.requeueDeferredPulls).toHaveBeenCalledOnce()
+      expect(h.crdtSync.pendingPullCount).toBe(1)
+      expect(h.crdtSync.pullCrdtForNotes).not.toHaveBeenCalled()
+
+      h.ctx.fullSyncActive = false
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-failing'], expect.anything())
+    })
+  })
+
+  // #2297 round 2 a-M1: a real coordinator, its note's own snapshot GET 500s
+  // inside a paced chunk of the legacy sweep.
+  describe('#given a real coordinator #when a paced legacy chunk fails', () => {
+    let testDb: TestDatabaseResult
+    beforeEach(() => {
+      testDb = createTestDataDb()
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+      testDb.close()
+    })
+
+    function legacySweepHarness(watermark?: { appliedSequence: number; snapshotRevision: string }) {
+      const provider = {
+        ...fakeCrdtProvider(),
+        isNoteLocalOnly: vi.fn(() => false),
+        getDoc: vi.fn(() => undefined),
+        open: vi.fn(async () => ({})),
+        closeIfInactive: vi.fn(async () => true),
+        applyRemoteUpdate: vi.fn(() => true),
+        getStateVector: vi.fn(() => new Uint8Array([1, 2, 3, 4])),
+        seedFromMarkdownPublic: vi.fn(),
+        recordWholeBodyMerged: vi.fn(),
+        ...(watermark && {
+          storeId: 'store-1',
+          getSnapshotWatermark: vi.fn(async () => watermark),
+          putSnapshotWatermark: vi.fn(async () => {}),
+          forgetSnapshotWatermark: vi.fn(async () => {})
+        })
+      }
+      let coordinator!: CrdtSyncCoordinator
+      const h = createHarness({
+        crdtProvider: provider,
+        db: asSyncDb(testDb.db),
+        crdtSync: (ctx) =>
+          (coordinator = new CrdtSyncCoordinator(
+            ctx,
+            vi.fn(),
+            () => true,
+            crdtBodyDebtStore(asSyncDb(testDb.db))
+          ))
+      })
+      const state = new Map<string, string>([
+        [SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'pending'],
+        [SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now())]
+      ])
+      h.getStateValue.mockImplementation((key: string) => state.get(key))
+      h.setStateValue.mockImplementation((key: string, value: string) => state.set(key, value))
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      vi.spyOn(httpClient, 'postToServer').mockResolvedValue({
+        notes: { 'note-1': { updates: [], hasMore: false } }
+      })
+      const rows = () =>
+        listCrdtBodyDebts(asSyncDb(testDb.db)).map((d) => [d.noteId, d.reason, d.failures])
+      return { h, coordinator, state, rows }
+    }
+
+    it('#then it records done, arms the timer, and the timer drains the note', async () => {
+      vi.useFakeTimers()
+      const { h, coordinator, state, rows } = legacySweepHarness()
+      const snapshot = vi
+        .spyOn(httpClient, 'fetchCrdtSnapshot')
+        .mockRejectedValueOnce(new SyncServerError('Internal error', 500))
+        .mockResolvedValue(null)
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(10)
+
+      expect(snapshot).toHaveBeenCalledOnce()
+      expect(rows()).toEqual([['note-1', 'legacy', 1]])
+      expect(coordinator.pendingPullCount).toBe(0)
+      expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done')
+      expect(vi.getTimerCount()).toBeGreaterThan(0)
+
+      await vi.advanceTimersByTimeAsync(2 * 60_000)
+
+      expect(snapshot).toHaveBeenCalledTimes(2)
+      expect(rows()).toEqual([])
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
+      h.runner.dispose()
+    })
+
+    it('#then a probe 500 counts nothing and the sweep stays pending', async () => {
+      vi.useFakeTimers()
+      const { h, coordinator, state, rows } = legacySweepHarness({
+        appliedSequence: 5,
+        snapshotRevision: 'r1'
+      })
+      vi.mocked(httpClient.postToServer).mockRejectedValue(
+        new SyncServerError('Internal error', 500)
+      )
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(20_000)
+
+      expect(httpClient.postToServer).toHaveBeenCalled()
+      expect(rows()).toEqual([['note-1', 'legacy', 0]])
+      expect(coordinator.nextDeferredPullAt()).toBeNull()
+      expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('pending')
+      h.runner.dispose()
     })
   })
 
@@ -1358,6 +1640,23 @@ describe('FullSyncRunner', () => {
         ['note-1', 'j2026-09-25'],
         expect.anything()
       )
+      // #2297 R1: the legacy sweep's flags survive a crash mid-drain.
+      expect(h.crdtSync.sweepDebtReasons).toEqual(['legacy'])
+    })
+
+    // #2297 review A-2, B-M1: a backing-off note is not in the pending count.
+    it('#then it records done while a note waits out a failure backoff', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      const state = withLegacySweep(h)
+      h.crdtSync.deferred.add('note-failing')
+      h.crdtSync.deferredUntil = Date.now() + 60_000
+
+      await h.runner.run()
+
+      await vi.waitFor(() => expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done'))
+      h.runner.dispose()
     })
 
     it('#then a drain that owes notes back stays pending', async () => {

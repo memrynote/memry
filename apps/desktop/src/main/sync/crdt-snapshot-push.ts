@@ -57,9 +57,9 @@ export interface CrdtSnapshotPushDeps {
  *
  * `coverage.coversThrough` (#2299) bounds the prune by feed cursor on a server
  * that understands it. It does not replace the routing:
- *   - a flagged note has no known lowest unmerged cursor, so it cannot claim
- *     one, and "flagged" is session-only for owed pulls — after a crash only
- *     the vault-wide flag behind `hasUnmergedRemoteState` protects those rows;
+ *   - a flagged note claims no cursor: its durable debt (#2297) records a
+ *     lowest unmerged cursor for feed entries only, and a flag may also come
+ *     from a speculative sweep that names no cursor at all;
  *   - a server that predates the field ignores it and prunes by watermark,
  *     exactly as before, and this device cannot tell it is talking to one.
  * So a note flagged at the encode (`coverage.unmerged`) or at send time still

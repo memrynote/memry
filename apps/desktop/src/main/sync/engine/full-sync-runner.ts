@@ -23,6 +23,7 @@ import {
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
+import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt-body-debts'
 import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
 
@@ -118,6 +119,9 @@ export class FullSyncRunner {
    */
   private pacedCrdtPullQueue = new Set<string>()
   private pacedCrdtPullTimer: ReturnType<typeof setTimeout> | null = null
+  /** Fires `flushPendingCrdtPulls` when the earliest deferred pull is due. */
+  private deferredPullTimer: ReturnType<typeof setTimeout> | null = null
+  private deferredPullTimerAt = 0
   private pacedCrdtChunkInFlight = false
   /**
    * Cancels the sweep's in-flight pulls when the engine goes away.
@@ -130,15 +134,6 @@ export class FullSyncRunner {
    * controller stays aborted and a later engine must not inherit it.
    */
   private pacedCrdtPullAbort: AbortController | null = null
-  /**
-   * Did the *previous* session end holding notes whose server state it had not
-   * merged? Null until the persisted answer is read.
-   *
-   * Read lazily rather than in the constructor: this runner is built inside the
-   * SyncEngine constructor, and a `sync_state` lookup belongs to the first cycle
-   * that needs it rather than to construction.
-   */
-  private carriedUnmergedDebt: boolean | null = null
   /**
    * When the sweep this engine ran queued the vault, while its paced drain is
    * still outstanding. Null once the drain has been stamped (or before any
@@ -210,8 +205,51 @@ export class FullSyncRunner {
     this.stateManager = stateManager
     this.pushCoordinator = pushCoordinator
     this.crdtSync = crdtSync
+    this.crdtSync.onDeferred = () => this.armDeferredPullTimer()
     this.actions = actions
     this.isQuarantined = isQuarantined
+  }
+
+  /**
+   * Engine start (#2297): convert a `crdtUnmergedDebt = '1'` this build did not
+   * write into a debt for every note, then queue every standing debt for the
+   * first full sync's drain and flag it for the snapshot routing.
+   */
+  loadCrdtBodyDebts(): void {
+    // Never fatal to sync start: a debt that could not be loaded is paid by
+    // the next vault sweep instead (#2297 review A-1, B-L4). Each step has its
+    // own `try`: a conversion that throws must not strand the rows that are
+    // already standing (#2297 round 2 a-L2); the next start converts again.
+    try {
+      const converted = convertUnmergedDebtMirror(this.ctx.deps.db, () => this.conversionNoteIds())
+      if (converted > 0) {
+        log.info('Converted the vault-wide CRDT debt into per-note debts', { converted })
+      }
+    } catch (err) {
+      log.error('Could not convert the vault-wide CRDT debt', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    }
+    try {
+      const owed = this.crdtSync.hydrateBodyDebts()
+      if (owed > 0) log.info('Loaded CRDT body debts', { owed })
+    } catch (err) {
+      log.error('Could not load CRDT body debts', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    }
+  }
+
+  /** `sweepNoteIds`, or the data DB's alone when the index cache cannot be read. */
+  private conversionNoteIds(): string[] {
+    try {
+      return this.sweepNoteIds()
+    } catch (err) {
+      log.error('Could not read the index cache for the CRDT debt conversion', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+      return getAllSyncableNoteMetadataIds(this.ctx.deps.db)
+    }
   }
 
   /**
@@ -231,57 +269,6 @@ export class FullSyncRunner {
    * most likely looking at a stale note, so it must not wait out the interval.
    * Only when the trigger is unknowable does the interval decide.
    */
-  /**
-   * Can this session still not name the notes whose server state it has not
-   * merged?
-   *
-   * `CrdtSyncCoordinator.unmergedRemoteNotes` is per session and `clearCaches()`
-   * empties it at teardown, so an unmerged note came back on the next launch
-   * looking merged — and "merged" is the answer that routes its push to the
-   * endpoint that prunes every peer row at or below the new snapshot's
-   * watermark. Nor did the launch necessarily re-raise the flag on its own:
-   * `shouldSweepAllCrdtNotes` falls through to a *persisted* interval stamp, so
-   * a restart inside that interval with no reconnect gap queues no pulls at all.
-   * A single edit 30 s later was then enough to destroy a peer's updates.
-   *
-   * While this is true the answer for **every** note is "unmerged", which is the
-   * same conservative answer the per-note flag gives, applied vault-wide until
-   * the flags exist again. It costs those pushes the snapshot endpoint — they go
-   * to `/sync/crdt/updates`, which stores and broadcasts the same bytes and
-   * prunes nothing — and nothing else.
-   *
-   * It is dropped by the first vault-wide sweep, which queues a pull for every
-   * note in the vault and so flags every one of them individually: the blanket
-   * is retired because it has been made redundant, not because it went stale.
-   * That sweep is at most `CRDT_FULL_SWEEP_MIN_INTERVAL_MS` away.
-   *
-   * Persisting the note ids instead was the obvious alternative and is worse on
-   * both counts: it needs a new on-disk format in a live beta, and a crash can
-   * still leave it missing whatever it had not written yet, while a boolean that
-   * is already `'1'` cannot become wrong by not being written again.
-   */
-  get crdtUnmergedStateUnknown(): boolean {
-    this.carriedUnmergedDebt ??=
-      this.stateManager.getStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT) === '1'
-    return this.carriedUnmergedDebt
-  }
-
-  /**
-   * Persist the coordinator's empty ↔ non-empty transitions.
-   *
-   * Written as they happen rather than at teardown, because the case this has to
-   * survive is a session that never runs its teardown at all — a crash, a kill,
-   * a power cut. A transition is two writes per sweep cycle at worst: one when
-   * the sweep queues the vault, one when the paced drain finishes it.
-   */
-  recordCrdtUnmergedDebt(hasDebt: boolean): void {
-    // An empty set is not an answer while the flags have not been rebuilt — it
-    // is the emptiness this session *started* with, and clearing the key on it
-    // would hand the next launch the same false "everything is merged".
-    if (!hasDebt && this.crdtUnmergedStateUnknown) return
-    this.stateManager.setStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, hasDebt ? '1' : '0')
-  }
-
   private shouldSweepAllCrdtNotes(force: boolean): boolean {
     // Nothing is fetchable while offline. Sweeping here would schedule pulls
     // that are guaranteed to fail and then stamp the interval, hiding real
@@ -382,6 +369,10 @@ export class FullSyncRunner {
 
   /** Clears the deferred sweep and paced-pull timers. Call on engine teardown. */
   dispose(): void {
+    if (this.deferredPullTimer) {
+      clearTimeout(this.deferredPullTimer)
+      this.deferredPullTimer = null
+    }
     if (this.owedSweepTimer) {
       clearTimeout(this.owedSweepTimer)
       this.owedSweepTimer = null
@@ -453,24 +444,22 @@ export class FullSyncRunner {
    */
   private bootstrapPullSucceeded = false
 
-  private sweepAllCrdtNotes(): void {
+  private sweepAllCrdtNotes(legacy = false): void {
     this.sweepSettledOnThisEngine = true
     // Read before the generation is re-stamped below: only a sweep that closes
     // a real drop/reconnect gap starts the floor for the next one.
     if (this.hasReconnectGap()) this.lastReconnectSweepAt = Date.now()
-    for (const noteId of this.sweepNoteIds()) {
-      this.crdtSync.addPendingPull(noteId)
-    }
-    // Every note in the vault now carries its own flag, so the vault-wide
-    // blanket a carried-over debt raised has nothing left to cover. Dropped
-    // after the loop and never before it: in between, a push would read a
-    // not-yet-flagged note as safe to snapshot.
-    this.carriedUnmergedDebt = false
-    // Re-state the key from this session's own set now that it is authoritative.
-    // Without this, a sweep that flags nothing — an empty vault, or one whose
-    // notes all cleared before the key was ever written — would leave the
-    // previous session's `'1'` standing and blanket every launch from here on.
-    this.recordCrdtUnmergedDebt(this.crdtSync.hasUnmergedNotes)
+    // Durable only while the legacy sweep is pending (#2297): then a note may
+    // hold body rows the feed never serves, so a crash mid-sweep must not drop
+    // its flag. Otherwise a sweep is not evidence of anything; with no key the
+    // server does not serve bodies in the feed, and every sweep is pulled anew.
+    const legacyOwed =
+      this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) ===
+      NOTE_BODY_LEGACY_SWEEP_PENDING
+    this.crdtSync.queuePulls(
+      this.sweepNoteIds(),
+      legacy ? 'legacy' : legacyOwed ? 'sweep' : undefined
+    )
     this.lastSweepConnectionGeneration = this.ctx.deps.ws?.connectionGeneration ?? null
     this.crdtSweepOwed = false
     // Not stamped here: the vault is QUEUED, not swept. `stampSweptVault()`
@@ -487,7 +476,7 @@ export class FullSyncRunner {
    * be skipped by it.
    */
   private sweepNoteIds(): string[] {
-    const ids = new Set(getAllCrdtNoteIds(getIndexDatabase()))
+    const ids = new Set(isIndexDatabaseInitialized() ? getAllCrdtNoteIds(getIndexDatabase()) : [])
     for (const id of getAllSyncableNoteMetadataIds(this.ctx.deps.db)) ids.add(id)
     return [...ids]
   }
@@ -741,7 +730,7 @@ export class FullSyncRunner {
         this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) ===
           NOTE_BODY_LEGACY_SWEEP_PENDING
       if (canSweep && this.shouldSweepAllCrdtNotes(forceCrdtSweep || legacyNoteBodySweep)) {
-        this.sweepAllCrdtNotes()
+        this.sweepAllCrdtNotes(legacyNoteBodySweep)
         if (legacyNoteBodySweep) this.legacyNoteBodySweepQueued = true
       } else if (canSweep && this.ctx.deps.network.online) {
         // ONLINE and the throttle declined: nothing is outstanding, because a
@@ -1026,10 +1015,46 @@ export class FullSyncRunner {
       }
     }
 
+    this.armDeferredPullTimer()
     this.pumpPacedCrdtPulls()
     this.maybeMarkBootstrapFullText()
     this.stampSweptVault()
     this.releaseBootstrapSessionIfStalled()
+  }
+
+  /**
+   * One timer for the earliest deferred pull's backoff end (#2297 review A-2):
+   * nothing else drains between full syncs, so without it a failing note's
+   * retry waits for the next reconnect, restart or manual sync. Armed from
+   * each flush and from each counted failure (`onDeferred`).
+   *
+   * The delay is capped at the longest backoff: past setTimeout's 2^31 ms
+   * limit a delay fires after 1 ms, and a clock set back leaves a due time
+   * far ahead (#2297 round 2 a-M2).
+   */
+  private armDeferredPullTimer(): void {
+    const next = this.crdtSync.nextDeferredPullAt()
+    if (next === null) return
+    const now = Date.now()
+    const at = Math.min(next, now + CRDT_BODY_DEBT_MAX_BACKOFF_MS)
+    if (this.deferredPullTimer) {
+      if (this.deferredPullTimerAt <= at) return
+      clearTimeout(this.deferredPullTimer)
+    }
+    this.deferredPullTimerAt = at
+    this.deferredPullTimer = setTimeout(
+      () => {
+        this.deferredPullTimer = null
+        this.crdtSync.requeueDeferredPulls()
+        // A full sync's `finally` flush drains these and re-arms; a flush
+        // from here would drain its active-editor notes into a
+        // `scheduleSync` the engine drops while it runs (#2297 round 2 b-L2).
+        if (this.ctx.fullSyncActive) return
+        this.flushPendingCrdtPulls()
+      },
+      Math.max(0, at - now)
+    )
+    this.deferredPullTimer.unref?.()
   }
 
   /**

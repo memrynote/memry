@@ -93,7 +93,8 @@ async function runReceiverOfflineCreatePropagationCase({
   await expectNoteBody(receiverPage, body)
 
   await waitForNoteReplicated(offlineApp, created.id, body)
-  expect(await getNoteFileBodyById(receiverPage, created.id)).toBe(body)
+  // The file is written by a debounced write-back after the editor shows the body.
+  await expect.poll(() => getNoteFileBodyById(receiverPage, created.id)).toBe(body)
 }
 
 test.describe('Body CRDT create propagation', () => {

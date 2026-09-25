@@ -83,6 +83,9 @@ describe('SYNC_STATE_KEYS', () => {
         // every note merged" — which is both what an older build's install
         // means and the answer that changes nothing.
         CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt',
+        // #2297: absent on older installs; a `crdtUnmergedDebt = '1'` without it
+        // is converted into per-note debts once.
+        CRDT_BODY_DEBT_MIRROR_AT: 'crdtBodyDebtMirrorAt',
         // Additive again (#1840): absent reads as 0 — "no pack coverage" —
         // which is what every install written before packs existed means, and
         // the answer that leaves the item-granular bootstrap untouched.

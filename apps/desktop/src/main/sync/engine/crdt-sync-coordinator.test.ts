@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SyncContext } from './sync-context'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
+import { crdtBodyDebtStore, listCrdtBodyDebts } from './crdt-body-debts'
+import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const fetchCrdtSnapshotMock = vi.fn()
 const getFromServerMock = vi.fn()
@@ -29,7 +31,8 @@ vi.mock('../../crypto/index', () => ({
 
 const withRetryMock = vi.fn(async (fn: () => Promise<unknown>) => ({ value: await fn() }))
 
-vi.mock('@memry/sync-client/retry', () => ({
+vi.mock('@memry/sync-client/retry', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@memry/sync-client/retry')>()),
   withRetry: (fn: () => Promise<unknown>, options?: unknown) => withRetryMock(fn, options)
 }))
 
@@ -1132,55 +1135,567 @@ describe('CrdtSyncCoordinator', () => {
     expect(seedFromMarkdownPublic).not.toHaveBeenCalled()
   })
 
-  it('reports unmerged debt on the empty/non-empty edges only, and never on teardown', async () => {
-    // #given the set is per session: `clearCaches()` empties it, so a note left
-    // unmerged at quit came back on the next launch looking merged — and merged
-    // is the answer that lets a snapshot push prune a peer's rows. Only the
-    // *fact* of debt is durable, so only its edges are worth reporting.
-    const { ctx } = createBatchContext()
-    postToServerMock.mockResolvedValue({ notes: { 'note-1': { updates: [], hasMore: false } } })
-    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
-    const onUnmergedDebtChange = vi.fn()
-    coordinator.onUnmergedDebtChange = onUnmergedDebtChange
+  // #2297: the flags are backed by `crdt_body_debts` on a real data DB.
+  describe('#given durable body debts', () => {
+    let testDb: TestDatabaseResult
+    beforeEach(() => {
+      testDb = createTestDataDb()
+    })
+    afterEach(() => testDb.close())
 
-    // #when a second flagged note joins the first
-    coordinator.markRemoteStateUnmerged('note-1')
-    coordinator.markRemoteStateUnmerged('note-2')
+    const store = () => crdtBodyDebtStore(asSyncDb(testDb.db))
+    const rows = () =>
+      listCrdtBodyDebts(asSyncDb(testDb.db)).map((d) => [d.noteId, d.reason, d.failures])
+    const clean = (noteId: string) =>
+      postToServerMock.mockResolvedValue({ notes: { [noteId]: { updates: [], hasMore: false } } })
 
-    // #then one report, not one per note
-    expect(onUnmergedDebtChange.mock.calls).toEqual([[true]])
-    expect(coordinator.hasUnmergedNotes).toBe(true)
+    it('#then a clean walk settles the debt, and teardown leaves it for the next engine', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      coordinator.markRemoteStateUnmerged('note-1')
+      coordinator.addPendingPull('note-2', 'feed_owed', 40)
 
-    // #when a pass walks one of them end to end, leaving the other flagged
-    await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+      coordinator.clearCaches()
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
+      expect(rows()).toEqual([
+        ['note-1', 'broadcast', 0],
+        ['note-2', 'feed_owed', 0]
+      ])
 
-    // #then still nothing to say: debt outstanding is debt outstanding
-    expect(onUnmergedDebtChange.mock.calls).toEqual([[true]])
-    expect(coordinator.hasUnmergedNotes).toBe(true)
+      const next = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      expect(next.hydrateBodyDebts()).toBe(2)
+      expect(next.hasUnmergedRemoteState('note-1')).toBe(true)
+      const owed = next.drainPendingPulls()
+      expect(owed.sort()).toEqual(['note-1', 'note-2'])
 
-    // #when the last one clears
-    postToServerMock.mockResolvedValue({ notes: { 'note-2': { updates: [], hasMore: false } } })
-    await coordinator.applyCrdtBatch(['note-2'], 'token-1', new Uint8Array([4]))
+      clean('note-1')
+      await next.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+      expect(next.hasUnmergedRemoteState('note-1')).toBe(false)
+      expect(rows()).toEqual([['note-2', 'feed_owed', 0]])
+    })
 
-    // #then the durable record can be dropped
-    expect(onUnmergedDebtChange.mock.calls).toEqual([[true], [false]])
-    expect(coordinator.hasUnmergedNotes).toBe(false)
+    it('#then an unverifiable signer keeps the debt and counts the failure', async () => {
+      const { ctx } = createBatchContext()
+      fetchCrdtSnapshotMock.mockResolvedValue({
+        snapshot: new Uint8Array([9]),
+        sequenceNum: 12,
+        signerDeviceId: 'gone-device'
+      })
+      clean('note-1')
+      const coordinator = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn().mockResolvedValue(null),
+        () => true,
+        store()
+      )
+      coordinator.oweRecordBody('note-1')
+
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+      expect(rows()).toEqual([['note-1', 'record', 1]])
+    })
+
+    it('#then a debt raised while the walk ran survives the walk', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      coordinator.oweRecordBody('note-1')
+      postToServerMock.mockImplementation(async () => {
+        // A record page for the same note commits mid-walk.
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        coordinator.oweRecordBody('note-1')
+        return { notes: { 'note-1': { updates: [], hasMore: false } } }
+      })
+
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+      expect(rows()).toEqual([['note-1', 'record', 0]])
+    })
+
+    it('#then a queued id with no row is settled without a pull', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => false, store())
+      coordinator.addPendingPull('gone', 'broadcast')
+
+      await coordinator.pullCrdtForNotes(coordinator.drainPendingPulls())
+
+      expect(postToServerMock).not.toHaveBeenCalled()
+      expect(coordinator.hasUnmergedRemoteState('gone')).toBe(false)
+      expect(rows()).toEqual([])
+    })
+
+    it('#then a local-only note is neither owed a record body nor drained out of its debt', async () => {
+      const { ctx } = createBatchContext()
+      const provider = ctx.deps.crdtProvider as unknown as {
+        isNoteLocalOnly: ReturnType<typeof vi.fn>
+      }
+      provider.isNoteLocalOnly.mockReturnValue(true)
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      coordinator.oweRecordBody('note-1')
+      expect(rows()).toEqual([])
+      coordinator.addPendingPull('note-1', 'local_only')
+
+      await coordinator.pullCrdtForNotes(coordinator.drainPendingPulls())
+
+      expect(postToServerMock).not.toHaveBeenCalled()
+      expect(rows()).toEqual([['note-1', 'local_only', 0]])
+    })
+
+    // #2297 restack: option (B) flags at runtime start are session-only, and a
+    // dropped note's clear leaves its durable debt to the drain or the toggle.
+    it('#then a full-state flag writes no debt, and a drop clears only the session flag', () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      coordinator.flagRemoteStateUnmerged('note-full')
+      coordinator.addPendingPull('note-local', 'local_only')
+      coordinator.drainPendingPulls()
+
+      expect(coordinator.hasUnmergedRemoteState('note-full')).toBe(true)
+      expect(rows()).toEqual([['note-local', 'local_only', 0]])
+
+      coordinator.clearUnmergedForDroppedNote('note-full')
+      coordinator.clearUnmergedForDroppedNote('note-local')
+      expect(coordinator.hasUnmergedRemoteState('note-full')).toBe(false)
+      expect(coordinator.hasUnmergedRemoteState('note-local')).toBe(false)
+      expect(rows()).toEqual([['note-local', 'local_only', 0]])
+    })
+
+    const failing = (noteId: string, lastFailedAt: number) =>
+      store().owe([noteId], 'pull_failed', { failed: true, now: lastFailedAt })
+
+    // #2297 review A-2, B-M1
+    it('#then the drain defers a failing debt, and a sweep re-owe does not extend its backoff', () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      const now = Date.now()
+      failing('failing', now - 30_000)
+      coordinator.queuePulls(['failing', 'fresh'], 'sweep')
+
+      expect(coordinator.drainPendingPulls(now)).toEqual(['fresh'])
+      expect(coordinator.pendingPullCount).toBe(0)
+      expect(coordinator.hasUnmergedRemoteState('failing')).toBe(true)
+      expect(coordinator.nextDeferredPullAt()).toBe(now + 30_000)
+      coordinator.requeueDeferredPulls()
+      expect(coordinator.pendingPullCount).toBe(1)
+      expect(coordinator.drainPendingPulls(now + 30_000)).toEqual(['failing'])
+    })
+
+    // #2297 review A-2, B-M1
+    it('#then a clean record-batch walk settles a backing-off note', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      failing('note-1', Date.now())
+      coordinator.hydrateBodyDebts()
+      expect(coordinator.drainPendingPulls()).toEqual([])
+      coordinator.oweRecordBody('note-1')
+      clean('note-1')
+
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
+      expect(coordinator.nextDeferredPullAt()).toBeNull()
+      expect(rows()).toEqual([])
+    })
+
+    // #2297 review A-2, B-M1
+    it('#then only a failed body pull counts, and pacing noise writes no new row', async () => {
+      const { ctx } = createBatchContext()
+      decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
+      postToServerMock.mockResolvedValue({
+        notes: {
+          'note-1': {
+            updates: [
+              { sequenceNum: 4, data: 'eA==', createdAt: 1, signerDeviceId: 'gone' },
+              { sequenceNum: 5, data: 'eQ==', createdAt: 1, signerDeviceId: 'gone' }
+            ],
+            hasMore: false
+          }
+        }
+      })
+      const coordinator = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn(async (id: string) => (id === 'gone' ? null : new Uint8Array([1]))),
+        () => true,
+        store()
+      )
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+      expect(rows()).toEqual([['note-1', 'pull_failed', 1]])
+
+      const { SyncServerError } = await import('@memry/sync-client/http-errors')
+      const generationOf = (noteId: string) =>
+        listCrdtBodyDebts(asSyncDb(testDb.db)).find((d) => d.noteId === noteId)?.generation
+      coordinator.oweRecordBody('note-4')
+      const recordGeneration = generationOf('note-4')!
+
+      // A 429 on a speculative note writes no row; on a note with a record
+      // debt it keeps `record`, bumps the generation and counts nothing.
+      postToServerMock.mockRejectedValue(new SyncServerError('Too many requests', 429))
+      await coordinator.applyCrdtBatch(['note-2', 'note-4'], 'token-1', new Uint8Array([4]))
+      // A missing credential is not evidence either.
+      ;(ctx.deps.getAccessToken as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      await coordinator.pullCrdtForNotes(['note-3'])
+      // #2297 round 2 b-M1: a failed batch POST says nothing about one note.
+      postToServerMock.mockRejectedValue(new SyncServerError('Internal error', 500))
+      await coordinator.applyCrdtBatch(['note-5'], 'token-1', new Uint8Array([4]))
+      // Its own snapshot GET failing does: `pull_failed`, one failure.
+      fetchCrdtSnapshotMock.mockRejectedValue(new SyncServerError('Internal error', 500))
+      await coordinator.applyCrdtBatch(['note-6'], 'token-1', new Uint8Array([4]))
+
+      expect(rows()).toEqual([
+        ['note-1', 'pull_failed', 1],
+        ['note-4', 'record', 0],
+        ['note-6', 'pull_failed', 1]
+      ])
+      expect(generationOf('note-4')).toBeGreaterThan(recordGeneration)
+      for (const noteId of ['note-2', 'note-3']) {
+        expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+      }
+      // The two counted failures wait out their backoff; the rest run now.
+      expect(coordinator.drainPendingPulls().sort()).toEqual([
+        'note-2',
+        'note-3',
+        'note-4',
+        'note-5'
+      ])
+    })
+
+    // #2297 round 2 a-M1: a counted failure is deferred when it is counted, so
+    // it never sits in the pending count, and the runner arms its timer.
+    it('#then a counted failure defers the note at once and reports it', async () => {
+      const { ctx } = createBatchContext()
+      const { SyncServerError } = await import('@memry/sync-client/http-errors')
+      fetchCrdtSnapshotMock.mockRejectedValue(new SyncServerError('Internal error', 500))
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      const onDeferred = vi.fn()
+      coordinator.onDeferred = onDeferred
+
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+      expect(coordinator.pendingPullCount).toBe(0)
+      expect(onDeferred).toHaveBeenCalledOnce()
+      expect(coordinator.nextDeferredPullAt()).toBeGreaterThan(Date.now())
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+    })
+
+    // #2297 round 2 b-M1: an outage behind the retry wrapper is not evidence.
+    it('#then a dead letter wrapping a network error writes no row', async () => {
+      const { ctx } = createBatchContext()
+      const { NetworkError } = await import('@memry/sync-client/http-errors')
+      const { DeadLetterError } = await import('@memry/sync-client/retry')
+      fetchCrdtSnapshotMock.mockRejectedValue(
+        new DeadLetterError(new NetworkError('Server unreachable'), 4)
+      )
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+      expect(rows()).toEqual([])
+      expect(coordinator.drainPendingPulls()).toEqual(['note-1'])
+    })
+
+    // #2297 round 2 b-M1: a dead letter wrapping a server error still counts.
+    it('#then a dead letter wrapping a server error counts', async () => {
+      const { ctx } = createBatchContext()
+      const { SyncServerError } = await import('@memry/sync-client/http-errors')
+      const { DeadLetterError } = await import('@memry/sync-client/retry')
+      fetchCrdtSnapshotMock.mockRejectedValue(
+        new DeadLetterError(new SyncServerError('Internal error', 503), 4)
+      )
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+      expect(rows()).toEqual([['note-1', 'pull_failed', 1]])
+    })
+
+    // #2297 round 2 b-L3: a failure while the pass is being torn down is not evidence.
+    it('#then a failure after the signal aborted counts nothing', async () => {
+      const { ctx } = createBatchContext()
+      const { SyncServerError } = await import('@memry/sync-client/http-errors')
+      const controller = new AbortController()
+      fetchCrdtSnapshotMock.mockImplementation(async () => {
+        controller.abort()
+        throw new SyncServerError('Internal error', 500)
+      })
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      coordinator.oweRecordBody('note-1')
+
+      await coordinator.applyCrdtBatch(
+        ['note-1'],
+        'token-1',
+        new Uint8Array([4]),
+        controller.signal
+      )
+
+      expect(rows()).toEqual([['note-1', 'record', 0]])
+    })
+
+    // #2297 round 2 b-M1: a decrypt that fails for the whole chunk names no note.
+    it('#then a chunk decrypt throw counts nothing', async () => {
+      const { ctx } = createBatchContext()
+      decryptCrdtUpdateMock.mockImplementation(() => {
+        throw new Error('decrypt failed')
+      })
+      postToServerMock.mockResolvedValue({
+        notes: {
+          'note-1': {
+            updates: [{ sequenceNum: 4, data: 'eA==', createdAt: 1, signerDeviceId: 'device-a' }],
+            hasMore: false
+          },
+          'note-2': { updates: [], hasMore: false }
+        }
+      })
+      const coordinator = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn(async () => new Uint8Array([1])),
+        () => true,
+        store()
+      )
+      coordinator.oweRecordBody('note-2')
+
+      await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+      expect(rows()).toEqual([['note-2', 'record', 0]])
+      expect(coordinator.drainPendingPulls().sort()).toEqual(['note-1', 'note-2'])
+    })
+
+    // #2297 round 2 b-L3: one pass counts one failure, however it failed.
+    it('#then a single-note pass with a signer skip and a later server error counts once', async () => {
+      const { ctx } = createBatchContext()
+      const { SyncServerError } = await import('@memry/sync-client/http-errors')
+      fetchCrdtSnapshotMock.mockResolvedValue({
+        snapshot: new Uint8Array([9]),
+        sequenceNum: 12,
+        signerDeviceId: 'gone-device'
+      })
+      getFromServerMock.mockRejectedValue(new SyncServerError('Internal error', 500))
+      const coordinator = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn().mockResolvedValue(null),
+        () => true,
+        store()
+      )
+
+      await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+
+      expect(rows()).toEqual([['note-1', 'pull_failed', 1]])
+    })
+
+    // #2297 round 2 b-M3: an update a closing doc dropped is not in the doc.
+    it('#then an update a closing doc dropped keeps the debt, the flag and no watermark', async () => {
+      const { ctx } = createBatchContext()
+      const watermarks = new Map<string, unknown>()
+      Object.assign(ctx.deps.crdtProvider as object, {
+        storeId: 'store-1',
+        applyRemoteUpdate: vi.fn(() => false),
+        getSnapshotWatermark: vi.fn(async () => null),
+        putSnapshotWatermark: vi.fn(async (noteId: string, w: unknown) => {
+          watermarks.set(noteId, w)
+        }),
+        forgetSnapshotWatermark: vi.fn(async (noteId: string) => {
+          watermarks.delete(noteId)
+        })
+      })
+      decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
+      postToServerMock.mockResolvedValue({
+        notes: {
+          'note-1': {
+            updates: [{ sequenceNum: 4, data: 'eA==', createdAt: 1, signerDeviceId: 'device-a' }],
+            hasMore: false
+          }
+        }
+      })
+      const coordinator = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn(async () => new Uint8Array([1])),
+        () => true,
+        store()
+      )
+      coordinator.oweRecordBody('note-1')
+
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+      expect(rows()).toEqual([['note-1', 'record', 0]])
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+      expect(watermarks.has('note-1')).toBe(false)
+      expect(store().needsWalk(['note-1'])).toEqual(new Set(['note-1']))
+    })
+
+    // #2297 round 2 b-L4: a session-only flag raised while a walk ran survives it.
+    it('#then a session-only flag raised mid-walk survives the walk', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
+      postToServerMock.mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        coordinator.flagRemoteStateUnmerged('note-1')
+        coordinator.markRemoteStateUnmerged('note-2', false)
+        return {
+          notes: {
+            'note-1': { updates: [], hasMore: false },
+            'note-2': { updates: [], hasMore: false }
+          }
+        }
+      })
+
+      await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+      expect(coordinator.hasUnmergedRemoteState('note-2')).toBe(true)
+
+      postToServerMock.mockResolvedValue({
+        notes: {
+          'note-1': { updates: [], hasMore: false },
+          'note-2': { updates: [], hasMore: false }
+        }
+      })
+      await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
+      expect(coordinator.hasUnmergedRemoteState('note-2')).toBe(false)
+    })
   })
 
-  it('does not report the emptying of the set at teardown as debt paid', async () => {
-    // #given a vault close or sign-out with a note still unmerged
-    const { ctx } = createBatchContext()
-    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
-    const onUnmergedDebtChange = vi.fn()
-    coordinator.markRemoteStateUnmerged('note-1')
-    coordinator.onUnmergedDebtChange = onUnmergedDebtChange
+  // #2297 review B-H2: a debt whose cause proves the watermark ahead of the doc
+  // drops the watermark, so the probe cannot settle the note without a walk.
+  describe('#given a watermark ahead of the doc', () => {
+    let testDb: TestDatabaseResult
+    beforeEach(() => {
+      testDb = createTestDataDb()
+    })
+    afterEach(() => testDb.close())
 
-    // #when
-    coordinator.clearCaches()
+    const withWatermarkStore = () => {
+      const { ctx } = createBatchContext()
+      const watermarks = new Map<string, { appliedSequence: number; snapshotRevision?: string }>()
+      Object.assign(ctx.deps.crdtProvider as object, {
+        storeId: 'store-1',
+        getSnapshotWatermark: vi.fn(async (noteId: string) => watermarks.get(noteId) ?? null),
+        putSnapshotWatermark: vi.fn(async (noteId: string, w: { appliedSequence: number }) => {
+          watermarks.set(noteId, w)
+        }),
+        forgetSnapshotWatermark: vi.fn(async (noteId: string) => {
+          watermarks.delete(noteId)
+        })
+      })
+      return { ctx, watermarks }
+    }
+    const rows = () => listCrdtBodyDebts(asSyncDb(testDb.db)).map((d) => [d.noteId, d.reason])
+    const probeWithNoUpdates = () =>
+      postToServerMock.mockResolvedValue({
+        notes: { 'note-1': { updates: [], hasMore: false } },
+        snapshotMeta: { 'note-1': { revision: 'r1', sequenceNum: 10 } }
+      })
 
-    // #then reporting "no debt" here would erase the one record that survives
-    // the session — which is exactly the note the next launch must not snapshot.
-    expect(onUnmergedDebtChange).not.toHaveBeenCalled()
+    it('#then a compaction debt takes a walk instead of a probe settle', async () => {
+      const { ctx, watermarks } = withWatermarkStore()
+      watermarks.set('note-1', { appliedSequence: 50, snapshotRevision: 'r1' })
+      const coordinator = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn(),
+        () => true,
+        crdtBodyDebtStore(asSyncDb(testDb.db))
+      )
+      // Warm: the probe settles the note from its watermark, with no GET.
+      probeWithNoUpdates()
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+      expect(fetchCrdtSnapshotMock).not.toHaveBeenCalled()
+
+      coordinator.oweWholeBody('note-1', 'compaction')
+      fetchCrdtSnapshotMock.mockRejectedValue(new Error('server error'))
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+      expect(fetchCrdtSnapshotMock).toHaveBeenCalledWith('note-1', 'token-1')
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+      expect(rows()).toEqual([['note-1', 'compaction']])
+    })
+
+    // #2297 round 2 a-L4: after a restart the persisted watermark may still be
+    // the stale one; the row alone must send the note down the walk.
+    it('#then a compaction row takes a walk against a stale persisted watermark', async () => {
+      const { ctx, watermarks } = withWatermarkStore()
+      watermarks.set('note-1', { appliedSequence: 50, snapshotRevision: 'r1' })
+      const debts = crdtBodyDebtStore(asSyncDb(testDb.db))
+      debts.owe(['note-1'], 'compaction', { needsWalk: true })
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, debts)
+      coordinator.hydrateBodyDebts()
+      probeWithNoUpdates()
+      fetchCrdtSnapshotMock.mockRejectedValue(new Error('server error'))
+
+      await coordinator.applyCrdtBatch(
+        coordinator.drainPendingPulls(),
+        'token-1',
+        new Uint8Array([4])
+      )
+
+      expect(fetchCrdtSnapshotMock).toHaveBeenCalledWith('note-1', 'token-1')
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+      expect(rows()).toEqual([['note-1', 'compaction']])
+    })
+
+    // #2297 round 2 b-M3 + a-L4: a dropped update on a `record` row, then a
+    // restart with the watermark the crash left behind.
+    it('#then a record row with a dropped update takes a walk after a restart', async () => {
+      const { ctx, watermarks } = withWatermarkStore()
+      const debts = crdtBodyDebtStore(asSyncDb(testDb.db))
+      decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
+      Object.assign(ctx.deps.crdtProvider as object, { applyRemoteUpdate: vi.fn(() => false) })
+      postToServerMock.mockResolvedValue({
+        notes: {
+          'note-1': {
+            updates: [{ sequenceNum: 4, data: 'eA==', createdAt: 1, signerDeviceId: 'device-a' }],
+            hasMore: false
+          }
+        }
+      })
+      const first = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn(async () => new Uint8Array([1])),
+        () => true,
+        debts
+      )
+      first.oweRecordBody('note-1')
+      await first.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+      first.clearCaches()
+      // The crash left a watermark that claims the dropped update.
+      watermarks.set('note-1', { appliedSequence: 50, snapshotRevision: 'r1' })
+
+      const second = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, debts)
+      second.hydrateBodyDebts()
+      probeWithNoUpdates()
+      fetchCrdtSnapshotMock.mockRejectedValue(new Error('server error'))
+      await second.applyCrdtBatch(second.drainPendingPulls(), 'token-1', new Uint8Array([4]))
+
+      expect(fetchCrdtSnapshotMock).toHaveBeenCalledWith('note-1', 'token-1')
+      expect(second.hasUnmergedRemoteState('note-1')).toBe(true)
+      expect(rows()).toEqual([['note-1', 'record']])
+    })
+
+    it('#then a skipped signer drops the watermark the rest of the pass raised', async () => {
+      const { ctx, watermarks } = withWatermarkStore()
+      decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
+      getFromServerMock.mockResolvedValue({
+        updates: [
+          { sequenceNum: 40, data: 'eA==', createdAt: 1, signerDeviceId: 'gone' },
+          { sequenceNum: 41, data: 'eQ==', createdAt: 1, signerDeviceId: 'device-a' }
+        ],
+        hasMore: false
+      })
+      const coordinator = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn(async (id: string) => (id === 'gone' ? null : new Uint8Array([1]))),
+        () => true,
+        crdtBodyDebtStore(asSyncDb(testDb.db))
+      )
+
+      await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+
+      expect(watermarks.has('note-1')).toBe(false)
+      probeWithNoUpdates()
+      fetchCrdtSnapshotMock.mockRejectedValue(new Error('server error'))
+      await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+      expect(fetchCrdtSnapshotMock).toHaveBeenCalled()
+      expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+    })
   })
 })
 

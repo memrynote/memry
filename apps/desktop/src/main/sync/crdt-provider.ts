@@ -22,6 +22,7 @@ import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
 import {
   readSnapshotWatermark,
   writeSnapshotWatermark,
+  SNAPSHOT_WATERMARK_META_KEY,
   type CrdtSnapshotWatermark
 } from '@memry/sync-client/crdt-snapshot-watermark'
 import { recordCrdtPersistenceOutcome } from '../store'
@@ -204,7 +205,8 @@ export class CrdtProvider {
   private snapshotPushFn: SnapshotPushFn | null = null
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
   private snapshotCoverage: SnapshotCoverageReader = NO_COVERAGE
-  private oweRemoteMerge: ((noteId: string) => void) | null = null
+  private oweRemoteMerge: ((noteId: string, reason: 'local_only' | 'compaction') => void) | null =
+    null
   /**
    * Snapshot claims this session cannot vouch for (#2299, 07 §7.7.1): a claim
    * says the doc holds every body at or below LAST_CURSOR, which holds only for
@@ -288,7 +290,9 @@ export class CrdtProvider {
    * until that pull merges. A note leaving local-only needs it (#2299): the
    * change feed skipped its bodies without flagging it.
    */
-  setOweRemoteMerge(owe: ((noteId: string) => void) | null): void {
+  setOweRemoteMerge(
+    owe: ((noteId: string, reason: 'local_only' | 'compaction') => void) | null
+  ): void {
     this.oweRemoteMerge = owe
   }
 
@@ -517,6 +521,21 @@ export class CrdtProvider {
   }
 
   /**
+   * Drop this note's watermark from the store: a record that does not decode
+   * reads back as unknown, and unknown fetches. For a watermark shown to be
+   * ahead of the doc (#2297 review B-H2).
+   */
+  async forgetSnapshotWatermark(noteId: string): Promise<void> {
+    const persistence = this.persistence
+    if (!persistence) return
+    try {
+      await persistence.setMeta(noteId, SNAPSHOT_WATERMARK_META_KEY, null)
+    } catch (err) {
+      log.warn('Could not drop the CRDT snapshot watermark', { noteId, error: err })
+    }
+  }
+
+  /**
    * Wait for a store init that is ALREADY in flight, and do nothing when there
    * is none.
    *
@@ -691,10 +710,11 @@ export class CrdtProvider {
    * leaves rows behind.
    */
   setNoteLocalOnly(noteId: string, localOnly: boolean): void {
-    if (localOnly) this.dropOwedBody(noteId)
-    else {
+    if (localOnly) {
+      this.dropOwedBody(noteId)
+    } else {
       this.recordOwedFullState(noteId)
-      this.oweRemoteMerge?.(noteId)
+      this.oweRemoteMerge?.(noteId, 'local_only')
     }
 
     const entry = this.docs.get(noteId)
@@ -827,16 +847,21 @@ export class CrdtProvider {
     return this.docs.get(noteId)?.doc
   }
 
-  applyRemoteUpdate(noteId: string, update: Uint8Array): void {
+  /**
+   * `false` when the update was dropped (no open doc, or one closing): the
+   * caller must not record it as merged (#2297 round 2 b-M3). An update
+   * buffered by a compaction is merged when the compaction ends, so `true`.
+   */
+  applyRemoteUpdate(noteId: string, update: Uint8Array): boolean {
     const entry = this.docs.get(noteId)
     if (!entry) {
       log.warn('Received remote update for unopened doc', { noteId })
-      return
+      return false
     }
 
     if (entry.closing) {
       log.debug('Ignoring remote update for closing doc', { noteId })
-      return
+      return false
     }
 
     this.touchDoc(entry)
@@ -855,11 +880,12 @@ export class CrdtProvider {
           noteId,
           updateBytes: update.byteLength
         })
-        return
+        return true
       }
     }
 
     Y.applyUpdate(entry.doc, update, ORIGIN_NETWORK)
+    return true
   }
 
   /**
@@ -1836,12 +1862,23 @@ export class CrdtProvider {
    * Remote updates buffered for a compaction were dropped: their sequences are
    * already recorded as applied and the feed cursor may be past them, so the
    * note is owed its whole server body and flagged until that merges (#2299).
+   * The watermark is dropped either way, or a probe would call the note merged
+   * (#2297 review B-H2). With no runtime there is no one to owe: nothing is
+   * flagged, and the note's queued full-state row or the next vault sweep
+   * pulls it.
    */
   private oweDroppedRemoteUpdates(noteId: string): void {
+    void this.forgetSnapshotWatermark(noteId)
+    if (!this.oweRemoteMerge) {
+      log.warn('Dropped remote updates buffered during compaction with no sync runtime', {
+        noteId
+      })
+      return
+    }
     log.warn('Dropped remote updates buffered during compaction; owing the note a pull', {
       noteId
     })
-    this.oweRemoteMerge?.(noteId)
+    this.oweRemoteMerge(noteId, 'compaction')
   }
 
   /**

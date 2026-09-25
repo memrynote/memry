@@ -431,6 +431,8 @@ export class PullCoordinator {
     }
     if (slices.length === 0) return { stop: 'none', cursorCommitted: false }
     if (noteBodies) slices[slices.length - 1].noteBodies = noteBodies
+    const skippedForRecord = noteBodies?.skippedForRecord
+    if (skippedForRecord) for (const slice of slices) slice.skippedForRecord = skippedForRecord
     runState.latency.observePage(changes)
 
     // A changes page holds up to PULL_PAGE_LIMIT (500) refs, but POST
@@ -678,13 +680,19 @@ export class PullCoordinator {
     this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
   }
 
-  /** An applied note or journal record: its whole body joins the next CRDT batch. */
+  /**
+   * An applied note or journal record: owed its whole body (#2297), which the
+   * next CRDT batch pulls. On a record page the debt commits with the page,
+   * ahead of any cursor write (#2294).
+   */
   private queueBodyPull(
     runState: PullRunState,
     dec: { id: string; type: string; content: string },
     op: string
   ): void {
-    if (this.ctx.deps.crdtProvider && carriesCrdtBody(dec, op)) runState.crdtNoteIds.push(dec.id)
+    if (!this.ctx.deps.crdtProvider || !carriesCrdtBody(dec, op)) return
+    this.crdtSync.oweRecordBody(dec.id)
+    runState.crdtNoteIds.push(dec.id)
   }
 
   /**
@@ -694,7 +702,7 @@ export class PullCoordinator {
    * `cursorCommitted` whether the cursor went in.
    */
   private async processPage(
-    { fetchIds, inline, noteBodies }: PullSlice,
+    { fetchIds, inline, noteBodies, skippedForRecord }: PullSlice,
     runState: PullRunState,
     pageCursor: string | null
   ): Promise<{
@@ -960,9 +968,8 @@ export class PullCoordinator {
         this.schemaInvalid.record(parsed.invalid, 'envelope')
         this.schemaInvalid.record(parsed.blobMissing, 'blob_missing')
         this.schemaInvalid.resolve(settled)
-        // Flagged before any cursor write, in this transaction: the CRDT batch
-        // that pulls these bodies runs after the commit (#2294).
-        this.crdtSync.markRecordPageNotesUnmerged(crdtNoteIds)
+        // Before this slice's CRDT batch, which settles them (#2297 round 2 b-M2).
+        this.noteBodyFeed.oweSkippedForRecords(skippedForRecord, settled)
         if (noteBodies) this.noteBodyFeed.recordInPage(noteBodies)
         // After the commit still run: the corrupt re-fetch and its recovered
         // applies, the CRDT batch, and deferred retries. A cursor committed
@@ -990,7 +997,6 @@ export class PullCoordinator {
         runState.latency.flush()
       } catch (pageError) {
         pageApply.rollback()
-        if (crdtNoteIds.length > 0 || noteBodies) this.crdtSync.repersistUnmergedDebt()
         throw pageError
       }
     } finally {

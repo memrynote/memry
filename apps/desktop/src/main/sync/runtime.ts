@@ -825,7 +825,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       crdtProvider.setSnapshotCoverage((noteId, heldRevision) =>
         engine.snapshotCoverage(noteId, heldRevision)
       )
-      crdtProvider.setOweRemoteMerge((noteId) => engine.oweCrdtPull(noteId))
+      crdtProvider.setOweRemoteMerge((noteId, reason) => engine.oweCrdtPull(noteId, reason))
       // A full-state row queued with no runtime (a note leaving local-only) may
       // owe bodies the feed skipped: flagged, it claims nothing until its own
       // flush pull merged, which clears the flag. No second pull is owed.

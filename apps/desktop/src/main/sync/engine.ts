@@ -35,6 +35,7 @@ import { SyncStateManager } from './engine/sync-state-manager'
 import { QuarantineManager } from './engine/quarantine-manager'
 import { CrdtSyncCoordinator } from './engine/crdt-sync-coordinator'
 import { isKnownNote } from './note-body-apply'
+import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
@@ -187,7 +188,8 @@ export class SyncEngine extends SyncEventEmitter {
     this.crdtSync = new CrdtSyncCoordinator(
       this.ctx,
       (id) => this.pullCoordinator.resolveDeviceKey(id),
-      (id) => isKnownNote(this.ctx.deps.db, id)
+      (id) => isKnownNote(this.ctx.deps.db, id),
+      crdtBodyDebtStore(this.ctx.deps.db)
     )
     this.pushCoordinator = new PushCoordinator(this.ctx, this.stateManager)
     // Wire up the circular dependencies now that all collaborators exist
@@ -212,11 +214,6 @@ export class SyncEngine extends SyncEventEmitter {
         this.quarantine.isQuarantined(itemId, itemType) ||
         this.pullCoordinator.schemaInvalid.has(itemType, itemId)
     )
-    // Wired after the runner exists, for the same reason the coordinators above
-    // are: the coordinator raises the debt and the runner is what persists it,
-    // and neither can be constructed holding the other.
-    this.crdtSync.onUnmergedDebtChange = (hasDebt) =>
-      this.fullSyncRunner.recordCrdtUnmergedDebt(hasDebt)
     this.pullCoordinator.onNoteBodyLegacySweepReset = () =>
       this.fullSyncRunner.resetNoteBodyLegacySweep()
     this.ctx.doPush = () => this.push()
@@ -244,6 +241,9 @@ export class SyncEngine extends SyncEventEmitter {
     this.ctx.deps.ws.on('device_revoked', this.handleDeviceRevokedFromWs)
     this.ctx.deps.ws.on('certificate_pin_failed', this.handleCertPinFailed)
 
+    // Before any sync and whatever the auth or network state: the debts decide
+    // which snapshot pushes may prune, and the first full sync pays them.
+    this.fullSyncRunner.loadCrdtBodyDebts()
     this.quarantine.loadState()
 
     if (!(await this.isAuthReady())) {
@@ -467,17 +467,11 @@ export class SyncEngine extends SyncEventEmitter {
    * note — an unverifiable signer, a failed or aborted pass, or a pull that is
    * queued and has not run — so a snapshot push would delete or overwrite that
    * state. The CRDT snapshot push fn asks this before choosing an endpoint; see
-   * `CrdtSyncCoordinator.hasUnmergedRemoteState`.
-   *
-   * It is also `true` for every note while this session cannot yet name them:
-   * the per-note set does not survive a quit, so a session that starts after one
-   * that ended holding debt has to answer for the whole vault until a sweep
-   * rebuilds the flags. See `FullSyncRunner.crdtUnmergedStateUnknown`.
+   * `CrdtSyncCoordinator.hasUnmergedRemoteState`. A debt a previous session left
+   * is answered from `crdt_body_debts`, which `start()` hydrates (#2297).
    */
   hasUnmergedRemoteCrdtState(noteId: string): boolean {
-    return (
-      this.fullSyncRunner.crdtUnmergedStateUnknown || this.crdtSync.hasUnmergedRemoteState(noteId)
-    )
+    return this.crdtSync.hasUnmergedRemoteState(noteId)
   }
 
   /**
@@ -535,15 +529,16 @@ export class SyncEngine extends SyncEventEmitter {
    */
   recordSnapshotRefusal(noteId: string, refusal: SnapshotRefusal): void {
     this.snapshotRefusals.set(noteId, refusal)
-    this.crdtSync.addPendingPull(noteId)
+    this.crdtSync.addPendingPull(noteId, 'snapshot_refused')
   }
 
   /**
-   * Owe a note a whole-body pull and flag it until that pull merges: for a note
-   * leaving local-only (#2299), whose change-feed bodies were skipped.
+   * Owe a note a whole-body pull, durably, and flag it until that pull merges:
+   * a note leaving local-only (#2299), whose change-feed bodies were skipped,
+   * or remote updates a compaction dropped.
    */
-  oweCrdtPull(noteId: string): void {
-    this.crdtSync.addPendingPull(noteId)
+  oweCrdtPull(noteId: string, reason: 'local_only' | 'compaction'): void {
+    this.crdtSync.oweWholeBody(noteId, reason)
   }
 
   /**
@@ -552,7 +547,7 @@ export class SyncEngine extends SyncEventEmitter {
    * and clears the flag.
    */
   markCrdtRemoteStateUnmerged(noteId: string): void {
-    this.crdtSync.markRemoteStateUnmerged(noteId)
+    this.crdtSync.flagRemoteStateUnmerged(noteId)
   }
 
   /** The full-state flush dropped a note that no longer syncs: nothing will clear its flag. */
@@ -925,8 +920,16 @@ export class SyncEngine extends SyncEventEmitter {
       case 'crdt_updated': {
         const { noteId } = message
         if (!this.ctx.deps.crdtProvider || this.stateManager.isPaused()) break
+        // Durable only until the legacy sweep is done (#2297): from then on the
+        // feed re-serves this body above LAST_CURSOR after a crash. A frame
+        // without a cursor is an old server's, which may not serve bodies in
+        // the feed, so it stays durable (#2297 round 2).
+        const durable =
+          message.cursor === undefined ||
+          this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) !==
+            NOTE_BODY_LEGACY_SWEEP_DONE
         if (this.ctx.fullSyncActive) {
-          this.crdtSync.addPendingPull(noteId)
+          this.crdtSync.queuePulls([noteId], durable ? 'broadcast' : undefined)
         } else {
           // Marked before the pull is even scheduled. The broadcast is the
           // server telling us a peer's state for this note is not in our doc,
@@ -934,7 +937,7 @@ export class SyncEngine extends SyncEventEmitter {
           // whole span is time in which the 30s snapshot scheduler would
           // otherwise push a snapshot and prune the very update we were just
           // told about. A clean pull clears it.
-          this.crdtSync.markRemoteStateUnmerged(noteId)
+          this.crdtSync.markRemoteStateUnmerged(noteId, durable)
           // The merged/failed answer is the replay's concern; a broadcast-driven
           // pull that fails is already owed a retry by the coordinator.
           this.scheduleSync(async () => {
