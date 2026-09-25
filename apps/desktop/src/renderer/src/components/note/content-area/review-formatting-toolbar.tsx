@@ -3,15 +3,10 @@ import type { EditorState } from '@tiptap/pm/state'
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import {
   BasicTextStyleButton,
-  BlockTypeSelect,
   ColorStyleButton,
   CreateLinkButton,
   FormattingToolbar,
   FormattingToolbarController,
-  getFormattingToolbarItems,
-  NestBlockButton,
-  TextAlignButton,
-  UnnestBlockButton,
   useBlockNoteEditor,
   useComponentsContext,
   useEditorState,
@@ -22,12 +17,16 @@ import { Link2, MessageCircle } from '@/lib/icons'
 import { getLiveProseMirrorView } from './live-prosemirror-view'
 import type { ReviewSelection } from './types'
 import { ListTypeButtons } from './list-type-buttons'
+import { ToolbarBlockTypeSelect } from './toolbar-block-type-select'
+import { ToolbarMoreMenu } from './toolbar-more-menu'
 import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
 import { useT } from '@memry/i18n/renderer'
 
 interface ReviewFormattingToolbarProps {
   variant?: 'floating' | 'sticky'
   onAddComment?: (selection: ReviewSelection) => void
+  /** Pin/unpin from the overflow menu. Omitted: the menu item hides. */
+  onStickyChange?: (sticky: boolean) => void
 }
 
 export function ReviewFormattingToolbarController(props: ReviewFormattingToolbarProps) {
@@ -52,6 +51,7 @@ export function ReviewFormattingToolbarController(props: ReviewFormattingToolbar
 export function ReviewFormattingToolbar({
   variant = 'floating',
   onAddComment,
+  onStickyChange,
   ...toolbarProps
 }: FormattingToolbarProps & ReviewFormattingToolbarProps) {
   const editor = useBlockNoteEditor()
@@ -68,58 +68,48 @@ export function ReviewFormattingToolbar({
     }
   })
 
-  if (variant === 'sticky') {
-    return (
-      <FormattingToolbar {...toolbarProps}>
-        {getFormattingToolbarItems(toolbarProps.blockTypeSelectItems)}
-        <ListTypeButtons />
-        <LinkToNoteButton />
-        <ReviewToolbarButton onSelect={onAddComment} iconOnly />
-      </FormattingToolbar>
-    )
-  }
+  if (variant === 'floating' && isNodeSelection) return null
 
-  if (isNodeSelection) return null
-
+  // One row, same items and order in both variants, grouped by intent with a
+  // hairline between groups. Rarely used block actions (align, indent) live in
+  // the overflow menu so the row stays short enough to float over a line.
   return (
     <FormattingToolbar {...toolbarProps}>
-      <div className="review-formatting-toolbar-compact">
-        {/* Block type (paragraph/heading/list) is the sticky toolbar's first
-            item. Without it here, turning the sticky toolbar off left no way to
-            restyle a block from the selection popup. Renders null for blocks
-            outside the block type list (task blocks, callouts, files); the row
-            collapses via `:empty` so it costs no space then. */}
-        <div className="review-formatting-toolbar-block-type">
-          <BlockTypeSelect items={toolbarProps.blockTypeSelectItems} />
+      <div className="memry-format-toolbar" data-variant={variant}>
+        {/* Renders null for blocks outside the block type list (task blocks,
+            callouts, files); the slot collapses via `:empty`, and so does the
+            divider after it. */}
+        <div className="memry-format-toolbar-block-type">
+          <ToolbarBlockTypeSelect items={toolbarProps.blockTypeSelectItems} />
         </div>
-        <div className="review-formatting-toolbar-grid">
-          <BasicTextStyleButton basicTextStyle="bold" />
-          <BasicTextStyleButton basicTextStyle="italic" />
-          <BasicTextStyleButton basicTextStyle="underline" />
-          <BasicTextStyleButton basicTextStyle="strike" />
-          {/* Inline code (the backtick style) is in the schema and in the
-              markdown round-trip, but no toolbar surfaced it — the only way in
-              was typing backticks. */}
-          <BasicTextStyleButton basicTextStyle="code" />
-          {/* Turning selected lines into a list is the reason most people open
-              this popup (#1206), so the toggles sit next to the text styles
-              rather than behind the "Paragraph" dropdown above. */}
-          <ListTypeButtons />
-          <TextAlignButton textAlignment="left" />
-          <TextAlignButton textAlignment="center" />
-          <TextAlignButton textAlignment="right" />
-          <ColorStyleButton />
-          <NestBlockButton />
-          <UnnestBlockButton />
-          <CreateLinkButton />
-          <LinkToNoteButton />
-        </div>
-        <div className="review-formatting-toolbar-actions">
-          <ReviewToolbarButton onSelect={onAddComment} />
-        </div>
+        <ToolbarDivider />
+        <BasicTextStyleButton basicTextStyle="bold" />
+        <BasicTextStyleButton basicTextStyle="italic" />
+        <BasicTextStyleButton basicTextStyle="underline" />
+        <BasicTextStyleButton basicTextStyle="strike" />
+        {/* Inline code (the backtick style) is in the schema and in the
+            markdown round-trip, but no toolbar surfaced it — the only way in
+            was typing backticks. */}
+        <BasicTextStyleButton basicTextStyle="code" />
+        <ColorStyleButton />
+        <ToolbarDivider />
+        {/* Turning selected lines into a list is the reason most people open
+            this popup (#1206), so the toggles stay on the row rather than
+            behind the block type dropdown. */}
+        <ListTypeButtons />
+        <ToolbarDivider />
+        <CreateLinkButton />
+        <LinkToNoteButton />
+        {onAddComment && <ToolbarDivider />}
+        <ReviewToolbarButton onSelect={onAddComment} />
+        <ToolbarMoreMenu isPinned={variant === 'sticky'} onPinnedChange={onStickyChange} />
       </div>
     </FormattingToolbar>
   )
+}
+
+function ToolbarDivider() {
+  return <span className="memry-format-toolbar-divider" aria-hidden="true" />
 }
 
 /**
@@ -244,13 +234,7 @@ function LinkToNoteButton() {
   )
 }
 
-function ReviewToolbarButton({
-  onSelect,
-  iconOnly = false
-}: {
-  onSelect?: (selection: ReviewSelection) => void
-  iconOnly?: boolean
-}) {
+function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelection) => void }) {
   const { t } = useT('notes')
   const Components = useComponentsContext()
   const editor = useBlockNoteEditor()
@@ -404,12 +388,10 @@ function ReviewToolbarButton({
           runAction()
         }}
       >
-        {/* The compact popup is a single full-width button, so the icon alone
-            reads as an unlabelled glyph in the corner — spell it out there.
-            The sticky toolbar sits inline with the other icon-only buttons;
-            spelling it out there is what pushed it onto its own row. Either
-            way `label` stays for the aria-label/tooltip. */}
-        {!iconOnly && label}
+        {/* The one labelled button on the row: it is the only action that
+            leaves the text (it opens the review rail), and an icon alone read
+            as an unlabelled glyph. */}
+        {label}
       </Components.FormattingToolbar.Button>
     </span>
   )

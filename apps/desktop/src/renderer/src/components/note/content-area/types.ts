@@ -127,6 +127,8 @@ export interface ContentAreaProps {
   autoFocus?: boolean
   /** Whether to show sticky formatting toolbar (always visible above editor) */
   stickyToolbar?: boolean
+  /** Persists a pin/unpin chosen from the toolbar's overflow menu */
+  onStickyToolbarChange?: (sticky: boolean) => void
   /** Whether to enable browser spell checking in the editor */
   spellCheck?: boolean
   /** Callback when content changes (returns blocks) */

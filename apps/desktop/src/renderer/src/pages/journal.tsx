@@ -228,7 +228,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Editor settings — width follows the global setting (Normal / Full) unless
   // the user overrides it for Journal, which applies to every journal page.
-  const { settings: editorSettings } = useEditorSettings()
+  const { settings: editorSettings, updateSettings: updateEditorSettings } = useEditorSettings()
 
   const [journalWidthOverride, setJournalWidthOverride] = useState<boolean | null>(() => {
     const saved = localStorage.getItem('memry_journal_full_width')
@@ -419,9 +419,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       // one must NOT focus the editor: stealing focus unmounts the menu between
       // mousedown and mouseup, so the item's click never fires. Mirror the
       // marquee hook's exclusion list, plus menu roles for nested submenus.
+      // `listbox` is the toolbar's block type dropdown: it portals into the
+      // editor's portal element, which sits inside this zone, so a press on an
+      // option used to land here, jump the caret to the end and drop the pick.
       if (
         target.closest(
-          '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-menu-dropdown, [role="menu"]'
+          '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-menu-dropdown, [role="menu"], [role="listbox"]'
         )
       )
         return
@@ -1097,6 +1100,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                     : t('editor.placeholder.past')
                               }
                               stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                              onStickyToolbarChange={(sticky) =>
+                                void updateEditorSettings({
+                                  toolbarMode: sticky ? 'sticky' : 'floating'
+                                })
+                              }
                               spellCheck={editorSettings.spellCheck}
                               onContentChange={handleContentChange}
                               onMarkdownChange={handleMarkdownChange}
