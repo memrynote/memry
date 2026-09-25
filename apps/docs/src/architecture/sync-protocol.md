@@ -760,7 +760,7 @@ terminates itself after 31s of silence, so a half-open connection reports discon
 tick would trust it. Any drop between ticks bumps the generation and restores the every-tick pull,
 and a reconnect pulls on its own. A 5-minute floor caps the skipping, because a server that stops
 broadcasting is indistinguishable from a quiet vault from the client side. The stale-lock watchdog
-and the owed CRDT sweep run on every tick regardless.
+runs on every tick regardless.
 
 Network status feeds the same scheduling. Electron exposes no main-process event for `net.online`,
 so it is polled — every 5 seconds while offline, every 30 seconds while online, dropping back to
@@ -1133,8 +1133,8 @@ that hit it.
 
 ### The vault sweep's conditional baseline
 
-The vault-wide sweep uses `snapshotMeta` to stop re-downloading baselines a device already holds. It
-runs each chunk in two phases:
+The paced drain (the legacy sweep and durable debts, #2421) uses `snapshotMeta` to stop
+re-downloading baselines a device already holds. It runs each chunk in two phases:
 
 - **Probe.** One `POST /sync/crdt/updates/batch` for the chunk with `limit: 1`, asking only whether
   anything moved. No document is opened, no snapshot is fetched, nothing is decrypted. A note whose
@@ -1175,9 +1175,8 @@ The key is additive. A store written by a build that predates it has no record, 
 what it cost before. A newer store read by an older build is inert: the older build never asks for
 the key. No protocol change, no D1 schema change, no IPC contract change.
 
-Two properties this does **not** change. The sweep stays exhaustive — every note in a chunk is still
-named in the probe, because the sweep is the only channel by which a body-only remote edit reaches a
-device that missed the broadcast; this changes what a note costs, never whether it is visited. And
+Two properties this does **not** change. The drain stays exhaustive — every note in a chunk is still
+named in the probe; this changes what a note costs, never whether it is visited. And
 the single-note pull path (`GET /sync/crdt/snapshot/:noteId` then `GET /sync/crdt/updates`) stays
 unconditional: it reports whether the server's state was fully merged, and the pending-note replay
 turns that report into a snapshot push, which prunes peers' updates.
@@ -1272,11 +1271,12 @@ attempt.
 ### CRDT write notifications
 
 Both CRDT write paths notify peers the same way. Once the write is durable, the server broadcasts
-`crdt_updated` carrying the note id to every socket on that vault except the pushing device, and
-each peer pulls that one note. The frame also carries the highest `server_cursor` the write reserved,
-omitted when it stored nothing new; clients must not use it as their pull cursor. Nothing else carries a body — the record feed moves metadata only —
-so a body write that does not broadcast stays invisible until the receiving device's next vault
-sweep, which is up to 15 minutes away.
+`crdt_updated` carrying the note id to every socket on that vault except the pushing device. The
+frame also carries the highest `server_cursor` the write reserved, omitted when it stored nothing
+new; clients must not use it as their pull cursor. A desktop whose legacy body sweep is done treats
+a frame with a cursor as a wake and pulls the change feed, which serves the body (#2421); before
+that, or for a frame without a cursor, it pulls that one note. A body write that does not broadcast
+stays invisible until the receiving device's next pull.
 
 The symmetry matters most for `POST /sync/crdt/snapshot`, which is not only the oversized-update
 fallback. Edits made while signed out do enter the local Y.Doc, but with no session they are never
@@ -1569,24 +1569,14 @@ on this device. `maybeMarkBootstrapFullText()` fires only when four things hold 
 `sweepSettledOnThisEngine`, `bootstrapPullSucceeded`, no paced CRDT chunk in flight, and both the
 paced queue and the pending set empty.
 
-`sweepSettledOnThisEngine` deliberately does **not** mean "a sweep literally ran". The sweep
-throttle reads the persisted `LAST_CRDT_SWEEP_AT` stamp while fresh-device detection reads
-`LAST_CURSOR`, so a genuine first sync can find the sweep throttled and never run one — and a mark
-gated on a sweep having run would then never fire, holding the window and the elevated session open
-until the TTL expired. The flag is set when a sweep is queued **and** when the runner is online and
-the throttle declined, because that is the other way the question "is anything outstanding?" gets a
-real answer. Offline is not one of those ways: it means "nothing is fetchable", never "nothing is
-outstanding".
+`sweepSettledOnThisEngine` is set once a full sync ends online with a CRDT store, after queuing the
+legacy sweep if it was owed (#2421 removed the throttled vault sweep it used to wait on). Offline
+does not settle it: it means "nothing is fetchable", never "nothing is outstanding".
 
 `bootstrapPullSucceeded` is the other half, and is why `PullCoordinator.pull()` and
 `SyncEngine.pull()` return `Promise<boolean>` rather than `Promise<void>`. On a fresh device an
-empty index DB makes every sweep drain trivially whether or not the pull failed, so "queue empty"
+empty index DB makes every drain trivially empty whether or not the pull failed, so "queue empty"
 only becomes "bodies delivered" once a pull has reported that it actually delivered.
-
-`LAST_CRDT_SWEEP_AT` itself is written by `stampSweptVault()` when the paced drain has finished the
-vault — nothing in flight, nothing queued, nothing owed back to the pending set — not when the
-sweep enqueued it. `unstampedSweepAt` holds the throttle interval closed in between, so a process
-killed mid-drain does not leave a stamp claiming a drain that never completed.
 
 **Releasing the elevated session** is a resource concern, and takes any of these paths:
 

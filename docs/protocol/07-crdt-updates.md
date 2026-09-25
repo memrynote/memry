@@ -370,8 +370,8 @@ Cost: a note whose pre-`0011` rows sit above its pinned watermark keeps them.
 - **Desktop** claims `C = LAST_CURSOR` only when all of: the legacy body sweep
   is `done` (§7.17.5), the cursor is above 0, the note holds no tracked
   unmerged state (a `crdt_updated` wake whose cursor `LAST_CURSOR` has not
-  reached counts), the debt table is usable, the feed never dropped a body of
-  the id as rowless (`withheld`), and no refusal of this note is outstanding
+  reached counts), the debt tables are usable, the feed never dropped a body of
+  the id as rowless (a `crdt_body_withheld` row), and no refusal of this note is outstanding
   (`SyncEngine.snapshotCoverage`, `apps/desktop/src/main/sync/engine.ts:511`).
   - `encodeForPush` (`apps/desktop/src/main/sync/crdt-provider.ts:326`) is the
     only way to produce push bytes: it reads the base revision first (the
@@ -1144,14 +1144,19 @@ Per page of a declaring run
   - the record did not merge as a conflict;
   - the note is not already flagged as unmerged (a debt, a failed pull, a
     broadcast);
-  - the debt table is usable, so what the feed owed survives a restart;
+  - the debt tables are usable, so what the feed owed survives a restart;
   - the feed never dropped a body of the id because no row existed yet. Such
-    a drop is remembered as a `withheld` row in `crdt_body_debts`: not a debt
-    (never listed, due or pulled, so no rowless id is owed), and read only
-    here and by the claim rule (§7.7.1). A real debt of the note takes the
-    row over, and the whole-body walk that settles it, or a queued pull that
-    drops the id as rowless, clears it. Older builds read the row as an
-    ordinary debt and settle it by a pull or a rowless drop.
+    a drop is remembered in its own table, `crdt_body_withheld` (migration
+    `0062`), apart from the debts: nothing lists, defers or pulls it, so no
+    rowless id is owed. Every drop site writes it with the provider's claim
+    hold in one helper (`NoteBodyFeed.dropRowlessBody`): a body entry with no
+    row, a body whose row went while it landed, and a body skipped for a
+    record on the page that did not apply and left no row. A withheld id
+    reports unmerged (§7.13.2), so its pushes take `/sync/crdt/updates` and
+    never prune. The whole-body walk that settles the note's debt clears it,
+    and so does an applied delete tombstone for the id, row or not; a queued
+    pull that drops the id as rowless leaves it. A table that is missing
+    degrades to a session set. Older builds never read the table.
 
   Every body row of such a note above `LAST_CURSOR` is then landed by the feed
   or owed by it, and a delta the doc cannot take is owed as a missing base. A
@@ -1205,10 +1210,14 @@ Per page of a declaring run
     The note reports unmerged (§7.13.2) while `LAST_CURSOR` is below it; from
     then on its body landed or left the note flagged or owed, so the entry is
     dropped and no walk is needed to clear it.
-  - **The latch.** A wake refused because a full sync runs, or whose pull
-    ended while one ran, latches its highest cursor. The full sync's end
-    schedules the wake pull if `LAST_CURSOR` is still below it (a wake
-    without a cursor always pulls). The reconnect re-pull of open docs and
+  - **The pending wake cursor.** Every wake raises one value,
+    `pendingWakeCursor`, to its cursor (infinity without one). Non-null means
+    a wake pull is queued or a running full sync owns it, so a later wake
+    only raises it. The queued pull takes and clears it as it starts. A pull
+    that a full sync refused or overlapped puts it back, and the full sync's
+    end schedules the wake pull while it is above `LAST_CURSOR` (infinity
+    always pulls). A reconnect that a full sync refuses raises it to
+    infinity. The reconnect re-pull of open docs and
     the 15-minute, reconnect, forced and manifest vault sweeps are removed; a
     reconnect only pulls the feed. Their `lastCrdtSweepAt` row is left in place
     for older builds, which read it as their sweep throttle. Applying a Yjs
@@ -1335,13 +1344,23 @@ that its doc has not merged
   index cache read fails (it falls back to the data DB's ids), never fails
   engine start.
 - **A compaction with no sync runtime** owes the note durably all the same
-  (#2421): the provider writes the `compaction` debt straight to the data DB,
-  which the next engine start hydrates. With no data DB open either, it keeps
-  the note id in its CRDT store (a reserved meta document), and owes it the
-  moment a sync runtime attaches.
-- **Claims need a durable table (#2421).** While the table is unusable, a
-  debt raised this session dies with it, so no snapshot push claims a cursor
-  and no record takes the exception above.
+  (#2421). The provider binds its vault's data DB handle and vault id when
+  its store opens, and writes the `compaction` debt there while that handle
+  is the open one and the table is usable; the next engine start hydrates
+  it. Otherwise (the DB closed, or another vault opened since) it keeps the
+  note id in its CRDT store (a reserved meta document), and owes it the
+  moment a sync runtime attaches. The marker's read-modify-writes and that
+  drain run one at a time, and the marker is cleared only when every owe was
+  durable.
+- **Claims need durable tables (#2421).** While either table is unusable, what
+  was raised this session dies with it, so no snapshot push claims a cursor
+  and no record takes the exception above. Each handle is probed once and the
+  answer latched; a table found unusable later turns it off.
+- **Teardown (#2421).** The engine's teardown disposes the full-sync runner:
+  its timers are cleared and its re-queue and deferral hooks unwired, and no
+  flush, pump or floor timer runs until a later full sync. A chunk that the
+  teardown aborts re-queues its notes, and nothing pulls them for a vault the
+  engine no longer owns.
 - **Downgrade round trip (#2421).** Every `LAST_CURSOR` write also writes
   `noteBodyFeedCursor` with the same value, in the same transaction. At engine
   start a `LAST_CURSOR` that differs was moved by another build, which does not
@@ -1349,6 +1368,13 @@ that its doc has not merged
   `noteBodyLegacySweep` is deleted: the legacy sweep, the per-note
   `crdt_updated` pull and claims-off re-arm. A missing `noteBodyFeedCursor` is
   this build's first run: it is written and nothing is reset.
+  - **Residual (accepted).** That first run trusts a `done` written before
+    it, even when another build moved `LAST_CURSOR` since past body rows it
+    never pulled: a device that reached `done` on a build with the feed,
+    downgraded to one before #2297, then upgraded straight to this build.
+    It cannot be told apart from an ordinary first upgrade, so nothing is
+    reset, and those rows reach the doc only through a later whole-body pull
+    of the note.
 - **`crdtUnmergedDebt` is a write-only mirror.** It reads `'1'` while the table
   has a row and `'0'` once it is empty, for builds before the table, which
   route every push around the prune on `'1'`. `crdtBodyDebtMirrorAt` records the

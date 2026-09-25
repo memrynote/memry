@@ -343,10 +343,13 @@ it every body row (its one-time legacy sweep is done, chapter 07 §7.17.5) and
 the frame carries a `cursor`: the same coalesced wake pull as
 `changes_available`, with the same skip filter, and no per-note pull. The feed
 delivers the body. Until `LAST_CURSOR` reaches the frame's cursor the note
-counts as unmerged, so no snapshot push prunes the write just announced. A
-wake refused because a full sync runs is latched and pulled when that sync
-ends, if the cursor is still ahead. Every pull outside a full sync, the wake's
-included, then pays the body debts it owed. Before `done`, and for a frame
+counts as unmerged, so no snapshot push prunes the write just announced. Every
+wake raises one pending wake cursor (`pendingWakeCursor`; a wake without a
+cursor, or a reconnect a full sync refused, raises it to infinity). The queued
+wake pull takes it as it starts; a pull a full sync refused or overlapped puts
+it back, and the full sync's end pulls again while it is above `LAST_CURSOR`.
+Every pull outside a full sync, the wake's included, then pays the body debts
+it owed. Before `done`, and for a frame
 without `cursor`, it pulls the named note.
 
 **A device is excluded from its own broadcast** by `excludeDeviceId`
