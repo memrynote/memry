@@ -256,17 +256,19 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry \
 
 ## Phase 0: setup and facts (serial)
 
-- [ ] JP001 Create the worktree and branch from `main` (§0.3). Install, build
+- [x] JP001 Create the worktree and branch from `main` (§0.3). Install, build
       the xcframework, confirm `memry-B` (§0.3.1), then build, install and
       launch the app on it with `/tmp/memry-dd-B` and reach the vault through
       the §0.4 sign-in (`memry-B` starts signed out). Record the baseline: `cargo test -p memry-core` counts, the
       Unit/Conformance/UI plan counts, `vectors:check` class count.
-- [ ] JP002 Read everything in goal.md "Read first", plus
+      Evidence: worktree `.worktrees/ios-journal-parity` on `feat/ios-journal-parity` @77d23f213 (origin/main); desktop `.env*` copied from the main checkout; `pnpm install` ok; `build-xcframework.sh --release` ok, generated Swift unchanged. `memry-B` 87D1093B-2676-4B04-9FCF-3479FF10859D present. Signed in (OTP + recovery phrase), MemryNote vault open: `apps/ios/SpikeEvidence/journal-parity/JP001-vault-open.png`. Baseline: `cargo test -p memry-core` 920 passed / 0 failed / 1 ignored; Unit 689 tests in 101 suites passed; Conformance 27 tests in 7 suites passed; UI 8 executed, 1 skipped, 0 failures; `vectors:check` passed (16 classes).
+- [x] JP002 Read everything in goal.md "Read first", plus
       `docs/protocol/` chapters 10 (§10.6.1 body window), 12 (§12.1–12.2 seed
       carve-out) and 13 (§13.7.2 journal, §13.7.12 reminder),
       `specs/002-native-foundation-ios/spec.md` FR-053–FR-055, and
       `apps/ios/Memry/Features/Notes/*` + `Editor/*` headers.
-- [ ] JP003 Verify each fact below and write it to §5 with the file:line that
+      Evidence: read goal.md "Read first" list: root/iOS/desktop AGENTS.md, Paper artboards 00 (30F-0) and 01 (38U-0) in full plus JSX of J01-J13 (saved for the run under /tmp/jp-paper); spec 004 §0.6/§6; core `domain/{journal,body_write,notes/*,templates,reminders/mod,properties,tags,reads,note_meta}.rs`, `api/{vault,notes,notes_write,search}.rs`; desktop `sync/item-handlers/journal-handler.ts`, `vault/journal.ts`, `sync/crdt-writeback.ts`, `vault/watcher.ts`, `hooks/use-journal-entry.ts`, `lib/journal-template-resolution.ts`, `journal-queries.ts`, `journal-utils.ts`, reminder hooks/presets; protocol §10.6.1, §12.1-12.2, §13.7.2, §13.7.12; spec 002 FR-053-055; iOS `Features/Notes/*` and `Editor/*` headers. Facts land in §5 (JP003).
+- [x] JP003 Verify each fact below and write it to §5 with the file:line that
       proves it. Update §5's pre-filled facts if they are wrong.
   - a. **Body safety on desktop.** What desktop does to the vault file
     and to the open Y.Doc when a journal record update arrives with
@@ -295,8 +297,10 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry \
     and how the phone reads a day whose body is not pulled.
   - i. Whether `crates/memry-cli` can sign in, pull and push against staging
     today (for JP029).
-- [ ] JP004 Add an entry to `specs/002-native-foundation-ios/spec-defects.md`:
+    Evidence: §5 "JP003 re-check" + facts a-i, each with file:line. Outcome that drives the plan: (a) record-only writes leave a peer desktop file body-less until the next CRDT write-back (G0 decides), (c) no markdown→Y.Doc path outside desktop, so JP022a is required, (g) phone backlinks ignore journals.
+- [x] JP004 Add an entry to `specs/002-native-foundation-ios/spec-defects.md`:
       FR-054 "created if absent" is superseded by D2, with the reason.
+      Evidence: `specs/002-native-foundation-ios/spec-defects.md` entry 142 (FR-054 "created if absent" superseded by D2), footer updated.
 
 **Commit** Phase 0 docs only.
 
@@ -684,6 +688,101 @@ adds a–i.
 - **CLI**: `crates/memry-cli` has login, unlock, pull, push and
   `notes edit <id> --append` (`src/cli.rs` `HELP`). It has no journal commands.
 
+JP003 re-check (2026-09-25): every pre-filled fact above holds at the cited
+lines (`sync-payloads.ts:279-294`, `journal-handler.ts:66,110,221`,
+`journal.rs:88,141`, `body_write.rs:48,75`, `0002_projections.sql:72-81`,
+`settings-sync.ts:75-88`). Two refinements: the journal projection has no tag
+column, tags project into `note_tags` keyed by the journal id
+(`projectors/notes.rs:133-180`); `templates.rs`'s module doc (lines 17-23)
+is stale, `properties_of` (`:214-259`) does apply template properties to a
+note by `name → value`.
+
+- **a. Body safety on desktop.** A remote journal upsert writes
+  `data.content ?? ''` as the file body, on update (`journal-handler.ts:66`)
+  and create (`:110`), with the incoming `tags`/`properties`. `content: null`
+  therefore **empties the vault file's body** while the Y.Doc keeps it. The
+  handler then calls `syncNoteToCache` with the new bytes, so the watcher's
+  hash check (`vault/watcher.ts:632`) sees nothing new and never feeds the
+  empty body into the Y.Doc; the CRDT keeps the text. What restores the file
+  is the **CRDT write-back**: every body or `meta` update that reaches the doc
+  (`crdt-provider.ts:1297-1298` for network and IPC origins) schedules
+  `writebackJournal` (`crdt-writeback.ts:729-846`), which re-serialises the
+  Y.Doc over the file. Desktop's own `content: null` updates are safe because
+  desktop edits tags through the Y.Doc `meta` map as well
+  (`mergeJournalFrontmatter` reads `getYjsTags(doc)`, `:959-972`), so a peer's
+  record update is followed by a CRDT update that writes the body back. A
+  record-only write (tags or properties with no CRDT update) has no such
+  follow-up: the peer's file stays body-less until the next body edit. The
+  open editor is bound to the Y.Doc, not the file, so its text survives. G0
+  (JP029) measures this.
+- **b. Remote create with `content: ""` plus CRDT updates.** Yes. The create
+  writes a body-less file (`journal-handler.ts:110`); the CRDT pull opens the
+  doc without seeding (`engine/crdt-sync-coordinator.ts:602`), applies the
+  updates, and the write-back (`crdt-writeback.ts:729-846`) writes the body.
+  With the updates first and no cache row, `writebackJournal` creates the file
+  from the doc (`:807-845`).
+- **c. Seeding from markdown.** No markdown → Y.Doc path exists outside the
+  desktop editor bundle (`sync/blocknote-converter.ts`, `ServerBlockNoteEditor`;
+  chapter 12 §12.1: the WebView guest's `doc-load.seedMarkdown`). The iOS app
+  has no WebView guest and never reads `seed_markdown` (no reference in
+  `apps/ios/Memry`). A note made from a template on the phone has an empty
+  update log, so `Notes.read` answers `present: false`
+  (`reads.rs:529-530`) and the phone shows the not-on-this-phone state
+  (`NoteReadParts.swift:38`). Typing into that note writes blocks into an
+  empty Y.Doc; desktop then never seeds from the file (`seedFromMarkdown`
+  runs only on an empty fragment, `crdt-provider.ts:1061`), and its next
+  write-back replaces the template text in the file with the phone's blocks.
+  **So a template-seeded day would be unwritable (or lossy) on the phone that
+  seeded it: JP022a is required.**
+- **d. `body_write::edit_block` for a journal id.** Refused today:
+  `reads::note_exists` checks `notes` only (`reads.rs:413-424`,
+  `body_write.rs:48`). The change is queued as
+  `Change::crdt_update("note", id, …)` (`body_write.rs:75`), but the item type
+  of a CRDT change never reaches the wire: `push_crdt` seals by `doc_id` only
+  (`sync/push.rs:290-320`), and the pull stores updates by document id
+  (`crdt/mod.rs:21-22`, `sync/body_pull.rs`). Journal bodies are pulled with
+  notes (`sync/apply.rs:109` `DOCUMENT_TYPES`). A journal edit therefore needs
+  a liveness check over `journal_entries` and can key the change `journal` or
+  `note` with no wire difference; JP020 keys it `journal` for clarity.
+- **e. Journal reminder payload.** `targetType: 'journal'`, `targetId` = the
+  date, `remindAt` ISO, `note` optional, no `title`
+  (`hooks/use-journal-reminders.ts:101-133`). `useSetOrReplaceReminder`
+  (`hooks/use-set-or-replace-reminder.ts:28-45`): no active reminder →
+  create; otherwise `updateReminder({id, remindAt, note: note ?? null})` on
+  the next active one. Presets `journalPresets`
+  (`components/reminder/reminder-presets.ts:191-230`): 1 week, 1/3/12 months,
+  at 09:00. Desktop's notification title is the reminder title or the target
+  title (the date for journals, `main/lib/reminders.ts:117`), body is the
+  reminder `note` when set, else "Journal reminder" (`:317-330`).
+- **f. Counts and thresholds.** Heatmap, month and year stats read
+  `note_cache.characterCount` (`journal-queries.ts:71-98,108-150`), which is
+  the parsed markdown body's `.length` (`vault/journal.ts` `readJournalEntry`,
+  `content.length`, UTF-16 units). Levels: 0 → 0, ≤100 → 1, ≤500 → 2,
+  ≤1000 → 3, else 4 (`journal-api.ts:319-325`). Year `averageLevel` is SQL
+  `AVG` of per-day levels rounded to 2 decimals (`journal-queries.ts:124-149`).
+  The Year view's own cards use `getMonthStats` (`lib/journal-utils.ts:332-382`):
+  `entryCount` = days with `characterCount > 0`, `totalChars` = sum,
+  activity dots = max level per 7-day block, at most 5.
+- **g. Wiki links and journal backlinks.** Desktop titles a journal with its
+  date (`journal-handler.ts:72` `title: entry.date`), so `[[2099-06-15]]`
+  resolves by title to the journal row; a `j<date>` id that resolves to no
+  note opens the journal on that date (`lib/wikilink-resolver.ts:31-47`,
+  `dateFromJournalId`, `journal-api.ts:348-351`). The phone's
+  `resolve_wiki_target` searches `notes` only (`note_meta.rs:214-260`), and
+  `Search.backlinks` resolves the target title from `notes` and joins sources
+  from `notes` (`api/search.rs:137-230`): **a journal id gets no backlinks
+  and a journal source is dropped.** JP026 fixes both.
+- **h. Body window.** First sync pulls the bodies of notes **and journals**
+  modified in the last 30 days, newest first, capped at 500
+  (`sync/first_sync.rs:75,84`, `first_sync_store.rs:42-66`); later passes
+  pull the bodies of records that arrived (`api/sync/pass.rs:11-13`). An older
+  day reads `present: false` and the note page offers the on-demand fetch
+  (`NoteRead.swift:132`, `NoteReadView.swift:279`).
+- **i. CLI.** `memry-cli` signs in (`login --email`, OTP), unlocks from a
+  phrase file, pulls and pushes one vault, and appends a paragraph to a note
+  (`src/cli.rs:25-49`). It reaches staging by default (`--server staging`).
+  The live staging run is JP029's first step.
+
 ## 6. Decisions log (agent-made choices during the run)
 
 <!-- date — task id — choice — why -->
@@ -691,6 +790,8 @@ adds a–i.
 - 2026-09-25 — planning — Paper J08 originally drew "New reminder" as a second
   reminder. It now reads "Change reminder" with the one-reminder copy, to match
   desktop's set-or-replace rule (D8).
+- 2026-09-25 — JP001 — Found, not fixed (outside this plan): on the recovery-phrase unlock screen, with the keyboard up, the chooser's "Sign out" button (frame y 480-532) overlays the "Unlock" button (y 478-530), so a centred tap on Unlock opens the sign-out confirmation. The driver taps Unlock at `dy: 0.01`. Vault rows still need their label tapped (spec 004 §6 TP001). Screenshots from `XCUIScreen` can lag a few seconds; the accessibility tree is the reference for state.
+- 2026-09-25 — JP003 — JP022a is in scope: the phone has no markdown → Y.Doc path, so a template-seeded day would be unwritable (or lossy on desktop's next write-back) on the phone that seeded it (§5 c).
 
 ## 7. Blockers
 
