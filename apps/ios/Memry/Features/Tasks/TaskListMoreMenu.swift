@@ -97,7 +97,7 @@ struct TaskListMoreMenu: View {
             }
 
             Section {
-                Button(TasksCopy.moreTaskSettings, systemImage: "gearshape") { router.open(.settings) }
+                Button(TasksCopy.moreTaskSettings, systemImage: "gearshape") { router.openSettings(.tasks) }
                     .accessibilityIdentifier("tasks.settingsLink")
             }
         } label: {

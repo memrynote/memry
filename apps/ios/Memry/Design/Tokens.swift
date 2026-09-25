@@ -209,7 +209,10 @@ enum Tokens {
         /// the accent failing AA on the one surface it is read on most. This
         /// is the same hue darkened until it clears 4.5:1, so a link still
         /// reads as Memry's orange rather than as the platform blue.
-        static let tint = AdaptiveColor(light: 0xB4_43_09, dark: 0xF4_A2_62)
+        ///
+        /// Spec 006 F7: derived from the user's accent (`AccentColor.palette`);
+        /// the default orange keeps `#B44309`.
+        static var tint: AdaptiveColor { AccentRuntime.palette.ink }
     }
 
     // MARK: Boundaries
@@ -251,10 +254,12 @@ enum Tokens {
         ///
         /// **Fill only.** At 2.80:1 on the light canvas it cannot carry text
         /// or a focus boundary, which is why `Line.focus` exists.
-        static let base = AdaptiveColor(light: 0xF9_73_16, dark: 0xF9_73_16)
+        ///
+        /// Spec 006 F7: the user's synced accent, `#f97316` until one is set.
+        static var base: AdaptiveColor { AccentRuntime.palette.fill }
         /// The label on a tint fill. Ink rather than white: white on `#f97316`
         /// is 2.80:1 and fails AA.
-        static let foreground = AdaptiveColor(light: 0x1A_1A_1A, dark: 0x1A_1A_1A)
+        static var foreground: AdaptiveColor { AccentRuntime.palette.foreground }
     }
 
     // MARK: Spacing

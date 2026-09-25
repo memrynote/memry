@@ -194,7 +194,8 @@ final class AuthStartup {
             // Phase 3's writes: the core derives this device's identity from
             // the signing key here, so a browse screen built without it can
             // read the vault but never write to it.
-            secureStore: Keychain(emitter: emitter, items: keychainItems)
+            secureStore: Keychain(emitter: emitter, items: keychainItems),
+            session: session
         )
     }
 

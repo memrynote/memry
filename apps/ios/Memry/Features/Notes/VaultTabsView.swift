@@ -2,7 +2,8 @@ import MemryCore
 import SwiftUI
 
 // The shell an opened vault lives in: the five tabs the product has, with the
-// four that are not built yet saying so.
+// ones that are not built yet saying so. Home, Tasks and Journal hide when
+// turned off in Settings › Features (spec 006).
 //
 // **A tab that is not built says what is true, and is not removed.** Kaan's
 // call: ship the bar now. `DESIGN.md` forbids a dead control, not an honest
@@ -20,14 +21,20 @@ import SwiftUI
 // R15 requires; a second stack wrapped around it here would push its screens
 // into the wrong one.
 
-struct VaultTabsView<Notes: View, Tasks: View>: View {
+struct VaultTabsView<Notes: View, Tasks: View, More: View>: View {
     @ViewBuilder let notes: () -> Notes
     /// The Tasks tab (spec 004 TP031), built by the caller that holds the
     /// vault, keychain and sync.
     @ViewBuilder let tasks: () -> Tasks
+    /// More › Settings (spec 006 F1), built by the caller with the vault's
+    /// settings context.
+    @ViewBuilder let more: () -> More
     /// Cross-tab navigation: search, note task blocks and reminder taps open a
     /// task through it.
     @State private var router = TasksRouter()
+    /// Features (spec 006 ST44): a module turned off loses its tab. Notes and
+    /// More are always there.
+    @State private var local = LocalSettings.shared
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
 
@@ -36,23 +43,29 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
             Tab("Notes", systemImage: "doc.text", value: VaultTab.notes) {
                 notes()
             }
-            Tab("Home", systemImage: "house", value: VaultTab.home) {
-                ComingSoonTab(
-                    title: "Home",
-                    detail: "The home board with your widgets is on your computer for now."
-                )
+            if local.isOn(.home) {
+                Tab("Home", systemImage: "house", value: VaultTab.home) {
+                    ComingSoonTab(
+                        title: "Home",
+                        detail: "The home board with your widgets is on your computer for now."
+                    )
+                }
             }
-            Tab("Tasks", systemImage: "checkmark.circle", value: VaultTab.tasks) {
-                tasks()
+            if local.isOn(.tasks) {
+                Tab("Tasks", systemImage: "checkmark.circle", value: VaultTab.tasks) {
+                    tasks()
+                }
             }
-            Tab("Journal", systemImage: "book", value: VaultTab.journal) {
-                ComingSoonTab(
-                    title: "Journal",
-                    detail: "The journal is on your computer for now. Journal entries sync and can be read as notes."
-                )
+            if local.isOn(.journal) {
+                Tab("Journal", systemImage: "book", value: VaultTab.journal) {
+                    ComingSoonTab(
+                        title: "Journal",
+                        detail: "The journal is on your computer for now. Journal entries sync and can be read as notes."
+                    )
+                }
             }
             Tab("More", systemImage: "ellipsis", value: VaultTab.more) {
-                MoreTab()
+                more()
             }
         }
         .environment(router)
@@ -66,69 +79,13 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
         .onDisappear {
             Task { await ReminderScheduler.shared.clearAll() }
         }
-        // The More tab holds the way out, so the shell stops drawing it over
-        // every screen of the vault.
+        // Turning Tasks off stops its reminders on this phone (flow lane 06).
+        .onChange(of: local.isOn(.tasks)) { _, on in
+            if !on { Task { await ReminderScheduler.shared.clearAll() } }
+        }
+        // Sign out lives on Settings › Account (F1), so the shell stops
+        // drawing it over every screen of the vault.
         .preference(key: SignOutHostedKey.self, value: true)
-    }
-}
-
-/// The account's own page inside a vault: Settings > Tasks, what is not on
-/// the phone yet, and the way out.
-private struct MoreTab: View {
-    @Environment(AccountViewModel.self) private var account: AccountViewModel?
-    @Environment(TasksRouter.self) private var router
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                tasksSettingsRow
-                ContentUnavailableView {
-                    Label("More", systemImage: "hourglass")
-                } description: {
-                    Text("Settings, tags, bookmarks and templates are on your computer for now.")
-                }
-                if let account {
-                    SignOutBar(model: account)
-                }
-            }
-            .navigationTitle("More")
-            .background(Tokens.Canvas.background.color)
-        }
-    }
-
-    /// Settings > Tasks lives in the Tasks tab's stack (it needs the tasks
-    /// store), so this row switches there and shows it.
-    private var tasksSettingsRow: some View {
-        Button {
-            router.selectedTab = .tasks
-            router.path = [.settings]
-        } label: {
-            HStack(spacing: Tokens.Space.medium) {
-                Image(systemName: "checkmark.circle")
-                    .foregroundStyle(Tokens.Text.secondary.color)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                    Text(TasksCopy.reminderMoreTasksRow)
-                        .font(Tokens.Typography.body.font)
-                        .foregroundStyle(Tokens.Text.primary.color)
-                    Text(TasksCopy.reminderMoreTasksDetail)
-                        .font(Tokens.Typography.caption.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                }
-                Spacer(minLength: Tokens.Space.small)
-                Image(systemName: "chevron.forward")
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                    .accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
-            .padding(.horizontal, Tokens.Space.inset)
-            .padding(.vertical, Tokens.Space.small)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier("tasks.more.settings")
     }
 }
 

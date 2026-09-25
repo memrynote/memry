@@ -36,6 +36,19 @@ enum VaultTab: Hashable, Sendable {
 final class TasksRouter {
     var selectedTab: VaultTab = .notes
     var path: [TasksRoute] = []
+    /// The More tab's stack (spec 006 ST20): Settings routes, and the notes
+    /// a Settings page opens.
+    var settingsPath = NavigationPath()
+
+    /// Every "… › settings" entry point: the More tab, that section, and Back
+    /// returns to the Settings root (flow lane 01).
+    func openSettings(_ route: SettingsRoute) {
+        selectedTab = .more
+        var path = NavigationPath()
+        path.append(SettingsRoute.root)
+        if route != .root { path.append(route) }
+        settingsPath = path
+    }
 
     /// Selects the Tasks tab and shows this task.
     func openTask(_ id: String) {

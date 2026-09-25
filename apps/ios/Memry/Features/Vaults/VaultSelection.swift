@@ -126,16 +126,28 @@ final class VaultSelectionViewModel {
     /// composition root owns what the production graph runs on.
     let secureStore: (any SecureStore)?
 
+    /// The account session Settings calls (devices, storage, plan, vault
+    /// deletion; spec 006). The watched one, so a revocation learned there
+    /// wipes the phone like any other call.
+    let session: (any AuthSessionProtocol)?
+
     init(
         registry: any VaultRegistry,
         opener: any VaultOpening,
         mint: (any VaultFillerMinting)? = nil,
-        secureStore: (any SecureStore)? = nil
+        secureStore: (any SecureStore)? = nil,
+        session: (any AuthSessionProtocol)? = nil
     ) {
         self.registry = registry
         self.opener = opener
         self.mint = mint
         self.secureStore = secureStore
+        self.session = session
+    }
+
+    /// Every vault on the account, for Settings › Vaults.
+    func accountVaults() async throws -> [VaultSummary] {
+        try await registry.vaults()
     }
 
     /// Whether a second vault exists to switch to. The switch is offered only
