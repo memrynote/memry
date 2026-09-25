@@ -1151,6 +1151,47 @@ pending and retried rather than snapshotted — a stall, not a loss, its content
 already durable in the local CRDT store — and it ends as soon as the note merges
 and the snapshot route reopens.
 
+### Snapshot pushes claim `coversThrough`
+
+A snapshot push can say which change-feed rows its state holds: `coversThrough`,
+the feed cursor through which every body row of the note has been merged, plus
+`baseRevision`, the server snapshot the doc last merged or pushed (protocol 07
+§7.7.1). A server that understands it prunes only rows at or below that cursor,
+moves the watermark over exactly what it pruned, and records the claim on the
+snapshot row. From then on the pruned rows exist only inside that snapshot, so
+the server refuses (`409 CRDT_SNAPSHOT_NOT_COVERED`, with the refusing
+snapshot's cursor) any write that does not cover it: an unclaimed push onto a
+claimed snapshot, and a claimed push onto a snapshot whose cursor its feed has
+not passed unless `baseRevision` names it. The signing device does not matter:
+a restored or cloned data dir signs with the same id. The check is part of the
+upsert, every write has its own R2 object, and the prune runs in the same D1
+batch only when the upsert applied. Claims stay dormant until the server's
+`CRDT_CLAIM_MIN_DESKTOP_VERSION` is set and the desktop write floor has reached
+it, so no desktop that predates them meets the refusal.
+
+Desktop claims `coversThrough = LAST_CURSOR` only when the legacy body sweep is
+`done`, the cursor is above 0, the note is not flagged, and no refusal of the
+note is outstanding. `encodeForPush` in the provider is the only way to produce
+push bytes: it reads the base revision first, then the claim and the encode in
+one synchronous step, because a feed page can land bodies and move
+`LAST_CURSOR` during any await. A refused note takes the update route until the
+feed passes the refusing snapshot's cursor or a pull merged a newer snapshot. A
+note leaving local-only, a note with a queued full-state row at runtime start,
+a body landed while its doc compacted, and every note after the CRDT store's
+epoch fails to match the data DB's (fresh, quarantined, or either side restored
+apart), claims nothing until a pull or a vault sweep has merged it; the sweep
+takes its note set from the data DB as well as the index cache. A doc that
+cannot vouch for itself (in-memory store, seeded from markdown or created this
+session, or an id the feed dropped as rowless) pushes unclaimed until a
+whole-body pull merges it.
+
+The routing above and `crdtUnmergedDebt` stay. An owed pull is tracked only per
+session, so after a crash only the vault-wide flag protects rows below
+`LAST_CURSOR`, and a server that predates `coversThrough` ignores it and prunes
+by watermark. Removing them needs durable per-note owed tracking first. The
+server change must deploy to every Worker at once: an older Worker running
+beside it could overwrite a claimed snapshot.
+
 ### The flag does not survive a session; the fact that debt existed does
 
 The set is in-memory and per session; `clearCaches()` empties it on vault switch
@@ -1371,6 +1412,8 @@ apps/desktop/src/main/sync/
 ├─ note-body-outbox.ts      # durable CRDT body outbox (note_body rows)
 ├─ note-body-apply.ts       # lands change-feed bodies in the CRDT store
 ├─ engine/note-body-feed.ts # fetches and verifies a page's noteBodies
+├─ crdt-snapshot-push.ts    # snapshot vs update route, coversThrough, 409 handling
+├─ crdt-store-epoch.ts      # withholds claims for a store whose epoch differs from the data DB's
 └─ engine.ts                # ordering: pull → seed → per-batch push
 
 apps/desktop/src/renderer/src/sync/

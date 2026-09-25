@@ -961,7 +961,7 @@ list.
 | `POST /sync/crdt/updates`              | up        | Incremental Yjs binary updates                                                                |
 | `GET /sync/crdt/updates`               | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
 | `POST /sync/crdt/updates/batch`        | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
-| `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes the note's stored updates at or below it                   |
+| `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes stored updates it covers (`coversThrough`, else watermark) |
 | `POST /sync/crdt/snapshot/batch`       | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note     |
 | `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
 | `GET /sync/vaults`                     | down      | List the account's registered vaults                                                          |
