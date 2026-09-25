@@ -14,6 +14,7 @@ pub mod body_write;
 pub mod calendar;
 pub mod folders;
 pub mod journal;
+pub mod journal_rules;
 pub mod note_meta;
 pub mod note_tasks;
 pub mod notes;

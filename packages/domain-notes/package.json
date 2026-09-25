@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./commands": "./src/commands.ts",
-    "./queries": "./src/queries.ts"
+    "./queries": "./src/queries.ts",
+    "./journal": "./src/journal/index.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

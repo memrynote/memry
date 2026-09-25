@@ -11,7 +11,7 @@
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
-import { replaceWikiLinks } from '@memry/shared/wiki-target'
+import { extractJournalPreview } from '@memry/domain-notes/journal'
 import { getStatus, getConfig } from './index'
 import { normalizePropertiesToRoot, writePropertiesToRoot } from './frontmatter'
 import { ensureDirectory } from './file-ops'
@@ -412,39 +412,12 @@ export function calculateActivityLevelFromContent(content: string): ActivityLeve
 }
 
 /**
- * Extract preview text from content.
+ * Extract preview text from content. The rule lives in
+ * `@memry/domain-notes/journal` so the iOS core is held to it by vectors.
  * @param content - Markdown content
  * @param maxLength - Maximum preview length
  * @returns Preview string
  */
 export function extractPreview(content: string, maxLength = 100): string {
-  // Remove markdown headers
-  let cleaned = content.replace(/^#+\s+/gm, '')
-
-  // Remove links but keep text
-  cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-  cleaned = replaceWikiLinks(cleaned)
-
-  // Remove images
-  cleaned = cleaned.replace(/!\[[^\]]*\]\([^)]+\)/g, '')
-
-  // Remove bold/italic markers
-  cleaned = cleaned.replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, '$1')
-
-  // Collapse whitespace
-  cleaned = cleaned.replace(/\s+/g, ' ').trim()
-
-  if (cleaned.length <= maxLength) {
-    return cleaned
-  }
-
-  // Truncate at word boundary
-  const truncated = cleaned.slice(0, maxLength)
-  const lastSpace = truncated.lastIndexOf(' ')
-
-  if (lastSpace > maxLength * 0.7) {
-    return truncated.slice(0, lastSpace) + '...'
-  }
-
-  return truncated + '...'
+  return extractJournalPreview(content, maxLength)
 }

@@ -3,6 +3,8 @@
  * Date generation, formatting, and opacity calculation for journal day cards
  */
 
+import { monthActivity, monthDays } from '@memry/domain-notes/journal'
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -291,26 +293,11 @@ export function formatDateParts(
 }
 
 /**
- * Get all days in a specific month
+ * Get all days in a specific month. The day walk lives in
+ * `@memry/domain-notes/journal` (`monthDays`), shared with the iOS core.
  */
 export function getDaysInMonth(year: number, month: number): DayData[] {
-  const today = formatDateToISO(new Date())
-  const days: DayData[] = []
-
-  // Get the number of days in the month
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day)
-    const dateStr = formatDateToISO(date)
-    days.push({
-      date: dateStr,
-      isToday: dateStr === today,
-      isFuture: dateStr > today
-    })
-  }
-
-  return days
+  return monthDays(year, month, formatDateToISO(new Date()))
 }
 
 export interface MonthStat {
@@ -334,51 +321,12 @@ export function getMonthStats(
   heatmapData: Array<{ date: string; characterCount: number; level: 0 | 1 | 2 | 3 | 4 }>,
   labels: JournalDateLabels = ENGLISH_JOURNAL_DATE_LABELS
 ): MonthStat[] {
-  const stats: MonthStat[] = []
-
-  for (let month = 0; month < 12; month++) {
-    const monthName = labels.months[month]
-
-    // Filter heatmap data for this month
-    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
-    const monthEntries = heatmapData.filter((entry) => entry.date.startsWith(monthPrefix))
-
-    // Calculate stats
-    const entriesWithContent = monthEntries.filter((e) => e.characterCount > 0)
-    const entryCount = entriesWithContent.length
-    const totalChars = monthEntries.reduce((sum, e) => sum + e.characterCount, 0)
-
-    // Generate activity dots (sample 5 weeks worth of data)
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
-    const weekCount = Math.ceil(daysInMonth / 7)
-    const activityDots: (0 | 1 | 2 | 3 | 4)[] = []
-
-    for (let week = 0; week < Math.min(weekCount, 5); week++) {
-      // Get max level for this week
-      const weekStart = week * 7 + 1
-      const weekEnd = Math.min(weekStart + 6, daysInMonth)
-      let maxLevel: 0 | 1 | 2 | 3 | 4 = 0
-
-      for (let day = weekStart; day <= weekEnd; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-        const entry = monthEntries.find((e) => e.date === dateStr)
-        if (entry && entry.level > maxLevel) {
-          maxLevel = entry.level
-        }
-      }
-      activityDots.push(maxLevel)
-    }
-
-    stats.push({
-      month,
-      monthName,
-      entryCount,
-      totalChars,
-      activityDots
-    })
-  }
-
-  return stats
+  // The arithmetic lives in `@memry/domain-notes/journal` (`monthActivity`),
+  // shared with the iOS core through vectors; only the month name is added here.
+  return monthActivity(year, heatmapData).map((stat) => ({
+    ...stat,
+    monthName: labels.months[stat.month]
+  }))
 }
 
 /**

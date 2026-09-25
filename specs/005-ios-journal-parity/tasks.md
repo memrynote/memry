@@ -310,6 +310,8 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry \
 
 Desktop change first, so the vectors come from real code.
 
+Evidence: `packages/domain-notes/src/journal/{preview,stats,streak,templates,index}.ts` (export `@memry/domain-notes/journal`); desktop now imports it from `vault/journal.ts` (extractPreview), `journal-queries.ts` (streak with its UTC today, year stats), `lib/journal-utils.ts` (getDaysInMonth, getMonthStats), `lib/journal-template-resolution.ts`, `hooks/use-journal-entry.ts` (Intl strings passed in). Existing tests unchanged and green: `test:renderer` 793 files / 10102 passed; `test:main` 642 files / 9170 passed; `pnpm lint` 0 errors; `pnpm typecheck` ok.
+
 - [ ] JP010 Move the pure logic into `packages/domain-notes/src/journal/` (no
       React, no i18n, no `Date.now()`; every clock-dependent function takes
       `today` or `now`): `extractPreview` (`main/vault/journal.ts`), the streak
@@ -323,7 +325,7 @@ Desktop change first, so the vectors come from real code.
       `calculateActivityLevel` stay in `@memry/contracts` and are vectored as
       they are. Desktop imports from the package. Existing desktop tests pass
       unchanged.
-- [ ] JP011 Vector generator `packages/contracts/scripts/vectors/journal.ts` →
+- [x] JP011 Vector generator `packages/contracts/scripts/vectors/journal.ts` →
       `test-vectors/journal.json`, registered in `gen-protocol-vectors` and
       `package.json` exports. Case families:
   - preview: headings, links, wiki links (every `wiki-target` form), images,
@@ -340,12 +342,16 @@ Desktop change first, so the vectors come from real code.
   - template substitution: `{{title}}`, `{{date}}`, `{{date:YYYY-MM-DD}}`,
     `{{date:DD.MM.YYYY}}`, `{{time}}`, `{{day-of-week}}`, repeats, no tokens,
     tags copied, properties `name → value` with a repeated name
-- [ ] JP012 [P] Rust `crates/memry-core/src/domain/journal_rules/`
+    Evidence: `packages/contracts/scripts/vectors/{journal,journal-cases,journal-template-cases}.ts` → `test-vectors/journal.json` (sections preview 33, words 13, activity 14, streak 13, monthDays 8, monthActivity 5, yearStats 4, weekday 9, orderedWeekdays 2, templateResolution 11, templateApply 12), registered in `gen-protocol-vectors.ts` and `package.json` exports; `vectors:check passed (17 classes)`; line ceilings passed.
+- [x] JP012 [P] Rust `crates/memry-core/src/domain/journal_rules/`
       (`preview.rs`, `stats.rs`, `streak.rs`, `templates.rs`), consumed by
       `tests/journal_vectors.rs`.
+      Evidence: `crates/memry-core/src/domain/journal_rules/{mod,preview,stats,streak,templates}.rs` (largest 253 lines, no regex dependency) + `tests/journal_vectors.rs` (every section of `journal.json`: preview 33, words 13, activity 14, streak 13, monthDays 8, monthActivity 5, yearStats 4, weekday 9, orderedWeekdays 2, templateResolution 11, templateApply 12). Orchestrator re-run: `cargo fmt --check` clean, clippy `-D warnings` clean, `cargo test -p memry-core` 945 passed / 0 failed / 1 ignored.
 
 **Gate G1**: `vectors:check` green, `cargo test -p memry-core` green, desktop
 `test:renderer` and `test:main` green, `pnpm lint && pnpm typecheck` green.
+G1 result (2026-09-25): GREEN. `vectors:check passed (17 classes)`; `cargo test -p memry-core` 945/0/1;
+`test:renderer` 10102 passed; `test:main` 9170 passed; `pnpm lint` 0 errors; `pnpm typecheck` ok.
 **Commit** Phase 1.
 
 ---
@@ -792,6 +798,8 @@ note by `name → value`.
   desktop's set-or-replace rule (D8).
 - 2026-09-25 — JP001 — Found, not fixed (outside this plan): on the recovery-phrase unlock screen, with the keyboard up, the chooser's "Sign out" button (frame y 480-532) overlays the "Unlock" button (y 478-530), so a centred tap on Unlock opens the sign-out confirmation. The driver taps Unlock at `dy: 0.01`. Vault rows still need their label tapped (spec 004 §6 TP001). Screenshots from `XCUIScreen` can lag a few seconds; the accessibility tree is the reference for state.
 - 2026-09-25 — JP003 — JP022a is in scope: the phone has no markdown → Y.Doc path, so a template-seeded day would be unwritable (or lossy on desktop's next write-back) on the phone that seeded it (§5 c).
+
+- 2026-09-25 — JP010 — `getJournalYearStats` now aggregates in JS through `yearMonthStats`. SQL `AVG(CASE ...)` read a NULL `character_count` as level 4 (the CASE fell through to ELSE); the package reads a missing count as 0 characters. Unreachable for journal rows (`syncNoteToCache` always writes the count), and not a rule worth pinning in vectors. Output otherwise identical; the existing notes query test passes unchanged.
 
 ## 7. Blockers
 

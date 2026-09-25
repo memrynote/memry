@@ -76,6 +76,7 @@ pub fn vector_file(name: &str) -> Json {
         "task-filtering" => {
             include_str!("../../../../packages/contracts/test-vectors/task-filtering.json")
         }
+        "journal" => include_str!("../../../../packages/contracts/test-vectors/journal.json"),
         other => panic!("no committed vector file named {other}"),
     };
     serde_json::from_str(raw)
