@@ -7,28 +7,30 @@
 //! pulling first silently destroys a concurrent peer's field.
 //!
 //! 1. Records: `GET /sync/changes` + `POST /sync/pull` from the stored cursor
-//!    to the end ([`PullLoop::run`]).
-//! 2. Bodies: the CRDT log of every note or journal whose record arrived in
-//!    step 1, or that is still owed a whole-body pull
-//!    ([`crate::sync::body_debt`]), so a checkbox flipped in a note on desktop
-//!    reaches the phone's copy of that note (FR-058) without waiting for the
-//!    note to be opened.
+//!    to the end ([`PullLoop::run`]), with the note bodies the feed serves
+//!    (`note_body`, chapter 07 §7.17) landed before each page's cursor.
+//! 2. Bodies: the per-note pull of every note or journal owed one
+//!    ([`crate::sync::body_debt`]): each whose record arrived in step 1, each
+//!    a feed body could not land for, and each still owed from an earlier
+//!    pass, so a checkbox flipped in a note on desktop reaches the phone's
+//!    copy of that note (FR-058) without waiting for the note to be opened.
+//!    Best effort, within a request budget ([`body_step`]): a failure here
+//!    never stops step 3.
 //! 3. Push: the outbox drained by [`PushCoordinator`], sealed with this
 //!    device's identity ([`AccountSealer`]).
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 
-use rusqlite::params;
 use zeroize::Zeroizing;
 
-use super::{VaultSync, now_ms};
+use super::VaultSync;
 use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner};
 use crate::protocol::types::Declaration;
-use crate::sync::body_debt;
-use crate::sync::body_pull::{BodyPull, BodyPullReport};
+use crate::sync::body_pull::BodyPull;
+use crate::sync::body_step;
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
 
@@ -101,7 +103,6 @@ impl VaultSync {
     pub async fn sync_now(&self) -> Result<SyncPassSummary, SyncError> {
         let gate = pass_gate(&self.vault_id);
         let _held = gate.lock().await;
-        let started = now_ms();
         let cipher = self.cipher().await?;
         let http = self.session.http();
 
@@ -112,41 +113,12 @@ impl VaultSync {
             cipher.clone(),
         )
         .with_vault(&self.vault_id)
+        .with_note_bodies(cipher.clone())
         .run(MAX_PULL_PAGES)
         .await?;
 
-        let mut touched = self
-            .db
-            .call(move |conn| {
-                let mut statement = conn
-                    .prepare(
-                        "SELECT id FROM notes WHERE deleted_at IS NULL AND synced_at >= ?1
-                         UNION
-                         SELECT id FROM journal_entries WHERE deleted_at IS NULL AND synced_at >= ?1",
-                    )
-                    .map_err(|e| StorageError::Failed {
-                        what: e.to_string(),
-                    })?;
-                let ids = statement
-                    .query_map(params![started], |row| row.get::<_, String>(0))
-                    .map_err(|e| StorageError::Failed {
-                        what: e.to_string(),
-                    })?
-                    .collect::<Result<Vec<String>, _>>()
-                    .map_err(|e| StorageError::Failed {
-                        what: e.to_string(),
-                    })?;
-                Ok(ids)
-            })
-            .await?;
-        // The owed documents too: a page re-pulled after a crash skips its
-        // identical records, so only the debt says their bodies are still due.
-        let owed = self.db.call(|conn| body_debt::owed(conn)).await?;
-        for doc_id in owed {
-            if !touched.contains(&doc_id) {
-                touched.push(doc_id);
-            }
-        }
+        // Bodies next, best effort: every document owed a per-note pull,
+        // within a budget. Nothing in it stops the push below (#2297).
         let body_pull = BodyPull::new(
             Arc::clone(&http),
             self.db.clone(),
@@ -154,18 +126,7 @@ impl VaultSync {
             cipher,
         )
         .with_vault(&self.vault_id);
-        let mut bodies = BodyPullReport::default();
-        for doc_id in &touched {
-            let pulled = body_pull.pull_document(doc_id).await?;
-            // Settled only once the pull merged: a stop at a gap keeps it owed.
-            if pulled.stopped.is_empty() {
-                let settled = doc_id.clone();
-                self.db
-                    .call(move |conn| body_debt::settle(conn, &settled))
-                    .await?;
-            }
-            bodies.absorb(pulled);
-        }
+        let bodies = body_step::run(&self.db, &body_pull).await?;
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());

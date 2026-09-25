@@ -25,6 +25,7 @@ use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_debt;
+use memry_core::sync::body_pull::{CrdtCipher, PackedUpdate};
 use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::{Value as Json, json};
@@ -71,9 +72,29 @@ fn envelope(id: &str, item_type: &str) -> Json {
     })
 }
 
+/// The body cipher of a feed pull. The pages here carry no `noteBodies`, so
+/// it is never asked; it is what makes the loop the one whose caller settles
+/// body debts (`sync_now`).
+struct NoBodies;
+
+impl CrdtCipher for NoBodies {
+    fn open(&self, _update: &PackedUpdate<'_>) -> Result<Vec<u8>, EnvelopeError> {
+        Err(EnvelopeError::SignatureInvalid)
+    }
+}
+
 /// One `/sync/changes` page and its `/sync/pull`, each record opened to the
-/// payload given.
+/// payload given, through the feed pull `sync_now` builds.
 async fn pull_page(db: &Db, records: &[(&str, &str, Json)], next_cursor: &str) -> PullReport {
+    pull_page_with(db, records, next_cursor, true).await
+}
+
+async fn pull_page_with(
+    db: &Db,
+    records: &[(&str, &str, Json)],
+    next_cursor: &str,
+    feed: bool,
+) -> PullReport {
     let refs: Vec<Json> = records
         .iter()
         .map(|(id, item_type, _)| json!({"id": id, "type": item_type}))
@@ -101,15 +122,18 @@ async fn pull_page(db: &Db, records: &[(&str, &str, Json)], next_cursor: &str) -
         "https://sync.example",
         ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
     );
-    PullLoop::new(
+    let pull = PullLoop::new(
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
         Arc::new(cipher),
-    )
-    .pull_page()
-    .await
-    .expect("the page")
+    );
+    let pull = if feed {
+        pull.with_note_bodies(Arc::new(NoBodies))
+    } else {
+        pull
+    };
+    pull.pull_page().await.expect("the page")
 }
 
 fn note_payload(title: &str) -> Json {
@@ -271,5 +295,16 @@ async fn a_skipped_note_record_owes_no_body_pull() {
     let report = pull_page(&db, &[(NOTE, "note", stale)], "30").await;
 
     assert_eq!(report.skipped, 1, "{report:?}");
+    assert!(owed(&db).is_empty(), "{:?}", owed(&db));
+}
+
+/// #2297 review A-7: only a loop whose caller settles body debts owes them. A
+/// plain record pull (the CLI, `SyncEngine`) leaves none behind for a
+/// snapshot push to refuse on forever.
+#[tokio::test]
+async fn a_pull_without_note_bodies_owes_no_body_debt() {
+    let db = scratch_db("no-feed");
+    let report = pull_page_with(&db, &[(NOTE, "note", note_payload("Plain"))], "10", false).await;
+    assert_eq!(report.applied, 1);
     assert!(owed(&db).is_empty(), "{:?}", owed(&db));
 }

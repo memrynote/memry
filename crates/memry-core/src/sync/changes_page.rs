@@ -20,6 +20,9 @@ pub(super) struct ChangesPage {
     /// `/sync/pull` items the page carried inline (§5.11.2), unparsed:
     /// validation stays per item.
     pub(super) inline: Vec<Json>,
+    /// `noteBodies` (§5.11.1), unparsed, and `None` when the key is absent:
+    /// a server that does not serve bodies in the feed.
+    pub(super) note_bodies: Option<Vec<Json>>,
 }
 
 /// §5.12: the client unions `deleted` into the `/sync/pull` request for the
@@ -91,6 +94,7 @@ pub(super) fn read_changes_page(body: &Json) -> ChangesPage {
             .and_then(Json::as_array)
             .cloned()
             .unwrap_or_default(),
+        note_bodies: body.get("noteBodies").and_then(Json::as_array).cloned(),
     }
 }
 
@@ -107,6 +111,7 @@ mod tests {
             has_more: false,
             next_cursor: None,
             inline: Vec::new(),
+            note_bodies: None,
         };
         assert_eq!(requested_ids(&page), ["a", "b", "c"]);
     }

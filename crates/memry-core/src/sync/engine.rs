@@ -276,6 +276,9 @@ impl SyncEngine {
             total
                 .purged_documents
                 .extend(page.purged_documents.iter().cloned());
+            total
+                .advanced_documents
+                .extend(page.advanced_documents.iter().cloned());
             total.cursor = page.cursor.clone();
             total.has_more = page.has_more;
             total.refused = page.refused;

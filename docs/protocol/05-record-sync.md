@@ -72,9 +72,11 @@ never reaches the manifest, `POST /sync/pull`, bootstrap, or the record rows of
 `/sync/changes`. A header of only `note_body` is recognised and resolves to zero
 record types plus bodies. Declaring it does not replay body rows below the
 client's cursor, and body rows written before migration `0011` carry no cursor
-and are never in the feed (chapter 07 §7.17). No shipped client declares it
-yet: both TypeScript clients send `RECORD_SYNC_ITEM_TYPES`, which does not
-contain it.
+and are never in the feed (chapter 07 §7.17). Both TypeScript clients send
+`RECORD_SYNC_ITEM_TYPES`, which does not contain it. The Rust core appends it
+to its record declaration on the `GET /sync/changes` of its feed pull only, and
+records the declaration it restarts on without it, so declaring bodies does
+not re-read the record feed (chapter 07 §7.17.4, #2304).
 
 **Otherwise "recognised" means a member of the twenty-five record types**, being
 the fifteen this feature subscribes to plus the ten it does not, both
@@ -448,15 +450,19 @@ index rows of that slice (healed by the vault re-index on the next open). A page
 with no refs has no transaction to join and stores its cursor alone.
 
 **Rust core** (#2304). Each record applies in its own transaction, so the
-cursor is written after the page's last row, as its own statement. The
+cursor cannot join the page's last row. It is written after the page applied,
+in the one transaction that lands the page's note bodies and records their
+debts (chapter 07 §7.17.4), so no body is left behind a cursor. The
 post-apply work a re-pull would not redo is the body pull of the page's notes
 and journals: a skipped identical row is not re-applied, so it no longer marks
 the note as touched. The page therefore records a durable body debt, one
 `meta` row `sync.body_owed:<docId>` per note or journal record, **before** it
 applies the page, and takes back only the debts it created for records it then
-skipped. A debt is cleared only after a whole-body pull of that document that
-merged (`crates/memry-core/src/sync/body_debt.rs`), and a snapshot push refuses
-a document that is still owed one (chapter 07 §7.13.2).
+skipped. A debt is cleared only after a per-note pull of that document that
+reached the server's head and stored everything, or when the document is
+tombstoned (`crates/memry-core/src/sync/body_debt.rs`). A snapshot push refuses
+a document that is still owed one (chapter 07 §7.13.2, §7.17.4). The body step
+that works the debts off never blocks the push.
 
 Because cursors are assigned in commit order (§5.5) and the cursor moves only
 after apply, a client MAY drop a realtime wake whose `cursor` is at or below its

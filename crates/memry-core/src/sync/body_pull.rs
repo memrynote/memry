@@ -48,12 +48,11 @@
 //! first through the batch route (desktop's `CRDT batch chunk probed`), one
 //! request per hundred documents, for the meta alone.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use serde_json::{Value as Json, json};
+use serde_json::Value as Json;
 
 use crate::api::errors::{ApiError, StorageError};
 use crate::crdt::update_log::{self, Namespace};
@@ -67,6 +66,8 @@ use crate::storage::Db;
 use super::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 use super::store;
 
+mod probe;
+
 /// §7.3: the client's own page size for a sweep, matching the reference's
 /// `CRDT_UPDATES_PAGE_LIMIT`.
 pub const CRDT_UPDATES_PAGE_LIMIT: u32 = 100;
@@ -77,7 +78,7 @@ pub const CRDT_UPDATES_PAGE_LIMIT: u32 = 100;
 pub const MAX_PAGES_PER_DOCUMENT: u32 = 50;
 
 /// Documents per snapshot-meta probe: the batch route's own cap (§7.3).
-const PROBE_CHUNK: usize = 100;
+pub(super) const PROBE_CHUNK: usize = 100;
 
 /// The cursor scope for one document's body feed (chapter 05 §5.11: the
 /// `scope` column exists for exactly this, and it is **not** a per-type record
@@ -235,7 +236,7 @@ impl BodyPull {
         Ok(report)
     }
 
-    async fn pull_with(
+    pub(super) async fn pull_with(
         &self,
         doc_id: &str,
         probed: Option<&SnapshotMeta>,
@@ -413,55 +414,6 @@ impl BodyPull {
         // equals a server token, so it always yields to a baseline rather
         // than suppressing one.
         Ok(stored.as_deref() != Some(meta.revision.as_str()))
-    }
-
-    /// The server's snapshot meta for the documents in `doc_ids` that already
-    /// hold a cursor, through one `POST /sync/crdt/updates/batch` (the route
-    /// that carries `snapshotMeta`, §7.11; desktop's probe). `limit: 1`: the
-    /// updates themselves come from the paged pull that follows.
-    ///
-    /// **A failed probe is not a failed pull.** The batch route has its own,
-    /// tighter rate limit, and an old server may not have it; either way the
-    /// pull goes on as before, without the second §7.8 clause.
-    async fn probe_snapshot_meta(
-        &self,
-        doc_ids: &[String],
-        requests: &mut usize,
-    ) -> Result<HashMap<String, SnapshotMeta>, BodyPullError> {
-        let mut notes = Vec::new();
-        let mut seen = std::collections::HashSet::new();
-        for doc_id in doc_ids {
-            // The server refuses a batch naming an id twice.
-            if !seen.insert(doc_id.as_str()) {
-                continue;
-            }
-            let cursor = self.read_cursor(doc_id).await?;
-            if cursor > 0 {
-                notes.push(json!({ "noteId": doc_id, "since": cursor }));
-            }
-        }
-        if notes.is_empty() {
-            return Ok(HashMap::new());
-        }
-        // Counted against the caller's per-pass budget like any other request.
-        *requests += 1;
-        let request = self
-            .request("POST", "/sync/crdt/updates/batch")
-            .json(&json!({ "notes": notes, "limit": 1 }))
-            // No retries: a failed probe only means the pull goes on without
-            // the meta, so waiting through backoff buys nothing.
-            .retry(RetryPolicy::never());
-        let Ok(body) = self.http.send_json::<Json>(request).await else {
-            return Ok(HashMap::new());
-        };
-        Ok(doc_ids
-            .iter()
-            .filter_map(|id| {
-                read_update_page(&body, id)
-                    .snapshot_meta
-                    .map(|meta| (id.clone(), meta))
-            })
-            .collect())
     }
 
     async fn fetch_page(

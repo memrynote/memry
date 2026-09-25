@@ -4,7 +4,10 @@
 //! bodies of those refs **unioned with the page's `deleted` ids**, apply in
 //! rank order, then advance the cursor. In that order and no other. The first
 //! page of an incremental run asks for inline payloads (§5.11.2), and only the
-//! ids no inline item names go to `POST /sync/pull`.
+//! ids no inline item names go to `POST /sync/pull`. A loop built
+//! [`PullLoop::with_note_bodies`] also declares `note_body`: the page's bodies
+//! are fetched before the apply and land in the transaction that writes the
+//! cursor ([`super::note_body_feed`], chapter 07 §7.17).
 //!
 //! Five rules shape every branch below, and four of them are about not losing
 //! a user's data on a page that went wrong:
@@ -39,7 +42,6 @@ use std::sync::Arc;
 
 use serde_json::{Value as Json, json};
 
-use crate::api::errors::{ApiError, StorageError};
 use crate::protocol::envelope::{self, EnvelopeError, RecordEnvelope, SyncOperation};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
 use crate::protocol::types::{ArrivingItemType, Declaration};
@@ -48,8 +50,10 @@ use crate::storage::repositories::sync_items::{self, InboundRecord};
 
 use super::apply::{self, ApplyTotals, Pending};
 use super::body_debt;
+use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::feed_restart;
+use super::note_body_feed::{self, FeedClient, FetchedBodies, NOTE_BODY_SYNC_TYPE};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -73,61 +77,7 @@ pub trait RecordCipher: Send + Sync {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError>;
 }
 
-/// What a pull pass failed with. A per-item failure is **not** one of these:
-/// it is a count in [`PullReport`].
-#[derive(Debug, thiserror::Error)]
-pub enum PullError {
-    #[error("{source}")]
-    Api {
-        #[from]
-        source: ApiError,
-    },
-    #[error("{source}")]
-    Storage {
-        #[from]
-        source: StorageError,
-    },
-}
-
-/// What one pass did. Counts rather than a boolean, because the breaker needs
-/// three separate facts about the same page.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct PullReport {
-    pub pages: u32,
-    pub applied: usize,
-    pub deleted: usize,
-    /// Chapter 06 §6.3.1: the local clock dominated, so the remote was not
-    /// applied. **Not corrupt and not nothing**: the item was processed, the
-    /// cursor advances past it, and it counts as the page having yielded —
-    /// or one legitimately skipped item on a page with one bad one would trip
-    /// §5.14's breaker and refuse a run that did its work.
-    pub skipped: usize,
-    pub corrupt: usize,
-    /// Past the 90-day `task_activity` horizon (chapter 13 §13.12). **Not
-    /// corrupt**: the row is expired and the cursor still advances past it.
-    pub expired: usize,
-    /// Responses that were not a pull envelope at all (§5.14). Such a page
-    /// holds the cursor and refuses the run (#2285).
-    pub dropped_pages: u32,
-    /// The cursor now stored, after applying.
-    pub cursor: Option<String>,
-    pub has_more: bool,
-    /// The run is unsuccessful and **no success state may be written**:
-    /// either the breaker tripped, and the cursor advanced, or a pull response
-    /// was not an envelope, and the cursor held.
-    pub refused: bool,
-    /// The documents whose body log a tombstone on this pass actually emptied
-    /// (chapter 07 §7.15).
-    ///
-    /// §7.15's first consequence has two halves and this loop can only do one
-    /// of them. The local update log and both snapshot rows are gone by the
-    /// time this is read; the **in-memory** `Y.Doc` is not, because the pull
-    /// owns no [`crate::crdt::DocumentRegistry`]. A caller that holds one
-    /// releases each id here. Reporting them is the point: a purge that left
-    /// the caller believing the body was gone everywhere would be worse than
-    /// one that failed loudly.
-    pub purged_documents: Vec<String>,
-}
+pub use super::pull_report::{PullError, PullReport};
 
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 
@@ -137,6 +87,8 @@ pub struct PullLoop {
     db: Db,
     declaration: Declaration,
     cipher: Arc<dyn RecordCipher>,
+    /// Set when the feed pull declares `note_body` (chapter 07 §7.17).
+    bodies: Option<Arc<dyn CrdtCipher>>,
     vault_id: Option<String>,
 }
 
@@ -152,8 +104,19 @@ impl PullLoop {
             db,
             declaration,
             cipher,
+            bodies: None,
             vault_id: None,
         }
+    }
+
+    /// Declares `note_body` on the feed's `GET /sync/changes` and lands the
+    /// page's bodies before its cursor ([`note_body_feed`], #2304). Only the
+    /// feed pull declares it: the token is kept out of
+    /// [`PullLoop::request`], which the first sync's refs pass also uses and
+    /// which lands no bodies.
+    pub fn with_note_bodies(mut self, cipher: Arc<dyn CrdtCipher>) -> Self {
+        self.bodies = Some(cipher);
+        self
     }
 
     /// The client every record call goes out through. Public for the same
@@ -195,6 +158,9 @@ impl PullLoop {
             total
                 .purged_documents
                 .extend(page.purged_documents.iter().cloned());
+            total
+                .advanced_documents
+                .extend(page.advanced_documents.iter().cloned());
             total.cursor = page.cursor.clone();
             total.has_more = page.has_more;
             total.refused = page.refused;
@@ -303,7 +269,11 @@ impl PullLoop {
             .cloned()
             .collect();
 
-        let outcomes = self.apply_all(pending, untyped, true).await?;
+        let bodies = self.fetch_note_bodies(&page, &pending).await?;
+        // Only a loop that lands bodies owes them: its caller is the one that
+        // settles the debts (#2297 review A-7).
+        let owe_bodies = self.bodies.is_some();
+        let outcomes = self.apply_all(pending, untyped, owe_bodies).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -311,13 +281,14 @@ impl PullLoop {
         report.expired += outcomes.expired;
         report.purged_documents.extend(outcomes.purged_documents);
 
-        // §5.11: only now.
+        // §5.11: only now, and in the transaction that lands the bodies.
         let now = now_ms();
         let advanced = page.next_cursor.clone().or(cursor);
         let stored = advanced.clone();
-        self.db
+        report.advanced_documents = self
+            .db
             .call(move |conn| {
-                store::write_cursor(conn, RECORD_CURSOR_SCOPE, stored.as_deref(), now)
+                note_body_feed::land_and_advance(conn, bodies, stored.as_deref(), now)
             })
             .await?;
         report.cursor = advanced;
@@ -390,6 +361,50 @@ impl PullLoop {
         Ok(())
     }
 
+    /// [`note_body_feed::fetch`] for this page, when bodies are declared.
+    ///
+    /// The bodies dropped unfetched are those of a note or journal this page
+    /// deletes: a typed tombstone of a document type, or an id in `deleted`
+    /// with no typed item, which deletes every row under it (§5.12.1). A tag
+    /// that shares a note's id deletes no body.
+    async fn fetch_note_bodies(
+        &self,
+        page: &ChangesPage,
+        pending: &[Pending],
+    ) -> Result<FetchedBodies, PullError> {
+        let Some(cipher) = self.bodies.as_deref() else {
+            return Ok(FetchedBodies::default());
+        };
+        let dropped: Vec<String> = page
+            .deleted
+            .iter()
+            .filter(|id| {
+                let typed: Vec<&Pending> = pending
+                    .iter()
+                    .filter(|item| item.item_id() == *id)
+                    .collect();
+                typed.is_empty()
+                    || typed.iter().any(|item| {
+                        matches!(item, Pending::Tombstone { .. })
+                            && apply::DOCUMENT_TYPES.contains(&item.item_type())
+                    })
+            })
+            .cloned()
+            .collect();
+        let entries = page.note_bodies.clone();
+        let held = self
+            .db
+            .call(move |conn| note_body_feed::held_bodies(conn, entries.as_deref()))
+            .await?;
+        let request = |method: &str, path: &str| self.request(method, path);
+        let client = FeedClient {
+            http: &self.http,
+            request: &request,
+            cipher,
+        };
+        Ok(note_body_feed::fetch(&client, page.note_bodies.as_deref(), &dropped, &held).await)
+    }
+
     async fn fetch_changes(
         &self,
         cursor: Option<&str>,
@@ -403,7 +418,12 @@ impl PullLoop {
         if inline {
             path.push_str("&inline=1");
         }
-        let body: Json = self.http.send_json(self.request("GET", &path)).await?;
+        let mut request = self.request("GET", &path);
+        if self.bodies.is_some() {
+            let declared = format!("{},{NOTE_BODY_SYNC_TYPE}", self.declaration.header_value());
+            request = request.header(SYNC_TYPES_HEADER, &declared);
+        }
+        let body: Json = self.http.send_json(request).await?;
         Ok(read_changes_page(&body))
     }
 
