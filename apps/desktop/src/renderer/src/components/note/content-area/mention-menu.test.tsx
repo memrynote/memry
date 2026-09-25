@@ -7,6 +7,7 @@ vi.mock('@memry/i18n/renderer', () => ({
     t: (key: string) => {
       const messages: Record<string, string> = {
         'menus.mention.date': 'Date',
+        'menus.mention.now': 'Now',
         'menus.mention.remindMe': 'Remind me',
         'menus.mention.dateHint': 'Keep typing a date…',
         'menus.mention.showMore': 'Show more',
@@ -178,6 +179,22 @@ describe('MentionMenu Tab selection', () => {
     const { onItemClick } = renderMenu({ selectedIndex: 1 })
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
     expect(onItemClick).not.toHaveBeenCalled()
+  })
+})
+
+describe('MentionMenu Now row', () => {
+  const nowItem: MentionSuggestionItem = { kind: 'now' }
+
+  it('renders Now on top of the Date group and selects it by click or Tab', () => {
+    const { onItemClick } = renderMenu({ items: [nowItem, { kind: 'date-hint' }, noteA] })
+    expect(screen.getByText('Date')).toBeTruthy()
+    const options = screen.getAllByRole('option')
+    expect(options[0].textContent).toBe('Now')
+    fireEvent.click(screen.getByText('Now'))
+    expect(onItemClick).toHaveBeenCalledWith(nowItem)
+    onItemClick.mockClear()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(nowItem)
   })
 })
 

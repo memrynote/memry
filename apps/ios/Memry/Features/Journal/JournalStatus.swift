@@ -58,7 +58,13 @@ struct JournalToast: View {
         let message = store.toast
         ZStack(alignment: .bottomLeading) {
             if let message {
-                TasksToastCard(message: message, undo: nil)
+                UndoToastCard(
+                    message: message,
+                    undoTitle: TasksCopy.undo,
+                    undoHint: TasksCopy.undoHint,
+                    identifier: "journal.toast",
+                    undo: nil
+                )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

@@ -50,7 +50,7 @@ struct JournalGoToDateSheet: View {
                         .accessibilityIdentifier("journal.goToDate.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    TaskSheetConfirmButton(label: JournalCopy.goToDateConfirm) {
+                    SheetConfirmButton(label: JournalCopy.goToDateConfirm) {
                         onPick(draft)
                         dismiss()
                     }

@@ -7,25 +7,26 @@ The payload is the plaintext inside the record envelope of chapter 04: UTF-8
 JSON. This chapter specifies what it contains per type, and — more importantly —
 how a client is required to store it.
 
-## 13.1 The fourteen subscribed types
+## 13.1 The fifteen subscribed types
 
-**Normative.** This feature's client declares exactly these fourteen in
+**Normative.** This feature's client declares exactly these fifteen in
 `X-Memry-Sync-Types` (chapter 05 §5.3), in this order:
 
 `note`, `journal`, `folder_config`, `custom_icon`, `tag_definition`,
 `tag_category`, `property_definition`, `template`, `task`, `project`,
-`task_activity`, `reminder`, `settings`, `filter`.
+`task_activity`, `reminder`, `settings`, `filter`, `inbox`.
 
 `filter` (saved task filters, §13.7.14) was added by spec 004 TP022 and is
-appended last, so the first thirteen keep their order.
+appended last, so the first thirteen keep their order. `inbox` (captures,
+§13.7.15) was added by spec 006 IB012 and is appended after it.
 
-Eleven more **record types** are served by the server and **not** subscribed to
-here: `inbox`, `calendar_event`, `calendar_source`, `calendar_binding`,
+Ten more **record types** are served by the server and **not** subscribed to
+here: `calendar_event`, `calendar_source`, `calendar_binding`,
 `calendar_external_event`, `agent_conversation`, `agent_message`, `canvas`,
 `canvas_folder`, `bookmark`, `home_page`. **A conforming client omits them from
 the header and never sees them** (chapter 05 §5.3.1).
 
-Fourteen plus eleven is the **twenty-five record types**, which is the set
+Fifteen plus ten is the **twenty-five record types**, which is the set
 chapter 05 §5.3 calls recognised. `attachment` is the twenty-sixth member of
 `SYNC_ITEM_TYPES` and is **not** one of them: it never travels as a record at
 all (§13.8), so it is neither subscribed nor declarable.
@@ -426,6 +427,24 @@ push is its whole `saved_filters` row serialised
 **a client treats it as opaque JSON and keeps keys it does not model**, so an
 edit merges into the stored `config` rather than replacing it (§13.2 rule 3).
 Starring writes `config.starred` as a boolean, `false` included.
+
+### 13.7.15 `inbox` — `:50-66`
+
+`title`, `content`, `type`, `metadata`, `filedAt`, `filedTo`, `filedAction`,
+`snoozedUntil`, `snoozeReason`, `archivedAt`, `sourceUrl`, `sourceTitle`,
+`captureSource`, `clock`, `createdAt`, `modifiedAt`. No `fieldClocks`: `inbox`
+takes the document-level resolver (§13.9). Desktop's push is its whole
+`inbox_items` row serialised
+(`apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:141-148`), so its
+local columns (`viewedAt`, `processingStatus`, `transcription`,
+`transcriptionStatus`, `attachmentPath`, `thumbnailPath`, `syncedAt`,
+`localOnly`) arrive as unmodelled keys and are preserved like any other.
+
+**Normative apply rule** (desktop's `applyUpsert`, `:48-72`): after the
+document gate, a remote payload is laid **key by key** over the local one. A
+key the remote omits keeps the local value; a key it sends as `null` clears it
+(unsnooze, unarchive and unfile push explicit `null`s); `title` and `type` keep
+the local value on `null` too. `metadata` is `z.unknown()` and replaced whole.
 
 ## 13.8 `attachment` is not a record type
 

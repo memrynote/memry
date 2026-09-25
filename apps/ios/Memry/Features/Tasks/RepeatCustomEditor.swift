@@ -38,7 +38,7 @@ struct RepeatCustomEditor: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                TaskSheetConfirmButton(label: TasksCopy.repeatSave) {
+                SheetConfirmButton(label: TasksCopy.repeatSave) {
                     onSave(draft.rule)
                     dismiss()
                 }

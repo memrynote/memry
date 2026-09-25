@@ -89,7 +89,11 @@ struct ProjectHubView: View {
             HStack(alignment: .center, spacing: Tokens.Space.medium) {
                 TasksToast(store: store)
                 if composer == nil {
-                    TaskAddButton { composer = TaskComposerRequest(projectId: project.id) }
+                    FloatingAddButton(
+                        label: TasksCopy.addTask,
+                        hint: TasksCopy.addButtonHint,
+                        identifier: "tasks.addButton"
+                    ) { composer = TaskComposerRequest(projectId: project.id) }
                 }
             }
             .padding(.horizontal, Tokens.Space.inset)

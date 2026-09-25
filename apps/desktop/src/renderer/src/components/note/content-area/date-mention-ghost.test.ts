@@ -205,3 +205,34 @@ describe('resolveTabAction', () => {
     }
   })
 })
+
+describe('@now ghost', () => {
+  it('completes "@no" to "Now" (the menu\'s top item), case-insensitively', () => {
+    expect(findActiveDateQuery('@no', now)?.prediction).toBe('Now')
+    expect(findActiveDateQuery('@NO', now)?.prediction).toBe('Now')
+    expect(resolveTabAction('no', now)).toEqual({ kind: 'fill', text: 'Now' })
+  })
+
+  it('keeps a complete "@now" active with nothing left to ghost', () => {
+    expect(findActiveDateQuery('log @now', now)).toEqual({
+      atIndex: 4,
+      query: 'now',
+      prediction: 'Now'
+    })
+  })
+
+  it('leaves a lone "@n" and "@nov" to the date grammar', () => {
+    expect(findActiveDateQuery('@n', now)?.prediction).toBe('next Wednesday')
+    expect(findActiveDateQuery('@nov', now)?.prediction).toBe('November')
+  })
+
+  it('commits "now" as a timed pill at the current minute, never a date-only pill', () => {
+    const at = new Date('2026-06-17T01:24:37')
+    const action = resolveTabAction('Now', at)
+    expect(action?.kind).toBe('pill')
+    if (action?.kind !== 'pill') return
+    expect(action.value.hasTime).toBe(true)
+    expect(action.value.remind).toBe('none')
+    expect(action.value.dateISO).toBe(new Date('2026-06-17T01:24:00').toISOString())
+  })
+})

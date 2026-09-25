@@ -29,6 +29,7 @@ import {
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
+import { useJournalInlineTags } from '@/hooks/use-journal-inline-tags'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import {
   BacklinksSection,
@@ -313,9 +314,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [dateParts.day, dateParts.month, dateParts.year, t]
   )
 
-  const currentYear = dateParts.year
-  const { data: heatmapData } = useJournalHeatmap(currentYear)
-
   const viewMonth =
     currentViewState.type === 'month' ? currentViewState.month : dateParts.monthIndex
   const viewYear =
@@ -323,6 +321,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       ? currentViewState.year
       : dateParts.year
 
+  // Keyed to the viewed year: month/year navigation never moves selectedDate,
+  // so the selected day's year is not the year on screen.
+  const { data: heatmapData } = useJournalHeatmap(viewYear)
   const { data: monthEntriesData } = useMonthEntries(viewYear, viewMonth + 1)
   const { data: yearStatsData } = useYearStats(viewYear)
 
@@ -348,8 +349,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
         if (backendStats) {
           const avgLevel = Math.round(backendStats.averageLevel) as 0 | 1 | 2 | 3 | 4
+          // Entries with no counted characters average to level 0; a month
+          // with entries still shows activity.
           const activityDots: (0 | 1 | 2 | 3 | 4)[] = Array(5).fill(
-            backendStats.entryCount > 0 ? avgLevel : 0
+            backendStats.entryCount > 0 ? Math.max(1, avgLevel) : 0
           )
 
           result.push({
@@ -372,9 +375,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       return result
     }
 
-    const year = currentViewState.type === 'year' ? currentViewState.year : dateParts.year
-    return getMonthStats(year, heatmapData, dateLabels)
-  }, [yearStatsData, currentViewState, dateParts.year, heatmapData, dateLabels])
+    return getMonthStats(viewYear, heatmapData, dateLabels)
+  }, [yearStatsData, viewYear, heatmapData, dateLabels])
 
   const journalScrollRef = useRef<HTMLDivElement>(null)
   const [journalScrollEl, setJournalScrollEl] = useState<HTMLDivElement | null>(null)
@@ -833,6 +835,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [entryTags, updateTags]
   )
 
+  const handleInlineTagsChange = useJournalInlineTags(entryTags, updateTags)
+
   // Backlinks transform
   const backlinks: Backlink[] = useMemo(() => {
     return rawBacklinks.map((bl) => {
@@ -1101,6 +1105,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               onInternalLinkClick={(...args) =>
                                 void handleInternalLinkClick(...args)
                               }
+                              noteTags={entryTags}
+                              tagColorMap={tagColorMap}
+                              tagIconMap={tagIconMap}
+                              onInlineTagsChange={handleInlineTagsChange}
                               focusAtEndRef={focusAtEndRef}
                               marqueeZoneEl={marqueeZoneEl}
                               review={{

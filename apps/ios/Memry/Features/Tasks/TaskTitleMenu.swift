@@ -79,12 +79,9 @@ extension TasksStore {
     }
 }
 
-/// The large title and its subtitle, drawn as the list's first element.
-///
-/// iOS 26.5 offers `toolbarTitleMenu` on an inline title only (a large title
-/// shows no menu affordance), so the large title is this `Menu`, and the
-/// collapsed inline title keeps the system title menu. In select mode it is
-/// plain text ("3 selected").
+/// The large title and its subtitle, drawn as the list's first element
+/// (`TitleMenuHeader`, shared with the Inbox). In select mode it is plain
+/// text ("3 selected").
 struct TaskListTitleHeader: View {
     let store: TasksStore
     /// Non-nil in select mode: how many rows are selected.
@@ -93,25 +90,23 @@ struct TaskListTitleHeader: View {
     let searchProjects: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.tight / 2) {
-            if let selectedCount {
-                title(TasksCopy.selectedCount(selectedCount), chevron: false)
-            } else {
-                Menu {
-                    TaskTitleMenu(store: store, openProjects: openProjects, searchProjects: searchProjects)
-                } label: {
-                    title(store.listTitle, chevron: true)
+        TitleMenuHeader(
+            title: selectedCount.map(TasksCopy.selectedCount) ?? store.listTitle,
+            subtitle: selectedCount.map(TasksCopy.selectDragHint) ?? store.listSubtitle,
+            showsMenu: selectedCount == nil,
+            menuHint: TasksCopy.titleMenuHint,
+            identifier: "tasks",
+            items: {
+                TaskTitleMenu(store: store, openProjects: openProjects, searchProjects: searchProjects)
+            },
+            leading: {
+                if let project = titleProject {
+                    TaskProjectDot(color: project.color, font: Tokens.Typography.body.font)
+                        .accessibilityHidden(true)
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint(TasksCopy.titleMenuHint)
-                .accessibilityIdentifier("tasks.titleMenu")
-            }
-            Text(selectedCount.map(TasksCopy.selectDragHint) ?? store.listSubtitle)
-                .font(Tokens.Typography.supporting.font)
-                .foregroundStyle(Tokens.Text.tertiary.color)
-                .accessibilityIdentifier("tasks.subtitle")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+            },
+            accessory: { EmptyView() }
+        )
     }
 
     /// Paper 16 / 18: a project's title carries its colour dot.
@@ -119,27 +114,6 @@ struct TaskListTitleHeader: View {
         guard selectedCount == nil, let project = store.project(store.state.projectId),
               project.name == store.listTitle else { return nil }
         return project
-    }
-
-    private func title(_ text: String, chevron: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
-            if let project = titleProject {
-                TaskProjectDot(color: project.color, font: Tokens.Typography.body.font)
-                    .accessibilityHidden(true)
-            }
-            Text(text)
-                .font(Tokens.Typography.screenTitle.font.weight(.bold))
-                .foregroundStyle(Tokens.Text.primary.color)
-                .multilineTextAlignment(.leading)
-                .accessibilityAddTraits(.isHeader)
-            if chevron {
-                Image(systemName: "chevron.down")
-                    .font(Tokens.Typography.body.font.weight(.semibold))
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                    .accessibilityHidden(true)
-            }
-        }
-        .contentShape(.rect)
     }
 }
 

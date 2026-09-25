@@ -132,7 +132,7 @@ fn create(conn: &Connection, id: &str, name: &str) -> saved_filters::SavedFilter
 fn the_declaration_subscribes_to_filter() {
     let declaration = Declaration::subscribed();
     assert_eq!(declaration.classify("filter"), ArrivingItemType::Subscribed);
-    assert!(declaration.header_value().ends_with(",settings,filter"));
+    assert!(declaration.header_value().contains(",settings,filter"));
 }
 
 #[test]

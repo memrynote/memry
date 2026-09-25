@@ -114,7 +114,11 @@ struct TaskListScreen: View {
         HStack(alignment: .center, spacing: Tokens.Space.medium) {
             TasksToast(store: store)
             if composer == nil, !isSelecting {
-                TaskAddButton { composer = TaskComposerRequest(projectId: store.state.projectId) }
+                FloatingAddButton(
+                    label: TasksCopy.addTask,
+                    hint: TasksCopy.addButtonHint,
+                    identifier: "tasks.addButton"
+                ) { composer = TaskComposerRequest(projectId: store.state.projectId) }
             }
         }
         .padding(.horizontal, Tokens.Space.inset)
@@ -165,27 +169,6 @@ struct TaskListScreen: View {
     private func beginSelection(_ id: String) {
         editMode = .active
         selection.insert(id)
-    }
-}
-
-/// The floating "+" (Paper: "Add · glass prominent"): the screen's one
-/// primary action, the tint as a fill with an ink glyph.
-struct TaskAddButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "plus")
-                .font(Tokens.Typography.sectionTitle.font)
-                .foregroundStyle(Tokens.Tint.foreground.color)
-                .padding(Tokens.Space.small)
-        }
-        .buttonStyle(.glassProminent)
-        .buttonBorderShape(.circle)
-        .tint(Tokens.Tint.base.color)
-        .accessibilityLabel(TasksCopy.addTask)
-        .accessibilityHint(TasksCopy.addButtonHint)
-        .accessibilityIdentifier("tasks.addButton")
     }
 }
 

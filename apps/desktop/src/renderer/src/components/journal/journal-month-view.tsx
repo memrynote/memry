@@ -78,7 +78,11 @@ export function JournalMonthView({
           const dateParts = formatDateParts(dayData.date, dateLabels)
           const entryData = entries.get(dayData.date)
           const heatmapEntry = heatmapLookup.get(dayData.date)
-          const heatmapLevel = heatmapEntry?.level ?? 0
+          // A dated row in either source is an entry. Its level can still be 0:
+          // characterCount is 0 for an empty file and NULL (read as 0) for a row
+          // only the tier-0 stat scan has seen. An entry never renders as empty.
+          const hasEntry = entryData !== undefined || heatmapEntry !== undefined
+          const heatmapLevel = hasEntry ? heatmapEntry?.level || 1 : 0
 
           return (
             <JournalEntryListItem

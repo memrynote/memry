@@ -1,8 +1,8 @@
 import MemryCore
 import SwiftUI
 
-// The shell an opened vault lives in: the five tabs the product has, with the
-// four that are not built yet saying so.
+// The shell an opened vault lives in: Notes, Inbox, Tasks, Journal, More,
+// with the tabs that are not built yet saying so.
 //
 // **A tab that is not built says what is true, and is not removed.** Kaan's
 // call: ship the bar now. `DESIGN.md` forbids a dead control, not an honest
@@ -32,6 +32,10 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View>: View {
     @State private var router = TasksRouter()
     /// Opens a day in the Journal tab from any surface (D11).
     @State private var journalRouter = JournalRouter()
+    /// The Inbox tab's stack (spec 006 D1).
+    @State private var inboxRouter = InboxRouter()
+    private let inboxLinks = InboxLinks.shared
+    @Environment(\.inboxStore) private var inboxStore
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
 
@@ -40,11 +44,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View>: View {
             Tab("Notes", systemImage: "doc.text", value: VaultTab.notes) {
                 notes()
             }
-            Tab("Home", systemImage: "house", value: VaultTab.home) {
-                ComingSoonTab(
-                    title: "Home",
-                    detail: "The home board with your widgets is on your computer for now."
-                )
+            Tab(InboxCopy.title, systemImage: "tray", value: VaultTab.inbox) {
+                InboxTab(store: inboxStore)
             }
             Tab("Tasks", systemImage: "checkmark.circle", value: VaultTab.tasks) {
                 tasks()
@@ -59,6 +60,11 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View>: View {
         .environment(router)
         .environment(journalRouter)
         .environment(\.openJournalDay, { date in journalRouter.openDay(date) })
+        .environment(inboxRouter)
+        // A tapped inbox notification or a Share hand-off opens the Inbox.
+        .onChange(of: inboxLinks.pending, initial: true) {
+            if inboxLinks.take() { inboxRouter.openInbox(in: router) }
+        }
         // A tapped reminder opens its task or its journal day; a tap from a
         // cold start waits in `ReminderTaps` until this shell exists, hence
         // `initial: true`.
@@ -69,7 +75,10 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View>: View {
         // The vault closed or the account signed out: no reminder text may
         // outlive it on the lock screen. The next vault refills its own window.
         .onDisappear {
-            Task { await ReminderScheduler.shared.clearAll() }
+            Task {
+                await ReminderScheduler.shared.clearAll()
+                await InboxNotifications.clearAll()
+            }
         }
         // The More tab holds the way out, so the shell stops drawing it over
         // every screen of the vault.

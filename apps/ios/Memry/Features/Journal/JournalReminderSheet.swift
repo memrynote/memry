@@ -52,7 +52,7 @@ struct JournalReminderSheet: View {
                         .accessibilityIdentifier("journal.reminder.sheet.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    TaskSheetConfirmButton(label: JournalCopy.reminderSave, isEnabled: when > now) {
+                    SheetConfirmButton(label: JournalCopy.reminderSave, isEnabled: when > now) {
                         save()
                     }
                     .accessibilityIdentifier("journal.reminder.sheet.save")

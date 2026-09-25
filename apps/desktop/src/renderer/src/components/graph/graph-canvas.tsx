@@ -11,6 +11,7 @@ import {
   syncGraphologyGraph,
   type BuildGraphOptions
 } from '@/lib/graph-builder'
+import { graphLabelRenderedSizeThreshold } from '@/lib/graph-labels'
 import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 import { hasWebGLSupport } from '@/lib/webgl-support'
 import { LivePhysics, SettledPhysics, type PhysicsHandle } from './physics-layout'
@@ -245,7 +246,7 @@ export function GraphCanvas({
     () => ({
       nodeReducer,
       edgeReducer,
-      labelRenderedSizeThreshold: graphSettings.showLabels ? 6 : Infinity,
+      labelRenderedSizeThreshold: graphLabelRenderedSizeThreshold(graphSettings.showLabels),
       labelColor: { color: labelColor },
       labelSize: 12,
       defaultEdgeType: 'line' as const,
@@ -527,7 +528,7 @@ function SigmaSettingsSync({
 
   useEffect(() => {
     if (sigma.getGraph() !== graph) return
-    sigma.setSetting('labelRenderedSizeThreshold', showLabels ? 6 : Infinity)
+    sigma.setSetting('labelRenderedSizeThreshold', graphLabelRenderedSizeThreshold(showLabels))
   }, [sigma, graph, showLabels])
 
   useEffect(() => {

@@ -71,7 +71,7 @@ export function JournalEntryListItem({
       onClick={onClick}
       className={cn(
         // Base styling
-        'w-full flex items-center gap-3 px-3 py-2.5 text-left',
+        'w-full flex items-center gap-3 px-3 py-2.5 text-start',
         'rounded-md transition-all duration-150',
         // Hover state
         'hover:bg-muted/60',
@@ -113,8 +113,8 @@ export function JournalEntryListItem({
 
       {/* Preview Text */}
       <div className="flex-1 min-w-0">
-        {hasEntry && preview ? (
-          <p className="text-sm text-muted-foreground truncate">{preview}</p>
+        {hasEntry ? (
+          preview && <p className="text-sm text-muted-foreground truncate">{preview}</p>
         ) : isFuture ? (
           <p className="text-sm text-muted-foreground/60 italic">{t('date.relative.future')}</p>
         ) : (

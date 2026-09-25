@@ -275,6 +275,11 @@ Turn the motion off with **Live motion** under the gear icon → **Display** if 
 still graph — the same forces then run once and stop, which is also the lighter option on
 very large vaults.
 
+**Show Labels**, in the same **Display** section, keeps note names on the map. It is off by
+default, and names then appear only on hover. With it on, most names show at the default zoom
+and every name shows once you zoom in; where names would overlap, the graph shows one per
+area and fills in the rest as you zoom closer.
+
 Memry turns on Chromium's software WebGL renderer, so a device without GPU acceleration — a
 remote desktop session, a virtual machine, a blocklisted graphics driver, or a launch where Memry
 disabled hardware acceleration after a GPU crash — still draws the graph, only more slowly.

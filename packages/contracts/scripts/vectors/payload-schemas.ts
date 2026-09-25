@@ -19,6 +19,7 @@ import {
   CustomIconSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
+  InboxSyncPayloadSchema,
   JournalSyncPayloadSchema,
   NoteSyncPayloadSchema,
   ProjectSyncPayloadSchema,
@@ -335,6 +336,35 @@ const SPECS: TypeSpec[] = [
     boundary: { name: '', config: {}, position: 0, clock: {} },
     unknownKey: 'syncedAt',
     unknownValue: '2026-04-16T00:00:01.000Z'
+  },
+  {
+    // Inbox captures, subscribed since spec 006 IB012. Desktop pushes its whole
+    // `inbox_items` row, so its local columns (`transcription`, `viewedAt`,
+    // ...) are the unknown keys a real payload carries; `metadata` is
+    // `z.unknown()` and never stripped inside.
+    type: 'inbox',
+    schema: InboxSyncPayloadSchema,
+    valid: {
+      title: 'How Linear builds product',
+      content: 'Small teams, short cycles.',
+      type: 'link',
+      metadata: { url: 'https://example.com/agent/1', fetchStatus: 'complete', siteName: 'Linear' },
+      filedAt: null,
+      filedTo: null,
+      filedAction: null,
+      snoozedUntil: '2026-04-17T09:00:00.000Z',
+      snoozeReason: null,
+      archivedAt: null,
+      sourceUrl: 'https://example.com/agent/1',
+      sourceTitle: null,
+      captureSource: 'inline',
+      clock: CLOCK,
+      createdAt: '2026-04-16T00:00:00.000Z',
+      modifiedAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { title: '', content: null, metadata: null, clock: {} },
+    unknownKey: 'transcription',
+    unknownValue: 'Pick up the cable before Friday.'
   }
 ]
 

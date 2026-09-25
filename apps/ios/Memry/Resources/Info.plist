@@ -32,7 +32,14 @@
 	<!-- Absent, the first AVCaptureDevice access terminates the process rather
 	     than returning an error (research R13). QR device linking needs it. -->
 	<key>NSCameraUsageDescription</key>
-	<string>Memry uses the camera to scan the QR code that links this phone to your vault.</string>
+	<string>Memry uses the camera to scan the QR code that links this phone to your vault, and to take photos you capture to your inbox.</string>
+
+	<!-- Absent, the first recording or transcription terminates the process
+	     (TCC), exactly as the camera key above. Inbox voice memos (IB06). -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Memry records the voice memos you capture to your inbox.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Memry turns your voice memos into text on this iPhone. The audio never leaves your device for this.</string>
 
 	<!-- Answered up front rather than during submission week: the app uses only
 	     exempt encryption (standard HTTPS plus libsodium for the user's own

@@ -67,6 +67,10 @@ Typing `@` in note text offers a date. Accepting one drops a pill into the sente
 carry its own reminder — useful when the reminder belongs to a paragraph rather than to the note as a
 whole. Click the pill to change the date, the clock format or the reminder lead time.
 
+Type `@now` to stamp the current time: it drops a pill for today at the current minute, shown as
+`Today 14:05` (or `Today 2:05 PM`, following your clock format setting). Handy for timing entries in
+a bullet list. On later days the same pill reads `Yesterday 14:05`, then the weekday or the date.
+
 A pill reads as one of three things:
 
 | Appearance                             | Meaning                                   |

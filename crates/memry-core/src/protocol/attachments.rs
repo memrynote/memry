@@ -179,6 +179,7 @@ async fn fetch_manifest_envelope(
     let wire: Wire = client
         .send_json(
             ApiRequest::get(&format!("/sync/attachments/{attachment_id}/manifest"))
+                .auth(Auth::Session)
                 .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -220,6 +221,7 @@ pub async fn presign_batch(
     }
 
     let request = ApiRequest::post("/sync/attachments/presign-batch")
+        .auth(Auth::Session)
         .json(&Body { chunk_hashes })
         .retry(RetryPolicy::polled());
 
@@ -299,6 +301,7 @@ pub async fn fetch_chunk_proxied(
     let response = client
         .send(
             ApiRequest::get(&format!("/sync/attachments/chunks/{chunk_hash}"))
+                .auth(Auth::Session)
                 .retry(RetryPolicy::polled()),
         )
         .await?;

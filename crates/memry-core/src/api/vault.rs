@@ -40,6 +40,7 @@ use std::sync::Arc;
 
 use crate::api::auth::AuthSession;
 use crate::api::errors::{AuthError, StorageError};
+use crate::api::inbox::Inbox;
 use crate::api::journal::Journal;
 use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
@@ -156,6 +157,12 @@ impl Vault {
     /// [`Vault::notes_writer`] does: a write ticks this device's clock.
     pub fn journal(&self, store: Arc<dyn SecureStore>) -> Result<Arc<Journal>, AuthError> {
         Ok(Arc::new(Journal::over(self.db.clone(), &store)?))
+    }
+
+    /// Every inbox read and write over this vault (spec 006). Needs the
+    /// keychain for the same reason [`Vault::tasks`] does.
+    pub fn inbox(&self, store: Arc<dyn SecureStore>) -> Result<Arc<Inbox>, AuthError> {
+        Ok(Arc::new(Inbox::over(self.db.clone(), &store)?))
     }
 
     /// The full-text search over this vault.
