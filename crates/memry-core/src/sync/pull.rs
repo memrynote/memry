@@ -49,6 +49,7 @@ use crate::storage::repositories::sync_items::{self, InboundRecord};
 use super::apply::{self, ApplyTotals, Pending};
 use super::body_debt;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
+use super::feed_restart;
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -128,10 +129,9 @@ pub struct PullReport {
     pub purged_documents: Vec<String>,
 }
 
-/// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
-/// The declaration header value the record cursor was last advanced under.
-pub const META_RECORD_DECLARATION: &str = "sync.record_declaration";
+pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 
+/// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
 pub struct PullLoop {
     http: Arc<HttpClient>,
     db: Db,
@@ -177,7 +177,7 @@ impl PullLoop {
     /// run that skipped it. After a non-envelope pull body the cursor held, and
     /// continuing would re-read the same page.
     pub async fn run(&self, max_pages: u32) -> Result<PullReport, PullError> {
-        self.restart_on_new_declaration().await?;
+        let repairing = self.restart_feed().await?;
         let mut total = PullReport::default();
         for index in 0..max_pages {
             let page = if index == 0 {
@@ -202,6 +202,11 @@ impl PullLoop {
                 break;
             }
         }
+        if repairing && !total.refused && !total.has_more {
+            self.db
+                .call(|conn| feed_restart::finish_cursor_skip_repair(conn))
+                .await?;
+        }
         Ok(total)
     }
 
@@ -219,32 +224,18 @@ impl PullLoop {
         applied.is_some_and(|applied| cursor <= applied)
     }
 
-    /// Starts the feed over once when the declared types grew.
-    ///
-    /// The record cursor is one position in one feed, and the server filters
-    /// that feed by the declaration. A type added to the declaration later
-    /// (saved filters, spec 004 TP022) has rows *behind* the stored cursor
-    /// that this device never saw, and no later page will carry them. The
-    /// declaration a device last pulled under is kept in `meta`; when the
-    /// current one differs, or a device that has pulled before never recorded
-    /// one, the cursor goes back to the start and the next pages re-read the
-    /// feed. Re-applying a known item is a no-op merge (its clocks dominate or
-    /// match), so the cost is one full pull, once.
-    async fn restart_on_new_declaration(&self) -> Result<(), PullError> {
+    /// Runs [`feed_restart`]'s two rules before the first page, and answers
+    /// whether the cursor-skip repair is pending.
+    async fn restart_feed(&self) -> Result<bool, PullError> {
         let current = self.declaration.header_value();
-        self.db
+        Ok(self
+            .db
             .call(move |conn| {
-                let stored = super::first_sync_store::read_meta(conn, META_RECORD_DECLARATION)?;
-                if stored.as_deref() == Some(current.as_str()) {
-                    return Ok(());
-                }
-                if store::read_cursor(conn, RECORD_CURSOR_SCOPE)?.is_some() {
-                    store::write_cursor(conn, RECORD_CURSOR_SCOPE, None, now_ms())?;
-                }
-                super::first_sync_store::write_meta(conn, META_RECORD_DECLARATION, &current)
+                let now = now_ms();
+                feed_restart::restart_on_new_declaration(conn, &current, now)?;
+                feed_restart::begin_cursor_skip_repair(conn, now)
             })
-            .await?;
-        Ok(())
+            .await?)
     }
 
     /// One page: refs, bodies, apply, advance.

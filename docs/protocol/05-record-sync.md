@@ -155,6 +155,19 @@ skips them for good (#2283). The pull cursor moves only as §5.11 says.
 never observe a cursor above a range whose rows have not committed yet, which is
 what makes paging by `server_cursor > ?` lossless.
 
+**A device that paged before that fix may hold a skipped range, and re-reads
+the feed once** (#2382). The state has three values: absent (not started),
+`pending:<cursor>` (the record cursor was reset from `<cursor>` and no pull has
+delivered since) and `done`. A pending repair resumes from the stored cursor
+and never resets again, so a page refused on every run cannot restart it
+forever. A device with no cursor goes straight to `done`. `done` is recorded
+only after a pull that delivered. Desktop keeps it in `cursorSkipRepair`
+(`apps/desktop/src/main/sync/engine/full-sync-runner.ts`). The Rust core keeps
+it in the `meta` row `sync.cursor_skip_repair`, writes the reset and `pending`
+in one transaction, and records `done` after a run that was not refused and
+reached `hasMore: false` (`crates/memry-core/src/sync/feed_restart.rs`,
+#2304).
+
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
 sending** (`apps/mobile/src/sync/outbox.ts:582-597`, rationale at `:584-589`).
