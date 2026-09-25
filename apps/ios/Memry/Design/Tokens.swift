@@ -535,6 +535,9 @@ enum Tokens {
         static let reminder = Task.dueToday
         /// A stale row's amber age and the "fetching" line (Paper 01).
         static let stale = Task.dueToday
+        /// Text laid over a link preview's image (Paper 10 `text-canvas`),
+        /// read against the photo and its dark scrim in both styles.
+        static let onImage = AdaptiveColor(light: 0xFF_FF_FF, dark: 0xFF_FF_FF)
 
         static func type(_ type: String) -> AdaptiveColor {
             switch type {

@@ -13,35 +13,62 @@ struct InboxSelectionToolbar: ToolbarContent {
     @Binding var sheets: InboxSheets
     let finish: () -> Void
 
+    /// One item, so the four actions share one glass capsule (Paper 16,
+    /// the Tasks selection bar).
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .bottomBar) {
+        ToolbarItem(placement: .bottomBar) {
             let ids = Array(selection)
-            Button(InboxCopy.file, systemImage: "folder") { sheets.file = InboxFileRequest(ids: ids) }
-                .disabled(ids.isEmpty)
-                .accessibilityIdentifier("inbox.bulk.file")
-            Spacer()
-            Button(InboxCopy.tag, systemImage: "number") { sheets.tag = InboxIdList(ids: ids) }
-                .disabled(ids.isEmpty)
-                .accessibilityIdentifier("inbox.bulk.tag")
-            Spacer()
-            Menu {
-                InboxSnoozeMenuItems(now: store.clock()) { date in
-                    Task {
-                        await store.snooze(ids, until: date)
-                        finish()
-                    }
-                } pickDate: {
-                    sheets.snoozeIds = ids
+            HStack(spacing: 0) {
+                Button { sheets.file = InboxFileRequest(ids: ids) } label: {
+                    TaskBulkActionLabel(title: InboxCopy.file, systemImage: "folder")
                 }
-            } label: {
-                Label(InboxCopy.snooze, systemImage: "moon.zzz")
-            }
-            .disabled(ids.isEmpty)
-            .accessibilityIdentifier("inbox.bulk.snooze")
-            Spacer()
-            Button(InboxCopy.archive, systemImage: "archivebox") { sheets.archiveAll = ids }
-                .disabled(ids.isEmpty)
+                .accessibilityIdentifier("inbox.bulk.file")
+                .frame(maxWidth: .infinity)
+                Button { sheets.tag = InboxIdList(ids: ids) } label: {
+                    TaskBulkActionLabel(title: InboxCopy.tag, systemImage: "tag")
+                }
+                .accessibilityIdentifier("inbox.bulk.tag")
+                .frame(maxWidth: .infinity)
+                Menu {
+                    InboxSnoozeMenuItems(now: store.clock()) { date in
+                        Task {
+                            await store.snooze(ids, until: date)
+                            finish()
+                        }
+                    } pickDate: {
+                        sheets.snoozeIds = ids
+                    }
+                } label: {
+                    TaskBulkActionLabel(title: InboxCopy.snooze, systemImage: "alarm")
+                }
+                .accessibilityIdentifier("inbox.bulk.snooze")
+                .frame(maxWidth: .infinity)
+                Button { sheets.archiveAll = ids } label: {
+                    TaskBulkActionLabel(title: InboxCopy.archive, systemImage: "archivebox")
+                }
                 .accessibilityIdentifier("inbox.bulk.archive")
+                // On the button, so the popover points at it.
+                .confirmationDialog(
+                    InboxCopy.archiveDialogTitle(sheets.archiveAll?.count ?? 0),
+                    isPresented: Binding(get: { sheets.archiveAll != nil }, set: { if !$0 { sheets.archiveAll = nil } }),
+                    titleVisibility: .visible
+                ) {
+                    Button(InboxCopy.archiveDialogConfirm(sheets.archiveAll?.count ?? 0), role: .destructive) {
+                        if let ids = sheets.archiveAll {
+                            Task {
+                                await store.archive(ids)
+                                finish()
+                            }
+                        }
+                        sheets.archiveAll = nil
+                    }
+                } message: {
+                    Text(InboxCopy.archiveDialogBody)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.plain)
+            .disabled(ids.isEmpty)
         }
     }
 }
@@ -70,6 +97,7 @@ struct InboxTagSheet: View {
                 Section(InboxCopy.tags) {
                     ForEach(known.filter { !chosen.contains($0) && (text.isEmpty || $0.localizedCaseInsensitiveContains(text)) }, id: \.self) { tag in
                         Button("#\(tag)") { chosen.append(tag) }
+                            .foregroundStyle(Tokens.Text.primary.color)
                     }
                 }
             }

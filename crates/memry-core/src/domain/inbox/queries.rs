@@ -176,7 +176,8 @@ pub fn fetching_count(conn: &Connection) -> Result<i64, StorageError> {
 }
 
 /// Folders captures were recently filed to, most recent first, deduplicated:
-/// the parent of each `folder`-filed `filedTo` path, `""` for the vault root.
+/// the parent of each `folder`- or `note`-filed `filedTo` path (both are a
+/// note's `folder/Title.md`), `""` for the vault root.
 ///
 /// Desktop's suggestion fallback reads its local `filing_history` table
 /// (`getRecentFilingDestinations`), which never syncs; the filed rows that
@@ -185,7 +186,7 @@ pub fn recent_folders(conn: &Connection, limit: usize) -> Result<Vec<String>, St
     let mut statement = conn
         .prepare(
             "SELECT filed_to FROM inbox_items
-              WHERE deleted_at IS NULL AND filed_action = 'folder' AND filed_to IS NOT NULL
+              WHERE deleted_at IS NULL AND filed_action IN ('folder', 'note') AND filed_to IS NOT NULL
               ORDER BY filed_at DESC",
         )
         .map_err(failed)?;

@@ -222,6 +222,9 @@ private struct VaultRowLabel: View {
         }
         .padding(Tokens.Space.inset)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // A plain button hit-tests only what it draws; without this the gap
+        // between the name and the chevron ignored taps.
+        .contentShape(.rect)
     }
 }
 

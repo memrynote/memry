@@ -176,7 +176,10 @@ final class TasksUITests: XCTestCase {
     /// scoped to every project.
     private func openTasks() throws {
         app.launch()
-        let vault = app.staticTexts["MemryNote"]
+        // The staging vault's name is whatever a desktop peer last set it to;
+        // `TEST_RUNNER_MEMRY_UI_VAULT` overrides the usual one.
+        let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
+        let vault = app.staticTexts[name]
         let tasksTab = app.buttons["Tasks"].firstMatch
         let signIn = app.staticTexts["Sign in to Memry"]
         let deadline = Date().addingTimeInterval(60)

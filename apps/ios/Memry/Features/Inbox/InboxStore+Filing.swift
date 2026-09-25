@@ -26,7 +26,9 @@ struct InboxLinkChoice: Hashable, Sendable {
 extension InboxStore {
     /// Files to a folder (`""` = the vault root): the swipe, the quick-file
     /// row, the File sheet without note links.
-    func file(_ item: InboxItemRecord, to folder: String, tags: [String]) async {
+    /// `sidebarFallback`: the user asked for an image "in the sidebar", which
+    /// this phone cannot write, so it lands in a note and the toast says so.
+    func file(_ item: InboxItemRecord, to folder: String, tags: [String], sidebarFallback: Bool = false) async {
         let id = item.id
         let now = localNow()
         let target: String? = folder.isEmpty ? nil : folder
@@ -36,7 +38,8 @@ extension InboxStore {
             guard await writeRemoving([id], { try $0.fileToFolder(id: id, folder: target, tags: tags, localNow: now) }) != nil
             else { return }
         }
-        showToast(InboxCopy.filedTo(InboxFolderName.leaf(folder))) { [weak self] in
+        let message = sidebarFallback ? InboxCopy.embedFellBackToLink : InboxCopy.filedTo(InboxFolderName.leaf(folder))
+        showToast(message) { [weak self] in
             await self?.write { try $0.undoFile(id: id) }
             self?.showToast(InboxCopy.changesUndone)
         }
@@ -63,7 +66,10 @@ extension InboxStore {
             guard let ownerId else { return }
             // An image lands inside the first note; desktop's link mode puts a
             // file in the sidebar, which this phone cannot write (§6 IB025).
-            guard await attach(item, toNote: ownerId, notePath: nil) else { return }
+            guard await attach(item, toNote: ownerId, notePath: nil) else {
+                if owner.noteId == nil { await discard(ownerId) }
+                return
+            }
             if imageMode == .link, item.itemType == "image" { showToast(InboxCopy.embedFellBackToLink) }
             let path = "attachments/\(ownerId)/\(uploadName(item))"
             _ = await writeRemoving([id]) { try $0.markFiled(id: id, filedTo: path, action: "linked") }
@@ -154,8 +160,19 @@ extension InboxStore {
         guard let made = await read({ try $0.createNoteForFile(id: id, folder: folder, tags: tags, localNow: now) }),
               let noteId = made.targetId
         else { return false }
-        guard await attach(item, toNote: noteId, notePath: made.filedTo) else { return false }
+        guard await attach(item, toNote: noteId, notePath: made.filedTo) else {
+            await discard(noteId)
+            return false
+        }
         return await writeRemoving([id]) { try $0.markFiled(id: id, filedTo: made.filedTo, action: action) } != nil
+    }
+
+    /// Tombstones a note made for a filing that then failed, so a retry does
+    /// not leave an empty twin behind each attempt. Best effort: the failure
+    /// is already on screen.
+    private func discard(_ noteId: String) async {
+        guard let writer else { return }
+        try? await executorRun { try writer.delete(id: noteId) }
     }
 
     /// Uploads the capture's file into a note and shows it there.

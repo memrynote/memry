@@ -37,20 +37,44 @@ struct InboxDetailContent: View {
         let article = ["full", "partial"].contains(meta["extractionStatus"] as? String ?? "")
         return VStack(alignment: .leading, spacing: Tokens.Space.inset) {
             VStack(alignment: .leading, spacing: 0) {
-                ZStack(alignment: .bottomLeading) {
-                    if let thumb = store.localFile(item.thumbnailPath), let image = UIImage(contentsOfFile: thumb.path) {
-                        Image(uiImage: image).resizable().scaledToFill()
-                    } else {
-                        Tokens.Canvas.surfaceActive.color
-                    }
-                    Text((meta["siteName"] as? String) ?? InboxMeta.domain(item.sourceUrl ?? "") ?? "")
-                        .font(Tokens.Typography.sectionTitle.font.weight(.bold))
-                        .foregroundStyle(Tokens.Text.primary.color)
-                        .padding(Tokens.Space.inset)
+                let thumbnail = store.localFile(item.thumbnailPath).flatMap { UIImage(contentsOfFile: $0.path) }
+                // Desktop downloads the hero beside its own copy only; the
+                // synced `heroImage` address stands in on this device.
+                let remote = (meta["heroImage"] as? String).flatMap(URL.init(string:)).flatMap { $0.scheme == "https" ? $0 : nil }
+                let hasHero = thumbnail != nil || remote != nil
+                // Paper 10's hero: the page image with its headline. Without an
+                // image the headline moves into the card instead of sitting on
+                // an empty 180pt block.
+                if hasHero {
+                    Rectangle()
+                        .fill(Tokens.Canvas.surface.color)
+                        .frame(height: 180)
+                        .overlay {
+                            if let thumbnail {
+                                Image(uiImage: thumbnail).resizable().scaledToFill()
+                            } else {
+                                AsyncImage(url: remote) { $0.resizable().scaledToFill() } placeholder: { EmptyView() }
+                            }
+                        }
+                        .overlay(alignment: .bottomLeading) {
+                            ZStack(alignment: .bottomLeading) {
+                                LinearGradient(colors: [.clear, .black.opacity(0.55)], startPoint: .center, endPoint: .bottom)
+                                Text(previewHeadline)
+                                    .font(Tokens.Typography.sectionTitle.font.weight(.bold))
+                                    .foregroundStyle(Tokens.Inbox.onImage.color)
+                                    .lineLimit(2)
+                                    .padding(Tokens.Space.inset)
+                            }
+                        }
+                        .clipped()
                 }
-                .frame(height: 160)
-                .clipped()
                 VStack(alignment: .leading, spacing: Tokens.Space.small) {
+                    if !hasHero {
+                        Text(previewHeadline)
+                            .font(Tokens.Typography.heading.font)
+                            .foregroundStyle(Tokens.Text.primary.color)
+                            .lineLimit(2)
+                    }
                     if !article, let description = item.content ?? (meta["description"] as? String), !description.isEmpty {
                         Text(description)
                             .font(Tokens.Typography.supporting.font)
@@ -83,6 +107,13 @@ struct InboxDetailContent: View {
                 textBody(text)
             }
         }
+    }
+
+    /// Paper 10 sets the page's own headline over the preview image; the site
+    /// name, then the domain, stand in when the metadata has none.
+    private var previewHeadline: String {
+        let pageTitle = (meta["title"] as? String).flatMap { $0 == item.title ? nil : $0 }
+        return pageTitle ?? (meta["siteName"] as? String) ?? InboxMeta.domain(item.sourceUrl ?? "") ?? ""
     }
 
     // MARK: Image, PDF, video (Paper 12)
@@ -155,7 +186,7 @@ struct InboxDetailContent: View {
                 if let post { Text(post).font(Tokens.Typography.body.font) }
             }
             if let link = item.sourceUrl, let url = URL(string: link) {
-                Link(InboxCopy.viewOnX, destination: url)
+                Link(InboxCopy.viewOn(platform: platform(url)), destination: url)
                     .font(Tokens.Typography.supporting.font.weight(.semibold))
                     .foregroundStyle(Tokens.Text.tint.color)
                     .frame(minHeight: Tokens.Size.minimumHitArea)
@@ -164,6 +195,11 @@ struct InboxDetailContent: View {
         .padding(Tokens.Space.inset)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
+    }
+
+    /// Desktop's `metadata.platform`, else the site name in the address.
+    private func platform(_ url: URL) -> String? {
+        meta["platform"] as? String ?? url.host()?.split(separator: ".").dropLast().last.map(String.init)
     }
 
     private var clipBody: some View {

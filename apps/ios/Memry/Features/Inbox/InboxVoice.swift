@@ -160,8 +160,14 @@ struct InboxRecorderPanel: View {
     let cancel: () -> Void
     let stop: () -> Void
 
+    /// Bars in the waveform; the ones not yet recorded wait in grey.
+    private static let bars = 40
+    @ScaledMetric(relativeTo: .body) private var waveHeight: CGFloat = 56
+    @ScaledMetric(relativeTo: .body) private var cancelSize: CGFloat = 48
+    @ScaledMetric(relativeTo: .body) private var stopSize: CGFloat = 64
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+        VStack(spacing: Tokens.Space.inset) {
             HStack(spacing: Tokens.Space.small) {
                 Circle().fill(Tokens.Interaction.destructive.color)
                     .frame(width: Tokens.Space.small, height: Tokens.Space.small)
@@ -172,37 +178,56 @@ struct InboxRecorderPanel: View {
                 Spacer()
                 Text(InboxMeta.duration(recorder.elapsed))
                     .font(Tokens.Typography.supporting.font.monospacedDigit())
-                    .foregroundStyle(Tokens.Text.secondary.color)
+                    .foregroundStyle(Tokens.Text.tertiary.color)
                     .accessibilityLabel(InboxCopy.recordingElapsed(InboxMeta.duration(recorder.elapsed)))
             }
-            HStack(alignment: .center, spacing: 2) {
-                ForEach(Array(recorder.levels.enumerated()), id: \.offset) { _, level in
-                    Capsule()
-                        .fill(Tokens.Inbox.voice.color)
-                        .frame(width: 3, height: max(3, level * Tokens.Size.pill))
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: Tokens.Size.pill, alignment: .leading)
-            .accessibilityHidden(true)
+            waveform
+            Text(InboxCopy.transcribedHere)
+                .font(Tokens.Typography.caption.font)
+                .foregroundStyle(Tokens.Text.tertiary.color)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
             HStack {
-                Text(InboxCopy.transcribedHere)
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                Spacer()
-                Button(InboxCopy.cancel, systemImage: "xmark", action: cancel)
-                    .labelStyle(.iconOnly)
-                    .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
-                    .accessibilityLabel(InboxCopy.cancelRecording)
-                    .accessibilityIdentifier("inbox.voice.cancel")
-                Button(action: stop) {
-                    Image(systemName: "stop.fill").foregroundStyle(Tokens.Tint.foreground.color)
+                Button(action: cancel) {
+                    Image(systemName: "xmark")
+                        .font(Tokens.Typography.body.font.weight(.semibold))
+                        .foregroundStyle(Tokens.Text.primary.color)
+                        .frame(width: cancelSize, height: cancelSize)
+                        .background(Tokens.Canvas.surfaceActive.color, in: .circle)
                 }
-                .buttonStyle(.glassProminent)
-                .buttonBorderShape(.circle)
-                .tint(Tokens.Tint.base.color)
+                .buttonStyle(.plain)
+                .accessibilityLabel(InboxCopy.cancelRecording)
+                .accessibilityIdentifier("inbox.voice.cancel")
+                Spacer()
+                Button(action: stop) {
+                    RoundedRectangle(cornerRadius: Tokens.Radius.small - 1)
+                        .fill(Tokens.Tint.foreground.color)
+                        .frame(width: stopSize * 5 / 16, height: stopSize * 5 / 16)
+                        .frame(width: stopSize, height: stopSize)
+                        .background(Tokens.Tint.base.color, in: .circle)
+                        .shadow(color: Tokens.Tint.base.color.opacity(0.32), radius: 12, y: 10)
+                }
+                .buttonStyle(.plain)
                 .accessibilityLabel(InboxCopy.stopRecording)
                 .accessibilityIdentifier("inbox.voice.stop")
+                Spacer()
+                // Balances the cancel button so stop sits in the middle.
+                Color.clear.frame(width: cancelSize, height: cancelSize)
             }
         }
+    }
+
+    private var waveform: some View {
+        let recorded = Array(recorder.levels.suffix(Self.bars))
+        return HStack(alignment: .center, spacing: 3) {
+            ForEach(0 ..< Self.bars, id: \.self) { index in
+                let level = index < recorded.count ? recorded[index] : nil
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(level == nil ? Tokens.Line.border.color : Tokens.Text.primary.color)
+                    .frame(width: 3, height: max(Tokens.Space.small, (level ?? 0) * waveHeight))
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: waveHeight, maxHeight: waveHeight)
+        .accessibilityHidden(true)
     }
 }

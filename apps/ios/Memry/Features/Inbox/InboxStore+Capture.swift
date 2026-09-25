@@ -37,21 +37,30 @@ extension InboxStore {
         return .captured(outcome.item.id)
     }
 
-    /// D3: link metadata fetched on this device (`LPMetadataProvider`), merged
-    /// by the core without overwriting a richer value a peer wrote. A failure
-    /// stays quiet, as on desktop.
+    /// D3: link metadata fetched on this device, the fields desktop's link job
+    /// writes (title from `LPMetadataProvider`, description / hero image /
+    /// site name / favicon from the page's tags), merged by the core without
+    /// overwriting a richer value a peer wrote. A failure stays quiet, as on
+    /// desktop.
     func enrich(_ item: InboxItemRecord) {
         guard let link = item.sourceUrl, let url = URL(string: link) else { return }
         let id = item.id
         Task { [weak self] in
+            async let page = InboxLinkPage.fetch(url)
             let provider = LPMetadataProvider()
             provider.shouldFetchSubresources = false
             let fetched = try? await provider.startFetchingMetadata(for: url)
-            var patch: [String: Any] = ["url": link, "fetchStatus": fetched == nil ? "failed" : "complete"]
-            if let host = url.host() { patch["siteName"] = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host }
+            let found = await page
+            var patch: [String: Any] = ["url": link, "fetchStatus": fetched == nil && found == nil ? "failed" : "complete"]
+            let host = url.host().map { $0.hasPrefix("www.") ? String($0.dropFirst(4)) : $0 }
+            patch["siteName"] = found?.siteName ?? host
+            patch["description"] = found?.description
+            patch["heroImage"] = found?.heroImage
+            patch["favicon"] = found?.favicon
             let json = (try? JSONSerialization.data(withJSONObject: patch)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
-            let title = fetched?.title
-            await self?.write { try $0.completeLink(id: id, title: title, description: nil, metadataJson: json) }
+            let title = fetched?.title ?? found?.title
+            let description = found?.description
+            await self?.write { try $0.completeLink(id: id, title: title, description: description, metadataJson: json) }
         }
     }
 
@@ -176,6 +185,9 @@ extension InboxStore {
 
     /// Runs (or retries) on-device transcription for a voice memo.
     func transcribeVoice(_ id: String, file: URL? = nil) async {
+        guard !transcribing.contains(id) else { return }
+        transcribing.insert(id)
+        defer { transcribing.remove(id) }
         var path = items.first { $0.id == id }?.attachmentPath
         if path == nil { path = await fetch(id)?.attachmentPath }
         let url = file ?? localFile(path)

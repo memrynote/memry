@@ -13,10 +13,12 @@ import UniformTypeIdentifiers
 
 struct InboxComposer: View {
     let store: InboxStore
+    @Binding var text: String
+    /// Up to the screen, which dims the list and hides the tab bar (Paper 06).
+    @Binding var recording: Bool
     let close: () -> Void
 
     @Environment(InboxRouter.self) private var router
-    @State private var text = ""
     @State private var duplicate: InboxItemRecord?
     @State private var preview: InboxLinkPreview?
     @State private var clipboardHasLink = false
@@ -43,7 +45,7 @@ struct InboxComposer: View {
                     .submitLabel(.send)
                     .onSubmit { Task { await send(force: false) } }
                     .accessibilityIdentifier("inbox.composer.field")
-                if let preview { InboxInboxLinkPreviewCard(preview: preview) }
+                if let preview { InboxLinkPreviewCard(preview: preview) }
                 controls
             }
         }
@@ -51,9 +53,20 @@ struct InboxComposer: View {
         .chromeGlass(in: .rect(cornerRadius: Tokens.Radius.container))
         .padding(.horizontal, Tokens.Space.small)
         .padding(.bottom, Tokens.Space.small)
-        .onAppear {
-            focused = true
-            clipboardHasLink = UIPasteboard.general.hasURLs
+        .onAppear { focused = true }
+        .onChange(of: recorder.phase) { _, phase in recording = phase == .recording }
+        .onDisappear { recording = false }
+        .task {
+            // A link copied as text (most apps) is not `hasURLs`. Pattern
+            // detection finds it without reading the pasteboard, so no paste
+            // prompt until the chip is tapped.
+            let pasteboard = UIPasteboard.general
+            if pasteboard.hasURLs {
+                clipboardHasLink = true
+            } else if pasteboard.hasStrings,
+                      let found = try? await pasteboard.detectedPatterns(for: [\.probableWebURL]) {
+                clipboardHasLink = found.contains(\.probableWebURL)
+            }
         }
         .task(id: trimmed) { await inspect() }
         .photosPicker(isPresented: $showsPhotos, selection: $photo, matching: .images)
@@ -77,6 +90,7 @@ struct InboxComposer: View {
         } message: {
             Text(recorder.phase == .denied ? InboxErrors.microphoneDenied.text : InboxErrors.noMicrophone.text)
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("inbox.composer")
     }
 
@@ -148,10 +162,12 @@ struct InboxComposer: View {
         let created = Date(timeIntervalSince1970: TimeInterval(item.createdAtMs) / 1000)
         return VStack(alignment: .leading, spacing: Tokens.Space.small) {
             Text(InboxCopy.alreadyCaptured(InboxMeta.displayTitle(item), InboxMeta.age(created, now: store.clock())))
-                .font(Tokens.Typography.supporting.font)
-                .foregroundStyle(Tokens.Text.primary.color)
+                .font(Tokens.Typography.caption.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
             HStack(spacing: Tokens.Space.section) {
                 Button(InboxCopy.openIt) {
+                    // The link is already in the inbox: drop the draft.
+                    text = ""
                     close()
                     router.path.append(.item(item.id))
                 }
@@ -159,8 +175,9 @@ struct InboxComposer: View {
                 Button(InboxCopy.captureAnyway) { Task { await send(force: true) } }
                     .accessibilityIdentifier("inbox.composer.captureAnyway")
             }
-            .font(Tokens.Typography.supporting.font.weight(.semibold))
+            .font(Tokens.Typography.caption.font.weight(.semibold))
             .foregroundStyle(Tokens.Text.tint.color)
+            .frame(minHeight: Tokens.Size.minimumHitArea - Tokens.Space.small)
         }
         .padding(Tokens.Space.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -247,7 +264,7 @@ struct InboxLinkPreview: Equatable {
     static func == (lhs: InboxLinkPreview, rhs: InboxLinkPreview) -> Bool { lhs.url == rhs.url && lhs.title == rhs.title }
 }
 
-struct InboxInboxLinkPreviewCard: View {
+struct InboxLinkPreviewCard: View {
     let preview: InboxLinkPreview
 
     var body: some View {

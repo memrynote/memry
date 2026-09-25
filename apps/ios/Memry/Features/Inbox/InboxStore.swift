@@ -61,6 +61,8 @@ final class InboxStore {
     private(set) var failure: UserFacingError?
     private(set) var isSyncing = false
     @ObservationIgnored private var notificationTask: Task<Void, Never>?
+    /// Voice memos being transcribed in this process.
+    @ObservationIgnored var transcribing: Set<String> = []
 
     // MARK: Dependencies
 
@@ -136,7 +138,23 @@ final class InboxStore {
     func load() async {
         await resurfaceDue()
         await refresh()
+        let first = !hasLoaded
         hasLoaded = true
+        if first { Task { await resumeTranscriptions() } }
+    }
+
+    /// A memo left `pending` by a process that ended mid-transcription (the
+    /// app was closed, or crashed) would say "Transcribing..." forever. Its
+    /// audio is on this phone, so the job starts again. A memo captured on
+    /// another device has no local file here and is left to that device.
+    func resumeTranscriptions() async {
+        let stranded = items.filter {
+            $0.itemType == "voice" && $0.transcriptionStatus == "pending"
+                && !transcribing.contains($0.id) && localFile($0.attachmentPath) != nil
+        }
+        for item in stranded {
+            await transcribeVoice(item.id)
+        }
     }
 
     func refresh() async {

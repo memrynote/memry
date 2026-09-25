@@ -32,15 +32,36 @@ struct InboxScreen: View {
     @State private var titleCollapsed = false
     @State private var sheets = InboxSheets()
     @State private var composing = false
+    @State private var recording = false
+    /// The composer's typed text, kept when a tap outside closes it.
+    @State private var composerText = ""
 
     private var selecting: Bool { editMode.isEditing }
 
     var body: some View {
         content
+            .overlay {
+                // A tap outside the composer closes it (the draft stays), as
+                // on Tasks.
+                if recording {
+                    // Paper 06's scrim. A stray tap must not end a recording,
+                    // so it takes the tap and does nothing with it.
+                    Tokens.Canvas.surfaceActive.color.opacity(0.7)
+                        .ignoresSafeArea()
+                        .contentShape(.rect)
+                        .onTapGesture {}
+                        .accessibilityHidden(true)
+                } else if composing {
+                    Color.clear
+                        .contentShape(.rect)
+                        .onTapGesture { composing = false }
+                        .accessibilityHidden(true)
+                }
+            }
             .overlay(alignment: .bottom) { bottomOverlay }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if composing {
-                    InboxComposer(store: store) { composing = false }
+                    InboxComposer(store: store, text: $composerText, recording: $recording) { composing = false }
                 }
             }
             .environment(\.editMode, $editMode)
@@ -50,8 +71,9 @@ struct InboxScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarTitleMenu { if !selecting { InboxTitleMenu(store: store) } }
             .toolbar { toolbar }
-            .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
-            .inboxSheets($sheets, store: store)
+            .toolbar(selecting || recording ? .hidden : .automatic, for: .tabBar)
+            .navigationBarBackButtonHidden(selecting)
+            .inboxSheets($sheets, store: store) { editMode = .inactive }
             .task { await store.load() }
             .onChange(of: selecting) { _, now in if !now { selection = [] } }
             .background(Tokens.Canvas.background.color)
@@ -79,7 +101,7 @@ struct InboxScreen: View {
         InboxRowIntents(
             file: { sheets.file = InboxFileRequest(ids: [$0.id]) },
             quickFile: { item, folder in Task { await store.file(item, to: folder, tags: []) } },
-            convert: { sheets.convert = $0 },
+            convert: { sheets.convert = InboxConvertRequest(item: $0, target: $1) },
             pickSnooze: { sheets.snoozeIds = $0 },
             rename: { sheets.rename = $0 },
             select: { item in

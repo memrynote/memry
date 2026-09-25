@@ -17,9 +17,17 @@ struct InboxIdList: Identifiable, Equatable {
     let ids: [String]
 }
 
+/// Convert opened on one segment: the row menu's "Convert to ›" names the
+/// target, the detail bar's Convert opens on Task.
+struct InboxConvertRequest: Identifiable, Equatable {
+    let item: InboxItemRecord
+    var target: InboxConvertSheet.Target = .task
+    var id: String { item.id }
+}
+
 struct InboxSheets: Equatable {
     var file: InboxFileRequest?
-    var convert: InboxItemRecord?
+    var convert: InboxConvertRequest?
     var snoozeIds: [String]?
     var rename: InboxItemRecord?
     var tag: InboxIdList?
@@ -37,8 +45,8 @@ struct InboxSheetsModifier: ViewModifier {
             .sheet(item: $sheets.file) { request in
                 InboxFileSheet(store: store, ids: request.ids, done: afterExit)
             }
-            .sheet(item: $sheets.convert) { item in
-                InboxConvertSheet(store: store, item: item, done: afterExit)
+            .sheet(item: $sheets.convert) { request in
+                InboxConvertSheet(store: store, item: request.item, start: request.target, done: afterExit)
             }
             .sheet(item: Binding(
                 get: { sheets.snoozeIds.map { InboxIdList(ids: $0) } },
@@ -67,23 +75,6 @@ struct InboxSheetsModifier: ViewModifier {
                 }
             }
             .onChange(of: sheets.rename) { _, item in renameText = item?.title ?? "" }
-            .confirmationDialog(
-                InboxCopy.archiveDialogTitle(sheets.archiveAll?.count ?? 0),
-                isPresented: Binding(get: { sheets.archiveAll != nil }, set: { if !$0 { sheets.archiveAll = nil } }),
-                titleVisibility: .visible
-            ) {
-                Button(InboxCopy.archiveDialogConfirm(sheets.archiveAll?.count ?? 0), role: .destructive) {
-                    if let ids = sheets.archiveAll {
-                        Task {
-                            await store.archive(ids)
-                            afterExit()
-                        }
-                    }
-                    sheets.archiveAll = nil
-                }
-            } message: {
-                Text(InboxCopy.archiveDialogBody)
-            }
     }
 }
 

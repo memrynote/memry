@@ -3,17 +3,17 @@ import SwiftUI
 
 // IB07 / IB08. What a row can do, and the two gestures that reach it.
 //
-// Swipe (Paper 07): leading = File (the File sheet; no suggestions on iOS,
+// Swipe (Paper 07, colors: File tint, Snooze grey, Archive ink): leading = File (the File sheet; no suggestions on iOS,
 // §6 IB001/F8), trailing = Snooze (presets) and Archive (Undo toast).
 // Long press (Paper 08): a quick-file row of recent folders, File…, Convert
-// to ›, Snooze ›, Rename (not for notes or reminders, desktop's rule), Open
+// to › (Task, Reminder, Note; Event hidden, D6), Snooze ›, Rename (not for notes or reminders, desktop's rule), Open
 // link (when there is one), Select, Archive.
 
 /// The sheets and modes a row asks the screen for.
 struct InboxRowIntents {
     var file: (InboxItemRecord) -> Void = { _ in }
     var quickFile: (InboxItemRecord, String) -> Void = { _, _ in }
-    var convert: (InboxItemRecord) -> Void = { _ in }
+    var convert: (InboxItemRecord, InboxConvertSheet.Target) -> Void = { _, _ in }
     var pickSnooze: ([String]) -> Void = { _ in }
     var rename: (InboxItemRecord) -> Void = { _ in }
     var select: (InboxItemRecord) -> Void = { _ in }
@@ -37,7 +37,7 @@ struct InboxRowActionsModifier: ViewModifier {
                     Button { intents.file(item) } label: {
                         Label(InboxCopy.file, systemImage: "folder")
                     }
-                    .tint(Tokens.Inbox.link.color)
+                    .tint(Tokens.Tint.base.color)
                     .accessibilityIdentifier("inbox.swipe.file")
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -46,7 +46,7 @@ struct InboxRowActionsModifier: ViewModifier {
                     } label: {
                         Label(InboxCopy.archive, systemImage: "archivebox")
                     }
-                    .tint(Tokens.Text.secondary.color)
+                    .tint(Tokens.Text.primary.color)
                     .accessibilityIdentifier("inbox.swipe.archive")
                     Menu {
                         InboxSnoozeMenuItems(now: store.clock()) { date in
@@ -55,9 +55,9 @@ struct InboxRowActionsModifier: ViewModifier {
                             intents.pickSnooze([item.id])
                         }
                     } label: {
-                        Label(InboxCopy.snooze, systemImage: "moon.zzz")
+                        Label(InboxCopy.snooze, systemImage: "alarm")
                     }
-                    .tint(Tokens.Inbox.voice.color)
+                    .tint(Tokens.Text.tertiary.color)
                     .accessibilityIdentifier("inbox.swipe.snooze")
                 }
                 .contextMenu { menu }
@@ -81,14 +81,23 @@ struct InboxRowActionsModifier: ViewModifier {
                         }
                     }
                 }
-                .controlGroupStyle(.compactMenu)
+                // The automatic style: icon and folder name, up to three
+                // across (Paper 08's quick-file row). `.compactMenu` drops
+                // the names.
             }
         }
         Button(InboxCopy.fileEllipsis, systemImage: "folder") { intents.file(item) }
             .accessibilityIdentifier("inbox.menu.file")
         if !item.isNoteOnly {
-            Button(InboxCopy.convertTo, systemImage: "arrow.triangle.2.circlepath") { intents.convert(item) }
-                .accessibilityIdentifier("inbox.menu.convert")
+            Menu {
+                ForEach([InboxConvertSheet.Target.task, .reminder, .note]) { target in
+                    Button(target.label) { intents.convert(item, target) }
+                        .accessibilityIdentifier("inbox.menu.convert.\(target.rawValue)")
+                }
+            } label: {
+                Label(InboxCopy.convertTo, systemImage: "arrow.left.arrow.right")
+            }
+            .accessibilityIdentifier("inbox.menu.convert")
         }
         Menu {
             InboxSnoozeMenuItems(now: store.clock()) { date in
@@ -112,7 +121,8 @@ struct InboxRowActionsModifier: ViewModifier {
             Button(InboxCopy.select, systemImage: "checkmark.circle") { intents.select(item) }
                 .accessibilityIdentifier("inbox.menu.select")
         }
-        Button(InboxCopy.archive, systemImage: "archivebox", role: .destructive) {
+        // Not destructive: an archived capture is restored from Archived.
+        Button(InboxCopy.archive, systemImage: "archivebox") {
             Task { await store.archive(item) }
         }
         .accessibilityIdentifier("inbox.menu.archive")

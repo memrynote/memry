@@ -60,6 +60,7 @@ struct InboxDetailView: View {
             Text(InboxCopy.deleteBody)
         }
         .task(id: itemId) { await load() }
+        .onDisappear(perform: saveTitle)
         .onChange(of: store.items) { _, _ in Task { await reload() } }
     }
 
@@ -76,16 +77,22 @@ struct InboxDetailView: View {
             if editableTitle {
                 TextField(item.itemType == "voice" ? InboxCopy.voiceTitlePlaceholder : InboxCopy.titlePlaceholder,
                           text: $title, axis: .vertical)
-                    .font(Tokens.Typography.screenTitle.font.weight(.bold))
+                    .font(TypeRole(.documentTitle, weight: .bold).font)
                     .foregroundStyle(Tokens.Text.primary.color)
                     .focused($titleFocused)
                     .submitLabel(.done)
                     .onSubmit(saveTitle)
                     .onChange(of: titleFocused) { _, focused in if !focused { saveTitle() } }
+                    // A vertical field turns Done into a newline; treat it as submit.
+                    .onChange(of: title) { _, new in
+                        guard new.contains("\n") else { return }
+                        title = new.replacingOccurrences(of: "\n", with: "")
+                        titleFocused = false
+                    }
                     .accessibilityIdentifier("inbox.detail.title")
             } else {
                 Text(InboxMeta.displayTitle(item))
-                    .font(Tokens.Typography.screenTitle.font.weight(.bold))
+                    .font(TypeRole(.documentTitle, weight: .bold).font)
                     .foregroundStyle(Tokens.Text.primary.color)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("inbox.detail.title")
@@ -123,7 +130,7 @@ struct InboxDetailView: View {
                 }
                 .accessibilityIdentifier("inbox.detail.archive")
                 if !item.isNoteOnly {
-                    barButton(InboxCopy.convert, "arrow.left.arrow.right") { sheets.convert = item }
+                    barButton(InboxCopy.convert, "arrow.left.arrow.right") { sheets.convert = InboxConvertRequest(item: item) }
                         .accessibilityIdentifier("inbox.detail.convert")
                 }
                 primaryButton(InboxCopy.fileEllipsis, "folder") { sheets.file = InboxFileRequest(ids: [item.id]) }

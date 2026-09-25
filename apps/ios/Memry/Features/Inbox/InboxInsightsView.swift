@@ -16,16 +16,17 @@ struct InboxInsightsView<Header: View>: View {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
                 header()
                 if let stats = store.stats {
-                    Grid(horizontalSpacing: Tokens.Space.medium, verticalSpacing: Tokens.Space.medium) {
+                    // Paper 20: a plain 2×2 grid on the canvas, no cards.
+                    Grid(alignment: .topLeading, horizontalSpacing: Tokens.Space.inset, verticalSpacing: Tokens.Space.inset) {
                         GridRow {
-                            card(InboxCopy.captured, "\(stats.totalItems)", InboxCopy.capturedThisWeek(Int(stats.capturedThisWeek)), .complete)
-                            card(InboxCopy.processed, "\(stats.processedThisWeek)", InboxCopy.processRate(Int(stats.processRate)), nil)
+                            stat(InboxCopy.captured, "\(stats.totalItems)", InboxCopy.capturedThisWeek(Int(stats.capturedThisWeek)), nil)
+                            stat(InboxCopy.processed, "\(stats.processedThisWeek)", InboxCopy.processRate(Int(stats.processRate)), .complete)
                         }
                         GridRow {
-                            card(InboxCopy.stale, "\(stats.staleCount)",
+                            stat(InboxCopy.stale, "\(stats.staleCount)",
                                  stats.staleCount > 0 ? InboxCopy.needsAttention : InboxCopy.allClear,
                                  stats.staleCount > 0 ? .attention : .complete)
-                            card(InboxCopy.avgTimeToFile, InboxInsightsFormat.avgTime(Int(stats.avgTimeToProcessMinutes)), "", nil)
+                            stat(InboxCopy.avgTimeToFile, InboxInsightsFormat.avgTime(Int(stats.avgTimeToProcessMinutes)), nil, nil)
                         }
                     }
                 }
@@ -45,70 +46,85 @@ struct InboxInsightsView<Header: View>: View {
 
     private enum Tone { case complete, attention }
 
-    private func card(_ label: String, _ value: String, _ sub: String, _ tone: Tone?) -> some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+    private func stat(_ label: String, _ value: String, _ sub: String?, _ tone: Tone?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(label).font(Tokens.Typography.caption.font).foregroundStyle(Tokens.Text.tertiary.color)
-            Text(value).font(Tokens.Typography.screenTitle.font.weight(.semibold).monospacedDigit())
+            Text(value).font(TypeRole(.documentTitle, weight: .bold).font.monospacedDigit())
                 .foregroundStyle(Tokens.Text.primary.color)
-            if !sub.isEmpty {
+            if let sub {
                 Text(sub).font(Tokens.Typography.caption.font)
-                    .foregroundStyle(tone == .attention ? Tokens.Interaction.destructive.color
+                    .foregroundStyle(tone == .attention ? Tokens.Inbox.stale.color
                         : tone == .complete ? Tokens.Task.complete.color : Tokens.Text.tertiary.color)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Tokens.Space.inset)
-        .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
         .accessibilityElement(children: .combine)
     }
 
+    /// Paper 20: one stacked bar in the type colors, then a wrapping legend.
     private var byType: some View {
         let types = (store.patterns?.types ?? []).filter { $0.count >= 1 }
-        let top = types.first?.count ?? 0
-        return VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            Text(InboxCopy.byType).font(Tokens.Typography.caption.font.weight(.semibold))
-                .foregroundStyle(Tokens.Text.secondary.color)
+        let total = types.reduce(0) { $0 + Int($1.count) }
+        return VStack(alignment: .leading, spacing: Tokens.Space.small + 2) {
+            InboxInsightsHeading(text: InboxCopy.byType)
             if types.isEmpty {
                 Text(InboxCopy.noItemsYet).font(Tokens.Typography.supporting.font).foregroundStyle(Tokens.Text.tertiary.color)
-            }
-            ForEach(types, id: \.itemType) { share in
-                HStack(spacing: Tokens.Space.medium) {
-                    Text(InboxCopy.typePlural(share.itemType)).font(Tokens.Typography.caption.font)
-                        .frame(width: 72, alignment: .leading)
-                    GeometryReader { geometry in
-                        Capsule().fill(Tokens.Inbox.type(share.itemType).color)
-                            .frame(width: max(4, geometry.size.width * CGFloat(share.count) / CGFloat(max(top, 1))))
+            } else {
+                GeometryReader { geometry in
+                    let gaps = CGFloat(types.count - 1) * 2
+                    HStack(spacing: 2) {
+                        ForEach(types, id: \.itemType) { share in
+                            Rectangle().fill(Tokens.Inbox.type(share.itemType).color)
+                                .frame(width: max(2, (geometry.size.width - gaps) * CGFloat(share.count) / CGFloat(max(total, 1))))
+                        }
                     }
-                    .frame(height: Tokens.Space.small)
-                    Text("\(share.count)").font(Tokens.Typography.caption.font.monospacedDigit())
-                        .foregroundStyle(Tokens.Text.tertiary.color)
+                    .clipShape(.capsule)
                 }
+                .frame(height: Tokens.Space.small + 2)
+                .accessibilityHidden(true)
+                Text(types.map { "\(InboxCopy.typePlural($0.itemType)) \($0.count)" }.joined(separator: "   "))
+                    .font(Tokens.Typography.caption.font)
+                    .foregroundStyle(Tokens.Text.secondary.color)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Paper 20: title leading, "destination · age" trailing, hairlines.
+    private var filings: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            InboxInsightsHeading(text: InboxCopy.recentFilings)
+                .padding(.bottom, Tokens.Space.small)
+            if store.history.isEmpty {
+                Text(InboxCopy.noItemsFiled).font(Tokens.Typography.supporting.font).foregroundStyle(Tokens.Text.tertiary.color)
+            }
+            ForEach(Array(store.history.enumerated()), id: \.element.id) { index, item in
+                let filedAt = Date(timeIntervalSince1970: TimeInterval(item.filedAtMs ?? 0) / 1000)
+                let age = InboxMeta.age(filedAt, now: store.clock())
+                if index > 0 { Divider().overlay(Tokens.Line.border.color) }
+                HStack(spacing: Tokens.Space.medium) {
+                    Text(InboxMeta.displayTitle(item)).font(Tokens.Typography.body.font).lineLimit(1)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                    Spacer(minLength: Tokens.Space.small)
+                    Text("\(InboxInsightsFormat.destination(item)) · \(age)")
+                        .font(Tokens.Typography.caption.font).foregroundStyle(Tokens.Text.tertiary.color)
+                        .lineLimit(1)
+                }
+                .frame(minHeight: Tokens.Size.minimumHitArea)
                 .accessibilityElement(children: .combine)
             }
         }
     }
+}
 
-    private var filings: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            Text(InboxCopy.recentFilings).font(Tokens.Typography.caption.font.weight(.semibold))
-                .foregroundStyle(Tokens.Text.secondary.color)
-            if store.history.isEmpty {
-                Text(InboxCopy.noItemsFiled).font(Tokens.Typography.supporting.font).foregroundStyle(Tokens.Text.tertiary.color)
-            }
-            ForEach(store.history, id: \.id) { item in
-                HStack(spacing: Tokens.Space.medium) {
-                    InboxTypeIcon(type: item.itemType)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(InboxMeta.displayTitle(item)).font(Tokens.Typography.body.font).lineLimit(1)
-                        let filedAt = Date(timeIntervalSince1970: TimeInterval(item.filedAtMs ?? 0) / 1000)
-                        let age = InboxMeta.age(filedAt, now: store.clock())
-                        Text("\(InboxInsightsFormat.destination(item)) · \(age)")
-                            .font(Tokens.Typography.caption.font).foregroundStyle(Tokens.Text.tertiary.color)
-                    }
-                }
-                .accessibilityElement(children: .combine)
-            }
-        }
+/// A section heading on Insights (Paper 20: 15pt semibold ink).
+struct InboxInsightsHeading: View {
+    let text: String
+
+    var body: some View {
+        Text(text).font(Tokens.Typography.supporting.font.weight(.semibold))
+            .foregroundStyle(Tokens.Text.primary.color)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -147,9 +163,13 @@ struct InboxHeatmap: View {
             return grid[hour][day] + (hour + 1 < grid.count ? grid[hour + 1][day] : 0)
         }
         let top = days.indices.flatMap { day in hours.map { value(day, $0) } }.max() ?? 0
-        return VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            Text(InboxCopy.captureActivity).font(Tokens.Typography.caption.font.weight(.semibold))
-                .foregroundStyle(Tokens.Text.secondary.color)
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline) {
+                InboxInsightsHeading(text: InboxCopy.captureActivity)
+                Spacer(minLength: Tokens.Space.small)
+                Text(peakText).font(Tokens.Typography.caption.font).foregroundStyle(Tokens.Text.tertiary.color)
+            }
+            .padding(.bottom, Tokens.Space.small - 3)
             ForEach(days.indices, id: \.self) { day in
                 HStack(spacing: 3) {
                     Text(days[day]).font(Tokens.Typography.caption.font).frame(width: 16)
@@ -162,7 +182,6 @@ struct InboxHeatmap: View {
                 }
             }
             .accessibilityHidden(true)
-            Text(peakText).font(Tokens.Typography.caption.font).foregroundStyle(Tokens.Text.tertiary.color)
         }
         .accessibilityElement(children: .combine)
     }

@@ -10,7 +10,7 @@ extension InboxStore {
     var viewTitle: String {
         switch view {
         case .inbox: InboxCopy.title
-        case .snoozed: InboxCopy.snoozedView
+        case .snoozed: InboxCopy.snoozedTitle
         case .archived: InboxCopy.archivedView
         case .insights: InboxCopy.insightsView
         }
@@ -48,15 +48,6 @@ extension InboxStore {
         case .snoozed: InboxCopy.snoozedView
         case .archived: InboxCopy.archivedView
         case .insights: InboxCopy.insightsView
-        }
-    }
-
-    static func viewSymbol(_ view: InboxView) -> String {
-        switch view {
-        case .inbox: "tray"
-        case .snoozed: "moon.zzz"
-        case .archived: "archivebox"
-        case .insights: "chart.bar"
         }
     }
 }
@@ -103,12 +94,11 @@ struct InboxTitleMenu: View {
                 get: { store.view == view },
                 set: { on in if on { Task { await store.select(view) } } }
             )) {
-                Label {
-                    Text(InboxStore.viewName(view))
-                    if let count = store.menuCount(view) { Text("\(count)") }
-                } icon: {
-                    Image(systemName: InboxStore.viewSymbol(view))
-                }
+                // Title then count as siblings, like TaskTitleMenu: a menu row
+                // draws no trailing badge, only a toggle's second text survives
+                // (as the subtitle). Paper 02 draws no icons.
+                Text(InboxStore.viewName(view))
+                if let count = store.menuCount(view) { Text("\(count)") }
             }
             .accessibilityIdentifier("inbox.view.\(view.rawValue)")
         }
@@ -128,19 +118,15 @@ struct InboxFilterMenu: View {
                         get: { store.typeFilter.contains(type) },
                         set: { _ in store.toggleType(type) }
                     )) {
-                        Label {
-                            Text(InboxCopy.typePlural(type))
-                            Text("\(count)")
-                        } icon: {
-                            Image(systemName: InboxTypeGlyph.symbol(type))
-                        }
+                        Text(InboxCopy.typePlural(type))
+                        Text("\(count)")
                     }
                     .disabled(count == 0 && !store.typeFilter.contains(type))
                     .accessibilityIdentifier("inbox.filter.\(type)")
                 }
             }
             if !store.typeFilter.isEmpty {
-                Button(InboxCopy.clearFilter, systemImage: "xmark.circle", role: .destructive) {
+                Button(InboxCopy.clearFilter) {
                     store.typeFilter = []
                 }
                 .accessibilityIdentifier("inbox.filter.clear")

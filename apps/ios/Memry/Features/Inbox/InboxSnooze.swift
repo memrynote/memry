@@ -21,16 +21,6 @@ enum InboxSnoozePreset: String, CaseIterable, Identifiable {
         }
     }
 
-    var symbol: String {
-        switch self {
-        case .laterToday: "sun.max"
-        case .tomorrow: "sunrise"
-        case .thisWeekend: "sofa"
-        case .nextWeek: "calendar"
-        case .inOneHour, .inTwoHours: "clock"
-        }
-    }
-
     /// The instant this preset resolves to at `now`.
     func date(now: Date, calendar: Calendar = .current) -> Date {
         switch self {
@@ -114,23 +104,29 @@ struct InboxSnoozeMenuItems: View {
     let pickDate: () -> Void
 
     var body: some View {
+        // Paper 09: the day presets, the hour presets, then Pick; each preset
+        // with its resolved time. The time is the button's second text (the
+        // menu row's subtitle); inside a `Label` it would be dropped.
         Section(InboxCopy.snoozeUntil) {
-            ForEach(InboxSnoozePreset.allCases) { preset in
-                Button {
-                    snooze(preset.date(now: now))
-                } label: {
-                    Label {
-                        Text(preset.label)
-                        Text(preset.detail(now: now))
-                    } icon: {
-                        Image(systemName: preset.symbol)
-                    }
-                }
-                .accessibilityIdentifier("inbox.snooze.\(preset.rawValue)")
-            }
+            ForEach([InboxSnoozePreset.laterToday, .tomorrow, .thisWeekend, .nextWeek]) { item($0) }
         }
-        Button(InboxCopy.pickDateTime, systemImage: "calendar.badge.clock", action: pickDate)
-            .accessibilityIdentifier("inbox.snooze.pick")
+        Section {
+            ForEach([InboxSnoozePreset.inOneHour, .inTwoHours]) { item($0) }
+        }
+        Section {
+            Button(InboxCopy.pickDateTime, systemImage: "calendar", action: pickDate)
+                .accessibilityIdentifier("inbox.snooze.pick")
+        }
+    }
+
+    private func item(_ preset: InboxSnoozePreset) -> some View {
+        Button {
+            snooze(preset.date(now: now))
+        } label: {
+            Text(preset.label)
+            Text(preset.detail(now: now))
+        }
+        .accessibilityIdentifier("inbox.snooze.\(preset.rawValue)")
     }
 }
 

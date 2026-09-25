@@ -82,18 +82,8 @@ struct InboxVoiceDetail: View {
             .buttonStyle(.plain)
             .accessibilityLabel(playing ? InboxCopy.pause : InboxCopy.play)
             .accessibilityIdentifier("inbox.detail.play")
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                HStack(alignment: .center, spacing: 2) {
-                    let bars = waveform.isEmpty ? Array(repeating: 0.4, count: 30) : InboxVoiceRecorder.buckets(waveform, count: 30)
-                    ForEach(Array(bars.enumerated()), id: \.offset) { index, level in
-                        Capsule()
-                            .fill(Double(index) / Double(bars.count) <= progress ? Tokens.Inbox.voice.color : Tokens.Line.focus.color.opacity(0.4))
-                            .frame(width: 3, height: max(4, level * Tokens.Size.pill))
-                    }
-                }
-                .frame(height: Tokens.Size.pill)
-                Slider(value: Binding(get: { position }, set: { seek($0) }), in: 0 ... max(duration, 1))
-                    .accessibilityLabel(InboxCopy.audioPosition)
+            VStack(alignment: .leading, spacing: Tokens.Space.small - 2) {
+                scrubber
                 HStack {
                     Text(InboxMeta.duration(position))
                     Spacer()
@@ -103,8 +93,9 @@ struct InboxVoiceDetail: View {
                 .foregroundStyle(Tokens.Text.tertiary.color)
             }
         }
-        .padding(Tokens.Space.medium)
-        .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
+        .padding(.vertical, Tokens.Space.medium + 2)
+        .padding(.horizontal, Tokens.Space.inset)
+        .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.panel))
         .task(id: playing) {
             while playing, let player {
                 position = player.currentTime
@@ -117,10 +108,45 @@ struct InboxVoiceDetail: View {
 
     private var progress: Double { duration > 0 ? position / duration : 0 }
 
+    /// Paper 11: the waveform is the scrubber. Played bars take the voice
+    /// tint; a tap or drag seeks; VoiceOver adjusts it in 5-second steps.
+    private var scrubber: some View {
+        let bars = waveform.isEmpty ? Array(repeating: 0.4, count: 40) : InboxVoiceRecorder.buckets(waveform, count: 40)
+        return HStack(alignment: .center, spacing: 2) {
+            ForEach(Array(bars.enumerated()), id: \.offset) { index, level in
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Double(index) / Double(bars.count) < progress ? Tokens.Inbox.voice.color : Tokens.Line.border.color)
+                    .frame(width: 3, height: max(Tokens.Space.small, level * Tokens.Space.section))
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: Tokens.Space.section, alignment: .leading)
+        .overlay {
+            GeometryReader { proxy in
+                Color.clear
+                    .contentShape(.rect)
+                    .gesture(DragGesture(minimumDistance: 0).onChanged { drag in
+                        let fraction = min(max(drag.location.x / max(proxy.size.width, 1), 0), 1)
+                        seek(fraction * duration)
+                    })
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel(InboxCopy.audioPosition)
+        .accessibilityValue(InboxMeta.duration(position))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: seek(min(duration, position + 5))
+            case .decrement: seek(max(0, position - 5))
+            @unknown default: break
+            }
+        }
+    }
+
     private func toggle() {
         if player == nil, let file {
             try? AVAudioSession.sharedInstance().setCategory(.playback)
             player = try? AVAudioPlayer(contentsOf: file)
+            player?.currentTime = position
         }
         guard let player else { return }
         if player.isPlaying {

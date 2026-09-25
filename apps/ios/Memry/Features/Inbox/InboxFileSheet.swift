@@ -33,23 +33,41 @@ struct InboxFileSheet: View {
 
     /// Embedding an image needs a note to embed it in (desktop's guard).
     private var canConfirm: Bool {
-        if !links.isEmpty { return true }
-        if isImage, imageMode == .embed, !remembered { return folder != nil }
-        return folder != nil
+        Self.canConfirm(isImage: isImage, mode: imageMode, linkCount: links.count, hasFolder: folder != nil)
+    }
+
+    /// Desktop's `canFileItem`: an embedded image goes into a linked note, so
+    /// it needs one whatever the folder; everything else needs a folder or a
+    /// note to link.
+    static func canConfirm(isImage: Bool, mode: InboxImageMode, linkCount: Int, hasFolder: Bool) -> Bool {
+        if isImage, mode == .embed { return linkCount > 0 }
+        return linkCount > 0 || hasFolder
     }
 
     var body: some View {
         NavigationStack {
-            List {
-                searchSection
-                foldersSection
-                tagsSection
-                if single != nil { linksSection } else { Section { Text(InboxCopy.bulkNoLinks).font(Tokens.Typography.caption.font) } }
-                if isImage, !remembered { imageSection }
+            ScrollViewReader { proxy in
+                List {
+                    searchSection
+                    foldersSection
+                    tagsSection
+                    if single != nil { linksSection } else { Section { EmptyView() } footer: { Text(InboxCopy.bulkNoLinks) } }
+                    if isImage, !remembered { imageSection }
+                }
+                // The matches sit under the search field, which the keyboard
+                // covers; keep the last of them (Create) in view as the query
+                // changes.
+                .onChange(of: noteResults.map(\.id) + [noteQuery]) {
+                    guard !noteQuery.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                    proxy.scrollTo(Self.createNoteRow, anchor: .bottom)
+                }
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
+            .listRowBackground(Tokens.Canvas.surface.color)
             .scrollContentBackground(.hidden)
             .background(Tokens.Canvas.background.color)
+            .tint(Tokens.Text.tint.color)
             .navigationTitle(InboxCopy.file)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -70,7 +88,7 @@ struct InboxFileSheet: View {
                 Button(InboxCopy.addTag) { addTag(newTag) }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
         .accessibilityIdentifier("inbox.fileSheet")
     }
 
@@ -78,9 +96,15 @@ struct InboxFileSheet: View {
 
     private var searchSection: some View {
         Section {
-            TextField(InboxCopy.searchOrCreate, text: $search)
-                .textInputAutocapitalization(.never)
-                .accessibilityIdentifier("inbox.file.search")
+            HStack(spacing: Tokens.Space.small) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+                    .accessibilityHidden(true)
+                TextField(InboxCopy.searchOrCreate, text: $search)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .accessibilityIdentifier("inbox.file.search")
+            }
             let query = search.trimmingCharacters(in: .whitespaces)
             if !query.isEmpty {
                 ForEach(folders.filter { $0.localizedCaseInsensitiveContains(query) }.prefix(8), id: \.self) { path in
@@ -102,15 +126,23 @@ struct InboxFileSheet: View {
 
     private var foldersSection: some View {
         Section(InboxCopy.recentFolders) {
-            if let folder, !store.recentFolders.contains(folder) { folderRow(folder, detail: nil) }
-            ForEach(store.recentFolders, id: \.self) { path in folderRow(path, detail: nil) }
-            folderRow("", detail: nil)
+            ForEach(recentRows, id: \.self) { path in folderRow(path, detail: nil) }
             NavigationLink(InboxCopy.allFolders) {
                 List(folders, id: \.self) { path in folderRow(path, detail: nil) }
                     .navigationTitle(InboxCopy.allFolders)
             }
             .accessibilityIdentifier("inbox.file.allFolders")
         }
+    }
+
+    /// The chosen folder (when it is not recent), the recent folders, then
+    /// the vault root, each once.
+    private var recentRows: [String] {
+        var rows: [String] = []
+        for path in [folder].compactMap { $0 } + store.recentFolders + [""] where !rows.contains(path) {
+            rows.append(path)
+        }
+        return rows
     }
 
     private func folderRow(_ path: String, detail: String?) -> some View {
@@ -137,23 +169,10 @@ struct InboxFileSheet: View {
 
     private var tagsSection: some View {
         Section(InboxCopy.tags) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Tokens.Space.small) {
-                    ForEach(tags, id: \.self) { tag in
-                        Button {
-                            tags.removeAll { $0 == tag }
-                        } label: {
-                            Label("#\(tag)", systemImage: "xmark")
-                                .labelStyle(InboxTrailingIconLabel())
-                        }
-                        .buttonStyle(InboxChipStyle(selected: true))
-                        .accessibilityLabel(InboxCopy.removeTag(tag))
-                    }
-                    ForEach(tagSuggestions.filter { !tags.contains($0) }.prefix(3), id: \.self) { tag in
-                        Button("+ #\(tag)") { addTag(tag) }
-                            .buttonStyle(InboxChipStyle(selected: false))
-                    }
-                }
+            // No chosen tags and nothing to suggest (a vault with no tags yet):
+            // no empty chip row, just "Add tag".
+            if !tags.isEmpty || tagSuggestions.contains(where: { !tags.contains($0) }) {
+                chips
             }
             Button(InboxCopy.addTag) { addingTag = true }
                 .foregroundStyle(Tokens.Text.tint.color)
@@ -161,8 +180,31 @@ struct InboxFileSheet: View {
         }
     }
 
+    private var chips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Tokens.Space.small) {
+                ForEach(tags, id: \.self) { tag in
+                    Button {
+                        tags.removeAll { $0 == tag }
+                    } label: {
+                        Label("#\(tag)", systemImage: "xmark")
+                            .labelStyle(InboxTrailingIconLabel())
+                    }
+                    .buttonStyle(InboxChipStyle(selected: true))
+                    .accessibilityLabel(InboxCopy.removeTag(tag))
+                }
+                ForEach(tagSuggestions.filter { !tags.contains($0) }.prefix(3), id: \.self) { tag in
+                    Button("+ #\(tag)") { addTag(tag) }
+                        .buttonStyle(InboxChipStyle(selected: false))
+                }
+            }
+        }
+    }
+
+    private static let createNoteRow = "inbox.file.createNote"
+
     private var linksSection: some View {
-        Section(InboxCopy.linkToNotes) {
+        Section {
             ForEach(links, id: \.self) { link in
                 HStack {
                     Label(link.title, systemImage: link.noteId == nil ? "doc.badge.plus" : "doc")
@@ -187,7 +229,14 @@ struct InboxFileSheet: View {
                     noteQuery = ""
                 }
                 .accessibilityIdentifier("inbox.file.createNote")
+                .id(Self.createNoteRow)
             }
+        } header: {
+            Text(InboxCopy.linkToNotes)
+        } footer: {
+            // Shown here, not with the image options, so it stays when "Don't
+            // ask again" has hidden them.
+            if isImage, imageMode == .embed, links.isEmpty { Text(InboxCopy.embedNeedsNote) }
         }
     }
 
@@ -198,8 +247,6 @@ struct InboxFileSheet: View {
                 Text(InboxCopy.imageLink).tag(InboxImageMode.link.rawValue)
             }
             Toggle(InboxCopy.dontAskAgain, isOn: $remembered)
-        } footer: {
-            if imageMode == .embed, links.isEmpty { Text(InboxCopy.embedNeedsNote) }
         }
     }
 
@@ -241,7 +288,8 @@ struct InboxFileSheet: View {
         Task {
             if let item = single {
                 if chosenLinks.isEmpty {
-                    await store.file(item, to: chosenFolder, tags: chosenTags)
+                    let fallback = item.itemType == "image" && mode == .link
+                    await store.file(item, to: chosenFolder, tags: chosenTags, sidebarFallback: fallback)
                 } else {
                     await store.link(item, to: chosenLinks, folder: chosenFolder, tags: chosenTags, imageMode: mode)
                 }

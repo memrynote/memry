@@ -263,58 +263,216 @@ needed.
 
 Each item lists what it must carry. Verification per §0.7.
 
-- [ ] IB01 **Inbox list**: title menu header, subtitle counts + "N fetching",
+- [x] IB01 **Inbox list**: title menu header, subtitle counts + "N fetching",
       Today/Yesterday/Older groups with counts, rows, image thumbnails, stale
       dimming, fresh-capture fade (Reduce Motion: none), pull to refresh,
       loading and error-with-retry states, tap opens detail, floating "+".
-- [ ] IB02 **Title menu**: Inbox, Snoozed & reminders (upcoming count),
+      Evidence: memry-A, Paper 01 (390-0): title menu header, "28 to process
+      · 11 filed today" (+ "Filtering by 1 type" when filtered), Today /
+      Yesterday / Older with counts, type-tinted rows, image thumbnail on a
+      photo captured here, tap opens the detail, floating "+". Pull to
+      refresh ran a sync pass (log "inbox sync pass pulled [count=1]").
+      Stale dimming: `InboxFormattingTests` (§6 IB01). Live error state split
+      to IB01a. `SpikeEvidence/inbox/IB01-list.png`,
+      `IB01-filtered-after-refresh.png`, `IB04-photo-captured.png`.
+- [ ] IB01a **Inbox list error state** live: `InboxFailureRow` with Try again
+      on a failed read. No read fails on memry-A; force one in Phase 6
+      (offline launch) or cover it with a store test.
+- [x] IB02 **Title menu**: Inbox, Snoozed & reminders (upcoming count),
       Archived, Insights; view persists per app session.
-- [ ] IB03 **Type filter**: multi-select 9 types, counts, zero disabled,
+      Evidence: memry-A, Paper 02 (3PA-0): Inbox 19 (checked), Snoozed &
+      reminders 5, Archived, Insights; counts as native subtitles (§6). Chose
+      Archived, backed out to More, reopened -> still "Archived" (5 items).
+      `SpikeEvidence/inbox/IB02-title-menu.png`.
+- [x] IB03 **Type filter**: multi-select 9 types, counts, zero disabled,
       Clear filter, filled capsule when active.
-- [ ] IB04 **Capture composer**: text capture, Paste-link chip from the
+      Evidence: memry-A, Paper 03 (3XW-0): "Show types" Links 4, Notes 4,
+      Images 2, Voice 2, Video 0 (disabled), Clips 2, PDFs 2, Social 2,
+      Reminders 1 (menu scrolls); Links only -> list filtered, filter glyph
+      filled, Clear filter shown. `SpikeEvidence/inbox/IB03-filter-menu.png`,
+      `IB03-filter-menu-all-types.png`, `IB03-filter-active.png`.
+- [x] IB04 **Capture composer**: text capture, Paste-link chip from the
       clipboard (paste permission handled), attach menu (PhotosPicker,
       camera, fileImporter for images/audio/video/PDF), size/type errors,
       mic, send disabled when empty, toast "Item captured".
-- [ ] IB05 **Link + duplicate**: live link preview, "Already captured" with
+      Evidence: memry-A, Paper 04 (427-0): text capture -> "Item captured";
+      a copied URL shows the "Paste link" chip (pattern detection, no paste
+      prompt until tapped) and fills the field with the live preview; attach
+      menu Photo Library / Choose File (Camera only where a camera exists;
+      the simulator has none); Photo Library capture -> image row "Photo ·
+      1,5 MB"; Choose File opens the Files importer; send disabled when
+      empty. Size/type refusals: `InboxStoreTests.an_unsupported_or_oversized_file_is_refused`.
+      `SpikeEvidence/inbox/IB04-composer.png`, `IB04-captured-toast.png`,
+      `IB04-paste-chip.png`, `IB04-pasted-link.png`, `IB04-attach-menu.png`,
+      `IB04-file-importer.png`, `IB04-photo-captured.png`.
+- [x] IB05 **Link + duplicate**: live link preview, "Already captured" with
       Open it / Capture anyway (IB020).
-- [ ] IB06 **Voice memo**: mic permission and denied/no-mic states, record,
+      Evidence: memry-A, Paper 05 (46I-0): typed link -> live preview card
+      (title, domain); an already captured URL -> "Already captured: "…" · 5h
+      ago" with Open it (opens the detail, clears the draft, §6) and Capture
+      anyway (new row, "Item captured", 23->24).
+      `SpikeEvidence/inbox/IB05-live-preview.png`, `IB05-duplicate.png`,
+      `IB05-capture-anyway.png`.
+- [x] IB06 **Voice memo**: mic permission and denied/no-mic states, record,
       cancel, stop = capture, on-device transcription (D4), transcribing /
       failed + Retry states on the row and detail.
-- [ ] IB07 **Swipe**: leading File (top suggestion or File sheet, D5),
+      Evidence: memry-A, Paper 06 (4AT-0) after restyle (§6): scrim over the
+      list, tab bar hidden, "Recording" + timer, centered bars, centered
+      caption, grey cancel, orange stop. Stop -> "Voice memo (0:06)" row,
+      "Transcription failed" (silent simulator input) with Retry in the
+      detail; an interrupted memo resumes on next launch (§6). Denied /
+      no-mic alert: `recorder.phase` `.denied` / `.failed` path (the
+      simulator grants the mic). `SpikeEvidence/inbox/IB06-recording.png`,
+      `IB06-captured-failed.png`.
+- [x] IB07 **Swipe**: leading File (top suggestion or File sheet, D5),
       trailing Snooze (menu) and Archive (toast + undo).
-- [ ] IB08 **Row menu**: quick-file icon row, File…, Convert to ›, Snooze ›,
+      Evidence: memry-A, Paper 07 (4F4-0) tints matched: File brand orange
+      (`Tint.base`), Snooze grey (`Text.tertiary`, alarm glyph), Archive near
+      black (`Text.primary`). Full leading swipe files to the top recent
+      folder ("Filed to Notes" + Undo, see §7 note); trailing Snooze opens
+      the preset menu; Archive shows the undo toast.
+      `SpikeEvidence/inbox/IB07-swipe-leading.png`, `IB07-swipe-trailing.png`,
+      `IB09-snooze-swipe-menu.png`, `IB17-archive-undo-toast.png`.
+- [x] IB08 **Row menu**: quick-file icon row, File…, Convert to ›, Snooze ›,
       Rename (not for note/reminder, desktop rule), Open link (when
       `sourceUrl`), Select, Archive.
-- [ ] IB09 **Snooze menu**: six presets with resolved times, Pick date & time.
-- [ ] IB10 **Detail: link**: header (kind · captured), preview card, Open,
+      Evidence: memry-A, Paper 08 (4JF-0) groups matched. Link row: quick-file
+      row (Agent Test / Notes / food, recents per D5), File…, Convert to ›,
+      Snooze ›, Rename, Open link, Select, Archive. Note row: no Rename, no
+      Open link. Convert to › offers Task / Reminder / Note.
+      `SpikeEvidence/inbox/IB08-row-menu-link.png`, `IB08-row-menu.png`.
+- [x] IB09 **Snooze menu**: six presets with resolved times, Pick date & time.
+      Evidence: memry-A, Paper 09 (4NQ-0): "Snooze until" section Later today
+      18:00 / Tomorrow Sat 09:00 / This weekend Sat 09:00 / Next week Mon
+      09:00, then In 1 hour 06:26 / In 2 hours 07:26, then Pick date & time…
+      (calendar glyph). Same menu from swipe and bulk bar (reversed from the
+      bottom bar, system). `SpikeEvidence/inbox/IB09-snooze-swipe-menu.png`,
+      `IB09-snooze-menu.png`.
+- [x] IB10 **Detail: link**: header (kind · captured), preview card, Open,
       extracted article text, bottom bar Archive / Convert / File.
-- [ ] IB11 **Detail: voice**: editable title, player (play/pause, scrub),
+      Evidence: memry-A, Paper 10 (5Z2-0): "Link · Captured …" header; a
+      fresh capture shows the og:image hero with the site name, the page
+      description and domain + Open (enrichment §6); a desktop capture shows
+      its stored content in the card; bottom bar Archive / Convert / File….
+      `SpikeEvidence/inbox/IB10-detail-link-hero.png`,
+      `IB10-detail-link-content.png`, `IB10-detail-link-no-thumb.png`.
+- [x] IB11 **Detail: voice**: editable title, player (play/pause, scrub),
       transcript, Copy, Retry.
-- [ ] IB12 **Detail: other types**: image (full screen + pinch, facts), note
+      Evidence: memry-A, Paper 11 (6HF-0) after restyle (§6): editable title
+      (desktop keeps the stored title, placeholder only when empty), player
+      card with the waveform as scrubber; tap at 60% then Play -> 0:14 of
+      0:21 with played bars tinted; "Transcription failed" + Retry. Copy
+      shows only with a transcript (none on the silent simulator).
+      `SpikeEvidence/inbox/IB11-voice-detail.png`.
+- [x] IB12 **Detail: other types**: image (full screen + pinch, facts), note
       (editable body, autosave, title from first line), PDF (first page,
       pages), video (inline player), social (post card, unavailable state),
       clip (quote + source), reminder (target, Open, marks viewed); editable
       titles for voice/image/PDF only; Convert hidden for note-only types.
-- [ ] IB13 **File sheet**: folder search, create with `/`, suggested (D5) or
+      Evidence: memry-A, Paper 12 (6IX-0): image detail (photo, facts,
+      inline title; Done saves, §6), tap -> full screen with close; note
+      (title + editable body); PDF captured on desktop -> "The file is on the
+      device that captured it." + Size (§5 F3), no Convert; social post card
+      with "View on Reddit" (§6); clip quote bar + source link, no Convert;
+      reminder "Reminder triggered", Source + Open, "Viewed". Video split to
+      IB12a. `SpikeEvidence/inbox/IB12-detail-image.png`,
+      `IB12-image-fullscreen.png`, `IB12-title-renamed.png`,
+      `IB12-detail-note.png`, `IB12-detail-pdf-elsewhere.png`,
+      `IB12-detail-social.png`, `IB12-detail-clip.png`,
+      `IB12-detail-reminder.png`.
+- [ ] IB12a **Detail: video** inline player. No video capture exists on the
+      account and the simulator's Photos picker is images-only; check with a
+      `.mov` through Choose File in Phase 6.
+- [x] IB13 **File sheet**: folder search, create with `/`, suggested (D5) or
       recent, all folders, tags with suggestions, link existing/new notes,
       image filing mode + Don't ask again, disabled confirm until valid
       (embed needs a linked note), success toasts incl. embed fallback.
-- [ ] IB14 **Convert → Task**: segment, title, due, priority, reminder,
+      Evidence: memry-A, Paper 13 (6QO-0): search/create field, Recent
+      (Agent Test / Notes / food, D5), All folders, tag suggestions
+      (+#inbox +#reference +#fitness; empty vault shows only Add tag),
+      "Agent Test" created earlier through the sheet. `[agent] swipe row` +
+      #reference + new note "[agent] link target" -> "Linked to note",
+      filed_action `linked`, both notes in Agent Test, tags inbox,reference.
+      Image: embed mode with a folder and no note -> confirm disabled +
+      "Embedding needs a linked note." (desktop `canFileItem`); "File in the
+      sidebar" + Agent Test -> filed (`folder`), image embedded in a note
+      (§6 IB13 fixes), fallback toast. `filing_confirms_only_when_it_can_land`.
+      `SpikeEvidence/inbox/IB13-file-sheet.png`, `IB13-link-create.png`,
+      `IB13-linked-toast.png`, `IB13-file-image-mode.png`,
+      `IB13-embed-needs-note.png`, `IB13-image-filed-in-note.png`,
+      `IB13-filed-toast.png`.
+- [x] IB14 **Convert → Task**: segment, title, due, priority, reminder,
       project; reuses Tasks pickers.
-- [ ] IB15 **Convert → Event / Reminder**: event fields (D6), reminder date +
+      Evidence: memry-A, Paper 14 (6S6-0) layout matched: segment, dashed
+      circle + title, Due/Priority/Remind me/Project value rows with chevrons,
+      footer. Due opens `TaskDateSheet`, Remind me opens
+      `TaskReminderPickerSheet` (Tasks pickers). Picked Next Week -> "Monday"
+      in the upcoming tint; confirm -> "Converted to Task" toast, 28->27,
+      task `dzAu-iLRaX5LAdehUCvtt` in Tasks "Priority: Medium, Due Monday,
+      Project: Inbox". `SpikeEvidence/inbox/IB14-convert-task.png`,
+      `IB14-converted-toast.png`, `IB14-task-created.png`.
+- [x] IB15 **Convert → Event / Reminder**: event fields (D6), reminder date +
       time.
-- [ ] IB16 **Select mode**: from row menu or …, select all, File all (sheet
+      Evidence: memry-A, Event hidden per D6; Reminder shows "Remind me at"
+      date + Time rows (Paper 15 caption). Confirm -> reminder
+      `rem_EcysmJBdhQwn3XKLTYcWY` listed in Snoozed "Tomorrow, 09:00, Note";
+      Convert -> Note -> "Converted to Note" toast.
+      `SpikeEvidence/inbox/IB15-convert-reminder.png`,
+      `IB15-reminder-in-snoozed.png`, `IB15-converted-note.png`.
+- [x] IB16 **Select mode**: from row menu or …, select all, File all (sheet
       without note links, desktop note), Tag all, Snooze all, Archive all with
       confirmation, AI cluster pill Add / dismiss (D5), tab bar hidden.
-- [ ] IB17 **Undo toast** for archive and bulk; snooze/file success toasts.
-- [ ] IB18 **Snoozed & reminders**: Upcoming/Past, tap opens target (note,
+      Evidence: memry-A, Paper 16 (4S1-0): no back button, Select all +
+      checkmark, "N selected" title, circle in the type lane, one glass bar
+      File / Tag / Snooze / Archive, tab bar hidden. Entered from row menu and
+      "…" › Select; Select all -> "21 selected" / Deselect all. Tag all ->
+      "Applied 1 tag to 2 items"; Snooze all -> "Snoozed 2 items until…";
+      File all sheet shows the desktop no-links note, -> "Filed 2 items to
+      Agent Test"; Archive all asks ("Archive 2 items?", popover from the
+      bar) -> exits select mode, 21->19. Cluster pill hidden (D5).
+      `SpikeEvidence/inbox/IB16-select-mode.png`, `IB16-select-all.png`,
+      `IB16-bulk-tag.png`, `IB16-bulk-file-toast.png`,
+      `IB16-archive-confirm.png`.
+- [x] IB17 **Undo toast** for archive and bulk; snooze/file success toasts.
+      Evidence: memry-A: single archive "Archived" + Undo (restored),
+      bulk "Archived 2 items" + Undo, snooze "Snoozed until…", bulk snooze
+      "Snoozed 2 items until Today at 06:17", file "Filed to Agent Test" +
+      Undo, bulk file "Filed 2 items to Agent Test", convert "Converted to
+      Task/Note". `SpikeEvidence/inbox/IB17-archive-undo-toast.png`,
+      `IB17-bulk-archive-undo.png`, `IB17-snooze-toast.png`,
+      `IB17-bulk-snooze-toast.png`, `IB13-filed-toast.png`.
+- [x] IB18 **Snoozed & reminders**: Upcoming/Past, tap opens target (note,
       journal day, task) or the capture detail, unusable journal target shows
       the error, marks viewed.
-- [ ] IB19 **Archived**: search, groups, swipe Restore / Delete (confirm),
+      Evidence: memry-A, Paper 18 (89G-0): Upcoming with the converted
+      reminder "Tomorrow, 09:00, Note" and snoozed captures, Past; a task
+      reminder opens the task in the Tasks tab; a snoozed capture opens its
+      detail; the reminder detail marks it viewed ("Viewed", IB12). Note and
+      journal targets split to IB18a. `SpikeEvidence/inbox/IB18-snoozed.png`,
+      `IB18-open-task-target.png`, `IB15-reminder-in-snoozed.png`,
+      `IB12-detail-reminder.png`.
+- [ ] IB18a **Reminder targets across tabs**: note and journal-day targets
+      open in their tab (only task targets route today, §7 limitation);
+      unusable journal target error.
+- [x] IB19 **Archived**: search, groups, swipe Restore / Delete (confirm),
       read-only detail with Restore / Delete permanently.
-- [ ] IB20 **Insights**: stats, heatmap + peak, by type, recent filings,
+      Evidence: memry-A, Paper 19 (8BH-0): groups by `archivedAt` (§6), search
+      "agent" -> 4 matches, swipe Restore (row back in Inbox) and Delete with
+      confirmation, read-only detail with Restore / Delete permanently.
+      `SpikeEvidence/inbox/IB19-archived.png`, `IB19-search.png`,
+      `IB19-delete-confirm.png`, `IB19-readonly-detail.png`.
+- [x] IB20 **Insights**: stats, heatmap + peak, by type, recent filings,
       empty states.
-- [ ] IB21 **Inbox Zero**: filed this week, streak, capture hint.
+      Evidence: memry-A, Paper 20 (8KH-0): stats cards, 9-column heatmap with
+      peak (§6), by type, recent filings; empty states come from the same
+      stats record (zero counts render the empty copy).
+      `SpikeEvidence/inbox/IB20-insights.png`.
+- [x] IB21 **Inbox Zero**: filed this week, streak, capture hint.
+      Evidence: memry-A, Paper 21 (8P7-0) after restyle (§6): check in a
+      surface circle, "Inbox Zero", the capture hint, "1 filed this week"
+      (ink) and "1 day streak" (tint) as plain facts, block a third down.
+      Shown in the account's empty `default` vault after filing
+      `[agent] zero check`. `SpikeEvidence/inbox/IB21-inbox-zero.png`.
 
 ## Phase 5: outside the app
 
@@ -505,10 +663,74 @@ Each item lists what it must carry. Verification per §0.7.
 - 2026-09-25 — IB029 — Phases 1 and 2 are one commit: Phase 1's conformance evidence (IB014, the Swift suite) needs the rebuilt xcframework, which is IB029's gate step, and both phases edit the same `domain/inbox/mod.rs` and `api/mod.rs`.
 - 2026-09-25 — IB033 — The Phase 3 commit also carries the Phase 4 screen code: the screens share the store, copy and primitives files and were written together. Phase 4 boxes are ticked only after each artboard's simulator check. The review reminder settings API (`api/inbox_settings.rs`) was split out of `api/inbox_write.rs` to stay under the 600-line ceiling.
 - 2026-09-25 — IB033a — Split from IB033. The notification deep link (`memry.inbox` userInfo → `InboxLinks`) can only be checked end to end once IB23 schedules the review reminder.
+- 2026-09-25 — IB02/IB03 — Menu counts render as native `Menu` subtitles (Paper draws them trailing; SwiftUI menus have no trailing accessory). Detail bottom-bar labels stay `caption`; the composer keeps `chromeGlass`; the Insights heatmap keeps 9 columns at 390 pt.
+- 2026-09-25 — IB01 — Stale dimming (7 days, §6 IB013) is proven by `InboxFormattingTests` only: no live row is old enough on memry-A, and back-dating rows would mean writing to the synced store by hand.
+- 2026-09-25 — IB19 — Archived groups and ages by `archivedAt`, as desktop's archived list does (not `createdAt`).
+- 2026-09-25 — IB13 — `recent_folders` also counts `filed_action = 'note'` (convert to note files into a folder too), so a folder used only through Convert still shows as recent.
+- 2026-09-25 — IB14 — The Convert sheet reuses the Tasks pickers through a private `TasksStore` keyed `inbox-convert-picker`, so it never touches the Tasks tab's persisted state; `TasksStore` is not lifted into the environment for one sheet.
+- 2026-09-25 — IB05 — "Open it" on the duplicate notice clears the composer draft first; without it the next capture joined the old URL and the new text into one title.
+- 2026-09-25 — IB10 — Link enrichment adds a small `<head>` reader (`InboxLinkPage`, 512 KB cap, 10 s) next to `LPMetadataProvider`, which exposes no description or og:image URL. It fills desktop's `description`, `heroImage`, `siteName`, `favicon` metadata keys (D3 merge still applies). The link detail draws the local thumbnail or the https `heroImage` as a 180 pt hero.
+- 2026-09-25 — IB12 — The inline title field is vertical-axis, so Return inserted a newline and never saved. A newline now ends editing (saves), and leaving the screen saves too.
+- 2026-09-25 — IB13 — Filing a photo failed on every attempt; three defects in the **core's attachment upload**, which no shipped iOS flow had exercised against the live server (the note-attachment spec used fakes): (1) no Worker attachment route sent the session token (`Auth::None` default) → 401 with no refresh; now `Auth::Session` on initiate/chunk/complete/status/cancel/manifest/dereference and on manifest/presign/proxied-chunk reads. (2) `HttpClient` prefixed an absolute presigned R2 URL with the Worker base → transport error; absolute URLs are now sent as given. (3) `complete` did not report chunks PUT straight to R2 → "Missing chunks" 400; it now sends desktop's additive `directChunks` (`i`,`h`,`b`), omitted when none (the body older servers take), and a failed presigned PUT falls back to the Worker as desktop does. Wire shapes are desktop's; no server change. Tests: `attachment_upload_wire.rs` (2 new).
+- 2026-09-25 — IB13 — A picture this phone uploaded never bound to its block: the upload writes the note's `attachmentReferences` but not the cache row's `note_refs`, and `attachments::for_note` read only `note_refs`. It now also accepts rows the note's own references name (`attachment_cache.rs` test). And `AttachmentPaths.imagesDirectory` was never set anywhere, so every cached picture resolved under the temp directory ("could not be opened"); `CoreVaultOpener` now sets it on open (`VaultBrowseWiringTests`). Both are pre-existing notes-side defects fixed because IB13 depends on them.
+- 2026-09-25 — IB06 — The recorder panel follows Paper 06: the screen dims the list with `Canvas.surfaceActive` at 70% (Paper's scrim colour) and hides the tab bar while recording; the scrim swallows taps so a stray tap cannot end a recording.
+- 2026-09-25 — IB06 — Found live: `Info.plist` had no `NSMicrophoneUsageDescription` or `NSSpeechRecognitionUsageDescription`. Stopping a memo crashed the app (TCC abort on transcription), and on a device the first recording would too. Both keys added; the camera string now also names inbox photos. No data format change.
+- 2026-09-25 — IB06 — A memo left `pending` by a process that ended mid-transcription is transcribed again on the first load when its audio is on this phone (desktop has no recovery; there a crash leaves "Transcribing…" too). Memos from another device are left alone.
+- 2026-09-25 — IB06/IB11 — Voice titles round the seconds and rows/player floor them ("Voice memo (0:06)" over 0:05), exactly as desktop (`capture.ts` vs `content-section.tsx`). Kept.
+- 2026-09-25 — IB11 — The player follows Paper 11: the waveform is the scrubber (tap/drag seeks, VoiceOver adjustable in 5 s steps), times below, no separate slider. A seek before the first Play now starts playback there. The title shows the stored "Voice memo (m:ss)" as desktop does; Paper's placeholder only appears for an empty title.
+- 2026-09-25 — IB12 — The social card's link names the post's platform ("View on Reddit"), from `metadata.platform` or the host; desktop's card is X-only. Unknown platforms read "Open post".
+- 2026-09-25 — IB13 — Embedding an image now needs a linked note before Confirm enables, whatever the folder (desktop `canFileItem`, `inbox-detail-panel.tsx:143`); the hint sits under "Link to notes" so it stays visible after "Don't ask again". Folder filing with "File in the sidebar" says it landed in a note (the IB025 fallback) instead of "Filed to …", keeping Undo.
+- 2026-09-25 — IB13 — The note search keeps its results in view above the keyboard (`ScrollViewReader`); before, "Create …" sat under the keyboard. A vault with no tags shows no empty chip row.
+- 2026-09-25 — IB21 — Inbox Zero follows Paper 21: surface-circle check, plain facts (streak in tint), block set a third down, instead of the first pass's ring glyph and capsules.
+- 2026-09-25 — IB10 — The page-head request lives in `Seams/PageHeadFetch.swift` (the architecture check allows `URLSession` only in Seams/). It is the shell's one request that is not the core's: a third-party page head for a link preview, no credentials, no cookies, the same page `LPMetadataProvider` already reads. It never reaches Memry's server, so the core's retry and kill-switch have nothing to govern there.
+- 2026-09-25 — Phase 4 gate — `TasksUITests` picks the vault by `TEST_RUNNER_MEMRY_UI_VAULT` (default "MemryNote"): the staging vault is now named "jp-desk" by a desktop peer (§7). Test harness only.
+- 2026-09-25 — IB13 — Vault picker rows now hit-test their full width (`contentShape`); a plain button only took taps on its text and chevron. Pre-existing, found when the driver's centre tap did nothing.
+- 2026-09-25 — IB13 — A failed file-capture filing tombstones the note it created for it (it used to leave one empty twin per retry). The Notes list re-reads its outline quietly when it comes back on screen, so a note the Inbox filed shows without a relaunch.
 
 ## 7. Blockers
 
 <!-- date — id — what — evidence — next retry -->
+
+- 2026-09-25 — IB07 — A partial `dragxy` (0.1 -> 0.42 width) on seed row
+  `inbox_lnk_0SyBQ1wUWU-R` ("How to keep basil alive past week two", from
+  `apps/desktop/scripts/seed-data/inbox.ts`) counted as a full leading swipe
+  and filed it to the root folder ("Filed to Notes"); the Undo toast expired
+  before it could be tapped. No UI unfiles after the toast. Not a code bug
+  (full swipe = File is the spec). Revert in IB93: `undoFile` on that id and
+  delete the created root note. Swipe checks from here on use `[agent]` rows
+  only. Evidence: `/tmp/ibdrv/k7.png`.
+- 2026-09-25 — IB13 — Before the upload fixes, five failed photo filings left
+  empty notes "[agent] Photo 2026-09-25" in Agent Test (ids
+  `utckhoegi8T9N6qvr_AWM`, `8Hryuhjn-RoWFLx8qieNo`, `ebSlkLQCgNepSsWau3Xtz`,
+  `u9JrFzUGIClyY3yfiHM6v`, `DsKIVrkDSWq9vNGeP8qI_`; the last carries attachment
+  `b70095dd2665b9cc31b0c53fe91879e2`). All `[agent]`-prefixed, deleted in
+  IB93 with the rest of the test data. Fixed going forward (§6 IB13).
+- 2026-09-25 — Phase 4 — At 10:46 a desktop peer on the shared staging
+  account set vault 87614a10's name to "jp-desk" (`sync_vaults.updated_at`,
+  read-only D1 check); the picker no longer shows "MemryNote". Same vault,
+  same data: the driver now opens "jp-desk". Before that was known, tapping
+  "Unnamed vault" opened the account's `default` vault once, which created
+  an empty local `vault/default` directory on memry-A (nothing written to
+  the server). Not a code issue; no retry needed.
+- 2026-09-25 — IB18a — Blocked by the app shell, not the Inbox: the only
+  cross-tab route is `TasksRouter.openTask`. `NotesListView` owns its own
+  `NavigationStack` with no external route, and the Journal tab is spec 005's.
+  Spec 004's reminder-notification tap has the same gap (non-task targets only
+  select the Notes tab). The Inbox shows "can't open here" for note/journal
+  targets. Needs a Notes/Journal router; retry after spec 005 lands.
+- 2026-09-25 — Out of scope — Unlock screen: with the keyboard up, "Sign out"
+  is laid over "Unlock" (both at y≈478–532 pt), so a centre tap on Unlock
+  signs out. Workaround used: Return adds a line, which exposes a strip of
+  Unlock below Sign out. Auth UI is not this spec's; reported here.
+- 2026-09-25 — Phase 4 gate — The full Unit plan's sign-out tests wipe the
+  simulator session; the UI plan then fails "Signed out". Signed in again
+  (§0.3a, one code) before the UI plan.
+- 2026-09-25 — Phase 4 — Test captures without the `[agent]` prefix (the
+  titles are generated): links `wOTvyu1ZgIXnfZBOHSxh6` (rust-lang/rust),
+  `zyKS1Yixpt02EfYZtyAO5` and `N8nWQqxD6RhATGJF5oLWN` (swiftlang/swift),
+  voice memos `ihA2Z_mg0XBRNsIbo-XGE`, `ac9JStVMkpGrLEmlCUibt`. IB93 deletes
+  them by id with the `[agent]` data. The `default` vault holds
+  `[agent] zero check` (`fNlHbLv_OxRZ8SQVWaQ2I`) filed to its root note.
 
 ## 8. Final report
 

@@ -11,6 +11,8 @@ enum InboxCopy {
 
     static let title = "Inbox"
     static let snoozedView = "Snoozed & reminders"
+    /// The view's large title (Paper 18); the menu keeps the long name.
+    static let snoozedTitle = "Snoozed"
     static let archivedView = "Archived"
     static let insightsView = "Insights"
     static let titleMenuHint = "Shows the inbox views"
@@ -190,7 +192,11 @@ enum InboxCopy {
     static let transcribedHere = "Transcribed on this iPhone after you stop"
     static let cancelRecording = "Cancel recording"
     static let stopRecording = "Stop recording"
-    static func alreadyCaptured(_ title: String, _ age: String) -> String { "Already captured: “\(title)” · \(age) ago" }
+    /// Paper 05: "Already captured: “How Linear builds product” · 12m ago";
+    /// a capture under a minute old reads "just now".
+    static func alreadyCaptured(_ title: String, _ age: String) -> String {
+        "Already captured: “\(title)” · \(age == "now" ? "just now" : "\(age) ago")"
+    }
     static let openIt = "Open it"
     static let captureAnyway = "Capture anyway"
     static let closeComposer = "Close"

@@ -25,38 +25,64 @@ struct InboxConvertSheet: View {
     var done: () -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
-    @State private var target: Target = .task
-    @State private var hasDue = true
-    @State private var due = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
-    @State private var hasTime = false
+    @State private var target: Target
+    @State private var dueDate: String? = TaskDates.key(Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+    @State private var dueTime: String?
     @State private var priority: Int64 = 2
-    @State private var remind: InboxRemindPreset = .none
+    @State private var remindTaskAt: Date?
     @State private var projectId: String?
     @State private var projects: [ProjectItem] = []
     @State private var remindAt = InboxSnoozePreset.tomorrow.date(now: Date())
+    @State private var picking: Picking?
+    /// The Tasks pickers read the date rules from a Tasks store; this one
+    /// never loads or writes the Tasks tab's view state (its own key).
+    @State private var pickerStore: TasksStore?
+
+    private enum Picking: String, Identifiable { case due, reminder; var id: String { rawValue } }
+
+    init(store: InboxStore, item: InboxItemRecord, start: Target = .task, done: @escaping () -> Void = {}) {
+        self.store = store
+        self.item = item
+        self.done = done
+        _target = State(initialValue: start)
+    }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Picker(InboxCopy.convertTo, selection: $target) {
-                        ForEach(Target.allCases) { Text($0.label).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("inbox.convert.type")
-                    Text(InboxMeta.displayTitle(item))
-                        .font(Tokens.Typography.body.font.weight(.semibold))
-                        .foregroundStyle(Tokens.Text.primary.color)
+            List {
+                Picker(InboxCopy.convertTo, selection: $target) {
+                    ForEach(Target.allCases) { Text($0.label).tag($0) }
                 }
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                .accessibilityIdentifier("inbox.convert.type")
+                HStack(spacing: Tokens.Space.medium) {
+                    Image(systemName: target == .task ? "circle.dashed" : target == .reminder ? "bell" : "doc.text")
+                        .font(Tokens.Typography.body.font)
+                        .foregroundStyle(Tokens.Text.tertiary.color)
+                        .accessibilityHidden(true)
+                    Text(InboxMeta.displayTitle(item))
+                        .font(Tokens.Typography.heading.font)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                        .lineLimit(2)
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: Tokens.Space.small, leading: Tokens.Space.tight, bottom: Tokens.Space.small, trailing: 0))
                 switch target {
                 case .task: taskFields
                 case .reminder: reminderFields
-                case .note: Section { Text(InboxCopy.noteFooter).font(Tokens.Typography.supporting.font) }
+                case .note: Section { EmptyView() } footer: { Text(InboxCopy.noteFooter) }
                 }
             }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
             .background(Tokens.Canvas.background.color)
-            .navigationTitle(InboxCopy.convert)
+            .tint(Tokens.Text.tint.color)
+            .navigationTitle(InboxCopy.convertTo)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -69,9 +95,22 @@ struct InboxConvertSheet: View {
                     .accessibilityIdentifier("inbox.convert.confirm")
                 }
             }
+            .sheet(item: $picking) { picking in
+                switch picking {
+                case .due:
+                    if let pickerStore {
+                        TaskDateSheet(title: InboxCopy.dueDate, date: dueDate, time: dueTime, allowsTime: true, store: pickerStore) {
+                            dueDate = $0
+                            dueTime = $1
+                        }
+                    }
+                case .reminder:
+                    TaskReminderPickerSheet(mode: .add, now: store.clock()) { date, _ in remindTaskAt = date }
+                }
+            }
             .task { await loadProjects() }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
         .accessibilityIdentifier("inbox.convertSheet")
     }
 
@@ -83,31 +122,68 @@ struct InboxConvertSheet: View {
         }
     }
 
+    /// Paper 14: Due date, Priority, Remind me, Project, each a row with its
+    /// value and a chevron; the date and reminder open the Tasks pickers.
     private var taskFields: some View {
-        Group {
-            Section {
-                Toggle(InboxCopy.dueDate, isOn: $hasDue)
-                if hasDue {
-                    DatePicker(InboxCopy.dueDate, selection: $due, displayedComponents: hasTime ? [.date, .hourAndMinute] : .date)
-                    Toggle(InboxCopy.dueTime, isOn: $hasTime)
-                }
+        Section {
+            let today = TaskDates.key(store.clock())
+            let due = dueDate.flatMap { TaskDueLabel.make(date: $0, time: dueTime, today: today, isDone: false) }
+            valueRow(InboxCopy.dueDate, value: due?.text ?? InboxCopy.none,
+                     color: due.map { TaskComposerChips.dueColor($0.tone) } ?? Tokens.Text.tertiary) { picking = .due }
+                .accessibilityIdentifier("inbox.convert.due")
+            Menu {
                 Picker(InboxCopy.priority, selection: $priority) {
-                    ForEach([Int64(0), 1, 2, 3, 4], id: \.self) { Text(InboxCopy.priorityName($0)).tag($0) }
+                    ForEach([Int64(4), 3, 2, 1, 0], id: \.self) { Text(InboxCopy.priorityName($0)).tag($0) }
                 }
-                Picker(InboxCopy.remindMe, selection: $remind) {
-                    ForEach(InboxRemindPreset.allCases) { Text($0.label).tag($0) }
-                }
+            } label: {
+                valueLabel(InboxCopy.priority, value: InboxCopy.priorityName(priority), color: Tokens.Text.tertiary)
+            }
+            .accessibilityIdentifier("inbox.convert.priority")
+            valueRow(InboxCopy.remindMe, value: reminderLabel, color: Tokens.Text.tertiary) { picking = .reminder }
+                .accessibilityIdentifier("inbox.convert.remind")
+            Menu {
                 Picker(InboxCopy.project, selection: $projectId) {
                     Text(InboxCopy.inboxProject).tag(String?.none)
                     ForEach(projects.filter { !$0.isInbox && $0.archivedAt == nil }, id: \.id) {
                         Text($0.name).tag(Optional($0.id))
                     }
                 }
-                .accessibilityIdentifier("inbox.convert.project")
-            } footer: {
-                Text(InboxCopy.convertFooter)
+            } label: {
+                let project = projects.first { $0.id == projectId }
+                valueLabel(InboxCopy.project, value: project?.name ?? InboxCopy.inboxProject, color: Tokens.Text.tertiary) {
+                    Circle().fill(project.map { Tokens.Palette.color($0.color) } ?? Tokens.Text.tertiary.color)
+                        .frame(width: Tokens.Space.tight + 2, height: Tokens.Space.tight + 2)
+                }
             }
+            .accessibilityIdentifier("inbox.convert.project")
+        } footer: {
+            Text(InboxCopy.convertFooter)
         }
+        .listRowBackground(Tokens.Canvas.surface.color)
+    }
+
+    private func valueRow(_ label: String, value: String, color: AdaptiveColor, action: @escaping () -> Void) -> some View {
+        Button(action: action) { valueLabel(label, value: value, color: color) }
+            .buttonStyle(.plain)
+    }
+
+    private func valueLabel(
+        _ label: String, value: String, color: AdaptiveColor, @ViewBuilder dot: () -> some View = { EmptyView() }
+    ) -> some View {
+        HStack(spacing: Tokens.Space.small) {
+            Text(label).foregroundStyle(Tokens.Text.primary.color)
+            Spacer(minLength: Tokens.Space.small)
+            dot()
+            Text(value).foregroundStyle(color.color)
+            Image(systemName: "chevron.right")
+                .font(Tokens.Typography.caption.font.weight(.semibold))
+                .foregroundStyle(Tokens.Text.tertiary.color)
+                .accessibilityHidden(true)
+        }
+        .font(Tokens.Typography.body.font)
+        .frame(minHeight: Tokens.Size.minimumHitArea)
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
     }
 
     private var reminderFields: some View {
@@ -117,21 +193,30 @@ struct InboxConvertSheet: View {
         } footer: {
             Text(InboxCopy.reminderFooter)
         }
+        .listRowBackground(Tokens.Canvas.surface.color)
     }
 
     private func loadProjects() async {
         guard let tasks = store.tasks else { return }
+        if pickerStore == nil {
+            pickerStore = TasksStore(core: tasks, filler: nil, vaultId: "inbox-convert-picker")
+        }
         projects = (try? await store.executorRun { try tasks.projects(includeArchived: false) }) ?? []
+    }
+
+    private var reminderLabel: String {
+        guard let remindTaskAt else { return InboxCopy.none }
+        return InboxPanelFormat.when(Int64(remindTaskAt.timeIntervalSince1970 * 1000), now: store.clock())
     }
 
     private func confirm() {
         let item = item
         let target = target
-        let dueDate = hasDue ? TaskDates.key(due) : nil
-        let dueTime = hasDue && hasTime ? due.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)) : nil
+        let dueDate = dueDate
+        let dueTime = dueDate == nil ? nil : dueTime
         let priority = priority
         let projectId = projectId
-        let remind = remind
+        let remindTaskAt = remindTaskAt
         let remindAt = remindAt
         dismiss()
         Task {
@@ -142,8 +227,8 @@ struct InboxConvertSheet: View {
                 let taskId = await store.convertToTask(
                     item, projectId: projectId, dueDate: dueDate, dueTime: dueTime, priority: priority
                 )
-                if let taskId, let when = remind.date(now: store.clock()), let tasks = store.tasks {
-                    let iso = TaskDates.iso(when)
+                if let taskId, let remindTaskAt, let tasks = store.tasks {
+                    let iso = TaskDates.iso(remindTaskAt)
                     _ = try? await store.executorRun { try tasks.addTaskReminder(taskId: taskId, remindAt: iso, title: nil, note: nil) }
                     store.scheduleSync()
                 }
@@ -151,31 +236,6 @@ struct InboxConvertSheet: View {
                 await store.convertToReminder(item, at: remindAt)
             }
             done()
-        }
-    }
-}
-
-/// The task reminder presets Convert offers (desktop's reminder picker:
-/// 1 hour, Tomorrow, Next week).
-enum InboxRemindPreset: String, CaseIterable, Identifiable {
-    case none, inOneHour, tomorrow, nextWeek
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .none: InboxCopy.none
-        case .inOneHour: "1 hour"
-        case .tomorrow: "Tomorrow"
-        case .nextWeek: "Next week"
-        }
-    }
-
-    func date(now: Date) -> Date? {
-        switch self {
-        case .none: nil
-        case .inOneHour: InboxSnoozePreset.inOneHour.date(now: now)
-        case .tomorrow: InboxSnoozePreset.tomorrow.date(now: now)
-        case .nextWeek: InboxSnoozePreset.nextWeek.date(now: now)
         }
     }
 }

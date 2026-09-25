@@ -83,4 +83,12 @@ final class VaultBrowseWiringTests {
         let database = vaultDirectory.appendingPathComponent(VaultFiles.dataDatabaseName)
         #expect(FileManager.default.fileExists(atPath: database.path))
     }
+
+    @Test("opening a vault points attachment paths at its images directory")
+    func openingSetsTheImagesDirectory() async throws {
+        _ = try await opener.open(vaultId)
+        let images = vaultDirectory.appendingPathComponent(VaultFiles.imagesDirectoryName, isDirectory: true)
+        #expect(AttachmentPaths.url(for: "abc").standardizedFileURL
+            == images.appending(path: "abc").standardizedFileURL)
+    }
 }

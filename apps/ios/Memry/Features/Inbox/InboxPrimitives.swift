@@ -53,7 +53,9 @@ struct InboxRowText: Equatable {
     let preview: String?
     let meta: [InboxMetaPart]
 
-    static func make(_ item: InboxItemRecord, now: Date, staleDays: Int = 7) -> InboxRowText {
+    /// `archived`: desktop's archived list ages a row by `archivedAt` and
+    /// never marks it stale (`inbox-archived-view.tsx`).
+    static func make(_ item: InboxItemRecord, now: Date, staleDays: Int = 7, archived: Bool = false) -> InboxRowText {
         let meta = InboxMeta.metadata(item)
         var parts: [InboxMetaPart] = []
         switch item.itemType {
@@ -83,8 +85,13 @@ struct InboxRowText: Equatable {
             break
         }
         let created = Date(timeIntervalSince1970: TimeInterval(item.createdAtMs) / 1000)
-        let stale = now.timeIntervalSince(created) > Double(staleDays) * 86_400
-        parts.append(InboxMetaPart(text: InboxMeta.age(created, now: now), accented: stale))
+        if archived {
+            let archivedAt = Date(timeIntervalSince1970: TimeInterval(item.archivedAtMs ?? item.createdAtMs) / 1000)
+            parts.append(InboxMetaPart(text: InboxMeta.age(archivedAt, now: now)))
+        } else {
+            let stale = now.timeIntervalSince(created) > Double(staleDays) * 86_400
+            parts.append(InboxMetaPart(text: InboxMeta.age(created, now: now), accented: stale))
+        }
         return InboxRowText(title: InboxMeta.displayTitle(item), preview: InboxMeta.voicePreview(item), meta: parts)
     }
 
@@ -189,8 +196,10 @@ enum InboxPeriod: String, CaseIterable, Identifiable {
     }
 
     /// The groups that hold something, in order, each newest first.
-    static func group(_ items: [InboxItemRecord], now: Date) -> [(InboxPeriod, [InboxItemRecord])] {
-        let buckets = Dictionary(grouping: items) { of($0.createdAtMs, now: now) }
+    static func group(
+        _ items: [InboxItemRecord], now: Date, by time: (InboxItemRecord) -> Int64 = \.createdAtMs
+    ) -> [(InboxPeriod, [InboxItemRecord])] {
+        let buckets = Dictionary(grouping: items) { of(time($0), now: now) }
         return allCases.compactMap { period in
             guard let rows = buckets[period], !rows.isEmpty else { return nil }
             return (period, rows)

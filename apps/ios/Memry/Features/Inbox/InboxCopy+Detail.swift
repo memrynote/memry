@@ -31,7 +31,18 @@ extension InboxCopy {
     static let source = "Source"
     static let tweetUnavailable = "Tweet unavailable"
     static let tweetUnavailableDetail = "This tweet may have been deleted or is from a private account."
-    static let viewOnX = "View on X"
+    static let openPost = "Open post"
+
+    /// The social link's label, by the platform the post is on.
+    static func viewOn(platform: String?) -> String {
+        let names = [
+            "twitter": "X", "x": "X", "reddit": "Reddit", "instagram": "Instagram", "threads": "Threads",
+            "bluesky": "Bluesky", "mastodon": "Mastodon", "linkedin": "LinkedIn", "facebook": "Facebook",
+            "tiktok": "TikTok", "youtube": "YouTube"
+        ]
+        guard let name = platform.flatMap({ names[$0.lowercased()] }) else { return openPost }
+        return "View on \(name)"
+    }
     static let reminderTriggered = "Reminder triggered"
     static let reminderNote = "Reminder Note"
     static let viewed = "Viewed"
@@ -54,6 +65,8 @@ extension InboxCopy {
     static let archivedNone = "No archived items"
     static let archivedNoMatches = "No matching archived items"
     static let searchArchived = "Search archived"
+    static let clearSearch = "Clear search"
+    static let archivedFooter = "Tap opens a read-only detail with Restore and Delete permanently. Delete asks for confirmation."
     static let deleteShort = "Delete"
     static let captured = "Captured"
     static func capturedThisWeek(_ count: Int) -> String { "+\(count) this week" }

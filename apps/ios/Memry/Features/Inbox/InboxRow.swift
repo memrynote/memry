@@ -13,13 +13,18 @@ struct InboxRow: View {
     let now: Date
     var selecting = false
     var selected = false
+    /// A row in Archived: aged by `archivedAt`, never stale.
+    var archived = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @ScaledMetric(relativeTo: .body) private var lane: CGFloat = Tokens.Space.section
 
-    private var text: InboxRowText { InboxRowText.make(item, now: now, staleDays: Int(store.staleDays)) }
+    private var text: InboxRowText {
+        InboxRowText.make(item, now: now, staleDays: Int(store.staleDays), archived: archived)
+    }
     private var isStale: Bool {
-        now.timeIntervalSince1970 * 1000 - Double(item.createdAtMs) > Double(store.staleDays) * 86_400_000
+        !archived && now.timeIntervalSince1970 * 1000 - Double(item.createdAtMs) > Double(store.staleDays) * 86_400_000
     }
 
     var body: some View {
@@ -29,10 +34,12 @@ struct InboxRow: View {
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(Tokens.Typography.body.font)
                     .foregroundStyle(selected ? Tokens.Tint.base.color : Tokens.Text.tertiary.color)
-                    .frame(height: Tokens.Size.minimumHitArea)
+                    .frame(width: lane, height: Tokens.Size.minimumHitArea)
                     .accessibilityHidden(true)
+            } else {
+                // Paper 16: the selection circle takes the type icon's lane.
+                InboxTypeIcon(type: item.itemType)
             }
-            InboxTypeIcon(type: item.itemType)
             HStack(alignment: .center, spacing: Tokens.Space.medium) {
                 VStack(alignment: .leading, spacing: Tokens.Space.tight - 1) {
                     Text(text.title)

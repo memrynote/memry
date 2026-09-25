@@ -89,7 +89,7 @@ fn seed(conn: &Connection) {
         let mut v = row("note", "Filed yesterday", NOW - 2 * DAY);
         v["filedAt"] = json!(iso(NOW - DAY));
         v["filedTo"] = json!("Work/Plans/Filed yesterday.md");
-        v["filedAction"] = json!("folder");
+        v["filedAction"] = json!("note");
         v
     });
     put(conn, "h-reminder", {

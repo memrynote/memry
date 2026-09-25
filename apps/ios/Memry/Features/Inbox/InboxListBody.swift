@@ -17,12 +17,7 @@ struct InboxListBody<Header: View>: View {
         let groups = InboxPeriod.group(store.visibleItems, now: now)
         List {
             Group {
-                header()
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(
-                        top: Tokens.Space.tight, leading: InboxLayout.edge,
-                        bottom: Tokens.Space.medium, trailing: InboxLayout.edge
-                    ))
+                header().inboxHeaderRow()
                 if let failure = store.failure {
                     InboxFailureRow(failure: failure, retry: { Task { await store.load() } }) { store.clearFailure() }
                         .listRowSeparator(.hidden)
@@ -42,11 +37,7 @@ struct InboxListBody<Header: View>: View {
                 }
                 ForEach(groups, id: \.0) { period, rows in
                     InboxGroupHeader(period: period, count: rows.count)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(
-                            top: period == groups.first?.0 ? Tokens.Space.small + 2 : Tokens.Space.section - 2,
-                            leading: InboxLayout.edge, bottom: Tokens.Space.tight, trailing: InboxLayout.edge
-                        ))
+                        .inboxGroupHeaderRow(first: period == groups.first?.0)
                     ForEach(rows, id: \.id) { item in
                         InboxRow(
                             item: item, store: store, now: now,
@@ -54,8 +45,7 @@ struct InboxListBody<Header: View>: View {
                         )
                         .onTapGesture { tap(item) }
                         .inboxRowActions(item, store: store, enabled: !selecting)
-                        .listRowInsets(EdgeInsets(top: 0, leading: InboxLayout.edge, bottom: 0, trailing: InboxLayout.edge))
-                        .alignmentGuide(.listRowSeparatorLeading) { _ in InboxLayout.separatorLeading }
+                        .inboxItemRow()
                     }
                 }
             }
@@ -89,6 +79,30 @@ enum InboxLayout {
     static let edge = Tokens.Space.inset + Tokens.Space.tight
     /// The hairline starts under the title, past the 24pt glyph lane and 12pt gap.
     static let separatorLeading = Tokens.Space.section + Tokens.Space.medium
+}
+
+/// Paper 01's list geometry, shared by Inbox, Snoozed and Archived.
+extension View {
+    func inboxHeaderRow() -> some View {
+        listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(
+                top: Tokens.Space.tight, leading: InboxLayout.edge,
+                bottom: Tokens.Space.medium, trailing: InboxLayout.edge
+            ))
+    }
+
+    func inboxGroupHeaderRow(first: Bool) -> some View {
+        listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(
+                top: first ? Tokens.Space.small + 2 : Tokens.Space.section - 2,
+                leading: InboxLayout.edge, bottom: Tokens.Space.tight, trailing: InboxLayout.edge
+            ))
+    }
+
+    func inboxItemRow() -> some View {
+        listRowInsets(EdgeInsets(top: 0, leading: InboxLayout.edge, bottom: 0, trailing: InboxLayout.edge))
+            .alignmentGuide(.listRowSeparatorLeading) { _ in InboxLayout.separatorLeading }
+    }
 }
 
 /// A load or write failure, with Retry when repeating can help.

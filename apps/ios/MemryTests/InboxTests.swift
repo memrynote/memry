@@ -83,6 +83,23 @@ struct InboxFormattingTests {
         #expect(stale.meta.last == InboxMetaPart(text: "9d", accented: true))
     }
 
+    /// Desktop's `canFileItem`: embedding an image needs a linked note.
+    @Test func filing_confirms_only_when_it_can_land() {
+        #expect(!InboxFileSheet.canConfirm(isImage: true, mode: .embed, linkCount: 0, hasFolder: true))
+        #expect(InboxFileSheet.canConfirm(isImage: true, mode: .embed, linkCount: 1, hasFolder: false))
+        #expect(InboxFileSheet.canConfirm(isImage: true, mode: .link, linkCount: 0, hasFolder: true))
+        #expect(InboxFileSheet.canConfirm(isImage: false, mode: .embed, linkCount: 0, hasFolder: true))
+        #expect(!InboxFileSheet.canConfirm(isImage: false, mode: .embed, linkCount: 0, hasFolder: false))
+    }
+
+    @Test func a_social_link_names_its_platform() {
+        #expect(InboxCopy.viewOn(platform: "twitter") == "View on X")
+        #expect(InboxCopy.viewOn(platform: "reddit") == "View on Reddit")
+        #expect(InboxCopy.viewOn(platform: "Instagram") == "View on Instagram")
+        #expect(InboxCopy.viewOn(platform: "somewhere") == InboxCopy.openPost)
+        #expect(InboxCopy.viewOn(platform: nil) == InboxCopy.openPost)
+    }
+
     @Test func rows_group_by_local_day() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
@@ -118,6 +135,25 @@ struct InboxFormattingTests {
         #expect(today.map { calendar.component(.day, from: $0) } == 24)
         let tomorrow = InboxNotifications.nextFire("09:00", now: now, calendar: calendar)
         #expect(tomorrow.map { calendar.component(.day, from: $0) } == 25)
+    }
+
+    @Test func a_page_head_gives_the_fields_desktop_stores() throws {
+        let html = """
+        <html><head><title>Fallback &amp; title</title>
+        <meta name="description" content="plain">
+        <meta property='og:description' content="Small teams &amp; short cycles">
+        <meta content="/hero.png" property="og:image">
+        <meta property="og:site_name" content="Linear">
+        <link rel="shortcut icon" href="/favicon.ico"></head></html>
+        """
+        let base = try #require(URL(string: "https://linear.app/method"))
+        let page = InboxLinkPage.parse(html, base: base)
+        #expect(page.title == "Fallback & title")
+        #expect(page.description == "Small teams & short cycles")
+        #expect(page.heroImage == "https://linear.app/hero.png")
+        #expect(page.siteName == "Linear")
+        #expect(page.favicon == "https://linear.app/favicon.ico")
+        #expect(InboxLinkPage.parse("<p>no head</p>", base: base) == InboxLinkPage())
     }
 }
 
@@ -159,5 +195,76 @@ struct InboxStoreTests {
         await vault.store.file(note, to: "Agent Test", tags: [])
         await vault.store.select(.insights)
         #expect(vault.store.history.count == 1)
+    }
+
+    /// A memo left "pending" by a process that ended mid-transcription is
+    /// picked up again: its audio is on this phone. One captured elsewhere
+    /// (no local file) stays as it is.
+    @Test func a_stranded_transcription_is_resumed() async throws {
+        let vault = try InboxTestVault()
+        let relative = "attachments/inbox/[agent]-memo/voice-memo.m4a"
+        let file = vault.directory.appendingPathComponent(relative)
+        try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data([0, 1, 2]).write(to: file)
+        let here = try vault.inbox.captureVoice(
+            id: "[agent]-memo", durationSeconds: 3, format: "m4a", size: 3, attachmentPath: relative,
+            waveform: [], transcriptionStatus: "pending", captureSource: "inline"
+        )
+        let elsewhere = try vault.inbox.captureVoice(
+            id: "[agent]-remote", durationSeconds: 3, format: "m4a", size: 3,
+            attachmentPath: "attachments/inbox/[agent]-remote/voice-memo.m4a",
+            waveform: [], transcriptionStatus: "pending", captureSource: "inline"
+        )
+        await vault.store.refresh()
+        await vault.store.resumeTranscriptions()
+        #expect(vault.store.item(here.id)?.transcriptionStatus != "pending")
+        #expect(vault.store.item(elsewhere.id)?.transcriptionStatus == "pending")
+    }
+
+    /// Desktop's limits: a type outside the allow-list and a file over 50 MB
+    /// are refused with their own message, and nothing is captured.
+    @Test func an_unsupported_or_oversized_file_is_refused() async throws {
+        let vault = try InboxTestVault()
+        let odd = await vault.store.captureFile(data: Data([1, 2, 3]), filename: "[agent] x.exe", mimeType: "application/x-msdownload")
+        if case .failed = odd {} else { Issue.record("expected a refusal, got \(odd)") }
+        #expect(vault.store.failure?.code == InboxErrors.unsupportedType.code)
+        let big = await vault.store.captureFile(
+            data: Data(count: 50 * 1024 * 1024 + 1), filename: "[agent] big.pdf", mimeType: "application/pdf"
+        )
+        if case .failed = big {} else { Issue.record("expected a refusal, got \(big)") }
+        #expect(vault.store.failure?.code == InboxErrors.tooLarge.code)
+        #expect(vault.store.items.isEmpty)
+    }
+
+    /// A photo whose upload fails stays in the inbox and leaves no empty note
+    /// behind: each retry used to add one more "[agent] photo" twin.
+    @Test func a_failed_file_upload_leaves_no_empty_note() async throws {
+        let scratch = try InboxTestVault()
+        let notes = scratch.vault.notes()
+        let store = InboxStore(
+            core: scratch.inbox, vaultId: "vault-inbox-test", vaultDirectory: scratch.directory,
+            filler: UploadRefused(), notes: notes,
+            writer: try scratch.vault.notesWriter(store: TaskTestKeychain())
+        )
+        let bytes = Data([0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10])
+        let result = await store.captureFile(data: bytes, filename: "[agent] photo.jpg", mimeType: "image/jpeg")
+        guard case .captured = result, let item = store.items.first else {
+            Issue.record("expected a capture, got \(result)")
+            return
+        }
+        await store.file(item, to: "Agent Test", tags: [])
+        #expect(store.items.map(\.id) == [item.id])
+        #expect(try notes.list().isEmpty)
+    }
+}
+
+/// A filler whose upload refuses (the shared default), nothing else scripted.
+private final class UploadRefused: VaultFilling, @unchecked Sendable {
+    func isFirstSyncComplete() async throws -> Bool { true }
+    func firstSync(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> FirstSyncSummary { .none }
+    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
     }
 }
