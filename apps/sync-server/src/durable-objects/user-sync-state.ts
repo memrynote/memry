@@ -1,10 +1,12 @@
 import { DurableObject } from 'cloudflare:workers'
 
+import type { RecordPullItemResponse, RecordSyncItemType } from '@memry/contracts/sync-api'
 import { redactSensitive } from '@memry/contracts/telemetry-api'
 
 import { ErrorCodes } from '../lib/errors'
 import { verifyAccessToken } from '../lib/jwt-verify'
 import { createLogger } from '../lib/logger'
+import { SocketFrames, socketItemTypesFromHandshake } from '../lib/socket-items'
 import { pushPostHogLogs } from '../services/posthog-logs'
 import type { Bindings } from '../types'
 
@@ -15,6 +17,11 @@ interface WsAttachment {
   connectedAt: number
   rateLimitWindow: number
   rateLimitCount: number
+  /**
+   * Set only when the handshake opted in to socket items (#2300). Absent on
+   * every socket accepted before that, which keeps receiving hint-only frames.
+   */
+  socketItemTypes?: RecordSyncItemType[]
 }
 
 const RATE_LIMIT_MAX = 100
@@ -169,13 +176,15 @@ export class UserSyncState extends DurableObject<Bindings> {
     const client = pair[0]
     const server = pair[1]
 
+    const socketItemTypes = socketItemTypesFromHandshake(request.headers)
     const attachment: WsAttachment = {
       deviceId: claims.deviceId,
       vaultId: request.headers.get('X-Memry-Vault-Id') ?? 'default',
       tokenExp: claims.exp,
       connectedAt: Math.floor(Date.now() / 1000),
       rateLimitWindow: 0,
-      rateLimitCount: 0
+      rateLimitCount: 0,
+      ...(socketItemTypes ? { socketItemTypes } : {})
     }
 
     this.ctx.acceptWebSocket(server, [tag])
@@ -198,6 +207,9 @@ export class UserSyncState extends DurableObject<Bindings> {
       type?: string
       noteId?: string
       sourceId?: string
+      /** A record push's committed items, already within the budget (#2300). */
+      items?: RecordPullItemResponse[]
+      committedAtMs?: number
     } = await request.json()
 
     const allSockets = body.targetDeviceId
@@ -212,16 +224,24 @@ export class UserSyncState extends DurableObject<Bindings> {
     if (body.noteId) payload.noteId = body.noteId
     if (body.sourceId) payload.sourceId = body.sourceId
 
-    const message = JSON.stringify({ type: msgType, payload })
+    const frames = new SocketFrames({ type: msgType, payload }, body.items, body.committedAtMs)
+    let itemsSent = 0
+    const nowSeconds = Math.floor(Date.now() / 1000)
 
     for (const ws of allSockets) {
       const attachment = ws.deserializeAttachment() as WsAttachment | null
       if (attachment?.deviceId === body.excludeDeviceId) continue
       if (body.vaultId && attachment?.vaultId !== body.vaultId) continue
+      // Authorization was checked at connect. A token that has expired since
+      // (the alarm closes the socket within a minute) still gets the wake,
+      // never data (protocol 09 §9.13).
+      const itemTypes =
+        attachment && attachment.tokenExp > nowSeconds ? attachment.socketItemTypes : undefined
 
       try {
-        ws.send(message)
+        ws.send(frames.forSocket(itemTypes))
         sent++
+        if (frames.itemCountFor(itemTypes) > 0) itemsSent++
       } catch {
         // socket may have closed between getWebSockets and send
       }
@@ -231,7 +251,12 @@ export class UserSyncState extends DurableObject<Bindings> {
     // `crdt_updated` frame carries a cursor too (#2420) and is not traced. No
     // device or item ids: the cursor and vault are the join key.
     if (msgType === 'changes_available' && body.cursor !== undefined) {
-      logger.info('Record changes broadcast', { vaultId: body.vaultId, cursor: body.cursor, sent })
+      logger.info('Record changes broadcast', {
+        vaultId: body.vaultId,
+        cursor: body.cursor,
+        sent,
+        ...(body.items ? { itemsSent } : {})
+      })
     }
 
     return Response.json({ sent })

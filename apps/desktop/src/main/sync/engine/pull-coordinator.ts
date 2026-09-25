@@ -24,6 +24,7 @@ import type { PushCoordinator } from './push-coordinator'
 import { CorruptItemTracker, type ItemRef, type RecoveredItem } from './corrupt-item-tracker'
 import { SchemaInvalidLedger } from './schema-invalid-ledger'
 import { sortByApplyOrder } from './apply-order'
+import { applyDecryptedItem } from './apply-decrypted'
 import {
   refetchCorruptItems,
   retrySchemaInvalidItems,
@@ -84,6 +85,22 @@ export class PullCoordinator {
   private orphanedItems: OrphanRef[] = []
   /** Wired by the engine: the change feed reset the legacy note-body sweep (#2297). */
   onNoteBodyLegacySweepReset: () => void = () => {}
+  private ownedThroughCursor = 0
+
+  /**
+   * The highest `nextCursor` of a changes page a pull has read, until
+   * LAST_CURSOR reaches it. Every row at or below it belongs to the pull: it
+   * applies it, defers it, or leaves LAST_CURSOR unwritten so the page is
+   * pulled again. Its rows can commit before LAST_CURSOR moves (a slice before
+   * the last, a page with post-commit work, a run that stops mid-page), so a
+   * socket frame at or below it may be older than a row already applied and is
+   * left alone (#2300). Too high only sends frames to the pull.
+   */
+  get ownedThrough(): number {
+    const lastCursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? 0)
+    if (this.ownedThroughCursor <= lastCursor) this.ownedThroughCursor = 0
+    return this.ownedThroughCursor
+  }
 
   constructor(
     ctx: SyncContext,
@@ -308,6 +325,7 @@ export class PullCoordinator {
 
       const changes = changesResult.value
       const nextCursor = String(changes.nextCursor)
+      this.ownedThroughCursor = Math.max(this.ownedThroughCursor, changes.nextCursor)
 
       // Fetch page N+1 WHILE page N is applied, not after: starting the
       // prefetch below the apply meant it was awaited on the very next
@@ -593,17 +611,11 @@ export class PullCoordinator {
       if (i > 0 && i % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
       const dec = retries[i]
       try {
-        const contentBytes = new TextEncoder().encode(dec.content)
-        const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-        const result = this.ctx.applier.apply({
-          itemId: dec.id,
-          type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-          operation: itemOp,
-          content: contentBytes,
-          clock: dec.clock,
-          deletedAt: dec.deletedAt,
-          vaultKey: runState.vaultKey
-        })
+        const { result, operation: itemOp } = applyDecryptedItem(
+          this.ctx.applier,
+          dec,
+          runState.vaultKey
+        )
 
         if (result === 'parse_error') {
           failed++
@@ -645,16 +657,11 @@ export class PullCoordinator {
   }
 
   private applyOrphan(dec: DecryptedPullItem, runState: PullRunState): void {
-    const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-    const result = this.ctx.applier.apply({
-      itemId: dec.id,
-      type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-      operation: itemOp,
-      content: new TextEncoder().encode(dec.content),
-      clock: dec.clock,
-      deletedAt: dec.deletedAt,
-      vaultKey: runState.vaultKey
-    })
+    const { result, operation: itemOp } = applyDecryptedItem(
+      this.ctx.applier,
+      dec,
+      runState.vaultKey
+    )
     // The requeue is what carries a merged row back to the server (#2180).
     // Not counted in `totalConflictsResolved`: that number is the pull's own
     // per-page tally, and a repair pass runs after the last page is logged.
@@ -895,18 +902,10 @@ export class PullCoordinator {
           if (this.ctx.abortController?.signal.aborted) break
           const dec = orderedDecrypted[i]
           try {
-            const contentBytes = new TextEncoder().encode(dec.content)
-            const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-            const result = this.ctx.applier.apply(
-              {
-                itemId: dec.id,
-                type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-                operation: itemOp,
-                content: contentBytes,
-                clock: dec.clock,
-                deletedAt: dec.deletedAt,
-                vaultKey
-              },
+            const { result, operation: itemOp } = applyDecryptedItem(
+              this.ctx.applier,
+              dec,
+              vaultKey,
               pageApply
             )
 

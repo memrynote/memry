@@ -1,9 +1,9 @@
 import WebSocket from 'ws'
-import { parseSyncSocketFrame } from '@memry/contracts/sync-socket'
+import { parseSyncSocketFrame, SYNC_SOCKET_ITEMS_HEADER } from '@memry/contracts/sync-socket'
 import { SyncEventEmitter } from '@memry/sync-client/emitter'
 import { createLogger } from '../lib/logger'
 import { getSharedPinnedAgent, CertificatePinningError } from './certificate-pinning'
-import { getSyncVaultHeaders } from './http-client'
+import { getSyncVaultHeaders, SYNC_TYPES_HEADER_VALUE } from './http-client'
 import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('WebSocket')
@@ -120,6 +120,10 @@ export class WebSocketManager extends SyncEventEmitter {
       headers: {
         Authorization: `Bearer ${token}`,
         'X-App-Version': this.deps.getAppVersion(),
+        // Socket items (#2300, protocol 09 §9.13), negotiated with the types
+        // HTTP declares so the socket never carries a type a pull would not.
+        [SYNC_SOCKET_ITEMS_HEADER]: '1',
+        'X-Memry-Sync-Types': SYNC_TYPES_HEADER_VALUE,
         ...vaultHeaders
       },
       agent: wsUrl.startsWith('wss://') ? getSharedPinnedAgent() : undefined

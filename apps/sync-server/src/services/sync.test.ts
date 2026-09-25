@@ -2962,3 +2962,275 @@ describe('pullItems missing blob tolerance', () => {
     expect(result.map((item) => item.id)).toEqual(['item-ok'])
   })
 })
+
+// ============================================================================
+// Tests: committedItems (#2300 socket items)
+// ============================================================================
+
+describe('processRecordPushBatch committedItems', () => {
+  const SOCKET_BUDGET = 64 * 1024
+  beforeEach(() => {
+    vi.clearAllMocks()
+    armCursorSequence(42)
+    mockedReserveStorage.mockResolvedValue(undefined)
+    mockedAdjustStorageUsed.mockResolvedValue(undefined)
+    mockedVerifyEd25519.mockResolvedValue(true)
+    vi.mocked(putBlob).mockResolvedValue({ etag: 'etag-1' } as unknown as R2Object)
+    mockedGetDevice.mockResolvedValue({
+      id: 'device-1',
+      user_id: 'user-1',
+      name: 'test',
+      platform: 'desktop',
+      os_version: null,
+      app_version: '1.0.0',
+      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      push_token: null,
+      revoked_at: null,
+      last_sync_at: null,
+      created_at: 1000,
+      updated_at: 1000
+    })
+  })
+
+  /**
+   * The `sync_items` row and the R2 object the push wrote, read back through
+   * `pullItems` exactly as a later `/sync/pull` would read them.
+   */
+  const pullStoredRow = async (
+    upsert: RecordedPushStatement,
+    blobBody: string
+  ): Promise<unknown> => {
+    const head = upsert.binds.slice(0, 11)
+    // After the cursor: signer, signature, state vector, clock, created,
+    // updated, deleted, platform, version, committed ms, delete attestation.
+    const tail = upsert.binds.slice(-11)
+    const row = {
+      item_type: head[3],
+      item_id: head[4],
+      blob_key: head[5],
+      crypto_version: head[9],
+      operation: head[10],
+      signer_device_id: tail[0],
+      signature: tail[1],
+      state_vector: tail[2],
+      clock: tail[3],
+      deleted_at: tail[6],
+      server_cursor: 42,
+      delete_attestation: tail[10]
+    }
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({ results: [row] })
+    const pullDb = createMockDb()
+    pullDb.prepare.mockReturnValue(stmt)
+    vi.mocked(getBlob).mockResolvedValue({ body: blobBody } as unknown as R2ObjectBody)
+    const { items } = await pullItems(
+      pullDb as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      [row.item_id as string],
+      'default',
+      [row.item_type as never]
+    )
+    return items[0]
+  }
+
+  const storedBlobBody = (): string =>
+    new TextDecoder().decode(vi.mocked(putBlob).mock.calls[0][2] as ArrayBuffer)
+
+  it('a committed item equals the /sync/pull item for the same row (upsert)', async () => {
+    const { db, batches } = createPushDb()
+    const item = createValidPushItem({
+      type: 'task',
+      operation: 'update',
+      clock: { 'device-1': 3, 'device-2': 1 }
+    })
+
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [item],
+      'default',
+      null,
+      SOCKET_BUDGET
+    )
+
+    expect(result.committedItems).toHaveLength(1)
+    const pulled = await pullStoredRow(upsertStatements(batches)[0], storedBlobBody())
+    expect(JSON.stringify(result.committedItems[0])).toBe(JSON.stringify(pulled))
+    expect(result.committedAtMs).toBeGreaterThan(0)
+  })
+
+  it('a committed item equals the /sync/pull item for the same row (delete tombstone)', async () => {
+    const { db, batches } = createPushDb()
+    const item = createValidPushItem({ type: 'task', operation: 'delete' })
+
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [item],
+      'default',
+      null,
+      SOCKET_BUDGET
+    )
+
+    const committed = result.committedItems[0]
+    expect(typeof committed.deletedAt).toBe('number')
+    const pulled = await pullStoredRow(upsertStatements(batches)[0], storedBlobBody())
+    expect(JSON.stringify(committed)).toBe(JSON.stringify(pulled))
+  })
+
+  it('rejected and replay-refused items never appear in committedItems', async () => {
+    const { db } = createPushDb({
+      existing: [
+        {
+          item_type: 'note',
+          item_id: 'item-b',
+          version: 1,
+          clock: '{"device-1":3}',
+          size_bytes: 100,
+          created_at: 1000
+        }
+      ]
+    })
+
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [
+        createValidPushItem({ id: 'item-a' }),
+        createValidPushItem({ id: 'item-b', clock: { 'device-1': 2 } })
+      ],
+      'default',
+      null,
+      SOCKET_BUDGET
+    )
+
+    expect(result.committedItems.map((committed) => committed.id)).toEqual(['item-a'])
+  })
+
+  it('a failed Stage 7 batch yields no committedItems', async () => {
+    const { db } = createPushDb({ writeError: new Error('D1_ERROR: Network connection lost.') })
+
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [createValidPushItem({ id: 'item-a' })],
+      'default',
+      null,
+      SOCKET_BUDGET
+    )
+
+    expect(result.accepted).toEqual([])
+    expect(result.committedItems).toEqual([])
+    expect(result.committedAtMs).toBe(0)
+  })
+
+  it('lists committed items in ascending server cursor order', async () => {
+    const { db } = createPushDb()
+
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [
+        createValidPushItem({ id: 'item-a' }),
+        createValidPushItem({ id: 'item-b' }),
+        createValidPushItem({ id: 'item-a', clock: { 'device-1': 2 } })
+      ],
+      'default',
+      null,
+      SOCKET_BUDGET
+    )
+
+    expect(result.committedItems.map((committed) => committed.id)).toEqual([
+      'item-a',
+      'item-b',
+      'item-a'
+    ])
+  })
+
+  // #2300 review A-4 / B-F5: the budget is decided from the payload sizes
+  // before anything is parsed, and "0" (the kill switch) costs nothing.
+  const payloadParses = (spy: { mock: { calls: unknown[][] } }): number =>
+    spy.mock.calls.filter(([text]) => typeof text === 'string' && text.startsWith('{"dataNonce"'))
+      .length
+
+  it('builds no socket items and parses no payload when the budget is 0', async () => {
+    const { db } = createPushDb()
+    const parseSpy = vi.spyOn(JSON, 'parse')
+
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [createValidPushItem({ id: 'item-a' })],
+      'default',
+      null,
+      0
+    )
+
+    expect(result.accepted).toEqual(['item-a'])
+    expect(result.committedItems).toEqual([])
+    expect(payloadParses(parseSpy)).toBe(0)
+    parseSpy.mockRestore()
+  })
+
+  it('builds nothing when the payload bytes alone exceed the budget', async () => {
+    const { db } = createPushDb()
+    const items = [createValidPushItem({ id: 'item-a' }), createValidPushItem({ id: 'item-b' })]
+    const parseSpy = vi.spyOn(JSON, 'parse')
+
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      items,
+      'default',
+      null,
+      payloadBytesOf(items[0])
+    )
+
+    expect(result.accepted).toEqual(['item-a', 'item-b'])
+    expect(result.committedItems).toEqual([])
+    expect(payloadParses(parseSpy)).toBe(0)
+    parseSpy.mockRestore()
+  })
+
+  // #2300 review A-8: building a socket item can never reject a committed row.
+  it('a failure while building socket items leaves the committed rows accepted', async () => {
+    const { db } = createPushDb()
+    const realParse = JSON.parse
+    const parseSpy = vi.spyOn(JSON, 'parse').mockImplementation((text, reviver) => {
+      if (typeof text === 'string' && text.startsWith('{"dataNonce"')) throw new Error('boom')
+      return realParse(text, reviver)
+    })
+
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [createValidPushItem({ id: 'item-a' })],
+      'default',
+      null,
+      SOCKET_BUDGET
+    )
+
+    expect(result.accepted).toEqual(['item-a'])
+    expect(result.rejected).toEqual([])
+    expect(result.committedItems).toEqual([])
+    expect(mockedAdjustStorageUsed).not.toHaveBeenCalled()
+    parseSpy.mockRestore()
+  })
+})

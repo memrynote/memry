@@ -3,6 +3,7 @@ import {
   parseSyncSocketFrame,
   syncSocketAuthFrame,
   SYNC_SOCKET_CLOSE,
+  SYNC_SOCKET_ITEMS_HEADER,
   SYNC_SOCKET_MESSAGE_TYPES,
   SYNC_SOCKET_PING,
   SYNC_SOCKET_PONG
@@ -178,5 +179,73 @@ describe('protocol constants', () => {
       type: 'auth',
       payload: { token: 'jwt' }
     })
+  })
+})
+
+// #2300: socket items ride `changes_available` only for an opted-in socket.
+describe('changes_available socket items', () => {
+  const item = {
+    id: 't1',
+    type: 'task',
+    operation: 'update',
+    cryptoVersion: 1,
+    signature: 'sig',
+    signerDeviceId: 'device-a',
+    clock: { 'device-a': 2 },
+    blob: { encryptedKey: 'k', keyNonce: 'kn', encryptedData: 'd', dataNonce: 'dn' }
+  }
+
+  it('keeps valid items and the commit time next to the wake', () => {
+    expect(
+      parseSyncSocketFrame(
+        frame('changes_available', { cursor: 9, vaultId: 'v1', committedAtMs: 1000, items: [item] })
+      )
+    ).toEqual({
+      kind: 'changes_available',
+      cursor: 9,
+      vaultId: 'v1',
+      committedAtMs: 1000,
+      items: [item]
+    })
+  })
+
+  it('drops invalid elements and keeps the valid ones', () => {
+    const parsed = parseSyncSocketFrame(
+      frame('changes_available', {
+        cursor: 9,
+        items: [{ id: 'x', type: 'not_a_type' }, 'garbage', item]
+      })
+    )
+    expect(parsed).toEqual({ kind: 'changes_available', cursor: 9, items: [item] })
+  })
+
+  // #2300 restack: a frame is never a body feed (#2297) nor a purged-tombstone
+  // channel (#2302/#2408). A note_body element and an unsigned marker are not
+  // record items, and a purgedTombstones sibling never reaches the client.
+  it('carries no note body and no purged tombstone', () => {
+    const marker = { id: 't1', type: 'task', deletedAt: 5, clock: { d: 2 }, serverCursor: 8 }
+    const parsed = parseSyncSocketFrame(
+      frame('changes_available', {
+        cursor: 9,
+        items: [{ ...item, type: 'note_body' }, marker, item],
+        purgedTombstones: [marker]
+      })
+    )
+    expect(parsed).toEqual({ kind: 'changes_available', cursor: 9, items: [item] })
+  })
+
+  it('still parses as a wake when items or committedAtMs are malformed', () => {
+    expect(
+      parseSyncSocketFrame(
+        frame('changes_available', { cursor: 9, items: 'garbage', committedAtMs: 'soon' })
+      )
+    ).toEqual({ kind: 'changes_available', cursor: 9 })
+    expect(
+      parseSyncSocketFrame(frame('changes_available', { cursor: 9, items: [{ id: 1 }] }))
+    ).toEqual({ kind: 'changes_available', cursor: 9 })
+  })
+
+  it('names the handshake opt-in header', () => {
+    expect(SYNC_SOCKET_ITEMS_HEADER).toBe('X-Memry-Socket-Items')
   })
 })

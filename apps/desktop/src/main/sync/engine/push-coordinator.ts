@@ -54,6 +54,55 @@ export class PushCoordinator {
   private pushBatchCeiling: number | null = null
   private cleanPushesAtCeiling = 0
   suppressPushDuringPull = false
+  /** The generation of the push that owns the queue, 0 when none does. */
+  private inFlightGeneration = 0
+  private lastPushGeneration = 0
+  private readonly settledWaiters = new Set<() => void>()
+
+  /**
+   * True from lock acquisition until the push released it, which spans every
+   * dequeue and its payload-conditional ack. A conflict requeue carries the
+   * placeholder payload '{}', so one coalesced into a row this push dequeued is
+   * invisible to that ack and deleted with it; the socket fast path, which
+   * takes no sync lock, waits while this is set (#2300, protocol 06 §6.6.2).
+   * Only the owning push clears it, so a zombie push that the stale-lock
+   * watchdog abandoned cannot clear the gate of the push after it.
+   */
+  get pushInFlight(): boolean {
+    return this.inFlightGeneration !== 0
+  }
+
+  /** Resolves true once no push is in flight, false after `timeoutMs`. Leaves no waiter behind. */
+  whenPushSettled(timeoutMs: number): Promise<boolean> {
+    if (!this.pushInFlight) return Promise.resolve(true)
+    return new Promise((resolve) => {
+      const settle = (): void => {
+        clearTimeout(timer)
+        this.settledWaiters.delete(settle)
+        resolve(true)
+      }
+      const timer = setTimeout(() => {
+        this.settledWaiters.delete(settle)
+        resolve(false)
+      }, timeoutMs)
+      this.settledWaiters.add(settle)
+    })
+  }
+
+  /**
+   * The stale-lock watchdog abandoned the push: it can no longer be waited
+   * for, so it stops holding the gate. Its late ack can still delete a
+   * requeue coalesced into a row it dequeued, the watchdog's accepted overlap
+   * (protocol 06 §6.6.2).
+   */
+  resetPushInFlight(): void {
+    this.inFlightGeneration = 0
+    this.settlePushWaiters()
+  }
+
+  private settlePushWaiters(): void {
+    for (const settle of [...this.settledWaiters]) settle()
+  }
 
   constructor(ctx: SyncContext, stateManager: SyncStateManager) {
     this.ctx = ctx
@@ -81,9 +130,15 @@ export class PushCoordinator {
     }
 
     let released = false
+    const generation = ++this.lastPushGeneration
+    this.inFlightGeneration = generation
     const cleanup = (): void => {
       if (released) return
       released = true
+      if (this.inFlightGeneration === generation) {
+        this.inFlightGeneration = 0
+        this.settlePushWaiters()
+      }
       this.ctx.releaseLock()
       release()
     }

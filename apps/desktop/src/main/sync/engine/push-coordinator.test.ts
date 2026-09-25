@@ -1338,4 +1338,100 @@ describe('PushCoordinator', () => {
       expect(doPush).not.toHaveBeenCalled()
     })
   })
+
+  // #2300 review B-F1: a conflict requeue carries the placeholder payload '{}'.
+  // Coalesced into a '{}' row a push already dequeued, it is invisible to the
+  // payload-conditional ack, which then deletes it. The socket fast path, which
+  // holds no sync lock, therefore must not apply while a push is in flight.
+  describe('#given a push awaiting its response #when a conflict requeue lands', () => {
+    it('#then pushInFlight is true for the whole push and the ack would drop the requeue', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      queue.enqueue({ type: 'task', itemId: 'task-t', operation: 'update', payload: '{}' })
+      let releasePush!: () => void
+      const pushHeld = new Promise<void>((resolve) => {
+        releasePush = resolve
+      })
+      let enteredPush!: () => void
+      const pushEntered = new Promise<void>((resolve) => {
+        enteredPush = resolve
+      })
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        enteredPush()
+        await pushHeld
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+      expect(coordinator.pushInFlight).toBe(false)
+
+      const pushing = coordinator.push()
+      await pushEntered
+      expect(coordinator.pushInFlight).toBe(true)
+      // What a fast-path conflict would do here: the same placeholder payload.
+      queue.enqueue({ type: 'task', itemId: 'task-t', operation: 'update', payload: '{}' })
+      releasePush()
+      await pushing
+
+      expect(coordinator.pushInFlight).toBe(false)
+      expect(queue.getPendingCount()).toBe(0)
+    })
+  })
+
+  // #2300 review B-L2: the stale-lock watchdog abandons a push it cannot
+  // cancel. That zombie must neither pin the socket gate shut nor clear the
+  // gate of the push that runs after it.
+  describe('#given a push abandoned by the stale-lock watchdog', () => {
+    it('#then the gate reopens, and only the owning push can close it again', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      const gates: Array<() => void> = []
+      let entered!: () => void
+      let enteredPush = new Promise<void>((resolve) => {
+        entered = resolve
+      })
+      let calls = 0
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        // The first two requests (the zombie's, then the next push's) are held.
+        if (++calls <= 2) {
+          entered()
+          await new Promise<void>((resolve) => gates.push(resolve))
+        }
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      queue.enqueue({ type: 'task', itemId: 'task-z', operation: 'update', payload: '{"a":1}' })
+      const zombie = coordinator.push()
+      await enteredPush
+      expect(coordinator.pushInFlight).toBe(true)
+      const waiting = coordinator.whenPushSettled(60_000)
+
+      coordinator.resetPushInFlight()
+
+      expect(coordinator.pushInFlight).toBe(false)
+      await expect(waiting).resolves.toBe(true)
+
+      enteredPush = new Promise<void>((resolve) => {
+        entered = resolve
+      })
+      queue.enqueue({ type: 'task', itemId: 'task-p', operation: 'update', payload: '{"b":1}' })
+      const next = coordinator.push()
+      await enteredPush
+      expect(coordinator.pushInFlight).toBe(true)
+
+      gates.shift()!()
+      await zombie
+      expect(coordinator.pushInFlight).toBe(true)
+
+      gates.shift()!()
+      await next
+      expect(coordinator.pushInFlight).toBe(false)
+    })
+  })
 })

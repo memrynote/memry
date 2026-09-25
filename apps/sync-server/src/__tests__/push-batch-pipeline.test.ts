@@ -17,6 +17,7 @@ import {
   computeContentHash,
   getChanges,
   processRecordPushBatch,
+  pullItems,
   serializePayload
 } from '../services/sync'
 
@@ -432,8 +433,12 @@ describe('old-client compat matrix', () => {
       await buildItem({ id: 'note-1', type: 'note', clock: { [DEVICE_A]: 1 } })
     ])
 
+    // `outcomes`, `committedItems` and `committedAtMs` are internal: the route
+    // builds the push response from the other four, field by field.
     expect(Object.keys(first).sort()).toEqual([
       'accepted',
+      'committedAtMs',
+      'committedItems',
       'maxCursor',
       'outcomes',
       'rejected',
@@ -471,6 +476,44 @@ describe('old-client compat matrix', () => {
     const changes = await getChanges(harness.db, USER_ID, 0)
     expect(changes.deleted).toEqual(['note-1'])
     expect(changes.items.map((item) => item.id)).toEqual(['settings-1', 'task-1'])
+  })
+
+  // #2300: a socket item is byte-identical to what /sync/pull later serves.
+  it('committed items equal the /sync/pull items read back from D1 and R2', async () => {
+    const result = await processRecordPushBatch(
+      harness.db,
+      storage,
+      USER_ID,
+      DEVICE_A,
+      [
+        await buildItem({ id: 'task-s', clock: { [DEVICE_A]: 1 } }),
+        await buildItem({ id: 'settings-s', type: 'settings' }),
+        await buildItem({
+          id: 'note-s',
+          type: 'note',
+          operation: 'delete',
+          clock: { [DEVICE_A]: 1 }
+        })
+      ],
+      'default',
+      null,
+      64 * 1024
+    )
+
+    const { items: pulled } = await pullItems(
+      harness.db,
+      storage,
+      USER_ID,
+      ['task-s', 'settings-s', 'note-s'],
+      'default',
+      ['task', 'settings', 'note']
+    )
+    expect(result.committedItems.map((item) => JSON.stringify(item))).toEqual(
+      pulled.map((item) => JSON.stringify(item))
+    )
+    expect(result.committedItems.find((item) => item.id === 'note-s')?.deletedAt).toEqual(
+      expect.any(Number)
+    )
   })
 
   it('rejects a replayed clock alone, without disturbing batch neighbours', async () => {

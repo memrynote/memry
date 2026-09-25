@@ -153,6 +153,46 @@ async function deleteVaultFileNowAsync(absolutePath: string): Promise<void> {
 }
 
 let activeSession: PageApplySession | null = null
+const quiescenceWaiters = new Set<() => void>()
+
+/**
+ * True when no page transaction is open and every journaled file op has
+ * landed, which includes every committed page's flush. A writer that is not
+ * the pull (the socket fast path, #2300) opens its own session only at such a
+ * point and lands its files with `flushFilesSync` in the same synchronous run:
+ * otherwise a page's deferred flush of the same path can land after it (an
+ * older file under a newer row).
+ */
+export function isPageApplyQuiescent(): boolean {
+  return activeSession === null && unlandedOps.length === 0
+}
+
+/**
+ * Resolves true at the next quiescent point (immediately when already there),
+ * false after `timeoutMs`. A timed-out wait leaves no waiter behind. Being
+ * quiescent when this resolves proves nothing a microtask later: a caller that
+ * writes must re-check `isPageApplyQuiescent()` synchronously before writing.
+ */
+export function whenPageApplyQuiescent(timeoutMs: number): Promise<boolean> {
+  if (isPageApplyQuiescent()) return Promise.resolve(true)
+  return new Promise((resolve) => {
+    const settle = (): void => {
+      clearTimeout(timer)
+      quiescenceWaiters.delete(settle)
+      resolve(true)
+    }
+    const timer = setTimeout(() => {
+      quiescenceWaiters.delete(settle)
+      resolve(false)
+    }, timeoutMs)
+    quiescenceWaiters.add(settle)
+  })
+}
+
+function settleQuiescenceWaiters(): void {
+  if (!isPageApplyQuiescent()) return
+  for (const settle of [...quiescenceWaiters]) settle()
+}
 
 /**
  * Write a synced note's markdown file, or defer it into the active page apply
@@ -212,6 +252,12 @@ export interface PageApplyHandle {
    * landed (#2294).
    */
   afterCommit(notify: () => void): void
+  /**
+   * Run `apply` as one unit inside the page: a data-DB SAVEPOINT, plus the file
+   * ops and notifications it queued. A throw rolls all three back and rethrows,
+   * so the page goes on without that item.
+   */
+  savepoint<T>(apply: () => T): T
   /** Journal the deferred file ops, then COMMIT both DBs (data first), then notify. */
   commit(): void
   /** ROLLBACK both DBs and discard the page's deferred file ops and notifications. */
@@ -222,6 +268,12 @@ export interface PageApplyHandle {
    * a partial flush is retried by the next replay.
    */
   flushFiles(): Promise<void>
+  /**
+   * `flushFiles` without an await, for a writer that must land its files in
+   * the same synchronous run as its commit (the socket fast path, #2300). A
+   * failed op stays journaled for the replay, exactly as in `flushFiles`.
+   */
+  flushFilesSync(): void
 }
 
 class PageApplySession implements PageApplyHandle {
@@ -276,6 +328,19 @@ class PageApplySession implements PageApplyHandle {
     this.pendingNotifications.push(notify)
   }
 
+  savepoint<T>(apply: () => T): T {
+    const opsMark = this.pendingOps.length
+    const notificationsMark = this.pendingNotifications.length
+    try {
+      // Nested in the open page transaction, better-sqlite3 runs this on a SAVEPOINT.
+      return this.dataRaw ? this.dataRaw.transaction(apply)() : apply()
+    } catch (err) {
+      this.pendingOps.length = opsMark
+      this.pendingNotifications.length = notificationsMark
+      throw err
+    }
+  }
+
   commit(): void {
     if (this.finished) return
     this.finished = true
@@ -327,6 +392,7 @@ class PageApplySession implements PageApplyHandle {
       } catch (journalErr) {
         log.error('Could not restore the bulk apply journal', { error: journalErr })
       }
+      settleQuiescenceWaiters()
       throw err
     }
 
@@ -360,6 +426,7 @@ class PageApplySession implements PageApplyHandle {
         log.error('Post-commit renderer notification failed', { error: err })
       }
     }
+    settleQuiescenceWaiters()
   }
 
   rollback(): void {
@@ -387,6 +454,7 @@ class PageApplySession implements PageApplyHandle {
     }
     this.pendingOps = []
     this.pendingNotifications = []
+    settleQuiescenceWaiters()
   }
 
   async flushFiles(): Promise<void> {
@@ -404,21 +472,50 @@ class PageApplySession implements PageApplyHandle {
           else await writeNoteFileNowAsync(op.absolutePath, op.content)
           landed.add(op.absolutePath)
         } catch (err) {
-          log.error('Deferred synced vault file op failed — journal replay will retry', {
-            path: op.absolutePath,
-            op: isDeleteOp(op) ? 'delete' : 'write',
-            error: err instanceof Error ? err.message : String(err)
-          })
+          logFailedFileOp(op, err)
         }
       })
     )
 
-    // Only entries confirmed on disk leave the journal; anything else — this
-    // page's failures or an earlier page's — stays for `replayBulkApplyJournal`.
-    unlandedOps = unlandedOps.filter((op) => !landed.has(op.absolutePath))
-    if (unlandedOps.length === 0) removeJournal()
-    else writeJournal(unlandedOps)
+    settleLanded(landed)
   }
+
+  flushFilesSync(): void {
+    const ops = this.pendingOps
+    this.pendingOps = []
+    if (ops.length === 0) return
+
+    const landed = new Set<string>()
+    for (const op of ops) {
+      try {
+        if (isDeleteOp(op)) deleteVaultFileNow(op.absolutePath)
+        else writeNoteFileNow(op.absolutePath, op.content)
+        landed.add(op.absolutePath)
+      } catch (err) {
+        logFailedFileOp(op, err)
+      }
+    }
+    settleLanded(landed)
+  }
+}
+
+function logFailedFileOp(op: PendingVaultFileOp, err: unknown): void {
+  log.error('Deferred synced vault file op failed — journal replay will retry', {
+    path: op.absolutePath,
+    op: isDeleteOp(op) ? 'delete' : 'write',
+    error: err instanceof Error ? err.message : String(err)
+  })
+}
+
+/**
+ * Only entries confirmed on disk leave the journal; anything else — this
+ * flush's failures or an earlier page's — stays for `replayBulkApplyJournal`.
+ */
+function settleLanded(landed: ReadonlySet<string>): void {
+  unlandedOps = unlandedOps.filter((op) => !landed.has(op.absolutePath))
+  if (unlandedOps.length === 0) removeJournal()
+  else writeJournal(unlandedOps)
+  settleQuiescenceWaiters()
 }
 
 function extractRawClient(db: DrizzleDb): Database.Database | null {
@@ -570,17 +667,19 @@ export function replayBulkApplyJournal(): void {
   const latest = latestOpPerPath(entries)
 
   let healed = 0
+  const settledPaths = new Set<string>()
   for (const entry of latest) {
     try {
       if (isDeleteOp(entry)) {
-        if (!isDeleteStillDue(entry)) continue
-        deleteVaultFileNow(entry.absolutePath)
+        if (isDeleteStillDue(entry)) {
+          deleteVaultFileNow(entry.absolutePath)
+          healed++
+        }
+      } else if (!isAlreadyLanded(entry, writtenAt)) {
+        writeNoteFileNow(entry.absolutePath, entry.content)
         healed++
-        continue
       }
-      if (isAlreadyLanded(entry, writtenAt)) continue
-      writeNoteFileNow(entry.absolutePath, entry.content)
-      healed++
+      settledPaths.add(entry.absolutePath)
     } catch (err) {
       log.error('Could not heal a journaled vault file', {
         path: entry.absolutePath,
@@ -589,6 +688,11 @@ export function replayBulkApplyJournal(): void {
     }
   }
   removeJournal()
+  // The in-memory list mirrors the journal: an op this replay settled is no
+  // longer owed, and one it could not heal still is. Without this a single
+  // failed flush kept page apply non-quiescent for the life of the process.
+  unlandedOps = unlandedOps.filter((op) => !settledPaths.has(op.absolutePath))
+  settleQuiescenceWaiters()
   if (healed > 0) {
     log.info('Healed vault files from the bulk apply journal', { healed, total: latest.length })
   }
@@ -650,4 +754,15 @@ function isAlreadyLanded(entry: PendingNoteFileWrite, journalWrittenAt: number):
 export function _resetBulkApplyForTests(): void {
   activeSession = null
   unlandedOps = []
+  quiescenceWaiters.clear()
+}
+
+/** Test seam: journaled file ops not yet confirmed on disk. */
+export function _unlandedOpCountForTests(): number {
+  return unlandedOps.length
+}
+
+/** Test seam: waiters still registered (a timed-out wait must leave none). */
+export function _pendingQuiescenceWaitersForTests(): number {
+  return quiescenceWaiters.size
 }

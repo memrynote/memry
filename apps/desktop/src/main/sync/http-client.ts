@@ -15,9 +15,9 @@ import { getBootstrapTokenHeaders } from './bootstrap-session-state'
 // safeParse and silently drops the page. `purged_tombstones` (#2302) says this
 // build applies purged-tombstone markers; without it the server hides them.
 const SYNC_TYPES_HEADER = 'X-Memry-Sync-Types'
-const SYNC_TYPES_HEADER_VALUE = NEGOTIABLE_SYNC_TYPES.filter((type) => type !== 'note_body').join(
-  ','
-)
+export const SYNC_TYPES_HEADER_VALUE = NEGOTIABLE_SYNC_TYPES.filter(
+  (type) => type !== 'note_body'
+).join(',')
 
 /**
  * Headers for a GET /sync/changes that also takes note and journal bodies
