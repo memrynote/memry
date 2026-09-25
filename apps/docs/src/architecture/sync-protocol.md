@@ -210,6 +210,21 @@ are listed with the quarantined items and count as known to the manifest check, 
 trigger a full re-pull. Orphan repair never tombstones a child whose parent the server still has,
 even when this build cannot apply the parent.
 
+A changes page of up to 500 refs is pulled and applied in slices of at most 100 ids, one
+transaction per slice, and `LAST_CURSOR` never moves before the last slice. When nothing has to run
+after the last slice commits, the cursor is written as the last statement of that slice's
+transaction, so the cursor and the page's last rows commit together or not at all. A page with a
+by-id re-fetch pending, notes whose CRDT bodies are fetched after the commit, an item deferred for a
+retry, or a transaction that could not be opened writes the cursor after that work instead. The
+page's notes are flagged as holding unmerged CRDT state inside the slice transaction, before any
+cursor write. A crash before the cursor commits pulls the whole page again; the rows that already
+committed come back with an equal clock and an identical payload and are skipped without a row write
+or a renderer event (a still-dirty `syncedAt` is stamped, and missing canvas assets and note
+attachments are requested again). An equal clock with a different payload still applies, because
+that is how two devices whose merge re-pushes collided converge (protocol 06 §6.5.2 P4). Renderer
+events raised while a slice applies are held until its transaction commits and dropped if the slice
+or the item rolls back, so no window is told about rows that never landed.
+
 A `/sync/pull` body that is not a pull envelope at all is a server contract regression: the cursor
 holds, the run is refused and sync shows a server error, so the page re-arrives once the server
 answers correctly.
@@ -653,8 +668,8 @@ The two metrics:
 The product number is their sum. Both are capped at 20 events per pull or push run, skip anything
 older than 10 minutes (an offline backlog or a first sync is not propagation), and report a negative
 estimate as 0. `e2e_latency` counts only items applied or merged as a conflict and signed by another
-device: the feed serves a device's own writes back, and at an equal clock they apply like a peer
-write. Both reuse `sync_run_completed` because a new event name would fail the whole telemetry batch
+device: the feed serves a device's own writes back; at an equal clock with an identical payload they
+are skipped, otherwise they apply like a peer write. Both reuse `sync_run_completed` because a new event name would fail the whole telemetry batch
 on an older server; a chart counting sync runs must filter on `action`.
 
 Compatibility: every field is optional. An old desktop strips the new ref fields, an old server sends
