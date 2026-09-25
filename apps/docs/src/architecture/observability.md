@@ -1000,9 +1000,14 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   salt) as defense-in-depth before writing to PostHog Logs (`desktopLogRecord` in
   `services/posthog-logs.ts`) — the client-side redaction is primary; the server pass is a second
   net, not the source of truth.
-- **Incident reports (`kind=report`, Path B, opt-in one-time)**: on a real error, the app offers a
-  one-time "Send diagnostic report" action (the tab error boundary, IPC-error toasts, and a
-  Settings entry — available independent of the telemetry toggle). The
+- **Incident reports (`kind=report`, Path B)**: on a real error, the app offers a one-time
+  "Send diagnostic report" action (the tab error boundary, IPC-error toasts, and a Settings
+  entry — available independent of the telemetry toggle). The tab error boundary sends the report
+  automatically, with no dialog and no button, when Settings > General > Privacy > "Automatically
+  Send Error Reports" is on. That flag is `autoSendDiagnostics` in `telemetry.json`
+  (`telemetry:setAutoSendDiagnostics`); a missing key means on, so fresh installs and upgrades
+  default to on and only an explicit `false` opts out. When it is off, or the automatic send fails,
+  the boundary shows the Send button and the consent dialog instead. The
   `diagnostics:previewReport` / `diagnostics:sendReport` IPC calls build a `DiagnosticReport` via
   the same pure `buildIncidentReport` function: a generated `incidentId` (`MEMRY-XXXXXXXX`, random
   base32), the last ≤200 redacted lines from the Path A ring buffer (≤5 min), a redacted
