@@ -216,6 +216,19 @@ describe('AI inline chat server', () => {
     expect(await missing.text()).toBe('Not found')
   })
 
+  it('lets Anthropic models choose the tool call instead of forcing one', async () => {
+    const port = await startChatServer({ ...settings, provider: 'anthropic', apiKey: 'k' })
+
+    await postJson(port, {
+      messages: [{ role: 'user', content: 'hello' }],
+      toolDefinitions: [{ name: 'insert' }]
+    })
+
+    expect(mocks.streamText).toHaveBeenLastCalledWith(
+      expect.objectContaining({ toolChoice: 'auto' })
+    )
+  })
+
   it('returns internal errors for invalid request bodies and replaces an existing server on restart', async () => {
     const firstPort = await startChatServer(settings)
     const secondPort = await startChatServer({ ...settings, model: 'other' })

@@ -122,7 +122,10 @@ export const TOOL_SCHEMAS = {
       id: idSchema.optional(),
       recursive: z.boolean().optional()
     }),
-    description: 'List folder contents (sub-folders and notes).'
+    description:
+      'List the sub-folders and notes in a folder, addressed by path (as returned in ' +
+      'folder_path/path fields); omit path for the vault root. recursive includes every ' +
+      'nested level instead of direct children only. Returns at most 1000 notes.'
   },
   vault_get_current_note: {
     input: z.object({}).default({}),
@@ -136,7 +139,11 @@ export const TOOL_SCHEMAS = {
       tag: z.string().optional(),
       limit: z.number().int().positive().max(200).optional()
     }),
-    description: 'List tasks with optional filters.'
+    description:
+      'List tasks, optionally filtered. status is "open" (not completed), "completed", or ' +
+      'a status id from vault_list_statuses; omitted, completed tasks are excluded. ' +
+      'due_before is an ISO date; tag matches one tag name. Returns id, title, status ' +
+      'label, due, project id, and tags.'
   },
   vault_get_task: {
     input: z.object({ id: idSchema }),
@@ -248,7 +255,11 @@ export const TOOL_SCHEMAS = {
         position: z.number().int().optional()
       })
       .omit({ status: true }),
-    description: 'Create a new task. Requires user approval.'
+    description:
+      'Create a new task. Without project_id it goes to the Inbox project. status_id takes ' +
+      'an id from vault_list_statuses. due_date and due are aliases (due_date wins), as are ' +
+      'description and notes. source_note_id links the task back to the note it came from. ' +
+      'Requires user approval.'
   },
   vault_delete_task: {
     input: z.object({ id: idSchema }),
@@ -415,7 +426,12 @@ export const TOOL_SCHEMAS = {
   },
   vault_update_task: {
     input: taskPatchSchema.extend({ id: idSchema }),
-    description: 'Update task fields. Requires user approval with before/after preview.'
+    description:
+      'Update task fields; absent fields are left alone. status "completed" or "open" ' +
+      'completes or reopens the task and ignores every other field in that call, so send ' +
+      'field edits separately. Any other status, or status_id, is a status id from ' +
+      'vault_list_statuses. due_date/due and description/notes are aliases. ' +
+      'Requires user approval with before/after preview.'
   },
   vault_add_tag: {
     input: z.object({

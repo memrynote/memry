@@ -328,7 +328,8 @@ describe('Prompt assembler', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_add_inbox_tag')
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_snooze_inbox_item')
     expect(SYSTEM_PROMPT_HEADER).toContain('Inbox processing')
-    expect(SYSTEM_PROMPT_HEADER).toContain('convert to task')
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_create_task or vault_create_note')
+    expect(SYSTEM_PROMPT_HEADER).not.toContain('convert to task')
   })
 
   it('limits broad vault scans and links derived tasks to source items when supported', () => {

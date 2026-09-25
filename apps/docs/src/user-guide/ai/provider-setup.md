@@ -57,7 +57,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 1. Get an API key from [console.anthropic.com](https://console.anthropic.com/).
 2. **Provider: Anthropic**
 3. Paste the API key.
-4. **Model**: pick a Claude preset (e.g. `claude-sonnet-4-6`).
+4. **Model**: pick a Claude preset (e.g. `claude-sonnet-5`).
 5. Click **Test Connection**.
 
 ### Notes
