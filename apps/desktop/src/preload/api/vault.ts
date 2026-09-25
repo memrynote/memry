@@ -3,7 +3,9 @@ import { invoke, subscribe } from '../lib/ipc'
 
 export const vaultApi = {
   select: (path?: string) => invoke(VaultChannels.invoke.SELECT, { path }),
-  create: (path: string, _name: string) => invoke(VaultChannels.invoke.SELECT, { path }),
+  create: (parentPath: string, name: string) =>
+    invoke(VaultChannels.invoke.CREATE, { path: parentPath, name }),
+  getDefaultParent: () => invoke(VaultChannels.invoke.GET_DEFAULT_PARENT),
   getAll: () => invoke(VaultChannels.invoke.GET_ALL),
   getStatus: () => invoke(VaultChannels.invoke.GET_STATUS),
   getConfig: () => invoke(VaultChannels.invoke.GET_CONFIG),

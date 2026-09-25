@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   scheduleTokenRefresh: vi.fn(),
   extractJtiFromToken: vi.fn(),
   getDatabase: vi.fn(),
+  isDatabaseInitialized: vi.fn(() => true),
   getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
   adoptAccountVaultIfAbsent: vi.fn((_db: unknown, localVaultUuid: string) =>
     Promise.resolve(localVaultUuid)
@@ -94,7 +95,8 @@ vi.mock('../store', () => ({
 }))
 
 vi.mock('../database/client', () => ({
-  getDatabase: (...args: unknown[]) => mocks.getDatabase(...args)
+  getDatabase: (...args: unknown[]) => mocks.getDatabase(...args),
+  isDatabaseInitialized: () => mocks.isDatabaseInitialized()
 }))
 
 vi.mock('../agent/storage/vault-id', () => ({
@@ -178,6 +180,7 @@ describe('device registration', () => {
     vi.resetModules()
     vi.clearAllMocks()
     setupDb()
+    mocks.isDatabaseInitialized.mockReturnValue(true)
     mocks.getDevicePublicKey.mockReturnValue(new Uint8Array([1, 2, 3]))
     mocks.getOrCreateVaultUuid.mockReturnValue('vault-1')
     mocks.toBase64.mockImplementation((bytes: Uint8Array) => `b64-${Array.from(bytes).join('-')}`)
@@ -286,6 +289,46 @@ describe('device registration', () => {
     expect(mocks.clearKeyMaterialActivity.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.activate.mock.invocationCallOrder[0]
     )
+  })
+
+  // First-run onboarding signs in before any vault exists. Registration must
+  // still land the install-wide identity (keys, tokens, device id) and leave
+  // every per-vault step to the vault the user opens next.
+  it('registers the install identity only when no vault is open', async () => {
+    mocks.isDatabaseInitialized.mockReturnValue(false)
+    const { persistKeysAndRegisterDevice } = await importModule()
+
+    await expect(
+      persistKeysAndRegisterDevice(
+        new Uint8Array([5]),
+        new Uint8Array([6]),
+        'setup-token',
+        'salt',
+        'verifier'
+      )
+    ).resolves.toBe('device-1')
+
+    expect(mocks.getDatabase).not.toHaveBeenCalled()
+    expect(mocks.postToServer).toHaveBeenCalledWith(
+      '/auth/devices',
+      expect.objectContaining({ vaultId: undefined }),
+      'setup-token'
+    )
+    expect(mocks.postToServer).toHaveBeenCalledWith(
+      '/auth/setup',
+      { kdfSalt: 'salt', keyVerifier: 'verifier' },
+      'access'
+    )
+    expect(mocks.storeKey).toHaveBeenCalledWith(keychainEntries.MASTER_KEY, new Uint8Array([5]))
+    expect(mocks.persistAccountKeyVerifier).toHaveBeenCalledWith('verifier')
+    expect(mocks.setStoredDeviceId).toHaveBeenCalledWith('device-1')
+    expect(mocks.clearKeyMaterialActivity).toHaveBeenCalled()
+    expect(mocks.adoptAccountVaultIfAbsent).not.toHaveBeenCalled()
+    expect(mocks.bindLocalVaultToMasterKey).not.toHaveBeenCalled()
+    expect(mocks.dbInsert).not.toHaveBeenCalled()
+    expect(mocks.activate).not.toHaveBeenCalled()
+    expect(mocks.startSyncRuntime).not.toHaveBeenCalled()
+    expect(mocks.startGoogleCalendarSyncRunner).not.toHaveBeenCalled()
   })
 
   it('removes the signing key when server registration fails', async () => {

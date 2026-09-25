@@ -2,6 +2,7 @@ import { ipcMain, shell } from 'electron'
 import { z } from 'zod'
 import {
   VaultChannels,
+  CreateVaultSchema,
   DownloadRemoteVaultSchema,
   SelectVaultSchema,
   UpdateVaultConfigSchema
@@ -18,6 +19,8 @@ import {
   removeVault,
   reindex
 } from '../vault'
+import { createVault } from '../vault/create-vault'
+import { defaultVaultParentDir } from '../vault/default-parent'
 import { findVault, getVaults } from '../store'
 import { createLogger } from '../lib/logger'
 import { getTelemetryRuntime } from '../telemetry/runtime'
@@ -63,6 +66,25 @@ export function registerVaultHandlers(): void {
       }
       return result
     })
+  )
+
+  // vault:create - mkdir <parent>/<name>, then open it
+  ipcMain.handle(
+    VaultChannels.invoke.CREATE,
+    createValidatedHandler(CreateVaultSchema, async (input) => {
+      const result = await createVault({ parentPath: input.path, name: input.name })
+      if (result.success && result.vault) {
+        trackVaultEvent('vault_created', 'create')
+        trackVaultEvent('vault_opened', 'create')
+      }
+      return result
+    })
+  )
+
+  // vault:get-default-parent - Default parent folder for the create form
+  ipcMain.handle(
+    VaultChannels.invoke.GET_DEFAULT_PARENT,
+    createHandler(() => defaultVaultParentDir())
   )
 
   // vault:get-status - Get current vault status

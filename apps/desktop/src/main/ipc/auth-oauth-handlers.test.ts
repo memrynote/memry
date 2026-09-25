@@ -38,6 +38,11 @@ vi.mock('../crypto', () => ({
 
 const mockStoreGet = vi.fn()
 const mockStoreSet = vi.fn()
+const mockIsDatabaseInitialized = vi.fn(() => true)
+vi.mock('../database/client', () => ({
+  isDatabaseInitialized: () => mockIsDatabaseInitialized()
+}))
+
 vi.mock('../store', () => ({
   store: {
     get: (...args: unknown[]) => mockStoreGet(...args),
@@ -616,6 +621,25 @@ describe('auth-oauth handlers', () => {
       expect(result).toEqual({ success: true })
       expect(mockStartSyncRuntime).toHaveBeenCalledOnce()
       expect(mockStartGoogleRunner).toHaveBeenCalledOnce()
+    })
+
+    // Sign-up from the first-run onboarding confirms the phrase before any
+    // vault exists; opening the vault created next starts both runtimes.
+    it('confirms without starting runtimes when no vault is open', async () => {
+      mockIsDatabaseInitialized.mockReturnValueOnce(false)
+      registerAuthOAuthHandlers()
+
+      const result = await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, {
+        confirmed: true
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(mockStoreSet).toHaveBeenCalledWith(
+        'sync',
+        expect.objectContaining({ recoveryPhraseConfirmed: true })
+      )
+      expect(mockStartSyncRuntime).not.toHaveBeenCalled()
+      expect(mockStartGoogleRunner).not.toHaveBeenCalled()
     })
   })
 

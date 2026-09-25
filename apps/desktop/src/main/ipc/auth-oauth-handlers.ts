@@ -13,6 +13,7 @@ import { OAuthCallbackResponseSchema } from '@memry/contracts/auth-api'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 
 import { store } from '../store'
+import { isDatabaseInitialized } from '../database/client'
 import { postToServer } from '../sync/http-client'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
@@ -270,15 +271,19 @@ export function registerAuthOAuthHandlers(): void {
       if (input.confirmed) {
         store.set('sync', { ...store.get('sync'), recoveryPhraseConfirmed: true })
         clearPendingRecoveryPhrase()
-        const engine = getSyncEngine()
-        if (engine) {
-          void engine.activate()
-        } else {
-          void startSyncRuntime()
+        // Signed up from the first-run onboarding: no vault is open yet, and
+        // opening the one the user creates next starts both runtimes.
+        if (isDatabaseInitialized()) {
+          const engine = getSyncEngine()
+          if (engine) {
+            void engine.activate()
+          } else {
+            void startSyncRuntime()
+          }
+          void startGoogleCalendarSyncRunner().catch(() => {
+            // Runner self-logs on failure.
+          })
         }
-        void startGoogleCalendarSyncRunner().catch(() => {
-          // Runner self-logs on failure.
-        })
       }
       return { success: true }
     },
