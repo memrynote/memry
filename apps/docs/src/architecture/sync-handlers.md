@@ -84,7 +84,9 @@ remote wins a tie. A path whose winner has no value keeps the local value: an ol
 setting it does not model but still echoes its clock, and removing on that echo would delete the
 setting everywhere. Before #2383 settings picked the larger single tick and kept local on a tie; a
 peer still on that rule converges through the re-queue a concurrent merge triggers. The shared
-`settings-merge.json` vectors run against both desktop and the Rust core.
+`settings-merge.json` vectors run against both desktop and the Rust core, including the re-queue
+flag; since #2399 the Rust core also keeps the local value on an absent winner and re-queues after a
+concurrent merge.
 
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
