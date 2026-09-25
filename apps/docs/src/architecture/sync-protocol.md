@@ -231,6 +231,16 @@ pull. A handler that wrote its rows from an unawaited promise could land them af
 committed, or inside the next page's transaction, with no crash-journal record for its file. Synced
 journal entries were applied that way until #2284.
 
+A remote note or journal delete goes through the same journal (#2385). Its row delete commits with
+the page and the file is removed after the commit. Before, the file was removed by an unawaited
+unlink with no journal record, so a crash or a failed unlink left a file with no row. The vault
+indexer could adopt that file as a new local note and push it back. On replay, a journaled delete
+removes the file unless the file's modification time is later than the moment the delete was
+journaled, so a file re-created on this device after the crash is kept. A delete entry has no
+`content` field, and replay in older builds ignores entries without one. An older build that finds
+the journal therefore skips the delete and replays only the writes. Each path keeps only its latest
+journal entry, so no earlier write to a deleted path is left behind for an older build to restore.
+
 ### When a push starts
 
 A local mutation asks for a push, and the push goes out at once when the last requested push
