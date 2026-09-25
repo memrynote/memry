@@ -1185,50 +1185,74 @@ cannot vouch for itself (in-memory store, seeded from markdown or created this
 session, or an id the feed dropped as rowless) pushes unclaimed until a
 whole-body pull merges it.
 
-The routing above and `crdtUnmergedDebt` stay. An owed pull is tracked only per
-session, so after a crash only the vault-wide flag protects rows below
-`LAST_CURSOR`, and a server that predates `coversThrough` ignores it and prunes
-by watermark. Removing them needs durable per-note owed tracking first. The
-server change must deploy to every Worker at once: an older Worker running
-beside it could overwrite a claimed snapshot.
+The routing above stays: a server that predates `coversThrough` ignores it and
+prunes by watermark, and a flagged note claims nothing. The server change must
+deploy to every Worker at once: an older Worker running beside it could
+overwrite a claimed snapshot.
 
-### The flag does not survive a session; the fact that debt existed does
+### Unmerged notes are durable debts
 
-The set is in-memory and per session; `clearCaches()` empties it on vault switch
-and teardown. A note whose pull failed in one session therefore carried no flag
-in the next, and the next launch did not necessarily re-raise it:
-`shouldSweepAllCrdtNotes` reads the _persisted_ `LAST_CRDT_SWEEP_AT`, so a
-restart inside the sweep interval with no reconnect gap sweeps nothing. Edit
-that note, wait out the 30 s quiet period, and its snapshot push prunes at
-`currentSeq` — the peer rows the last session failed to merge, gone.
+The in-memory set is backed by the data-DB table `crdt_body_debts` (migration
+`0060`, #2297). A row means this device knows the server holds body state for
+the note that its doc has not merged; `crdt-body-debts.ts` owns it.
 
-What is persisted is one boolean, `sync_state.crdtUnmergedDebt`, written on the
-set's empty ↔ non-empty edges (`CrdtSyncCoordinator.onUnmergedDebtChange` →
-`FullSyncRunner.recordCrdtUnmergedDebt`). Written as the edges happen rather
-than at teardown, because the session this has to survive is one that never runs
-a teardown at all.
+- **Written before the cursor moves past the evidence.** An applied note or
+  journal record (`record`), a refused or owed feed entry, a note whose feed
+  entries were skipped because its record is on the page (owed even if that
+  record fails to apply), a failed landing or a missing base, a snapshot
+  refusal, a note leaving local-only, and a compaction that dropped buffered
+  remote updates. Record-page and feed debts are written inside the page
+  transaction, so a rolled-back page takes them with it; a skipped note is
+  owed in the slice that applied its record, before that slice's CRDT batch.
+  Feed debts keep the lowest cursor of the note's entries on the page; every
+  other debt is NULL, meaning the whole body. The coordinator is the only
+  writer.
+- **Session-only:** speculative sweeps (except while `noteBodyLegacySweep` is
+  `pending`), `crdt_updated` broadcasts that carry a cursor once that key is
+  `done`, the full-state flag at runtime start, and a pull of a note with no
+  debt that was rate limited, aborted, offline, timed out, credential-less, or
+  failed on a request the whole chunk shared. A session-only flag takes a
+  generation, so a walk that started before it does not clear it. Only
+  evidence about the note itself (its own request failing on the server, its
+  own payload not decrypting, an unverifiable signer) writes a row, counts one
+  failure per pass, and defers the note at once.
+- **Cleared only by a clean walk or a lost row.** A pull that walked the whole
+  server body with nothing unverified deletes the row, guarded on a generation
+  captured when it started, so a debt raised during the walk stands; the
+  counter is per database and never goes back. A queued id with no note row is
+  settled without a pull. A local-only note is never drained.
+- **A watermark ahead of the doc is dropped** (a compaction that lost applied
+  updates, an update skipped for its signer or dropped by a closing doc), so
+  the batch probe cannot settle the note without a walk. The row records it
+  too (`needs_walk`, `compaction`, or a counted failure), so a watermark a
+  crash left in the store cannot settle it after a restart either.
+- **Backoff.** A failing note is deferred until `2^(n-1)` minutes (capped at 32)
+  after its last failure, counted from now if that failure is dated in the
+  future; other debts do not extend it. A deferred note does not hold up the
+  sweep stamp or the legacy `done`, any clean walk settles it, and a timer
+  (never set past 32 minutes) drains it at the earliest expiry.
+- **Engine start** hydrates every row into the pending pulls and the flags
+  before the first full sync, whose drain pays or defers them. A crash between
+  a record page and its CRDT batch therefore no longer leaves a stale body
+  waiting for the next vault sweep. A missing table, a table missing columns
+  it cannot add, or an unreadable index cache degrades with a logged error; it
+  never stops sync, and a failed mirror conversion does not stop the rows
+  already in the table from loading. A table an unreleased build created
+  without the later columns gains them on first use.
 
-While it reads `'1'`, `FullSyncRunner.crdtUnmergedStateUnknown` is true and
-`SyncEngine.hasUnmergedRemoteCrdtState` answers `true` for **every** note — the
-same conservative answer the per-note flag gives, applied vault-wide because
-this session cannot yet name the notes the last one left behind. It is dropped
-by the first vault-wide sweep, which queues a pull for every note in the vault
-and so flags each one individually: the blanket retires because it has been made
-redundant, not because it went stale. That sweep is at most
-`CRDT_FULL_SWEEP_MIN_INTERVAL_MS` away, and it re-states the key from this
-session's own set so an empty or already-clean vault cannot carry a stale `'1'`
-into every launch from then on.
+`sync_state.crdtUnmergedDebt` is now a write-only mirror: `'1'` while the table
+has a row, `'0'` once it is empty. This build never routes on it; builds before
+the table do, so a downgrade stays safe. `crdtBodyDebtMirrorAt` records when this
+build wrote it. At engine start a `'1'` without that marker, or with a different
+row time, came from an older build or from a CRDT store whose epoch did not
+match the data DB, and is converted once into a `legacy` debt for every syncable note and
+journal of the data DB and the index cache. The vault-wide blanket
+(`crdtUnmergedStateUnknown`) is gone.
 
-Cost while the blanket is up: those pushes take the update endpoint instead of
-the snapshot one, with the request count and the `MAX_CRDT_UPDATE_PAYLOAD_CHARS`
-stall described above, and nothing else. A missing row reads as `'0'`, which is
-what every install written before the key existed has and what a vault with
-nothing outstanding means, so no migration is involved.
-
-Persisting the note ids instead is worse on both counts: a new on-disk format in
-a live beta, and a crash can still leave it missing whatever it had not written
-yet, while a boolean already at `'1'` cannot become wrong by not being written
-again.
+What is still kept, and removed later by #2421 once `minWriteVersion` guarantees
+every client ran the legacy sweep: the per-note `crdt_updated` pull, the
+reconnect and vault sweeps, the probe and the watermark sequence, the per-page
+`applyCrdtBatch` as its own path, the legacy sweep and the mirror.
 
 ## Sign-Out / Sign-In Ordering
 
