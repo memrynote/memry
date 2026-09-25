@@ -35,13 +35,14 @@ import { fetchSliceBody, planPullSlices, type PullSlice } from './changes-page'
 import { NoteBodyFeed } from './note-body-feed'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
+import { listedCursorOf, RunAppliedCursors } from './run-applied-cursors'
+import type { PullRunState } from './pull-run-state'
 import { tripPullBreaker } from './pull-breaker'
 import { PullLatencyTrace } from './sync-latency-telemetry'
 import {
   SYNC_STATE_KEYS,
   YIELD_EVERY_N_ITEMS,
   yieldToEventLoop,
-  itemRefKey,
   BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT
 } from './sync-context'
 
@@ -66,22 +67,6 @@ type PageStopReason = 'none' | 'transition' | 'mismatch' | 'breaker' | 'invalid_
  * report a clean sync while its items were never applied.
  */
 const HOLDS_CURSOR = new Set<PageStopReason>(['transition', 'mismatch', 'invalid_response'])
-
-interface PullRunState {
-  timer: SyncTimer
-  startTime: number
-  pulledCount: number
-  totalConflictsResolved: number
-  processedIds: Set<string>
-  crdtNoteIds: string[]
-  accessJwt: string
-  vaultKey: Uint8Array
-  latency: PullLatencyTrace
-  /** Set when the run stopped on a page it could not apply — no success finalize. */
-  refused?: boolean
-  /** The run started from cursor 0: it applies no purged tombstone (#2302). */
-  fromZero?: boolean
-}
 
 export class PullCoordinator {
   private ctx: SyncContext
@@ -277,7 +262,7 @@ export class PullCoordinator {
       startTime,
       pulledCount: 0,
       totalConflictsResolved: 0,
-      processedIds: new Set<string>(),
+      applied: new RunAppliedCursors(),
       crdtNoteIds: [],
       accessJwt,
       vaultKey,
@@ -454,9 +439,10 @@ export class PullCoordinator {
     let breakerTripped = false
     let postCommitWork = false
     let cursorCommitted = false
+    const listedCursor = listedCursorOf(changes)
     for (const [index, slice] of slices.entries()) {
       const inSliceCursor = index === slices.length - 1 && !postCommitWork ? nextCursor : null
-      const pageResult = await this.processPage(slice, runState, inSliceCursor)
+      const pageResult = await this.processPage(slice, runState, inSliceCursor, listedCursor)
       runState.pulledCount += pageResult.applied
       runState.totalConflictsResolved += pageResult.conflicts
       postCommitWork ||= pageResult.postCommitWork === true
@@ -630,7 +616,7 @@ export class PullCoordinator {
 
         this.queueBodyPull(runState, dec, itemOp)
 
-        runState.processedIds.add(itemRefKey(dec.type, dec.id))
+        runState.applied.recordDeferred(dec)
         runState.pulledCount++
         applied++
         this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
@@ -675,7 +661,7 @@ export class PullCoordinator {
     if (result === 'schema_invalid') return this.schemaInvalid.record([dec], 'payload')
     if (result === 'conflict') reportConflict(this.ctx.deps, dec)
     this.queueBodyPull(runState, dec, itemOp)
-    runState.processedIds.add(itemRefKey(dec.type, dec.id))
+    runState.applied.recordDeferred(dec)
     runState.pulledCount++
     this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
   }
@@ -699,12 +685,14 @@ export class PullCoordinator {
    * `pageCursor` is set only for a page's last slice. It commits with the
    * slice's rows (#2294) only when nothing still has to run after that commit
    * for the page to count as applied; `postCommitWork` reports that, and
-   * `cursorCommitted` whether the cursor went in.
+   * `cursorCommitted` whether the cursor went in. `listedCursor` ranks each id
+   * against the run's earlier applies (#2429).
    */
   private async processPage(
     { fetchIds, inline, noteBodies, skippedForRecord }: PullSlice,
     runState: PullRunState,
-    pageCursor: string | null
+    pageCursor: string | null,
+    listedCursor: (id: string) => number
   ): Promise<{
     applied: number
     conflicts: number
@@ -712,7 +700,7 @@ export class PullCoordinator {
     postCommitWork?: boolean
     cursorCommitted?: boolean
   }> {
-    const { vaultKey, timer, processedIds, crdtNoteIds } = runState
+    const { vaultKey, timer, applied, crdtNoteIds } = runState
     const requestedCount = fetchIds.length + inline.length
     const pullBody = await fetchSliceBody(this.ctx, runState, fetchIds)
 
@@ -777,7 +765,7 @@ export class PullCoordinator {
     let pageConflicts = 0
 
     const itemsToProcess = parsed.items.filter((item) => {
-      if (processedIds.has(itemRefKey(item.type, item.id))) {
+      if (applied.covers(item, listedCursor(item.id))) {
         pageSkipped++
         return false
       }
@@ -792,7 +780,7 @@ export class PullCoordinator {
       parsed,
       (t) =>
         runState.fromZero === true ||
-        processedIds.has(itemRefKey(t.type, t.id)) ||
+        applied.covers(t, listedCursor(t.id)) ||
         this.quarantine.isQuarantined(t.id, t.type),
       { db: this.ctx.deps.db, resolveKey: (id) => this.resolveDeviceKey(id) }
     )
@@ -942,7 +930,7 @@ export class PullCoordinator {
 
             this.queueBodyPull(runState, dec, itemOp)
 
-            processedIds.add(itemRefKey(dec.type, dec.id))
+            applied.record(dec, listedCursor(dec.id))
             pageApplied++
             // A skipped row changed nothing, and every ITEM_SYNCED makes the
             // renderer refetch (the task list re-queries per event).
@@ -961,6 +949,7 @@ export class PullCoordinator {
                 : {})
             })
             this.pendingApplyRetries.push(dec)
+            applied.defer(dec, listedCursor(dec.id))
             pageFailed++
           }
         }
@@ -1016,7 +1005,7 @@ export class PullCoordinator {
     if (refetchRefs.length > 0 && pageApplied > 0) {
       const onChanged = (dec: RecoveredItem, itemOp: 'create' | 'update' | 'delete'): void => {
         this.queueBodyPull(runState, dec, itemOp)
-        processedIds.add(itemRefKey(dec.type, dec.id))
+        applied.record(dec, listedCursor(dec.id))
         pageApplied++
         pageFailed--
         this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
