@@ -84,12 +84,6 @@ test.describe('Body CRDT durable debts (#2297)', () => {
     const expectedBody = normalizeBodyText(`${initialBody}\n\n${edit}`)
 
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
-    // In this harness the first runtime restart after the device bootstrap
-    // opens a CRDT store with no sync marker and no docs, and re-seeds them
-    // from markdown. Take that restart now, so the one below reopens the store
-    // it closed.
-    await callHook(electronAppB, 'restartSyncRuntimeForTests')
-    await waitForSyncOnline(pageB)
     const note = await createNoteWithBody(pageA, title, initialBody)
     await waitForCrdtQueueIdle(electronAppA)
     await syncBothAndWait(pageA, pageB)

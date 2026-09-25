@@ -1,16 +1,25 @@
 import { EventEmitter } from 'node:events'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import path from 'path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const runtime = vi.hoisted(() => ({
   engine: null as unknown,
   ws: null as unknown
 }))
+const mocks = vi.hoisted(() => ({
+  store: null as { vaultUuid: string; storagePath: string } | null
+}))
 
-vi.mock('electron', () => ({ app: { getVersion: () => '9.9.9' } }))
+vi.mock('electron', () => ({ app: { getVersion: () => '9.9.9', getPath: () => tmpdir() } }))
 vi.mock('./runtime', () => ({
   getSyncEngine: () => runtime.engine,
-  getSyncWebSocket: () => runtime.ws
+  getSyncWebSocket: () => runtime.ws,
+  startSyncRuntime: vi.fn(),
+  stopSyncRuntime: vi.fn()
 }))
+vi.mock('./crdt-store-path', () => ({ resolveVaultCrdtStore: () => mocks.store }))
 
 import { syncStateTestHooks } from './sync-test-hooks'
 
@@ -130,5 +139,33 @@ describe('syncStateTestHooks', () => {
       connectionGeneration: 0,
       internals: { hasSocket: false }
     })
+  })
+})
+
+describe('listCrdtStoreDirsForTests (#2424)', () => {
+  let root: string
+
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'crdt-stores-'))
+  })
+
+  afterEach(() => {
+    mocks.store = null
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('lists every store directory next to the vault store, sorted', async () => {
+    mkdirSync(path.join(root, 'b-vault'))
+    mkdirSync(path.join(root, 'a-vault'))
+    mocks.store = { vaultUuid: 'b-vault', storagePath: path.join(root, 'b-vault') }
+
+    expect(await syncStateTestHooks.listCrdtStoreDirsForTests()).toEqual(['a-vault', 'b-vault'])
+  })
+
+  it('answers empty with no open vault or no store root yet', async () => {
+    expect(await syncStateTestHooks.listCrdtStoreDirsForTests()).toEqual([])
+
+    mocks.store = { vaultUuid: 'v', storagePath: path.join(root, 'missing', 'v') }
+    expect(await syncStateTestHooks.listCrdtStoreDirsForTests()).toEqual([])
   })
 })
