@@ -13,6 +13,7 @@ const {
   mockUpdateNoteMetadata,
   mockSaveCanonicalNote,
   mockWriteJournalEntryWithContent,
+  mockReadJournalEntry,
   mockDeleteJournalEntryFile,
   mockSyncNoteToCache,
   mockDeleteNoteFromCache,
@@ -24,6 +25,7 @@ const {
   mockUpdateNoteMetadata: vi.fn(),
   mockSaveCanonicalNote: vi.fn(),
   mockWriteJournalEntryWithContent: vi.fn(),
+  mockReadJournalEntry: vi.fn(),
   mockDeleteJournalEntryFile: vi.fn(),
   mockSyncNoteToCache: vi.fn(),
   mockDeleteNoteFromCache: vi.fn(),
@@ -62,6 +64,7 @@ vi.mock('../../vault/journal', () => ({
     },
     date
   })),
+  readJournalEntry: (...args: unknown[]) => mockReadJournalEntry(...args),
   writeJournalEntryWithContent: (...args: unknown[]) => mockWriteJournalEntryWithContent(...args)
 }))
 
@@ -91,14 +94,14 @@ function makeCtx(db: DrizzleDb = {} as DrizzleDb): ApplyContext {
 }
 
 async function flushPromises(): Promise<void> {
-  await Promise.resolve()
-  await Promise.resolve()
+  for (let i = 0; i < 6; i++) await Promise.resolve()
 }
 
 describe('journalHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeleteJournalEntryFile.mockResolvedValue(undefined)
+    mockReadJournalEntry.mockResolvedValue(null)
     mockWriteJournalEntryWithContent.mockResolvedValue({
       entry: {
         date: '2026-05-10',
@@ -211,6 +214,89 @@ describe('journalHandler', () => {
     expect(ctx.emit).toHaveBeenCalledWith(JournalChannels.events.ENTRY_DELETED, {
       date: '2026-05-10',
       source: 'sync'
+    })
+  })
+
+  describe('keeps the body a record does not carry (spec 005-journal G0)', () => {
+    const onDisk = {
+      id: 'j2099-06-01',
+      date: '2099-06-01',
+      content: 'Body the Y.Doc wrote back.',
+      wordCount: 5,
+      characterCount: 26,
+      tags: [],
+      createdAt: '2099-06-01T09:00:00.000Z',
+      modifiedAt: '2099-06-01T09:00:00.000Z'
+    }
+
+    it('a tags-only update with content: null keeps the file body', async () => {
+      mockReadJournalEntry.mockResolvedValue(onDisk)
+      mockGetNoteMetadataById.mockReturnValueOnce({
+        id: 'j2099-06-01',
+        journalDate: '2099-06-01',
+        clock: { 'device-a': 1 }
+      })
+      const ctx = makeCtx()
+
+      journalHandler.applyUpsert(
+        ctx,
+        'j2099-06-01',
+        { date: '2099-06-01', content: null, tags: ['g0'], properties: null },
+        { 'device-a': 1, phone: 1 }
+      )
+      await flushPromises()
+
+      expect(mockReadJournalEntry).toHaveBeenCalledWith('2099-06-01')
+      expect(mockWriteJournalEntryWithContent).toHaveBeenCalledWith(
+        '2099-06-01',
+        'Body the Y.Doc wrote back.',
+        ['g0'],
+        onDisk,
+        undefined
+      )
+    })
+
+    it('a create with content "" that lands after the write-back keeps the file body', async () => {
+      mockReadJournalEntry.mockResolvedValue(onDisk)
+      mockGetNoteMetadataById.mockReturnValueOnce(undefined)
+      const ctx = makeCtx()
+
+      journalHandler.applyUpsert(
+        ctx,
+        'j2099-06-01',
+        { date: '2099-06-01', content: '' },
+        { phone: 1 }
+      )
+      await flushPromises()
+
+      expect(mockWriteJournalEntryWithContent).toHaveBeenCalledWith(
+        '2099-06-01',
+        'Body the Y.Doc wrote back.',
+        undefined,
+        onDisk,
+        undefined
+      )
+    })
+
+    it('a create with no file yet writes an empty body', async () => {
+      mockGetNoteMetadataById.mockReturnValueOnce(undefined)
+      const ctx = makeCtx()
+
+      journalHandler.applyUpsert(
+        ctx,
+        'j2099-06-02',
+        { date: '2099-06-02', content: '' },
+        { phone: 1 }
+      )
+      await flushPromises()
+
+      expect(mockWriteJournalEntryWithContent).toHaveBeenCalledWith(
+        '2099-06-02',
+        '',
+        undefined,
+        null,
+        undefined
+      )
     })
   })
 

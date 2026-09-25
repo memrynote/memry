@@ -39,6 +39,7 @@ import { buildDeviceLinking } from './vectors/device-linking'
 import { buildFieldMerge } from './vectors/field-merge'
 import { buildJournal } from './vectors/journal'
 import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
+import { buildMarkdownSeed } from './vectors/markdown-seed'
 import { buildAttachmentManifest } from './vectors/attachment-manifest'
 import { buildBlockEdit } from './vectors/block-edit'
 import { buildNoteBlocks } from './vectors/note-blocks'
@@ -85,6 +86,7 @@ const CLASSES: readonly VectorClass[] = [
     files: [{ path: 'task-filtering.json', build: buildTaskFiltering }]
   },
   { name: 'journal', files: [{ path: 'journal.json', build: buildJournal }] },
+  { name: 'markdown-seed', files: [{ path: 'markdown-seed.json', build: buildMarkdownSeed }] },
   {
     name: 'attachment-manifest',
     files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]

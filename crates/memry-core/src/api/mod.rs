@@ -5,6 +5,8 @@ pub mod auth;
 pub mod conformance;
 pub mod crypto;
 pub mod errors;
+pub mod journal;
+pub mod journal_records;
 pub mod linking;
 pub mod notes;
 pub mod notes_write;

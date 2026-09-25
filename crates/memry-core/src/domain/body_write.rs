@@ -20,10 +20,11 @@
 //! from the registry's sink rather than recovered by diffing two copies of the
 //! document.
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use rusqlite::Connection;
 
+use crate::api::errors::StorageError;
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
@@ -49,22 +50,7 @@ pub fn edit_block(
         return Ok(false);
     }
 
-    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
-    let sink: UpdateSink = {
-        let authored = Arc::clone(&authored);
-        Arc::new(move |_, bytes: &[u8]| authored.lock().expect("lock").push(bytes.to_vec()))
-    };
-    let document = DocumentRegistry::new(device_id, sink).get_or_open(note_id)?;
-    for blob in update_log::load_plan(conn, note_id)?.blobs() {
-        // Durable, so the replay does not reach the sink and this edit's
-        // update is the only thing in it.
-        document.apply_durable_update(blob)?;
-    }
-
-    body_edit::apply(&document, edit)?;
-
-    let updates = authored.lock().expect("lock").clone();
-    let Some(update) = updates.into_iter().next() else {
+    let Some(update) = author(conn, note_id, edit, device_id)? else {
         // A write that authored nothing: setting an attribute to the value it
         // already holds. Nothing is stored and nothing is pushed — an edit
         // that changed nothing must not ship a clock and win a conflict it had
@@ -72,15 +58,65 @@ pub fn edit_block(
         return Ok(true);
     };
 
-    let change = outbox::Change::crdt_update(ITEM_TYPE, note_id, update.clone());
-    let doc_id = note_id.to_owned();
-    outbox::commit(conn, &change, now_ms, |tx| {
-        update_log::append_local_update_in(tx, &doc_id, &update, now_ms).map_err(|error| {
-            crate::api::errors::StorageError::Failed {
-                what: error.to_string(),
-            }
-        })
-    })
-    .map_err(CrdtError::from)?;
+    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
+    tx.commit().map_err(storage_failed)?;
     Ok(true)
+}
+
+/// Replays `doc_id`'s durable log into a document opened under `device_id`
+/// and applies `edit` to it, **without writing anything**.
+///
+/// - Returns: the update the edit authored, or `None` when it authored nothing.
+///   A refused edit (a block the body does not hold) is an error, and nothing
+///   has been written either way.
+pub(crate) fn author(
+    conn: &Connection,
+    doc_id: &str,
+    edit: &BlockEdit,
+    device_id: &str,
+) -> Result<Option<Vec<u8>>, CrdtError> {
+    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink: UpdateSink = {
+        let authored = Arc::clone(&authored);
+        Arc::new(move |_, bytes: &[u8]| {
+            authored
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .push(bytes.to_vec())
+        })
+    };
+    let document = DocumentRegistry::new(device_id, sink).get_or_open(doc_id)?;
+    for blob in update_log::load_plan(conn, doc_id)?.blobs() {
+        // Durable, so the replay does not reach the sink and this edit's
+        // update is the only thing in it.
+        document.apply_durable_update(blob)?;
+    }
+
+    body_edit::apply(&document, edit)?;
+
+    let mut updates = authored.lock().unwrap_or_else(PoisonError::into_inner);
+    Ok((!updates.is_empty()).then(|| updates.swap_remove(0)))
+}
+
+/// Stores an authored update and queues it as `(item_type, doc_id)`, inside
+/// the caller's transaction: the update row and its outbox row commit together
+/// or not at all (FR-030, data-model §A.2).
+pub(crate) fn append_in(
+    tx: &Connection,
+    item_type: &str,
+    doc_id: &str,
+    update: &[u8],
+    now_ms: i64,
+) -> Result<(), CrdtError> {
+    update_log::append_local_update_in(tx, doc_id, update, now_ms)?;
+    let change = outbox::Change::crdt_update(item_type, doc_id, update.to_vec());
+    outbox::enqueue(tx, &change, now_ms)?;
+    Ok(())
+}
+
+fn storage_failed(error: rusqlite::Error) -> CrdtError {
+    CrdtError::from(StorageError::Failed {
+        what: error.to_string(),
+    })
 }

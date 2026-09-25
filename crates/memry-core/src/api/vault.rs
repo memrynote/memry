@@ -40,6 +40,7 @@ use std::sync::Arc;
 
 use crate::api::auth::AuthSession;
 use crate::api::errors::{AuthError, StorageError};
+use crate::api::journal::Journal;
 use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
 use crate::api::search::Search;
@@ -148,6 +149,13 @@ impl Vault {
     /// [`Vault::notes_writer`] does: a write ticks this device's clock.
     pub fn tasks(&self, store: Arc<dyn SecureStore>) -> Result<Arc<Tasks>, AuthError> {
         Ok(Arc::new(Tasks::over(self.db.clone(), &store)?))
+    }
+
+    /// The journal: days read and written by calendar date (spec
+    /// 005-journal). Needs the keychain for the same reason
+    /// [`Vault::notes_writer`] does: a write ticks this device's clock.
+    pub fn journal(&self, store: Arc<dyn SecureStore>) -> Result<Arc<Journal>, AuthError> {
+        Ok(Arc::new(Journal::over(self.db.clone(), &store)?))
     }
 
     /// The full-text search over this vault.

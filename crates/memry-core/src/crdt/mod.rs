@@ -30,6 +30,7 @@ pub mod canonical;
 pub mod comments;
 pub mod errors;
 pub mod lifecycle;
+pub mod markdown_seed;
 pub mod node_shapes;
 pub mod registry;
 pub mod snapshots;

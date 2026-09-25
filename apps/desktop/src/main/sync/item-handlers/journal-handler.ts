@@ -16,6 +16,7 @@ import {
   getJournalPath,
   getJournalRelativePath,
   parseJournalEntry,
+  readJournalEntry,
   writeJournalEntryWithContent
 } from '../../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
@@ -26,6 +27,33 @@ import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('JournalHandler')
+
+/**
+ * Writes a remote journal record to its vault file without costing the body.
+ *
+ * The body is a CRDT document (chapter 12 §12.2); a record carries `content`
+ * only on create, and `null` on every update. Writing `content ?? ''` emptied
+ * the file whenever another device changed only tags or properties, or when a
+ * create with `content: ''` landed after the CRDT write-back had already put
+ * the body in the file. The Y.Doc kept the text, but the file, the index and
+ * the heatmap lost it until the next body edit. An empty or missing `content`
+ * now keeps the body the file already holds; a non-empty one is written as
+ * before (a create seeded from a template).
+ */
+async function writeSyncedJournal(
+  date: string,
+  data: JournalSyncPayload
+): Promise<Awaited<ReturnType<typeof writeJournalEntryWithContent>>> {
+  const existing = data.content ? null : await readJournalEntry(date)
+  const content = data.content ? data.content : (existing?.content ?? '')
+  return writeJournalEntryWithContent(
+    date,
+    content,
+    data.tags,
+    existing,
+    data.properties ?? undefined
+  )
+}
 
 class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
   readonly type = 'journal' as const
@@ -63,13 +91,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         log.warn('Concurrent journal edit, applying (CRDT handles merge)', { itemId })
       }
 
-      writeJournalEntryWithContent(
-        date,
-        data.content ?? '',
-        data.tags,
-        null,
-        data.properties ?? undefined
-      )
+      writeSyncedJournal(date, data)
         .then(async ({ entry, fileContent, frontmatter }) => {
           saveCanonicalNote(ctx.db, {
             id: itemId,
@@ -107,13 +129,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       return resolution.action === 'merge' ? 'conflict' : 'applied'
     }
 
-    writeJournalEntryWithContent(
-      date,
-      data.content ?? '',
-      data.tags,
-      null,
-      data.properties ?? undefined
-    )
+    writeSyncedJournal(date, data)
       .then(async ({ entry, fileContent, frontmatter }) => {
         saveCanonicalNote(ctx.db, {
           id: itemId,

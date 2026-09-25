@@ -361,6 +361,8 @@ G1 result (2026-09-25): GREEN. `vectors:check passed (17 classes)`; `cargo test 
 JP020–JP026 are separate modules and run in parallel. JP027 is serial after
 all of them: it owns the UniFFI surface and the generated Swift.
 
+Evidence: `domain/journal_ops/body.rs` `edit_day`/`edit_entry`, shared `body_write::{author,append_in}`; `journal::open_day_in` creates/revives inside the edit transaction. `tests/journal_body.rs` 6/6: first edit creates `j<date>` with one upsert + one crdt-update (keyed `journal`), tombstone revives under its id, a desktop non-`j` id is edited under that id, a failing edit writes no row of any kind, a no-op edit writes and creates nothing.
+
 - [ ] JP020 [P] **Body writes.** A block edit addressed by date:
       `edit_day(date, edit)` resolves the id through `entry_for` (the existing
       id wins, D5), runs `open_day` when the day has no live entry (D2, revive
@@ -371,21 +373,23 @@ all of them: it owns the UniFFI surface and the generated Swift.
       first edit creates `j<date>`, a tombstoned day revives under its id, a
       day desktop created under a non-`j` id is edited under that id, an edit
       that fails creates nothing, a no-op edit writes nothing.
-- [ ] JP021 [P] **Metadata writes** for a day: set tags, set and clear a
+- [x] JP021 [P] **Metadata writes** for a day: set tags, set and clear a
       property (typed as notes are, the `date` property reserved and refused),
       each creating the day first when absent (D2). The payload follows D5:
       `content: null` on update, unknown keys kept, field clocks as notes use.
       Tests: payload shape against `JournalSyncPayloadSchema` fields, an older
       desktop payload with no `properties` or `tags`, a newer payload with
       unknown keys that survive the next local edit.
-- [ ] JP022 [P] **Template seeding.** `open_day_from_template(date,
+      Evidence: `domain/journal_ops/metadata.rs` set_tags / set_property / clear / remove / rename by date, one transaction with the create; `content: null` on every update, unknown keys kept, `date` reserved (Invalid). `tests/journal_metadata.rs` 8/8 incl. JournalSyncPayloadSchema key/type check, older payload without tags/properties, newer payload with unknown keys surviving two edits. Property reorder is not representable (§6).
+- [x] JP022 [P] **Template seeding.** `open_day_from_template(date,
 template_id, formatted)` where `formatted` carries the shell's
       locale strings (D4): create (or revive) the day with the substituted
       markdown as create-time `content` and `seed_markdown` (§12.2 carve-out
       A), the template's tags, and its properties (D10). A template missing on
       this device returns a typed "not here yet" so the shell retries later,
       as desktop does. Tests over real template payloads.
-  - [ ] JP022a Conditional on JP003c. If the native iOS editor cannot edit a
+      Evidence: `domain/journal_ops/seed.rs` `open_day_from_template` (content + seed_markdown + tags + properties + seeded document in one transaction; `AlreadyExists` for a live day; `NotFound` for a template not here) and `resolve_template_for`. `tests/journal_seed.rs` 7/7 over desktop-shaped template payloads.
+  - [x] JP022a Conditional on JP003c. If the native iOS editor cannot edit a
         body that exists only as `seed_markdown`, a seeded day would be
         unwritable on the phone that seeded it. In that case, add a
         markdown → BlockNote Y.Doc seed in the core for the block types
@@ -393,7 +397,8 @@ template_id, formatted)` where `formatted` carries the shell's
         converter (`sync/blocknote-converter.ts`), and seed the document in
         the create transaction. Otherwise record in §6 why the existing path
         suffices.
-- [ ] JP023 [P] **Reads**: `day(date)` (id or none, tags, properties without
+        Evidence: Required (§5 c). `crdt/markdown_seed/*` builds the BlockNote Y.Doc desktop builds; new vector class `markdown-seed.json` (27 cases) generated through the production parse path, proven equal to desktop `markdownToYFragment` by `apps/desktop/src/main/sync/markdown-seed-vectors.test.ts` (27/27); `tests/markdown_seed_vectors.rs` green; `vectors:check passed (18 classes)`. Fallback: unsupported constructs keep their lines as paragraphs (logged in `SeedPlan.fallbacks`).
+- [x] JP023 [P] **Reads**: `day(date)` (id or none, tags, properties without
       `date`, created/modified, word and character counts from the extracted
       text (D6), body state: present / not pulled / empty); `month(year,
 month, today)` (every day: level, preview, has entry, is future,
@@ -401,31 +406,37 @@ month, today)` (every day: level, preview, has entry, is future,
       `streak(today)` (current, longest, last entry date); `days_with_entries(from,
 to)`. Tombstoned days never count. Tests, including a day whose body is
       not pulled.
-- [ ] JP024 [P] **Journal reminders**: create for a date (D8 payload per
+      Evidence: `domain/journal_ops/reads.rs` day / month (newest first, level, preview, future/today, body state) / year (12 cards, totals, streak) / heatmap / streak(today) / days_with_entries; counts from extracted text (cached `note_bodies.text` when its source_seq is current, else replayed). `tests/journal_reads.rs` 9/9 incl. a not-pulled day and tombstones excluded.
+- [x] JP024 [P] **Journal reminders**: create for a date (D8 payload per
       JP003e), set-or-replace (moves the active one), list for a date sorted
       by time. Edit, snooze, dismiss and delete reuse the id-based paths.
       Journal reminders appear in `due_window` with the date as target. Tests.
-- [ ] JP025 [P] **Journal settings**: read `defaultTemplate` and the weekday map
+      Evidence: `domain/reminders/journal.rs` create_for_journal (targetType journal, targetId = date), set_or_replace_for_journal (moves the earliest active one), for_journal; `due_window` carries journal reminders with the date. `tests/journal_reminders.rs` 6/6.
+- [x] JP025 [P] **Journal settings**: read `defaultTemplate` and the weekday map
       (defaults, keys outside `"0".."6"` ignored); write the default and one
       weekday (explicit `null` clears) through the settings merge with
       per-field clocks; unknown `journal.*` keys preserved. Tests with a
       concurrent edit of two different weekdays.
-- [ ] JP026 [P] **Links and search**: backlinks and outgoing links for a
+      Evidence: `domain/journal_ops/settings.rs` read default + weekday map, write default / one weekday through the settings merge with per-field clocks, explicit null clears, unknown `journal.*` keys and display flags preserved. `tests/journal_settings.rs` 7/7 incl. two devices editing weekdays 3 and 4 concurrently.
+- [x] JP026 [P] **Links and search**: backlinks and outgoing links for a
       journal id, a journal backlink carrying its date, wiki-link resolution
       to a day per JP003g, and journal search hits (exist,
       `api/search.rs:32-60`) carrying the date. Tests.
-- [ ] JP027 UniFFI surface `crates/memry-core/src/api/journal.rs` (+
+      Evidence: `domain/journal_ops/links.rs` backlinks / outgoing links for note and journal ids (journal sources carry kind + date), `note_meta::resolve_wiki_target_kind` (note, then day by date, then `j<date>`), link indexer resolves day targets; journal search hits carry the date. `tests/journal_links.rs` 9/9.
+- [x] JP027 UniFFI surface `crates/memry-core/src/api/journal.rs` (+
       `journal_records.rs` to stay under 600 lines): `Vault::journal(store)`
       returning a `Journal` object with everything in JP020–JP026, records for
       day, month, year, heatmap entry, streak, reminder, settings. Errors
       through `api/errors.rs` with messages `ErrorMapping.swift` can map. Build
       the xcframework and commit the regenerated Swift. It must be additive:
       check that no existing binding line is lost.
-- [ ] JP028 `tests/api_journal.rs`: end to end through the API layer: open,
+      Evidence: `api/journal.rs` + `api/journal_records.rs`: `Vault::journal(store)` → `Journal` (day, entry_id, month, year, heatmap, streak, days_with_entries, resolve_wiki_target, edit_day with FR-058 task flip, set_tags, set/clear/remove/rename_property, template_for, seed_from_template, settings + setters, reminders + set/update/snooze/dismiss/delete), free functions journal_weekday / journal_preview / journal_word_count; `Search.links_to` / `links_from`; note body reads and `fetch_note_body` accept journal ids (`reads::document_exists`). xcframework built; regenerated Swift is additive (0 lines of the previous file missing, multiset diff).
+- [x] JP028 `tests/api_journal.rs`: end to end through the API layer: open,
       edit, tag, seed from a template, remind, read month, year and streak,
       plus inbound payloads from an older desktop (missing fields) and a newer
       one (unknown fields preserved on the next local edit).
-- [ ] JP029 **Gate G0, the compat probe.** Add dev-only `journal` subcommands
+      Evidence: `tests/api_journal.rs` 6/6 through the exported surface: read writes nothing, first edit creates and month/year/streak see it; tags + property + reserved date + set-or-replace reminder + dismiss; template seed once, AlreadyExists, NotFound creates nothing; older desktop payload edited under its own id; newer payload unknown key survives; weekday settings round trip.
+- [x] JP029 **Gate G0, the compat probe.** Add dev-only `journal` subcommands
       to `crates/memry-cli` (`journal append <date> <text>`,
       `journal tags <date> <a,b>`, `journal property <date> <name> <json>`),
       then run these
@@ -439,16 +450,25 @@ to)`. Tombstoned days never count. Tests, including a day whose body is
      editor keeps its text and cursor.
   4. Repeat scenario 1 against the last released desktop build if it can
      run against staging. Otherwise record that as a limit in §6.
+     Evidence: G0 run 2026-09-25 against the desktop peer (`iosjournal`, current `main` build, staging) with `memry-cli journal …` (same core functions the phone calls), agent days 2099-06-01..07. **Result: FAIL on the unfixed handler.** S1: desktop body on 2099-06-01 (G0-1-before.md), CLI tags → vault file body emptied (G0-1-after-cli-tags.md; desktop editor still showed the text from the Y.Doc, G0-1-desktop-after-cli-tags.png). S2: CLI-created 2099-06-02 + paragraph → file body empty after the create record landed after the CRDT write-back (G0-2-after-append.md), property added, body still missing from the file (G0-2-after-property.md, G0-2-desktop-after-property.png). S3: 2099-06-03 open in the editor, CLI tags → editor kept its text, file body emptied (G0-3-desktop-open-editor.png). S4: the last release (MemryNote.app 2026.919.1, tag v2026-09-19) is a production build and cannot point at staging; its upsert path is byte-identical to the tested one (`git diff v2026-09-19 HEAD -- journal-handler.ts` touches only applyDelete), so it loses text the same way (limit, §6). Per D5: JP029a fixes the current handler (re-run green, see JP029a); phone tag/property writes stay OFF for shipped desktops; §7 blocker for Kaan.
 
   Evidence: file contents before and after, and desktop screenshots in
   `apps/ios/SpikeEvidence/journal-parity/G0-*`. If any scenario loses text,
   follow D5: fix the current desktop handler (JP029a, with a
   `journal-handler.test.ts` case), keep phone tag and property writes off for
   the builds that lose text, and write the §7 blocker.
+  - [x] JP029a Fix the current desktop handler: a remote journal record with
+        `content` null or empty keeps the body the vault file already holds.
+        Evidence: `apps/desktop/src/main/sync/item-handlers/journal-handler.ts` `writeSyncedJournal`; `journal-handler.test.ts` 3 new cases (tags-only update with null content, late create with "" content, create with no file) + existing 8, 11/11; `test:main` subset (item-handlers, journal, vault/journal) 41 files / 530 passed. Re-run against staging with the fix: G0-fixed-2099-06-04.md (desktop body kept byte for byte, CLI tags added), G0-fixed-2099-06-05.md (CLI paragraph and property both in the file), G0-3-fixed-open-editor.png + G0-3-fixed-2099-06-07.md (open editor kept text, focus and caret offset 38; file kept body).
 
 **Gate G2**: `cargo test -p memry-core` and clippy green, `vectors:check`
 green, xcframework builds, iOS app still builds and the Unit plan is green, G0
 recorded.
+G2 result (2026-09-25): GREEN. `cargo test -p memry-core -p memry-cli` 1056 passed / 0 failed / 1 ignored
+(77 binaries); fmt + clippy `-D warnings` clean; line ceilings passed (390 files); `vectors:check passed
+(18 classes)`; `build-xcframework.sh --release` ok (generated Swift additive); Unit plan 689 tests in 101
+suites passed on memry-B; `pnpm lint` 0 errors, `pnpm typecheck` ok. G0 recorded: FAIL for shipped
+desktop builds (JP029), fixed on `main` by JP029a; phone journal tag/property writes gated off (D5, §7).
 **Commit** Phase 2.
 
 ---
@@ -801,9 +821,20 @@ note by `name → value`.
 
 - 2026-09-25 — JP010 — `getJournalYearStats` now aggregates in JS through `yearMonthStats`. SQL `AVG(CASE ...)` read a NULL `character_count` as level 4 (the CASE fell through to ELSE); the package reads a missing count as 0 characters. Unreachable for journal rows (`syncNoteToCache` always writes the count), and not a rule worth pinning in vectors. Output otherwise identical; the existing notes query test passes unchanged.
 
+- 2026-09-25 — JP021 — Property reorder is not in the core: the core stores payloads as a key-sorted map (serde_json without `preserve_order`, `storage/repositories/payload.rs`), so an object key order cannot be written. Desktop keeps order in the frontmatter only. The phone shows properties in the order the core returns; rename keeps the value.
+- 2026-09-25 — JP022a — Markdown seed fallback: constructs outside the template set (tables, HTML, images/embeds, callouts, math, nested quotes, mentions, task blocks) keep their source lines as paragraphs; CriticMarkup, toggles, link reference definitions and `\r` send the whole text there. Found, not fixed (desktop): a hard break inside link text leaves a literal `MEMRYHBK0;` in desktop's converter output; the seed reproduces desktop.
+- 2026-09-25 — JP022 — Reviving a tombstoned day from a template adds the template's tags to the stored ones and overwrites same-named properties; a template property named `date` is dropped (reserved, D5).
+- 2026-09-25 — JP023 — A day with an entry but no pulled body counts for the streak and the month's entry count, reads level 0 and "not on this phone"; counts come from the cached body text only while its source sequence is current, else from the update log.
+- 2026-09-25 — JP026 — A day gets a backlink when a link spells its date or `j<date>`, unless a live note of that exact title took the link (notes win resolution, as desktop's title lookup does). A `j<date>` link with no entry resolves to the day without creating it (desktop `dateFromJournalId`).
+- 2026-09-25 — JP027 — `Search.backlinks` keeps its note-only answer; journal-aware links are the new `Search.linksTo` / `linksFrom`. Note body reads (`Notes.blocks/table/comments`) and `VaultSync.fetchNoteBody` accept a journal record id.
+- 2026-09-25 — JP029 — G0 limit: the last released desktop (2026.919.1) cannot run against staging; its journal upsert code is identical to the tested pre-fix code, so G0 is taken as failing for it. Also found: a phone-created day can lose its vault-file body on a shipped desktop when the create record (`content: ""`) is applied after the CRDT write-back; the next body update rewrites the file. JP029a fixes both. Desktop also leaves the open day's tag chips stale after a remote tag write (the file and index are right); not changed.
+- 2026-09-25 — JP029 — Gate decision (D5): the phone ships with journal tag and property writes OFF (read-only rows with the limitation copy) behind one switch, until a desktop release carrying JP029a is out. Body editing, templates and reminders are on.
+
 ## 7. Blockers
 
 <!-- date — task id — what — evidence — next retry -->
+
+- 2026-09-25 — JP029 / G0 — **For Kaan.** Every shipped desktop (through 2026.919.1) writes `content ?? ''` into the vault file for a remote journal record, so a phone tag or property write empties the day's markdown file (the Y.Doc keeps the text; the file, index and heatmap lose it until the next body edit). Evidence: `apps/ios/SpikeEvidence/journal-parity/G0-1-*`, `G0-2-*`, `G0-3-desktop-open-editor.png`. Fix on this branch: JP029a (`journal-handler.ts` `writeSyncedJournal`). Needed: ship a desktop release with JP029a, then flip the phone switch (`JournalWriteGate`, JP045) to enable tag/property writes. Not retryable inside this run.
 
 ## 8. Final report
 

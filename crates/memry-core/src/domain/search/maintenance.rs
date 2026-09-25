@@ -271,8 +271,11 @@ fn index_note(
 /// backlinks could not be answered: a query over it would have returned
 /// nothing, forever, and looked like a note with no backlinks.
 ///
+/// Journal sources are projected the same way: their body is a document keyed
+/// by the record id, and [`index_note`] reaches this for both types.
+///
 /// `target_id` is resolved here rather than at query time, and left `NULL`
-/// when no note carries that title — which is how a forward reference to a
+/// when no note or journal day carries that title — which is how a forward reference to a
 /// note that does not exist yet survives until it is created. The title is
 /// always stored, so the link is still a link in the meantime.
 fn index_links(
@@ -319,6 +322,16 @@ fn index_links(
             )
             .optional()
             .map_err(failed)?;
+        // No note by that title: a live journal whose date it spells, since
+        // desktop titles a journal with its date. A day created later is still
+        // found by title at query time, as a note is.
+        let target_id = match target_id {
+            Some(id) => Some(id),
+            None => match crate::domain::note_meta::journal_date_of(&title) {
+                Some((date, _)) => crate::domain::journal::live_entry(data, &date)?,
+                None => None,
+            },
+        };
         index
             .execute(
                 "INSERT INTO note_links (source_id, target_id, target_title)

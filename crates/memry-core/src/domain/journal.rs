@@ -82,18 +82,40 @@ pub fn entry_for(conn: &Connection, date: &str) -> Result<Option<(String, bool)>
 /// The entry for `date`, created if there is none and revived if it was
 /// deleted.
 ///
-/// Writes nothing at all for a day that already has a live entry, which is the
-/// common case: this is the call behind "open today", and FR-054 makes it the
-/// first thing the app does.
+/// Writes nothing at all for a day that already has a live entry. Under spec
+/// 005-journal D2 this runs on a day's **first write**, never on navigation:
+/// browsing days must not create entries.
 pub fn open_day(
     conn: &Connection,
     date: &str,
     device_id: &str,
     now_ms: i64,
 ) -> Result<OpenedDay, StorageError> {
-    let date = valid_date(date)?.to_owned();
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let opened = open_day_in(&tx, date, device_id, now_ms)?;
+    tx.commit().map_err(failed)?;
+    Ok(opened)
+}
 
-    if let Some((id, deleted)) = entry_for(conn, &date)? {
+/// [`open_day`] inside a transaction the caller holds, so a day's creation and
+/// its first write commit together or not at all (D2: a failed first edit must
+/// not leave an empty entry behind). Enqueues the record upsert when it
+/// creates or revives; a later record write in the same transaction
+/// supersedes that row (`outbox::enqueue`), which is intended.
+pub fn open_day_in(
+    tx: &Connection,
+    date: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<OpenedDay, StorageError> {
+    let date = valid_date(date)?.to_owned();
+    if tx.is_autocommit() {
+        return Err(StorageError::Failed {
+            what: "open_day_in needs the caller's transaction".to_owned(),
+        });
+    }
+
+    if let Some((id, deleted)) = entry_for(tx, &date)? {
         if !deleted {
             return Ok(OpenedDay {
                 id,
@@ -102,7 +124,8 @@ pub fn open_day(
                 revived: false,
             });
         }
-        revive(conn, &id, device_id, now_ms)?;
+        revive_in(tx, &id, device_id, now_ms)?;
+        outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &id), now_ms)?;
         return Ok(OpenedDay {
             id,
             date,
@@ -112,7 +135,8 @@ pub fn open_day(
     }
 
     let id = document_id_for(&date)?;
-    create(conn, &id, &date, device_id, now_ms)?;
+    create_in(tx, &id, &date, device_id, now_ms)?;
+    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &id), now_ms)?;
     Ok(OpenedDay {
         id,
         date,
@@ -121,35 +145,52 @@ pub fn open_day(
     })
 }
 
-/// The create half of [`open_day`].
+/// The id of the **live** entry for `date`, or `None` when the day has no
+/// entry or only a tombstoned one. The read every "does this day exist" check
+/// goes through, so browsing and writing agree.
+pub fn live_entry(conn: &Connection, date: &str) -> Result<Option<String>, StorageError> {
+    Ok(entry_for(conn, date)?.and_then(|(id, deleted)| (!deleted).then_some(id)))
+}
+
+/// Whether this vault holds a live journal entry with this record id.
+pub fn journal_exists(conn: &Connection, id: &str) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM journal_entries WHERE id = ?1 AND deleted_at IS NULL",
+        params![id],
+        |_| Ok(()),
+    )
+    .optional()
+    .ok()
+    .flatten()
+    .is_some()
+}
+
+/// The create half of [`open_day_in`].
 ///
 /// `content` is `""` for the same reason a note's is (chapter 12 §12.2): the
 /// body is a collaborative document and the Y.Doc is authoritative, so a
 /// create record carries an empty body rather than markdown this tier would
 /// have had to produce.
-fn create(
-    conn: &Connection,
+fn create_in(
+    tx: &Connection,
     id: &str,
     date: &str,
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    outbox::commit(conn, &outbox::Change::upsert(ITEM_TYPE, id), now_ms, |tx| {
-        let at = iso(now_ms)?;
-        let payload = object(json!({
-            "date": date,
-            "content": "",
-            "clock": next_clock(&Default::default(), device_id)?,
-            "createdAt": at,
-            "modifiedAt": at,
-        }));
-        insert_local(tx, ITEM_TYPE, id, payload, now_ms)?;
-        // A journal body is edited exactly as a note's is (FR-055), so it gets
-        // the same materialised body row: empty text, no seed, derived from
-        // the Yjs log the moment there is one.
-        seed_body(tx, id, "", now_ms)
-    })
-    .map(|durable| durable.acknowledge())
+    let at = iso(now_ms)?;
+    let payload = object(json!({
+        "date": date,
+        "content": "",
+        "clock": next_clock(&Default::default(), device_id)?,
+        "createdAt": at,
+        "modifiedAt": at,
+    }));
+    insert_local(tx, ITEM_TYPE, id, payload, now_ms)?;
+    // A journal body is edited exactly as a note's is (FR-055), so it gets
+    // the same materialised body row: empty text, no seed, derived from
+    // the Yjs log the moment there is one.
+    seed_body(tx, id, "", now_ms)
 }
 
 /// Clears the tombstone on an entry whose day is being opened again.
@@ -157,19 +198,16 @@ fn create(
 /// The date is `UNIQUE`, so there is no second row to create; reviving the
 /// original id is the only way "open today" can succeed after today was
 /// deleted.
-fn revive(conn: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<(), StorageError> {
-    outbox::commit(conn, &outbox::Change::upsert(ITEM_TYPE, id), now_ms, |tx| {
-        tx.execute(
-            "UPDATE sync_items SET deleted_at = NULL, updated_at = ?3
-             WHERE item_type = ?1 AND item_id = ?2",
-            params![ITEM_TYPE, id, now_ms],
-        )
-        .map_err(failed)?;
-        let changes = stamp(tx, ITEM_TYPE, id, device_id, now_ms)?;
-        sync_items::apply_local_edit_in(tx, ITEM_TYPE, id, &changes, now_ms)?;
-        Ok(())
-    })
-    .map(|durable| durable.acknowledge())
+fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<(), StorageError> {
+    tx.execute(
+        "UPDATE sync_items SET deleted_at = NULL, updated_at = ?3
+         WHERE item_type = ?1 AND item_id = ?2",
+        params![ITEM_TYPE, id, now_ms],
+    )
+    .map_err(failed)?;
+    let changes = stamp(tx, ITEM_TYPE, id, device_id, now_ms)?;
+    sync_items::apply_local_edit_in(tx, ITEM_TYPE, id, &changes, now_ms)?;
+    Ok(())
 }
 
 /// `YYYY-MM-DD`, a real calendar day.
