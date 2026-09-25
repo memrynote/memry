@@ -186,7 +186,7 @@ struct PendingSignIn {
 pub struct AuthSession {
     http: Arc<HttpClient>,
     tokens: Arc<TokenManager>,
-    store: Arc<dyn SecureStore>,
+    pub(crate) store: Arc<dyn SecureStore>,
     device: DeviceDescriptor,
     state: Mutex<AuthState>,
     pending: Mutex<PendingSignIn>,

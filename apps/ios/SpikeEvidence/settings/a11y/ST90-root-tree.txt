@@ -1,0 +1,190 @@
+Attributes: Application, 0x103686f80, pid: 11559, label: 'Memry'
+Element subtree:
+ →Application, 0x103686f80, pid: 11559, label: 'Memry'
+    Window (Main), 0x103687200, {{0.0, 0.0}, {393.0, 852.0}}
+      Other, 0x103687340, {{0.0, 0.0}, {393.0, 852.0}}
+        Other, 0x103687480, {{0.0, 0.0}, {393.0, 852.0}}
+          Other, 0x1036875c0, {{0.0, 0.0}, {393.0, 852.0}}
+            Other, 0x103687700, {{0.0, 0.0}, {393.0, 852.0}}
+              Other, 0x103687840, {{0.0, 0.0}, {393.0, 852.0}}
+                Other, 0x103687980, {{0.0, 0.0}, {393.0, 852.0}}
+                  Other, 0x103687ac0, {{0.0, 0.0}, {393.0, 852.0}}
+                    Other, 0x103687c00, {{0.0, 0.0}, {393.0, 852.0}}
+                      Other, 0x103687d40, {{0.0, 0.0}, {393.0, 852.0}}
+                        Other, 0x103687e80, {{0.0, 0.0}, {393.0, 852.0}}
+                          Other, 0x112050000, {{0.0, 0.0}, {393.0, 852.0}}
+                            NavigationBar, 0x1120512c0, {{0.0, 59.0}, {393.0, 106.0}}, identifier: 'Settings'
+                              Button, 0x112051400, {{16.0, 59.0}, {44.0, 44.0}}, identifier: 'BackButton', label: 'More'
+                              StaticText, 0x112051540, {{16.0, 116.7}, {133.0, 40.7}}, label: 'Settings'
+                            Other, 0x112051680, {{0.0, 0.0}, {393.0, 852.0}}
+                              Other, 0x1120517c0, {{0.0, 0.0}, {393.0, 852.0}}
+                                Other, 0x112051900, {{0.0, 0.0}, {393.0, 852.0}}
+                                  Other, 0x112051a40, {{0.0, 0.0}, {393.0, 852.0}}
+                                    CollectionView, 0x112051b80, {{0.0, 0.0}, {393.0, 852.0}}, identifier: 'settings.root'
+                                      Other, 0x112051cc0, {{-16.0, -1539.0}, {425.0, 1803.7}}
+                                      Other, 0x112051e00, {{0.0, 0.0}, {393.0, 852.0}}
+                                      Other, 0x112051f40, {{0.0, 0.0}, {393.0, 852.0}}
+                                        Other, 0x1120521c0, {{0.0, 704.2}, {393.0, 147.8}}
+                                          Image, 0x112052300, {{-120.0, 709.0}, {633.0, 286.0}}, identifier: 'AdditionalDimmingOverlay'
+                                          Other, 0x112051040, {{0.0, 704.2}, {393.0, 147.8}}
+                                            Other, 0x112050140, {{0.0, 704.2}, {393.0, 147.8}}
+                                          Other, 0x112050280, {{0.0, 704.2}, {393.0, 147.8}}
+                                            Other, 0x1120503c0, {{0.0, 704.2}, {393.0, 147.8}}
+                                            Other, 0x112050500, {{0.0, 704.2}, {393.0, 147.8}}
+                                      Cell, 0x112050640, {{16.0, 165.0}, {361.0, 82.0}}
+                                        Other, 0x112050780, {{16.0, 165.0}, {361.0, 82.0}}
+                                          Other, 0x1120508c0, {{16.0, 165.0}, {361.0, 82.0}}
+                                        Other, 0x112050a00, {{16.0, 165.0}, {361.0, 82.0}}
+                                          Other, 0x112053c00, {{16.0, 165.0}, {361.0, 82.0}}
+                                            Other, 0x112053d40, {{16.0, 165.0}, {361.0, 82.0}}
+                                              Button, 0x112053e80, {{16.0, 165.0}, {361.0, 82.0}}, identifier: 'settings.row.account', label: '[account email], Believer · Synced · 3 sec. ago'
+                                                StaticText, 0x112050b40, {{32.0, 184.0}, {266.7, 44.0}}, label: '[account email], Believer · Synced · 3 sec. ago'
+                                                  StaticText, 0x112050c80, {{32.0, 184.0}, {44.0, 44.0}}, label: 'K'
+                                                  StaticText, 0x112050dc0, {{88.0, 186.0}, {210.7, 20.3}}, label: '[account email]'
+                                                  Other, 0x112050f00, {{88.0, 214.3}, {8.0, 8.0}}
+                                                  StaticText, 0x112052440, {{104.0, 210.3}, {178.3, 15.7}}, label: 'Believer · Synced · 3 sec. ago'
+                                                Image, 0x112052580, {{351.7, 200.0}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Other, 0x1120526c0, {{-16.0, 264.7}, {425.0, 257.0}}
+                                      Cell, 0x112052800, {{16.0, 282.0}, {361.0, 74.0}}
+                                        Other, 0x112052940, {{16.0, 282.0}, {361.0, 74.0}}
+                                          Other, 0x112052a80, {{16.0, 282.0}, {361.0, 74.0}}
+                                        Other, 0x112052bc0, {{16.0, 282.0}, {361.0, 74.0}}
+                                          Other, 0x112052d00, {{16.0, 282.0}, {361.0, 74.0}}
+                                            Other, 0x112052e40, {{16.0, 282.0}, {361.0, 74.0}}
+                                              Button, 0x112052f80, {{16.0, 282.0}, {361.0, 74.0}}, identifier: 'settings.row.general', label: 'General'
+                                                StaticText, 0x1120530c0, {{35.0, 308.8}, {92.3, 20.3}}, label: 'General'
+                                                  Image, 0x112053200, {{35.0, 310.0}, {18.0, 18.0}}, identifier: 'gearshape', label: 'gearshape'
+                                                  StaticText, 0x112053340, {{68.0, 308.8}, {59.3, 20.3}}, label: 'General'
+                                                Image, 0x112053480, {{351.7, 313.0}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Cell, 0x1120535c0, {{16.0, 356.0}, {361.0, 74.0}}
+                                        Other, 0x112053700, {{16.0, 356.0}, {361.0, 74.0}}
+                                          Other, 0x112053840, {{16.0, 356.0}, {361.0, 74.0}}
+                                        Other, 0x112053980, {{16.0, 356.0}, {361.0, 74.0}}
+                                          Other, 0x112053ac0, {{16.0, 356.0}, {361.0, 74.0}}
+                                            Other, 0x11209c000, {{16.0, 356.0}, {361.0, 74.0}}
+                                              Button, 0x11209c140, {{16.0, 356.0}, {361.0, 74.0}}, identifier: 'settings.row.appearance', label: 'Appearance, System'
+                                                StaticText, 0x11209c280, {{34.0, 382.8}, {305.0, 20.3}}, label: 'Appearance, System'
+                                                  Image, 0x11209c3c0, {{34.0, 384.7}, {20.0, 16.7}}, identifier: 'paintpalette', label: 'paintpalette'
+                                                  StaticText, 0x11209c500, {{68.0, 382.8}, {92.0, 20.3}}, label: 'Appearance'
+                                                  StaticText, 0x11209c640, {{282.3, 382.8}, {56.7, 20.3}}, label: 'System'
+                                                Image, 0x11209c780, {{351.7, 387.0}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Other, 0x11209c8c0, {{68.0, 355.0}, {293.0, 1.0}}
+                                      Cell, 0x11209ca00, {{16.0, 430.0}, {361.0, 74.0}}
+                                        Other, 0x11209cb40, {{16.0, 430.0}, {361.0, 74.0}}
+                                          Other, 0x11209cc80, {{16.0, 430.0}, {361.0, 74.0}}
+                                        Other, 0x11209cdc0, {{16.0, 430.0}, {361.0, 74.0}}
+                                          Other, 0x11209cf00, {{16.0, 430.0}, {361.0, 74.0}}
+                                            Other, 0x11209d040, {{16.0, 430.0}, {361.0, 74.0}}
+                                              Button, 0x11209d180, {{16.0, 430.0}, {361.0, 74.0}}, identifier: 'settings.row.features', label: 'Features, 3 on'
+                                                StaticText, 0x11209d2c0, {{36.3, 456.8}, {302.7, 20.3}}, label: 'Features, 3 on'
+                                                  Image, 0x11209d400, {{36.3, 459.3}, {15.3, 15.3}}, identifier: 'square.grid.2x2', label: 'Grid View'
+                                                  StaticText, 0x11209d540, {{68.0, 456.8}, {66.3, 20.3}}, label: 'Features'
+                                                  StaticText, 0x11209d680, {{305.0, 456.8}, {34.0, 20.3}}, label: '3 on'
+                                                Image, 0x11209d7c0, {{351.7, 461.0}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Other, 0x11209d900, {{68.0, 429.0}, {293.0, 1.0}}
+                                      Other, 0x11209da40, {{-16.0, 521.7}, {425.0, 132.0}}
+                                      Cell, 0x11209db80, {{16.0, 521.7}, {361.0, 40.3}}
+                                        Other, 0x11209dcc0, {{16.0, 521.7}, {361.0, 40.3}}
+                                        Other, 0x11209de00, {{16.0, 521.7}, {361.0, 40.3}}
+                                          Other, 0x11209df40, {{16.0, 521.7}, {361.0, 40.3}}
+                                            Other, 0x11209e080, {{16.0, 521.7}, {361.0, 40.3}}
+                                              StaticText, 0x11209e1c0, {{16.0, 521.7}, {361.0, 40.3}}, label: 'Modules'
+                                      Cell, 0x11209e300, {{16.0, 562.0}, {361.0, 74.0}}
+                                        Other, 0x11209e440, {{16.0, 562.0}, {361.0, 74.0}}
+                                          Other, 0x11209e580, {{16.0, 562.0}, {361.0, 74.0}}
+                                        Other, 0x11209e6c0, {{16.0, 562.0}, {361.0, 74.0}}
+                                          Other, 0x11209e800, {{16.0, 562.0}, {361.0, 74.0}}
+                                            Other, 0x11209e940, {{16.0, 562.0}, {361.0, 74.0}}
+                                              Button, 0x11209ea80, {{16.0, 562.0}, {361.0, 74.0}}, identifier: 'settings.row.tasks', label: 'Tasks'
+                                                StaticText, 0x11209ebc0, {{35.7, 588.8}, {75.3, 20.3}}, label: 'Tasks'
+                                                  Image, 0x11209ed00, {{35.7, 590.7}, {17.0, 17.0}}, identifier: 'checkmark.circle', label: 'Selected', Selected
+                                                  StaticText, 0x11209ee40, {{68.0, 588.8}, {43.0, 20.3}}, label: 'Tasks'
+                                                Image, 0x11209ef80, {{351.7, 593.0}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Other, 0x11209f0c0, {{-16.0, 653.3}, {425.0, 280.0}}
+                                      Cell, 0x11209f200, {{16.0, 653.3}, {361.0, 40.3}}
+                                        Other, 0x11209f340, {{16.0, 653.3}, {361.0, 40.3}}
+                                        Other, 0x11209f480, {{16.0, 653.3}, {361.0, 40.3}}
+                                          Other, 0x11209f5c0, {{16.0, 653.3}, {361.0, 40.3}}
+                                            Other, 0x11209f700, {{16.0, 653.3}, {361.0, 40.3}}
+                                              StaticText, 0x11209f840, {{16.0, 653.3}, {361.0, 40.3}}, label: 'Content'
+                                      Cell, 0x11209f980, {{16.0, 693.7}, {361.0, 74.0}}
+                                        Other, 0x11209fac0, {{16.0, 693.7}, {361.0, 74.0}}
+                                          Other, 0x11209fc00, {{16.0, 693.7}, {361.0, 74.0}}
+                                        Other, 0x11209fd40, {{16.0, 693.7}, {361.0, 74.0}}
+                                          Other, 0x11209fe80, {{16.0, 693.7}, {361.0, 74.0}}
+                                            Other, 0x1120f4000, {{16.0, 693.7}, {361.0, 74.0}}
+                                              Button, 0x1120f4140, {{16.0, 693.7}, {361.0, 74.0}}, identifier: 'settings.row.templates', label: 'Templates'
+                                                StaticText, 0x1120f4280, {{35.7, 720.3}, {111.0, 21.0}}, label: 'Templates'
+                                                  Image, 0x1120f43c0, {{35.7, 720.3}, {17.0, 21.0}}, identifier: 'doc.on.doc', label: 'Copy'
+                                                  StaticText, 0x1120f4500, {{68.0, 720.5}, {78.7, 20.3}}, label: 'Templates'
+                                                Image, 0x1120f4640, {{351.7, 724.7}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Cell, 0x1120f4780, {{16.0, 767.7}, {361.0, 74.0}}
+                                        Other, 0x1120f48c0, {{16.0, 767.7}, {361.0, 74.0}}
+                                          Other, 0x1120f4a00, {{16.0, 767.7}, {361.0, 74.0}}
+                                        Other, 0x1120f4b40, {{16.0, 767.7}, {361.0, 74.0}}
+                                          Other, 0x1120f4c80, {{16.0, 767.7}, {361.0, 74.0}}
+                                            Other, 0x1120f4dc0, {{16.0, 767.7}, {361.0, 74.0}}
+                                              Button, 0x1120f4f00, {{16.0, 767.7}, {361.0, 74.0}}, identifier: 'settings.row.tags', label: 'Tags'
+                                                StaticText, 0x1120f5040, {{36.7, 794.5}, {67.3, 20.3}}, label: 'Tags'
+                                                  Image, 0x1120f5180, {{36.7, 796.7}, {15.0, 16.3}}, identifier: 'number', label: 'number'
+                                                  StaticText, 0x1120f52c0, {{68.0, 794.5}, {36.0, 20.3}}, label: 'Tags'
+                                                Image, 0x1120f5400, {{351.7, 798.7}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Other, 0x1120f5540, {{68.0, 766.7}, {293.0, 1.0}}
+                                      Cell, 0x1120f5680, {{16.0, 841.7}, {361.0, 74.0}}
+                                        Other, 0x1120f57c0, {{16.0, 841.7}, {361.0, 74.0}}
+                                          Other, 0x1120f5900, {{16.0, 841.7}, {361.0, 74.0}}
+                                        Other, 0x1120f5a40, {{16.0, 841.7}, {361.0, 74.0}}
+                                          Other, 0x1120f5b80, {{16.0, 841.7}, {361.0, 74.0}}
+                                            Other, 0x1120f5cc0, {{16.0, 841.7}, {361.0, 74.0}}
+                                              Button, 0x1120f5e00, {{16.0, 841.7}, {361.0, 74.0}}, identifier: 'settings.row.properties', label: 'Properties'
+                                                StaticText, 0x1120f5f40, {{34.3, 868.5}, {112.3, 20.3}}, label: 'Properties'
+                                                  Image, 0x1120f6080, {{34.3, 871.0}, {19.7, 15.3}}, identifier: 'list.bullet.rectangle', label: 'list.bullet.rectangle'
+                                                  StaticText, 0x1120f61c0, {{68.0, 868.5}, {78.7, 20.3}}, label: 'Properties'
+                                                Image, 0x1120f6300, {{351.7, 872.7}, {7.0, 12.0}}, identifier: 'chevron.forward'
+                                      Other, 0x1120f6440, {{68.0, 840.7}, {293.0, 1.0}}
+                                      Other, 0x1120f6580, {{360.0, 113.0}, {30.0, 656.0}}, label: 'Vertical scroll bar, 2 pages', value: %0
+                                        Other, 0x1120f66c0, {{387.0, 720.0}, {3.0, 46.0}}
+                                      Other, 0x1120f6800, {{360.0, 113.0}, {30.0, 656.0}}, label: 'Vertical scroll bar, 2 pages', value: %0
+                                        Other, 0x1120f6940, {{387.0, 720.0}, {3.0, 46.0}}
+                            Other, 0x1120f6a80, {{0.0, 0.0}, {393.0, 852.0}}
+                              Other, 0x1120f6bc0, {{0.0, 0.0}, {393.0, 852.0}}
+                Other, 0x1120f6d00, {{0.0, 769.0}, {393.0, 83.0}}
+                  Other, 0x1120f6e40, {{0.0, 0.0}, {393.0, 852.0}}
+                    TabBar, 0x1120f6f80, {{0.0, 769.0}, {393.0, 83.0}}, label: 'Tab Bar'
+                      Other, 0x1120f70c0, {{21.0, 769.0}, {351.0, 62.0}}
+                        Other, 0x1120f7200, {{21.0, 769.0}, {74.0, 54.0}}
+                        Other, 0x1120f7340, {{21.0, 769.0}, {351.0, 62.0}}
+                          Button, 0x1120f7480, {{25.0, 773.0}, {74.0, 54.0}}, identifier: 'doc.text', label: 'Notes'
+                            Image, 0x1120f75c0, {{49.0, 778.7}, {25.3, 28.7}}, identifier: 'text.document.fill', label: 'text.document.fill'
+                          Button, 0x1120f7700, {{92.2, 773.0}, {74.0, 54.0}}, identifier: 'house', label: 'Home'
+                            Image, 0x1120f7840, {{112.2, 779.0}, {33.3, 28.0}}, identifier: 'house.fill', label: 'home'
+                          Button, 0x1120f7980, {{159.5, 773.0}, {74.0, 54.0}}, identifier: 'checkmark.circle', label: 'Tasks'
+                            Image, 0x1120f7ac0, {{182.5, 779.3}, {27.3, 27.3}}, identifier: 'checkmark.circle.fill', label: 'selected'
+                          Button, 0x1120f7c00, {{226.8, 773.0}, {74.0, 54.0}}, identifier: 'book', label: 'Journal'
+                            Image, 0x1120f7d40, {{247.8, 780.3}, {32.3, 25.0}}, identifier: 'book.fill', label: 'bookmark'
+                          Button, 0x1120f7e80, {{294.0, 773.0}, {74.0, 54.0}}, identifier: 'ellipsis', label: 'More', Selected
+                            Image, 0x11210c000, {{319.0, 788.7}, {25.0, 8.7}}, identifier: 'ellipsis', label: 'More'
+                        Other, 0x11210c140, {{294.0, 773.0}, {74.0, 54.0}}
+                          Other, 0x11210c280, {{294.0, 773.0}, {74.0, 54.0}}
+                            Other, 0x11210c3c0, {{294.0, 773.0}, {74.0, 54.0}}
+                            Other, 0x11210c500, {{294.0, 773.0}, {74.0, 54.0}}
+                              Other, 0x11210c640, {{294.0, 773.0}, {74.0, 54.0}}
+                                Other, 0x11210c780, {{294.0, 773.0}, {74.0, 54.0}}
+                                  Other, 0x11210c8c0, {{294.0, 773.0}, {74.0, 54.0}}
+                                Other, 0x11210ca00, {{294.0, 773.0}, {74.0, 54.0}}
+                              Other, 0x11210cb40, {{294.0, 773.0}, {74.0, 54.0}}
+                  Other, 0x11210cc80, {{0.0, 769.0}, {393.0, 83.0}}
+                    Other, 0x11210cdc0, {{0.0, 769.0}, {393.0, 83.0}}
+                      Other, 0x11210cf00, {{0.0, 769.0}, {393.0, 83.0}}
+                        Other, 0x11210d040, {{0.0, 769.0}, {393.0, 83.0}}
+                          Other, 0x11210d180, {{0.0, 769.0}, {393.0, 83.0}}
+                            Other, 0x11210d2c0, {{0.0, 769.0}, {393.0, 83.0}}
+                        Other, 0x11210d400, {{0.0, 769.0}, {393.0, 83.0}}
+                          Other, 0x11210d540, {{0.0, 769.0}, {393.0, 83.0}}
+Path to element:
+ →Application, 0x103686f80, pid: 11559, label: 'Memry'
+Query chain:
+ →Find: Target Application 'com.memry.app'
+  Output: {
+    Application, 0x11210d680, pid: 11559, label: 'Memry'
+  }

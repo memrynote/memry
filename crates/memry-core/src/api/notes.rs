@@ -26,7 +26,7 @@ use crate::storage::Db;
 /// queue.
 #[derive(uniffi::Object)]
 pub struct Notes {
-    db: Db,
+    pub(crate) db: Db,
 }
 
 impl Notes {

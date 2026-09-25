@@ -67,29 +67,34 @@ struct VaultListView: View {
         // whole product surface, and Notes is one of its five tabs.
         VaultTasksScope(vault: vault, secureStore: model.secureStore, filler: filler) { tasksStore, tasksFailure in
             VaultInboxScope(vault: vault, secureStore: model.secureStore, filler: filler) {
-                VaultTabsView(notes: {
-                    NotesListView(
-                        vault: vault,
-                        title: VaultLabel(summary).text,
-                        executor: .shared,
-                        filler: filler,
-                        // The writes need this device's identity, and the keychain is
-                        // where its signing key lives. A screen built without one
-                        // browses and offers no write it cannot make.
-                        store: model.secureStore,
-                        switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
-                    )
-                }, tasks: {
-                    TasksTabContent(store: tasksStore, failure: tasksFailure)
-                }, journal: {
-                    JournalTabContent(
-                        vault: vault,
-                        secureStore: model.secureStore,
-                        isSyncing: tasksStore?.isSyncing ?? false,
-                        tasksStore: tasksStore,
-                        filler: filler
-                    )
-                })
+                VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
+                    VaultTabsView(notes: {
+                        NotesListView(
+                            vault: vault,
+                            title: VaultLabel(summary).text,
+                            executor: .shared,
+                            filler: filler,
+                            // The writes need this device's identity, and the keychain is
+                            // where its signing key lives. A screen built without one
+                            // browses and offers no write it cannot make.
+                            store: model.secureStore,
+                            switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
+                        )
+                    }, tasks: {
+                        TasksTabContent(store: tasksStore, failure: tasksFailure)
+                    }, journal: {
+                        JournalTabContent(
+                            vault: vault,
+                            secureStore: model.secureStore,
+                            isSyncing: tasksStore?.isSyncing ?? false,
+                            tasksStore: tasksStore,
+                            filler: filler
+                        )
+                    }, more: {
+                        // Settings spec: More › Settings, built next to the tasks store.
+                        MoreTabView(context: settings, browse: browse)
+                    })
+                }
             }
         }
     }

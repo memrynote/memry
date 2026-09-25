@@ -318,6 +318,16 @@ impl VaultSync {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl VaultSync {
+    /// Outbox rows still waiting to reach the server, claimable or parked in
+    /// backoff: the "N pending" a status line shows (spec 006 ST15). Blocks,
+    /// makes no request.
+    pub fn pending_changes(&self) -> Result<u32, SyncError> {
+        let depth = self
+            .db
+            .call_blocking(|conn| crate::sync::outbox::depth(conn))?;
+        Ok(u32::try_from(depth).unwrap_or(u32::MAX))
+    }
+
     /// Whether this device has already finished a first sync for this vault.
     ///
     /// **Blocks, and makes no request** (spec-defect 90). It is one row of the

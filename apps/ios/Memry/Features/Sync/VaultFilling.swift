@@ -117,12 +117,24 @@ protocol VaultFilling: Sendable {
     /// touched, then the outbox. The only way a phone write reaches another
     /// device. Awaited directly, never queued, like ``firstSync``.
     func syncNow() async throws -> SyncPassSummary
+
+    /// Outbox rows still waiting (spec 006 ST15).
+    func pendingChanges() async throws -> UInt32
+}
+
+extension VaultFilling {
+    func pendingChanges() async throws -> UInt32 { 0 }
 }
 
 /// The production filler: the core's own `VaultSync`.
 struct CoreVaultFiller: VaultFilling {
     func syncNow() async throws -> SyncPassSummary {
         try await sync.syncNow()
+    }
+
+    func pendingChanges() async throws -> UInt32 {
+        let sync = sync
+        return try await executor.run { try sync.pendingChanges() }
     }
 
     private let sync: VaultSync

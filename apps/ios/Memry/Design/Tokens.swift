@@ -1,4 +1,5 @@
 import SwiftUI
+import Synchronization
 import UIKit
 
 // T160. The iOS implementation of `DESIGN.md`.
@@ -209,7 +210,10 @@ enum Tokens {
         /// the accent failing AA on the one surface it is read on most. This
         /// is the same hue darkened until it clears 4.5:1, so a link still
         /// reads as Memry's orange rather than as the platform blue.
-        static let tint = AdaptiveColor(light: 0xB4_43_09, dark: 0xF4_A2_62)
+        ///
+        /// Spec 006 F7: derived from the user's accent (`AccentColor.palette`);
+        /// the default orange keeps `#B44309`.
+        static var tint: AdaptiveColor { AccentRuntime.palette.ink }
     }
 
     // MARK: Boundaries
@@ -251,10 +255,12 @@ enum Tokens {
         ///
         /// **Fill only.** At 2.80:1 on the light canvas it cannot carry text
         /// or a focus boundary, which is why `Line.focus` exists.
-        static let base = AdaptiveColor(light: 0xF9_73_16, dark: 0xF9_73_16)
+        ///
+        /// Spec 006 F7: the user's synced accent, `#f97316` until one is set.
+        static var base: AdaptiveColor { AccentRuntime.palette.fill }
         /// The label on a tint fill. Ink rather than white: white on `#f97316`
         /// is 2.80:1 and fails AA.
-        static let foreground = AdaptiveColor(light: 0x1A_1A_1A, dark: 0x1A_1A_1A)
+        static var foreground: AdaptiveColor { AccentRuntime.palette.foreground }
     }
 
     // MARK: Spacing
@@ -621,4 +627,94 @@ enum Tokens {
         static let comment = AdaptiveColor(light: 0x6A_73_7D, dark: 0x6A_73_7D)
         static let plain = AdaptiveColor(light: 0x24_29_2E, dark: 0xE1_E4_E8)
     }
+}
+
+// Spec 006 F7. The user's accent and the two inks derived from it. Here, not
+// in `Accent.swift`, because every target that draws with `Tokens` (the Share
+// extension included) needs the runtime value; the app sets it.
+
+enum AccentColor {
+    static let defaultHex = "#f97316"
+
+    /// Desktop `appearance-section.tsx` presets, in its order.
+    static let presets: [(name: String, hex: String)] = [
+        ("Indigo", "#6366f1"), ("Amber", "#f59e0b"), ("Emerald", "#10b981"), ("Red", "#ef4444"),
+        ("Violet", "#8b5cf6"), ("Cyan", "#06b6d4"), ("Pink", "#ec4899"), ("Orange", "#f97316")
+    ]
+
+    /// `#rrggbb`, lowercased, or `nil` for anything else.
+    static func normalized(_ value: String) -> String? {
+        var text = value.trimmingCharacters(in: .whitespaces).lowercased()
+        if !text.hasPrefix("#") { text = "#" + text }
+        guard text.count == 7, UInt32(text.dropFirst(), radix: 16) != nil else { return nil }
+        return text
+    }
+
+    static func rgb(_ hex: String) -> UInt32 {
+        normalized(hex).flatMap { UInt32($0.dropFirst(), radix: 16) } ?? 0xF9_73_16
+    }
+
+    static func hex(of color: Color) -> String? {
+        let resolved = color.resolve(in: EnvironmentValues())
+        let clamp = { (value: Float) in UInt32(max(0, min(255, (value * 255).rounded()))) }
+        let rgb = clamp(resolved.red) << 16 | clamp(resolved.green) << 8 | clamp(resolved.blue)
+        return String(format: "#%06x", rgb)
+    }
+
+    /// The tint and its two inks.
+    struct Palette: Sendable, Equatable {
+        let fill: AdaptiveColor
+        let ink: AdaptiveColor
+        let foreground: AdaptiveColor
+    }
+
+    static func palette(for hex: String) -> Palette {
+        let value = rgb(hex)
+        if value == 0xF9_73_16 {
+            return Palette(
+                fill: AdaptiveColor(light: value, dark: value),
+                ink: AdaptiveColor(light: 0xB4_43_09, dark: 0xF4_A2_62),
+                foreground: AdaptiveColor(light: 0x1A_1A_1A, dark: 0x1A_1A_1A)
+            )
+        }
+        let light = shade(value, toward: 0x00_00_00, against: 0xFF_FF_FF)
+        let dark = shade(value, toward: 0xFF_FF_FF, against: 0x12_12_12)
+        let onFill: UInt32 = contrast(value, 0x1A_1A_1A) >= contrast(value, 0xFF_FF_FF) ? 0x1A_1A_1A : 0xFF_FF_FF
+        return Palette(
+            fill: AdaptiveColor(light: value, dark: value),
+            ink: AdaptiveColor(light: light, dark: dark),
+            foreground: AdaptiveColor(light: onFill, dark: onFill)
+        )
+    }
+
+    static func contrast(_ one: UInt32, _ other: UInt32) -> Double {
+        AdaptiveColor.RGB.contrast(AdaptiveColor.RGB(hex: one), AdaptiveColor.RGB(hex: other))
+    }
+
+    /// Mixes `color` toward `target` in 5 % steps until it clears 4.5:1 on
+    /// `surface` (with margin for the other surfaces of that style).
+    static func shade(_ color: UInt32, toward target: UInt32, against surface: UInt32) -> UInt32 {
+        var step = 0.0
+        var mixed = color
+        while contrast(mixed, surface) < 4.8, step < 1 {
+            step += 0.05
+            mixed = mix(color, target, step)
+        }
+        return mixed
+    }
+
+    private static func mix(_ a: UInt32, _ b: UInt32, _ t: Double) -> UInt32 {
+        func channel(_ shift: UInt32) -> UInt32 {
+            let x = Double((a >> shift) & 0xFF), y = Double((b >> shift) & 0xFF)
+            return UInt32((x + (y - x) * t).rounded()) << shift
+        }
+        return channel(16) | channel(8) | channel(0)
+    }
+}
+
+/// The accent the tokens read. Written by `AppearanceState`, read at render.
+enum AccentRuntime {
+    private static let current = Mutex(AccentColor.palette(for: AccentColor.defaultHex))
+    static var palette: AccentColor.Palette { current.withLock { $0 } }
+    static func set(_ palette: AccentColor.Palette) { current.withLock { $0 = palette } }
 }

@@ -270,6 +270,9 @@ final class TasksStore {
     // MARK: Sync
 
     private var syncTask: Task<Void, Never>?
+    /// Told when a pass ends (`true` = it reached the server). Settings keeps
+    /// "last synced" and re-reads synced settings from it (spec 006).
+    var syncFinished: (@MainActor (Bool) -> Void)?
 
     /// One pull-then-push pass, coalesced: writes in quick succession share it.
     func scheduleSync() {
@@ -293,8 +296,10 @@ final class TasksStore {
             Log.sync.info("task sync pass pushed", .count(Int(pass.pushed)))
             if pass.rejected > 0 { Log.sync.error("task sync pass rejected", .count(Int(pass.rejected))) }
             if pass.pending > 0 { Log.sync.info("task sync pass left pending", .count(Int(pass.pending))) }
+            syncFinished?(true)
         } catch {
             report(error)
+            syncFinished?(false)
         }
         await refresh()
     }

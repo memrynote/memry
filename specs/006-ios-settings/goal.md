@@ -103,15 +103,15 @@
 
 ## Simulator and sign-in
 
-Other agent sessions test iOS at the same time, each on its own simulator. This spec uses **memry-B** and nothing else.
+Other agent sessions test iOS at the same time, each on its own simulator. This spec uses **memry-C** and nothing else.
 
-- Simulator: `memry-B` (iPhone 16, iOS 26.5), UDID `87D1093B-2676-4B04-9FCF-3479FF10859D`.
-  - Created once with `xcrun simctl create "memry-B" "iPhone 16"`. If `xcrun simctl list devices | grep memry-B` shows nothing, create it again with the same command and record the new UDID in tasks.md §6.
-- Every build, install, launch and test command uses `-destination 'platform=iOS Simulator,id=87D1093B-2676-4B04-9FCF-3479FF10859D'`. Never target by name and never use `booted`.
-- DerivedData: always `-derivedDataPath /tmp/memry-dd-B`.
-- XcodeBuildMCP: pass `simulatorId: 87D1093B-2676-4B04-9FCF-3479FF10859D`.
+- Simulator: `memry-C` (iPhone 16, iOS 26.5), UDID `0E5C90DE-62A7-42F7-94EB-82ECEBE99A59`.
+  - Created once with `xcrun simctl create "memry-C" "iPhone 16"`. If `xcrun simctl list devices | grep memry-C` shows nothing, create it again with the same command and record the new UDID in tasks.md §6.
+- Every build, install, launch and test command uses `-destination 'platform=iOS Simulator,id=0E5C90DE-62A7-42F7-94EB-82ECEBE99A59'`. Never target by name and never use `booted`.
+- DerivedData: always `-derivedDataPath /tmp/memry-dd-C`.
+- XcodeBuildMCP: pass `simulatorId: 0E5C90DE-62A7-42F7-94EB-82ECEBE99A59`.
 - `simctl` commands (boot, install, launch, screenshot, openurl) name the UDID explicitly.
-- Do not boot, shut down or erase any other simulator. `simctl shutdown all` and `simctl erase all` are forbidden. Never erase memry-B either; if it is wedged, shut down only memry-B and boot it again.
+- Do not boot, shut down or erase any other simulator. `simctl shutdown all` and `simctl erase all` are forbidden. Never erase memry-C either; if it is wedged, shut down only memry-C and boot it again.
 
 Sign in, if the app asks:
 
@@ -144,7 +144,7 @@ Sign in, if the app asks:
 
 ## Verification (per item, before ticking)
 
-- Simulator **memry-B** only (see "Simulator and sign-in"), driven by `AgentDriverUITests`. Screenshot to `apps/ios/SpikeEvidence/settings/STxx-<state>.png` and compare it with `paper_get_screenshot` of the artboard.
+- Simulator **memry-C** only (see "Simulator and sign-in"), driven by `AgentDriverUITests`. Screenshot to `apps/ios/SpikeEvidence/settings/STxx-<state>.png` and compare it with `paper_get_screenshot` of the artboard.
 - **Sync (ST92, required for every F2 synced field):**
   - Change the field on iOS; desktop dev on the same account shows it after a pull.
   - Change it on desktop; iOS shows it without a relaunch.

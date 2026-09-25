@@ -120,6 +120,9 @@ extension VaultBrowseViewModel {
     @discardableResult
     func createNote(in folderPath: String?, title: String = "") async -> String? {
         guard let writer else { return nil }
+        // Spec 006 ST41: a note made with no folder goes to Settings ›
+        // General › New notes go to (device-local; `nil` is the vault root).
+        let folderPath = folderPath ?? LocalSettings.shared.newNotesFolder
         do {
             let id = try await writer.create(title: title, folderPath: folderPath)
             Log.storage.info("created a note", .count(1))

@@ -19,8 +19,9 @@
 //! already owns.
 
 use crate::api::auth::AuthSession;
-use crate::api::errors::ApiError;
+use crate::api::errors::{ApiError, AuthError};
 use crate::protocol::account::{self, KeyMaterial, VaultSummary};
+use crate::protocol::account_admin::{self, AccountDevice, BillingStatus, StorageUsage};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl AuthSession {
@@ -86,5 +87,45 @@ impl AuthSession {
     /// vaults" against an account holding four.
     pub async fn vaults(&self) -> Result<Vec<VaultSummary>, ApiError> {
         account::vaults(&self.http()).await
+    }
+
+    /// `GET /devices` (spec 006 ST13), each row marked `is_current` against
+    /// the access token's `device_id` claim.
+    pub async fn devices(&self) -> Result<Vec<AccountDevice>, AuthError> {
+        let current = self.registered_device_id()?;
+        Ok(account_admin::devices(&self.http(), &current).await?)
+    }
+
+    /// `PATCH /devices/:id`. The name is trimmed; empty is refused, longer
+    /// than 100 characters is cut on a character boundary.
+    pub async fn rename_device(&self, id: String, name: String) -> Result<(), AuthError> {
+        Ok(account_admin::rename_device(&self.http(), &id, &name).await?)
+    }
+
+    /// `DELETE /devices/:id`. This device is refused locally; the server
+    /// refuses it too.
+    pub async fn revoke_device(&self, id: String) -> Result<(), AuthError> {
+        if id == self.registered_device_id()? {
+            return Err(ApiError::InvalidClientIdentity {
+                what: "this device cannot revoke itself".into(),
+            }
+            .into());
+        }
+        Ok(account_admin::revoke_device(&self.http(), &id).await?)
+    }
+
+    /// `GET /sync/storage`.
+    pub async fn storage(&self) -> Result<StorageUsage, ApiError> {
+        account_admin::storage(&self.http()).await
+    }
+
+    /// `GET /auth/billing`, read-only (F8).
+    pub async fn billing(&self) -> Result<BillingStatus, ApiError> {
+        account_admin::billing(&self.http()).await
+    }
+
+    /// `DELETE /sync/vaults/:id`: removes the vault from the account.
+    pub async fn delete_vault(&self, vault_id: String) -> Result<(), ApiError> {
+        account_admin::delete_vault(&self.http(), &vault_id).await
     }
 }

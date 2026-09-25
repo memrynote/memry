@@ -661,6 +661,11 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 public protocol AuthSessionProtocol: AnyObject, Sendable {
     
     /**
+     * `GET /auth/billing`, read-only (F8).
+     */
+    func billing() async throws  -> BillingStatus
+    
+    /**
      * `POST /auth/setup`: publish this account's `{ kdfSalt, keyVerifier }`.
      *
      * The caller derives both from a phrase it generated and has already shown
@@ -674,6 +679,17 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      * account's, and the user has to be told before they write it down.
      */
     func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String) async throws 
+    
+    /**
+     * `DELETE /sync/vaults/:id`: removes the vault from the account.
+     */
+    func deleteVault(vaultId: String) async throws 
+    
+    /**
+     * `GET /devices` (spec 006 ST13), each row marked `is_current` against
+     * the access token's `device_id` claim.
+     */
+    func devices() async throws  -> [AccountDevice]
     
     /**
      * `GET /auth/key-verifier`, chapter 02 §2.1.1: `{ kdfSalt, keyVerifier }`.
@@ -707,6 +723,23 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      * one.
      */
     func keyMaterialIfConfigured() async throws  -> KeyMaterial?
+    
+    /**
+     * `PATCH /devices/:id`. The name is trimmed; empty is refused, longer
+     * than 100 characters is cut on a character boundary.
+     */
+    func renameDevice(id: String, name: String) async throws 
+    
+    /**
+     * `DELETE /devices/:id`. This device is refused locally; the server
+     * refuses it too.
+     */
+    func revokeDevice(id: String) async throws 
+    
+    /**
+     * `GET /sync/storage`.
+     */
+    func storage() async throws  -> StorageUsage
     
     /**
      * `GET /sync/vaults`, chapter 05 §5.1. FR-021's "choose one and route to
@@ -858,6 +891,11 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      */
     func restore() throws  -> AuthState
     
+    /**
+     * The approver half of linking over this session.
+     */
+    func deviceApprover()  -> DeviceApprover
+    
 }
 /**
  * The session. One per account on the device.
@@ -936,6 +974,25 @@ public convenience init(transport: Transport, secureStore: SecureStore, baseUrl:
 
     
     /**
+     * `GET /auth/billing`, read-only (F8).
+     */
+open func billing()async throws  -> BillingStatus  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_billing(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBillingStatus_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
      * `POST /auth/setup`: publish this account's `{ kdfSalt, keyVerifier }`.
      *
      * The caller derives both from a phrase it generated and has already shown
@@ -961,6 +1018,45 @@ open func completeAccountSetup(kdfSaltBase64: String, keyVerifier: String)async 
             freeFunc: ffi_memry_core_rust_future_free_void,
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * `DELETE /sync/vaults/:id`: removes the vault from the account.
+     */
+open func deleteVault(vaultId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_delete_vault(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(vaultId)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * `GET /devices` (spec 006 ST13), each row marked `is_current` against
+     * the access token's `device_id` claim.
+     */
+open func devices()async throws  -> [AccountDevice]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_devices(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeAccountDevice.lift,
+            errorHandler: FfiConverterTypeAuthError_lift
         )
 }
     
@@ -1021,6 +1117,65 @@ open func keyMaterialIfConfigured()async throws  -> KeyMaterial?  {
             completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterOptionTypeKeyMaterial.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * `PATCH /devices/:id`. The name is trimmed; empty is refused, longer
+     * than 100 characters is cut on a character boundary.
+     */
+open func renameDevice(id: String, name: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_rename_device(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(id),FfiConverterString.lower(name)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+    /**
+     * `DELETE /devices/:id`. This device is refused locally; the server
+     * refuses it too.
+     */
+open func revokeDevice(id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_revoke_device(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeAuthError_lift
+        )
+}
+    
+    /**
+     * `GET /sync/storage`.
+     */
+open func storage()async throws  -> StorageUsage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_storage(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeStorageUsage_lift,
             errorHandler: FfiConverterTypeApiError_lift
         )
 }
@@ -1332,6 +1487,18 @@ open func restore()throws  -> AuthState  {
     return try  FfiConverterTypeAuthState_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_authsession_restore(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The approver half of linking over this session.
+     */
+open func deviceApprover() -> DeviceApprover  {
+    return try!  FfiConverterTypeDeviceApprover_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_authsession_device_approver(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -2082,6 +2249,204 @@ public func FfiConverterTypeCodeCapture_lift(_ handle: UInt64) throws -> CodeCap
 #endif
 public func FfiConverterTypeCodeCapture_lower(_ value: CodeCapture) -> UInt64 {
     return FfiConverterTypeCodeCapture.lower(value)
+}
+
+
+
+
+
+
+public protocol DeviceApproverProtocol: AnyObject, Sendable {
+    
+    /**
+     * Verifies the scanning device, seals the master key and the account's
+     * vault list, and posts `POST /auth/linking/approve`. The invite is
+     * cleared either way.
+     */
+    func approve() async throws 
+    
+    /**
+     * Drops the pending invite and its ephemeral secret. Blocking, no I/O.
+     */
+    func cancel() 
+    
+    /**
+     * `POST /auth/linking/initiate`. Replaces any pending invite.
+     */
+    func initiate() async throws  -> LinkingInvite
+    
+    /**
+     * One `GET /auth/linking/session/:id`.
+     */
+    func status() async throws  -> ApproverStatus
+    
+}
+open class DeviceApprover: DeviceApproverProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_deviceapprover(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_deviceapprover(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Verifies the scanning device, seals the master key and the account's
+     * vault list, and posts `POST /auth/linking/approve`. The invite is
+     * cleared either way.
+     */
+open func approve()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_deviceapprover_approve(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeLinkingError_lift
+        )
+}
+    
+    /**
+     * Drops the pending invite and its ephemeral secret. Blocking, no I/O.
+     */
+open func cancel()  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_deviceapprover_cancel(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `POST /auth/linking/initiate`. Replaces any pending invite.
+     */
+open func initiate()async throws  -> LinkingInvite  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_deviceapprover_initiate(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeLinkingInvite_lift,
+            errorHandler: FfiConverterTypeLinkingError_lift
+        )
+}
+    
+    /**
+     * One `GET /auth/linking/session/:id`.
+     */
+open func status()async throws  -> ApproverStatus  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_deviceapprover_status(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeApproverStatus_lift,
+            errorHandler: FfiConverterTypeLinkingError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDeviceApprover: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = DeviceApprover
+
+    public static func lift(_ handle: UInt64) throws -> DeviceApprover {
+        return DeviceApprover(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: DeviceApprover) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DeviceApprover {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: DeviceApprover, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceApprover_lift(_ handle: UInt64) throws -> DeviceApprover {
+    return try FfiConverterTypeDeviceApprover.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceApprover_lower(_ value: DeviceApprover) -> UInt64 {
+    return FfiConverterTypeDeviceApprover.lower(value)
 }
 
 
@@ -4825,6 +5190,12 @@ public func FfiConverterTypeLifecycleObserver_lower(_ value: LifecycleObserver) 
 public protocol NotesProtocol: AnyObject, Sendable {
     
     /**
+     * Every live note and journal entry at or above the warning size,
+     * largest first.
+     */
+    func largeNotes() throws  -> [LargeNote]
+    
+    /**
      * What one body block's `url` points at (Q4).
      *
      * A block carries a **vault-relative path**, not an attachment id, so
@@ -5053,6 +5424,19 @@ open class Notes: NotesProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * Every live note and journal entry at or above the warning size,
+     * largest first.
+     */
+open func largeNotes()throws  -> [LargeNote]  {
+    return try  FfiConverterSequenceTypeLargeNote.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_large_notes(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
     
     /**
      * What one body block's `url` points at (Q4).
@@ -7781,6 +8165,312 @@ public func FfiConverterTypeSecureStore_lower(_ value: SecureStore) -> UInt64 {
 
 
 /**
+ * The synced settings over one vault.
+ */
+public protocol SettingsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Clears one leaf to an explicit `null` (§13.4).
+     */
+    func clear(path: String) throws 
+    
+    /**
+     * One dotted path as JSON text; `None` when absent, `"null"` when cleared.
+     */
+    func get(path: String) throws  -> String?
+    
+    func journalTemplates() throws  -> JournalTemplateSettings
+    
+    /**
+     * Drops one leaf so a receiver keeps its own value (§13.4). Ticks the
+     * path's clock like any write.
+     */
+    func remove(path: String) throws 
+    
+    func reviewReminder() throws  -> ReviewReminderSettings
+    
+    /**
+     * The settings row's `updated_at`, or 0 when there is none. Moves on every
+     * local write and every applied inbound merge.
+     */
+    func revision() throws  -> Int64
+    
+    /**
+     * Writes one leaf. `json` is any JSON value, `null` included.
+     */
+    func set(path: String, json: String) throws 
+    
+    /**
+     * `None` clears to `null`, as desktop's `writeJournalSettings` does.
+     */
+    func setDefaultTemplate(templateId: String?) throws  -> JournalTemplateSettings
+    
+    /**
+     * Writes both fields (each only if it changed). Refuses a time that is
+     * not 24h `HH:MM`.
+     */
+    func setReviewReminder(enabled: Bool, time: String) throws  -> ReviewReminderSettings
+    
+    /**
+     * One day, its own clock (`journal.weekdayTemplates.<day>`). `day` must be
+     * 0–6 (`isWeekdayKey`); `None` writes the `null` desktop keeps for a
+     * cleared day.
+     */
+    func setWeekdayTemplate(day: UInt8, templateId: String?) throws  -> JournalTemplateSettings
+    
+    /**
+     * Every synced setting as one JSON object, including groups this build
+     * does not model.
+     */
+    func snapshot() throws  -> String
+    
+}
+/**
+ * The synced settings over one vault.
+ */
+open class Settings: SettingsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_settings(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_settings(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Clears one leaf to an explicit `null` (§13.4).
+     */
+open func clear(path: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_clear(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * One dotted path as JSON text; `None` when absent, `"null"` when cleared.
+     */
+open func get(path: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_get(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),uniffiCallStatus
+    )
+})
+}
+    
+open func journalTemplates()throws  -> JournalTemplateSettings  {
+    return try  FfiConverterTypeJournalTemplateSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_journal_templates(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Drops one leaf so a receiver keeps its own value (§13.4). Ticks the
+     * path's clock like any write.
+     */
+open func remove(path: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_remove(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),uniffiCallStatus
+    )
+}
+}
+    
+open func reviewReminder()throws  -> ReviewReminderSettings  {
+    return try  FfiConverterTypeReviewReminderSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_review_reminder(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The settings row's `updated_at`, or 0 when there is none. Moves on every
+     * local write and every applied inbound merge.
+     */
+open func revision()throws  -> Int64  {
+    return try  FfiConverterInt64.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_revision(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Writes one leaf. `json` is any JSON value, `null` included.
+     */
+open func set(path: String, json: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_set(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterString.lower(json),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `None` clears to `null`, as desktop's `writeJournalSettings` does.
+     */
+open func setDefaultTemplate(templateId: String?)throws  -> JournalTemplateSettings  {
+    return try  FfiConverterTypeJournalTemplateSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_set_default_template(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionString.lower(templateId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Writes both fields (each only if it changed). Refuses a time that is
+     * not 24h `HH:MM`.
+     */
+open func setReviewReminder(enabled: Bool, time: String)throws  -> ReviewReminderSettings  {
+    return try  FfiConverterTypeReviewReminderSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_set_review_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterBool.lower(enabled),
+        FfiConverterString.lower(time),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * One day, its own clock (`journal.weekdayTemplates.<day>`). `day` must be
+     * 0–6 (`isWeekdayKey`); `None` writes the `null` desktop keeps for a
+     * cleared day.
+     */
+open func setWeekdayTemplate(day: UInt8, templateId: String?)throws  -> JournalTemplateSettings  {
+    return try  FfiConverterTypeJournalTemplateSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_set_weekday_template(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt8.lower(day),
+        FfiConverterOptionString.lower(templateId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every synced setting as one JSON object, including groups this build
+     * does not model.
+     */
+open func snapshot()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_snapshot(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSettings: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Settings
+
+    public static func lift(_ handle: UInt64) throws -> Settings {
+        return Settings(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Settings) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Settings {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Settings, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSettings_lift(_ handle: UInt64) throws -> Settings {
+    return try FfiConverterTypeSettings.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSettings_lower(_ value: Settings) -> UInt64 {
+    return FfiConverterTypeSettings.lower(value)
+}
+
+
+
+
+
+
+/**
  * A socket the core can write to and close. Held by the core for the socket's
  * lifetime; dropping it closes the socket.
  */
@@ -8555,6 +9245,51 @@ public func FfiConverterTypeSyncProgressListener_lower(_ value: SyncProgressList
  */
 public protocol TasksProtocol: AnyObject, Sendable {
     
+    func addPropertyOption(name: String, value: String, color: String, category: String?) throws 
+    
+    /**
+     * A new, empty template named `name`. Returns its id.
+     */
+    func createTemplate(name: String) throws  -> String
+    
+    func deletePropertyDefinition(name: String) throws 
+    
+    func deleteTag(tag: String) throws  -> UInt32
+    
+    func deleteTemplate(id: String) throws 
+    
+    /**
+     * Returns the new template's id.
+     */
+    func duplicateTemplate(id: String, name: String) throws  -> String
+    
+    func mergeTag(source: String, target: String) throws  -> UInt32
+    
+    func propertyDefinitions() throws  -> [PropertyDefinitionItem]
+    
+    func removePropertyOption(name: String, value: String) throws 
+    
+    func renamePropertyOption(name: String, oldValue: String, newValue: String) throws 
+    
+    /**
+     * Returns the number of items rewritten.
+     */
+    func renameTag(oldName: String, newName: String) throws  -> UInt32
+    
+    func reorderPropertyOptions(name: String, values: [String]) throws 
+    
+    func setPropertyOptionColor(name: String, value: String, color: String) throws 
+    
+    func setTagColor(tag: String, color: String) throws 
+    
+    func setTagIcon(tag: String, icon: String?) throws 
+    
+    func tagList() throws  -> [TagItem]
+    
+    func templateList() throws  -> [TemplateItem]
+    
+    func updateTemplate(id: String, draft: TemplateDraft) throws 
+    
     /**
      * Creates a project and returns its id.
      */
@@ -8866,6 +9601,197 @@ open class Tasks: TasksProtocol, @unchecked Sendable {
 
     
 
+    
+open func addPropertyOption(name: String, value: String, color: String, category: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_add_property_option(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(value),
+        FfiConverterString.lower(color),
+        FfiConverterOptionString.lower(category),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A new, empty template named `name`. Returns its id.
+     */
+open func createTemplate(name: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_create_template(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),uniffiCallStatus
+    )
+})
+}
+    
+open func deletePropertyDefinition(name: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_delete_property_definition(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),uniffiCallStatus
+    )
+}
+}
+    
+open func deleteTag(tag: String)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_delete_tag(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(tag),uniffiCallStatus
+    )
+})
+}
+    
+open func deleteTemplate(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_delete_template(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Returns the new template's id.
+     */
+open func duplicateTemplate(id: String, name: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_duplicate_template(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(name),uniffiCallStatus
+    )
+})
+}
+    
+open func mergeTag(source: String, target: String)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_merge_tag(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(source),
+        FfiConverterString.lower(target),uniffiCallStatus
+    )
+})
+}
+    
+open func propertyDefinitions()throws  -> [PropertyDefinitionItem]  {
+    return try  FfiConverterSequenceTypePropertyDefinitionItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_property_definitions(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+open func removePropertyOption(name: String, value: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_remove_property_option(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(value),uniffiCallStatus
+    )
+}
+}
+    
+open func renamePropertyOption(name: String, oldValue: String, newValue: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_rename_property_option(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(oldValue),
+        FfiConverterString.lower(newValue),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Returns the number of items rewritten.
+     */
+open func renameTag(oldName: String, newName: String)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_rename_tag(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(oldName),
+        FfiConverterString.lower(newName),uniffiCallStatus
+    )
+})
+}
+    
+open func reorderPropertyOptions(name: String, values: [String])throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_reorder_property_options(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),
+        FfiConverterSequenceString.lower(values),uniffiCallStatus
+    )
+}
+}
+    
+open func setPropertyOptionColor(name: String, value: String, color: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_property_option_color(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(value),
+        FfiConverterString.lower(color),uniffiCallStatus
+    )
+}
+}
+    
+open func setTagColor(tag: String, color: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_tag_color(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(tag),
+        FfiConverterString.lower(color),uniffiCallStatus
+    )
+}
+}
+    
+open func setTagIcon(tag: String, icon: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_tag_icon(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(tag),
+        FfiConverterOptionString.lower(icon),uniffiCallStatus
+    )
+}
+}
+    
+open func tagList()throws  -> [TagItem]  {
+    return try  FfiConverterSequenceTypeTagItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_tag_list(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+open func templateList()throws  -> [TemplateItem]  {
+    return try  FfiConverterSequenceTypeTemplateItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_template_list(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+open func updateTemplate(id: String, draft: TemplateDraft)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_update_template(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterTypeTemplateDraft_lower(draft),uniffiCallStatus
+    )
+}
+}
     
     /**
      * Creates a project and returns its id.
@@ -10138,6 +11064,12 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func search() throws  -> Search
     
     /**
+     * The synced settings item over this vault (spec 006 ST10). Needs the
+     * keychain for the device identity its writes tick.
+     */
+    func settings(store: SecureStore) throws  -> Settings
+    
+    /**
      * The read-only sync that **fills** this vault's database (T236,
      * spec-defect 136).
      *
@@ -10340,6 +11272,20 @@ open func search()throws  -> Search  {
 }
     
     /**
+     * The synced settings item over this vault (spec 006 ST10). Needs the
+     * keychain for the device identity its writes tick.
+     */
+open func settings(store: SecureStore)throws  -> Settings  {
+    return try  FfiConverterTypeSettings_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_settings(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * The read-only sync that **fills** this vault's database (T236,
      * spec-defect 136).
      *
@@ -10515,6 +11461,13 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * asking.
      */
     func isFirstSyncComplete() throws  -> Bool
+    
+    /**
+     * Outbox rows still waiting to reach the server, claimable or parked in
+     * backoff: the "N pending" a status line shows (spec 006 ST15). Blocks,
+     * makes no request.
+     */
+    func pendingChanges() throws  -> UInt32
     
     /**
      * Detaches an attachment from a note and releases its bytes (N215, N212).
@@ -10758,6 +11711,20 @@ open func isFirstSyncComplete()throws  -> Bool  {
 }
     
     /**
+     * Outbox rows still waiting to reach the server, claimable or parked in
+     * backoff: the "N pending" a status line shows (spec 006 ST15). Blocks,
+     * makes no request.
+     */
+open func pendingChanges()throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeSyncError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultsync_pending_changes(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Detaches an attachment from a note and releases its bytes (N215, N212).
      *
      * **Dereferencing is not optional here.** §14.8: "a client that later
@@ -10893,6 +11860,92 @@ public func FfiConverterTypeVaultSync_lower(_ value: VaultSync) -> UInt64 {
 }
 
 
+
+
+public struct AccountDevice: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var platform: String
+    public var appVersion: String?
+    /**
+     * Epoch seconds, as the server stores it.
+     */
+    public var lastSyncAt: Int64?
+    public var createdAt: Int64?
+    /**
+     * The device this session is signed in as.
+     */
+    public var isCurrent: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, platform: String, appVersion: String?, 
+        /**
+         * Epoch seconds, as the server stores it.
+         */lastSyncAt: Int64?, createdAt: Int64?, 
+        /**
+         * The device this session is signed in as.
+         */isCurrent: Bool) {
+        self.id = id
+        self.name = name
+        self.platform = platform
+        self.appVersion = appVersion
+        self.lastSyncAt = lastSyncAt
+        self.createdAt = createdAt
+        self.isCurrent = isCurrent
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AccountDevice: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAccountDevice: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AccountDevice {
+        return
+            try AccountDevice(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                platform: FfiConverterString.read(from: &buf), 
+                appVersion: FfiConverterOptionString.read(from: &buf), 
+                lastSyncAt: FfiConverterOptionInt64.read(from: &buf), 
+                createdAt: FfiConverterOptionInt64.read(from: &buf), 
+                isCurrent: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AccountDevice, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.appVersion, into: &buf)
+        FfiConverterOptionInt64.write(value.lastSyncAt, into: &buf)
+        FfiConverterOptionInt64.write(value.createdAt, into: &buf)
+        FfiConverterBool.write(value.isCurrent, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccountDevice_lift(_ buf: RustBuffer) throws -> AccountDevice {
+    return try FfiConverterTypeAccountDevice.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccountDevice_lower(_ value: AccountDevice) -> RustBuffer {
+    return FfiConverterTypeAccountDevice.lower(value)
+}
 
 
 /**
@@ -11518,6 +12571,98 @@ public func FfiConverterTypeBacklinkRow_lift(_ buf: RustBuffer) throws -> Backli
 #endif
 public func FfiConverterTypeBacklinkRow_lower(_ value: BacklinkRow) -> RustBuffer {
     return FfiConverterTypeBacklinkRow.lower(value)
+}
+
+
+public struct BillingStatus: Equatable, Hashable {
+    /**
+     * The account's email, as `GET /auth/billing` reports it.
+     */
+    public var email: String?
+    public var plan: String
+    public var status: String
+    public var cadence: String?
+    public var storageLimit: Int64
+    public var storageUsed: Int64
+    public var maxFileSize: Int64
+    public var maxVaults: Int64
+    public var versionHistoryDays: Int64
+    public var expiresAt: Int64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The account's email, as `GET /auth/billing` reports it.
+         */email: String?, plan: String, status: String, cadence: String?, storageLimit: Int64, storageUsed: Int64, maxFileSize: Int64, maxVaults: Int64, versionHistoryDays: Int64, expiresAt: Int64?) {
+        self.email = email
+        self.plan = plan
+        self.status = status
+        self.cadence = cadence
+        self.storageLimit = storageLimit
+        self.storageUsed = storageUsed
+        self.maxFileSize = maxFileSize
+        self.maxVaults = maxVaults
+        self.versionHistoryDays = versionHistoryDays
+        self.expiresAt = expiresAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BillingStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBillingStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BillingStatus {
+        return
+            try BillingStatus(
+                email: FfiConverterOptionString.read(from: &buf), 
+                plan: FfiConverterString.read(from: &buf), 
+                status: FfiConverterString.read(from: &buf), 
+                cadence: FfiConverterOptionString.read(from: &buf), 
+                storageLimit: FfiConverterInt64.read(from: &buf), 
+                storageUsed: FfiConverterInt64.read(from: &buf), 
+                maxFileSize: FfiConverterInt64.read(from: &buf), 
+                maxVaults: FfiConverterInt64.read(from: &buf), 
+                versionHistoryDays: FfiConverterInt64.read(from: &buf), 
+                expiresAt: FfiConverterOptionInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BillingStatus, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.email, into: &buf)
+        FfiConverterString.write(value.plan, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.cadence, into: &buf)
+        FfiConverterInt64.write(value.storageLimit, into: &buf)
+        FfiConverterInt64.write(value.storageUsed, into: &buf)
+        FfiConverterInt64.write(value.maxFileSize, into: &buf)
+        FfiConverterInt64.write(value.maxVaults, into: &buf)
+        FfiConverterInt64.write(value.versionHistoryDays, into: &buf)
+        FfiConverterOptionInt64.write(value.expiresAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBillingStatus_lift(_ buf: RustBuffer) throws -> BillingStatus {
+    return try FfiConverterTypeBillingStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBillingStatus_lower(_ value: BillingStatus) -> RustBuffer {
+    return FfiConverterTypeBillingStatus.lower(value)
 }
 
 
@@ -14374,6 +15519,71 @@ public func FfiConverterTypeJournalStreakRecord_lower(_ value: JournalStreakReco
 
 
 /**
+ * `journal.defaultTemplate` and the seven `journal.weekdayTemplates` days.
+ */
+public struct JournalTemplateSettings: Equatable, Hashable {
+    public var defaultTemplate: String?
+    /**
+     * Exactly seven entries, index = JS `getDay()` (0 = Sunday). `None` is
+     * "use the default", whether cleared or never set.
+     */
+    public var weekdayTemplates: [String?]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(defaultTemplate: String?, 
+        /**
+         * Exactly seven entries, index = JS `getDay()` (0 = Sunday). `None` is
+         * "use the default", whether cleared or never set.
+         */weekdayTemplates: [String?]) {
+        self.defaultTemplate = defaultTemplate
+        self.weekdayTemplates = weekdayTemplates
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalTemplateSettings: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalTemplateSettings: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalTemplateSettings {
+        return
+            try JournalTemplateSettings(
+                defaultTemplate: FfiConverterOptionString.read(from: &buf), 
+                weekdayTemplates: FfiConverterSequenceOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalTemplateSettings, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.defaultTemplate, into: &buf)
+        FfiConverterSequenceOptionString.write(value.weekdayTemplates, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalTemplateSettings_lift(_ buf: RustBuffer) throws -> JournalTemplateSettings {
+    return try FfiConverterTypeJournalTemplateSettings.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalTemplateSettings_lower(_ value: JournalTemplateSettings) -> RustBuffer {
+    return FfiConverterTypeJournalTemplateSettings.lower(value)
+}
+
+
+/**
  * The strings a shell formats for seeding a day from a template (D4).
  */
 public struct JournalTemplateStrings: Equatable, Hashable {
@@ -14579,6 +15789,84 @@ public func FfiConverterTypeKeyMaterial_lower(_ value: KeyMaterial) -> RustBuffe
 }
 
 
+public struct LargeNote: Equatable, Hashable {
+    public var id: String
+    /**
+     * `note` or `journal`.
+     */
+    public var itemType: String
+    public var title: String
+    public var bytes: Int64
+    /**
+     * Over the limit: this note does not sync.
+     */
+    public var overLimit: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * `note` or `journal`.
+         */itemType: String, title: String, bytes: Int64, 
+        /**
+         * Over the limit: this note does not sync.
+         */overLimit: Bool) {
+        self.id = id
+        self.itemType = itemType
+        self.title = title
+        self.bytes = bytes
+        self.overLimit = overLimit
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension LargeNote: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLargeNote: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LargeNote {
+        return
+            try LargeNote(
+                id: FfiConverterString.read(from: &buf), 
+                itemType: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                bytes: FfiConverterInt64.read(from: &buf), 
+                overLimit: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LargeNote, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.itemType, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterInt64.write(value.bytes, into: &buf)
+        FfiConverterBool.write(value.overLimit, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLargeNote_lift(_ buf: RustBuffer) throws -> LargeNote {
+    return try FfiConverterTypeLargeNote.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLargeNote_lower(_ value: LargeNote) -> RustBuffer {
+    return FfiConverterTypeLargeNote.lower(value)
+}
+
+
 /**
  * One linked id on a task and what it resolved to.
  */
@@ -14744,6 +16032,81 @@ public func FfiConverterTypeLinkedTask_lift(_ buf: RustBuffer) throws -> LinkedT
 #endif
 public func FfiConverterTypeLinkedTask_lower(_ value: LinkedTask) -> RustBuffer {
     return FfiConverterTypeLinkedTask.lower(value)
+}
+
+
+/**
+ * What the approver's sheet shows.
+ */
+public struct LinkingInvite: Equatable, Hashable {
+    public var sessionId: String
+    /**
+     * The QR payload, desktop's `JSON.stringify({sessionId, ephemeralPublicKey,
+     * linkingSecret, expiresAt})`. Also what a new device can paste.
+     */
+    public var qrPayload: String
+    /**
+     * Epoch seconds.
+     */
+    public var expiresAt: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sessionId: String, 
+        /**
+         * The QR payload, desktop's `JSON.stringify({sessionId, ephemeralPublicKey,
+         * linkingSecret, expiresAt})`. Also what a new device can paste.
+         */qrPayload: String, 
+        /**
+         * Epoch seconds.
+         */expiresAt: Int64) {
+        self.sessionId = sessionId
+        self.qrPayload = qrPayload
+        self.expiresAt = expiresAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension LinkingInvite: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLinkingInvite: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LinkingInvite {
+        return
+            try LinkingInvite(
+                sessionId: FfiConverterString.read(from: &buf), 
+                qrPayload: FfiConverterString.read(from: &buf), 
+                expiresAt: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LinkingInvite, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sessionId, into: &buf)
+        FfiConverterString.write(value.qrPayload, into: &buf)
+        FfiConverterInt64.write(value.expiresAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkingInvite_lift(_ buf: RustBuffer) throws -> LinkingInvite {
+    return try FfiConverterTypeLinkingInvite.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLinkingInvite_lower(_ value: LinkingInvite) -> RustBuffer {
+    return FfiConverterTypeLinkingInvite.lower(value)
 }
 
 
@@ -15970,6 +17333,126 @@ public func FfiConverterTypeProjectStats_lower(_ value: ProjectStats) -> RustBuf
 }
 
 
+public struct PropertyDefinitionItem: Equatable, Hashable {
+    public var name: String
+    public var typeName: String
+    public var options: [PropertyOptionItem]
+    public var usedIn: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, typeName: String, options: [PropertyOptionItem], usedIn: Int64) {
+        self.name = name
+        self.typeName = typeName
+        self.options = options
+        self.usedIn = usedIn
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PropertyDefinitionItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePropertyDefinitionItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PropertyDefinitionItem {
+        return
+            try PropertyDefinitionItem(
+                name: FfiConverterString.read(from: &buf), 
+                typeName: FfiConverterString.read(from: &buf), 
+                options: FfiConverterSequenceTypePropertyOptionItem.read(from: &buf), 
+                usedIn: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PropertyDefinitionItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.typeName, into: &buf)
+        FfiConverterSequenceTypePropertyOptionItem.write(value.options, into: &buf)
+        FfiConverterInt64.write(value.usedIn, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePropertyDefinitionItem_lift(_ buf: RustBuffer) throws -> PropertyDefinitionItem {
+    return try FfiConverterTypePropertyDefinitionItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePropertyDefinitionItem_lower(_ value: PropertyDefinitionItem) -> RustBuffer {
+    return FfiConverterTypePropertyDefinitionItem.lower(value)
+}
+
+
+public struct PropertyOptionItem: Equatable, Hashable {
+    public var value: String
+    public var color: String?
+    public var category: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(value: String, color: String?, category: String?) {
+        self.value = value
+        self.color = color
+        self.category = category
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PropertyOptionItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePropertyOptionItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PropertyOptionItem {
+        return
+            try PropertyOptionItem(
+                value: FfiConverterString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                category: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PropertyOptionItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.value, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.category, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePropertyOptionItem_lift(_ buf: RustBuffer) throws -> PropertyOptionItem {
+    return try FfiConverterTypePropertyOptionItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePropertyOptionItem_lower(_ value: PropertyOptionItem) -> RustBuffer {
+    return FfiConverterTypePropertyOptionItem.lower(value)
+}
+
+
 /**
  * What `POST /auth/oauth/:provider/native` answered, minus the parts the core
  * keeps.
@@ -16847,6 +18330,69 @@ public func FfiConverterTypeReviewComment_lower(_ value: ReviewComment) -> RustB
 
 
 /**
+ * `inbox.reviewReminderEnabled` and `inbox.reviewReminderTime`.
+ */
+public struct ReviewReminderSettings: Equatable, Hashable {
+    public var enabled: Bool
+    /**
+     * 24h `HH:MM`.
+     */
+    public var time: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(enabled: Bool, 
+        /**
+         * 24h `HH:MM`.
+         */time: String) {
+        self.enabled = enabled
+        self.time = time
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReviewReminderSettings: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReviewReminderSettings: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReviewReminderSettings {
+        return
+            try ReviewReminderSettings(
+                enabled: FfiConverterBool.read(from: &buf), 
+                time: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReviewReminderSettings, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.enabled, into: &buf)
+        FfiConverterString.write(value.time, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviewReminderSettings_lift(_ buf: RustBuffer) throws -> ReviewReminderSettings {
+    return try FfiConverterTypeReviewReminderSettings.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviewReminderSettings_lower(_ value: ReviewReminderSettings) -> RustBuffer {
+    return FfiConverterTypeReviewReminderSettings.lower(value)
+}
+
+
+/**
  * One saved filter.
  */
 public struct SavedFilterItem: Equatable, Hashable {
@@ -17236,6 +18782,76 @@ public func FfiConverterTypeStatusItem_lift(_ buf: RustBuffer) throws -> StatusI
 #endif
 public func FfiConverterTypeStatusItem_lower(_ value: StatusItem) -> RustBuffer {
     return FfiConverterTypeStatusItem.lower(value)
+}
+
+
+public struct StorageUsage: Equatable, Hashable {
+    public var used: Int64
+    public var limit: Int64
+    public var notes: Int64
+    public var attachments: Int64
+    public var crdt: Int64
+    public var other: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(used: Int64, limit: Int64, notes: Int64, attachments: Int64, crdt: Int64, other: Int64) {
+        self.used = used
+        self.limit = limit
+        self.notes = notes
+        self.attachments = attachments
+        self.crdt = crdt
+        self.other = other
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension StorageUsage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStorageUsage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StorageUsage {
+        return
+            try StorageUsage(
+                used: FfiConverterInt64.read(from: &buf), 
+                limit: FfiConverterInt64.read(from: &buf), 
+                notes: FfiConverterInt64.read(from: &buf), 
+                attachments: FfiConverterInt64.read(from: &buf), 
+                crdt: FfiConverterInt64.read(from: &buf), 
+                other: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StorageUsage, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.used, into: &buf)
+        FfiConverterInt64.write(value.limit, into: &buf)
+        FfiConverterInt64.write(value.notes, into: &buf)
+        FfiConverterInt64.write(value.attachments, into: &buf)
+        FfiConverterInt64.write(value.crdt, into: &buf)
+        FfiConverterInt64.write(value.other, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStorageUsage_lift(_ buf: RustBuffer) throws -> StorageUsage {
+    return try FfiConverterTypeStorageUsage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStorageUsage_lower(_ value: StorageUsage) -> RustBuffer {
+    return FfiConverterTypeStorageUsage.lower(value)
 }
 
 
@@ -17701,6 +19317,76 @@ public func FfiConverterTypeTableRow_lift(_ buf: RustBuffer) throws -> TableRow 
 #endif
 public func FfiConverterTypeTableRow_lower(_ value: TableRow) -> RustBuffer {
     return FfiConverterTypeTableRow.lower(value)
+}
+
+
+public struct TagItem: Equatable, Hashable {
+    public var name: String
+    public var color: String?
+    public var icon: String?
+    public var notes: Int64
+    public var journals: Int64
+    public var tasks: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, color: String?, icon: String?, notes: Int64, journals: Int64, tasks: Int64) {
+        self.name = name
+        self.color = color
+        self.icon = icon
+        self.notes = notes
+        self.journals = journals
+        self.tasks = tasks
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TagItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTagItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TagItem {
+        return
+            try TagItem(
+                name: FfiConverterString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf), 
+                notes: FfiConverterInt64.read(from: &buf), 
+                journals: FfiConverterInt64.read(from: &buf), 
+                tasks: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TagItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+        FfiConverterInt64.write(value.notes, into: &buf)
+        FfiConverterInt64.write(value.journals, into: &buf)
+        FfiConverterInt64.write(value.tasks, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTagItem_lift(_ buf: RustBuffer) throws -> TagItem {
+    return try FfiConverterTypeTagItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTagItem_lower(_ value: TagItem) -> RustBuffer {
+    return FfiConverterTypeTagItem.lower(value)
 }
 
 
@@ -18673,6 +20359,154 @@ public func FfiConverterTypeTaskViewResult_lower(_ value: TaskViewResult) -> Rus
 
 
 /**
+ * The template editor's fields, all written. `icon` / `description` `nil`
+ * clear.
+ */
+public struct TemplateDraft: Equatable, Hashable {
+    public var name: String
+    public var description: String?
+    public var icon: String?
+    public var tags: [String]
+    public var content: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, description: String?, icon: String?, tags: [String], content: String) {
+        self.name = name
+        self.description = description
+        self.icon = icon
+        self.tags = tags
+        self.content = content
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TemplateDraft: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTemplateDraft: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TemplateDraft {
+        return
+            try TemplateDraft(
+                name: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                content: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TemplateDraft, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTemplateDraft_lift(_ buf: RustBuffer) throws -> TemplateDraft {
+    return try FfiConverterTypeTemplateDraft.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTemplateDraft_lower(_ value: TemplateDraft) -> RustBuffer {
+    return FfiConverterTypeTemplateDraft.lower(value)
+}
+
+
+public struct TemplateItem: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var description: String?
+    public var icon: String?
+    public var tags: [String]
+    public var content: String
+    public var isBuiltIn: Bool
+    public var modifiedAt: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, description: String?, icon: String?, tags: [String], content: String, isBuiltIn: Bool, modifiedAt: String?) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.icon = icon
+        self.tags = tags
+        self.content = content
+        self.isBuiltIn = isBuiltIn
+        self.modifiedAt = modifiedAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TemplateItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTemplateItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TemplateItem {
+        return
+            try TemplateItem(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                icon: FfiConverterOptionString.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                content: FfiConverterString.read(from: &buf), 
+                isBuiltIn: FfiConverterBool.read(from: &buf), 
+                modifiedAt: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TemplateItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.icon, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+        FfiConverterBool.write(value.isBuiltIn, into: &buf)
+        FfiConverterOptionString.write(value.modifiedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTemplateItem_lift(_ buf: RustBuffer) throws -> TemplateItem {
+    return try FfiConverterTypeTemplateItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTemplateItem_lower(_ value: TemplateItem) -> RustBuffer {
+    return FfiConverterTypeTemplateItem.lower(value)
+}
+
+
+/**
  * One template a note can be made from (N803).
  */
 public struct TemplateSummary: Equatable, Hashable {
@@ -19240,6 +21074,98 @@ public func FfiConverterTypeAppPhase_lift(_ buf: RustBuffer) throws -> AppPhase 
 #endif
 public func FfiConverterTypeAppPhase_lower(_ value: AppPhase) -> RustBuffer {
     return FfiConverterTypeAppPhase.lower(value)
+}
+
+
+
+
+public enum ApproverStatus: Equatable, Hashable {
+    
+    /**
+     * No device has scanned yet.
+     */
+    case waiting
+    /**
+     * A device scanned; compare `sas_code` with the one it shows, then approve.
+     */
+    case scanned(sasCode: String
+    )
+    /**
+     * Approved or completed.
+     */
+    case done
+    case expired
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ApproverStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeApproverStatus: FfiConverterRustBuffer {
+    typealias SwiftType = ApproverStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ApproverStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .waiting
+        
+        case 2: return .scanned(sasCode: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .done
+        
+        case 4: return .expired
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ApproverStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .waiting:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .scanned(sasCode):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(sasCode, into: &buf)
+            
+        
+        case .done:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .expired:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeApproverStatus_lift(_ buf: RustBuffer) throws -> ApproverStatus {
+    return try FfiConverterTypeApproverStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeApproverStatus_lower(_ value: ApproverStatus) -> RustBuffer {
+    return FfiConverterTypeApproverStatus.lower(value)
 }
 
 
@@ -24178,6 +26104,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAccountDevice: FfiConverterRustBuffer {
+    typealias SwiftType = [AccountDevice]
+
+    public static func write(_ value: [AccountDevice], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAccountDevice.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AccountDevice] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AccountDevice]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAccountDevice.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeActivityItem: FfiConverterRustBuffer {
     typealias SwiftType = [ActivityItem]
 
@@ -24678,6 +26629,31 @@ fileprivate struct FfiConverterSequenceTypeJournalReminder: FfiConverterRustBuff
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeLargeNote: FfiConverterRustBuffer {
+    typealias SwiftType = [LargeNote]
+
+    public static func write(_ value: [LargeNote], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLargeNote.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LargeNote] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LargeNote]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLargeNote.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeLinkedItemRecord: FfiConverterRustBuffer {
     typealias SwiftType = [LinkedItemRecord]
 
@@ -24870,6 +26846,56 @@ fileprivate struct FfiConverterSequenceTypeProjectStats: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeProjectStats.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePropertyDefinitionItem: FfiConverterRustBuffer {
+    typealias SwiftType = [PropertyDefinitionItem]
+
+    public static func write(_ value: [PropertyDefinitionItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePropertyDefinitionItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PropertyDefinitionItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PropertyDefinitionItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePropertyDefinitionItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePropertyOptionItem: FfiConverterRustBuffer {
+    typealias SwiftType = [PropertyOptionItem]
+
+    public static func write(_ value: [PropertyOptionItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePropertyOptionItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PropertyOptionItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PropertyOptionItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePropertyOptionItem.read(from: &buf))
         }
         return seq
     }
@@ -25178,6 +27204,31 @@ fileprivate struct FfiConverterSequenceTypeTableRow: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeTagItem: FfiConverterRustBuffer {
+    typealias SwiftType = [TagItem]
+
+    public static func write(_ value: [TagItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTagItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TagItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TagItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTagItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeTagSummary: FfiConverterRustBuffer {
     typealias SwiftType = [TagSummary]
 
@@ -25270,6 +27321,31 @@ fileprivate struct FfiConverterSequenceTypeTaskPrior: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTaskPrior.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTemplateItem: FfiConverterRustBuffer {
+    typealias SwiftType = [TemplateItem]
+
+    public static func write(_ value: [TemplateItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTemplateItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TemplateItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TemplateItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTemplateItem.read(from: &buf))
         }
         return seq
     }
@@ -26077,13 +28153,31 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_repeat_preview() != 44138) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_authsession_billing() != 41888) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_authsession_complete_account_setup() != 57429) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_delete_vault() != 65530) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_devices() != 48708) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_key_material() != 7564) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_key_material_if_configured() != 23501) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_rename_device() != 42548) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_revoke_device() != 51068) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_storage() != 9449) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_vaults() != 41946) {
@@ -26126,6 +28220,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_restore() != 38013) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_device_approver() != 31031) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {
@@ -26350,6 +28447,21 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_devicelink_scan() != 64888) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_deviceapprover_approve() != 11288) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_deviceapprover_cancel() != 8206) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_deviceapprover_initiate() != 43372) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_deviceapprover_status() != 32607) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_large_notes() != 38325) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_attachment_for_block() != 30405) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -26491,6 +28603,39 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_tasks() != 18334) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_get() != 39797) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_journal_templates() != 16210) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_remove() != 61907) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_review_reminder() != 35387) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_revision() != 49042) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_set() != 11359) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_set_default_template() != 19393) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_set_review_reminder() != 52110) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_set_weekday_template() != 33201) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_snapshot() != 7973) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -26506,6 +28651,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_pending_changes() != 58986) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultsync_detach_attachment() != 19928) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -26513,6 +28661,60 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 13576) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_add_property_option() != 2190) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_create_template() != 29108) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_delete_property_definition() != 35854) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_delete_tag() != 5217) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_delete_template() != 1022) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_duplicate_template() != 61172) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_merge_tag() != 47770) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_property_definitions() != 41671) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_remove_property_option() != 4942) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_rename_property_option() != 5370) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_rename_tag() != 14613) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_reorder_property_options() != 197) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_property_option_color() != 8406) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_tag_color() != 57451) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_tag_icon() != 62723) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_tag_list() != 60374) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_template_list() != 8267) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_update_template() != 31937) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_create_project() != 54330) {
@@ -26744,6 +28946,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_settings() != 58691) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_sync() != 39035) {
