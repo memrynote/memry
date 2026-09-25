@@ -4,10 +4,10 @@
 //! **The socket is never a data path.** Every frame it delivers is a hint that
 //! the client should run its ordinary pull (chapters 05 and 07); nothing is
 //! ever applied from one. That is why [`Hint`] carries ids and nothing else,
-//! why [`HintSink`] is the whole of this module's output, and why a
-//! `changes_available` frame's `cursor` is read and then deliberately thrown
-//! away — §9.11 says in as many words that **a client MUST NOT use the
-//! broadcast's cursor as its own**.
+//! and why [`HintSink`] is the whole of this module's output. A
+//! `changes_available` frame's `cursor` is carried only as a skip filter for
+//! [`crate::sync::engine::SyncEngine::wake`] (#2290): §9.11 says in as many
+//! words that **a client MUST NOT use the broadcast's cursor as its own**.
 //!
 //! Five more rules, each of which is a way to get this wrong:
 //!
@@ -73,10 +73,13 @@ pub const CLOSE_VERSION_INCOMPATIBLE: u16 = 4009;
 /// the two housekeeping ones.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Hint {
-    /// Run a record pull (chapter 05). The broadcast's `cursor` is **not**
-    /// carried: §9.11 forbids using it.
+    /// Run a record pull (chapter 05).
     ChangesAvailable {
         vault_id: Option<String>,
+        /// Compared against the applied cursor to drop a wake this device has
+        /// already applied, and never stored: §9.11 forbids using it as the
+        /// device cursor.
+        cursor: Option<i64>,
     },
     /// Run a body pull for this document (chapter 07).
     CrdtUpdated {
@@ -175,6 +178,7 @@ pub fn parse_frame(payload: &[u8]) -> Option<Hint> {
     Some(match kind {
         "changes_available" => Hint::ChangesAvailable {
             vault_id: text("vaultId"),
+            cursor: payload.and_then(|p| p.get("cursor")).and_then(Json::as_i64),
         },
         "crdt_updated" => match text("noteId") {
             Some(note_id) => Hint::CrdtUpdated {
@@ -539,11 +543,25 @@ mod tests {
     }
 
     #[test]
-    fn a_changes_available_frame_carries_no_cursor_into_the_hint() {
-        // §9.11: a client MUST NOT use the broadcast's cursor as its own, so
-        // the parse does not offer one to be misused.
+    fn a_changes_available_frame_carries_its_cursor_for_the_skip_filter() {
+        // #2290: the cursor rides along only so the engine can drop a wake it
+        // has already applied; §9.11 still forbids storing it.
         let hint = parse_frame(br#"{"type":"changes_available","payload":{"cursor":99}}"#);
-        assert_eq!(hint, Some(Hint::ChangesAvailable { vault_id: None }));
+        assert_eq!(
+            hint,
+            Some(Hint::ChangesAvailable {
+                vault_id: None,
+                cursor: Some(99)
+            })
+        );
+        // §9.11: a broadcast without a cursor is still a wake.
+        assert_eq!(
+            parse_frame(br#"{"type":"changes_available","payload":{"vaultId":"v"}}"#),
+            Some(Hint::ChangesAvailable {
+                vault_id: Some("v".into()),
+                cursor: None
+            })
+        );
     }
 
     #[test]

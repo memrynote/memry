@@ -8,6 +8,7 @@
 //! | Test                                  | Rule                              |
 //! | ------------------------------------- | --------------------------------- |
 //! | one hint, exactly one pull            | chapter 09 §9.11, §C.3            |
+//! | a covered wake is dropped, coalesced  | §9.11, #2290                      |
 //! | the socket carries no data            | chapter 09's opening, §9.11       |
 //! | 4004 and 4009 latch off               | §9.9                              |
 //! | 4003 refreshes before reconnecting    | §9.10.1                           |
@@ -42,6 +43,7 @@ use memry_core::sync::socket::{
     Terminal,
 };
 use memry_core::sync::state::PassTrigger;
+use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::json;
 
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
@@ -292,6 +294,153 @@ async fn one_hint_triggers_exactly_one_pull_and_carries_no_data() {
         "one hint, one pull"
     );
     assert_eq!(transport.http_call_count(), 2, "status poll plus the page");
+}
+
+/// An engine over `transport`, with the pull loop reading `db`.
+fn wake_engine(transport: Arc<FakeTransport>, db: Db) -> Arc<SyncEngine> {
+    let http = Arc::new(HttpClient::new(
+        transport as Arc<dyn Transport>,
+        "https://sync.example",
+        identity(),
+    ));
+    let pull = Arc::new(PullLoop::new(
+        http.clone(),
+        db,
+        Declaration::subscribed(),
+        Arc::new(NeverFails),
+    ));
+    Arc::new(SyncEngine::new(pull, http, Arc::new(AlwaysOnline)))
+}
+
+fn empty_page(next_cursor: i64) -> Result<HttpResponse, TransportError> {
+    response(
+        200,
+        &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": next_cursor})
+            .to_string(),
+    )
+}
+
+fn stored_cursor(db: &Db) -> Option<String> {
+    db.call_blocking(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
+        .expect("read the cursor")
+}
+
+/// #2290: a wake whose cursor this device already applied costs no request,
+/// and a wake past it pulls to the page's `nextCursor`, never to its own.
+#[tokio::test]
+async fn a_wake_at_or_below_the_applied_cursor_runs_no_pass_and_is_never_stored() {
+    let db = scratch_db("wake-filter");
+    db.call_blocking(|conn| store::write_cursor(conn, RECORD_CURSOR_SCOPE, Some("40"), 1))
+        .expect("seed the applied cursor");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"clientPolicy": {"writesEnabled": true}}).to_string(),
+        ),
+        empty_page(45),
+        empty_page(46),
+    ]);
+    let engine = wake_engine(Arc::clone(&transport), db.clone());
+
+    assert!(engine.wake(Some(40)).await.is_none(), "equal is covered");
+    assert!(engine.wake(Some(12)).await.is_none(), "below is covered");
+    assert_eq!(transport.call_count(), 0, "a dropped wake sends nothing");
+
+    let report = engine.wake(Some(99)).await.expect("a wake past the cursor");
+    assert_eq!(report.pull.pages, 1);
+    assert_eq!(
+        stored_cursor(&db).as_deref(),
+        Some("45"),
+        "§9.11: the page's nextCursor is stored, never the wake's 99"
+    );
+
+    // §9.11: a broadcast without a cursor is still a wake.
+    assert!(engine.wake(None).await.is_some());
+    assert_eq!(stored_cursor(&db).as_deref(), Some("46"));
+}
+
+/// #2290: any number of wakes during a running pass queue exactly one
+/// trailing pass, not one pass each.
+#[tokio::test]
+async fn wakes_during_a_running_pass_coalesce_into_one_trailing_pass() {
+    let db = scratch_db("wake-coalesce");
+    // Every response pauses, so the first pass holds the gate while the
+    // wakes arrive. A third pass would run off the script and panic.
+    let transport = FakeTransport::slow(
+        vec![
+            response(
+                200,
+                &json!({"clientPolicy": {"writesEnabled": true}}).to_string(),
+            ),
+            empty_page(50),
+            empty_page(60),
+        ],
+        50,
+    );
+    let engine = wake_engine(Arc::clone(&transport), db.clone());
+
+    let running = tokio::spawn({
+        let engine = Arc::clone(&engine);
+        async move { engine.run_pass(PassTrigger::Timer).await }
+    });
+    tokio::task::yield_now().await;
+
+    let wakes: Vec<_> = (0..10)
+        .map(|_| {
+            let engine = Arc::clone(&engine);
+            tokio::spawn(async move { engine.wake(None).await })
+        })
+        .collect();
+    running.await.expect("the running pass");
+    let mut ran = 0;
+    for wake in wakes {
+        if wake.await.expect("a wake").is_some() {
+            ran += 1;
+        }
+    }
+
+    assert_eq!(ran, 1, "ten wakes during a pass, one trailing pass");
+    assert_eq!(transport.call_count(), 3, "one status poll and two pages");
+    assert_eq!(stored_cursor(&db).as_deref(), Some("60"));
+}
+
+/// A wake cancelled while it waited for the gate must not leave the queued
+/// flag set, or every later wake would be swallowed (#2290).
+#[tokio::test]
+async fn a_cancelled_queued_wake_does_not_swallow_later_wakes() {
+    let db = scratch_db("wake-cancel");
+    let transport = FakeTransport::slow(
+        vec![
+            response(
+                200,
+                &json!({"clientPolicy": {"writesEnabled": true}}).to_string(),
+            ),
+            empty_page(70),
+            empty_page(80),
+        ],
+        50,
+    );
+    let engine = wake_engine(Arc::clone(&transport), db.clone());
+
+    let running = tokio::spawn({
+        let engine = Arc::clone(&engine);
+        async move { engine.run_pass(PassTrigger::Timer).await }
+    });
+    tokio::task::yield_now().await;
+
+    let cancelled =
+        tokio::time::timeout(std::time::Duration::from_millis(5), engine.wake(None)).await;
+    assert!(
+        cancelled.is_err(),
+        "the wake was still queued behind the pass"
+    );
+    running.await.expect("the running pass");
+
+    assert!(
+        engine.wake(None).await.is_some(),
+        "the cancelled wake released its queued slot"
+    );
+    assert_eq!(stored_cursor(&db).as_deref(), Some("80"));
 }
 
 #[tokio::test]

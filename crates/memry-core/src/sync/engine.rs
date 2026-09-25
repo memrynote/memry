@@ -33,6 +33,7 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::api::errors::{ApiError, TransportError};
 use crate::protocol::http::HttpClient;
@@ -89,6 +90,8 @@ pub struct SyncEngine {
     push: Option<Arc<dyn PushWave>>,
     /// The exclusive queue. Held for a whole pass.
     gate: tokio::sync::Mutex<()>,
+    /// True while a [`SyncEngine::wake`] pass waits for the gate (#2290).
+    wake_queued: AtomicBool,
     state: Mutex<SyncState>,
     /// Chapter 11's three independent inputs and the one gate derived from
     /// them ([`super::policy`]). `Unentitled` is entered **reactively on a
@@ -111,6 +114,7 @@ impl SyncEngine {
             reachability,
             push: None,
             gate: tokio::sync::Mutex::new(()),
+            wake_queued: AtomicBool::new(false),
             state: Mutex::new(SyncState::Idle),
             policy,
         }
@@ -154,6 +158,40 @@ impl SyncEngine {
     /// committed.
     pub async fn run_pass(&self, trigger: PassTrigger) -> PassReport {
         let _gate = self.gate.lock().await;
+        self.pass(trigger).await
+    }
+
+    /// A `changes_available` wake (chapter 09 §9.11, #2290). `None` when
+    /// the wake was dropped.
+    ///
+    /// Two drops, and neither loses a change:
+    ///
+    /// - **`cursor` at or below the applied cursor.** A skip filter only: the
+    ///   wake's cursor is never stored (§9.11). Exact because the server
+    ///   assigns cursors in commit order (#2282) and only the pull moves the
+    ///   cursor, after apply (§5.11), so every row at or below it is here.
+    /// - **A wake pass is already queued.** That pass reads the feed after
+    ///   this wake arrived. The flag clears as the queued pass takes the gate,
+    ///   so wakes during a running pass queue exactly one trailing pass.
+    pub async fn wake(&self, cursor: Option<i64>) -> Option<PassReport> {
+        if let Some(cursor) = cursor
+            && self.pull.has_applied_through(cursor).await
+        {
+            return None;
+        }
+        if self.wake_queued.swap(true, Ordering::SeqCst) {
+            return None;
+        }
+        // Cleared when the pass starts, or when this future is dropped while
+        // it waits: a flag left set would swallow every later wake.
+        let queued = QueuedWake(&self.wake_queued);
+        let _gate = self.gate.lock().await;
+        drop(queued);
+        Some(self.pass(PassTrigger::SocketHint).await)
+    }
+
+    /// One pass. The caller holds the gate.
+    async fn pass(&self, trigger: PassTrigger) -> PassReport {
         let mut trail = Trail::new(self.state());
 
         // `Offline`, `Failed` and `Refused` each draw exactly one exit, and it
@@ -322,6 +360,15 @@ impl SyncEngine {
             parked,
             pushed,
         }
+    }
+}
+
+/// Clears [`SyncEngine::wake`]'s queued flag on drop.
+struct QueuedWake<'a>(&'a AtomicBool);
+
+impl Drop for QueuedWake<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
     }
 }
 

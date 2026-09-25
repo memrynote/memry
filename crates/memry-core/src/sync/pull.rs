@@ -204,6 +204,20 @@ impl PullLoop {
         Ok(total)
     }
 
+    /// Whether the stored record cursor is at or past `cursor`. `false` when
+    /// there is no cursor or it will not read: pulling is the safe answer.
+    pub async fn has_applied_through(&self, cursor: i64) -> bool {
+        let stored = self
+            .db
+            .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
+            .await;
+        let applied = stored
+            .ok()
+            .flatten()
+            .and_then(|text| text.parse::<i64>().ok());
+        applied.is_some_and(|applied| cursor <= applied)
+    }
+
     /// Starts the feed over once when the declared types grew.
     ///
     /// The record cursor is one position in one feed, and the server filters
