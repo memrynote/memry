@@ -37,7 +37,9 @@ import { buildCompression } from './vectors/compression'
 import { buildCrdtUpdate } from './vectors/crdt-update'
 import { buildDeviceLinking } from './vectors/device-linking'
 import { buildFieldMerge } from './vectors/field-merge'
+import { buildJournal } from './vectors/journal'
 import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
+import { buildMarkdownSeed } from './vectors/markdown-seed'
 import { buildAttachmentManifest } from './vectors/attachment-manifest'
 import { buildBlockEdit } from './vectors/block-edit'
 import { buildInbox } from './vectors/inbox'
@@ -84,6 +86,8 @@ const CLASSES: readonly VectorClass[] = [
     name: 'task-filtering',
     files: [{ path: 'task-filtering.json', build: buildTaskFiltering }]
   },
+  { name: 'journal', files: [{ path: 'journal.json', build: buildJournal }] },
+  { name: 'markdown-seed', files: [{ path: 'markdown-seed.json', build: buildMarkdownSeed }] },
   { name: 'inbox', files: [{ path: 'inbox.json', build: buildInbox }] },
   {
     name: 'attachment-manifest',

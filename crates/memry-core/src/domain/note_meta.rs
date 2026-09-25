@@ -270,6 +270,64 @@ pub fn resolve_wiki_target(
     Ok(None)
 }
 
+/// What a `[[wiki link]]` resolved to: a note, or a journal day.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct WikiTargetMatch {
+    /// The note id, or the journal record id (also its document id).
+    pub id: String,
+    /// `note` or `journal`.
+    pub kind: String,
+    /// The journal's date, `None` for a note.
+    pub date: Option<String>,
+}
+
+/// [`resolve_wiki_target`], then the journal.
+///
+/// Desktop titles a journal with its date, so `[[2026-04-16]]` names that day
+/// when no note answers first. The `j<YYYY-MM-DD>` id form names the day too,
+/// and like desktop's `dateFromJournalId` it opens the day even when it has no
+/// entry yet: the id is then the minted `j<date>` and nothing is created (D2).
+/// A bare date with no live entry is `None`, a broken link.
+pub fn resolve_wiki_target_kind(
+    conn: &Connection,
+    target: &str,
+) -> Result<Option<WikiTargetMatch>, StorageError> {
+    if let Some(id) = resolve_wiki_target(conn, target)? {
+        return Ok(Some(WikiTargetMatch {
+            id,
+            kind: "note".to_owned(),
+            date: None,
+        }));
+    }
+    let Some((date, id_form)) = journal_date_of(target) else {
+        return Ok(None);
+    };
+    let id = match crate::domain::journal::live_entry(conn, &date)? {
+        Some(id) => id,
+        None if id_form => crate::domain::journal::document_id_for(&date)?,
+        None => return Ok(None),
+    };
+    Ok(Some(WikiTargetMatch {
+        id,
+        kind: "journal".to_owned(),
+        date: Some(date),
+    }))
+}
+
+/// The calendar date a link target names, and whether it was spelled as the
+/// `j<date>` id form. `None` when it names no real day.
+pub fn journal_date_of(target: &str) -> Option<(String, bool)> {
+    let wanted = target.trim();
+    let valid = |date: &str| crate::domain::journal::valid_date(date).is_ok();
+    if valid(wanted) {
+        return Some((wanted.to_owned(), false));
+    }
+    wanted
+        .strip_prefix('j')
+        .filter(|date| valid(date))
+        .map(|date| (date.to_owned(), true))
+}
+
 fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),

@@ -433,9 +433,15 @@ async fn the_tombstone_purge_empties_both_namespaces_and_the_document() {
     let update = edit_the_body(&db, &document, "still typing");
     // A server update too, so the purge has something in each namespace.
     db.call_blocking(|conn| {
-        update_log::append_server_update(conn, NOTE, 1, &update, NOW).map_err(storage_failure)
+        update_log::append_server_update(conn, NOTE, 1, &update, NOW).map_err(storage_failure)?;
+        memry_core::sync::store::write_cursor(
+            conn,
+            &memry_core::sync::body_pull::crdt_cursor_scope(NOTE),
+            Some("1"),
+            NOW,
+        )
     })
-    .expect("a server row");
+    .expect("a server row and its cursor");
 
     let before = observe(&db);
     assert_eq!(
@@ -451,6 +457,14 @@ async fn the_tombstone_purge_empties_both_namespaces_and_the_document() {
     db.call_blocking(|conn| {
         let plan = update_log::load_plan(conn, NOTE).map_err(storage_failure)?;
         assert!(plan.is_empty(), "neither a snapshot nor an update survives");
+        // The body cursor too: a revived document re-pulls from the start.
+        assert_eq!(
+            memry_core::sync::store::read_cursor(
+                conn,
+                &memry_core::sync::body_pull::crdt_cursor_scope(NOTE)
+            )?,
+            None
+        );
         // Both snapshot rows too: a fold point left behind would hand the next
         // local append a sequence that is already used.
         for namespace in [Namespace::Server, Namespace::Local] {

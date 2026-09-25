@@ -422,6 +422,15 @@ pub fn note_exists(conn: &Connection, id: &str) -> bool {
     .is_some()
 }
 
+/// Whether this vault holds a live **note or journal day** by that id: the
+/// liveness check every body read shares. A journal body is a document in the
+/// same feed as a note, keyed by the journal record's id (chapter 07 §7.1), so
+/// the block, table and comment reads serve a day as they serve a note (spec
+/// 005-journal JP027).
+pub fn document_exists(conn: &Connection, id: &str) -> bool {
+    note_exists(conn, id) || crate::domain::journal::journal_exists(conn, id)
+}
+
 /// One note and its body, or `None` when this vault holds no live note by that
 /// id.
 ///
@@ -457,15 +466,7 @@ pub fn note(conn: &Connection, id: &str) -> Result<Option<NoteDetail>, CrdtError
 /// rendered the two the same way would report an unpulled note as an empty
 /// one, which is the failure [`NoteBody::present`] exists against.
 pub fn note_blocks(conn: &Connection, id: &str) -> Result<Option<Vec<Block>>, CrdtError> {
-    let exists: Option<i64> = conn
-        .query_row(
-            "SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL",
-            rusqlite::params![id],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(failed)?;
-    if exists.is_none() {
+    if !document_exists(conn, id) {
         return Ok(None);
     }
     let document = document_of(conn, id)?;
@@ -484,15 +485,7 @@ pub fn note_table(
     id: &str,
     block_id: &str,
 ) -> Result<Option<TableContent>, CrdtError> {
-    let exists: Option<i64> = conn
-        .query_row(
-            "SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL",
-            rusqlite::params![id],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(failed)?;
-    if exists.is_none() {
+    if !document_exists(conn, id) {
         return Ok(None);
     }
     let document = document_of(conn, id)?;
@@ -504,15 +497,7 @@ pub fn note_table(
 /// Read only: §12.5.1 forbids a non-editor client writing the
 /// `criticMarkupMarks` root, and §12.5.0 says what dropping it costs.
 pub fn note_comments(conn: &Connection, id: &str) -> Result<Vec<ReviewComment>, CrdtError> {
-    let exists: Option<i64> = conn
-        .query_row(
-            "SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL",
-            rusqlite::params![id],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(failed)?;
-    if exists.is_none() {
+    if !document_exists(conn, id) {
         // An empty list rather than an error: a note that is not here has no
         // comments, and that is an answer.
         return Ok(Vec::new());

@@ -447,6 +447,56 @@ async fn an_update_this_client_cannot_open_stops_the_document_at_that_update() {
 }
 
 #[tokio::test]
+async fn a_pulled_update_is_stamped_with_this_devices_clock_not_the_servers() {
+    // The search index reindexes a body whose `yjs_updates.created_at` is at
+    // or above its epoch-ms watermark. A server `createdAt` (here seconds,
+    // as the staging server sends) sat below it forever, so a body edited on
+    // another device never re-indexed and its links never became backlinks.
+    let db = scratch_db("apply-stamp");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[12u8; 32]).expect("keypair");
+    let transport = FakeTransport::new(vec![
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [
+                {"sequenceNum": 1, "data": packed_base64(NOTE, &body_update("first"), &secret_key), "createdAt": 1_700_000_000i64, "signerDeviceId": "device-a"}
+            ], "hasMore": false})
+            .to_string(),
+        ),
+    ]);
+    let bodies = BodyPull::new(
+        http(transport),
+        db.clone(),
+        Declaration::subscribed(),
+        RealCrdtCipher::with("device-a", public_key),
+    );
+    let before = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock")
+        .as_millis() as i64;
+
+    let report = bodies.pull_document(NOTE).await.expect("the pull");
+    assert_eq!(report.updates, 1);
+    let stamp: i64 = db
+        .call_blocking(|conn| {
+            conn.query_row(
+                "SELECT created_at FROM yjs_updates WHERE doc_id = ?1",
+                [NOTE],
+                |row| row.get(0),
+            )
+            .map_err(|e| memry_core::api::errors::StorageError::Failed {
+                what: e.to_string(),
+            })
+        })
+        .expect("the stored row");
+    assert!(
+        stamp >= before,
+        "stamped at apply time in epoch ms, got {stamp}"
+    );
+}
+
+#[tokio::test]
 async fn a_baseline_is_taken_when_the_advertised_revision_differs_and_not_otherwise() {
     let db = scratch_db("baseline");
     let (public_key, secret_key) =
@@ -465,8 +515,16 @@ async fn a_baseline_is_taken_when_the_advertised_revision_differs_and_not_otherw
     .expect("seed");
 
     let transport = FakeTransport::new(vec![
-        // §7.8: ahead of the cursor is false here (8 > 5 is true), but the
-        // revision is the one already stored, so no baseline.
+        // The batch probe: §7.8, ahead of the cursor (8 > 5), but the revision
+        // is the one already stored, so no baseline.
+        response(
+            200,
+            &json!({
+                "notes": {NOTE: {"updates": [], "hasMore": false}},
+                "snapshotMeta": {NOTE: {"sequenceNum": 8, "revision": "rev-1"}}
+            })
+            .to_string(),
+        ),
         response(
             200,
             &json!({
@@ -502,12 +560,13 @@ async fn a_document_with_no_snapshot_meta_takes_no_baseline_above_cursor_zero() 
     db.call_blocking(|conn| store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("3"), 1))
         .expect("seed");
 
-    // §7.8's `: false` branch: an old server advertises nothing, and the
-    // reference does not fetch.
-    let transport = FakeTransport::new(vec![response(
-        200,
-        &json!({"updates": [], "hasMore": false}).to_string(),
-    )]);
+    // §7.8's `: false` branch: an old server has no batch route to probe and
+    // advertises nothing, and the reference does not fetch. A failed probe
+    // is not a failed pull.
+    let transport = FakeTransport::new(vec![
+        response(404, &json!({"error": "not found"}).to_string()),
+        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
+    ]);
     let bodies = BodyPull::new(
         http(transport.clone()),
         db.clone(),
@@ -516,7 +575,56 @@ async fn a_document_with_no_snapshot_meta_takes_no_baseline_above_cursor_zero() 
     );
     let report = bodies.pull_document(NOTE).await.expect("the pull");
     assert_eq!(report.baselines, 0);
-    assert_eq!(transport.call_count(), 1);
+    assert_eq!(transport.call_count(), 2);
+}
+
+#[tokio::test]
+async fn a_snapshot_that_pruned_past_the_cursor_is_taken_from_the_probe() {
+    // A peer's snapshot at 24 pruned the log at and below it. This device is
+    // at 1: the single-document route answers nothing and carries no meta,
+    // so only the batch probe can say a baseline is due (spec 005-journal
+    // JP082: a desktop edit never reached the phone).
+    let db = scratch_db("probe-baseline");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[19u8; 32]).expect("keypair");
+    db.call_blocking(|conn| store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("1"), 1))
+        .expect("seed");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({
+                "notes": {NOTE: {"updates": [], "hasMore": false}},
+                "snapshotMeta": {NOTE: {"sequenceNum": 24, "revision": "rev-2"}}
+            })
+            .to_string(),
+        ),
+        response(
+            200,
+            &json!({
+                "snapshot": packed_base64(NOTE, &body_update("from the snapshot"), &secret_key),
+                "sequenceNum": 24,
+                "revision": "rev-2",
+                "signerDeviceId": "device-a"
+            })
+            .to_string(),
+        ),
+        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
+    ]);
+    let bodies = BodyPull::new(
+        http(transport.clone()),
+        db.clone(),
+        Declaration::subscribed(),
+        RealCrdtCipher::with("device-a", public_key),
+    );
+
+    let report = bodies.pull_document(NOTE).await.expect("the pull");
+    assert_eq!(report.baselines, 1);
+    assert_eq!(transport.calls_to("/sync/crdt/updates/batch").len(), 1);
+    let cursor = db
+        .call_blocking(|conn| store::read_cursor(conn, &crdt_cursor_scope(NOTE)))
+        .expect("cursor");
+    assert_eq!(cursor.as_deref(), Some("24"));
+    assert!(text_of(&db, NOTE).contains("from the snapshot"));
 }
 
 #[tokio::test]

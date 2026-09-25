@@ -16,6 +16,10 @@ import { getTemplate, type Template } from '@/services/templates-service'
 import { addDays, formatDateToISO, parseISODate } from '@/lib/journal-utils'
 import { resolveJournalTemplateId } from '@/lib/journal-template-resolution'
 import {
+  applyJournalTemplate as applyTemplateTokens,
+  type AppliedJournalTemplate
+} from '@memry/domain-notes/journal'
+import {
   journalKeys,
   ENTRY_STALE_TIME,
   ENTRY_GC_TIME,
@@ -26,56 +30,27 @@ import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:JournalEntry')
 
-type AppliedJournalTemplate = {
-  content: string
-  tags: string[]
-  properties: Record<string, unknown>
-}
-
-function formatDateToken(date: Date, pattern: string | undefined, locale: string): string {
-  const year = String(date.getFullYear())
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  if (pattern) {
-    return pattern.replace(/YYYY/g, year).replace(/MM/g, month).replace(/DD/g, day)
-  }
-
-  return new Intl.DateTimeFormat(locale, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  }).format(date)
-}
-
+/**
+ * Seed text for a day from its template. The token substitution is
+ * `@memry/domain-notes/journal`'s, shared with the iOS core through vectors;
+ * only the locale formatting (`Intl`) happens here.
+ */
 function applyJournalTemplate(template: Template, date: string): AppliedJournalTemplate {
   const locale = getI18n().language || 'en-US'
   const dateObj = parseISODate(date)
-  const time = new Intl.DateTimeFormat(locale, {
-    hour: 'numeric',
-    minute: '2-digit'
-  }).format(new Date())
-  const dayOfWeek = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(dateObj)
-
-  const content = template.content
-    .replace(/\{\{title\}\}/g, date)
-    .replace(/\{\{date(?::([^}]+))?\}\}/g, (_match, pattern: string | undefined) =>
-      formatDateToken(dateObj, pattern, locale)
-    )
-    .replace(/\{\{time\}\}/g, time)
-    .replace(/\{\{day-of-week\}\}/g, dayOfWeek)
-
-  const properties: Record<string, unknown> = {}
-  for (const property of template.properties) {
-    properties[property.name] = property.value
-  }
-
-  return {
-    content,
-    tags: [...template.tags],
-    properties
-  }
+  return applyTemplateTokens(template, date, {
+    longDate: new Intl.DateTimeFormat(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(dateObj),
+    time: new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(new Date()),
+    dayOfWeek: new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(dateObj)
+  })
 }
 
 export interface UseJournalEntryResult {

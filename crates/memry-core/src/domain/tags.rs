@@ -172,6 +172,31 @@ pub fn set(
     )
 }
 
+/// Keyed payload changes for [`sync_items::apply_local_edit_in`].
+pub type PayloadChanges = Vec<(&'static str, Change)>;
+
+/// The payload changes [`set`] would merge for `tags` on `object`: the deduped
+/// list and the changes (`tags`, plus `pinnedTags` when a pin drops). The
+/// changes are empty when the list is unchanged. Clock, `modifiedAt` and the
+/// transaction are the caller's (the journal metadata writes, D2).
+pub fn set_changes(
+    object: &Object,
+    item_type: &str,
+    item_id: &str,
+    tags: &[String],
+) -> Result<(Vec<String>, PayloadChanges), StorageError> {
+    let current = read_tags(object, "tags", item_type, item_id)?;
+    let next = dedupe(tags.iter().cloned());
+    if next == current {
+        return Ok((current, Vec::new()));
+    }
+    let mut changes = vec![("tags", Change::set(next.clone()))];
+    if let Some(pinned) = unpin(object, &next, item_type, item_id)? {
+        changes.push(("pinnedTags", Change::set(pinned)));
+    }
+    Ok((next, changes))
+}
+
 /// `pinnedTags` minus every entry no longer in `tags`, or `None` when the key
 /// is absent or nothing changed.
 fn unpin(

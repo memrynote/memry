@@ -592,7 +592,7 @@ Each item lists what it must carry. Verification per §0.7.
       `[agent] parent task` reminder rows. - Seed row: `inbox_lnk_0SyBQ1wUWU-R` unfiled with `undoFile`. - Notes: 17 deleted. These are everything under `Agent Test/` (the five
       empty "[agent] Photo" notes, the filed photos, links, desk one/five,
       parent task ×2, link target, swipe row), the root `agent make me a
-    note` and `agent remind me later`, and the root basil note the seed
+  note` and `agent remind me later`, and the root basil note the seed
       filing made. The empty `Agent Test` folder was removed too. - Tasks: 23 deleted. These are the three conversions (`dzAu…`, `MITX…`,
       `pzSi…`) and the `[agent] ui-*` Tasks UI rows created in this spec's
       two UI-plan windows (09:19–09:27 and 11:17–11:28 UTC). - Other: saved filters `GGoOX87…` and `zTFEo…` and the IB15 note

@@ -84,6 +84,17 @@ pub fn for_task(
     task_id: &str,
     active_only: bool,
 ) -> Result<Vec<Reminder>, StorageError> {
+    for_target(conn, TARGET_TASK, task_id, active_only)
+}
+
+/// One target's live reminders, earliest parsed `remindAt` first; the shared
+/// body of [`for_task`] and [`super::journal::for_journal`].
+pub(super) fn for_target(
+    conn: &Connection,
+    target_type: &str,
+    target_id: &str,
+    active_only: bool,
+) -> Result<Vec<Reminder>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
             "SELECT {COLUMNS} FROM reminders \
@@ -92,7 +103,7 @@ pub fn for_task(
         ))
         .map_err(failed)?;
     let rows = statement
-        .query_map(params![TARGET_TASK, task_id], reminder_row)
+        .query_map(params![target_type, target_id], reminder_row)
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
