@@ -236,10 +236,19 @@ its marker is accepted, so re-creating or restoring it reaches the other devices
 Only a client that declares `purged_tombstones` in `X-Memry-Sync-Types` sees a marker on the read
 side; for every other client (older desktops, iOS) it is invisible, as the old hard delete was. The
 desktop declares it. `/sync/changes` then lists the marker's id, except on a request from cursor 0,
-and `/sync/pull` returns the delete in a `purgedTombstones` list next to `items`, unsigned and
-without ciphertext. The desktop applies one only if the request asked for that id, the type carries
-a required clock and the entry has one, and then through the same delete path as a signed tombstone:
-a local row whose clock happens strictly after the tombstone is kept. It never applies one in a pull
+and `/sync/pull` returns the delete in a `purgedTombstones` list next to `items`, without
+ciphertext. The entry carries no record signature, since the shed deleted the payload it covered.
+Instead, a delete pushed by a current client carries a delete attestation: an Ed25519 signature by
+the deleting device over `{purpose, id, type, deletedAt, clock}` (protocol 04 §4.8.4). The server
+verifies it on push, rejecting a bad one per item as `SYNC_INVALID_SIGNATURE`, and keeps it through
+the shed. It serves the attestation with the entry as `signerDeviceId` and `deleteAttestation`.
+The desktop applies an entry only if the request asked for that id, the type carries a required
+clock, the entry has one, and the attestation verifies under the signer's key over the entry's own
+type, id, clock and deletedAt. It then goes through the same delete path as a signed tombstone: a
+local row whose clock happens strictly after the tombstone is kept. An entry with no attestation, an
+unknown signer, or a signature that does not verify is logged and never applied. That covers every
+marker shed before attestations existed. A failure to fetch the signer's key fails the page and the
+cursor holds. It never applies one in a pull
 run that started from cursor 0, over a local row with no clock (a restored vault folder), over a
 re-created or restored item that is still queued or was touched after the delete, or when the clock
 names a device this account does not know. An applied purged tombstone is an ordinary delete inside
@@ -250,6 +259,7 @@ A live row whose payload the server lost comes back in a `blobMissing` list inst
 The desktop applies nothing for it, keeps any local row, and records it in the schema-invalid ledger
 (retried after the one-hour cooldown, never counted server-only). Orphan repair tombstones a child
 only when the server positively says its parent is gone, never because a parent was not returned.
+An unattested purged parent counts as gone, the same as a parent the server omits.
 Nothing on the desktop deletes a local row because the server does not list it, and the manifest
 check re-uploads local rows the server lacks only after a pull that delivered in the same run.
 Tombstones the server hard-deleted before markers existed stay unprotected. Protocol 05 §5.12.3 and
