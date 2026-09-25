@@ -40,6 +40,7 @@ import { buildFieldMerge } from './vectors/field-merge'
 import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
 import { buildAttachmentManifest } from './vectors/attachment-manifest'
 import { buildBlockEdit } from './vectors/block-edit'
+import { buildInbox } from './vectors/inbox'
 import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
@@ -83,6 +84,7 @@ const CLASSES: readonly VectorClass[] = [
     name: 'task-filtering',
     files: [{ path: 'task-filtering.json', build: buildTaskFiltering }]
   },
+  { name: 'inbox', files: [{ path: 'inbox.json', build: buildInbox }] },
   {
     name: 'attachment-manifest',
     files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]

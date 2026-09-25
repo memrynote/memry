@@ -22,7 +22,7 @@ import Testing
 /// so "one crossing per load" is an assertion rather than a comment.
 private final class ScriptedNotes: NotesReading, @unchecked Sendable {
     private let folderAnswer: Result<[FolderSummary], any Error>
-    private let noteAnswer: Result<[NoteSummary], any Error>
+    private let noteAnswer: Mutex<Result<[NoteSummary], any Error>>
     private let calls = Mutex<[String]>([])
 
     init(
@@ -30,10 +30,15 @@ private final class ScriptedNotes: NotesReading, @unchecked Sendable {
         notes: Result<[NoteSummary], any Error> = .success([])
     ) {
         folderAnswer = folders
-        noteAnswer = notes
+        noteAnswer = Mutex(notes)
     }
 
     var callLog: [String] { calls.withLock { $0 } }
+
+    /// What the next `list()` answers: a note written elsewhere since.
+    func answer(notes: Result<[NoteSummary], any Error>) {
+        noteAnswer.withLock { $0 = notes }
+    }
 
     func folders() async throws -> [FolderSummary] {
         calls.withLock { $0.append("folders") }
@@ -42,7 +47,7 @@ private final class ScriptedNotes: NotesReading, @unchecked Sendable {
 
     func list() async throws -> [NoteSummary] {
         calls.withLock { $0.append("list") }
-        return try noteAnswer.get()
+        return try noteAnswer.withLock { $0 }.get()
     }
 
     /// T157 widened `NotesReading`. **This fake records the call and throws**
@@ -125,6 +130,21 @@ struct VaultBrowseTests {
         await model.loadIfNeeded()
         await model.loadIfNeeded()
         #expect(reader.callLog == ["folders", "folders"])
+    }
+
+    @Test("coming back on screen shows a note written elsewhere, and a failed re-read keeps the outline")
+    func aRefreshPicksUpNotesWrittenElsewhere() async {
+        let reader = ScriptedNotes(folders: .success([folder("Agent Test")]), notes: .success([note("a", in: "Agent Test")]))
+        let model = VaultBrowseViewModel(reader: reader)
+        await model.refresh()
+        #expect(reader.callLog.isEmpty, "nothing loaded yet, so nothing to refresh")
+        await model.loadIfNeeded()
+        reader.answer(notes: .success([note("a", in: "Agent Test"), note("filed", in: "Agent Test")]))
+        await model.refresh()
+        #expect(model.outline?.noteCount == 2)
+        reader.answer(notes: .failure(VaultUnreadable()))
+        await model.refresh()
+        #expect(model.outline?.noteCount == 2)
     }
 
     @Test("a folder with notes and no config row appears in the tree, holding them")

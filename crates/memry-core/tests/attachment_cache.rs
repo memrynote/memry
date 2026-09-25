@@ -597,3 +597,39 @@ fn the_cache_reports_every_path_it_believes_is_on_disk() {
     })
     .expect("the sweep");
 }
+
+/// **A picture this device uploaded binds to its block.** The upload writes
+/// the note's `attachmentReferences` and the cached row, but not the row's
+/// `note_refs`; the block still has to resolve, or the phone that just put
+/// the picture in shows "not downloaded yet" over bytes it holds.
+#[test]
+fn an_uploaded_attachment_binds_through_the_note_reference() {
+    let db = vault("uploaded");
+    db.call_blocking(|conn: &mut Connection| {
+        notes::create(
+            conn,
+            &NewNote {
+                id: "note-1",
+                title: "a note",
+                folder_path: None,
+                content: "",
+                tags: &[],
+                properties: None,
+            },
+            DEVICE,
+            NOW,
+        )?;
+        attachments::put_manifest(conn, "att-1", "{}", 10, "photo.jpeg", "image/jpeg")?;
+        attachments::record_download(conn, "att-1", "att-1", NOW)?;
+        notes::add_attachment_reference(conn, "note-1", "att-1", DEVICE, NOW)?;
+
+        match attachments::resolve_for_block(conn, "note-1", "attachments/note-1/photo.jpeg")? {
+            attachments::BlockAttachment::Bound { attachment } => {
+                assert_eq!(attachment.attachment_id, "att-1");
+            }
+            other => panic!("expected a bound attachment, got {other:?}"),
+        }
+        Ok(())
+    })
+    .expect("the upload's rows");
+}

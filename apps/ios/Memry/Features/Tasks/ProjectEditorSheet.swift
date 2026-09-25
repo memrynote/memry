@@ -186,7 +186,7 @@ struct ProjectEditorSheet: View {
             .accessibilityIdentifier("tasks.projectEditor.cancel")
         }
         ToolbarItem(placement: .confirmationAction) {
-            TaskSheetConfirmButton(
+            SheetConfirmButton(
                 label: model.isEditing ? Copy.save : Copy.create,
                 isEnabled: model.isValid && !isSaving && (!model.isEditing || model.hasChanges)
             ) {

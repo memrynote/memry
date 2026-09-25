@@ -62,13 +62,13 @@ final class AgentDriverUITests: XCTestCase {
             app.launch()
             return ["ok": true]
         case "activate":
-            app.activate()
+            target(command).activate()
             return ["ok": true]
         case "terminate":
             app.terminate()
             return ["ok": true]
         case "tree":
-            return ["ok": true, "tree": app.debugDescription]
+            return ["ok": true, "tree": target(command).debugDescription]
         case "screenshot":
             let path = command["path"] as? String ?? directory.appendingPathComponent("shot.png").path
             do {
@@ -96,19 +96,19 @@ final class AgentDriverUITests: XCTestCase {
         case "tapxy":
             let x = command["x"] as? Double ?? 0.5
             let y = command["y"] as? Double ?? 0.5
-            app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
+            target(command).coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
             return ["ok": true]
         case "dragxy":
-            let from = app.coordinate(withNormalizedOffset: CGVector(
+            let from = target(command).coordinate(withNormalizedOffset: CGVector(
                 dx: command["x"] as? Double ?? 0.5, dy: command["y"] as? Double ?? 0.5
             ))
-            let to = app.coordinate(withNormalizedOffset: CGVector(
+            let to = target(command).coordinate(withNormalizedOffset: CGVector(
                 dx: command["toX"] as? Double ?? 0.5, dy: command["toY"] as? Double ?? 0.5
             ))
             from.press(forDuration: command["hold"] as? Double ?? 0.8, thenDragTo: to)
             return ["ok": true]
         case "typetext":
-            app.typeText(command["text"] as? String ?? "")
+            target(command).typeText(command["text"] as? String ?? "")
             return ["ok": true]
         case "key":
             let key = command["key"] as? String ?? ""
@@ -211,13 +211,23 @@ final class AgentDriverUITests: XCTestCase {
         return ["ok": true, "label": label]
     }
 
+    /// `app`: omitted for Memry, `springboard`, or any bundle id (Safari for
+    /// the Share extension, whose sheet is reached through its host app).
+    private func target(_ command: [String: Any]) -> XCUIApplication {
+        switch command["app"] as? String {
+        case nil, "": app
+        case "springboard": springboard
+        case let bundle?: XCUIApplication(bundleIdentifier: bundle)
+        }
+    }
+
     /// Selector: `ident` (accessibility identifier), `label` (exact), `contains` (label substring),
     /// optional `type` (button, cell, staticText, textField, textView, switch,
     /// image, other, any) and `index`.
     private func find(_ command: [String: Any], timeout: Double) -> XCUIElement? {
         // Querying an app that is not running is a test failure that ends the
         // driver; answer "not found" instead.
-        let target = command["app"] as? String == "springboard" ? springboard : app
+        let target = target(command)
         guard target.state != .notRunning else { return nil }
         let type = elementType(command["type"] as? String)
         var query = target.descendants(matching: type)

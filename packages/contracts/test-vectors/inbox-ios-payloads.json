@@ -1,0 +1,235 @@
+{
+  "itemId": "ios-capture-0000000001",
+  "meta": {
+    "class": "inbox-ios-payloads",
+    "consumer": "apps/desktop/src/main/sync/item-handlers/inbox-handler-ios.test.ts",
+    "producer": "crates/memry-core/tests/domain_inbox_write.rs (the iOS core's own writes)",
+    "spec": "006-ios-inbox IB028"
+  },
+  "steps": [
+    {
+      "payload": {
+        "archivedAt": null,
+        "attachmentPath": null,
+        "captureSource": "inline",
+        "clock": {
+          "phone": 1
+        },
+        "content": "[agent] from the phone",
+        "createdAt": "2026-09-24T12:00:00.000Z",
+        "filedAction": null,
+        "filedAt": null,
+        "filedTo": null,
+        "id": "ios-capture-0000000001",
+        "localOnly": false,
+        "metadata": null,
+        "modifiedAt": "2026-09-24T12:00:00.000Z",
+        "processingError": null,
+        "processingStatus": "complete",
+        "snoozeReason": null,
+        "snoozedUntil": null,
+        "sourceTitle": null,
+        "sourceUrl": null,
+        "thumbnailPath": null,
+        "title": "[agent] from the phone",
+        "transcription": null,
+        "transcriptionStatus": null,
+        "type": "note",
+        "viewedAt": null
+      },
+      "step": "capture"
+    },
+    {
+      "payload": {
+        "archivedAt": null,
+        "attachmentPath": null,
+        "captureSource": "inline",
+        "clock": {
+          "phone": 2
+        },
+        "content": "[agent] from the phone",
+        "createdAt": "2026-09-24T12:00:00.000Z",
+        "filedAction": null,
+        "filedAt": null,
+        "filedTo": null,
+        "id": "ios-capture-0000000001",
+        "localOnly": false,
+        "metadata": null,
+        "modifiedAt": "2026-09-24T12:00:00.001Z",
+        "processingError": null,
+        "processingStatus": "complete",
+        "snoozeReason": "later",
+        "snoozedUntil": "2026-09-25T12:00:00.000Z",
+        "sourceTitle": null,
+        "sourceUrl": null,
+        "thumbnailPath": null,
+        "title": "[agent] from the phone",
+        "transcription": null,
+        "transcriptionStatus": null,
+        "type": "note",
+        "viewedAt": null
+      },
+      "step": "snooze"
+    },
+    {
+      "payload": {
+        "archivedAt": null,
+        "attachmentPath": null,
+        "captureSource": "inline",
+        "clock": {
+          "phone": 3
+        },
+        "content": "[agent] from the phone",
+        "createdAt": "2026-09-24T12:00:00.000Z",
+        "filedAction": null,
+        "filedAt": null,
+        "filedTo": null,
+        "id": "ios-capture-0000000001",
+        "localOnly": false,
+        "metadata": null,
+        "modifiedAt": "2026-09-24T12:00:00.002Z",
+        "processingError": null,
+        "processingStatus": "complete",
+        "snoozeReason": null,
+        "snoozedUntil": null,
+        "sourceTitle": null,
+        "sourceUrl": null,
+        "thumbnailPath": null,
+        "title": "[agent] from the phone",
+        "transcription": null,
+        "transcriptionStatus": null,
+        "type": "note",
+        "viewedAt": null
+      },
+      "step": "unsnooze"
+    },
+    {
+      "payload": {
+        "archivedAt": "2026-09-24T12:00:00.003Z",
+        "attachmentPath": null,
+        "captureSource": "inline",
+        "clock": {
+          "phone": 4
+        },
+        "content": "[agent] from the phone",
+        "createdAt": "2026-09-24T12:00:00.000Z",
+        "filedAction": null,
+        "filedAt": null,
+        "filedTo": null,
+        "id": "ios-capture-0000000001",
+        "localOnly": false,
+        "metadata": null,
+        "modifiedAt": "2026-09-24T12:00:00.003Z",
+        "processingError": null,
+        "processingStatus": "complete",
+        "snoozeReason": null,
+        "snoozedUntil": null,
+        "sourceTitle": null,
+        "sourceUrl": null,
+        "thumbnailPath": null,
+        "title": "[agent] from the phone",
+        "transcription": null,
+        "transcriptionStatus": null,
+        "type": "note",
+        "viewedAt": null
+      },
+      "step": "archive"
+    },
+    {
+      "payload": {
+        "archivedAt": null,
+        "attachmentPath": null,
+        "captureSource": "inline",
+        "clock": {
+          "phone": 5
+        },
+        "content": "[agent] from the phone",
+        "createdAt": "2026-09-24T12:00:00.000Z",
+        "filedAction": null,
+        "filedAt": null,
+        "filedTo": null,
+        "id": "ios-capture-0000000001",
+        "localOnly": false,
+        "metadata": null,
+        "modifiedAt": "2026-09-24T12:00:00.004Z",
+        "processingError": null,
+        "processingStatus": "complete",
+        "snoozeReason": null,
+        "snoozedUntil": null,
+        "sourceTitle": null,
+        "sourceUrl": null,
+        "thumbnailPath": null,
+        "title": "[agent] from the phone",
+        "transcription": null,
+        "transcriptionStatus": null,
+        "type": "note",
+        "viewedAt": null
+      },
+      "step": "unarchive"
+    },
+    {
+      "payload": {
+        "archivedAt": null,
+        "attachmentPath": null,
+        "captureSource": "inline",
+        "clock": {
+          "phone": 6
+        },
+        "content": "[agent] from the phone",
+        "createdAt": "2026-09-24T12:00:00.000Z",
+        "filedAction": "folder",
+        "filedAt": "2026-09-24T12:00:00.005Z",
+        "filedTo": "Agent Test/[agent] from the phone.md",
+        "id": "ios-capture-0000000001",
+        "localOnly": false,
+        "metadata": null,
+        "modifiedAt": "2026-09-24T12:00:00.005Z",
+        "processingError": null,
+        "processingStatus": "complete",
+        "snoozeReason": null,
+        "snoozedUntil": null,
+        "sourceTitle": null,
+        "sourceUrl": null,
+        "thumbnailPath": null,
+        "title": "[agent] from the phone",
+        "transcription": null,
+        "transcriptionStatus": null,
+        "type": "note",
+        "viewedAt": null
+      },
+      "step": "file"
+    },
+    {
+      "payload": {
+        "archivedAt": null,
+        "attachmentPath": null,
+        "captureSource": "inline",
+        "clock": {
+          "phone": 7
+        },
+        "content": "[agent] from the phone",
+        "createdAt": "2026-09-24T12:00:00.000Z",
+        "filedAction": null,
+        "filedAt": null,
+        "filedTo": null,
+        "id": "ios-capture-0000000001",
+        "localOnly": false,
+        "metadata": null,
+        "modifiedAt": "2026-09-24T12:00:00.006Z",
+        "processingError": null,
+        "processingStatus": "complete",
+        "snoozeReason": null,
+        "snoozedUntil": null,
+        "sourceTitle": null,
+        "sourceUrl": null,
+        "thumbnailPath": null,
+        "title": "[agent] from the phone",
+        "transcription": null,
+        "transcriptionStatus": null,
+        "type": "note",
+        "viewedAt": null
+      },
+      "step": "unfile"
+    }
+  ]
+}

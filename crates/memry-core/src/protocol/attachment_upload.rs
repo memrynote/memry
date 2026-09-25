@@ -34,7 +34,7 @@
 
 use crate::protocol::attachment_manifest::{AttachmentChunkRef, AttachmentManifest};
 use crate::protocol::attachments::{AttachmentError, hex_sha256};
-use crate::protocol::http::{ApiRequest, HttpClient, RetryPolicy};
+use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
 
 /// This port's chunk size, and **not** a contract constant (§14.9).
 ///
@@ -224,6 +224,7 @@ pub async fn initiate(
     let wire: Wire = client
         .send_json(
             ApiRequest::post("/sync/attachments/upload/initiate")
+                .auth(Auth::Session)
                 .json(&Body {
                     attachment_id,
                     filename,
@@ -262,6 +263,7 @@ pub async fn put_chunk(
                 ),
             )
             .body(chunk.framed.clone())
+            .auth(Auth::Session)
             .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -282,19 +284,51 @@ pub async fn put_chunk_presigned(
         .send(
             ApiRequest::new("PUT", url)
                 .body(chunk.framed.clone())
-                .auth(crate::protocol::http::Auth::None)
+                .auth(Auth::None)
                 .retry(RetryPolicy::never()),
         )
         .await?;
     Ok(())
 }
 
-/// Closes a session.
-pub async fn complete(client: &HttpClient, session_id: &str) -> Result<(), AttachmentError> {
+/// A chunk that went straight to R2, as `complete` reports it (`i`, `h`, `b`).
+///
+/// Such a chunk never passed the Worker, so the session does not know it
+/// arrived; the server head-checks each one against R2 before counting it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct DirectChunk {
+    pub i: u32,
+    pub h: String,
+    pub b: u64,
+}
+
+impl DirectChunk {
+    pub fn of(chunk: &FramedChunk) -> Self {
+        Self {
+            i: chunk.index,
+            h: chunk.reference.encrypted_hash.clone(),
+            b: chunk.framed.len() as u64,
+        }
+    }
+}
+
+/// Closes a session. `direct` names the chunks PUT to presigned urls; the key
+/// is left out when there are none, which is the body an older server knows.
+pub async fn complete(
+    client: &HttpClient,
+    session_id: &str,
+    direct: &[DirectChunk],
+) -> Result<(), AttachmentError> {
+    let body = if direct.is_empty() {
+        serde_json::json!({ "sessionId": session_id })
+    } else {
+        serde_json::json!({ "sessionId": session_id, "directChunks": direct })
+    };
     client
         .send(
             ApiRequest::post(&format!("/sync/attachments/upload/{session_id}/complete"))
-                .json(&serde_json::json!({ "sessionId": session_id }))
+                .auth(Auth::Session)
+                .json(&body)
                 .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -319,6 +353,7 @@ pub async fn status(
     let wire: Wire = client
         .send_json(
             ApiRequest::get(&format!("/sync/attachments/upload/{session_id}"))
+                .auth(Auth::Session)
                 .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -336,6 +371,7 @@ pub async fn cancel(client: &HttpClient, session_id: &str) -> Result<(), Attachm
     client
         .send(
             ApiRequest::new("DELETE", &format!("/sync/attachments/upload/{session_id}"))
+                .auth(Auth::Session)
                 .retry(RetryPolicy::never()),
         )
         .await?;
@@ -363,6 +399,7 @@ pub async fn put_manifest(
                 &format!("/sync/attachments/{attachment_id}/manifest"),
             )
             .json(&body)
+            .auth(Auth::Session)
             .retry(RetryPolicy::polled()),
         )
         .await?;
@@ -387,6 +424,7 @@ pub async fn dereference(
         client
             .send(
                 ApiRequest::post("/sync/attachments/dereference")
+                    .auth(Auth::Session)
                     .json(&serde_json::json!({ "chunkHashes": window }))
                     .retry(RetryPolicy::polled()),
             )

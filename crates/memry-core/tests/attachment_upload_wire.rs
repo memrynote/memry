@@ -17,10 +17,13 @@ mod http_fakes;
 use std::sync::Arc;
 
 use http_fakes::{FakeTransport, response};
+use memry_core::api::errors::ApiError;
 use memry_core::protocol::attachment_upload::{
-    DEREFERENCE_CAP, complete, dereference, frame_chunks, initiate, put_chunk,
+    DEREFERENCE_CAP, DirectChunk, complete, dereference, frame_chunks, initiate, put_chunk,
+    put_chunk_presigned,
 };
-use memry_core::protocol::http::{ClientIdentity, HttpClient};
+use memry_core::protocol::attachments::fetch_chunk_proxied;
+use memry_core::protocol::http::{AUTHORIZATION_HEADER, ClientIdentity, HttpClient, TokenProvider};
 
 const FILE_KEY: [u8; 32] = [7u8; 32];
 
@@ -114,7 +117,7 @@ async fn completing_an_upload_names_its_session() {
         200,
         r#"{"success":true}"#,
     )]));
-    complete(&client(Arc::clone(&transport)), "s1")
+    complete(&client(Arc::clone(&transport)), "s1", &[])
         .await
         .expect("complete");
     assert!(
@@ -184,4 +187,110 @@ async fn releasing_nothing_asks_for_nothing() {
         .await
         .expect("dereference");
     assert_eq!(transport.call_count(), 0);
+}
+
+struct SignedIn;
+
+#[async_trait::async_trait]
+impl TokenProvider for SignedIn {
+    async fn access_token(&self) -> Option<String> {
+        Some("access-1".to_string())
+    }
+
+    async fn refresh(&self, _stale: &str) -> Result<String, ApiError> {
+        Ok("access-1".to_string())
+    }
+}
+
+/// **Every Worker attachment route carries the session**, or the server answers
+/// 401 and, since the request was not a session request, nothing refreshes and
+/// replays it: every upload and every proxied download fails for a signed-in
+/// user. A presigned R2 url is its own authorisation and carries nothing.
+#[tokio::test]
+async fn worker_routes_carry_the_session_and_presigned_urls_do_not() {
+    let plaintext: Vec<u8> = (0..4u8).collect();
+    let chunks = frame_chunks(&plaintext, &FILE_KEY, 4, nonces).expect("frame");
+    let transport = Arc::new(FakeTransport::new(vec![
+        response(200, r#"{"sessionId":"s1","expiresAt":9999}"#),
+        response(200, "{}"),
+        response(200, r#"{"success":true}"#),
+        response(200, "{}"),
+        response(200, "bytes"),
+        response(200, "{}"),
+    ]));
+    let signed_in = client(Arc::clone(&transport)).with_tokens(Arc::new(SignedIn));
+
+    initiate(&signed_in, "att-1", "p.png", 4, &chunks)
+        .await
+        .expect("initiate");
+    put_chunk(&signed_in, "s1", &chunks[0]).await.expect("put");
+    complete(&signed_in, "s1", &[]).await.expect("complete");
+    dereference(&signed_in, &["a".repeat(64)])
+        .await
+        .expect("dereference");
+    fetch_chunk_proxied(&signed_in, &"b".repeat(64))
+        .await
+        .expect("fetch");
+    put_chunk_presigned(&signed_in, "https://r2.example/put", &chunks[0])
+        .await
+        .expect("presigned put");
+
+    let calls = transport.calls();
+    let (presigned, worker) = calls.split_last().expect("six calls");
+    for call in worker {
+        assert_eq!(
+            call.headers.get(AUTHORIZATION_HEADER).map(String::as_str),
+            Some("Bearer access-1"),
+            "{} must carry the session",
+            call.url
+        );
+    }
+    assert!(
+        !presigned.headers.contains_key(AUTHORIZATION_HEADER),
+        "a presigned url carries no token"
+    );
+    assert_eq!(
+        presigned.url, "https://r2.example/put",
+        "a presigned url is sent as given"
+    );
+    assert!(
+        worker[0].url.starts_with("https://sync.example/sync/"),
+        "{}",
+        worker[0].url
+    );
+}
+
+/// **A chunk PUT straight to R2 is reported on `complete`**, or the server,
+/// which never saw it pass, answers "Missing chunks". None direct leaves the
+/// key out: the body an older server already accepts.
+#[tokio::test]
+async fn complete_reports_the_chunks_that_went_straight_to_r2() {
+    let plaintext: Vec<u8> = (0..4u8).collect();
+    let chunks = frame_chunks(&plaintext, &FILE_KEY, 4, nonces).expect("frame");
+    let transport = Arc::new(FakeTransport::new(vec![
+        response(200, "{}"),
+        response(200, "{}"),
+    ]));
+    let http = client(Arc::clone(&transport));
+
+    complete(&http, "s1", &[DirectChunk::of(&chunks[0])])
+        .await
+        .expect("complete");
+    complete(&http, "s2", &[]).await.expect("complete");
+
+    let calls = transport.calls();
+    let direct: serde_json::Value =
+        serde_json::from_slice(calls[0].body.as_deref().unwrap_or_default()).expect("json");
+    assert_eq!(direct["directChunks"][0]["i"], 0);
+    assert_eq!(
+        direct["directChunks"][0]["h"],
+        chunks[0].reference.encrypted_hash.as_str()
+    );
+    assert_eq!(
+        direct["directChunks"][0]["b"],
+        chunks[0].framed.len() as u64
+    );
+    let proxied: serde_json::Value =
+        serde_json::from_slice(calls[1].body.as_deref().unwrap_or_default()).expect("json");
+    assert!(proxied.get("directChunks").is_none(), "{proxied}");
 }

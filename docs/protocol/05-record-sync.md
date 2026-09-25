@@ -58,13 +58,13 @@ resolution (`apps/sync-server/src/lib/sync-types.ts:34-45`):
 | present, **nothing** recognised        | **the empty set**, serving zero rows                              |
 
 **"Recognised" means a member of the twenty-five record types**, being the
-fourteen this feature subscribes to plus the eleven it does not, both enumerated
+fifteen this feature subscribes to plus the ten it does not, both enumerated
 in chapter 13 §13.1. `attachment` is in `SYNC_ITEM_TYPES` but is **not** a record
 type (§13.8) and is therefore not recognised in this header: declaring it is
 indistinguishable from declaring a typo. Anything outside those twenty-five is
 dropped from the resolved set, silently and individually — an unrecognised entry
 never fails the request and never invalidates the entries beside it. This only
-bites a client that declares something outside the fixed fourteen; a conforming
+bites a client that declares something outside the fixed fifteen; a conforming
 client's header is recognised in full by construction.
 
 The empty-set rule is deliberate: falling back to legacy would hand a
@@ -73,7 +73,7 @@ the feature exists to prevent
 (`apps/sync-server/src/lib/sync-types.ts:21-26`). Entries are trimmed and
 deduplicated because the header is unbounded client input (`:28-32`).
 
-This feature's client declares **fourteen** types (chapter 13 §13.1); the
+This feature's client declares **fifteen** types (chapter 13 §13.1); the
 shipped TypeScript client declares all 25
 (`packages/sync-client/src/pull/http.ts:74`).
 

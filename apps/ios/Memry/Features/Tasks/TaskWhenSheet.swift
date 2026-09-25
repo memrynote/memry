@@ -179,7 +179,7 @@ struct TaskWhenSheet: View {
                         .accessibilityIdentifier("tasks.when.close")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    TaskSheetConfirmButton(label: TasksCopy.dateDone, action: commit)
+                    SheetConfirmButton(label: TasksCopy.dateDone, action: commit)
                         .accessibilityIdentifier("tasks.when.done")
                 }
             }

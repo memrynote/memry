@@ -52,7 +52,7 @@ struct TaskReminderPickerSheet: View {
                 }
                 if custom || isEditing {
                     ToolbarItem(placement: .confirmationAction) {
-                        TaskSheetConfirmButton(label: isEditing ? TasksCopy.reminderSave : TasksCopy.reminderSet) {
+                        SheetConfirmButton(label: isEditing ? TasksCopy.reminderSave : TasksCopy.reminderSet) {
                             onChoose(date, isEditing ? nil : note)
                         }
                         .disabled(date <= now)

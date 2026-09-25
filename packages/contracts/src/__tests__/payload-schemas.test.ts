@@ -19,6 +19,7 @@ import {
   CustomIconSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
+  InboxSyncPayloadSchema,
   JournalSyncPayloadSchema,
   NoteSyncPayloadSchema,
   ProjectSyncPayloadSchema,
@@ -46,7 +47,8 @@ const SCHEMAS: Record<string, ZodType> = {
   task_activity: TaskActivitySyncPayloadSchema,
   reminder: ReminderSyncPayloadSchema,
   settings: SettingsSyncPayloadSchema,
-  filter: FilterSyncPayloadSchema
+  filter: FilterSyncPayloadSchema,
+  inbox: InboxSyncPayloadSchema
 }
 
 interface Case {
@@ -85,11 +87,11 @@ describe('payload-schemas vectors', () => {
   it('carries the recorded case count, four per subscribed type', () => {
     const total = vectors.groups.reduce((n, g) => n + g.cases.length, 0)
     expect(total).toBe(vectors.meta.caseCount)
-    expect(vectors.groups).toHaveLength(14)
+    expect(vectors.groups).toHaveLength(15)
     for (const group of vectors.groups) expect(group.cases).toHaveLength(4)
   })
 
-  it('covers exactly the fourteen subscribed types', () => {
+  it('covers exactly the fifteen subscribed types', () => {
     expect(vectors.groups.map((g) => g.type).sort()).toEqual(
       [...vectors.meta.subscribedTypes].sort()
     )

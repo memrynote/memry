@@ -347,6 +347,15 @@ final class VaultBrowseViewModel {
         await load()
     }
 
+    /// Re-reads a loaded outline when the list comes back on screen, so a note
+    /// made elsewhere (the Inbox files into folders) shows without a relaunch.
+    /// Quiet: no loading phase, and a failed read keeps the outline it had.
+    func refresh() async {
+        guard case .ready = phase else { return }
+        guard let folders = try? await reader.folders(), let notes = try? await reader.list() else { return }
+        phase = folders.isEmpty && notes.isEmpty ? .empty : .ready(.build(folders: folders, notes: notes))
+    }
+
     private func load() async {
         hasLoaded = true
         phase = .loading

@@ -1,0 +1,605 @@
+{
+  "meta": {
+    "spec": "006-ios-inbox",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "inbox",
+    "chapter": "docs/protocol/13-payload-schemas.md §13.7.15",
+    "reference": "apps/desktop/src/main/sync/item-handlers/inbox-handler.ts, apps/desktop/src/main/inbox/{queries,snooze,stats}.ts",
+    "caseCount": 8
+  },
+  "apply": [
+    {
+      "name": "a current desktop row inserts with every schema key",
+      "steps": [
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "link",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": null,
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "localOnly": false
+          }
+        }
+      ],
+      "expected": {
+        "type": "link",
+        "title": "How Linear builds product",
+        "content": "Small teams, short cycles.",
+        "metadata": {
+          "url": "https://example.com/agent/1",
+          "fetchStatus": "complete",
+          "siteName": "Linear"
+        },
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": "2026-04-17T09:00:00.000Z",
+        "snoozeReason": "later",
+        "archivedAt": null,
+        "sourceUrl": "https://example.com/agent/1",
+        "sourceTitle": null,
+        "captureSource": "inline",
+        "createdAt": "2026-04-16T08:53:20.000Z"
+      }
+    },
+    {
+      "name": "an older payload (no captureSource, sourceTitle, local columns) keeps them",
+      "steps": [
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "link",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": null,
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "localOnly": false
+          }
+        },
+        {
+          "payload": {
+            "title": "Renamed",
+            "type": "link",
+            "content": "Small teams, short cycles.",
+            "clock": {
+              "desktop": 2
+            }
+          }
+        }
+      ],
+      "expected": {
+        "type": "link",
+        "title": "Renamed",
+        "content": "Small teams, short cycles.",
+        "metadata": {
+          "url": "https://example.com/agent/1",
+          "fetchStatus": "complete",
+          "siteName": "Linear"
+        },
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": "2026-04-17T09:00:00.000Z",
+        "snoozeReason": "later",
+        "archivedAt": null,
+        "sourceUrl": "https://example.com/agent/1",
+        "sourceTitle": null,
+        "captureSource": "inline",
+        "createdAt": "2026-04-16T08:53:20.000Z"
+      }
+    },
+    {
+      "name": "explicit nulls unsnooze, unarchive and unfile",
+      "steps": [
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "link",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": "2026-04-16T10:00:00.000Z",
+            "filedTo": "Reading/How Linear builds product.md",
+            "filedAction": "folder",
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": null,
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": "2026-04-16T10:00:00.000Z",
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "localOnly": false
+          }
+        },
+        {
+          "payload": {
+            "snoozedUntil": null,
+            "snoozeReason": null,
+            "archivedAt": null,
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "clock": {
+              "desktop": 2
+            }
+          }
+        }
+      ],
+      "expected": {
+        "type": "link",
+        "title": "How Linear builds product",
+        "content": "Small teams, short cycles.",
+        "metadata": {
+          "url": "https://example.com/agent/1",
+          "fetchStatus": "complete",
+          "siteName": "Linear"
+        },
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": null,
+        "snoozeReason": null,
+        "archivedAt": null,
+        "sourceUrl": "https://example.com/agent/1",
+        "sourceTitle": null,
+        "captureSource": "inline",
+        "createdAt": "2026-04-16T08:53:20.000Z"
+      }
+    },
+    {
+      "name": "an explicit null content clears it; the title stays",
+      "steps": [
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "link",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": null,
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "localOnly": false
+          }
+        },
+        {
+          "payload": {
+            "content": null,
+            "clock": {
+              "desktop": 2
+            }
+          }
+        }
+      ],
+      "expected": {
+        "type": "link",
+        "title": "How Linear builds product",
+        "content": null,
+        "metadata": {
+          "url": "https://example.com/agent/1",
+          "fetchStatus": "complete",
+          "siteName": "Linear"
+        },
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": "2026-04-17T09:00:00.000Z",
+        "snoozeReason": "later",
+        "archivedAt": null,
+        "sourceUrl": "https://example.com/agent/1",
+        "sourceTitle": null,
+        "captureSource": "inline",
+        "createdAt": "2026-04-16T08:53:20.000Z"
+      }
+    },
+    {
+      "name": "a stale remote is skipped",
+      "steps": [
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "link",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": null,
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 3
+            },
+            "syncedAt": null,
+            "localOnly": false
+          }
+        },
+        {
+          "payload": {
+            "title": "Old",
+            "clock": {
+              "desktop": 1
+            }
+          }
+        }
+      ],
+      "expected": {
+        "type": "link",
+        "title": "How Linear builds product",
+        "content": "Small teams, short cycles.",
+        "metadata": {
+          "url": "https://example.com/agent/1",
+          "fetchStatus": "complete",
+          "siteName": "Linear"
+        },
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": "2026-04-17T09:00:00.000Z",
+        "snoozeReason": "later",
+        "archivedAt": null,
+        "sourceUrl": "https://example.com/agent/1",
+        "sourceTitle": null,
+        "captureSource": "inline",
+        "createdAt": "2026-04-16T08:53:20.000Z"
+      }
+    },
+    {
+      "name": "a bare first payload takes the insert defaults",
+      "steps": [
+        {
+          "payload": {
+            "clock": {
+              "desktop": 1
+            }
+          }
+        }
+      ],
+      "expected": {
+        "type": "note",
+        "title": "Untitled",
+        "content": null,
+        "metadata": null,
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": null,
+        "snoozeReason": null,
+        "archivedAt": null,
+        "sourceUrl": null,
+        "sourceTitle": null,
+        "captureSource": null,
+        "createdAt": null
+      }
+    },
+    {
+      "name": "a tombstone removes the capture",
+      "steps": [
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "link",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": null,
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "localOnly": false
+          }
+        },
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "link",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": null,
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 2
+            },
+            "syncedAt": null,
+            "localOnly": false
+          },
+          "deleted": true
+        }
+      ],
+      "expected": null
+    }
+  ],
+  "views": {
+    "now": "2026-09-24T12:00:00.000Z",
+    "staleDays": 7,
+    "rows": [
+      {
+        "id": "a-link",
+        "payload": {
+          "type": "link",
+          "title": "Fresh link",
+          "createdAt": "2026-09-24T11:00:00.000Z",
+          "clock": {
+            "d": 1
+          },
+          "sourceUrl": "https://example.com/agent/1",
+          "processingStatus": "pending"
+        }
+      },
+      {
+        "id": "b-note",
+        "payload": {
+          "type": "note",
+          "title": "Aging note",
+          "createdAt": "2026-09-20T12:00:00.000Z",
+          "clock": {
+            "d": 1
+          },
+          "content": "Pick up the cable before Friday, then the dentist."
+        }
+      },
+      {
+        "id": "c-stale",
+        "payload": {
+          "type": "voice",
+          "title": "Stale memo",
+          "createdAt": "2026-09-15T12:00:00.000Z",
+          "clock": {
+            "d": 1
+          }
+        }
+      },
+      {
+        "id": "d-snoozed",
+        "payload": {
+          "type": "image",
+          "title": "Snoozed image",
+          "createdAt": "2026-09-22T12:00:00.000Z",
+          "clock": {
+            "d": 1
+          },
+          "snoozedUntil": "2026-09-25T12:00:00.000Z"
+        }
+      },
+      {
+        "id": "e-archived",
+        "payload": {
+          "type": "pdf",
+          "title": "Archived pdf about ramen",
+          "createdAt": "2026-09-21T12:00:00.000Z",
+          "clock": {
+            "d": 1
+          },
+          "archivedAt": "2026-09-24T11:00:00.000Z"
+        }
+      },
+      {
+        "id": "f-filed",
+        "payload": {
+          "type": "link",
+          "title": "Filed today",
+          "createdAt": "2026-09-22T12:00:00.000Z",
+          "clock": {
+            "d": 1
+          },
+          "filedAt": "2026-09-24T10:00:00.000Z",
+          "filedTo": "Reading/Filed today.md",
+          "filedAction": "folder"
+        }
+      },
+      {
+        "id": "g-filed",
+        "payload": {
+          "type": "note",
+          "title": "Filed yesterday",
+          "createdAt": "2026-09-22T12:00:00.000Z",
+          "clock": {
+            "d": 1
+          },
+          "filedAt": "2026-09-23T12:00:00.000Z",
+          "filedTo": "Work/Plans/Filed yesterday.md",
+          "filedAction": "folder"
+        }
+      },
+      {
+        "id": "h-video",
+        "payload": {
+          "type": "video",
+          "title": "Clip of the demo",
+          "createdAt": "2026-09-24T07:00:00.000Z",
+          "clock": {
+            "d": 1
+          }
+        }
+      }
+    ],
+    "expected": {
+      "listIds": [
+        "a-link",
+        "h-video",
+        "b-note",
+        "c-stale"
+      ],
+      "snoozedIds": [
+        "d-snoozed"
+      ],
+      "typeCounts": {
+        "link": 1,
+        "note": 1,
+        "image": 0,
+        "voice": 1,
+        "video": 1,
+        "clip": 0,
+        "pdf": 0,
+        "social": 0,
+        "reminder": 0
+      },
+      "reviewable": 4,
+      "fetching": 1,
+      "stats": {
+        "totalItems": 4,
+        "staleCount": 1,
+        "snoozedCount": 1,
+        "capturedToday": 1,
+        "processedToday": 1,
+        "capturedThisWeek": 6,
+        "processedThisWeek": 2,
+        "avgTimeToProcess": 2100,
+        "currentStreak": 2,
+        "processRate": 33
+      }
+    }
+  }
+}
