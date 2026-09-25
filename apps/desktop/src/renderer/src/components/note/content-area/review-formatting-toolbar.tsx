@@ -3,7 +3,6 @@ import type { EditorState } from '@tiptap/pm/state'
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import {
   BasicTextStyleButton,
-  BlockTypeSelect,
   ColorStyleButton,
   CreateLinkButton,
   FormattingToolbar,
@@ -18,6 +17,7 @@ import { Link2, MessageCircle } from '@/lib/icons'
 import { getLiveProseMirrorView } from './live-prosemirror-view'
 import type { ReviewSelection } from './types'
 import { ListTypeButtons } from './list-type-buttons'
+import { ToolbarBlockTypeSelect } from './toolbar-block-type-select'
 import { ToolbarMoreMenu } from './toolbar-more-menu'
 import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
 import { useT } from '@memry/i18n/renderer'
@@ -80,7 +80,7 @@ export function ReviewFormattingToolbar({
             callouts, files); the slot collapses via `:empty`, and so does the
             divider after it. */}
         <div className="memry-format-toolbar-block-type">
-          <BlockTypeSelect items={toolbarProps.blockTypeSelectItems} />
+          <ToolbarBlockTypeSelect items={toolbarProps.blockTypeSelectItems} />
         </div>
         <ToolbarDivider />
         <BasicTextStyleButton basicTextStyle="bold" />

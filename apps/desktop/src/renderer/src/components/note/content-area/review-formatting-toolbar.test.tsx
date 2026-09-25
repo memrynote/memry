@@ -72,6 +72,10 @@ vi.mock('@/lib/icons', () => ({
   ListChecks: () => <span data-testid="checklist-icon" />
 }))
 
+vi.mock('./toolbar-block-type-select', () => ({
+  ToolbarBlockTypeSelect: () => <button type="button">block type</button>
+}))
+
 vi.mock('@blocknote/react', () => ({
   FormattingToolbar: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="formatting-toolbar">{children}</div>
@@ -83,7 +87,6 @@ vi.mock('@blocknote/react', () => ({
   }: {
     formattingToolbar: (props: Record<string, unknown>) => React.ReactNode
   }) => <div key={toolbarMocks.remountKey}>{formattingToolbar({})}</div>,
-  BlockTypeSelect: () => <button type="button">block type</button>,
   BasicTextStyleButton: ({ basicTextStyle }: { basicTextStyle: string }) => (
     <button type="button">{basicTextStyle}</button>
   ),
