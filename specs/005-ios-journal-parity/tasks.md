@@ -651,9 +651,10 @@ test:e2e` for the journal specs.
 
 ## Phase 6: wrap-up (serial)
 
-- [ ] JP090 `pnpm docs:impact --base <branch base> --strict`; add
+- [x] JP090 `pnpm docs:impact --base <branch base> --strict`; add
       `apps/docs/src/user-guide/journal/on-iphone.md` (and sidebar entry) and
       update what it reports; `pnpm docs:build`.
+      Evidence: Added apps/docs/src/user-guide/journal/on-iphone.md + sidebar entry (.vitepress/config.ts), cross-link and remote-metadata note in daily-entries.md. After commit a7d5cc267: pnpm docs:impact --base 77d23f213 --strict exit 0 ('docs changed on this branch'); pnpm docs:build ok.
 - [x] JP091 `apps/ios/AGENTS.md` rules that came out of this work;
       `specs/002-native-foundation-ios/compliance.md` for FR-053–FR-055.
       Evidence: apps/ios/AGENTS.md: JournalUITests preconditions, text-view value matching, ⌘. for cancelAction (Tests); body pull on show/sync, reindex for backlinks, address days by date, metadata write gate, in-place setText (Data). specs/002-native-foundation-ios/compliance.md §10 FR-053..FR-055 status with task ids.
@@ -986,7 +987,8 @@ Shared rules live in `@memry/domain-notes/journal` (desktop imports them) and `d
   - `2ee8d09cc` feat(ios): journal store, tab, routes, copy and shared note page
   - `3b0e68bc3` feat(ios): journal day, month, year, reminders, settings and routes
   - `95d61fab4` feat(ios): journal UI tests, cross-device fixes for body pull and edits
-  - the Phase 6 commit (docs, AGENTS.md, compliance, review fixes, this report)
+  - `a7d5cc267` feat(ios): journal docs, review fixes, cleanup and final report
+  - a final commit that ticks JP090 (docs:impact can only check committed history)
 
 **Left open (§7).**
 
