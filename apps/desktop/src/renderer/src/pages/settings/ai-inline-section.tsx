@@ -44,7 +44,7 @@ const PROVIDER_OPTIONS = [
 const MODEL_PRESETS: Record<string, string[]> = {
   ollama: ['qwen2.5:7b', 'llama3.2', 'llama3.1', 'mistral', 'gemma2', 'phi3'],
   openai: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o4-mini'],
-  anthropic: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+  anthropic: ['claude-sonnet-5', 'claude-opus-5', 'claude-haiku-4-5'],
   google: [
     'gemini-3.8-flash',
     'gemini-3.5-flash',

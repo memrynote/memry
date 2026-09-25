@@ -19,7 +19,7 @@ export const SYSTEM_PROMPT_HEADER = [
   '- Do not scan the whole vault unless the user asks for broad analysis. Start with current refs, search results, active tasks, or the named folder/project.',
   '- If a tool errors, surface the error plainly. Retry only when the error gives an obvious correction; otherwise stop or continue with partial results if useful.',
   '- When the user references a folder, use vault_list_folder and vault_read_note to drill in.',
-  "- Stay inside this user's vault by default. Refuse requests to access other users, system files, secrets, or non-allowlisted desktop operations. Use network resources only when Active Permissions enables web search and the runtime exposes a web tool.",
+  "- Stay inside this user's vault by default. Refuse requests to access other users or secrets, and refuse non-allowlisted desktop operations. Touch files outside the vault only when Active Permissions grants computer access. Use network resources only when Active Permissions enables web search and the runtime exposes a web tool.",
   '',
   '# memrynote Objects',
   '- Use notes for durable knowledge.',
@@ -34,9 +34,9 @@ export const SYSTEM_PROMPT_HEADER = [
   '- Journal request → resolve exact dates from Context. For a single day, use vault_get_journal_entry. For a range like "this week", list or read the relevant journal entries.',
   '- Status change → vault_list_statuses first, then vault_update_task.',
   '- Tag change → vault_get_tags first, then use the tag tool for the target type: vault_add_tag/vault_remove_tag for notes, vault_add_inbox_tag/vault_remove_inbox_tag for inbox items.',
-  '- Inbox processing → inspect pending inbox items, then choose vault_archive_inbox_item, vault_snooze_inbox_item, convert to task, convert to note, tag, or leave untouched.',
+  '- Inbox processing → inspect pending inbox items, then for each one choose vault_archive_inbox_item, vault_snooze_inbox_item, vault_add_inbox_tag, create a task or note from it with vault_create_task or vault_create_note, or leave it untouched.',
   '- When creating tasks from a note, journal, inbox item, or meeting summary, link back to the source item when the tool schema supports it.',
-  '- "What am I working on?" → vault_list_tasks (active statuses) and vault_list_inbox_items.',
+  '- "What am I working on?" → vault_list_tasks with status "open" and vault_list_inbox_items.',
   '- Summarize a note without a ref → vault_get_current_note first.',
   '',
   '# Links',
@@ -44,7 +44,6 @@ export const SYSTEM_PROMPT_HEADER = [
   '',
   '# Style',
   '- Be concise.',
-  '- No sycophantic openers.',
   '- Lead with the answer or result.',
   '- Do not quote full note bodies back; summarize or link.',
   '- After successful writes, report only what changed and link affected items.',
@@ -75,6 +74,16 @@ export function assemblePrompt(input: AssembleInput): string {
     lines.push(...renderContext(input.context), '')
   }
 
+  // Prior turns sit above the per-turn permissions and attachments so the
+  // shared prefix survives a permission toggle or a new attachment.
+  if (input.history.length > 0) {
+    lines.push('--- Prior turns ---')
+    for (const message of compactedHistory(input.history)) {
+      lines.push(...renderMessage(message))
+    }
+    lines.push('')
+  }
+
   if (input.permissions) {
     lines.push(...renderPermissions(input.permissions), '')
   }
@@ -85,14 +94,6 @@ export function assemblePrompt(input: AssembleInput): string {
       lines.push(...renderAttachment(attachment))
       lines.push('')
     }
-  }
-
-  if (input.history.length > 0) {
-    lines.push('--- Prior turns ---')
-    for (const message of compactedHistory(input.history)) {
-      lines.push(...renderMessage(message))
-    }
-    lines.push('')
   }
 
   lines.push(`User: ${input.userMessage}`)

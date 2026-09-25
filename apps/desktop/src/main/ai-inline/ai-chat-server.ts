@@ -75,6 +75,10 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
   }
 
   const model = createLanguageModel(settings)
+  // Anthropic maps 'required' to tool_choice {type: "any"}, which newer Claude
+  // models reject with a 400. Under 'auto' the model is steered to the tools by
+  // the BlockNote system prompt instead of being forced.
+  const toolChoice = settings.provider === 'anthropic' ? 'auto' : 'required'
   const startPromise = new Promise<number>((resolve, reject) => {
     const nextServer = http.createServer((req, res) => {
       res.setHeader('Access-Control-Allow-Origin', '*')
@@ -88,7 +92,7 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
       }
 
       if (req.method === 'POST' && req.url === '/api/ai/chat') {
-        handleChatRequest(req, res, model).catch((err) => {
+        handleChatRequest(req, res, model, toolChoice).catch((err) => {
           logger.error('Unhandled chat request error:', err)
           trackMainError('ai_inline', 'inline_chat_request_unhandled', err)
           if (!res.headersSent) {
@@ -188,7 +192,8 @@ export async function stopChatServer(): Promise<void> {
 async function handleChatRequest(
   req: http.IncomingMessage,
   res: http.ServerResponse,
-  model: ReturnType<typeof createLanguageModel>
+  model: ReturnType<typeof createLanguageModel>,
+  toolChoice: 'auto' | 'required'
 ): Promise<void> {
   // Dismissing the inline AI menu just drops the renderer's fetch. Without this
   // the provider request keeps generating into a dead socket until the model
@@ -208,7 +213,7 @@ async function handleChatRequest(
       system: aiDocumentFormats.html.systemPrompt,
       messages: await convertToModelMessages(injectDocumentStateMessages(messages)),
       tools: toolDefinitionsToToolSet(toolDefinitions),
-      toolChoice: 'required',
+      toolChoice,
       abortSignal: abortController.signal
     })
 
