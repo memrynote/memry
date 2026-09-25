@@ -554,13 +554,14 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
     label: 'pull request'
   })
 
-  const items = await pullItems(
+  const { items, purgedTombstones, blobMissing } = await pullItems(
     c.env.DB,
     c.env.STORAGE,
     userId,
     parsed.itemIds,
     vaultId,
-    c.get('syncSubscription')!.recordTypes
+    c.get('syncSubscription')!.recordTypes,
+    c.get('syncSubscription')!.purgedTombstones === true
   )
   logRecordQueryBatch({
     endpoint,
@@ -569,7 +570,13 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
     itemTypes: items.map((item) => item.type)
   })
 
-  return c.json({ items })
+  // The #2302 siblings are sent only when non-empty, so a page without a purged
+  // or lost row stays byte-identical to what every older client reads.
+  return c.json({
+    items,
+    ...(purgedTombstones.length > 0 ? { purgedTombstones } : {}),
+    ...(blobMissing.length > 0 ? { blobMissing } : {})
+  })
 }
 
 const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {

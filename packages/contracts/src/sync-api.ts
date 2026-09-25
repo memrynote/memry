@@ -133,16 +133,20 @@ export const LEGACY_RECORD_SYNC_ITEM_TYPES = [
 export type LegacyRecordSyncItemType = (typeof LEGACY_RECORD_SYNC_ITEM_TYPES)[number]
 
 /**
- * Types a client may declare in `X-Memry-Sync-Types` that never travel as a
- * record envelope (#2295): never pushed through /sync/push, never in the
- * manifest, /sync/pull or bootstrap, and never in `items`/`deleted`. They are
- * served only by GET /sync/changes, only when declared.
+ * Tokens a client may declare in `X-Memry-Sync-Types` that are not record
+ * types: never pushed through /sync/push and never a manifest or bootstrap row.
+ * - `note_body` (#2295): GET /sync/changes also serves CRDT body rows.
+ * - `purged_tombstones` (#2302): the client applies purged-tombstone markers,
+ *   so GET /sync/changes lists their ids in `deleted` (never on a request from
+ *   cursor 0) and POST /sync/pull serves them in `purgedTombstones`. A client
+ *   that does not declare it never sees a marker, exactly as before markers
+ *   existed, when the row was hard-deleted.
  *
- * Not in RECORD_SYNC_ITEM_TYPES on purpose: both clients declare that whole
- * list as their header, so a member here would make them receive rows they
- * cannot apply. Never in LEGACY_RECORD_SYNC_ITEM_TYPES.
+ * Not in RECORD_SYNC_ITEM_TYPES on purpose: clients declare that whole list as
+ * their header, so a member here would make them receive rows they cannot
+ * apply. Never in LEGACY_RECORD_SYNC_ITEM_TYPES.
  */
-export const FEED_ONLY_SYNC_TYPES = ['note_body'] as const
+export const FEED_ONLY_SYNC_TYPES = ['note_body', 'purged_tombstones'] as const
 
 /** Everything the server recognises in `X-Memry-Sync-Types`. */
 export const NEGOTIABLE_SYNC_TYPES = [...RECORD_SYNC_ITEM_TYPES, ...FEED_ONLY_SYNC_TYPES] as const
@@ -177,6 +181,43 @@ export const ENCRYPTABLE_ITEM_TYPES = [
   'home_page'
 ] as const
 export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
+
+/**
+ * Types whose id legitimately comes back after a delete (#2302, protocol 05
+ * §5.12.3), for one of two reasons:
+ * 1. The id is derived from user-visible data, so re-creating the thing
+ *    re-creates the id:
+ *    - `journal`: `j<YYYY-MM-DD>` (apps/desktop/src/main/lib/id.ts generateJournalId)
+ *    - `tag_definition`, `property_definition`: the name (primary key)
+ *    - `folder_config`: the folder path (primary key)
+ *    - `canvas_folder`: `cvf_<path>` (canvasFolderSyncId)
+ *    - `bookmark`: `bmk_<type>_<id>` (bookmarkSyncId)
+ *    - `calendar_source`: the provider calendar (`google-calendar:<remoteId>`,
+ *      caldav, EventKit, ICS ids)
+ *    - `calendar_external_event`: `calendar_external_event:<source>:<remoteEventId>`
+ *    - `calendar_binding`: `calendar_binding:<provider>:<sourceType>:<sourceId>`
+ *      (desktop calendar write-engine)
+ * 2. The id is carried in a file the user can restore: a `note`'s id lives in
+ *    its markdown frontmatter, so restoring a deleted note file from a backup
+ *    or the OS trash re-creates the same id (desktop vault watcher ->
+ *    syncNoteCreate).
+ * The server accepts a `create` over a purged-tombstone marker only for these,
+ * and the desktop refuses to apply a purged tombstone over a pending or newer
+ * local write of one of these. Every other clock-required type mints random
+ * ids that live only in the database. `settings` has no required clock.
+ */
+export const RECREATABLE_AFTER_PURGE_ITEM_TYPES = [
+  'journal',
+  'tag_definition',
+  'property_definition',
+  'folder_config',
+  'canvas_folder',
+  'bookmark',
+  'calendar_source',
+  'calendar_external_event',
+  'calendar_binding',
+  'note'
+] as const satisfies readonly (typeof RECORD_CLOCK_REQUIRED_ITEM_TYPES)[number][]
 
 // ============================================================================
 // Types
@@ -714,11 +755,42 @@ export const PullResponseSchema = z.object({
 
 export type PullItemResponse = z.infer<typeof PullItemResponseSchema>
 
+/**
+ * A tombstone whose signed payload the server shed after `version_history_days`
+ * (#2302, protocol 05 §5.12.3). The row is kept as a marker so delete-wins keeps
+ * refusing stale pushes; this entry carries the delete fact only and is
+ * unsigned. `clock` is absent for a legacy tombstone stored without one.
+ */
+export const RecordPullPurgedTombstoneSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(RECORD_SYNC_ITEM_TYPES),
+  deletedAt: z.number().int().min(0),
+  clock: VectorClockSchema.optional(),
+  serverCursor: z.number().int().min(0)
+})
+
+/** A live row whose payload bytes are lost (#2302, protocol 05 §5.12.4). Nothing to apply. */
+export const RecordPullBlobMissingSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(RECORD_SYNC_ITEM_TYPES),
+  serverCursor: z.number().int().min(0)
+})
+
 export const RecordPullResponseSchema = z.object({
-  items: z.array(RecordPullItemResponseSchema)
+  items: z.array(RecordPullItemResponseSchema),
+  /**
+   * Present only when non-empty, and absent on a server that predates #2302.
+   * `unknown` on purpose, like `inline`: each entry is validated on its own
+   * (§5.14), so one bad entry never fails the page. Never inside `items`: a
+   * client that predates these entries would record them as invalid items.
+   */
+  purgedTombstones: z.array(z.unknown()).optional(),
+  blobMissing: z.array(z.unknown()).optional()
 })
 
 export type RecordPullItemResponse = z.infer<typeof RecordPullItemResponseSchema>
+export type RecordPullPurgedTombstone = z.infer<typeof RecordPullPurgedTombstoneSchema>
+export type RecordPullBlobMissing = z.infer<typeof RecordPullBlobMissingSchema>
 export type RecordPullResponse = z.infer<typeof RecordPullResponseSchema>
 
 // ============================================================================

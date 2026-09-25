@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { z } from 'zod'
 
 import { TagCategorySyncPayloadSchema, TagDefinitionSyncPayloadSchema } from './sync-payloads'
 import {
@@ -26,7 +27,9 @@ import {
   PushRequestSchema,
   PushResponseSchema,
   RecordChangesResponseSchema,
+  RecordPullBlobMissingSchema,
   RecordPullItemResponseSchema,
+  RecordPullPurgedTombstoneSchema,
   RecordPullResponseSchema,
   RecordPushItemSchema,
   RecordPushRequestSchema,
@@ -792,6 +795,71 @@ describe('RecordPullResponseSchema', () => {
   it('accepts empty items', () => {
     expect(RecordPullResponseSchema.safeParse({ items: [] }).success).toBe(true)
   })
+
+  const signedItem = {
+    id: 'task-1',
+    type: 'task',
+    operation: 'update',
+    signature: 'sig',
+    signerDeviceId: 'device-1',
+    blob: validEncryptedPayload()
+  }
+  const post2302Body = {
+    items: [signedItem],
+    purgedTombstones: [
+      { id: 'task-2', type: 'task', deletedAt: 1, clock: { d: 2 }, serverCursor: 9 },
+      { not: 'an entry' }
+    ],
+    blobMissing: [{ id: 'task-3', type: 'task', serverCursor: 4 }]
+  }
+
+  // #2302: the sibling lists are typed per entry, so one bad entry never fails the page.
+  it('accepts a post-#2302 body with a malformed sibling entry', () => {
+    const parsed = RecordPullResponseSchema.safeParse(post2302Body)
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.items).toHaveLength(1)
+  })
+
+  // #2302 compat: the pre-#2302 schema (items only) drops the new keys and keeps its items.
+  it('parses a post-#2302 body with the pre-#2302 envelope unchanged', () => {
+    const legacy = z.object({ items: z.array(RecordPullItemResponseSchema) })
+    const parsed = legacy.safeParse(post2302Body)
+    expect(parsed.success).toBe(true)
+    expect(parsed.data).toEqual({ items: [RecordPullItemResponseSchema.parse(signedItem)] })
+  })
+})
+
+describe('RecordPullPurgedTombstoneSchema / RecordPullBlobMissingSchema (#2302)', () => {
+  it('accepts a purged tombstone with and without a clock', () => {
+    const entry = { id: 'task-2', type: 'task', deletedAt: 1, serverCursor: 9 }
+    expect(RecordPullPurgedTombstoneSchema.safeParse(entry).success).toBe(true)
+    expect(RecordPullPurgedTombstoneSchema.safeParse({ ...entry, clock: { d: 2 } }).success).toBe(
+      true
+    )
+  })
+
+  it('rejects a purged tombstone without deletedAt or of an unknown type', () => {
+    expect(
+      RecordPullPurgedTombstoneSchema.safeParse({ id: 'x', type: 'task', serverCursor: 1 }).success
+    ).toBe(false)
+    expect(
+      RecordPullPurgedTombstoneSchema.safeParse({
+        id: 'x',
+        type: 'attachment',
+        deletedAt: 1,
+        serverCursor: 1
+      }).success
+    ).toBe(false)
+  })
+
+  it('accepts a blob-missing entry and rejects one without an id', () => {
+    expect(
+      RecordPullBlobMissingSchema.safeParse({ id: 'x', type: 'note', serverCursor: 1 }).success
+    ).toBe(true)
+    expect(RecordPullBlobMissingSchema.safeParse({ type: 'note', serverCursor: 1 }).success).toBe(
+      false
+    )
+  })
 })
 
 describe('DeviceKeySchema / DeviceKeysResponseSchema', () => {
@@ -880,14 +948,27 @@ describe('SignatureMetadataSchema', () => {
 // #2295
 describe('note_body is a feed-only negotiable type', () => {
   it('is negotiable but never a record type, so no envelope schema can name it', () => {
-    expect(FEED_ONLY_SYNC_TYPES).toEqual(['note_body'])
-    expect(NEGOTIABLE_SYNC_TYPES).toEqual([...RECORD_SYNC_ITEM_TYPES, 'note_body'])
+    expect(FEED_ONLY_SYNC_TYPES).toEqual(['note_body', 'purged_tombstones'])
+    expect(NEGOTIABLE_SYNC_TYPES).toEqual([
+      ...RECORD_SYNC_ITEM_TYPES,
+      'note_body',
+      'purged_tombstones'
+    ])
     // Both clients build X-Memry-Sync-Types from RECORD_SYNC_ITEM_TYPES
     // (apps/desktop/src/main/sync/http-client.ts, packages/sync-client/src/pull/http.ts),
     // so this also pins that no shipped client declares bodies before it can apply them.
     expect(RECORD_SYNC_ITEM_TYPES).not.toContain('note_body')
     expect(LEGACY_RECORD_SYNC_ITEM_TYPES).not.toContain('note_body')
     expect(ENCRYPTABLE_ITEM_TYPES).not.toContain('note_body')
+  })
+
+  // #2302: the capability token is not a record type either.
+  it('keeps purged_tombstones out of every record type list and the push schema', () => {
+    expect(RECORD_SYNC_ITEM_TYPES).not.toContain('purged_tombstones')
+    expect(LEGACY_RECORD_SYNC_ITEM_TYPES).not.toContain('purged_tombstones')
+    expect(
+      RecordPushItemSchema.safeParse(validPushItem({ type: 'purged_tombstones' })).success
+    ).toBe(false)
   })
 
   it('is refused by the push item and push identity schemas', () => {

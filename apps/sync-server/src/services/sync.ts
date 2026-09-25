@@ -7,14 +7,17 @@ import type {
   SyncStatus,
   VectorClock,
   RecordChangesResponse,
+  RecordPullBlobMissing,
   RecordPullItemResponse,
+  RecordPullPurgedTombstone,
   RecordSyncItemType,
   RecordSyncManifest
 } from '@memry/contracts/sync-api'
 import {
   LEGACY_RECORD_SYNC_ITEM_TYPES,
   RECORD_CLOCK_REQUIRED_ITEM_TYPES,
-  RECORD_SYNC_ITEM_TYPES
+  RECORD_SYNC_ITEM_TYPES,
+  RECREATABLE_AFTER_PURGE_ITEM_TYPES
 } from '@memry/contracts/sync-api'
 import { encodeSignaturePayload } from '../lib/cbor'
 import type { ClientIdentity } from '../lib/client-identity'
@@ -60,6 +63,7 @@ interface ExistingSyncItemRow {
 }
 
 interface StoredSyncItemPullRow {
+  id: string
   item_id: string
   item_type: string
   blob_key: string
@@ -251,6 +255,36 @@ export const shouldRejectResurrection = (
   return !happensAfter(incoming, existing)
 }
 
+/**
+ * A purged-tombstone marker (#2302): a deleted row whose payload the cleanup
+ * shed. `blob_key = ''` is the marker, not `payload_purged_at`: a worker rolled
+ * back past #2302 can write a new version without clearing that timestamp, but
+ * never with an empty key.
+ */
+const isMarkerRow = (row: { deleted_at?: number | null; blob_key?: string | null }): boolean =>
+  Boolean(row.deleted_at) && row.blob_key === ''
+
+/** SQL for "this row is not a marker", the same predicate as isMarkerRow. */
+const NOT_A_MARKER_SQL = "(deleted_at IS NULL OR blob_key <> '')"
+
+const RECREATABLE_AFTER_PURGE_TYPE_SET = new Set<string>(RECREATABLE_AFTER_PURGE_ITEM_TYPES)
+
+/**
+ * A `create` over a purged-tombstone marker (#2302) of a recreatable type is a
+ * user re-creating or restoring the thing, with a fresh clock that the old
+ * tombstone's clock dominates. Before markers the purge deleted the row and
+ * such a create landed; a marker must not refuse it forever. It is accepted as
+ * a new version, skipping replay and delete-wins. Within retention (payload not
+ * yet shed), `update`/`delete`, and every other type keep the tombstone rules.
+ */
+const isRecreateOverMarker = (
+  item: Pick<PushItemInput, 'type' | 'operation'>,
+  existing: Pick<ExistingSyncItemRow, 'deleted_at' | 'blob_key'>
+): boolean =>
+  item.operation === 'create' &&
+  isMarkerRow(existing) &&
+  RECREATABLE_AFTER_PURGE_TYPE_SET.has(item.type)
+
 export const computeContentHash = async (payload: {
   dataNonce: string
   encryptedData: string
@@ -306,27 +340,62 @@ const readEncryptedPayload = async (
   }
 }
 
-const toPullItemResponse = async (
+/**
+ * What one sync_items row contributes to a POST /sync/pull response (#2302).
+ * `blob_not_found` is a live row whose object 404'd: pullItems tells a lost
+ * blob from a row replaced since it was read. `omit` is an unsupported type.
+ */
+type PullRowOutcome =
+  | { kind: 'item'; item: RecordPullItemResponse }
+  | { kind: 'purged_tombstone'; entry: RecordPullPurgedTombstone }
+  | { kind: 'blob_not_found' }
+  | { kind: 'omit' }
+
+const purgedTombstoneEntry = (
+  row: StoredSyncItemPullRow & { item_type: RecordSyncItemType; deleted_at: number }
+): RecordPullPurgedTombstone => {
+  const clock = parseStoredClock(row.item_id, row.clock)
+  return {
+    id: row.item_id,
+    type: row.item_type,
+    deletedAt: row.deleted_at,
+    ...(clock ? { clock } : {}),
+    serverCursor: row.server_cursor
+  }
+}
+
+const readPullRow = async (
   storage: R2Bucket,
   userId: string,
   row: StoredSyncItemPullRow
-): Promise<RecordPullItemResponse | null> => {
-  if (!isSupportedRecordSyncItemType(row.item_type)) {
-    return null
+): Promise<PullRowOutcome> => {
+  const itemType = row.item_type
+  if (!isSupportedRecordSyncItemType(itemType)) {
+    return { kind: 'omit' }
+  }
+  // A shed tombstone (#2302) has no payload to read; its delete fact is the row.
+  if (row.deleted_at && isMarkerRow(row)) {
+    return {
+      kind: 'purged_tombstone',
+      entry: purgedTombstoneEntry({ ...row, item_type: itemType, deleted_at: row.deleted_at })
+    }
   }
 
   let payload: EncryptedItemPayload
   try {
     payload = await readEncryptedPayload(storage, row.blob_key, userId, row.item_id)
   } catch (error) {
-    // A missing object must cost only this row, not the page: one dangling row
-    // (or the transient window where a replacing push just deleted the blob
-    // this row version pointed at) used to reject the whole Promise.all, so
-    // every pull retry failed on the same item and the client cursor never
-    // advanced. Skipping is safe — a replaced item re-arrives at a later
-    // cursor, and a genuinely dangling row has no bytes to deliver anyway.
+    // A missing object costs only this row, never the page (one dangling row
+    // used to reject the whole Promise.all, so the client cursor never
+    // advanced). A delete does not need its bytes: this covers the shed's crash
+    // window between its R2 delete and its D1 mark, and a lost tombstone blob.
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_BLOB_NOT_FOUND) {
-      return null
+      return row.deleted_at
+        ? {
+            kind: 'purged_tombstone',
+            entry: purgedTombstoneEntry({ ...row, item_type: itemType, deleted_at: row.deleted_at })
+          }
+        : { kind: 'blob_not_found' }
     }
     throw error
   }
@@ -342,15 +411,18 @@ const toPullItemResponse = async (
   const parsedClock = parseStoredClock(row.item_id, row.clock)
 
   return {
-    id: row.item_id,
-    type: row.item_type,
-    operation: row.operation as RecordPullItemResponse['operation'],
-    cryptoVersion: row.crypto_version,
-    signature: row.signature,
-    signerDeviceId: row.signer_device_id,
-    ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
-    ...(parsedClock ? { clock: parsedClock } : {}),
-    blob: payload
+    kind: 'item',
+    item: {
+      id: row.item_id,
+      type: itemType,
+      operation: row.operation as RecordPullItemResponse['operation'],
+      cryptoVersion: row.crypto_version,
+      signature: row.signature,
+      signerDeviceId: row.signer_device_id,
+      ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
+      ...(parsedClock ? { clock: parsedClock } : {}),
+      blob: payload
+    }
   }
 }
 
@@ -536,7 +608,7 @@ const processPushWave = async (
     const item = items[index]
     try {
       const existing = existingByIdentity.get(itemIdentity(item))
-      if (existing) {
+      if (existing && !isRecreateOverMarker(item, existing)) {
         const existingClock =
           typeof existing.clock === 'string'
             ? (JSON.parse(existing.clock) as VectorClock)
@@ -671,7 +743,10 @@ const processPushWave = async (
               -- row is no longer a mobile-originated value.
               client_platform = excluded.client_platform,
               client_version = excluded.client_version,
-              committed_at_ms = excluded.committed_at_ms`
+              committed_at_ms = excluded.committed_at_ms,
+              -- An accepted push is a new version with fresh bytes (#2302).
+              payload_purged_at = NULL,
+              blob_missing_at = NULL`
           )
           .bind(
             crypto.randomUUID(),
@@ -1010,14 +1085,16 @@ const readInlineItems = async (
 ): Promise<RecordPullItemResponse[]> => {
   const eligible = selectInlineRows(rows)
   const read = await mapInWindows(eligible, R2_CONCURRENCY, (row) =>
-    toPullItemResponse(storage, userId, row).catch((error: unknown) => {
-      // Code and type only: an item id can be a tag name or a folder path.
-      logger.warn('Inline changes: row left to /sync/pull', {
-        itemType: row.item_type,
-        code: error instanceof AppError ? error.code : 'unknown'
+    readPullRow(storage, userId, row)
+      .then((outcome) => (outcome.kind === 'item' ? outcome.item : null))
+      .catch((error: unknown) => {
+        // Code and type only: an item id can be a tag name or a folder path.
+        logger.warn('Inline changes: row left to /sync/pull', {
+          itemType: row.item_type,
+          code: error instanceof AppError ? error.code : 'unknown'
+        })
+        return null
       })
-      return null
-    })
   )
   const failedIds = new Set(eligible.filter((_, i) => read[i] === null).map((row) => row.item_id))
   return read.filter(
@@ -1041,15 +1118,17 @@ const recordFeedSource =
     db: D1Database,
     userId: string,
     vaultId: string,
-    types: readonly RecordSyncItemType[]
+    types: readonly RecordSyncItemType[],
+    includeMarkers: boolean
   ): FeedSourceBuilder<RecordChangeValue> =>
   (after, fetchLimit) => ({
     statement: db
       .prepare(
-        `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at,
+        `SELECT id, item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at,
               committed_at_ms, blob_key, crypto_version, operation, signer_device_id, signature, clock
        FROM sync_items
        WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${placeholdersFor(types)})
+         ${includeMarkers ? '' : `AND ${NOT_A_MARKER_SQL}`}
        ORDER BY server_cursor ASC
        LIMIT ?`
       )
@@ -1122,7 +1201,13 @@ export const getChanges = async (
         : MAX_CHANGES_LIMIT
   )
   const sources: Array<FeedSourceBuilder<RecordChangeValue | NoteBodyChange>> = []
-  if (recordTypes.length > 0) sources.push(recordFeedSource(db, userId, vaultId, recordTypes))
+  // A marker (#2302) is listed only to a client that declared it applies them,
+  // and never from cursor 0: a fresh or reset device gains nothing from it and
+  // must not delete rows it restored locally.
+  const includeMarkers = subscription.purgedTombstones === true && cursor > 0
+  if (recordTypes.length > 0) {
+    sources.push(recordFeedSource(db, userId, vaultId, recordTypes, includeMarkers))
+  }
   if (noteBodies) sources.push(noteBodyFeedSource(db, userId, vaultId))
 
   const page = await readChangePage(db, sources, cursor, effectiveLimit)
@@ -1211,16 +1296,48 @@ export const setVaultName = async (
 // Worker (avoids firing hundreds of subrequests at once); tune here if needed.
 const R2_CONCURRENCY = 25
 
+/**
+ * Records that a live row's R2 object is gone (#2302). Conditional on
+ * `blob_key`, so a row replaced since it was read is never marked, and on
+ * `deleted_at IS NULL`, so a tombstone is never marked. Report only: nothing
+ * deletes a row because of this mark. Returns true when the row was marked.
+ */
+const markSyncItemBlobMissing = async (
+  db: D1Database,
+  rowId: string,
+  blobKey: string,
+  now: number
+): Promise<boolean> => {
+  const result = await db
+    .prepare(
+      `UPDATE sync_items SET blob_missing_at = COALESCE(blob_missing_at, ?)
+       WHERE id = ? AND blob_key = ? AND deleted_at IS NULL`
+    )
+    .bind(now, rowId, blobKey)
+    .run()
+  return (result.meta.changes ?? 0) > 0
+}
+
+/** A POST /sync/pull answer: signed items plus the #2302 sibling entries. */
+export interface RecordPullResult {
+  items: RecordPullItemResponse[]
+  purgedTombstones: RecordPullPurgedTombstone[]
+  blobMissing: RecordPullBlobMissing[]
+}
+
 export const pullItems = async (
   db: D1Database,
   storage: R2Bucket,
   userId: string,
   itemIds: string[],
   vaultId = 'default',
-  types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
-): Promise<RecordPullItemResponse[]> => {
+  types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES,
+  /** The client declared `purged_tombstones` (#2302). Otherwise a marker is left out, as a purged row was. */
+  servePurgedTombstones = false
+): Promise<RecordPullResult> => {
+  const result: RecordPullResult = { items: [], purgedTombstones: [], blobMissing: [] }
   if (itemIds.length === 0 || types.length === 0) {
-    return []
+    return result
   }
 
   // 95 D1 bind params, minus user_id + vault_id, minus one per negotiated type.
@@ -1233,7 +1350,7 @@ export const pullItems = async (
     const placeholders = batch.map(() => '?').join(', ')
     const rows = await db
       .prepare(
-        `SELECT item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
+        `SELECT id, item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
                 state_vector, clock, deleted_at, server_cursor
          FROM sync_items
          WHERE user_id = ? AND vault_id = ? AND item_type IN (${placeholdersFor(types)})
@@ -1251,11 +1368,41 @@ export const pullItems = async (
   // already server_cursor-sorted allDbRows in fixed-size windows and concatenate
   // window results in order, so output ordering is preserved while at most
   // R2_CONCURRENCY reads are in flight at once.
-  const settled = await mapInWindows(allDbRows, R2_CONCURRENCY, (row) =>
-    toPullItemResponse(storage, userId, row)
+  const outcomes = await mapInWindows(allDbRows, R2_CONCURRENCY, (row) =>
+    readPullRow(storage, userId, row)
   )
 
-  return settled.filter((item): item is RecordPullItemResponse => item !== null)
+  const notFound: StoredSyncItemPullRow[] = []
+  outcomes.forEach((outcome, index) => {
+    if (outcome.kind === 'item') result.items.push(outcome.item)
+    else if (outcome.kind === 'purged_tombstone' && servePurgedTombstones) {
+      result.purgedTombstones.push(outcome.entry)
+    } else if (outcome.kind === 'blob_not_found') notFound.push(allDbRows[index])
+  })
+
+  // A 404 on a live row is a lost blob only while the row still points at that
+  // object. A row replaced since it was read (push Stage 8 deletes the old key)
+  // is left out, as before: the replacement re-arrives at a later cursor.
+  const now = Math.floor(Date.now() / 1000)
+  const lost = await mapInWindows(notFound, R2_CONCURRENCY, (row) =>
+    markSyncItemBlobMissing(db, row.id, row.blob_key, now).catch((error: unknown) => {
+      logger.error('Marking a lost blob failed; row left out of the pull', {
+        itemType: row.item_type,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return false
+    })
+  )
+  notFound.forEach((row, index) => {
+    if (!lost[index]) return
+    result.blobMissing.push({
+      id: row.item_id,
+      type: row.item_type as RecordSyncItemType,
+      serverCursor: row.server_cursor
+    })
+  })
+
+  return result
 }
 
 export const getItem = async (

@@ -41,7 +41,7 @@ vi.mock('../services/sync', () => ({
       }
     ]
   }),
-  pullItems: vi.fn().mockResolvedValue([]),
+  pullItems: vi.fn().mockResolvedValue({ items: [], purgedTombstones: [], blobMissing: [] }),
   getItem: vi.fn().mockResolvedValue({
     itemId: '550e8400-e29b-41d4-a716-446655440000',
     type: 'note',
@@ -1303,7 +1303,8 @@ describe('sync routes', () => {
         'user-1',
         [VALID_UUID],
         'vault-1',
-        [...LEGACY_RECORD_SYNC_ITEM_TYPES]
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        false
       )
     })
 
@@ -1429,7 +1430,8 @@ describe('sync routes', () => {
         'user-1',
         [VALID_UUID],
         'vault-1',
-        [...LEGACY_RECORD_SYNC_ITEM_TYPES]
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        false
       )
     })
   })
@@ -2104,7 +2106,8 @@ describe('sync routes', () => {
         'user-1',
         [VALID_UUID],
         'vault-1',
-        ['note']
+        ['note'],
+        false
       )
     })
 
@@ -2151,7 +2154,8 @@ describe('sync routes', () => {
         'user-1',
         [VALID_UUID],
         'vault-1',
-        ['note']
+        ['note'],
+        false
       )
       expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', ['note'], undefined)
     })
