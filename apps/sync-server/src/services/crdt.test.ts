@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { createSqliteD1 } from '../__tests__/d1-sqlite'
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import {
   getBatchUpdates,
@@ -10,306 +11,34 @@ import {
   storeUpdates
 } from './crdt'
 
-interface FakeUpdateRow {
-  id: string
-  user_id: string
-  vault_id: string
-  note_id: string
-  update_data: ArrayBuffer
-  sequence_num: number
-  signer_device_id: string
-  created_at: number
-  client_platform: string | null
-  client_version: string | null
-  update_hash: string | null
-}
-
-interface FakeSnapshotRow {
-  id: string
-  user_id: string
-  vault_id: string
-  note_id: string
-  blob_key: string
-  sequence_num: number
-  size_bytes: number
-  signer_device_id: string
-  created_at: number
-  revision: string
-  client_platform: string | null
-  client_version: string | null
+/**
+ * The real SQLite D1 harness with the users these tests push as. It replaced a
+ * hand-written double (#2299): the snapshot write is a conditional upsert in a
+ * batch, and a double that matches SQL prefixes cannot model `WHERE` on
+ * `ON CONFLICT` or `changes()`.
+ */
+function createD1Database(): D1Database {
+  const harness = createSqliteD1()
+  for (const userId of ['user-1']) {
+    harness.raw
+      .prepare(
+        `INSERT INTO users (id, email, email_verified, auth_method, storage_used, storage_limit, created_at, updated_at)
+         VALUES (?, ?, 1, 'otp', 0, 0, 1, 1)`
+      )
+      .run(userId, `${userId}@example.com`)
+    harness.raw
+      .prepare(
+        `INSERT INTO sync_entitlements (user_id, plan, status, source, storage_limit, max_file_size, max_vaults, version_history_days, updated_at)
+         VALUES (?, 'plus', 'active', 'paddle', ?, ?, NULL, 30, 1)`
+      )
+      .run(userId, 50 * 1024 * 1024 * 1024, 100 * 1024 * 1024)
+  }
+  return harness.db
 }
 
 interface PreparedCall {
   sql: string
   bindings: unknown[]
-}
-
-function createD1Database(): D1Database {
-  const updates: FakeUpdateRow[] = []
-  const snapshots = new Map<string, FakeSnapshotRow>()
-
-  const snapshotKey = (userId: string, vaultId: string, noteId: string): string =>
-    `${userId}:${vaultId}:${noteId}`
-  const getUpdateMax = (userId: string, vaultId: string, noteId: string): number =>
-    updates
-      .filter((row) => row.user_id === userId && row.vault_id === vaultId && row.note_id === noteId)
-      .reduce((max, row) => Math.max(max, row.sequence_num), 0)
-  const getSnapshotMax = (userId: string, vaultId: string, noteId: string): number =>
-    snapshots.get(snapshotKey(userId, vaultId, noteId))?.sequence_num ?? 0
-  const getCombinedMax = (userId: string, vaultId: string, noteId: string): number =>
-    Math.max(getUpdateMax(userId, vaultId, noteId), getSnapshotMax(userId, vaultId, noteId))
-
-  const db = {
-    prepare(sql: string) {
-      let params: unknown[] = []
-
-      const prepared = {
-        bind(...nextParams: unknown[]) {
-          // D1 refuses a query with more than 100 bound parameters and answers
-          // the whole request with an error. A double that accepts any number of
-          // them is the reason a 100-note batch pull could ship green here and
-          // 500 against a real database.
-          if (nextParams.length > 100) {
-            throw new Error('D1_ERROR: too many SQL variables')
-          }
-          params = nextParams
-          return prepared
-        },
-        async first<T>() {
-          if (sql.startsWith('SELECT COALESCE(MAX(sequence_num), 0) as max_seq')) {
-            const maxSeq =
-              sql.includes('crdt_snapshots') && sql.includes('UNION ALL')
-                ? getCombinedMax(params[0] as string, params[1] as string, params[2] as string)
-                : getUpdateMax(params[0] as string, params[1] as string, params[2] as string)
-            return { max_seq: maxSeq } as T
-          }
-
-          if (sql.startsWith('SELECT sequence_num, size_bytes FROM crdt_snapshots')) {
-            const row = snapshots.get(
-              snapshotKey(params[0] as string, params[1] as string, params[2] as string)
-            )
-            if (!row) return null
-            return { sequence_num: row.sequence_num, size_bytes: row.size_bytes } as T
-          }
-
-          if (sql.startsWith('SELECT sequence_num FROM crdt_snapshots')) {
-            const row = snapshots.get(
-              snapshotKey(params[0] as string, params[1] as string, params[2] as string)
-            )
-            if (!row) return null
-            return { sequence_num: row.sequence_num } as T
-          }
-
-          if (sql.startsWith('SELECT id, blob_key, sequence_num, signer_device_id')) {
-            const row = snapshots.get(
-              snapshotKey(params[0] as string, params[1] as string, params[2] as string)
-            )
-            if (!row) return null
-            return {
-              id: row.id,
-              blob_key: row.blob_key,
-              sequence_num: row.sequence_num,
-              signer_device_id: row.signer_device_id,
-              created_at: row.created_at,
-              size_bytes: row.size_bytes,
-              revision: row.revision
-            } as T
-          }
-
-          if (sql.includes('SUM(length(update_data))')) {
-            const totalBytes = updates
-              .filter(
-                (row) =>
-                  row.user_id === params[0] &&
-                  row.vault_id === params[1] &&
-                  row.note_id === params[2] &&
-                  row.sequence_num <= (params[3] as number)
-              )
-              .reduce((sum, row) => sum + row.update_data.byteLength, 0)
-            return { total_bytes: totalBytes } as T
-          }
-
-          return null
-        },
-        async all<T>() {
-          if (sql.startsWith('INSERT OR IGNORE INTO crdt_updates')) {
-            // storeUpdates sends these through db.batch, whose statements run
-            // sequentially inside one transaction — which this double models by
-            // executing each insert synchronously, so statement N's MAX sees
-            // statement N-1's row. Bindings are positional and this double
-            // reads them by index, so the insert's own column list and the
-            // subquery's offsets have to be kept in step with crdt.ts by hand.
-            // Attribution added two columns to the SELECT list, then the
-            // update hash (#2296) and the feed cursor's two binds (#2295),
-            // pushing the subquery's (user, vault, note) triple from 7-9 to 12-14.
-            const nextSequence =
-              sql.includes('crdt_snapshots') && sql.includes('UNION ALL')
-                ? getCombinedMax(params[12] as string, params[13] as string, params[14] as string) +
-                  1
-                : getUpdateMax(params[12] as string, params[13] as string, params[14] as string) + 1
-
-            // INSERT OR IGNORE against the (user, vault, note, update_hash) unique index.
-            if (
-              updates.some(
-                (row) =>
-                  row.user_id === params[1] &&
-                  row.vault_id === params[2] &&
-                  row.note_id === params[3] &&
-                  row.update_hash === params[9]
-              )
-            ) {
-              return { results: [] as T[], meta: { changes: 0 } }
-            }
-
-            updates.push({
-              id: params[0] as string,
-              user_id: params[1] as string,
-              vault_id: params[2] as string,
-              note_id: params[3] as string,
-              update_data: params[4] as ArrayBuffer,
-              sequence_num: nextSequence,
-              signer_device_id: params[5] as string,
-              created_at: params[6] as number,
-              client_platform: (params[7] as string | null) ?? null,
-              client_version: (params[8] as string | null) ?? null,
-              update_hash: params[9] as string
-            })
-
-            return { results: [] as T[], meta: { changes: 1 } }
-          }
-
-          if (sql.startsWith('SELECT id, sequence_num FROM crdt_updates')) {
-            const row = updates.find(
-              (candidate) =>
-                candidate.user_id === params[0] &&
-                candidate.vault_id === params[1] &&
-                candidate.note_id === params[2] &&
-                candidate.update_hash === params[3]
-            )
-            return { results: (row ? [{ id: row.id, sequence_num: row.sequence_num }] : []) as T[] }
-          }
-
-          if (
-            sql.startsWith(
-              'SELECT id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates'
-            )
-          ) {
-            const rows = updates
-              .filter(
-                (row) =>
-                  row.user_id === params[0] &&
-                  row.vault_id === params[1] &&
-                  row.note_id === params[2] &&
-                  row.sequence_num > (params[3] as number)
-              )
-              .sort((a, b) => a.sequence_num - b.sequence_num)
-              .slice(0, params[4] as number)
-
-            return { results: rows as T[] }
-          }
-
-          // The snapshot upsert is sent through db.batch with its cursor
-          // reservation (#2295), which calls all() on every statement.
-          if (sql.startsWith('INSERT INTO crdt_snapshots')) {
-            await prepared.run()
-            return { results: [] as T[] }
-          }
-
-          if (sql.startsWith('SELECT id, note_id, sequence_num, revision')) {
-            const [userId, vaultId, ...noteIds] = params as string[]
-            const rows = noteIds
-              .map((noteId) => snapshots.get(snapshotKey(userId, vaultId, noteId)))
-              .filter((row): row is FakeSnapshotRow => row !== undefined)
-            return { results: rows as T[] }
-          }
-
-          return { results: [] as T[] }
-        },
-        async run() {
-          if (sql.startsWith('INSERT INTO crdt_snapshots')) {
-            const key = snapshotKey(params[1] as string, params[2] as string, params[3] as string)
-            const incoming: FakeSnapshotRow = {
-              id: params[0] as string,
-              user_id: params[1] as string,
-              vault_id: params[2] as string,
-              note_id: params[3] as string,
-              blob_key: params[4] as string,
-              sequence_num: params[5] as number,
-              size_bytes: params[6] as number,
-              signer_device_id: params[7] as string,
-              created_at: params[8] as number,
-              revision: params[9] as string,
-              client_platform: (params[10] as string | null) ?? null,
-              client_version: (params[11] as string | null) ?? null
-            }
-
-            const existing = snapshots.get(key)
-            if (!existing) {
-              snapshots.set(key, incoming)
-              return { meta: { changes: 1 } }
-            }
-
-            // On conflict SQLite applies ONLY the columns named in DO UPDATE SET,
-            // and `id` is deliberately not one of them. Modelling the clause
-            // rather than overwriting the whole row is what lets the revision-bump
-            // assertion actually fail: a SET clause that forgets `revision` leaves
-            // the stored one behind, which is the failure this token exists to
-            // prevent.
-            const setClause = sql.slice(sql.indexOf('DO UPDATE SET'))
-            const updated: FakeSnapshotRow = { ...existing }
-            const target = updated as unknown as Record<string, unknown>
-            const source = incoming as unknown as Record<string, unknown>
-            for (const column of [
-              'blob_key',
-              'sequence_num',
-              'size_bytes',
-              'signer_device_id',
-              'created_at',
-              'revision',
-              'client_platform',
-              'client_version'
-            ]) {
-              if (setClause.includes(`${column} = excluded.${column}`)) {
-                target[column] = source[column]
-              }
-            }
-            snapshots.set(key, updated)
-            return { meta: { changes: 1 } }
-          }
-
-          if (sql.startsWith('DELETE FROM crdt_updates')) {
-            const before = updates.length
-            const remaining = updates.filter(
-              (row) =>
-                !(
-                  row.user_id === params[0] &&
-                  row.vault_id === params[1] &&
-                  row.note_id === params[2] &&
-                  row.sequence_num <= (params[3] as number)
-                )
-            )
-            updates.splice(0, updates.length, ...remaining)
-            return { meta: { changes: before - updates.length } }
-          }
-
-          if (sql.includes('UPDATE users') && sql.includes('storage_used')) {
-            return { meta: { changes: 1 } }
-          }
-
-          return { meta: { changes: 0 } }
-        }
-      }
-
-      return prepared as unknown as D1PreparedStatement
-    }
-  }
-
-  return {
-    ...db,
-    async batch(statements: D1PreparedStatement[]) {
-      return Promise.all(statements.map((statement) => statement.all()))
-    }
-  } as unknown as D1Database
 }
 
 function createRecordingDatabase(options: {
@@ -356,6 +85,9 @@ function createMemoryBucket(): R2Bucket {
       // Real R2 resolves to an R2Object; returning null here would look like a
       // failed upload to putBlob.
       return { key, etag: `etag-${objects.size}` } as unknown as R2Object
+    },
+    async delete(keys: string | string[]) {
+      for (const key of Array.isArray(keys) ? keys : [keys]) objects.delete(key)
     },
     async get(key: string) {
       const bytes = objects.get(key)
@@ -703,7 +435,8 @@ describe('CRDT service sequencing', () => {
     expect(batch.snapshotMeta['note-1'].revision).toBe(snapshot?.revision)
   })
 
-  it('returns null when a snapshot row or object is missing', async () => {
+  // #2299 review round 2: a missing object for an existing row is a 503
+  it('returns null when a snapshot row is missing, and a retryable 503 when its object is', async () => {
     const db = createD1Database()
     const storage = createMemoryBucket()
 
@@ -712,7 +445,9 @@ describe('CRDT service sequencing', () => {
     await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-a', bytes('snapshot-a'))
 
     const missingStorage = { get: async () => null } as unknown as R2Bucket
-    await expect(getSnapshot(db, missingStorage, 'user-1', 'vault-1', 'note-1')).resolves.toBeNull()
+    await expect(
+      getSnapshot(db, missingStorage, 'user-1', 'vault-1', 'note-1')
+    ).rejects.toMatchObject({ statusCode: 503 })
   })
 
   it('does not prune updates when no snapshot exists', async () => {
@@ -748,23 +483,31 @@ describe('CRDT storage accounting', () => {
   })
 
   it('adjusts storage usage by the snapshot replacement delta', async () => {
-    const { db, statements } = createRecordingDatabase({
-      first: (sql) => {
-        if (sql.includes('COALESCE(MAX(sequence_num)')) return { max_seq: 4 }
-        if (sql.includes('FROM crdt_snapshots')) {
-          return { sequence_num: 2, size_bytes: 3 }
-        }
-        return null
-      }
-    })
-    const storage = { put: vi.fn().mockResolvedValue({ etag: 'etag-1' }) } as unknown as R2Bucket
-    const snapshot = new Uint8Array(10).buffer
+    const db = createD1Database()
+    const storage = createMemoryBucket()
+    const used = async (): Promise<number> =>
+      (await db
+        .prepare('SELECT storage_used FROM users WHERE id = ?')
+        .bind('user-1')
+        .first<number>('storage_used')) as number
 
-    await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-1', snapshot)
+    await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-1', bytes('abc'))
+    expect(await used()).toBe(3)
+    const replaced = await storeSnapshot(
+      db,
+      storage,
+      'user-1',
+      'vault-1',
+      'note-1',
+      'device-1',
+      new Uint8Array(10).buffer
+    )
 
-    expect(storage.put).toHaveBeenCalledWith('user-1/vaults/vault-1/crdt/note-1/snapshot', snapshot)
-    const usageUpdate = statements.find((entry) => entry.sql.includes('UPDATE users'))
-    expect(usageUpdate?.bindings).toEqual([7, expect.any(Number), 'user-1', 7, expect.any(Number)])
+    expect(await used()).toBe(10)
+    // #2299: every write has its own object, named by its revision.
+    const stored = await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')
+    expect(stored?.snapshotData.byteLength).toBe(10)
+    expect(replaced.revision).toBe(stored?.revision)
   })
 
   it('subtracts pruned update bytes from storage usage', async () => {

@@ -122,7 +122,8 @@ describe('storeSnapshotBatch', () => {
 
     for (const { noteId } of inputs) {
       const row = snapshotRow(noteId)
-      expect(row.blob_key).toBe(generateCrdtKey(USER_ID, noteId, VAULT_ID))
+      // #2299: one immutable object per write, named by its revision.
+      expect(row.blob_key).toBe(`${generateCrdtKey(USER_ID, noteId, VAULT_ID)}/${row.revision}`)
       expect(row.signer_device_id).toBe(DEVICE_ID)
       expect(row.client_platform).toBe('desktop')
       expect(row.client_version).toBe('1.2.3')
@@ -276,7 +277,7 @@ describe('storeSnapshotBatch', () => {
     vi.spyOn(storage, 'put').mockImplementation((async (key: string, value: ArrayBuffer) => {
       // "access denied" classifies as terminal, so putBlob does not burn its
       // retry budget on a failure the test means to be permanent.
-      if (key === failingKey) throw new Error('access denied')
+      if (key.startsWith(`${failingKey}/`)) throw new Error('access denied')
       return realPut(key, value)
     }) as typeof storage.put)
 

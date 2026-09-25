@@ -600,6 +600,39 @@ export const NoteBodyChangeSchema = z.discriminatedUnion('op', [
   NoteBodySnapshotChangeSchema
 ])
 
+/**
+ * Optional `coversThrough` on a CRDT snapshot push, single and batch entry
+ * (#2299, protocol 07 §7.7): every note_body feed row of this note with
+ * `server_cursor <= coversThrough` is merged into the pushed state. With it the
+ * server prunes by cursor and refuses to replace a snapshot the pusher has not
+ * seen; without it, or on a server that predates it, the prune is the
+ * sequence-number rule.
+ */
+export const CrdtSnapshotCoversThroughSchema = z.number().int().min(0)
+
+/**
+ * Optional `baseRevision` beside `coversThrough` (#2299): the revision of the
+ * stored snapshot the pusher last merged or pushed. When it still names the
+ * stored snapshot, the push may replace it whatever that snapshot's cursor.
+ */
+export const CrdtSnapshotBaseRevisionSchema = z.string().min(1).max(256)
+
+/** One snapshot push: the single route's body, and one batch entry. */
+export interface CrdtSnapshotPushEntry {
+  noteId: string
+  /** Base64 of the packed envelope (protocol 04 §4.11). */
+  snapshot: string
+  coversThrough?: number
+  baseRevision?: string
+}
+
+/**
+ * The per-note refusal of a snapshot push that would replace a stored snapshot
+ * holding state the push does not cover (#2299): HTTP 409 on the single route
+ * with `error.blockingCursor`, `reason` plus `blockingCursor` in a batch.
+ */
+export const CRDT_SNAPSHOT_NOT_COVERED = 'CRDT_SNAPSHOT_NOT_COVERED' as const
+
 export const RecordChangesResponseSchema = z.object({
   items: z.array(RecordChangesItemRefSchema),
   deleted: z.array(z.string().min(1)),

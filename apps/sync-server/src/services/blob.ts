@@ -34,6 +34,17 @@ export const generateItemBlobKey = (
 export const generateCrdtKey = (userId: string, noteId: string, vaultId = 'default'): string =>
   `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`
 
+// One immutable object per snapshot write (#2299), for the reason items-v3
+// carries the content hash: a losing concurrent write must never overwrite the
+// winner's bytes under a shared key. The row's `blob_key` names the object;
+// rows written before this keep the fixed `generateCrdtKey` object.
+export const generateCrdtSnapshotKey = (
+  userId: string,
+  noteId: string,
+  vaultId: string,
+  revision: string
+): string => `${generateCrdtKey(userId, noteId, vaultId)}/${revision}`
+
 export const generateAttachmentManifestKey = (
   userId: string,
   attachmentId: string,

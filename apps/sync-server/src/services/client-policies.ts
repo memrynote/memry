@@ -61,3 +61,22 @@ export const toPolicySnapshot = (
   writesEnabled: policy ? policy.writes_enabled !== 0 : true,
   ...(policy?.min_write_version ? { minWriteVersion: policy.min_write_version } : {})
 })
+
+/**
+ * Whether snapshot claims are honoured (#2299, protocol 07 §7.7.1). A claimed
+ * row answers a pre-#2299 desktop's unclaimed push with a 409 it retries until
+ * it upgrades, so claims stay dormant until `required`
+ * (`CRDT_CLAIM_MIN_DESKTOP_VERSION`) is set and the desktop write floor has
+ * reached it. Until then a claim is dropped and the push runs under the
+ * pre-#2299 rules, so no claimed row exists and no legacy client sees the 409.
+ */
+export const snapshotClaimsEnabled = async (
+  db: D1Database,
+  required: string | undefined
+): Promise<boolean> => {
+  if (!required) return false
+  const floor = (await getClientPolicy(db, 'desktop'))?.min_write_version
+  if (!floor) return false
+  const comparison = compareVersions(floor, required)
+  return comparison !== null && comparison >= 0
+}

@@ -25,6 +25,10 @@ export type Bindings = {
   GOOGLE_IOS_CLIENT_ID?: string
   WEB_OAUTH_REDIRECT_URI?: string
   MIN_APP_VERSION: string
+  // #2299: snapshot claims are honoured only once this is set and the desktop
+  // `min_write_version` is at or above it (07 §7.7.1). Unset in wrangler.toml
+  // for every environment; set during the rollout.
+  CRDT_CLAIM_MIN_DESKTOP_VERSION?: string
   RECOVERY_DUMMY_SECRET: string
   WEBHOOK_HMAC_KEY: string
   PADDLE_WEBHOOK_SECRET: string
