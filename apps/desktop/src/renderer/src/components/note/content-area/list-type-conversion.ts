@@ -1,4 +1,5 @@
 import type { Block, BlockNoteEditor } from '@blocknote/core'
+import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type AnyEditor = BlockNoteEditor<any, any, any>
@@ -19,11 +20,14 @@ function canConvert(editor: AnyEditor, block: AnyBlock): boolean {
 }
 
 /**
- * Blocks a list toggle applies to: every convertible block in the selection,
- * or the block holding the text cursor when nothing is selected.
+ * Blocks a list toggle applies to: every convertible block in the marquee
+ * block selection, else in the text selection, else the block holding the
+ * text cursor. The marquee comes first because it leaves the editor's own
+ * selection as a caret on the last line (see marquee-block-registry.ts).
  */
 export function getBlocksForListConversion(editor: AnyEditor): AnyBlock[] {
-  const selected = editor.getSelection()?.blocks ?? [editor.getTextCursorPosition().block]
+  const selected = getMarqueeSelectedBlocks<AnyBlock>(editor) ??
+    editor.getSelection()?.blocks ?? [editor.getTextCursorPosition().block]
   return selected.filter((block: AnyBlock) => canConvert(editor, block))
 }
 
@@ -54,4 +58,6 @@ export function toggleListType(editor: AnyEditor, type: ListBlockType): void {
       editor.updateBlock(block, { type: nextType })
     }
   })
+  // Retyped blocks change height, so the marquee highlights would be stale.
+  getBlockSelection(editor)?.clear()
 }

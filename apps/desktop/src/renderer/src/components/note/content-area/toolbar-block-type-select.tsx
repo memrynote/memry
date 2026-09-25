@@ -7,6 +7,7 @@ import {
   type BlockTypeSelectItem
 } from '@blocknote/react'
 import { useMemo } from 'react'
+import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
 
 type SelectedBlock = { id: string; type: string; props: Record<string, unknown> }
 
@@ -59,6 +60,7 @@ export function ToolbarBlockTypeSelect({ items }: { items?: BlockTypeSelectItem[
               editor.updateBlock(block.id, { type: item.type, props: item.props } as never)
             }
           })
+          getBlockSelection(editor)?.clear()
         }
       }
     })
@@ -78,8 +80,10 @@ export function ToolbarBlockTypeSelect({ items }: { items?: BlockTypeSelectItem[
   )
 }
 
+/** Marquee block selection first: it leaves the editor's caret on the last line. */
 function getSelectedBlocks(editor: BlockNoteEditor): SelectedBlock[] {
-  return (editor.getSelection()?.blocks ?? [
-    editor.getTextCursorPosition().block
-  ]) as unknown as SelectedBlock[]
+  return (getMarqueeSelectedBlocks<SelectedBlock>(editor as never) ??
+    editor.getSelection()?.blocks ?? [
+      editor.getTextCursorPosition().block
+    ]) as unknown as SelectedBlock[]
 }

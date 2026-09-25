@@ -107,4 +107,25 @@ describe('marquee hit-testing against real BlockNote markup', () => {
       expect(shouldStartMarquee(query(block as HTMLElement, 'img'))).toBe(true)
     }
   })
+
+  it('leaves a press on a portaled menu or listbox option to that menu', () => {
+    // The drag-handle menu, its Turn into submenu and the toolbar's block type
+    // dropdown all portal into the editor's portal element, inside the marquee
+    // zone. Starting a marquee there cleared the block selection Turn into
+    // reads when its item runs.
+    const root = document.createElement('div')
+    root.innerHTML = `
+      <div role="menu"><div role="menuitem"><span>Heading 2</span></div></div>
+      <div class="bn-menu-dropdown"><span>Duplicate</span></div>
+      <div role="listbox"><div role="option"><span>Heading 5</span></div></div>
+    `
+    document.body.appendChild(root)
+    try {
+      for (const span of root.querySelectorAll('span')) {
+        expect(shouldStartMarquee(span)).toBe(false)
+      }
+    } finally {
+      root.remove()
+    }
+  })
 })
