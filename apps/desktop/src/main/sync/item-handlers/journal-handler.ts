@@ -11,7 +11,6 @@ import { getIndexDatabase } from '../../database/client'
 import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import {
-  deleteJournalEntryFile,
   extractJournalProperties,
   getJournalPath,
   getJournalRelativePath,
@@ -20,7 +19,7 @@ import {
 } from '../../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getCrdtProvider } from '../crdt-provider'
-import { writeSyncedVaultFile } from '../bulk-apply'
+import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
@@ -143,13 +142,10 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         })
       })
 
-    if (existing.journalDate) {
-      deleteJournalEntryFile(existing.journalDate).catch((err) => {
-        log.error('Failed to delete synced journal file', { itemId, error: err })
-      })
-    }
-
     deleteNoteFromCache(indexDb, itemId)
+    // After the row delete, and journaled with the page (#2385): see
+    // `noteHandler.applyDelete`.
+    if (existing.journalDate) deleteSyncedVaultFile(getJournalPath(existing.journalDate))
     void flushProjectionEvents()
     ctx.emit(JournalChannels.events.ENTRY_DELETED, {
       date: existing.journalDate,

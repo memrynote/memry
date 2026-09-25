@@ -15,7 +15,7 @@ import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { getCrdtProvider } from '../crdt-provider'
-import { writeSyncedVaultFile } from '../bulk-apply'
+import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -25,12 +25,7 @@ import {
   shouldAttemptDownload
 } from '@memry/sync-client/attachment-download-state'
 import { getIndexDatabase } from '../../database/client'
-import {
-  deleteFile,
-  generateNotePath,
-  generateFilePath,
-  generateUniquePathSync
-} from '../../vault/file-ops'
+import { generateNotePath, generateFilePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
 import { getNoteAttachmentsDir } from '../../vault/attachments'
 import { getStatus as getVaultStatus } from '../../vault/index'
@@ -682,6 +677,11 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // synchronously, before its first await, so by the time the row below is
     // gone nothing can rebuild the note from its doc. Only the store clear is
     // late, and a doc already out of the provider's map is unreachable.
+    // Unlike the file unlink below it is not deferred to the page flush: its
+    // synchronous half is the part that must precede the row delete, and the
+    // late store clear needs no journal. A page rollback re-pulls this same
+    // delete, and a crash before the clear leaves a persisted doc whose row is
+    // gone and whose file the journal replay removes.
     void getCrdtProvider()
       .purge(itemId)
       .catch((err) => {
@@ -701,10 +701,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     })
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
-    markWritebackIgnored(absolutePath)
-    deleteFile(absolutePath).catch((err) => {
-      log.error('Failed to delete synced note file', { itemId, error: err })
-    })
+    // Journaled with the page and unlinked after it commits (#2385): a lost
+    // unlink would leave a file with no row for the indexer to push back.
+    deleteSyncedVaultFile(absolutePath)
     return 'applied'
   }
 
