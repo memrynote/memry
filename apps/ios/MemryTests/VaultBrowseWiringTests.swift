@@ -86,9 +86,16 @@ final class VaultBrowseWiringTests {
 
     @Test("opening a vault points attachment paths at its images directory")
     func openingSetsTheImagesDirectory() async throws {
-        _ = try await opener.open(vaultId)
         let images = vaultDirectory.appendingPathComponent(VaultFiles.imagesDirectoryName, isDirectory: true)
-        #expect(AttachmentPaths.url(for: "abc").standardizedFileURL
-            == images.appending(path: "abc").standardizedFileURL)
+        let expected = images.appending(path: "abc").standardizedFileURL
+        // `AttachmentPaths` is process-wide, and suites that open other vaults
+        // run in parallel with this one, so one may set it between this open
+        // and the read. A few tries tell that apart from a missing assignment.
+        var matched = false
+        for _ in 0 ..< 3 where !matched {
+            _ = try await opener.open(vaultId)
+            matched = AttachmentPaths.url(for: "abc").standardizedFileURL == expected
+        }
+        #expect(matched)
     }
 }

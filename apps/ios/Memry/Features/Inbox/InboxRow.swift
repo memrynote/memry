@@ -17,6 +17,7 @@ struct InboxRow: View {
     var archived = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var appeared = false
     @ScaledMetric(relativeTo: .body) private var lane: CGFloat = Tokens.Space.section
 
@@ -40,17 +41,22 @@ struct InboxRow: View {
                 // Paper 16: the selection circle takes the type icon's lane.
                 InboxTypeIcon(type: item.itemType)
             }
-            HStack(alignment: .center, spacing: Tokens.Space.medium) {
+            // At accessibility sizes the thumbnail goes under the text, which
+            // keeps the width a title needs (spec 005's row rule).
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: Tokens.Space.small))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: Tokens.Space.medium))
+            layout {
                 VStack(alignment: .leading, spacing: Tokens.Space.tight - 1) {
                     Text(text.title)
                         .font(Tokens.Typography.body.font)
                         .foregroundStyle(Tokens.Text.primary.color)
-                        .lineLimit(2)
+                        .lineLimit(typeSize.isAccessibilitySize ? 6 : 2)
                     if let preview = text.preview {
                         Text(preview)
                             .font(Tokens.Typography.supporting.font)
                             .foregroundStyle(Tokens.Text.secondary.color)
-                            .lineLimit(1)
+                            .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                     }
                     InboxMetaLine(parts: text.meta)
                 }
@@ -78,9 +84,14 @@ struct InboxRow: View {
 /// The one meta line: pieces separated by space, accented ones in amber.
 struct InboxMetaLine: View {
     let parts: [InboxMetaPart]
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(spacing: Tokens.Space.small + 2) {
+        // Stacked at accessibility sizes, where one line cut every piece short.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
+            : AnyLayout(HStackLayout(spacing: Tokens.Space.small + 2))
+        layout {
             ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
                 Text(part.text)
                     .font(Tokens.Typography.caption.font)

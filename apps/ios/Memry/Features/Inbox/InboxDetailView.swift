@@ -120,6 +120,7 @@ struct InboxDetailView: View {
             .padding(Tokens.Space.tight)
             .chromeGlass(in: .capsule)
             .padding(.horizontal, InboxLayout.edge)
+            .dynamicTypeSize(...InboxLayout.barTypeCap)
         } else {
             HStack(spacing: Tokens.Space.small) {
                 barButton(InboxCopy.archive, "archivebox") {
@@ -139,6 +140,7 @@ struct InboxDetailView: View {
             .padding(Tokens.Space.tight)
             .chromeGlass(in: .capsule)
             .padding(.horizontal, InboxLayout.edge)
+            .dynamicTypeSize(...InboxLayout.barTypeCap)
         }
     }
 
@@ -153,6 +155,7 @@ struct InboxDetailView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .accessibilityShowsLargeContentViewer { Label(label, systemImage: symbol) }
     }
 
     private func primaryButton(_ label: String, _ symbol: String, action: @escaping () -> Void) -> some View {
@@ -164,6 +167,7 @@ struct InboxDetailView: View {
         }
         .buttonStyle(.glassProminent)
         .tint(Tokens.Tint.base.color)
+        .accessibilityShowsLargeContentViewer { Label(label, systemImage: symbol) }
     }
 
     private func menu(_ item: InboxItemRecord) -> some View {

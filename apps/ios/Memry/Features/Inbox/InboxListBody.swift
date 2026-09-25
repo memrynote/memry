@@ -79,6 +79,9 @@ enum InboxLayout {
     static let edge = Tokens.Space.inset + Tokens.Space.tight
     /// The hairline starts under the title, past the 24pt glyph lane and 12pt gap.
     static let separatorLeading = Tokens.Space.section + Tokens.Space.medium
+    /// Floating bars stop growing here, as the system tab bar does; larger
+    /// sizes reach the labels through the Large Content Viewer.
+    static let barTypeCap = DynamicTypeSize.xxxLarge
 }
 
 /// Paper 01's list geometry, shared by Inbox, Snoozed and Archived.

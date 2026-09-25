@@ -1,5 +1,6 @@
 import Foundation
 import MemryCore
+import SQLite3
 import Testing
 
 @testable import Memry
@@ -293,6 +294,31 @@ struct InboxStoreTests {
         await store.file(item, to: "Agent Test", tags: [])
         #expect(store.items.map(\.id) == [item.id])
         #expect(try notes.list().isEmpty)
+    }
+}
+
+/// IB01a: a read that fails puts the failure row over the list, and Try
+/// again (`load`) clears it once the reads answer. The table is renamed away
+/// under the store and back, the nearest a test gets to a read failing live.
+@MainActor
+@Suite("Inbox failure row", .serialized)
+struct InboxFailureTests {
+    @Test func a_failed_read_shows_the_row_and_try_again_clears_it() async throws {
+        let scratch = try InboxTestVault()
+        let database = scratch.directory.appendingPathComponent(VaultFiles.dataDatabaseName).path
+        try execute("ALTER TABLE inbox_items RENAME TO inbox_items_away", in: database)
+        await scratch.store.load()
+        #expect(scratch.store.failure != nil)
+        try execute("ALTER TABLE inbox_items_away RENAME TO inbox_items", in: database)
+        await scratch.store.load()
+        #expect(scratch.store.failure == nil)
+    }
+
+    private func execute(_ sql: String, in path: String) throws {
+        var handle: OpaquePointer?
+        guard sqlite3_open(path, &handle) == SQLITE_OK else { throw CocoaError(.fileReadUnknown) }
+        defer { sqlite3_close(handle) }
+        guard sqlite3_exec(handle, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
     }
 }
 

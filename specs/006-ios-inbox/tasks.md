@@ -278,9 +278,15 @@ Each item lists what it must carry. Verification per §0.7.
       Stale dimming: `InboxFormattingTests` (§6 IB01). Live error state split
       to IB01a. `SpikeEvidence/inbox/IB01-list.png`,
       `IB01-filtered-after-refresh.png`, `IB04-photo-captured.png`.
-- [ ] IB01a **Inbox list error state** live: `InboxFailureRow` with Try again
+- [x] IB01a **Inbox list error state** live: `InboxFailureRow` with Try again
       on a failed read. No read fails on memry-A; force one in Phase 6
       (offline launch) or cover it with a store test.
+      Evidence: store test `InboxFailureTests` renames `inbox_items` away
+      under a real scratch vault. `load()` then sets `failure`, which the list
+      shows as the row, and after the rename back, `load()` (the row's Try
+      again) clears it. Result: 7/7 with InboxStoreTests on memry-A. An offline
+      launch does not fail a read, since reads are local SQLite (§6). The
+      staging vault's table was not renamed live.
 - [x] IB02 **Title menu**: Inbox, Snoozed & reminders (upcoming count),
       Archived, Insights; view persists per app session.
       Evidence: memry-A, Paper 02 (3PA-0): Inbox 19 (checked), Snoozed &
@@ -383,9 +389,17 @@ Each item lists what it must carry. Verification per §0.7.
       `IB12-detail-note.png`, `IB12-detail-pdf-elsewhere.png`,
       `IB12-detail-social.png`, `IB12-detail-clip.png`,
       `IB12-detail-reminder.png`.
-- [ ] IB12a **Detail: video** inline player. No video capture exists on the
+- [x] IB12a **Detail: video** inline player. No video capture exists on the
       account and the simulator's Photos picker is images-only; check with a
       `.mov` through Choose File in Phase 6.
+      Evidence: memry-A. A 4 s test `.mov` made with ffmpeg and added with
+      `simctl addmedia` was shared from Photos to Memry
+      (`IB12a-share-video.png`). It was ingested as a video row
+      (`2WqSgjyofeugOpTAVbvm3`, source quick-capture). The detail shows
+      "Video · Captured today at 14:43" and the inline player
+      (`IB12a-detail-video.png`); a tap plays it with system controls
+      (`IB12a-video-playing.png`). Videos have no Convert button because
+      desktop treats them as note-only.
 - [x] IB13 **File sheet**: folder search, create with `/`, suggested (D5) or
       recent, all folders, tags with suggestions, link existing/new notes,
       image filing mode + Don't ask again, disabled confirm until valid
@@ -524,16 +538,67 @@ Each item lists what it must carry. Verification per §0.7.
 
 ## Phase 6: verification (serial)
 
-- [ ] IB90 Accessibility: VoiceOver labels + custom actions (file, snooze,
+- [x] IB90 Accessibility: VoiceOver labels + custom actions (file, snooze,
       archive) on rows, AX5, RTL, Reduce Motion / Transparency, 44 pt.
-- [ ] IB91 Dark mode screenshots of 01, 04, 10, 13, 18.
-- [ ] IB92 Cross-device on staging: capture on iOS → appears on desktop;
+      Evidence: memry-A. The live accessibility tree reads each row as one
+      button, "type: title, meta, age" (e.g. "Image: IMG_0111, Photo · 4,1 MB,
+      47m"), and every row is at least 61 pt tall. The File, Snooze and
+      Archive custom actions are on every row (`InboxRowActions`), and
+      Archived rows have Restore and Delete permanently. Reduce Motion drops
+      the new-row fade (`InboxRow`), and Reduce Transparency swaps the glass
+      for an opaque fill (shared `ChromeGlass`). AX5 exposed two problems,
+      fixed in §6: rows cut titles and meta short, and the detail bar
+      overflowed. After the fixes: `IB90-ax5-list.png`, `IB90-ax5-detail.png`.
+      RTL (`-AppleTextDirection YES`): the glyph lane, thumbnail, separators,
+      FAB and toolbars all mirror (`IB90-rtl-list.png`).
+- [x] IB91 Dark mode screenshots of 01, 04, 10, 13, 18.
+      Evidence: memry-A in dark appearance (set back to light afterwards):
+      `IB91-dark-01-list.png`, `IB91-dark-04-composer.png`,
+      `IB91-dark-08-row-menu.png`, `IB91-dark-10-link.png`,
+      `IB91-dark-13-file.png` and `IB91-dark-18-snoozed.png`. All read from
+      the semantic tokens; nothing is hard-coded light.
+- [x] IB92 Cross-device on staging: capture on iOS → appears on desktop;
       capture on desktop → iOS; file, convert to task, snooze, archive,
       restore each way; an iOS unsnooze/unarchive clears on desktop (explicit
       null). Unit, UI (new `InboxUITests`), Conformance plans green.
-- [ ] IB00 Parity audit: every New/Adapted row of artboard 00 exercised on the
+      Evidence: the desktop peer was this worktree's `dev:staging`, run as
+      `MEMRY_DEVICE=inbox`, linked by recovery phrase to vault 87614a10 and
+      driven over CDP (§7). The other session's `jp-desk` app was not
+      touched. - iOS → desktop: all 33 iOS items listed on desktop, including the
+      Share-extension links (`captureSource` quick-capture) and the photo. - Desktop → iOS: six `[agent] desk …` captures. After an iOS relaunch,
+      D1 and D2 were open, D3 snoozed, D4 archived, D5 filed to Agent Test,
+      and D6 filed as task `MITX-qAuig89ImwgciIZo`. - Actions on iOS, checked on desktop: D1 filed to Agent Test (desktop
+      wrote its note file), D2 converted to task `pzSiJ97D-vG1Ny6MrimTk`
+      (desktop `tasks.get` returns it), D3 unsnoozed and D4 restored (both
+      null on desktop), I1 snoozed to 09:00 tomorrow, I2 archived. - Actions on desktop, checked on iOS: I1 unsnoozed and I2 unarchived;
+      both columns read null on iOS.
+      Screenshots: `IB92-desktop-inbox.png`, `IB92-ios-inbox.png`.
+      Test plans on memry-A: - UI: 9 tests pass (Tasks 6, Editor 1, and the new `InboxUITests` 2:
+      capture → archive → delete from Archived; snooze → Back to inbox),
+      with `TEST_RUNNER_MEMRY_UI_VAULT=scratch` and the driver skipped. - Conformance: 29 tests pass. - Unit: 683 tests pass, skipping the five real-keychain and sign-out
+      suites so memry-A stays signed in.
+- [x] IB00 Parity audit: every New/Adapted row of artboard 00 exercised on the
       simulator; fill the table in §4.
-- [ ] IB93 Delete `[agent]` / `Agent Test` data; final report in §8.
+      Evidence: §4 lists all 25 rows of Paper 00 (AKS-0). The 24 New or
+      Adapted rows each point at the IB item and screenshot from memry-A; the
+      Desktop-only row is not carried over. The one gap is IB18a
+      (note/journal reminder targets), blocked in §7.
+- [x] IB93 Delete `[agent]` / `Agent Test` data; final report in §8.
+      Evidence: done through this worktree's desktop peer (IB92), which
+      synced every change: status idle, 0 pending. - Inbox: 34 rows deleted permanently. These are every live `[agent]`
+      row, the unprefixed test captures §7 lists by id (links, voice memos,
+      Share1 ×2, IMG_0111, the video, Desk2), and the eight
+      `[agent] parent task` reminder rows. - Seed row: `inbox_lnk_0SyBQ1wUWU-R` unfiled with `undoFile`. - Notes: 17 deleted. These are everything under `Agent Test/` (the five
+      empty "[agent] Photo" notes, the filed photos, links, desk one/five,
+      parent task ×2, link target, swipe row), the root `agent make me a
+      note` and `agent remind me later`, and the root basil note the seed
+      filing made. The empty `Agent Test` folder was removed too. - Tasks: 23 deleted. These are the three conversions (`dzAu…`, `MITX…`,
+      `pzSi…`) and the `[agent] ui-*` Tasks UI rows created in this spec's
+      two UI-plan windows (09:19–09:27 and 11:17–11:28 UTC). - Other: saved filters `GGoOX87…` and `zTFEo…` and the IB15 note
+      reminder were deleted, and the vault name was set back to "MemryNote". - Default vault: the `[agent] zero check` note was deleted from the iOS
+      note page. - Checked on memry-A after a relaunch: 0 live `[agent]` inbox rows, 0
+      live `[agent]` notes, the conversion tasks gone, the seed row unfiled,
+      and the Share queue empty. Settings were already restored (IB23). - Left in place (§7): data other sessions own, and one filed history row.
 
 ### 0.7 Verification per artboard
 
@@ -548,8 +613,33 @@ Each item lists what it must carry. Verification per §0.7.
 
 ## 4. Parity audit table (filled by IB00)
 
-| 00 row | iOS location | Evidence |
-| ------ | ------------ | -------- |
+| 00 row                                         | iOS location                                                       | Evidence                                                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Views: Inbox, Archived, Insights               | New: title menu with Snoozed & reminders as a fourth view (02)     | IB02; `IB02-title-menu.png`                                                                                          |
+| Snoozed toggle + reminders panel               | New: title menu › Snoozed & reminders (18); a tap opens the target | IB18; `IB18-snoozed.png`, `IB18-open-task-target.png`. Note/journal targets: IB18a, open (§7)                        |
+| Type filter: 9 types, counts, Clear all        | New: filter button menu (03)                                       | IB03; `IB03-filter-menu-all-types.png`, `IB03-filter-active.png`                                                     |
+| Capture bar: text, link paste, duplicate check | New: + composer (04, 05)                                           | IB04/IB05; `IB04-composer.png`, `IB04-paste-chip.png`, `IB05-duplicate.png`, `IB05-capture-anyway.png`               |
+| Attach file: image, audio, video, PDF          | New: composer paperclip                                            | IB04; `IB04-attach-menu.png`, `IB04-photo-captured.png`, `IB04-file-importer.png`                                    |
+| Voice memo + transcription                     | New: composer mic → recorder (06), detail player (11)              | IB06/IB11; `IB06-recording.png`, `IB11-voice-detail.png`                                                             |
+| Quick-capture window, drag and drop            | Adapted: Share extension (22) and the + composer                   | IB22; `IB22-share-sheet-memry.png`, `IB22-ingested-toast.png`, `IB22-share-photo.png`, `IB12a-share-video.png`       |
+| Background jobs: link metadata                 | New: "N fetching" subtitle (01); failures stay silent              | IB10; `IB00-fetching.png`, `IB10-detail-link-hero.png`                                                               |
+| List: Today / Yesterday / Older rows           | New: type icon, title, one meta line, image thumbnail              | IB01; `IB01-list.png`, `IB90-ax5-list.png`                                                                           |
+| Comfortable density preview line               | Adapted: only voice transcripts show a preview line                | IB01; `IB01-list.png`                                                                                                |
+| Row hover actions, quick file keys             | Adapted: leading swipe File, trailing Snooze / Archive (07)        | IB07; `IB07-swipe-leading.png`, `IB07-swipe-trailing.png`                                                            |
+| Context menu: Rename                           | New: long-press menu (08)                                          | IB08; `IB08-row-menu.png`, `IB12-title-renamed.png`                                                                  |
+| Keyboard shortcuts                             | Adapted: tap, long press, swipe, pull to refresh                   | IB07/IB08/IB01; `IB01-filtered-after-refresh.png`                                                                    |
+| Snooze presets + custom date                   | New: snooze menu, Pick date & time sheet (09)                      | IB09; `IB09-snooze-menu.png`, `IB09-pick-date-sheet.png`, `IB23-snooze-due-fired.png`                                |
+| Detail panel per type                          | New: pushed detail (10–12), video inline                           | IB10–IB12a; `IB10-detail-link-hero.png`, `IB11-voice-detail.png`, `IB12-detail-image.png`, `IB12a-video-playing.png` |
+| Filing: AI folder suggestions, search          | Adapted (D5): Recent folders, search, create with `/`              | IB13; `IB13-file-sheet.png`, `IB13-filed-toast.png`                                                                  |
+| Image filing mode                              | New: File sheet row + Settings › Inbox                             | IB13/IB23; `IB13-file-image-mode.png`, `IB23-settings.png`                                                           |
+| Convert: Task, Event, Reminder                 | New: Convert sheet (14, 15); Event hidden (D6)                     | IB14/IB15; `IB14-convert-task.png`, `IB15-convert-reminder.png`, IB92 task round trip                                |
+| Archive with undo                              | New: undo toast beside + (17)                                      | IB17; `IB17-archive-undo-toast.png`                                                                                  |
+| Bulk: File, Tag, Snooze, Archive all           | New: select mode, glass toolbar (16); no AI pill (D5)              | IB16; `IB16-select-mode.png`, `IB16-bulk-file-toast.png`, `IB16-bulk-tag.png`                                        |
+| Archived: search, restore, delete              | New: Archived view, swipe Restore / Delete (19)                    | IB19; `IB19-archived.png`, `IB19-search.png`, `IB19-delete-confirm.png`; `InboxUITests`                              |
+| Insights                                       | New: single-column Insights (20)                                   | IB20; `IB20-insights.png`                                                                                            |
+| Inbox Zero                                     | New: empty state (21)                                              | IB21; `IB21-inbox-zero.png`                                                                                          |
+| Notifications: review nudge, snoozed back      | New: local notifications + Settings › Inbox (23)                   | IB23; `IB23-review-nudge-fired.png`, `IB23-snooze-due-fired.png`, `IB23-notification-opens-inbox.png`                |
+| Resizable panel, split view                    | Desktop only: not carried over                                     | n/a                                                                                                                  |
 
 ## 5. Verified facts (filled by IB001)
 
@@ -729,6 +819,12 @@ Each item lists what it must carry. Verification per §0.7.
 - 2026-09-25 — IB22 — The agent driver's `app` selector takes any bundle id (Safari, Photos), so a share sheet can be driven from its host app. Test harness only.
 - 2026-09-25 — IB23 — Settings › Inbox section headers are 13 pt uppercase tertiary (Paper 23); iOS 26's default grouped header is larger and sentence case.
 - 2026-09-25 — IB09/IB23 — Found live: the Pick date & time sheet re-presented itself on every render, because its binding wrapped the ids in a new `InboxIdList` (new UUID) on each read. It flickered, collapsed to its toolbar or vanished. `InboxSheets.snooze` now holds the identified list, as `tag` already did. The sheet opens at `.large` only: at `.medium` the graphical picker's time row sat below the fold with nothing to scroll. Evidence `IB09-pick-date-sheet.png`.
+- 2026-09-25 — IB90 — At AX5 an inbox row put its thumbnail beside the text and cut the title to 2 lines and the meta to one. It read "[agent] snooze du…" and "Phot… 40m". Following spec 005's TaskRow rule, accessibility sizes now allow 6 title lines and 3 preview lines, stack the meta pieces, and move the thumbnail under the text.
+- 2026-09-25 — IB90 — At AX5 the detail bar (Archive / Convert / File…) was cut off: Convert dropped out and File… wrapped. The floating bars now stop at `.xxxLarge` (`InboxLayout.barTypeCap`), as the system tab bar does, and each button shows the Large Content Viewer on long press.
+- 2026-09-25 — IB91 — In dark mode, the large title under the top scroll-edge effect reads a little dimmer than the rows. It uses `Text.primary`; the dimming comes from the system's edge effect in the shared `TitleMenuHeader`, which Tasks has too. Not changed here.
+- 2026-09-25 — IB92 — Filing on iOS writes `filedTo` from the core note path, which keeps the title's brackets (`Agent Test/[agent] desk one….md`). Desktop writes that note to disk as `agent desk one….md` because it sanitizes the filename, and desktop's own filing writes that name. Desktop only shows `filedTo` (filing history, insights) and never opens it, so nothing breaks. Converging needs the core to use desktop's filename sanitizer; left as is.
+- 2026-09-25 — IB92 — `VaultBrowseWiringTests` "opening a vault points attachment paths…" flaked in the full Unit plan: `AttachmentPaths.imagesDirectory` is process-wide, and parallel suites open other vaults. The test now retries the open-and-read up to three times. The app opens one vault at a time, so the global stays.
+- 2026-09-25 — IB01a — The failure row covers failed reads and writes. A failed sync pass is logged, but the `refresh()` that follows it clears `failure`, so going offline shows nothing in the list. Desktop keeps sync status out of the inbox list too (sidebar sync indicator). Left that way.
 
 ## 7. Blockers
 
@@ -786,11 +882,115 @@ Each item lists what it must carry. Verification per §0.7.
   exist explicitly with those values. A mis-aimed tap opened the detail of a
   real "Reminder: task" row, which only marks it viewed. The snooze check row
   `sgVekWr2b1138vFN9U0kv` is `[agent]` and goes in IB93.
+- 2026-09-25 — IB92 — The desktop peer ran on a scratch folder at
+  `/tmp/ib-desk/scratch`, profile `memry-inbox-inbox`, with
+  `rebuild:electron`. Binding that folder renamed staging vault 87614a10 to
+  "scratch": desktop names a vault after its folder. The picker had shown
+  "MemryNote" and before that "jp-desk". The UI tests ran with
+  `MEMRY_UI_VAULT=scratch`; IB93 restores "MemryNote". The run added
+  `[agent] desk …` and `[agent] ios …` items (D1–D6, I1, I2) and two filed
+  notes and two tasks from the conversions. All go in IB93.
+- 2026-09-25 — IB93 — Left in place:
+  (a) `[agent] zero check` (`fNlHbLv_OxRZ8SQVWaQ2I`), a filed history row in
+  the account's `default` vault. Neither app deletes a filed row. Only a
+  desktop bound to that vault could, and binding would rename "Unnamed vault"
+  after its folder, as happened to MemryNote. Its note is deleted.
+  (b) `[agent] ui-*` Tasks rows, "Agent Test ui-*" filters and the "Agent
+  Test Redesign" project from UI runs outside this spec's windows. They belong
+  to spec 005's RD93 and may belong to the journal-parity session.
+  (c) `[agent] journal …` tasks: the journal-parity session's.
+  (d) The desktop peer's device registration (`ee6669a7-…`), profile
+  `memry-inbox-inbox` and `/tmp/ib-desk`. The staging account is revoked
+  after the run.
+  (e) The 4 s test video in memry-A's Photos.
+- 2026-09-25 — Out of scope — Notes list: the swipe Delete on a note row
+  closes the row without showing its "Delete this note?" dialog, so nothing
+  is deleted; the note page's More › Delete works. Seen on memry-A in the
+  `default` vault. This belongs to the Notes screens, not this spec.
+- 2026-09-25 — Coordination — The journal-parity desktop still names vault
+  87614a10 "jp-desk" locally. Its next vault-directory refresh may push that
+  name again over the restored "MemryNote". Desktop names a vault after its
+  local config, so two desktops with different names on one vault take turns.
+  Pre-existing behaviour.
 
 ## 8. Final report
 
 ### What shipped
 
+Branch `feat/ios-inbox`, six commits, no push:
+
+- `f9136bbee`: Phase 0 facts and decisions.
+- `d00ed7b0b`: core sync, reads, writes and the UniFFI surface.
+- `a8e3e3fd6`: iOS foundations, screens and the review settings API.
+- `305d7a940`: screens verified, plus the attachment upload and filing fixes.
+- `8c0530839`: Share extension, review and snooze notifications.
+- Phase 6: AX5 fixes, `InboxUITests`, the failure-row test and this report.
+
+**Core (`crates/memry-core`).** The inbox projector, merge and apply for
+desktop's whole-row sync payload. Reads cover the list, stats, panel,
+archived, patterns and filing history. Writes cover capture, file, convert
+to task or reminder, snooze, archive, restore, delete, tags and rename, with
+explicit null on unsnooze and unarchive. Plus the synced review settings,
+conformance vectors shared with desktop, and attachment upload fixes: Worker
+auth, absolute R2 URLs and `directChunks`.
+
+**iOS (`apps/ios`).** The Inbox, reached from More, covering all 23 Paper
+artboards:
+
+- the list, the title-menu views and the type filter;
+- the composer: text, paste link, duplicate check, photo, file, voice;
+- swipes, the row menu, snooze and the date picker;
+- detail views per type, including video;
+- the File sheet with image modes, and Convert;
+- select mode with bulk actions, undo toasts, Snoozed & reminders,
+  Archived, Insights and Inbox Zero;
+- Settings › Inbox with the local review nudge and snooze-due
+  notifications, which open the Inbox when tapped.
+
+**Share extension (`MemryShare`).** Takes links, pages, text, photos, videos
+and files. It queues drops in the app group, and the app ingests them on its
+next Inbox load. It flags a duplicate with "Already captured" / "Capture
+anyway".
+
+**Verification.** Rust passes 963 tests. On memry-A: Unit 683, Conformance
+29, UI 9 (with the new `InboxUITests`). `pnpm lint`, typecheck, and the
+architecture, contracts and line-ceiling checks pass; so do the desktop
+iOS-compat vitest and a live cross-device round trip with a desktop staging
+peer (IB92). The Paper 00 parity table is §4.
+
 ### Decisions
 
+§6 holds the full log. The ones that shape behaviour:
+
+- **Sync payload:** desktop's whole-row payload is kept as is, with no wire
+  or schema change. iOS writes the same keys, and an absent key keeps its
+  value.
+- **Device-local data:** inbox attachments stay on the device that made
+  them; elsewhere they show as "file on another device". Tags and the image
+  filing mode are device-local too. Review reminder settings sync.
+- **No AI (D5):** Recent folders replace AI suggestions, and there is no
+  cluster pill.
+- **Convert (D6):** Convert → Event is hidden.
+- **Share extension:** it never opens the vault. The app ingests its queue,
+  and duplicates are checked against link digests the app publishes. It
+  presents full height, because the host controls the detents.
+- **Failure row:** it covers failed reads and writes. A sync failure is
+  logged, and desktop's sidebar reports sync status.
+- **Accessibility sizes:** rows stack and the floating bars stop at
+  `.xxxLarge`, with the Large Content Viewer above that.
+
 ### Left open
+
+- IB18a: note and journal-day reminder targets can't open across tabs; that
+  needs a Notes/Journal router (blocked, §7).
+- IB22a: no optional thought on shared items, because there is no synced
+  field for one (§6).
+- The IB93 leftovers above: the filed row in `default`, other sessions' test
+  data, and the desktop peer's device registration.
+- Pre-existing, not fixed here:
+  - the search index catches up only on relaunch;
+  - there is no upload progress indicator;
+  - the app icon is blank;
+  - the Notes list's swipe Delete doesn't confirm;
+  - iOS `filedTo` keeps brackets that desktop's filenames drop (display only);
+  - two desktops with different local names take turns renaming the vault.
