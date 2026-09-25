@@ -540,9 +540,8 @@ reach a peer still holding the old value. The peer keeps its value under the
 clearing device's clock, and its next push brings the value back, because that
 clock ties and the remote wins. **Removal waits until desktop keeps unmodelled
 settings keys (#2183, the nesting ceiling of chapter 13 §13.2.1).** The Rust
-core already removes (`crates/memry-core/src/sync/settings_merge.rs`), so on an
-absent winner it and desktop disagree; the two cases are flagged `rustPending`
-in `settings-merge.json`.
+core keeps the local value on an absent winner too
+(`crates/memry-core/src/sync/settings_merge.rs`, #2399).
 
 **A `fieldClocks` key that is not an addressable path** — `""`, or one with an
 empty segment such as `general.` — **rides along as a clock and arbitrates
@@ -551,7 +550,9 @@ rather than fail the payload; an unaddressable key is that rule's limiting case,
 and refusing the payload over one would stall every other synced setting.
 
 **A merge in which any path compared `concurrent` MUST re-queue the merged
-settings** (`packages/sync-client/src/settings-sync.ts:112`). This is §6.5.2 P3
+settings** (`packages/sync-client/src/settings-sync.ts:112`; the Rust core
+enqueues in the merge's own transaction,
+`crates/memry-core/src/sync/settings_merge.rs`, #2399). This is §6.5.2 P3
 for settings, which reach it without the pull coordinator's conflict re-queue:
 the handler reports `applied`, and settings have no `buildPushPayload`, so the
 queued payload is what gets pushed. Without it, a device that kept its own value

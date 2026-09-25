@@ -22,9 +22,6 @@ const C = 'device-c'
 const OFF = '_offline'
 const PATH = 'general.accentColor'
 
-const ABSENT_WINNER_KEEPS_LOCAL =
-  'the Rust core removes the path when the winner has no value; §6.9.0 defers removal until desktop keeps unmodelled keys (#2183)'
-
 interface SettingsMergeSpec {
   name: string
   pins: string
@@ -102,8 +99,7 @@ const SPECS: SettingsMergeSpec[] = [
     undefined,
     { [A]: 1 },
     { [A]: 2 },
-    '§6.3.2 row 10 on a settings path: the remote wins with no value, the local value stays',
-    ABSENT_WINNER_KEEPS_LOCAL
+    '§6.3.2 row 10 on a settings path: the remote wins with no value, the local value stays'
   ),
   onePath(
     'stripped-value-echo-keeps-local',
@@ -111,8 +107,7 @@ const SPECS: SettingsMergeSpec[] = [
     undefined,
     { [A]: 1 },
     { [A]: 1 },
-    'an older build stripped the value its schema does not model and echoed the clock (#16): a tie the remote wins with no value',
-    ABSENT_WINNER_KEEPS_LOCAL
+    'an older build stripped the value its schema does not model and echoed the clock (#16): a tie the remote wins with no value'
   ),
   onePath(
     'legacy-local-key',

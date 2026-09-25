@@ -1718,9 +1718,10 @@ async fn a_local_settings_removal_that_ticked_beats_a_stale_remote_value() {
     assert!(projected_settings(&db).is_empty());
     assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
 
-    // And the other seat, which is where the removal has to actually land or
-    // the two devices diverge permanently: this device still holds the value,
-    // and the peer's ticked removal arrives.
+    // And the other seat: this device still holds the value, and the peer's
+    // ticked removal arrives. #2399, protocol 06 §6.9.0 as amended by #2383:
+    // an absent winner keeps the local value until desktop keeps unmodelled
+    // keys (#2183), because a desktop echo of a stripped value looks the same.
     let peer = scratch_db("pull-settings-removal-peer");
     peer.call_blocking(|conn| {
         settings::set(conn, "general.theme", json!("dark"), "device-a", MERGE_NOW)?;
@@ -1739,10 +1740,102 @@ async fn a_local_settings_removal_that_ticked_beats_a_stale_remote_value() {
     assert_eq!(report.corrupt, 0);
     let parsed = stored_payload(&peer, "settings", SETTINGS_ID);
     assert_eq!(
-        parsed["settings"]["general"].get("theme"),
-        None,
-        "§6.9.1: a removal is a write, and a ticked one beats the old value"
+        parsed["settings"]["general"]["theme"],
+        json!("dark"),
+        "removal is deferred: the local value stays"
     );
-    assert!(projected_settings(&peer).is_empty());
+    assert_eq!(
+        parsed["fieldClocks"]["general.theme"],
+        json!({"device-a": 1, "device-b": 1}),
+        "the removal's tick is kept, so the clock is ahead when removal ships"
+    );
     assert_eq!(outbox_rows(&peer, SETTINGS_ID), queued_before);
+}
+
+/// #2399's repro: iOS writes a setting desktop does not model, desktop strips
+/// the value, keeps the clock and echoes it on its next push. iOS keeps its
+/// own setting.
+#[tokio::test]
+async fn a_desktop_echo_of_a_stripped_setting_keeps_the_ios_value() {
+    let db = scratch_db("pull-settings-echo");
+    db.call_blocking(|conn| {
+        settings::set(
+            conn,
+            "experimental.agentSidebar",
+            json!(true),
+            "ios",
+            MERGE_NOW,
+        )?;
+        Ok(())
+    })
+    .expect("the iOS setting");
+
+    // Desktop edited the theme and pushed the echoed clock with no value.
+    let echo = settings_payload(
+        json!({"general": {"theme": "dark"}}),
+        json!({
+            "experimental.agentSidebar": {"ios": 1},
+            "general.theme": {"desktop": 1}
+        }),
+    );
+    let report = pull_one(&db, SETTINGS_ID, "settings", &echo, "66").await;
+
+    assert_eq!(report.applied, 1);
+    let parsed = stored_payload(&db, "settings", SETTINGS_ID);
+    assert_eq!(
+        parsed["settings"]["experimental"]["agentSidebar"],
+        json!(true),
+        "the tie goes to the remote, which has no value: the local one stays"
+    );
+    assert_eq!(parsed["settings"]["general"]["theme"], json!("dark"));
+}
+
+/// #2399, protocol 06 §6.9.0: a merge in which a path compared `concurrent`
+/// re-queues the merged settings, in the same transaction as the write, so
+/// the union clock reaches the server (#2287). A dominated path does not.
+#[tokio::test]
+async fn a_concurrent_settings_merge_requeues_the_merged_payload() {
+    let db = scratch_db("pull-settings-requeue");
+    seed_local_theme(&db);
+    // The local edits were pushed.
+    db.call_blocking(|conn| {
+        conn.execute("DELETE FROM outbox", [])
+            .expect("clear the outbox");
+        Ok(())
+    })
+    .expect("pushed");
+
+    // {device-a: 2} against {device-b: 3}: concurrent, remote total wins.
+    let remote = settings_payload(
+        json!({"general": {"theme": "dark"}}),
+        json!({"general.theme": {"device-b": 3}}),
+    );
+    let report = pull_one(&db, SETTINGS_ID, "settings", &remote, "67").await;
+
+    assert_eq!(report.applied, 1);
+    let parsed = stored_payload(&db, "settings", SETTINGS_ID);
+    assert_eq!(parsed["settings"]["general"]["theme"], json!("dark"));
+    assert_eq!(
+        parsed["fieldClocks"]["general.theme"],
+        json!({"device-a": 2, "device-b": 3})
+    );
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), 1, "the merge re-queued");
+
+    // A later payload that dominates is taken without a re-queue.
+    db.call_blocking(|conn| {
+        conn.execute("DELETE FROM outbox", [])
+            .expect("clear the outbox");
+        Ok(())
+    })
+    .expect("pushed");
+    let newer = settings_payload(
+        json!({"general": {"theme": "light"}}),
+        json!({"general.theme": {"device-a": 2, "device-b": 4}}),
+    );
+    pull_one(&db, SETTINGS_ID, "settings", &newer, "68").await;
+    assert_eq!(
+        stored_payload(&db, "settings", SETTINGS_ID)["settings"]["general"]["theme"],
+        json!("light")
+    );
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), 0);
 }
