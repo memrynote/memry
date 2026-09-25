@@ -9,6 +9,7 @@
 mod cli;
 mod commands;
 mod edit;
+mod journal;
 mod push;
 mod session;
 mod transport;
@@ -63,5 +64,17 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
             append,
             vault,
         } => edit::notes_append(&cli, &note, &append, vault.as_deref()),
+        Command::JournalAppend { date, text, vault } => {
+            journal::append(&cli, &date, &text, vault.as_deref())
+        }
+        Command::JournalTags { date, tags, vault } => {
+            journal::tags(&cli, &date, &tags, vault.as_deref())
+        }
+        Command::JournalProperty {
+            date,
+            name,
+            value_json,
+            vault,
+        } => journal::property(&cli, &date, &name, &value_json, vault.as_deref()),
     }
 }

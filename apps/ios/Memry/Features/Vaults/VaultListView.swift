@@ -82,6 +82,14 @@ struct VaultListView: View {
                         )
                     }, tasks: {
                         TasksTabContent(store: tasksStore, failure: tasksFailure)
+                    }, journal: {
+                        JournalTabContent(
+                            vault: vault,
+                            secureStore: model.secureStore,
+                            isSyncing: tasksStore?.isSyncing ?? false,
+                            tasksStore: tasksStore,
+                            filler: filler
+                        )
                     }, more: {
                         // Settings spec: More › Settings, built next to the tasks store.
                         MoreTabView(context: settings, browse: browse)

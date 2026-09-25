@@ -36,17 +36,9 @@ enum AppFeature: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
-/// F9: Journal is not on iOS yet, so its settings row stays hidden (a UI test
-/// can show it with `-settings.showUnshipped`). Inbox shipped (#2422) and has
-/// its own tab.
+/// F9: Journal (#2427) and Inbox (#2422) have shipped with their own tabs and
+/// settings pages, so every module but Home has a Features toggle.
 enum SettingsFeatureGates {
-    static var showsUnshipped: Bool {
-        ProcessInfo.processInfo.arguments.contains("-settings.showUnshipped")
-    }
-
-    static var journal: Bool { showsUnshipped }
-    static var inbox: Bool { true }
-
     /// Whether the feature has a tab on this phone, so its Features toggle
     /// does something. Home has no tab since the Inbox replaced it.
     static func isShipped(_ feature: AppFeature) -> Bool {

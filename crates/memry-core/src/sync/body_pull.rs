@@ -40,12 +40,20 @@
 //! §7.2 does spell out (`note_id`, `since`, `limit`), and reads its answer
 //! through both shapes. §7.3.1 says in as many words that both routes are
 //! conforming.
+//!
+//! The single-document route carries no `snapshotMeta`, though, so a
+//! document above cursor `0` could never meet §7.8's second clause: once a
+//! peer's snapshot pruned the log past this device's cursor, the document
+//! went silent for good. Documents that hold a cursor are therefore probed
+//! first through the batch route (desktop's `CRDT batch chunk probed`), one
+//! request per hundred documents, for the meta alone.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use serde_json::Value as Json;
+use serde_json::{Value as Json, json};
 
 use crate::api::errors::{ApiError, StorageError};
 use crate::crdt::update_log::{self, Namespace};
@@ -67,6 +75,9 @@ pub const CRDT_UPDATES_PAGE_LIMIT: u32 = 100;
 /// document with a huge backlog cannot hold a first sync open indefinitely.
 /// The next pass resumes from the committed cursor.
 pub const MAX_PAGES_PER_DOCUMENT: u32 = 50;
+
+/// Documents per snapshot-meta probe: the batch route's own cap (§7.3).
+const PROBE_CHUNK: usize = 100;
 
 /// The cursor scope for one document's body feed (chapter 05 §5.11: the
 /// `scope` column exists for exactly this, and it is **not** a per-type record
@@ -190,14 +201,26 @@ impl BodyPull {
         doc_ids: &[String],
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut total = BodyPullReport::default();
-        for doc_id in doc_ids {
-            total.absorb(self.pull_document(doc_id).await?);
+        for chunk in doc_ids.chunks(PROBE_CHUNK) {
+            let probed = self.probe_snapshot_meta(chunk).await?;
+            for doc_id in chunk {
+                total.absorb(self.pull_with(doc_id, probed.get(doc_id)).await?);
+            }
         }
         Ok(total)
     }
 
     /// One document: baseline if §7.8 says so, then incrementals.
     pub async fn pull_document(&self, doc_id: &str) -> Result<BodyPullReport, BodyPullError> {
+        let probed = self.probe_snapshot_meta(&[doc_id.to_owned()]).await?;
+        self.pull_with(doc_id, probed.get(doc_id)).await
+    }
+
+    async fn pull_with(
+        &self,
+        doc_id: &str,
+        probed: Option<&SnapshotMeta>,
+    ) -> Result<BodyPullReport, BodyPullError> {
         let mut report = BodyPullReport {
             documents: 1,
             ..BodyPullReport::default()
@@ -208,6 +231,16 @@ impl BodyPull {
         // There is no incremental that could have told us about it, because
         // everything at or below the watermark is answered with silence.
         if cursor == 0 && self.fetch_baseline(doc_id, cursor, &mut report).await? {
+            cursor = self.read_cursor(doc_id).await?;
+        }
+        // §7.8, second clause, from the probe: the single-document route
+        // carries no `snapshotMeta`, so without it a snapshot that pruned the
+        // log above this cursor would leave the document silent forever.
+        if cursor > 0
+            && let Some(meta) = probed
+            && self.baseline_due(doc_id, cursor, meta).await?
+            && self.fetch_baseline(doc_id, cursor, &mut report).await?
+        {
             cursor = self.read_cursor(doc_id).await?;
         }
 
@@ -248,7 +281,7 @@ impl BodyPull {
                     stopped = true;
                     break;
                 };
-                self.store_update(doc_id, entry.sequence_num, update, entry.created_at)
+                self.store_update(doc_id, entry.sequence_num, update)
                     .await?;
                 cursor = entry.sequence_num;
                 report.updates += 1;
@@ -346,6 +379,52 @@ impl BodyPull {
         Ok(stored.as_deref() != Some(meta.revision.as_str()))
     }
 
+    /// The server's snapshot meta for the documents in `doc_ids` that already
+    /// hold a cursor, through one `POST /sync/crdt/updates/batch` (the route
+    /// that carries `snapshotMeta`, §7.11; desktop's probe). `limit: 1`: the
+    /// updates themselves come from the paged pull that follows.
+    ///
+    /// **A failed probe is not a failed pull.** The batch route has its own,
+    /// tighter rate limit, and an old server may not have it; either way the
+    /// pull goes on as before, without the second §7.8 clause.
+    async fn probe_snapshot_meta(
+        &self,
+        doc_ids: &[String],
+    ) -> Result<HashMap<String, SnapshotMeta>, BodyPullError> {
+        let mut notes = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for doc_id in doc_ids {
+            // The server refuses a batch naming an id twice.
+            if !seen.insert(doc_id.as_str()) {
+                continue;
+            }
+            let cursor = self.read_cursor(doc_id).await?;
+            if cursor > 0 {
+                notes.push(json!({ "noteId": doc_id, "since": cursor }));
+            }
+        }
+        if notes.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let request = self
+            .request("POST", "/sync/crdt/updates/batch")
+            .json(&json!({ "notes": notes, "limit": 1 }))
+            // No retries: a failed probe only means the pull goes on without
+            // the meta, so waiting through backoff buys nothing.
+            .retry(RetryPolicy::never());
+        let Ok(body) = self.http.send_json::<Json>(request).await else {
+            return Ok(HashMap::new());
+        };
+        Ok(doc_ids
+            .iter()
+            .filter_map(|id| {
+                read_update_page(&body, id)
+                    .snapshot_meta
+                    .map(|meta| (id.clone(), meta))
+            })
+            .collect())
+    }
+
     async fn fetch_page(&self, doc_id: &str, since: i64) -> Result<UpdatePage, BodyPullError> {
         let path = format!(
             "/sync/crdt/updates?note_id={doc_id}&since={since}&limit={CRDT_UPDATES_PAGE_LIMIT}"
@@ -362,15 +441,22 @@ impl BodyPull {
     /// One update, durable **with** its cursor. §7.9 advances the watermark
     /// per update rather than per page, and the transaction is what makes a
     /// kill between the two impossible.
+    ///
+    /// The log row is stamped with **this device's** clock at apply time, not
+    /// the server's `createdAt`: the search index's incremental watermark
+    /// compares `yjs_updates.created_at` against its own epoch-ms stamps
+    /// (`domain::search::maintenance`), and a server stamp (seconds, or a
+    /// remote clock) sat below it, so a pulled body was never re-indexed and
+    /// its links never became backlinks.
     async fn store_update(
         &self,
         doc_id: &str,
         sequence_num: i64,
         update: Vec<u8>,
-        created_at: i64,
     ) -> Result<(), BodyPullError> {
         let doc = doc_id.to_owned();
         let scope = crdt_cursor_scope(doc_id);
+        let created_at = now_ms();
         self.db
             .call(move |conn| {
                 let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;

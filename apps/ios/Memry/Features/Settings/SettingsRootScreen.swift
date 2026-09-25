@@ -6,6 +6,7 @@ import SwiftUI
 // Inbox appear once those features ship (F9).
 struct SettingsRootScreen: View {
     let context: SettingsContext
+    @Environment(JournalRouter.self) private var journalRouter
 
     var body: some View {
         List {
@@ -31,13 +32,19 @@ struct SettingsRootScreen: View {
                 )
             }
             Section(SettingsCopy.modules) {
-                if SettingsFeatureGates.journal, context.local.isOn(.journal) {
-                    SettingsLinkRow(title: SettingsCopy.journal, symbol: "book", route: .journal)
+                if context.local.isOn(.journal) {
+                    // Journal owns its settings page (journal spec), in the
+                    // Journal tab's stack; this row opens it there.
+                    Button { journalRouter.openSettings() } label: {
+                        SettingsRowLabel(title: SettingsCopy.journal, symbol: "book")
+                    }
+                    .foregroundStyle(Tokens.Text.primary.color)
+                    .accessibilityIdentifier("settings.row.journal")
                 }
                 if context.local.isOn(.tasks) {
                     SettingsLinkRow(title: SettingsCopy.tasks, symbol: "checkmark.circle", route: .tasks)
                 }
-                if SettingsFeatureGates.inbox, context.local.isOn(.inbox) {
+                if context.local.isOn(.inbox) {
                     SettingsLinkRow(title: SettingsCopy.inbox, symbol: "tray", route: .inbox)
                 }
             }

@@ -24,7 +24,6 @@ pub(super) struct UpdateEntry {
     /// permanent skip §7.9 forbids. The decode happens where a failure can
     /// stop the document instead.
     pub(super) data: String,
-    pub(super) created_at: i64,
     pub(super) signer_device_id: Option<String>,
 }
 
@@ -81,10 +80,6 @@ fn read_update_entry(entry: &Json) -> Option<UpdateEntry> {
     Some(UpdateEntry {
         sequence_num,
         data,
-        created_at: entry
-            .get("createdAt")
-            .and_then(Json::as_i64)
-            .unwrap_or_else(now_ms),
         signer_device_id: entry
             .get("signerDeviceId")
             .and_then(Json::as_str)
@@ -97,15 +92,6 @@ fn read_snapshot_meta(meta: &Json) -> Option<SnapshotMeta> {
         sequence_num: meta.get("sequenceNum").and_then(Json::as_i64)?,
         revision: meta.get("revision").and_then(Json::as_str)?.to_owned(),
     })
-}
-
-/// A `createdAt` the server did not send. Kept here rather than in the caller
-/// so the row is never written with a zero the ordering would then believe.
-fn now_ms() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|elapsed| elapsed.as_millis() as i64)
-        .unwrap_or_default()
 }
 
 #[cfg(test)]

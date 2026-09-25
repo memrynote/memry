@@ -21,17 +21,21 @@ import SwiftUI
 // R15 requires; a second stack wrapped around it here would push its screens
 // into the wrong one.
 
-struct VaultTabsView<Notes: View, Tasks: View, More: View>: View {
+struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View {
     @ViewBuilder let notes: () -> Notes
     /// The Tasks tab (spec 004 TP031), built by the caller that holds the
     /// vault, keychain and sync.
     @ViewBuilder let tasks: () -> Tasks
+    /// The Journal tab (spec 005-journal JP031), built the same way.
+    @ViewBuilder let journal: () -> Journal
     /// More › Settings (settings spec F1), built by the caller with the
     /// vault's settings context.
     @ViewBuilder let more: () -> More
     /// Cross-tab navigation: search, note task blocks and reminder taps open a
     /// task through it.
     @State private var router = TasksRouter()
+    /// Opens a day in the Journal tab from any surface (D11).
+    @State private var journalRouter = JournalRouter()
     /// The Inbox tab's stack (inbox spec D1).
     @State private var inboxRouter = InboxRouter()
     private let inboxLinks = InboxLinks.shared
@@ -59,10 +63,7 @@ struct VaultTabsView<Notes: View, Tasks: View, More: View>: View {
             }
             if local.isOn(.journal) {
                 Tab("Journal", systemImage: "book", value: VaultTab.journal) {
-                    ComingSoonTab(
-                        title: "Journal",
-                        detail: "The journal is on your computer for now. Journal entries sync and can be read as notes."
-                    )
+                    journal()
                 }
             }
             Tab("More", systemImage: "ellipsis", value: VaultTab.more) {
@@ -70,15 +71,19 @@ struct VaultTabsView<Notes: View, Tasks: View, More: View>: View {
             }
         }
         .environment(router)
+        .environment(journalRouter)
+        .environment(\.openJournalDay, { date in journalRouter.openDay(date) })
         .environment(inboxRouter)
         // A tapped inbox notification or a Share hand-off opens the Inbox.
         .onChange(of: inboxLinks.pending, initial: true) {
             if inboxLinks.take() { inboxRouter.openInbox(in: router) }
         }
-        // A tapped reminder opens its task; a tap from a cold start waits in
-        // `ReminderTaps` until this shell exists, hence `initial: true`.
+        // A tapped reminder opens its task or its journal day; a tap from a
+        // cold start waits in `ReminderTaps` until this shell exists, hence
+        // `initial: true`.
         .onChange(of: reminderTaps.pending, initial: true) {
-            reminderTaps.take()?.open(in: router)
+            journalRouter.tabs = router
+            reminderTaps.take()?.open(in: router, journal: journalRouter)
         }
         // The vault closed or the account signed out: no reminder text may
         // outlive it on the lock screen. The next vault refills its own window.

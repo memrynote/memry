@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "spec": "005-ios-journal-parity JP022a",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "markdown-seed",
+    "canonical": "packages/contracts/scripts/fragment-canonical.ts",
+    "fragmentName": "prosemirror",
+    "authoredBy": "desktop's markdownToYFragment path: splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseMarkdownToBlocksRepaired on desktop's server schema, restoreUntaggedFenceLanguages, blocksToYXmlFragment",
+    "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
+    "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
+    "caseCount": 27
+  },
+  "cases": [
+    {
+      "name": "journal: morning and gratitude",
+      "pins": "an empty check item and an empty numbered item; the last line is trimmed to `2.` first, so it is a paragraph",
+      "markdown": "## Morning\n- [ ] \n\n## Gratitude\n1. \n2. \n",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Morning\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Gratitude\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"2.\""
+    },
+    {
+      "name": "journal: date heading after substitution",
+      "pins": "a substituted {{date}} heading",
+      "markdown": "# Monday, June 15, 2099\n\n## Notes\n",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"Monday, June 15, 2099\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Notes\""
+    },
+    {
+      "name": "journal: evening review",
+      "pins": "headings 2 and 3, checked and unchecked items, a trailing `- ` trimmed to a paragraph",
+      "markdown": "## Evening\n- [ ] Stretch\n- [x] Read **one chapter**\n\n### What went well\n1. \n\n### Tomorrow\n- \n",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Evening\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false textAlignment=\"left\" textColor=\"default\"\n3 text \"Stretch\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=true textAlignment=\"left\" textColor=\"default\"\n3 text \"Read \"\n3 text \"one chapter\" bold={}\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=3 textAlignment=\"left\" textColor=\"default\"\n3 text \"What went well\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=3 textAlignment=\"left\" textColor=\"default\"\n3 text \"Tomorrow\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"-\""
+    },
+    {
+      "name": "journal: inline marks",
+      "pins": "bold, italic, strike, code and a link",
+      "markdown": "Felt **focused**, *calm* and ~~rushed~~ with `deep work` — see [plan](https://example.com/plan)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Felt \"\n3 text \"focused\" bold={}\n3 text \", \"\n3 text \"calm\" italic={}\n3 text \" and \"\n3 text \"rushed\" strike={}\n3 text \" with \"\n3 text \"deep work\" code={}\n3 text \" — see \"\n3 text \"plan\" link={\"href\":\"https://example.com/plan\"}"
+    },
+    {
+      "name": "journal: wiki link and tag stay text",
+      "pins": "wiki links and tags are plain text in the fragment",
+      "markdown": "Continue from [[2099-06-14]] and [[Project Atlas|Atlas]] #journal",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Continue from [[2099-06-14]] and [[Project Atlas|Atlas]] #journal\""
+    },
+    {
+      "name": "journal: code block with language",
+      "pins": "a fenced code block keeps its language and its blank line",
+      "markdown": "## Snippet\n\n```ts\nconst mood = 7\n\nlog(mood)\n```\n",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Snippet\"\n1 element blockContainer\n2 element codeBlock language=\"ts\"\n3 text \"const mood = 7\\n\\nlog(mood)\""
+    },
+    {
+      "name": "journal: untagged fence",
+      "pins": "an untagged fence gets language \"\" instead of BlockNote's default",
+      "markdown": "```\nplain\n```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"plain\""
+    },
+    {
+      "name": "journal: indented code keeps the default language",
+      "pins": "an indented run becomes a code block; no fence in the source, so javascript stays",
+      "markdown": "Log:\n\n    tail -f app.log",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Log:\"\n1 element blockContainer\n2 element codeBlock language=\"javascript\"\n3 text \"tail -f app.log\""
+    },
+    {
+      "name": "journal: quote",
+      "pins": "a quote of one paragraph, a soft break inside",
+      "markdown": "> The obstacle is the way.\n> — Marcus Aurelius",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"The obstacle is the way.\"\n3 element hardBreak\n3 text \"— Marcus Aurelius\""
+    },
+    {
+      "name": "journal: divider between sections",
+      "pins": "a divider",
+      "markdown": "## Plan\n\n---\n\n## Review",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Plan\"\n1 element blockContainer\n2 element divider\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Review\""
+    },
+    {
+      "name": "journal: nested lists",
+      "pins": "nesting by indentation, mixed list types under one item",
+      "markdown": "- Work\n  - Ship JP022\n    - [ ] vectors\n- Home\n  1. Groceries\n  2. Laundry",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Work\"\n2 element blockGroup\n3 element blockContainer\n4 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"Ship JP022\"\n4 element blockGroup\n5 element blockContainer\n6 element checkListItem backgroundColor=\"default\" checked=false textAlignment=\"left\" textColor=\"default\"\n7 text \"vectors\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Home\"\n2 element blockGroup\n3 element blockContainer\n4 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"Groceries\"\n3 element blockContainer\n4 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"Laundry\""
+    },
+    {
+      "name": "journal: ordered list start",
+      "pins": "the first item of a list that does not start at 1 carries start",
+      "markdown": "3. third\n4. fourth",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" start=3 textAlignment=\"left\" textColor=\"default\"\n3 text \"third\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"fourth\""
+    },
+    {
+      "name": "journal: ordered start dropped under a nested list",
+      "pins": "a nested list wraps the item and its start is lost",
+      "markdown": "5. five\n   - sub",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"five\"\n2 element blockGroup\n3 element blockContainer\n4 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"sub\""
+    },
+    {
+      "name": "journal: list item continuation",
+      "pins": "an indented line under an item is a child paragraph",
+      "markdown": "- Idea\n  details on the next line",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Idea\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"details on the next line\""
+    },
+    {
+      "name": "journal: all heading levels",
+      "pins": "levels 1 to 6",
+      "markdown": "# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H1\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"H2\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=3 textAlignment=\"left\" textColor=\"default\"\n3 text \"H3\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=4 textAlignment=\"left\" textColor=\"default\"\n3 text \"H4\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=5 textAlignment=\"left\" textColor=\"default\"\n3 text \"H5\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=6 textAlignment=\"left\" textColor=\"default\"\n3 text \"H6\""
+    },
+    {
+      "name": "journal: setext headings",
+      "pins": "setext levels 1 and 2",
+      "markdown": "Title\n=====\n\nSub\n---",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"Title\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Sub\""
+    },
+    {
+      "name": "journal: soft and hard breaks",
+      "pins": "a soft break is one hardBreak, a hard break two",
+      "markdown": "line one\nline two  \nline three\\\nline four",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"line one\"\n3 element hardBreak\n3 text \"line two\"\n3 element hardBreak\n3 element hardBreak\n3 text \"line three\"\n3 element hardBreak\n3 element hardBreak\n3 text \"line four\""
+    },
+    {
+      "name": "journal: code span drops other marks",
+      "pins": "the code mark excludes bold and link",
+      "markdown": "**`x`** and [`y`](https://example.com)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\" code={}\n3 text \" and \"\n3 text \"y\" code={}"
+    },
+    {
+      "name": "journal: unsafe link is text",
+      "pins": "a link the mark refuses keeps its text unmarked",
+      "markdown": "[click](javascript:alert)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"click\""
+    },
+    {
+      "name": "edge: empty string",
+      "pins": "an empty document is one empty blockGroup",
+      "markdown": "",
+      "expectedCanonical": "0 element blockGroup"
+    },
+    {
+      "name": "edge: only blank lines",
+      "pins": "blank lines alone make no block",
+      "markdown": "\n\n\n",
+      "expectedCanonical": "0 element blockGroup"
+    },
+    {
+      "name": "edge: one trailing newline",
+      "pins": "a single trailing newline adds nothing",
+      "markdown": "Hello\n",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Hello\""
+    },
+    {
+      "name": "edge: two trailing newlines",
+      "pins": "trailing blank lines beyond the first become empty paragraphs",
+      "markdown": "Hello\n\n\n",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Hello\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "edge: extra blank lines between blocks",
+      "pins": "blank lines beyond a paragraph break become empty paragraphs",
+      "markdown": "a\n\n\n\nb",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\""
+    },
+    {
+      "name": "edge: leading blank lines and indent",
+      "pins": "leading blank lines and the first line's indent are trimmed",
+      "markdown": "\n\n   indented start",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"indented start\""
+    },
+    {
+      "name": "edge: escapes and emphasis rules",
+      "pins": "escapes, intraword underscores, intraword asterisks",
+      "markdown": "\\*not italic\\* snake_case __init__ a*b*c",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"*not italic* snake_case \"\n3 text \"init\" bold={}\n3 text \" a\"\n3 text \"b\" italic={}\n3 text \"c\""
+    },
+    {
+      "name": "edge: unicode and whitespace",
+      "pins": "text without a newline keeps its whitespace",
+      "markdown": "ünïcode 😀  two  spaces\tand tab",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"ünïcode 😀  two  spaces\\tand tab\""
+    }
+  ]
+}

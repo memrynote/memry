@@ -29,6 +29,9 @@ If you create or modify a test, run it and iterate until it passes. There is no 
 
 - The Unit plan runs inside the app on the shared simulator, and its sign-out tests wipe the app's keychain. Anything that needs a signed-in app (the UI plan, manual simulator checks) comes after a fresh sign-in, never straight after a Unit run.
 - `TasksUITests` needs the simulator signed in to the staging test account; it fails, rather than skips, when it lands on sign-in.
+- `JournalUITests` needs the same sign-in plus the synced journal settings its header names (a Wednesday template); it pins today with `-MEMRY_JOURNAL_TODAY <date>`, always a 2099 day.
+- An editable block is a text view: its text is the accessibility **value**, not the label. Match `label CONTAINS x OR value CONTAINS x`.
+- `XCUIApplication.typeKey(.escape)` does not reach the app on the simulator; drive `.cancelAction` shortcuts with ⌘. instead.
 
 ## Swift
 
@@ -53,3 +56,8 @@ If you create or modify a test, run it and iterate until it passes. There is no 
 - Vault files and sync payloads may have been written by a desktop version newer or older than this build. Tolerate both; never rewrite a vault as a side effect of reading it.
 - Anything the server checks against a device (a pushed record's signer, an attachment manifest's signer) uses the server-registered id, the access token's `device_id` claim (`AuthSession::registered_device_id`). The local id derived from the signing key only names this device inside field clocks; the server rejects it as `AUTH_DEVICE_NOT_FOUND`.
 - Any write that should reach other devices schedules a sync pass: task writes do it through `TasksStore`, and other screens call the `requestVaultSync` environment action.
+- A sync pass pulls bodies only for records it applied, and desktop pushes a body edit as CRDT updates with no record. A screen that shows a document another device edits pulls that body itself (`VaultFilling.fetchNoteBody`) when it appears and after each sync pass, as the journal day page does.
+- Backlinks and link targets read the search index. Reindex after a sync pass on any screen that shows them (`VaultSearching.reindex`).
+- Address a journal day by its date, never by `j<date>`: days written by older desktops carry other ids, and every write goes to the existing record's id.
+- Journal tag and property writes stay off (`JournalWriteGate.metadataWrites`) until a desktop release with spec 005-journal JP029a is the oldest one in use: earlier desktops empty the day's file on a record-only change.
+- `BlockEdit.setText` edits a single plain run in place so a peer's concurrent typing in the same block survives. Do not reintroduce a whole-run replace for plain text.

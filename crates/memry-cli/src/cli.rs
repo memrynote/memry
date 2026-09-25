@@ -41,6 +41,13 @@ Commands:
   notes fetch <id> [--vault <id>]        pull one document's body, for a cheap latency probe
   notes edit <id> --append <text> [--vault <id>]
                                          append one paragraph block to the note body
+  journal append <date> <text> [--vault <id>]
+                                         dev only: append a paragraph to a journal day,
+                                         creating the day when it has no entry
+  journal tags <date> <a,b> [--vault <id>]
+                                         dev only: replace a journal day's tags
+  journal property <date> <name> <json> [--vault <id>]
+                                         dev only: set one property on a journal day
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -101,6 +108,24 @@ pub enum Command {
     NotesEdit {
         note: String,
         append: String,
+        vault: Option<String>,
+    },
+    /// Dev only (spec 005-journal JP029, gate G0): the phone's journal writes,
+    /// made headless so a desktop peer can be checked against them.
+    JournalAppend {
+        date: String,
+        text: String,
+        vault: Option<String>,
+    },
+    JournalTags {
+        date: String,
+        tags: Vec<String>,
+        vault: Option<String>,
+    },
+    JournalProperty {
+        date: String,
+        name: String,
+        value_json: String,
         vault: Option<String>,
     },
 }
@@ -232,6 +257,7 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
             vault: optional(args, "--vault")?,
         }),
         "notes" => parse_notes(args),
+        "journal" => parse_journal(args),
         other => usage(format!("unknown command `{other}`")),
     }
 }
@@ -291,6 +317,37 @@ fn parse_notes(args: &mut Args) -> Result<Command, UsageError> {
             })
         }
         other => usage(format!("unknown notes subcommand `{other}`")),
+    }
+}
+
+fn parse_journal(args: &mut Args) -> Result<Command, UsageError> {
+    let Some(subcommand) = args.next() else {
+        return usage("journal needs a subcommand: append, tags, or property");
+    };
+    let date = positional(args, "journal", "a YYYY-MM-DD date")?;
+    match subcommand.as_str() {
+        "append" => Ok(Command::JournalAppend {
+            date,
+            text: positional(args, "journal append", "the text")?,
+            vault: optional(args, "--vault")?,
+        }),
+        "tags" => Ok(Command::JournalTags {
+            date,
+            tags: positional(args, "journal tags", "a comma-separated tag list")?
+                .split(',')
+                .map(str::trim)
+                .filter(|tag| !tag.is_empty())
+                .map(str::to_owned)
+                .collect(),
+            vault: optional(args, "--vault")?,
+        }),
+        "property" => Ok(Command::JournalProperty {
+            date,
+            name: positional(args, "journal property", "a property name")?,
+            value_json: positional(args, "journal property", "a JSON value")?,
+            vault: optional(args, "--vault")?,
+        }),
+        other => usage(format!("unknown journal subcommand `{other}`")),
     }
 }
 
@@ -504,6 +561,9 @@ mod tests {
             "notes text",
             "notes state-vector",
             "notes edit",
+            "journal append",
+            "journal tags",
+            "journal property",
         ] {
             assert!(HELP.contains(command), "help omits `{command}`");
         }

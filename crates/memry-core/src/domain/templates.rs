@@ -153,10 +153,10 @@ pub fn create_note(
 }
 
 /// The three fields a template contributes to a note.
-struct Seed {
-    content: String,
-    tags: Vec<String>,
-    properties: Object,
+pub(crate) struct Seed {
+    pub(crate) content: String,
+    pub(crate) tags: Vec<String>,
+    pub(crate) properties: Object,
 }
 
 /// Reads them from the template's **stored payload**, never from its
@@ -165,7 +165,7 @@ struct Seed {
 /// Every failure here is an error and none is a silent default: a template
 /// whose `content` is not a string would otherwise produce an empty note and
 /// look like the user's own doing.
-fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, StorageError> {
+pub(crate) fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, StorageError> {
     let Some(row) = sync_items::load(tx, ITEM_TYPE, template_id)? else {
         return Err(StorageError::Failed {
             what: format!("no template {template_id}"),
@@ -226,7 +226,7 @@ fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, StorageError> {
 /// record does. Every malformed shape is an error rather than a skip: a
 /// template whose properties silently vanished would look like the user's own
 /// doing, and this is the `GET /sync/vaults` lesson applied to a local read.
-fn properties_of(template_id: &str, template: &Object) -> Result<Object, StorageError> {
+pub(crate) fn properties_of(template_id: &str, template: &Object) -> Result<Object, StorageError> {
     let refuse = |what: String| StorageError::Failed { what };
     let entries = match template.get("properties") {
         None | Some(Value::Null) => return Ok(Object::new()),

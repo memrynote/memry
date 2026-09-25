@@ -4317,6 +4317,587 @@ public func FfiConverterTypeInbox_lower(_ value: Inbox) -> UInt64 {
 
 
 /**
+ * The journal surface over one opened vault.
+ */
+public protocol JournalProtocol: AnyObject, Sendable {
+    
+    /**
+     * Clears one property, leaving the key present and `null` (§13.4).
+     */
+    func clearProperty(date: String, name: String) throws 
+    
+    /**
+     * The live entry for `date`, or `nil` when the day has none.
+     */
+    func day(date: String) throws  -> JournalDayRecord?
+    
+    /**
+     * Dates in `from..=to` that have a live entry, oldest first.
+     */
+    func daysWithEntries(from: String, to: String) throws  -> [String]
+    
+    func deleteReminder(id: String) throws 
+    
+    func dismissReminder(id: String) throws 
+    
+    /**
+     * Applies one block edit to the day's body. Creates or revives the day
+     * when it has no live entry, in the same transaction (D2). An edit that
+     * fails or authors nothing creates nothing.
+     *
+     * A task line's checkbox flipped in the day completes or reopens the
+     * task, as a note's does (FR-058).
+     */
+    func editDay(date: String, edit: BlockEdit) throws  -> JournalEditResult
+    
+    /**
+     * The record id the day's entry has, or `nil` when it has no live one.
+     */
+    func entryId(date: String) throws  -> String?
+    
+    /**
+     * Every live day of `year`, oldest first, with its activity level.
+     */
+    func heatmap(year: Int64) throws  -> [JournalHeatmapEntry]
+    
+    /**
+     * Every day of a month (1-12), newest first, flagged against `today`.
+     */
+    func month(year: Int64, month: UInt32, today: String) throws  -> JournalMonthRecord
+    
+    /**
+     * The day's reminders, every status, sorted by time.
+     */
+    func reminders(date: String) throws  -> [JournalReminder]
+    
+    /**
+     * Drops one property from the day.
+     */
+    func removeProperty(date: String, name: String) throws 
+    
+    /**
+     * Renames one property, keeping its value.
+     */
+    func renameProperty(date: String, from: String, to: String) throws 
+    
+    /**
+     * What a `[[wiki link]]` points at: a note by title or alias first, then
+     * a journal day by its date (desktop titles a day with its date), then the
+     * `j<date>` form. `nil` is a broken link.
+     */
+    func resolveWikiTarget(target: String) throws  -> WikiTargetMatch?
+    
+    /**
+     * Seeds an empty day from a template with the shell's locale strings.
+     * A day with a live entry is never seeded (`AlreadyExists`). A template
+     * not on this device yet throws `NotFound`; the shell retries later.
+     */
+    func seedFromTemplate(date: String, templateId: String, strings: JournalTemplateStrings) throws  -> SeedOutcome
+    
+    /**
+     * Sets or clears (explicit `null`) the default template.
+     */
+    func setDefaultTemplate(templateId: String?) throws  -> JournalSettingsRecord
+    
+    /**
+     * Sets one property from JSON text. `date` is reserved and refused.
+     */
+    func setProperty(date: String, name: String, valueJson: String) throws 
+    
+    /**
+     * Desktop's set-or-replace: moves the day's next active reminder to
+     * `remind_at` (with `note`), or creates one. Returns the reminder id.
+     * Never creates the day.
+     */
+    func setReminder(date: String, remindAt: String, note: String?) throws  -> String
+    
+    /**
+     * Replaces the day's tags, creating the day when absent and the list is
+     * not empty.
+     */
+    func setTags(date: String, tags: [String]) throws  -> [String]
+    
+    /**
+     * Sets or clears the template of one absolute weekday (0 = Sunday).
+     */
+    func setWeekdayTemplate(weekday: UInt8, templateId: String?) throws  -> JournalSettingsRecord
+    
+    /**
+     * `journal.defaultTemplate` and the seven weekday templates.
+     */
+    func settings() throws  -> JournalSettingsRecord
+    
+    func snoozeReminder(id: String, until: String) throws 
+    
+    /**
+     * Current and longest streak counted from the shell's local today (D3).
+     */
+    func streak(today: String) throws  -> JournalStreakRecord
+    
+    /**
+     * The template id `date` resolves to: its weekday's, else the default,
+     * else `nil`.
+     */
+    func templateFor(date: String) throws  -> String?
+    
+    /**
+     * Edits one reminder's time and note (`nil` clears the note).
+     */
+    func updateReminder(id: String, remindAt: String, note: String?) throws 
+    
+    /**
+     * Twelve month cards, totals and the streak.
+     */
+    func year(year: Int64, today: String) throws  -> JournalYearRecord
+    
+}
+/**
+ * The journal surface over one opened vault.
+ */
+open class Journal: JournalProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_journal(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_journal(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Clears one property, leaving the key present and `null` (§13.4).
+     */
+open func clearProperty(date: String, name: String)throws   {try rustCallWithError(FfiConverterTypePropertyWriteError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_clear_property(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(name),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The live entry for `date`, or `nil` when the day has none.
+     */
+open func day(date: String)throws  -> JournalDayRecord?  {
+    return try  FfiConverterOptionTypeJournalDayRecord.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_day(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Dates in `from..=to` that have a live entry, oldest first.
+     */
+open func daysWithEntries(from: String, to: String)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_days_with_entries(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(from),
+        FfiConverterString.lower(to),uniffiCallStatus
+    )
+})
+}
+    
+open func deleteReminder(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_delete_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+open func dismissReminder(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_dismiss_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Applies one block edit to the day's body. Creates or revives the day
+     * when it has no live entry, in the same transaction (D2). An edit that
+     * fails or authors nothing creates nothing.
+     *
+     * A task line's checkbox flipped in the day completes or reopens the
+     * task, as a note's does (FR-058).
+     */
+open func editDay(date: String, edit: BlockEdit)throws  -> JournalEditResult  {
+    return try  FfiConverterTypeJournalEditResult_lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_edit_day(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterTypeBlockEdit_lower(edit),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The record id the day's entry has, or `nil` when it has no live one.
+     */
+open func entryId(date: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_entry_id(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every live day of `year`, oldest first, with its activity level.
+     */
+open func heatmap(year: Int64)throws  -> [JournalHeatmapEntry]  {
+    return try  FfiConverterSequenceTypeJournalHeatmapEntry.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_heatmap(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(year),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every day of a month (1-12), newest first, flagged against `today`.
+     */
+open func month(year: Int64, month: UInt32, today: String)throws  -> JournalMonthRecord  {
+    return try  FfiConverterTypeJournalMonthRecord_lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_month(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(year),
+        FfiConverterUInt32.lower(month),
+        FfiConverterString.lower(today),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The day's reminders, every status, sorted by time.
+     */
+open func reminders(date: String)throws  -> [JournalReminder]  {
+    return try  FfiConverterSequenceTypeJournalReminder.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_reminders(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Drops one property from the day.
+     */
+open func removeProperty(date: String, name: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_remove_property(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(name),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Renames one property, keeping its value.
+     */
+open func renameProperty(date: String, from: String, to: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_rename_property(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(from),
+        FfiConverterString.lower(to),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * What a `[[wiki link]]` points at: a note by title or alias first, then
+     * a journal day by its date (desktop titles a day with its date), then the
+     * `j<date>` form. `nil` is a broken link.
+     */
+open func resolveWikiTarget(target: String)throws  -> WikiTargetMatch?  {
+    return try  FfiConverterOptionTypeWikiTargetMatch.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_resolve_wiki_target(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(target),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Seeds an empty day from a template with the shell's locale strings.
+     * A day with a live entry is never seeded (`AlreadyExists`). A template
+     * not on this device yet throws `NotFound`; the shell retries later.
+     */
+open func seedFromTemplate(date: String, templateId: String, strings: JournalTemplateStrings)throws  -> SeedOutcome  {
+    return try  FfiConverterTypeSeedOutcome_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_seed_from_template(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(templateId),
+        FfiConverterTypeJournalTemplateStrings_lower(strings),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Sets or clears (explicit `null`) the default template.
+     */
+open func setDefaultTemplate(templateId: String?)throws  -> JournalSettingsRecord  {
+    return try  FfiConverterTypeJournalSettingsRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_set_default_template(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionString.lower(templateId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Sets one property from JSON text. `date` is reserved and refused.
+     */
+open func setProperty(date: String, name: String, valueJson: String)throws   {try rustCallWithError(FfiConverterTypePropertyWriteError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_set_property(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(valueJson),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Desktop's set-or-replace: moves the day's next active reminder to
+     * `remind_at` (with `note`), or creates one. Returns the reminder id.
+     * Never creates the day.
+     */
+open func setReminder(date: String, remindAt: String, note: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_set_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(remindAt),
+        FfiConverterOptionString.lower(note),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Replaces the day's tags, creating the day when absent and the list is
+     * not empty.
+     */
+open func setTags(date: String, tags: [String])throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_set_tags(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterSequenceString.lower(tags),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Sets or clears the template of one absolute weekday (0 = Sunday).
+     */
+open func setWeekdayTemplate(weekday: UInt8, templateId: String?)throws  -> JournalSettingsRecord  {
+    return try  FfiConverterTypeJournalSettingsRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_set_weekday_template(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt8.lower(weekday),
+        FfiConverterOptionString.lower(templateId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `journal.defaultTemplate` and the seven weekday templates.
+     */
+open func settings()throws  -> JournalSettingsRecord  {
+    return try  FfiConverterTypeJournalSettingsRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_settings(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+open func snoozeReminder(id: String, until: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_snooze_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(until),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Current and longest streak counted from the shell's local today (D3).
+     */
+open func streak(today: String)throws  -> JournalStreakRecord  {
+    return try  FfiConverterTypeJournalStreakRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_streak(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(today),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The template id `date` resolves to: its weekday's, else the default,
+     * else `nil`.
+     */
+open func templateFor(date: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_template_for(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Edits one reminder's time and note (`nil` clears the note).
+     */
+open func updateReminder(id: String, remindAt: String, note: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_update_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(remindAt),
+        FfiConverterOptionString.lower(note),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Twelve month cards, totals and the streak.
+     */
+open func year(year: Int64, today: String)throws  -> JournalYearRecord  {
+    return try  FfiConverterTypeJournalYearRecord_lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_year(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(year),
+        FfiConverterString.lower(today),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournal: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Journal
+
+    public static func lift(_ handle: UInt64) throws -> Journal {
+        return Journal(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Journal) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Journal {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Journal, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournal_lift(_ handle: UInt64) throws -> Journal {
+    return try FfiConverterTypeJournal.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournal_lower(_ value: Journal) -> UInt64 {
+    return FfiConverterTypeJournal.lower(value)
+}
+
+
+
+
+
+
+/**
  * The core's side of the same seam: what the shell calls when the platform
  * tells it something changed.
  *
@@ -6996,6 +7577,20 @@ public protocol SearchProtocol: AnyObject, Sendable {
     func backlinks(noteId: String, order: BacklinkOrder) throws  -> [Backlink]
     
     /**
+     * Every link a note or journal day makes, resolved now: to a note, a
+     * journal day, or nothing (a broken link).
+     */
+    func linksFrom(sourceId: String) throws  -> [OutgoingLink]
+    
+    /**
+     * Every note or journal day linking to `target_id` (a note id or a
+     * journal record id), each carrying its kind and, for a day, its date so
+     * the shell can route it (spec 005-journal JP026). [`Self::backlinks`]
+     * keeps its note-only answer for older callers.
+     */
+    func linksTo(targetId: String, order: BacklinkOrder) throws  -> [BacklinkRow]
+    
+    /**
      * Notes and journals matching `query`, best first.
      *
      * A query carrying no searchable term returns **empty, not everything**:
@@ -7097,6 +7692,37 @@ open func backlinks(noteId: String, order: BacklinkOrder)throws  -> [Backlink]  
     uniffi_memry_core_fn_method_search_backlinks(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(noteId),
+        FfiConverterTypeBacklinkOrder_lower(order),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every link a note or journal day makes, resolved now: to a note, a
+     * journal day, or nothing (a broken link).
+     */
+open func linksFrom(sourceId: String)throws  -> [OutgoingLink]  {
+    return try  FfiConverterSequenceTypeOutgoingLink.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_links_from(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every note or journal day linking to `target_id` (a note id or a
+     * journal record id), each carrying its kind and, for a day, its date so
+     * the shell can route it (spec 005-journal JP026). [`Self::backlinks`]
+     * keeps its note-only answer for older callers.
+     */
+open func linksTo(targetId: String, order: BacklinkOrder)throws  -> [BacklinkRow]  {
+    return try  FfiConverterSequenceTypeBacklinkRow.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_links_to(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(targetId),
         FfiConverterTypeBacklinkOrder_lower(order),uniffiCallStatus
     )
 })
@@ -10401,6 +11027,13 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func inbox(store: SecureStore) throws  -> Inbox
     
     /**
+     * The journal: days read and written by calendar date (spec
+     * 005-journal). Needs the keychain for the same reason
+     * [`Vault::notes_writer`] does: a write ticks this device's clock.
+     */
+    func journal(store: SecureStore) throws  -> Journal
+    
+    /**
      * The note and folder reads over **this** vault's database.
      *
      * A clone of the same handle, not a second connection: see the module doc.
@@ -10565,6 +11198,21 @@ open func inbox(store: SecureStore)throws  -> Inbox  {
     return try  FfiConverterTypeInbox_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_inbox(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The journal: days read and written by calendar date (spec
+     * 005-journal). Needs the keychain for the same reason
+     * [`Vault::notes_writer`] does: a write ticks this device's clock.
+     */
+open func journal(store: SecureStore)throws  -> Journal  {
+    return try  FfiConverterTypeJournal_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_journal(
             self.uniffiCloneHandle(),
         FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
     )
@@ -11810,6 +12458,119 @@ public func FfiConverterTypeBacklink_lift(_ buf: RustBuffer) throws -> Backlink 
 #endif
 public func FfiConverterTypeBacklink_lower(_ value: Backlink) -> RustBuffer {
     return FfiConverterTypeBacklink.lower(value)
+}
+
+
+/**
+ * One item linking to a note or a journal day.
+ */
+public struct BacklinkRow: Equatable, Hashable {
+    public var sourceId: String
+    /**
+     * The note's title, or the journal's date.
+     */
+    public var sourceTitle: String
+    /**
+     * `note` or `journal`.
+     */
+    public var sourceKind: String
+    /**
+     * The journal's date, `None` for a note source.
+     */
+    public var sourceDate: String?
+    /**
+     * The title the link spells, which can lag a rename of the target.
+     */
+    public var targetTitle: String
+    /**
+     * Always `false`: nothing projects property-sourced links yet.
+     */
+    public var viaProperty: Bool
+    /**
+     * The source's `modified_at`, else `created_at`, else 0 (epoch ms).
+     */
+    public var stamp: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceId: String, 
+        /**
+         * The note's title, or the journal's date.
+         */sourceTitle: String, 
+        /**
+         * `note` or `journal`.
+         */sourceKind: String, 
+        /**
+         * The journal's date, `None` for a note source.
+         */sourceDate: String?, 
+        /**
+         * The title the link spells, which can lag a rename of the target.
+         */targetTitle: String, 
+        /**
+         * Always `false`: nothing projects property-sourced links yet.
+         */viaProperty: Bool, 
+        /**
+         * The source's `modified_at`, else `created_at`, else 0 (epoch ms).
+         */stamp: Int64) {
+        self.sourceId = sourceId
+        self.sourceTitle = sourceTitle
+        self.sourceKind = sourceKind
+        self.sourceDate = sourceDate
+        self.targetTitle = targetTitle
+        self.viaProperty = viaProperty
+        self.stamp = stamp
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BacklinkRow: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBacklinkRow: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BacklinkRow {
+        return
+            try BacklinkRow(
+                sourceId: FfiConverterString.read(from: &buf), 
+                sourceTitle: FfiConverterString.read(from: &buf), 
+                sourceKind: FfiConverterString.read(from: &buf), 
+                sourceDate: FfiConverterOptionString.read(from: &buf), 
+                targetTitle: FfiConverterString.read(from: &buf), 
+                viaProperty: FfiConverterBool.read(from: &buf), 
+                stamp: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BacklinkRow, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterString.write(value.sourceTitle, into: &buf)
+        FfiConverterString.write(value.sourceKind, into: &buf)
+        FfiConverterOptionString.write(value.sourceDate, into: &buf)
+        FfiConverterString.write(value.targetTitle, into: &buf)
+        FfiConverterBool.write(value.viaProperty, into: &buf)
+        FfiConverterInt64.write(value.stamp, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBacklinkRow_lift(_ buf: RustBuffer) throws -> BacklinkRow {
+    return try FfiConverterTypeBacklinkRow.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBacklinkRow_lower(_ value: BacklinkRow) -> RustBuffer {
+    return FfiConverterTypeBacklinkRow.lower(value)
 }
 
 
@@ -14059,6 +14820,705 @@ public func FfiConverterTypeInlineRun_lower(_ value: InlineRun) -> RustBuffer {
 
 
 /**
+ * One live day. `properties` never carries the reserved `date`.
+ */
+public struct JournalDayRecord: Equatable, Hashable {
+    /**
+     * The record id, which is also the body's document id.
+     */
+    public var id: String
+    public var date: String
+    public var tags: [String]
+    public var properties: [NoteProperty]
+    public var createdAt: Int64?
+    public var modifiedAt: Int64?
+    public var wordCount: UInt64
+    /**
+     * UTF-16 code units of the extracted body text (D6).
+     */
+    public var characterCount: UInt64
+    public var body: JournalBody
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The record id, which is also the body's document id.
+         */id: String, date: String, tags: [String], properties: [NoteProperty], createdAt: Int64?, modifiedAt: Int64?, wordCount: UInt64, 
+        /**
+         * UTF-16 code units of the extracted body text (D6).
+         */characterCount: UInt64, body: JournalBody) {
+        self.id = id
+        self.date = date
+        self.tags = tags
+        self.properties = properties
+        self.createdAt = createdAt
+        self.modifiedAt = modifiedAt
+        self.wordCount = wordCount
+        self.characterCount = characterCount
+        self.body = body
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalDayRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalDayRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalDayRecord {
+        return
+            try JournalDayRecord(
+                id: FfiConverterString.read(from: &buf), 
+                date: FfiConverterString.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                properties: FfiConverterSequenceTypeNoteProperty.read(from: &buf), 
+                createdAt: FfiConverterOptionInt64.read(from: &buf), 
+                modifiedAt: FfiConverterOptionInt64.read(from: &buf), 
+                wordCount: FfiConverterUInt64.read(from: &buf), 
+                characterCount: FfiConverterUInt64.read(from: &buf), 
+                body: FfiConverterTypeJournalBody.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalDayRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.date, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterSequenceTypeNoteProperty.write(value.properties, into: &buf)
+        FfiConverterOptionInt64.write(value.createdAt, into: &buf)
+        FfiConverterOptionInt64.write(value.modifiedAt, into: &buf)
+        FfiConverterUInt64.write(value.wordCount, into: &buf)
+        FfiConverterUInt64.write(value.characterCount, into: &buf)
+        FfiConverterTypeJournalBody.write(value.body, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalDayRecord_lift(_ buf: RustBuffer) throws -> JournalDayRecord {
+    return try FfiConverterTypeJournalDayRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalDayRecord_lower(_ value: JournalDayRecord) -> RustBuffer {
+    return FfiConverterTypeJournalDayRecord.lower(value)
+}
+
+
+/**
+ * What a body edit addressed by date did.
+ */
+public struct JournalEditResult: Equatable, Hashable {
+    /**
+     * The day's record id (an existing id wins over `j<date>`).
+     */
+    public var id: String
+    public var created: Bool
+    public var revived: Bool
+    /**
+     * `false` when the edit authored nothing; then nothing was written.
+     */
+    public var changed: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The day's record id (an existing id wins over `j<date>`).
+         */id: String, created: Bool, revived: Bool, 
+        /**
+         * `false` when the edit authored nothing; then nothing was written.
+         */changed: Bool) {
+        self.id = id
+        self.created = created
+        self.revived = revived
+        self.changed = changed
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalEditResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalEditResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalEditResult {
+        return
+            try JournalEditResult(
+                id: FfiConverterString.read(from: &buf), 
+                created: FfiConverterBool.read(from: &buf), 
+                revived: FfiConverterBool.read(from: &buf), 
+                changed: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalEditResult, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterBool.write(value.created, into: &buf)
+        FfiConverterBool.write(value.revived, into: &buf)
+        FfiConverterBool.write(value.changed, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalEditResult_lift(_ buf: RustBuffer) throws -> JournalEditResult {
+    return try FfiConverterTypeJournalEditResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalEditResult_lower(_ value: JournalEditResult) -> RustBuffer {
+    return FfiConverterTypeJournalEditResult.lower(value)
+}
+
+
+/**
+ * One day of the heatmap.
+ */
+public struct JournalHeatmapEntry: Equatable, Hashable {
+    public var date: String
+    public var characterCount: UInt64
+    public var level: UInt8
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(date: String, characterCount: UInt64, level: UInt8) {
+        self.date = date
+        self.characterCount = characterCount
+        self.level = level
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalHeatmapEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalHeatmapEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalHeatmapEntry {
+        return
+            try JournalHeatmapEntry(
+                date: FfiConverterString.read(from: &buf), 
+                characterCount: FfiConverterUInt64.read(from: &buf), 
+                level: FfiConverterUInt8.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalHeatmapEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.date, into: &buf)
+        FfiConverterUInt64.write(value.characterCount, into: &buf)
+        FfiConverterUInt8.write(value.level, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalHeatmapEntry_lift(_ buf: RustBuffer) throws -> JournalHeatmapEntry {
+    return try FfiConverterTypeJournalHeatmapEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalHeatmapEntry_lower(_ value: JournalHeatmapEntry) -> RustBuffer {
+    return FfiConverterTypeJournalHeatmapEntry.lower(value)
+}
+
+
+/**
+ * One month card of a Year screen.
+ */
+public struct JournalMonthCard: Equatable, Hashable {
+    /**
+     * 0-11.
+     */
+    public var month: UInt32
+    /**
+     * Days with at least one character.
+     */
+    public var entryCount: UInt32
+    public var totalCharacters: UInt64
+    /**
+     * Highest level per 7-day block from the 1st, at most 5.
+     */
+    public var activityDots: Data
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 0-11.
+         */month: UInt32, 
+        /**
+         * Days with at least one character.
+         */entryCount: UInt32, totalCharacters: UInt64, 
+        /**
+         * Highest level per 7-day block from the 1st, at most 5.
+         */activityDots: Data) {
+        self.month = month
+        self.entryCount = entryCount
+        self.totalCharacters = totalCharacters
+        self.activityDots = activityDots
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalMonthCard: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalMonthCard: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalMonthCard {
+        return
+            try JournalMonthCard(
+                month: FfiConverterUInt32.read(from: &buf), 
+                entryCount: FfiConverterUInt32.read(from: &buf), 
+                totalCharacters: FfiConverterUInt64.read(from: &buf), 
+                activityDots: FfiConverterData.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalMonthCard, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.month, into: &buf)
+        FfiConverterUInt32.write(value.entryCount, into: &buf)
+        FfiConverterUInt64.write(value.totalCharacters, into: &buf)
+        FfiConverterData.write(value.activityDots, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalMonthCard_lift(_ buf: RustBuffer) throws -> JournalMonthCard {
+    return try FfiConverterTypeJournalMonthCard.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalMonthCard_lower(_ value: JournalMonthCard) -> RustBuffer {
+    return FfiConverterTypeJournalMonthCard.lower(value)
+}
+
+
+/**
+ * One day of a Month screen.
+ */
+public struct JournalMonthDayRecord: Equatable, Hashable {
+    public var date: String
+    public var isToday: Bool
+    public var isFuture: Bool
+    public var hasEntry: Bool
+    /**
+     * Activity level 0-4.
+     */
+    public var level: UInt8
+    public var preview: String
+    public var characterCount: UInt64
+    /**
+     * `None` for a day with no entry.
+     */
+    public var body: JournalBody?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(date: String, isToday: Bool, isFuture: Bool, hasEntry: Bool, 
+        /**
+         * Activity level 0-4.
+         */level: UInt8, preview: String, characterCount: UInt64, 
+        /**
+         * `None` for a day with no entry.
+         */body: JournalBody?) {
+        self.date = date
+        self.isToday = isToday
+        self.isFuture = isFuture
+        self.hasEntry = hasEntry
+        self.level = level
+        self.preview = preview
+        self.characterCount = characterCount
+        self.body = body
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalMonthDayRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalMonthDayRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalMonthDayRecord {
+        return
+            try JournalMonthDayRecord(
+                date: FfiConverterString.read(from: &buf), 
+                isToday: FfiConverterBool.read(from: &buf), 
+                isFuture: FfiConverterBool.read(from: &buf), 
+                hasEntry: FfiConverterBool.read(from: &buf), 
+                level: FfiConverterUInt8.read(from: &buf), 
+                preview: FfiConverterString.read(from: &buf), 
+                characterCount: FfiConverterUInt64.read(from: &buf), 
+                body: FfiConverterOptionTypeJournalBody.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalMonthDayRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.date, into: &buf)
+        FfiConverterBool.write(value.isToday, into: &buf)
+        FfiConverterBool.write(value.isFuture, into: &buf)
+        FfiConverterBool.write(value.hasEntry, into: &buf)
+        FfiConverterUInt8.write(value.level, into: &buf)
+        FfiConverterString.write(value.preview, into: &buf)
+        FfiConverterUInt64.write(value.characterCount, into: &buf)
+        FfiConverterOptionTypeJournalBody.write(value.body, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalMonthDayRecord_lift(_ buf: RustBuffer) throws -> JournalMonthDayRecord {
+    return try FfiConverterTypeJournalMonthDayRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalMonthDayRecord_lower(_ value: JournalMonthDayRecord) -> RustBuffer {
+    return FfiConverterTypeJournalMonthDayRecord.lower(value)
+}
+
+
+/**
+ * One month, newest day first.
+ */
+public struct JournalMonthRecord: Equatable, Hashable {
+    public var year: Int64
+    /**
+     * 1-12.
+     */
+    public var month: UInt32
+    public var days: [JournalMonthDayRecord]
+    public var entryCount: UInt32
+    public var streak: JournalStreakRecord
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(year: Int64, 
+        /**
+         * 1-12.
+         */month: UInt32, days: [JournalMonthDayRecord], entryCount: UInt32, streak: JournalStreakRecord) {
+        self.year = year
+        self.month = month
+        self.days = days
+        self.entryCount = entryCount
+        self.streak = streak
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalMonthRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalMonthRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalMonthRecord {
+        return
+            try JournalMonthRecord(
+                year: FfiConverterInt64.read(from: &buf), 
+                month: FfiConverterUInt32.read(from: &buf), 
+                days: FfiConverterSequenceTypeJournalMonthDayRecord.read(from: &buf), 
+                entryCount: FfiConverterUInt32.read(from: &buf), 
+                streak: FfiConverterTypeJournalStreakRecord.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalMonthRecord, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.year, into: &buf)
+        FfiConverterUInt32.write(value.month, into: &buf)
+        FfiConverterSequenceTypeJournalMonthDayRecord.write(value.days, into: &buf)
+        FfiConverterUInt32.write(value.entryCount, into: &buf)
+        FfiConverterTypeJournalStreakRecord.write(value.streak, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalMonthRecord_lift(_ buf: RustBuffer) throws -> JournalMonthRecord {
+    return try FfiConverterTypeJournalMonthRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalMonthRecord_lower(_ value: JournalMonthRecord) -> RustBuffer {
+    return FfiConverterTypeJournalMonthRecord.lower(value)
+}
+
+
+/**
+ * One reminder on a day (D8).
+ */
+public struct JournalReminder: Equatable, Hashable {
+    public var id: String
+    /**
+     * The date the reminder points at (`targetId`).
+     */
+    public var date: String
+    public var remindAt: String
+    public var note: String?
+    public var status: String
+    public var snoozedUntil: String?
+    /**
+     * `pending` or `snoozed`.
+     */
+    public var isActive: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * The date the reminder points at (`targetId`).
+         */date: String, remindAt: String, note: String?, status: String, snoozedUntil: String?, 
+        /**
+         * `pending` or `snoozed`.
+         */isActive: Bool) {
+        self.id = id
+        self.date = date
+        self.remindAt = remindAt
+        self.note = note
+        self.status = status
+        self.snoozedUntil = snoozedUntil
+        self.isActive = isActive
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalReminder: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalReminder: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalReminder {
+        return
+            try JournalReminder(
+                id: FfiConverterString.read(from: &buf), 
+                date: FfiConverterString.read(from: &buf), 
+                remindAt: FfiConverterString.read(from: &buf), 
+                note: FfiConverterOptionString.read(from: &buf), 
+                status: FfiConverterString.read(from: &buf), 
+                snoozedUntil: FfiConverterOptionString.read(from: &buf), 
+                isActive: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalReminder, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.date, into: &buf)
+        FfiConverterString.write(value.remindAt, into: &buf)
+        FfiConverterOptionString.write(value.note, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.snoozedUntil, into: &buf)
+        FfiConverterBool.write(value.isActive, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalReminder_lift(_ buf: RustBuffer) throws -> JournalReminder {
+    return try FfiConverterTypeJournalReminder.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalReminder_lower(_ value: JournalReminder) -> RustBuffer {
+    return FfiConverterTypeJournalReminder.lower(value)
+}
+
+
+/**
+ * The synced journal template settings (D9).
+ */
+public struct JournalSettingsRecord: Equatable, Hashable {
+    public var defaultTemplate: String?
+    /**
+     * Seven entries indexed by absolute weekday, 0 = Sunday.
+     */
+    public var weekdayTemplates: [String?]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(defaultTemplate: String?, 
+        /**
+         * Seven entries indexed by absolute weekday, 0 = Sunday.
+         */weekdayTemplates: [String?]) {
+        self.defaultTemplate = defaultTemplate
+        self.weekdayTemplates = weekdayTemplates
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalSettingsRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalSettingsRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalSettingsRecord {
+        return
+            try JournalSettingsRecord(
+                defaultTemplate: FfiConverterOptionString.read(from: &buf), 
+                weekdayTemplates: FfiConverterSequenceOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalSettingsRecord, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.defaultTemplate, into: &buf)
+        FfiConverterSequenceOptionString.write(value.weekdayTemplates, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalSettingsRecord_lift(_ buf: RustBuffer) throws -> JournalSettingsRecord {
+    return try FfiConverterTypeJournalSettingsRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalSettingsRecord_lower(_ value: JournalSettingsRecord) -> RustBuffer {
+    return FfiConverterTypeJournalSettingsRecord.lower(value)
+}
+
+
+/**
+ * Current and longest run of consecutive days, counted from a given today.
+ */
+public struct JournalStreakRecord: Equatable, Hashable {
+    public var current: UInt32
+    public var longest: UInt32
+    public var lastEntryDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(current: UInt32, longest: UInt32, lastEntryDate: String?) {
+        self.current = current
+        self.longest = longest
+        self.lastEntryDate = lastEntryDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalStreakRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalStreakRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalStreakRecord {
+        return
+            try JournalStreakRecord(
+                current: FfiConverterUInt32.read(from: &buf), 
+                longest: FfiConverterUInt32.read(from: &buf), 
+                lastEntryDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalStreakRecord, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.current, into: &buf)
+        FfiConverterUInt32.write(value.longest, into: &buf)
+        FfiConverterOptionString.write(value.lastEntryDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalStreakRecord_lift(_ buf: RustBuffer) throws -> JournalStreakRecord {
+    return try FfiConverterTypeJournalStreakRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalStreakRecord_lower(_ value: JournalStreakRecord) -> RustBuffer {
+    return FfiConverterTypeJournalStreakRecord.lower(value)
+}
+
+
+/**
  * `journal.defaultTemplate` and the seven `journal.weekdayTemplates` days.
  */
 public struct JournalTemplateSettings: Equatable, Hashable {
@@ -14120,6 +15580,154 @@ public func FfiConverterTypeJournalTemplateSettings_lift(_ buf: RustBuffer) thro
 #endif
 public func FfiConverterTypeJournalTemplateSettings_lower(_ value: JournalTemplateSettings) -> RustBuffer {
     return FfiConverterTypeJournalTemplateSettings.lower(value)
+}
+
+
+/**
+ * The strings a shell formats for seeding a day from a template (D4).
+ */
+public struct JournalTemplateStrings: Equatable, Hashable {
+    /**
+     * `{{date}}` without a pattern: long weekday, month, day and year.
+     */
+    public var longDate: String
+    /**
+     * `{{time}}`: the current time.
+     */
+    public var time: String
+    /**
+     * `{{day-of-week}}`: the long weekday name.
+     */
+    public var dayOfWeek: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `{{date}}` without a pattern: long weekday, month, day and year.
+         */longDate: String, 
+        /**
+         * `{{time}}`: the current time.
+         */time: String, 
+        /**
+         * `{{day-of-week}}`: the long weekday name.
+         */dayOfWeek: String) {
+        self.longDate = longDate
+        self.time = time
+        self.dayOfWeek = dayOfWeek
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalTemplateStrings: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalTemplateStrings: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalTemplateStrings {
+        return
+            try JournalTemplateStrings(
+                longDate: FfiConverterString.read(from: &buf), 
+                time: FfiConverterString.read(from: &buf), 
+                dayOfWeek: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalTemplateStrings, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.longDate, into: &buf)
+        FfiConverterString.write(value.time, into: &buf)
+        FfiConverterString.write(value.dayOfWeek, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalTemplateStrings_lift(_ buf: RustBuffer) throws -> JournalTemplateStrings {
+    return try FfiConverterTypeJournalTemplateStrings.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalTemplateStrings_lower(_ value: JournalTemplateStrings) -> RustBuffer {
+    return FfiConverterTypeJournalTemplateStrings.lower(value)
+}
+
+
+/**
+ * One year: twelve cards, totals and the streak.
+ */
+public struct JournalYearRecord: Equatable, Hashable {
+    public var year: Int64
+    public var months: [JournalMonthCard]
+    public var daysWithEntries: UInt32
+    public var totalCharacters: UInt64
+    public var streak: JournalStreakRecord
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(year: Int64, months: [JournalMonthCard], daysWithEntries: UInt32, totalCharacters: UInt64, streak: JournalStreakRecord) {
+        self.year = year
+        self.months = months
+        self.daysWithEntries = daysWithEntries
+        self.totalCharacters = totalCharacters
+        self.streak = streak
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension JournalYearRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalYearRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalYearRecord {
+        return
+            try JournalYearRecord(
+                year: FfiConverterInt64.read(from: &buf), 
+                months: FfiConverterSequenceTypeJournalMonthCard.read(from: &buf), 
+                daysWithEntries: FfiConverterUInt32.read(from: &buf), 
+                totalCharacters: FfiConverterUInt64.read(from: &buf), 
+                streak: FfiConverterTypeJournalStreakRecord.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: JournalYearRecord, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.year, into: &buf)
+        FfiConverterSequenceTypeJournalMonthCard.write(value.months, into: &buf)
+        FfiConverterUInt32.write(value.daysWithEntries, into: &buf)
+        FfiConverterUInt64.write(value.totalCharacters, into: &buf)
+        FfiConverterTypeJournalStreakRecord.write(value.streak, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalYearRecord_lift(_ buf: RustBuffer) throws -> JournalYearRecord {
+    return try FfiConverterTypeJournalYearRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalYearRecord_lower(_ value: JournalYearRecord) -> RustBuffer {
+    return FfiConverterTypeJournalYearRecord.lower(value)
 }
 
 
@@ -15244,6 +16852,95 @@ public func FfiConverterTypeNoteSummary_lift(_ buf: RustBuffer) throws -> NoteSu
 #endif
 public func FfiConverterTypeNoteSummary_lower(_ value: NoteSummary) -> RustBuffer {
     return FfiConverterTypeNoteSummary.lower(value)
+}
+
+
+/**
+ * One link a note or journal day makes.
+ */
+public struct OutgoingLink: Equatable, Hashable {
+    /**
+     * The title the link spells.
+     */
+    public var targetTitle: String
+    /**
+     * `None` when the link is broken.
+     */
+    public var targetId: String?
+    /**
+     * `note`, `journal` or `missing`.
+     */
+    public var targetKind: String
+    /**
+     * The journal's date when the target is a day.
+     */
+    public var targetDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The title the link spells.
+         */targetTitle: String, 
+        /**
+         * `None` when the link is broken.
+         */targetId: String?, 
+        /**
+         * `note`, `journal` or `missing`.
+         */targetKind: String, 
+        /**
+         * The journal's date when the target is a day.
+         */targetDate: String?) {
+        self.targetTitle = targetTitle
+        self.targetId = targetId
+        self.targetKind = targetKind
+        self.targetDate = targetDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension OutgoingLink: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeOutgoingLink: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> OutgoingLink {
+        return
+            try OutgoingLink(
+                targetTitle: FfiConverterString.read(from: &buf), 
+                targetId: FfiConverterOptionString.read(from: &buf), 
+                targetKind: FfiConverterString.read(from: &buf), 
+                targetDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: OutgoingLink, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.targetTitle, into: &buf)
+        FfiConverterOptionString.write(value.targetId, into: &buf)
+        FfiConverterString.write(value.targetKind, into: &buf)
+        FfiConverterOptionString.write(value.targetDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeOutgoingLink_lift(_ buf: RustBuffer) throws -> OutgoingLink {
+    return try FfiConverterTypeOutgoingLink.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeOutgoingLink_lower(_ value: OutgoingLink) -> RustBuffer {
+    return FfiConverterTypeOutgoingLink.lower(value)
 }
 
 
@@ -18972,6 +20669,85 @@ public func FfiConverterTypeVaultSummary_lower(_ value: VaultSummary) -> RustBuf
 
 
 /**
+ * What a `[[wiki link]]` resolved to: a note, or a journal day.
+ */
+public struct WikiTargetMatch: Equatable, Hashable {
+    /**
+     * The note id, or the journal record id (also its document id).
+     */
+    public var id: String
+    /**
+     * `note` or `journal`.
+     */
+    public var kind: String
+    /**
+     * The journal's date, `None` for a note.
+     */
+    public var date: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The note id, or the journal record id (also its document id).
+         */id: String, 
+        /**
+         * `note` or `journal`.
+         */kind: String, 
+        /**
+         * The journal's date, `None` for a note.
+         */date: String?) {
+        self.id = id
+        self.kind = kind
+        self.date = date
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension WikiTargetMatch: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeWikiTargetMatch: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WikiTargetMatch {
+        return
+            try WikiTargetMatch(
+                id: FfiConverterString.read(from: &buf), 
+                kind: FfiConverterString.read(from: &buf), 
+                date: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: WikiTargetMatch, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterOptionString.write(value.date, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWikiTargetMatch_lift(_ buf: RustBuffer) throws -> WikiTargetMatch {
+    return try FfiConverterTypeWikiTargetMatch.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWikiTargetMatch_lower(_ value: WikiTargetMatch) -> RustBuffer {
+    return FfiConverterTypeWikiTargetMatch.lower(value)
+}
+
+
+/**
  * Failures of one HTTP call to the sync server (chapters 00 §0.4, 00 §0.5).
  *
  * The split is by **what a caller must do**, not by status: a 429 waits, a 426
@@ -21630,6 +23406,91 @@ public func FfiConverterTypeEditorError_lower(_ value: EditorError) -> RustBuffe
 
 
 /**
+ * What this device holds of a day's body.
+ */
+
+public enum JournalBody: Equatable, Hashable {
+    
+    /**
+     * The body is here and has text.
+     */
+    case present
+    /**
+     * The day exists but its body has not been pulled to this device.
+     */
+    case notPulled
+    /**
+     * The body is here and empty.
+     */
+    case empty
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension JournalBody: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJournalBody: FfiConverterRustBuffer {
+    typealias SwiftType = JournalBody
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JournalBody {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .present
+        
+        case 2: return .notPulled
+        
+        case 3: return .empty
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: JournalBody, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .present:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .notPulled:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .empty:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalBody_lift(_ buf: RustBuffer) throws -> JournalBody {
+    return try FfiConverterTypeJournalBody.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJournalBody_lower(_ value: JournalBody) -> RustBuffer {
+    return FfiConverterTypeJournalBody.lower(value)
+}
+
+
+
+/**
  * Failures of the device-linking crypto, chapter 03.
  *
  * The scan and confirm channels get their own rejection variants because a
@@ -22863,6 +24724,101 @@ public func FfiConverterTypeSecureStoreKey_lower(_ value: SecureStoreKey) -> Rus
 
 
 /**
+ * What opening a day from a template did.
+ */
+
+public enum SeedOutcome: Equatable, Hashable {
+    
+    /**
+     * The day did not exist and was created from the template.
+     */
+    case seeded(id: String
+    )
+    /**
+     * A deleted day was revived under its own id and filled from the template.
+     */
+    case revived(id: String
+    )
+    /**
+     * The day already has a live entry, possibly seeded on another device.
+     * Nothing was written.
+     */
+    case alreadyExists(id: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SeedOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSeedOutcome: FfiConverterRustBuffer {
+    typealias SwiftType = SeedOutcome
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SeedOutcome {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .seeded(id: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .revived(id: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .alreadyExists(id: try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SeedOutcome, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .seeded(id):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(id, into: &buf)
+            
+        
+        case let .revived(id):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(id, into: &buf)
+            
+        
+        case let .alreadyExists(id):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(id, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSeedOutcome_lift(_ buf: RustBuffer) throws -> SeedOutcome {
+    return try FfiConverterTypeSeedOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSeedOutcome_lower(_ value: SeedOutcome) -> RustBuffer {
+    return FfiConverterTypeSeedOutcome.lower(value)
+}
+
+
+
+/**
  * Failures of the storage layer and the `FileProtection` seam.
  */
 public 
@@ -23497,6 +25453,30 @@ public func FfiConverterTypeTransportError_lower(_ value: TransportError) -> Rus
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionUInt8: FfiConverterRustBuffer {
+    typealias SwiftType = UInt8?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt8.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt8.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
     typealias SwiftType = UInt32?
 
@@ -23681,6 +25661,30 @@ fileprivate struct FfiConverterOptionTypeInboxItemRecord: FfiConverterRustBuffer
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeInboxItemRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeJournalDayRecord: FfiConverterRustBuffer {
+    typealias SwiftType = JournalDayRecord?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeJournalDayRecord.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeJournalDayRecord.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -23897,6 +25901,54 @@ fileprivate struct FfiConverterOptionTypeTaskItem: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeTaskItem.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeWikiTargetMatch: FfiConverterRustBuffer {
+    typealias SwiftType = WikiTargetMatch?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeWikiTargetMatch.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeWikiTargetMatch.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeJournalBody: FfiConverterRustBuffer {
+    typealias SwiftType = JournalBody?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeJournalBody.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeJournalBody.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -24144,6 +26196,31 @@ fileprivate struct FfiConverterSequenceTypeBacklink: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeBacklink.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBacklinkRow: FfiConverterRustBuffer {
+    typealias SwiftType = [BacklinkRow]
+
+    public static func write(_ value: [BacklinkRow], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBacklinkRow.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BacklinkRow] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BacklinkRow]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBacklinkRow.read(from: &buf))
         }
         return seq
     }
@@ -24452,6 +26529,106 @@ fileprivate struct FfiConverterSequenceTypeInlineRun: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeJournalHeatmapEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [JournalHeatmapEntry]
+
+    public static func write(_ value: [JournalHeatmapEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeJournalHeatmapEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [JournalHeatmapEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [JournalHeatmapEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeJournalHeatmapEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeJournalMonthCard: FfiConverterRustBuffer {
+    typealias SwiftType = [JournalMonthCard]
+
+    public static func write(_ value: [JournalMonthCard], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeJournalMonthCard.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [JournalMonthCard] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [JournalMonthCard]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeJournalMonthCard.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeJournalMonthDayRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [JournalMonthDayRecord]
+
+    public static func write(_ value: [JournalMonthDayRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeJournalMonthDayRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [JournalMonthDayRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [JournalMonthDayRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeJournalMonthDayRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeJournalReminder: FfiConverterRustBuffer {
+    typealias SwiftType = [JournalReminder]
+
+    public static func write(_ value: [JournalReminder], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeJournalReminder.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [JournalReminder] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [JournalReminder]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeJournalReminder.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeLargeNote: FfiConverterRustBuffer {
     typealias SwiftType = [LargeNote]
 
@@ -24569,6 +26746,31 @@ fileprivate struct FfiConverterSequenceTypeNoteSummary: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeNoteSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeOutgoingLink: FfiConverterRustBuffer {
+    typealias SwiftType = [OutgoingLink]
+
+    public static func write(_ value: [OutgoingLink], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeOutgoingLink.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [OutgoingLink] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [OutgoingLink]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeOutgoingLink.read(from: &buf))
         }
         return seq
     }
@@ -25690,6 +27892,52 @@ public func inboxConformance(vectorJson: String) -> String  {
 })
 }
 /**
+ * The one-line preview desktop shows for a body (`extractPreview`, 100).
+ */
+public func journalPreview(text: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_journal_preview(
+        FfiConverterString.lower(text),uniffiCallStatus
+    )
+})
+}
+/**
+ * The weekday of a calendar date, 0 = Sunday; `nil` for a date that does not
+ * parse. The shell uses it to label a day and to bind weekday templates.
+ */
+public func journalWeekday(date: String) -> UInt8?  {
+    return try!  FfiConverterOptionUInt8.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_journal_weekday(
+        FfiConverterString.lower(date),uniffiCallStatus
+    )
+})
+}
+/**
+ * Desktop's word count (`countWords`).
+ */
+public func journalWordCount(text: String) -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_journal_word_count(
+        FfiConverterString.lower(text),uniffiCallStatus
+    )
+})
+}
+/**
+ * Every section of `journal.json`, computed: `{ section: [expected, ...] }`
+ * in case order, each `expected` in the file's own shape.
+ */
+public func journalConformance(fileJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_journal_conformance(
+        FfiConverterString.lower(fileJson),uniffiCallStatus
+    )
+})
+}
+/**
  * The `dueWindows` section of `task-parsing.json` evaluated at every `at`
  * entry's `now`, in the file's own shape.
  */
@@ -25864,6 +28112,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_inbox_conformance() != 10056) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_journal_preview() != 62973) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_journal_weekday() != 35662) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_journal_word_count() != 31447) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_journal_conformance() != 28402) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {
@@ -26100,6 +28360,81 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_unsnooze() != 24252) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_journal_clear_property() != 32403) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_day() != 56513) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_days_with_entries() != 63288) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_delete_reminder() != 12422) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_dismiss_reminder() != 24871) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_edit_day() != 59398) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_entry_id() != 10638) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_heatmap() != 9143) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_month() != 19432) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_reminders() != 4961) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_remove_property() != 41198) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_rename_property() != 17030) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_resolve_wiki_target() != 4674) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_seed_from_template() != 21646) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_set_default_template() != 44920) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_set_property() != 1255) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_set_reminder() != 31714) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_set_tags() != 49894) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_set_weekday_template() != 59672) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_settings() != 14116) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_snooze_reminder() != 11342) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_streak() != 53862) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_template_for() != 9165) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_update_reminder() != 54112) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_year() != 27320) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_devicelink_cancel() != 46216) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -26251,6 +28586,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_backlinks() != 53743) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_links_from() != 32512) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_links_to() != 25358) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_notes() != 18500) {
@@ -26593,6 +28934,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_inbox() != 16342) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_journal() != 60927) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_notes() != 15357) {

@@ -35,6 +35,11 @@ mod node;
 
 use node::{append_paragraph, block_id};
 
+/// A BlockNote block id, as `notes edit` mints one (for `journal append`).
+pub(crate) fn new_block_id() -> String {
+    block_id()
+}
+
 /// `notes edit <id> --append <text>`.
 pub fn notes_append(
     cli: &Cli,

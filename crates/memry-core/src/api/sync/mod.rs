@@ -428,7 +428,7 @@ impl VaultSync {
         let wanted = note_id.clone();
         let live = self
             .db
-            .call(move |conn| Ok(reads::note_exists(conn, &wanted)))
+            .call(move |conn| Ok(reads::document_exists(conn, &wanted)))
             .await?;
         if !live {
             return Err(SyncError::UnknownNote { id: note_id });

@@ -261,6 +261,8 @@ Evidence: §8 below; `[agent]` tasks, test tags, template, property option remov
 - 2026-09-25 — ST92 — Desktop dev was not launched; the peer is the repo's `memry` CLI (a registered desktop-platform device on staging) writing through `domain::settings`, which is the same dotted-path/clock writer and merge desktop's handler reads. Recorded here so the desktop UI half can be re-run by hand.
 - 2026-09-25 — ST90 — Pre-existing: on the recovery-phrase screen the Sign-out bar overlays Unlock while the keyboard is up, and at AX5 on the vault chooser; a mistaken tap opened the sign-out dialog twice during setup (dismissed, never confirmed). Not in this spec's scope; left open in §8.
 
+- 2026-09-25 — merge main (#2422 inbox, #2427 journal) — Inbox and Journal shipped with their own tabs and settings pages. Settings › Inbox pushes the Inbox feature's `InboxSettingsView`; Settings › Journal opens the Journal feature's settings page (`JournalRouter.openSettings()`, in the Journal stack). The settings-spec copies (`InboxSettingsScreen`, `JournalSettingsScreen`, the review scheduler) were removed so each setting has one screen and one scheduler; the core `Settings` journal/review helpers stay (tested, unused by the UI). Home lost its tab on main, so Features lists Inbox, Tasks and Journal. `AccentColor`/`AccentRuntime` moved into `Tokens.swift` because the Share extension compiles `Tokens.swift` alone. Branch integrated by merge commits, not a rebase, so the pushed history is not rewritten. After the merge: cargo 1094, Unit 792, Conformance 31 green; the UI plan needs a fresh sign-in after the Unit run and was not re-run.
+
 ## 7. Blockers
 
 <!-- date — id — what — evidence — next retry -->

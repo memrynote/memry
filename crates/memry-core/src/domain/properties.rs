@@ -209,7 +209,7 @@ pub fn remove(
 }
 
 /// The rule FR-048 names. See the module comment for what is exempt and why.
-fn refuse_retype(
+pub fn refuse_retype(
     name: &str,
     existing: Option<&Value>,
     proposed: &Value,
@@ -310,7 +310,7 @@ fn require(
 
 /// The payload's `properties` object. Absent and `null` are both "no values";
 /// anything else is an error rather than a substituted empty map.
-fn read_values(
+pub fn read_values(
     object: &Object,
     item_type: &str,
     item_id: &str,

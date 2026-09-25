@@ -11,7 +11,7 @@ enum SettingsRoute: Hashable, Sendable {
     case general, newNotesFolder
     case appearance, font
     case features, about
-    case journal, perDayTemplates, inbox, tasks
+    case inbox, tasks
     case templates, template(String)
     case tags, properties, property(String)
 
@@ -104,8 +104,6 @@ struct SettingsDestination: View {
         case .font: FontScreen(store: context.store)
         case .features: FeaturesScreen(local: context.local)
         case .about: AboutScreen()
-        case .journal: JournalSettingsScreen(context: context)
-        case .perDayTemplates: PerDayTemplatesScreen(context: context)
         case .inbox: InboxSettingsDestination()
         case .tasks: TaskSettingsView(store: context.tasks)
         case .templates: TemplatesScreen(context: context)

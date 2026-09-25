@@ -16,8 +16,70 @@ pub(super) fn set_text(
         block.insert_attribute(txn, name, text);
         return Ok(());
     }
+    // One plain run: edit it in place, so a concurrent insert from another
+    // device outside the changed span survives the merge (spec 005-journal
+    // JP082). Replacing the run deleted whatever a peer had typed into it.
+    if let Some((run, current)) = sole_plain_run(txn, &block) {
+        edit_in_place(txn, &run, &current, text);
+        return Ok(());
+    }
     replace_inline(txn, &block, text);
     Ok(())
+}
+
+/// The block's inline content when it is exactly one text run with no marks
+/// and no inline nodes (nested `blockGroup` children aside), with its text.
+fn sole_plain_run(txn: &TransactionMut, element: &XmlElementRef) -> Option<(XmlTextRef, String)> {
+    let mut found = None;
+    for child in element.children(txn) {
+        match child {
+            XmlOut::Element(inner) if inner.tag().as_ref() == "blockGroup" => {}
+            XmlOut::Text(run) if found.is_none() => found = Some(run),
+            _ => return None,
+        }
+    }
+    let run = found?;
+    let mut plain = String::new();
+    for chunk in run.diff(txn, yrs::types::text::YChange::identity) {
+        if chunk.attributes.is_some() {
+            return None;
+        }
+        match chunk.insert {
+            yrs::Out::Any(Any::String(piece)) => plain.push_str(&piece),
+            _ => return None,
+        }
+    }
+    Some((run, plain))
+}
+
+/// Rewrites `run` from `current` to `wanted` by deleting and inserting only
+/// the span between their common prefix and suffix. Offsets are UTF-8 bytes,
+/// the document's offset kind, taken at char boundaries.
+fn edit_in_place(txn: &mut TransactionMut, run: &XmlTextRef, current: &str, wanted: &str) {
+    if current == wanted {
+        return;
+    }
+    let prefix: usize = current
+        .chars()
+        .zip(wanted.chars())
+        .take_while(|(a, b)| a == b)
+        .map(|(a, _)| a.len_utf8())
+        .sum();
+    let suffix: usize = current[prefix..]
+        .chars()
+        .rev()
+        .zip(wanted[prefix..].chars().rev())
+        .take_while(|(a, b)| a == b)
+        .map(|(a, _)| a.len_utf8())
+        .sum();
+    let removed = current.len() - prefix - suffix;
+    if removed > 0 {
+        run.remove_range(txn, prefix as u32, removed as u32);
+    }
+    let inserted = &wanted[prefix..wanted.len() - suffix];
+    if !inserted.is_empty() {
+        run.insert(txn, prefix as u32, inserted);
+    }
 }
 
 /// Replaces an element's inline content, keeping its nested blocks.

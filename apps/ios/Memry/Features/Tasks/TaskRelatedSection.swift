@@ -8,8 +8,10 @@ import SwiftUI
 // (canvases: the phone does not sync them, §6 TP027); a row removes by swipe,
 // long press or VoiceOver action.
 //
-// A present item is shown, not opened: the Notes tab has no route a task
-// screen can push onto, so a tap would be a dead control.
+// A present note or file is shown, not opened: the Notes tab has no route a
+// task screen can push onto, so a tap would be a dead control. A journal day
+// opens in the Journal tab (JP052), as desktop's `openRelatedVaultItem` opens
+// it by date.
 
 struct TaskRelatedSection: View {
     let task: TaskItem
@@ -18,12 +20,14 @@ struct TaskRelatedSection: View {
     /// nothing, so a load attached here would never run.
     let linked: [LinkedItemRecord]
 
+    @Environment(\.openJournalDay) private var openJournalDay
+
     var body: some View {
         Section {
             ForEach(linked, id: \.self) { item in
-                TaskRelatedRow(item: item) {
+                TaskRelatedRow(item: item, onRemove: {
                     Task { await store.detailRemoveRelated(item, from: store.items[task.id] ?? task) }
-                }
+                }, open: journalOpener(item))
                 .listRowInsets(SubtaskRow.insets)
             }
         } header: {
@@ -36,6 +40,14 @@ struct TaskRelatedSection: View {
                     .accessibilityAddTraits(.isHeader)
             }
         }
+    }
+
+    /// Opens a present journal item's day, or `nil` for anything else.
+    private func journalOpener(_ item: LinkedItemRecord) -> (() -> Void)? {
+        guard item.state == "present", let related = item.item, related.kind == "journal",
+              let date = JournalLink.date(fromWikiTarget: related.title) ?? JournalLink.date(fromJournalId: related.id),
+              let openJournalDay else { return nil }
+        return { openJournalDay(date) }
     }
 }
 
@@ -53,8 +65,36 @@ extension View {
 struct TaskRelatedRow: View {
     let item: LinkedItemRecord
     let onRemove: () -> Void
+    /// Opens the item; only a journal day has somewhere to go.
+    var open: (() -> Void)?
 
     var body: some View {
+        Group {
+            if let open {
+                Button(action: open) { row.contentShape(.rect) }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(JournalCopy.openInJournal)
+            } else {
+                row
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: TasksCopy.Detail.removeRelatedItem(title), onRemove)
+        .swipeActions {
+            Button(role: .destructive, action: onRemove) {
+                Label(TasksCopy.Detail.removeRelatedItem(title), systemImage: "xmark")
+            }
+            .accessibilityIdentifier("tasks.detail.removeRelated.\(item.id)")
+        }
+        .contextMenu {
+            Button(
+                TasksCopy.Detail.removeRelatedItem(title), systemImage: "xmark", role: .destructive, action: onRemove
+            )
+        }
+        .accessibilityIdentifier("tasks.detail.related.\(item.id)")
+    }
+
+    private var row: some View {
         HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.medium) {
             Text(verbatim: "A")
                 .font(Tokens.Typography.body.font)
@@ -75,18 +115,6 @@ struct TaskRelatedRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(minHeight: Tokens.Size.minimumHitArea)
-        .accessibilityElement(children: .combine)
-        .accessibilityAction(named: TasksCopy.Detail.removeRelatedItem(title), onRemove)
-        .swipeActions {
-            Button(role: .destructive, action: onRemove) {
-                Label(TasksCopy.Detail.removeRelatedItem(title), systemImage: "xmark")
-            }
-            .accessibilityIdentifier("tasks.detail.removeRelated.\(item.id)")
-        }
-        .contextMenu {
-            Button(TasksCopy.Detail.removeRelatedItem(title), systemImage: "xmark", role: .destructive, action: onRemove)
-        }
-        .accessibilityIdentifier("tasks.detail.related.\(item.id)")
     }
 
     private var kind: String { item.item?.kind ?? item.field }

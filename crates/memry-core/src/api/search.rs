@@ -23,6 +23,7 @@ use std::path::PathBuf;
 use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
+use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::search::{self, HitKind, SearchHit};
 use crate::storage::{Db, open_index};
 
@@ -234,6 +235,30 @@ impl Search {
                 }),
             }
             Ok(out.into_iter().map(|(backlink, _)| backlink).collect())
+        })
+    }
+
+    /// Every note or journal day linking to `target_id` (a note id or a
+    /// journal record id), each carrying its kind and, for a day, its date so
+    /// the shell can route it (spec 005-journal JP026). [`Self::backlinks`]
+    /// keeps its note-only answer for older callers.
+    pub fn links_to(
+        &self,
+        target_id: String,
+        order: BacklinkOrder,
+    ) -> Result<Vec<BacklinkRow>, StorageError> {
+        let index = self.index.clone();
+        self.data.call_blocking(move |data| {
+            index.call_blocking(|index| links::backlinks(data, index, &target_id, order))
+        })
+    }
+
+    /// Every link a note or journal day makes, resolved now: to a note, a
+    /// journal day, or nothing (a broken link).
+    pub fn links_from(&self, source_id: String) -> Result<Vec<OutgoingLink>, StorageError> {
+        let index = self.index.clone();
+        self.data.call_blocking(move |data| {
+            index.call_blocking(|index| links::outgoing_links(data, index, &source_id))
         })
     }
 

@@ -92,6 +92,8 @@
     "./test-vectors/task-parsing.json": "./test-vectors/task-parsing.json",
     "./test-vectors/task-filtering.json": "./test-vectors/task-filtering.json",
     "./test-vectors/inbox.json": "./test-vectors/inbox.json",
+    "./test-vectors/journal.json": "./test-vectors/journal.json",
+    "./test-vectors/markdown-seed.json": "./test-vectors/markdown-seed.json",
     "./test-vectors/markdown-roundtrip/cases.json": "./test-vectors/markdown-roundtrip/cases.json",
     "./test-vectors/markdown-roundtrip/fuzz-families.json": "./test-vectors/markdown-roundtrip/fuzz-families.json"
   },

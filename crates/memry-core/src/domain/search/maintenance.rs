@@ -48,6 +48,14 @@ pub const DATA_VERSION_KEY: &str = "data.user_version";
 pub const NOTES_WATERMARK_KEY: &str = "watermark.fts_notes";
 /// `index_meta` key: the `fts_tasks` watermark.
 pub const TASKS_WATERMARK_KEY: &str = "watermark.fts_tasks";
+/// `index_meta` key: the stamp rules the index was built under. Pulled body
+/// updates used to be stamped with the server's `createdAt`, which sat below
+/// the epoch-ms watermark, so an install that pulled bodies before the fix
+/// holds rows no incremental pass will ever see. A missing or older value
+/// forces one full rebuild.
+pub const STAMPS_KEY: &str = "stamps.version";
+/// The current [`STAMPS_KEY`]: body updates stamped at apply time.
+const STAMPS_VERSION: i64 = 1;
 
 /// The device id the read-only body materialisation opens documents under.
 ///
@@ -86,7 +94,12 @@ pub fn reindex(
     let notes_from = meta_number(&transaction, NOTES_WATERMARK_KEY)?;
     let tasks_from = meta_number(&transaction, TASKS_WATERMARK_KEY)?;
 
-    let full = indexed != Some(version) || notes_from.is_none() || tasks_from.is_none();
+    let stamps = meta_number(&transaction, STAMPS_KEY)?;
+
+    let full = indexed != Some(version)
+        || stamps != Some(STAMPS_VERSION)
+        || notes_from.is_none()
+        || tasks_from.is_none();
     if full {
         transaction
             .execute_batch("DELETE FROM fts_notes; DELETE FROM fts_tasks;")
@@ -109,6 +122,7 @@ pub fn reindex(
     }
 
     meta_set(&transaction, DATA_VERSION_KEY, &version.to_string())?;
+    meta_set(&transaction, STAMPS_KEY, &STAMPS_VERSION.to_string())?;
     meta_set(
         &transaction,
         NOTES_WATERMARK_KEY,
@@ -271,8 +285,11 @@ fn index_note(
 /// backlinks could not be answered: a query over it would have returned
 /// nothing, forever, and looked like a note with no backlinks.
 ///
+/// Journal sources are projected the same way: their body is a document keyed
+/// by the record id, and [`index_note`] reaches this for both types.
+///
 /// `target_id` is resolved here rather than at query time, and left `NULL`
-/// when no note carries that title — which is how a forward reference to a
+/// when no note or journal day carries that title — which is how a forward reference to a
 /// note that does not exist yet survives until it is created. The title is
 /// always stored, so the link is still a link in the meantime.
 fn index_links(
@@ -319,6 +336,16 @@ fn index_links(
             )
             .optional()
             .map_err(failed)?;
+        // No note by that title: a live journal whose date it spells, since
+        // desktop titles a journal with its date. A day created later is still
+        // found by title at query time, as a note is.
+        let target_id = match target_id {
+            Some(id) => Some(id),
+            None => match crate::domain::note_meta::journal_date_of(&title) {
+                Some((date, _)) => crate::domain::journal::live_entry(data, &date)?,
+                None => None,
+            },
+        };
         index
             .execute(
                 "INSERT INTO note_links (source_id, target_id, target_title)
