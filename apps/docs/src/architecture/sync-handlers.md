@@ -78,6 +78,14 @@ For tasks, projects, and agent conversations, handlers additionally invoke `merg
 `field-merge.ts` to merge field-level vector clocks. See
 [Sync Protocol](/architecture/sync-protocol#field-level-merge-tasks-projects).
 
+Settings run the same rule per dotted path: `mergeSettingsPayloads()` (`settings-merge.ts`) calls
+`mergeFields()` over the union of both payloads' clocked paths, so the higher tick sum wins and the
+remote wins a tie. A path whose winner has no value keeps the local value: an older build strips a
+setting it does not model but still echoes its clock, and removing on that echo would delete the
+setting everywhere. Before #2383 settings picked the larger single tick and kept local on a tie; a
+peer still on that rule converges through the re-queue a concurrent merge triggers. The shared
+`settings-merge.json` vectors run against both desktop and the Rust core.
+
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
 
