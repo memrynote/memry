@@ -475,6 +475,8 @@ desktop builds (JP029), fixed on `main` by JP029a; phone journal tag/property wr
 
 ## Phase 3: iOS foundations (serial)
 
+Evidence: `Features/Journal/JournalStore.swift` (reads never write; `perform` re-reads the day/month/year/reminders it touched, bumps `generation`, calls `requestSync`; errors via `ErrorMapping`, logs via `Log`), `JournalClock.swift` (local calendar today, follows NSCalendarDayChanged / time-zone / clock changes, DEBUG-only `MEMRY_JOURNAL_TODAY` env or launch argument), `JournalWriteGate` (D5). Refresh on sync: `JournalTabContent` re-reads when the vault pass ends. Tests `MemryTests/JournalStoreTests.swift` (JournalStoreTests 5, JournalClockTests 4) over a scratch vault: pass (xcodebuild -only-testing, 14 tests incl. routing).
+
 - [ ] JP030 `apps/ios/Memry/Features/Journal/`: `JournalStore` (`@Observable`)
       over the `Journal` API. Refresh on core sync events. Every write calls
       `requestVaultSync`. Errors go through `ErrorMapping.swift` (new cases as
@@ -482,20 +484,23 @@ desktop builds (JP029), fixed on `main` by JP029a; phone journal tag/property wr
       today (D3) and follows day rollover and time-zone changes. In debug builds
       it honors `MEMRY_JOURNAL_TODAY` (§0.5), and it does nothing in release.
       Unit tests over a scratch vault (`TasksTestVault` pattern).
-- [ ] JP031 Replace the Journal `ComingSoonTab` in `VaultTabsView.swift`, and
+- [x] JP031 Replace the Journal `ComingSoonTab` in `VaultTabsView.swift`, and
       add `JournalRoute(date)` plus a `JournalRouter` that selects the tab and
       pushes the day. Wire a journal reminder tap to it:
       `ReminderNotificationsRouting.swift:39-47` currently sends every
       non-task target to Notes.
-- [ ] JP032 `JournalCopy.swift` (+ extensions per screen) mirroring the
+      Evidence: `JournalRouting.swift` (`JournalRoute` month/day, `JournalRouter.openDay/showDay/openMonth/openYear/drillUp`, SceneStorage form, `openJournalDay` environment action, `ReminderTap.open(in:journal:)`), `JournalRootView.swift` (tab content + one NavigationStack Year › Month › Day, restores the saved stack or opens today); `VaultTabsView` Journal tab replaces `ComingSoonTab`, `VaultListView` passes the vault; a journal reminder tap opens its day. `JournalRoutingTests` 5/5. Simulator: tab opens on the pinned today 2099-06-15 with Back = June (`apps/ios/SpikeEvidence/journal-parity/JP031-journal-tab-today.png`).
+- [x] JP032 `JournalCopy.swift` (+ extensions per screen) mirroring the
       desktop strings the screens use: `journal.json` (placeholders, relative
       dates, counts, nav, stats), `settings.json` `journal.*`, and the inbox
       reminder preset labels. Literal copy per the iOS `*Copy.swift` pattern.
-- [ ] JP033 Extract the note page parts the day page needs into shared views,
+      Evidence: `Features/Journal/JournalCopy.swift`: journal.json placeholders, relative dates, weekday/month names, nav, empty/count/stats strings, export title, reminder copy and inbox journal presets, settings.json journal.* (template, weekday inherit/missing/summary, footer), D8 notification title/body, the D5 read-only limitation. Compiles into the app (Unit build green).
+- [x] JP033 Extract the note page parts the day page needs into shared views,
       with no behavior change for notes: the block editor host, the tags and
       properties rows and the ghost row, backlinks and outgoing links, linked
       tasks, review comments, find, and export. Notes Unit tests stay green.
       Take before and after screenshots of one note to show nothing moved.
+      Evidence: `Features/Notes/NotePageContent.swift`: `NotePageContent` (metadata rows + ghost row, editable blocks, review comments, backlinks, a slot, linked tasks; empty-body and after-backlinks views passed in) and `NotePageEnvironment`; `NoteReadView` now composes them (316 lines). Find (`NoteFindView`) and export (`NoteExportButton`) were already standalone and are reused as-is. Before/after of "Beta Feedback": `JP033-note-before-{top,bottom}.png` vs `JP033-note-after-{top,bottom}.png` — same layout. Unit plan minus the real-keychain/sign-in suites: 679 tests in 97 suites passed (`/tmp/unit-safe.sh`, §6).
 
 **Commit** Phase 3.
 
@@ -829,6 +834,11 @@ note by `name → value`.
 - 2026-09-25 — JP027 — `Search.backlinks` keeps its note-only answer; journal-aware links are the new `Search.linksTo` / `linksFrom`. Note body reads (`Notes.blocks/table/comments`) and `VaultSync.fetchNoteBody` accept a journal record id.
 - 2026-09-25 — JP029 — G0 limit: the last released desktop (2026.919.1) cannot run against staging; its journal upsert code is identical to the tested pre-fix code, so G0 is taken as failing for it. Also found: a phone-created day can lose its vault-file body on a shipped desktop when the create record (`content: ""`) is applied after the CRDT write-back; the next body update rewrites the file. JP029a fixes both. Desktop also leaves the open day's tag chips stale after a remote tag write (the file and index are right); not changed.
 - 2026-09-25 — JP029 — Gate decision (D5): the phone ships with journal tag and property writes OFF (read-only rows with the limitation copy) behind one switch, until a desktop release carrying JP029a is out. Body editing, templates and reminders are on.
+
+- 2026-09-25 — JP029 — Side effect found and reverted: desktop names an account vault after its local folder (`vault/init.ts` `getVaultName` → `refreshVaultDirectory`), so opening MemryNote at `/tmp/jp-desk` renamed the account vault to "jp-desk". The peer now lives at `/tmp/MemryNote` and the account vault reads "MemryNote" again (checked with `vault.listAccount`). The desktop peer must always use a folder named after the vault.
+
+- 2026-09-25 — JP033 — Unit runs that must keep memry-B signed in skip the five suites that touch the real keychain or expect a signed-out app (`RealKeychainSuite`, `SignOutWiringTests`, `VaultContentRemovalTests`, `SignOutServiceTests`, `SignInWiringTests`); the full plan runs at G2 and JP083. `SignInWiringTests` "the app root constructs a real session" fails when the simulator is signed in (it expects `.signedOut`): environmental, not a regression.
+- 2026-09-25 — JP030 — The Journal tab refreshes when the vault's sync pass ends (the pass lives in the tasks store); a debounced `requestVaultSync` follows every journal write. `PropertyWriteError` is internal to the generated module, so a Retyped refusal maps to the generic copy (pre-existing gap, notes have it too).
 
 ## 7. Blockers
 

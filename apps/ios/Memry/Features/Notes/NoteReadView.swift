@@ -136,18 +136,6 @@ struct NoteReadView: View {
     /// The title of a wiki link that resolved to nothing, for the notice.
     @State private var brokenLink: String?
 
-    /// The editing bridge, or `nil` on a read-only note.
-    ///
-    /// Absent rather than disabled: with no editor there is nothing to write
-    /// through, and a keyboard that opens onto a note that cannot be saved is
-    /// a worse answer than no keyboard.
-    private var editing: NoteEditingBridge? {
-        guard editorModel.canEdit else { return nil }
-        // Re-read after a write so the block shows the document rather than
-        // only the draft.
-        return NoteEditingBridge(model: editorModel) { await model.reload() }
-    }
-
     /// This session's undo history (N509).
     @State private var history = EditorUndoStack()
 
@@ -246,83 +234,31 @@ struct NoteReadView: View {
                     } else {
                         NoteHeader(title: model.displayTitle, summary: detail.summary)
                     }
-                    // Under the title and above the body, which is where
-                    // desktop puts them and where a reader looks for what a
-                    // note *is* before reading what it says. Absent until the
-                    // read answers, and absent again when there is nothing.
-                    if let metadata = model.metadata {
-                        if metadataModel.canEdit {
-                            NoteMetadataEditors(
-                                metadata: metadata,
-                                model: metadataModel,
-                                reload: { await model.reload() },
-                                noteTitle: { id in
-                                    model.vaultNotes.first { $0.id == id }?.title
-                                },
-                                noteIcon: { id in
-                                    model.vaultNotes.first { $0.id == id }?.emoji
-                                },
-                                tagColors: model.tagColors
+                    NotePageContent(
+                        model: model,
+                        detail: detail,
+                        editorModel: editorModel,
+                        metadataModel: metadataModel,
+                        composer: composer,
+                        backlinks: backlinks,
+                        linkedTasks: linkedTasks,
+                        taskBridge: taskBridge,
+                        open: open,
+                        openTag: openTag,
+                        brokenLink: $brokenLink,
+                        emptyBody: { preview in
+                            NoteBodyView(
+                                preview: preview,
+                                fetch: model.fetch,
+                                download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
                             )
-                        } else {
-                            NoteMetaView(metadata: metadata)
+                        },
+                        afterBacklinks: {
+                            // N804, under the backlinks: both are about the
+                            // note rather than in it.
+                            NoteRemindersSection(model: reminders)
                         }
-                    }
-                    if model.blocks.isEmpty {
-                        // No blocks to draw. Which of the three reasons it is
-                        // — never pulled, genuinely empty, or a walk that
-                        // failed — is `NoteBodyPreview`'s to say, and it says
-                        // a different sentence for each.
-                        NoteBodyView(
-                            preview: NoteBodyPreview.of(detail.body),
-                            fetch: model.fetch,
-                            download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
-                        )
-                    } else {
-                        // With no stack to push onto (`open` is nil) the links
-                        // are still drawn and readable; they lead nowhere.
-                        NoteBlocksView(
-                            blocks: model.blocks,
-                            openTarget: open.map { open in
-                                { title in
-                                    // Resolved on the tap, then pushed onto the
-                                    // stack the browse list pushes onto. A link
-                                    // naming no note says so rather than doing
-                                    // nothing; desktop offers to create it.
-                                    Task {
-                                        if let route = await model.wikiTarget(for: title) {
-                                            open(route)
-                                        } else {
-                                            brokenLink = title
-                                        }
-                                    }
-                                }
-                            },
-                            openTag: openTag,
-                            tableContent: { model.tables[$0] },
-                            attachment: { model.attachments[$0] ?? .unknown },
-                            removeAttachment: { id in
-                                if await composer.detach(attachmentId: id) {
-                                    await model.refreshAttachments()
-                                }
-                            },
-                            editing: editing,
-                            tableEditing: editorModel.canEdit
-                                ? NoteTableEditing(editor: editorModel) { await model.reload() }
-                                : nil
-                        )
-                    }
-                    // Read only (N604): §12.5.1 forbids writing them.
-                    ReviewCommentsSection(comments: model.comments)
-                    // Under the body, where desktop puts it and where a
-                    // reader looks after finishing the note (N800).
-                    if let open {
-                        BacklinksSection(model: backlinks, open: open)
-                    }
-                    // N804, under the backlinks: both are about the note
-                    // rather than in it.
-                    NoteRemindersSection(model: reminders)
-                    LinkedTasksSection(model: linkedTasks, open: taskBridge.open)
+                    )
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -330,13 +266,7 @@ struct NoteReadView: View {
             .padding(.vertical, Tokens.Space.screenBlock)
         }
         .background(Tokens.Canvas.background.color)
-        .environment(\.noteTitleExists, model.titleExists)
-        .environment(\.taskCards, model.taskCards)
-        .environment(\.noteTasks, taskBridge)
-        .environment(
-            \.reviewMarks,
-            ReviewMarkStyle.unambiguous(model.comments, in: model.exportText)
-        )
+        .modifier(NotePageEnvironment(model: model, taskBridge: taskBridge))
         .calmAnimation(.normal, value: model.phase)
         // This screen carries its own bottom toolbar (link and date menus,
         // undo/redo). Left showing, the platform tab bar renders underneath

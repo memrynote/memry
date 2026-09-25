@@ -20,14 +20,18 @@ import SwiftUI
 // R15 requires; a second stack wrapped around it here would push its screens
 // into the wrong one.
 
-struct VaultTabsView<Notes: View, Tasks: View>: View {
+struct VaultTabsView<Notes: View, Tasks: View, Journal: View>: View {
     @ViewBuilder let notes: () -> Notes
     /// The Tasks tab (spec 004 TP031), built by the caller that holds the
     /// vault, keychain and sync.
     @ViewBuilder let tasks: () -> Tasks
+    /// The Journal tab (spec 005-journal JP031), built the same way.
+    @ViewBuilder let journal: () -> Journal
     /// Cross-tab navigation: search, note task blocks and reminder taps open a
     /// task through it.
     @State private var router = TasksRouter()
+    /// Opens a day in the Journal tab from any surface (D11).
+    @State private var journalRouter = JournalRouter()
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
 
@@ -46,20 +50,21 @@ struct VaultTabsView<Notes: View, Tasks: View>: View {
                 tasks()
             }
             Tab("Journal", systemImage: "book", value: VaultTab.journal) {
-                ComingSoonTab(
-                    title: "Journal",
-                    detail: "The journal is on your computer for now. Journal entries sync and can be read as notes."
-                )
+                journal()
             }
             Tab("More", systemImage: "ellipsis", value: VaultTab.more) {
                 MoreTab()
             }
         }
         .environment(router)
-        // A tapped reminder opens its task; a tap from a cold start waits in
-        // `ReminderTaps` until this shell exists, hence `initial: true`.
+        .environment(journalRouter)
+        .environment(\.openJournalDay, { date in journalRouter.openDay(date) })
+        // A tapped reminder opens its task or its journal day; a tap from a
+        // cold start waits in `ReminderTaps` until this shell exists, hence
+        // `initial: true`.
         .onChange(of: reminderTaps.pending, initial: true) {
-            reminderTaps.take()?.open(in: router)
+            journalRouter.tabs = router
+            reminderTaps.take()?.open(in: router, journal: journalRouter)
         }
         // The vault closed or the account signed out: no reminder text may
         // outlive it on the lock screen. The next vault refills its own window.
