@@ -87,19 +87,24 @@ function VaultBindingPanel({ status }: { status: HeldBindingStatus }): React.JSX
   )
 }
 
-/** Why sync is off: the vault's binding wins over the plan, which is account-wide. */
-function SyncOffPanel({
+/**
+ * Popover footer: the sync actions, unless sync is off. The vault's binding
+ * wins over the plan, which is account-wide.
+ */
+function SyncPopoverFooter({
   binding,
-  onOpenSettings
+  unpaid,
+  onOpenSettings,
+  children
 }: {
   binding: HeldBindingStatus | null
+  unpaid: boolean
   onOpenSettings: () => void
+  children: React.ReactNode
 }): React.JSX.Element {
-  return binding ? (
-    <VaultBindingPanel status={binding} />
-  ) : (
-    <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
-  )
+  if (binding) return <VaultBindingPanel status={binding} />
+  if (unpaid) return <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
+  return <>{children}</>
 }
 
 /**
@@ -317,9 +322,11 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
 
         {/* Actions, or the upgrade path when there is no plan to act on */}
         <Separator />
-        {heldBinding || isLocalOnly ? (
-          <SyncOffPanel binding={heldBinding} onOpenSettings={onOpenSettings} />
-        ) : (
+        <SyncPopoverFooter
+          binding={heldBinding}
+          unpaid={isLocalOnly}
+          onOpenSettings={onOpenSettings}
+        >
           <div className="flex items-center gap-1 px-2 py-1.5">
             <Button
               variant="ghost"
@@ -357,7 +364,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
               <Settings className="size-3.5" aria-hidden="true" />
             </Button>
           </div>
-        )}
+        </SyncPopoverFooter>
       </PopoverContent>
     </Popover>
   )
