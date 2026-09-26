@@ -146,59 +146,63 @@ struct CalendarEventMetadataSections: View {
     }
 }
 
-/// Artboard 19: subscribed, read-only CalDAV and This iPhone events.
+/// Artboard 19: subscribed, read-only CalDAV and This iPhone events. One
+/// column of icon rows (repeat, alerts, call with Join, place, attendees with
+/// Show more), the description with links, and where to change it.
 struct CalendarReadOnlySheet: View {
     @Bindable var store: CalendarStore
     let item: CalendarItem
     @State private var record: CalendarExternalEventRecord?
     @State private var failed = false
+    @State private var showAllAttendees = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    CalendarSheetHeader(item: item, kind: kind, badge: CalendarCopy.readOnly)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Tokens.Space.medium) {
+                HStack(spacing: Tokens.Space.small) {
+                    Circle().fill(CalendarItemStyle.hue(item).rail.color).frame(width: 7, height: 7)
+                    Text([kind, record?.sourceTitle ?? item.source.title].filter { !$0.isEmpty }.joined(separator: " · "))
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                        .lineLimit(1)
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .foregroundStyle(Tokens.Text.primary.color)
+                            .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+                    }
+                    .glassEffect(.regular.interactive(), in: .circle)
+                    .accessibilityLabel(CalendarCopy.close)
                 }
-                .listRowBackground(Color.clear)
+                VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                    Text(item.title)
+                        .font(Tokens.Typography.sectionTitle.font)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(CalendarSheetText.when(item))
+                        .font(Tokens.Typography.supporting.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                    Text(CalendarCopy.readOnly)
+                        .font(Tokens.Typography.caption.font.weight(.medium))
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                        .padding(.horizontal, Tokens.Space.small + 2)
+                        .padding(.vertical, 3)
+                        .background(Tokens.Canvas.surfaceActive.color, in: .capsule)
+                        .padding(.top, Tokens.Space.tight)
+                        .accessibilityIdentifier("calendar.sheet.readOnly")
+                }
                 if failed {
                     Text(CalendarCopy.detailsFailed)
                         .font(Tokens.Typography.caption.font)
                         .foregroundStyle(Tokens.Text.secondary.color)
                 }
-                if let record {
-                    if let text = CalendarEventMetadata.recurrence(record.recurrenceRuleJson) {
-                        Label(text, systemImage: "repeat")
-                    }
-                    if let join = CalendarEventMetadata.joinURL(record.conferenceDataJson) {
-                        Button { openURL(join) } label: { Label(CalendarCopy.joinMeeting, systemImage: "video") }
-                    }
-                    if let phone = CalendarEventMetadata.phone(record.conferenceDataJson) {
-                        Button { openURL(phone.uri) } label: {
-                            Label(phone.pin.map { "\(phone.label) · PIN \($0)" } ?? phone.label, systemImage: "phone")
-                        }
-                    }
-                    if let location = record.location, !location.isEmpty {
-                        Label(location, systemImage: "mappin.and.ellipse")
-                    }
-                    CalendarEventMetadataSections(
-                        attendeesJson: record.attendeesJson, remindersJson: record.remindersJson,
-                        visibility: nil, description: record.description
-                    )
-                    Section {
-                        Text(CalendarCopy.changeItIn(record.sourceTitle ?? item.source.title))
-                            .font(Tokens.Typography.caption.font)
-                            .foregroundStyle(Tokens.Text.tertiary.color)
-                    }
-                }
+                if let record { details(record) }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    CalendarCloseButton { dismiss() }
-                }
-            }
+            .padding(.horizontal, Tokens.Space.inset + Tokens.Space.tight)
+            .padding(.top, Tokens.Space.inset)
+            .padding(.bottom, Tokens.Space.inset)
         }
         .presentationDetents([.medium, .large])
         .task {
@@ -213,6 +217,89 @@ struct CalendarReadOnlySheet: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.sheet.readonly")
+    }
+
+    @ViewBuilder
+    private func details(_ record: CalendarExternalEventRecord) -> some View {
+        if let text = CalendarEventMetadata.recurrence(record.recurrenceRuleJson) {
+            row("repeat") { Text(text) }
+        }
+        if let reminders = CalendarEventMetadata.reminders(record.remindersJson), !reminders.minutes.isEmpty || reminders.useDefault {
+            row("bell") {
+                Text(reminders.minutes.isEmpty ? CalendarCopy.defaultReminders : CalendarCopy.alerts(reminders.minutes))
+            }
+        }
+        if let join = CalendarEventMetadata.joinURL(record.conferenceDataJson) {
+            row("video") {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(CalendarEventMetadata.conferenceName(record.conferenceDataJson) ?? CalendarCopy.videoCall)
+                        let phone = CalendarEventMetadata.phone(record.conferenceDataJson)
+                        Text([join.host(), phone?.pin.map { "PIN \($0)" }].compactMap { $0 }.joined(separator: " · "))
+                            .font(Tokens.Typography.caption.font)
+                            .foregroundStyle(Tokens.Text.secondary.color)
+                    }
+                    Spacer()
+                    Button(CalendarCopy.join) { openURL(join) }
+                        .buttonStyle(.glassProminent)
+                        .tint(Tokens.Calendar.indigo.rail.color)
+                        .accessibilityLabel(CalendarCopy.joinMeeting)
+                        .accessibilityIdentifier("calendar.readonly.join")
+                }
+            }
+        } else if let phone = CalendarEventMetadata.phone(record.conferenceDataJson) {
+            row("phone") {
+                Button { openURL(phone.uri) } label: {
+                    Text(phone.pin.map { "\(phone.label) · PIN \($0)" } ?? phone.label)
+                }
+            }
+        }
+        if let location = record.location, !location.isEmpty {
+            row("mappin.and.ellipse") { Text(location) }
+        }
+        let attendees = CalendarEventMetadata.attendees(record.attendeesJson)
+        if !attendees.isEmpty {
+            row("person.2") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(CalendarCopy.attendeeCount(attendees.count))
+                    let shown = showAllAttendees ? attendees : Array(attendees.prefix(6))
+                    Text(shown.map { attendee in
+                        let name = attendee.name ?? attendee.email ?? ""
+                        return attendee.isOrganizer ? "\(name) (\(CalendarCopy.organizer))" : name
+                    }.joined(separator: ", ") + (attendees.count > shown.count ? ", +\(attendees.count - shown.count)" : ""))
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                    if attendees.count > 6 {
+                        Button(showAllAttendees ? CalendarCopy.showLess : CalendarCopy.showMore) { showAllAttendees.toggle() }
+                            .font(Tokens.Typography.caption.font.weight(.semibold))
+                            .foregroundStyle(Tokens.Text.tint.color)
+                    }
+                }
+            }
+        }
+        if let description = record.description, !description.isEmpty {
+            Text(LocalizedStringKey(description))
+                .font(Tokens.Typography.supporting.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .textSelection(.enabled)
+                .tint(Tokens.Text.tint.color)
+        }
+        Text(CalendarCopy.changeItIn(record.sourceTitle ?? item.source.title))
+            .font(Tokens.Typography.caption.font)
+            .foregroundStyle(Tokens.Text.tertiary.color)
+    }
+
+    private func row<Content: View>(_ symbol: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.medium) {
+            Image(systemName: symbol)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .frame(width: Tokens.Space.inset)
+                .accessibilityHidden(true)
+            content()
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.primary.color)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var kind: String {

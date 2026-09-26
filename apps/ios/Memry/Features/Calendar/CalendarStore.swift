@@ -104,6 +104,9 @@ final class CalendarStore {
             let imported = item.source.provider != nil && !item.source.isMemryManaged
             if imported {
                 guard state.showImportedCalendars else { return false }
+                // This iPhone's calendars have no synced source row; their
+                // own switches (artboard 31) already chose them.
+                if item.source.provider == "apple-eventkit" { return true }
                 return item.source.calendarSourceId.map(selected.contains) ?? true
             }
             return state.showMemryItems
@@ -120,6 +123,9 @@ final class CalendarStore {
         await refreshSources()
         await refreshAllWindows()
         hasLoaded = true
+        // Subscribed feeds whose refresh time passed (CL073); each fetch
+        // re-reads the windows it changed.
+        Task { await refreshFeeds() }
     }
 
     /// Loads a window unless it is cached; a cached one refreshes behind.

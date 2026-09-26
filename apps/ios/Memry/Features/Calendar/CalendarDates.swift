@@ -100,13 +100,30 @@ enum CalendarDates {
     // MARK: Spans (`date-utils.ts`)
 
     static func spanStart(_ item: CalendarItem) -> String {
-        date(item.startAt).map(key) ?? String(item.startAt.prefix(10))
+        if isUtcAllDay(item) { return String(item.startAt.prefix(10)) }
+        return date(item.startAt).map(key) ?? String(item.startAt.prefix(10))
+    }
+
+    /// An imported all-day event is stored at UTC midnights (Google's and
+    /// iCalendar's DATE, desktop `toInstant`), so its days are the UTC ones.
+    /// Read as local days it would spill into a second day east of UTC and
+    /// start a day early west of it (§6 CL051). Memry's own all-day items
+    /// carry local midnights and keep the local reading.
+    static func isUtcAllDay(_ item: CalendarItem) -> Bool {
+        guard item.isAllDay, let start = date(item.startAt) else { return false }
+        let startsAtUtcMidnight = Int64(start.timeIntervalSince1970).isMultiple(of: 86_400)
+        let endsAtUtcMidnight = item.endAt.flatMap(date).map { Int64($0.timeIntervalSince1970).isMultiple(of: 86_400) } ?? true
+        return startsAtUtcMidnight && endsAtUtcMidnight && TimeZone.current.secondsFromGMT(for: start) != 0
     }
 
     /// `spanEndDateKey`: an all-day or midnight end is exclusive.
     static func spanEnd(_ item: CalendarItem) -> String {
         let startKey = spanStart(item)
         guard let endText = item.endAt, let end = date(endText) else { return startKey }
+        if isUtcAllDay(item) {
+            let last = String(CalendarDates.iso(end.addingTimeInterval(-1)).prefix(10))
+            return last < startKey ? startKey : last
+        }
         let parts = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: end)
         let midnight = parts.hour == 0 && parts.minute == 0 && parts.second == 0 && (parts.nanosecond ?? 0) < 1_000_000
         let inclusive = item.isAllDay || midnight ? end.addingTimeInterval(-0.001) : end

@@ -186,7 +186,8 @@ extension CalendarCopy {
     static let detailsFailed = "Could not load the attendees and links for this event. The event itself is unchanged."
     static let location = "Location"
     static let notes = "Notes"
-    static func changeItIn(_ place: String) -> String { "To change it, edit it in \(place)." }
+    /// Paper 19: "Change this in Proton. memrynote only reads subscribed calendars."
+    static func changeItIn(_ place: String) -> String { "Change this in \(place). memrynote only reads this calendar." }
 
     static func response(_ value: String) -> String {
         switch value {
@@ -213,6 +214,15 @@ extension CalendarCopy {
         if minutes % 60 == 0 { let h = minutes / 60; return h == 1 ? "Alert 1 hour before" : "Alert \(h) hours before" }
         return minutes == 1 ? "Alert 1 minute before" : "Alert \(minutes) minutes before"
     }
+
+    /// Paper 19: "Alert 1 day before, 1 hour before".
+    static func alerts(_ minutes: [Int]) -> String {
+        let parts = minutes.sorted(by: >).map { alert(minutes: $0) }
+        guard let first = parts.first else { return "" }
+        return ([first] + parts.dropFirst().map { $0.replacingOccurrences(of: "Alert ", with: "") }).joined(separator: ", ")
+    }
+
+    static func attendeeCount(_ count: Int) -> String { count == 1 ? "1 attendee" : "\(count) attendees" }
 
     // MARK: Editor (13, `form.*`)
 

@@ -35,12 +35,13 @@ final class CalendarEventKitStore {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        isEnabled = defaults.bool(forKey: Self.enabledKey)
         refreshAccess()
     }
 
+    /// Stored so views observe it; the defaults key keeps it across launches.
     var isEnabled: Bool {
-        get { defaults.bool(forKey: Self.enabledKey) }
-        set { defaults.set(newValue, forKey: Self.enabledKey) }
+        didSet { defaults.set(isEnabled, forKey: Self.enabledKey) }
     }
 
     var statusText: String {
@@ -53,6 +54,11 @@ final class CalendarEventKitStore {
     }
 
     func refreshAccess() {
+        let before = access
+        defer {
+            // A store made before access was granted reads nothing until reset.
+            if access == .allowed, before != .allowed { store.reset() }
+        }
         access = switch EKEventStore.authorizationStatus(for: .event) {
         case .fullAccess: .allowed
         case .writeOnly: .writeOnly

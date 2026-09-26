@@ -186,6 +186,22 @@ struct CalendarLayoutTests {
         #expect(CalendarDates.spanDays(offsite) == 3)
     }
 
+    /// An imported all-day event sits on UTC midnights; it covers its UTC
+    /// days wherever the phone is (§6 CL051). A local-midnight one keeps the
+    /// local reading.
+    @Test func an_imported_all_day_event_keeps_its_utc_day() {
+        let holiday = item("holiday", start: "2026-10-12T00:00:00.000Z", end: "2026-10-13T00:00:00.000Z", allDay: true)
+        let offsetHere = TimeZone.current.secondsFromGMT(for: CalendarDates.date("2026-10-12T00:00:00.000Z")!)
+        if offsetHere != 0 {
+            #expect(CalendarDates.isUtcAllDay(holiday))
+        }
+        #expect(CalendarDates.spanStart(holiday) == "2026-10-12")
+        #expect(CalendarDates.spanEnd(holiday) == "2026-10-12")
+        let local = item("local", start: CalendarDates.iso(CalendarDates.start(of: "2026-10-12")),
+                         end: CalendarDates.iso(CalendarDates.start(of: "2026-10-13")), allDay: true)
+        #expect(CalendarDates.spanStart(local) == "2026-10-12" && CalendarDates.spanEnd(local) == "2026-10-12")
+    }
+
     @Test func the_zone_table_carries_each_transition() {
         let newYork = TimeZone(identifier: "America/New_York")!
         let from = CalendarDates.date("2026-10-30T00:00:00.000Z")!
