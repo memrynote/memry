@@ -2084,6 +2084,7 @@ div.react-sigma {
     font-family: var(--font-sans);
     color: var(--text-primary);
     line-height: 1.5;
+    text-wrap: pretty;
     user-select: none;
     -webkit-font-smoothing: auto;
   }
