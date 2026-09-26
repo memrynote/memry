@@ -364,14 +364,11 @@ describe('PropertyDefinitionsService', () => {
     )
     const service = PropertyDefinitionsService.init('/vault')
     await service.reload()
-    const writesBefore = atomicWriteMock.mock.calls.length
-
-    await service.applyRemoteDelete('SomethingElse')
 
     // A re-delivered tombstone, or a definition that only ever existed as a DB
     // row on this device. Rewriting a file the user edits by hand on every
     // duplicate tombstone is write amplification that buys nothing.
-    expect(atomicWriteMock.mock.calls.length).toBe(writesBefore)
+    expect(service.applyRemoteDelete('SomethingElse')).toBeNull()
     expect(service.get('Stage')).toBeDefined()
   })
 
@@ -549,13 +546,13 @@ describe('PropertyDefinitionsService', () => {
     const service = PropertyDefinitionsService.init('/vault')
     await service.reload()
 
-    await service.applyRemoteDelete('Stage')
+    const write = service.applyRemoteDelete('Stage')
 
     expect(service.get('Stage')).toBeUndefined()
-    expect(atomicWriteMock).toHaveBeenLastCalledWith(
-      '/vault/.memry/properties.md',
-      expect.not.stringContaining('Stage')
-    )
+    expect(write).toEqual({
+      filePath: '/vault/.memry/properties.md',
+      content: expect.not.stringContaining('Stage')
+    })
   })
 
   it('queues a push for a local definition edit but never for a pulled one', async () => {

@@ -10,6 +10,8 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { increment } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../../lib/logger'
+import { PropertyDefinitionsService } from '../../vault/property-definitions'
+import { writeSyncedVaultFile } from '../bulk-apply'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -114,14 +116,10 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
 
     ctx.db.delete(propertyDefinitions).where(eq(propertyDefinitions.name, itemId)).run()
     // `.memry/properties.md` still names it, and the post-pull reload reads
-    // that file first — without this the definition comes straight back.
-    void import('../../vault/property-definitions')
-      .then(({ PropertyDefinitionsService }) =>
-        PropertyDefinitionsService.get().applyRemoteDelete(itemId)
-      )
-      .catch(() => {
-        // No vault open, so no file to reconcile.
-      })
+    // that file first: without this the definition comes straight back. The
+    // write joins the page's crash journal (#2284).
+    const fileWrite = PropertyDefinitionsService.tryGet()?.applyRemoteDelete(itemId)
+    if (fileWrite) writeSyncedVaultFile(fileWrite.filePath, fileWrite.content)
     ctx.emit(PropertiesChannels.events.DEFINITION_DELETED, { name: itemId })
     return 'applied'
   }

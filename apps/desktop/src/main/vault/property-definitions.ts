@@ -49,6 +49,10 @@ export class PropertyDefinitionsService {
     return instance
   }
 
+  static tryGet(): PropertyDefinitionsService | null {
+    return instance
+  }
+
   static destroy(): void {
     instance = null
   }
@@ -121,18 +125,23 @@ export class PropertyDefinitionsService {
   }
 
   /**
-   * Drop a definition a peer deleted.
+   * Drop a definition a peer deleted, and return the `.memry/properties.md`
+   * bytes the caller must write, or null when the definition was not cached.
    *
-   * The handler has already removed the DB row, so the union above will not
-   * bring it back — but `.memry/properties.md` still names it, and the next
-   * reload would read it straight back in.
+   * The handler has already removed the DB row, so `mergeSyncedDefinitions`
+   * will not bring it back, but the file still names it and the next reload
+   * would read it straight back in. Synchronous because the handler runs
+   * inside the pull's page transaction and defers the write into its crash
+   * journal (#2284). The queued persist rewrites the file from the new cache
+   * after any write this service already had in flight, so a stale write
+   * cannot land last.
    */
-  async applyRemoteDelete(name: string): Promise<void> {
-    if (!this.cache.has(name)) return
-    await this.enqueueWrite(async () => {
-      this.cache.delete(name)
-      await this.persistToFile()
+  applyRemoteDelete(name: string): { filePath: string; content: string } | null {
+    if (!this.cache.delete(name)) return null
+    void this.enqueueWrite(() => this.persistToFile()).catch((err: unknown) => {
+      logger.warn('Failed to persist a remote property definition delete:', err)
     })
+    return { filePath: this.filePath, content: this.serializeFile() }
   }
 
   getAll(): PropertyDefinition[] {
@@ -314,6 +323,11 @@ export class PropertyDefinitionsService {
   }
 
   private async persistToFile(): Promise<void> {
+    await atomicWrite(this.filePath, this.serializeFile())
+    logger.debug('Persisted property definitions to', this.filePath)
+  }
+
+  private serializeFile(): string {
     const properties: Record<string, unknown> = {}
 
     for (const [name, def] of this.cache) {
@@ -333,9 +347,7 @@ export class PropertyDefinitionsService {
       }
     }
 
-    const content = matter.stringify('', { properties })
-    await atomicWrite(this.filePath, content)
-    logger.debug('Persisted property definitions to', this.filePath)
+    return matter.stringify('', { properties })
   }
 
   private rebuildDbCache(): void {
