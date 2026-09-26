@@ -173,9 +173,9 @@ describe('normalizeTaskBlocks title from the source line', () => {
   })
 
   it('gives two lines naming one task their own titles, in order', () => {
-    const source = '- [ ] **first** {task:t1}\n- [ ] _second_ {task:t1}'
+    const source = '- [ ] **Dune** [[Dune (2021)]] x {task:t1}\n- [ ] _Dune_ x {task:t1}'
     const { blocks } = normalizeTaskBlocks([parsedCheckbox('t1'), parsedCheckbox('t1')], source)
-    expect(titles(blocks)).toEqual(['**first**', '_second_'])
+    expect(titles(blocks)).toEqual(['**Dune** [[Dune (2021)]] x', '_Dune_ x'])
   })
 
   it("skips a source line whose text is not the block's own", () => {
@@ -191,8 +191,8 @@ describe('normalizeTaskBlocks title from the source line', () => {
   })
 
   it('ignores a task line inside a code fence', () => {
-    const source = '```\n- [ ] `fenced` {task:t1}\n```\n- [ ] **Dune** {task:t1}'
+    const source = '```\n- [ ] Dune `fenced` x {task:t1}\n```\n- [ ] **Dune** x {task:t1}'
     const { blocks } = normalizeTaskBlocks([parsedCheckbox('t1')], source)
-    expect(titles(blocks)).toEqual(['**Dune**'])
+    expect(titles(blocks)).toEqual(['**Dune** x'])
   })
 })

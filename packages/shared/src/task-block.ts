@@ -204,6 +204,35 @@ function scanTaskLineTitles(markdown: string): Map<string, string[]> {
   return titles
 }
 
+function words(text: string): string[] {
+  return text.match(/[\p{L}\p{N}]+/gu) ?? []
+}
+
+/**
+ * Take the first queued source title that can be this block's line, or null.
+ *
+ * The scan is broader than the parser: a copy of the line in an HTML comment,
+ * an indented code block or a deeply indented fence is queued too, and when it
+ * comes first it would lend the real task its text. So a source title counts
+ * only when the block's own plain-text words appear in it, in order. Not an
+ * equality check: the plain text drops whatever the parser made a non-text
+ * node (links, wiki links, mentions), so it is a subsequence of the line's
+ * words, never the same list, and a stricter match would fall back to the
+ * flattened title this exists to avoid.
+ */
+function takeSourceTitle(queue: string[] | undefined, plainTitle: string): string | null {
+  if (!queue) return null
+  const wanted = words(plainTitle)
+  const index = queue.findIndex((candidate) => {
+    let next = 0
+    for (const word of words(candidate)) {
+      if (word === wanted[next]) next++
+    }
+    return next === wanted.length
+  })
+  return index === -1 ? null : queue.splice(index, 1)[0]
+}
+
 /**
  * `source` is the markdown `blocks` were parsed from, or null for blocks that
  * did not come from markdown. Without it a title keeps only its plain text.
@@ -239,7 +268,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
       if (!parsed) return block
 
       didChange = true
-      const title = sourceTitles?.get(parsed.taskId)?.shift() ?? parsed.title
+      const title = takeSourceTitle(sourceTitles?.get(parsed.taskId), parsed.title) ?? parsed.title
 
       const processedChildren = block.children?.length
         ? processBlocks(block.children as T[], parsed.taskId)
