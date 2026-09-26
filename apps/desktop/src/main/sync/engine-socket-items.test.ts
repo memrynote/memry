@@ -13,6 +13,7 @@ import { listCrdtBodyDebts } from './engine/crdt-body-debts'
 import type { SyncEngineDeps } from './engine/sync-context'
 import { createMockDeps, createMockWs, setupTestDb } from '@tests/utils/engine-mocks'
 import { asSyncDb } from '@tests/utils/test-db'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
 vi.mock('electron', () => ({
   app: { getVersion: () => '1.0.0', getPath: () => '/tmp/memry-engine-socket-items-test' }
@@ -116,6 +117,16 @@ describe('SyncEngine socket items (#2300)', () => {
     vi.restoreAllMocks()
   })
 
+  /** The stubbed note apply creates the row: a queued pull merges only into a note with one. */
+  const insertNoteRow = (id: string): 'applied' => {
+    getDb()
+      .db.insert(noteMetadata)
+      .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+      .onConflictDoNothing()
+      .run()
+    return 'applied'
+  }
+
   const filterName = (id: string): string | undefined =>
     getDb().db.select().from(savedFilters).where(eq(savedFilters.id, id)).get()?.name
 
@@ -193,7 +204,7 @@ describe('SyncEngine socket items (#2300)', () => {
       input,
       page
     ) {
-      return input.type === 'note' ? 'applied' : realApply.call(this, input, page)
+      return input.type === 'note' ? insertNoteRow(input.itemId) : realApply.call(this, input, page)
     })
     // The pull empties its id list after the batch, so each call is copied.
     const batched: string[][] = []
@@ -364,7 +375,9 @@ describe('SyncEngine socket items (#2300)', () => {
         input,
         page
       ) {
-        return input.type === 'note' ? 'applied' : realApply.call(this, input, page)
+        return input.type === 'note'
+          ? insertNoteRow(input.itemId)
+          : realApply.call(this, input, page)
       })
       const provider = {
         inactiveDocCapacity: 32,

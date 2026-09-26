@@ -400,7 +400,7 @@ phase of it. The apply phase opens every note it is about to fetch before it sen
 request and keeps them open until their updates are applied, so it splits into sub-chunks
 of `CrdtProvider.inactiveDocCapacity`. An unsplit pass larger than the cap evicts the
 notes it opened first, and their updates are then dropped as "unopened doc" — a
-whole-vault pass, which is what a sign-in or a reconnect sweep produces, is several times
+whole-vault pass, which is what a sign-in or the legacy sweep produces, is several times
 the cap.
 
 The **probe** phase is not bound by it, because it opens no document at all. Its only
@@ -410,13 +410,13 @@ phase at the doc cache inside each one. Sizing the outer loop at the doc cache i
 would spend one probe request per 32 notes rather than per 100, and the probe request is
 the entire cost of a warm sweep.
 
-The vault-wide sweep hands its work to that same batch path rather than pulling one note
+The legacy sweep hands its work to that same batch path rather than pulling one note
 at a time, and sizes its own chunks at `CRDT_SWEEP_CHUNK_NOTES` — the probe's size.
 Batching alone is not a fix for request volume: the batch endpoint batches the
 **incrementals**, not the snapshot baselines, which are still fetched one note at a time
 whenever a baseline is actually needed. A cold 121-note sweep goes from 242 requests to
 roughly 125 — half, not a handful. What keeps it under the server's limits is the pacing
-described in [Reconnect Recovery](#reconnect-recovery).
+described in [Pacing the drain](#pacing-the-drain).
 
 For the same reason, "this doc has no state" and "this doc is not open" are treated as
 different answers when the pass decides whether to seed a note from local markdown. A
@@ -649,8 +649,8 @@ exactly like any other — signed out, offline, or with no account.
 
 Turning **Local only** off is the case that would otherwise lose data. Nothing else pushes an
 existing note's body: the push coordinator's CRDT snapshot is gated on `operation === 'create'`
-and clearing the flag raises an `update`, an update payload carries `content: null`, and the
-vault sweep only pulls. The note would resume syncing its metadata with its body frozen wherever
+and clearing the flag raises an `update`, an update payload carries `content: null`, and every
+pull path only pulls. The note would resume syncing its metadata with its body frozen wherever
 the server last saw it.
 
 So `CrdtProvider.setNoteLocalOnly(noteId, false)` queues a **full-state row** for the note in
@@ -669,13 +669,13 @@ most likely to have diverged from a peer.
 
 The setting reads as "this note and the server have nothing to do with each other", so the pull
 side refuses too. `CrdtSyncCoordinator.applyCrdtIncrementals` returns before it opens the doc,
-and `applyCrdtBatch` filters the list before it chunks it — so the paced vault sweep, the
-`crdt_updated` broadcast and a full-state outbox flush all skip a local-only note, and none of them
+and `applyCrdtBatch` filters the list before it chunks it — so the paced drain, the
+`crdt_updated` pull and a full-state outbox flush all skip a local-only note, and none of them
 spends `crdt_pull` budget on a note that can never push. Filtering before the chunking matters:
 each paced chunk stays filled with notes that can actually sync.
 
 A skipped note is deliberately **not** owed a retry. `owePendingPull` there would be a debt
-nothing can ever settle, and the note would be re-queued in every sweep for the life of the
+nothing can ever settle, and the note would be re-queued in every drain for the life of the
 session. Its `unmergedRemoteNotes` flag is left standing instead — free while the note cannot
 push, and the conservative answer for its first push if the flag is ever cleared.
 
@@ -699,7 +699,7 @@ The desktop declares `note_body` in `X-Memry-Sync-Types` (#2297) on the `/sync/c
 of a pull run that starts past cursor 0. Those pages carry the page's body rows in `noteBodies`, on
 the same cursor as the records. A run from cursor 0 (a new device, or any reset of the cursor)
 does not declare it: it keeps 500-row record pages and gets bodies from the records it applies and
-from the sweeps.
+from the legacy sweep.
 
 - **Which entries.** Only a note or journal this device has, that is not local-only and whose record
   is not on the same page. A record on the page pulls that note's whole body anyway. Of several
@@ -735,9 +735,18 @@ from the sweeps.
   - a known note whose doc holds nothing is owed its whole body instead of taking a delta that could
     write a partial one.
 
-- **Every record pulls its whole body.** This is how a dropped body arrives. It holds for a record
-  applied on its page, and for one applied by the deferred retry, the corrupt re-fetch, the ledger
-  retry or the orphan repair.
+- **Every record pulls its whole body**, with one exception. This is how a dropped body arrives. It
+  holds for a record applied on its page, and for one applied by the deferred retry, the corrupt
+  re-fetch, the ledger retry, the orphan repair or a socket frame. The exception (#2421,
+  `NoteBodyFeed.servesRecordBody`) is a record on a page that carries `noteBodies`, while the legacy
+  sweep is `done` and the debt tables are usable, for a note that already had a row, has no entry on
+  that page, did not merge as a conflict, is not already owed, and whose body the feed never dropped
+  as rowless (a `crdt_body_withheld` row, never a debt). The feed delivers every body row of such a
+  note, so a metadata-only edit costs no whole-body pull. A record that does not apply leaves its
+  skipped bodies owed and queued for the session's flush.
+- **Downgrade round trip.** `noteBodyFeedCursor` shadows every `LAST_CURSOR` write. At engine
+  start a `LAST_CURSOR` that differs was moved by another build, so `noteBodyLegacySweep` is
+  deleted and the legacy sweep re-arms.
 - **No deleted note comes back.** A note is ledgered or owed only while it still has a row. A queued
   pull (the pending pulls and the paced sweep) drops an id whose row is gone before it opens a doc,
   so a note deleted after it was owed is never merged and written back as a new file.
@@ -759,56 +768,41 @@ from the sweeps.
     so the sweep runs again once bodies are served again.
   - A device offline for the whole rollback cannot notice it.
 
-The paths below still run in this release: a body can arrive both through the feed and
-through a `crdt_updated` pull or the sweep, and converges either way.
-
 ## Reconnect Recovery
 
-A remote body edit also reaches a device as a `crdt_updated` WebSocket broadcast; builds
-before #2297 have no other live path, because they do not declare `note_body`.
-Anything broadcast while the socket was down therefore has to be re-discovered when it
-comes back.
+The feed is the body channel. Once the legacy sweep is `done`, a `crdt_updated` broadcast that
+carries a `cursor` is only a wake: the same coalesced pull a `changes_available` frame schedules,
+skipped when the cursor is at or below `LAST_CURSOR` (#2421). Before `done`, and for a frame
+without a cursor (a server before #2420), the broadcast still pulls the named note, durably owed.
 
-When the socket reconnects, the engine pulls the record feed, then re-pulls the CRDT for
-every note that still has an editor window attached. The rest of the LRU-cached docs —
-the ones the provider retains after their editors closed — are swept too, but at most
-once per five minutes, because each pull costs a snapshot fetch, paged incrementals, and
-a vault-key derivation, and reconnect backoff caps at 30 seconds. A sweep suppressed by
-that window is not dropped: it is paid by the next reconnect or by the 60-second pull
-tick, and the vault-wide sweep at the end of a full sync covers every note regardless.
+- **Wake flag.** The note counts as unmerged until `LAST_CURSOR` reaches the frame's cursor, so
+  no snapshot push prunes the write just announced.
+- **Pending wake cursor.** Every wake raises one `pendingWakeCursor` (infinity for a wake without
+  a cursor, or a reconnect a full sync refused). The queued wake pull takes and clears it as it
+  starts; a pull a full sync refused or overlapped puts it back, and the full sync's end pulls
+  again while it is above `LAST_CURSOR`.
+- **Flush rule.** Every pull outside a full sync (a wake, a reconnect, the 60 s tick) flushes the
+  paced drain when it ends, unless a full sync runs (its own closing flush drains it), sync is
+  paused or the engine is cancelled. A body the feed owed (past the page's GET budget, a missing
+  base) is paid at once. An active-editor pull the engine refuses goes back to the pending set, and
+  a 60 s floor timer flushes pulls re-queued after a rate limit.
 
-That end-of-full-sync sweep is itself gated, because `fullSync` also re-runs on auth
-refresh and rate-limit release, where an O(vault) pass buys nothing. The gate reads the
-WebSocket connection generation: same generation and still connected means no broadcast
-could have been missed, so the sweep is skipped; a new generation means the socket
-dropped and came back, so it runs. A manifest re-pull forces it, being offline skips it,
-and when the socket cannot answer at all a 15-minute interval decides.
+A reconnect pulls the feed and nothing else: every body row written while the socket was down sits
+above `LAST_CURSOR` and arrives with that pull.
 
-**A sync the user asked for by name forces it.** "Sync now" is the escape hatch for a note
-that looks stale, and it is the one caller that cannot flap, so it sweeps whatever the gate
-would otherwise have said. Without that, a live socket that provably missed no broadcast
-still answered the button with "nothing to fetch" — and if the broadcast had in fact been
-lost (the device was offline at the HTTP layer while its socket stayed nominally up), the
-body stayed stale for the whole 15-minute interval with the app reporting a clean sync.
-The throttle still applies to every automatic caller: reconnects, auth refresh, and
-rate-limit release.
-
-A reconnect sweep is also floored at one per 60 seconds so a flapping connection cannot
-buy one pass per flap; inside the floor it is deferred on a single re-used timer rather
-than dropped. That floor counts from the last sweep that actually closed a reconnect gap,
-not from any sweep — measuring it against the startup or interval sweep made the first
-reconnect after app start wait out the whole floor, which left the device showing a stale
-body for that window.
+The 15-minute, reconnect, forced ("Sync now") and manifest vault sweeps, and the per-reconnect
+re-pull of open docs, are gone (#2421). A manifest re-pull runs from cursor 0, so every record it
+applies pulls its whole body. Their `lastCrdtSweepAt` sync-state row is left for older builds,
+which read it as their sweep throttle after a downgrade.
 
 ### When the server goes away but the network does not
 
 An unreachable **server** is not an offline **device**. `NetworkMonitor` reads OS-level
 connectivity, so a server that stops answering fires no `status-changed` event: the
 note-body outbox is never paused and no full sync is scheduled when the server returns.
-The outbox keeps retrying its rows each window, but everything that heals a **peer's** body
-edit across that kind of outage rides on
-the two routes above, the `crdt_updated` broadcast and the reconnect catch-up, and both
-of them need the WebSocket back.
+The outbox keeps retrying its rows each window, but a **peer's** body edit across that kind of
+outage arrives through a wake or a reconnect pull, and both need the WebSocket back (the 60-second
+tick pulls meanwhile).
 
 Two things have to hold for that to work, and both are load-bearing:
 
@@ -817,15 +811,15 @@ Two things have to hold for that to work, and both are load-bearing:
   hypothetical during an outage: `/auth/refresh` lives on the same unreachable server, so
   roughly fourteen minutes in, the access token passes its pre-expiry margin and cannot be
   renewed. An exit that did not re-arm left the device with no socket for the rest of the
-  session, and with it no broadcast and no reconnect catch-up.
+  session, and with it no wake and no reconnect pull.
 - **The outbound backlog must survive.** The push function rejects rather than returns
   when credentials are momentarily unavailable, so the outbox keeps the rows instead of
   acknowledging them — see [Note-Body Outbox](#note-body-outbox).
 
-### Pacing the sweep
+### Pacing the drain
 
-Deciding _whether_ to sweep is not enough, because a sweep that runs fires against every
-note in the vault at once. Down the one-note-at-a-time path that was two GETs per note:
+The paced drain pays the queued pulls: durable debts and the legacy sweep. A sweep fires
+against every note in the vault at once. Down the one-note-at-a-time path that was two GETs per note:
 121 notes meant 242 requests in about four seconds, and the server refused most of them.
 
 The sweep is therefore drained in **paced chunks of `CRDT_SWEEP_CHUNK_NOTES`** against
@@ -889,10 +883,9 @@ the duration grows, so no vault can reproduce the 242-requests-in-4-seconds stor
 same reason the per-note snapshot GETs inside a chunk stay **serial**; firing them in
 parallel is that storm again, whatever the chunk size.
 
-The sweep is paced, never **selective**. Every note in the vault is still named in every
-pass; these numbers decide what a note costs, never whether it is looked at. Note bodies
-never travel in the record change feed, so the sweep is the only channel by which a
-body-only remote edit reaches a device that missed the broadcast.
+The drain is paced, never **selective**. Every note queued (a debt, or the legacy sweep's
+whole vault) is still pulled; these numbers decide what a note costs, never whether it is
+looked at. The legacy sweep is the only channel for body rows the feed never serves.
 
 **Notes with a live editor skip the queue.** They are pulled in their own batch ahead of
 the paced drain, because the note the user is looking at is the one whose stale body is
@@ -917,10 +910,9 @@ tiers:
    that changed recently, by this user or by the device being caught up with, is both the
    likeliest to actually be stale and the likeliest to be opened next.
 
-Priority is never filtering. The sweep is the only channel by which a body-only remote
-edit reaches a device that missed the `crdt_updated` broadcast — bodies do not travel in
-the record change feed — so every markdown note still enters the queue, exactly once, and
-only its position changes. A vault whose mtimes are uniform (restored from backup,
+Priority is never filtering. The legacy sweep is the only channel for body rows the feed
+never serves, so every markdown note still enters the queue, exactly once, and only its
+position changes. A vault whose mtimes are uniform (restored from backup,
 freshly cloned, bulk-imported) simply falls back to an arbitrary tail order.
 
 Notes a chunk failed are re-added to the pending set by `owePendingPull`, so they rejoin
@@ -930,9 +922,9 @@ worst candidate for an immediate retry.
 Ordering changes perceived latency only. It does not change the request count, the
 request rate, or how long a full catch-up takes — the budgets above are untouched.
 
-One drain runs at a time and one timer is armed at a time. A second sweep landing
-mid-drain re-queues into the running one instead of starting its own, which would double
-the request rate; engine teardown cancels the timer and drops the queue.
+One drain runs at a time and one timer is armed at a time. Debts landing mid-drain re-queue
+into the running one instead of starting their own, which would double the request rate;
+engine teardown cancels the timer and drops the queue.
 
 Teardown also aborts the chunk already in flight. Cancelling the timer only stops the
 _next_ one, and a paced sweep spans minutes, so at teardown there is almost always one
@@ -977,9 +969,8 @@ rule is deliberately not 429-specific — a transient 5xx, an unreachable server
 limit all leave the same stale body, so "failed, retry next cycle" needs no taxonomy.
 
 Without that, a rate-limited note was logged and dropped, and its body stayed stale until
-the _next_ vault-wide sweep — a 60-second reconnect floor or a 15-minute interval away.
-Opening the note did not help, because that reads the main process's Y.Doc rather than the
-server.
+the next vault-wide sweep, which no longer exists (#2421). Opening the note does not help,
+because that reads the main process's Y.Doc rather than the server.
 
 Whether a note still owes the server a snapshot is tracked per open doc as a byte count of
 the local updates applied since the last successful push; closing a note and the push-all
@@ -1103,8 +1094,8 @@ not any one cause of it. `CrdtSyncCoordinator` keeps a per-note set,
 - a merge pass failed — a rate-limited or failed snapshot baseline, failed or
   dead-lettered incrementals, an aborted pass, a missing token or vault key, a
   doc that would not open;
-- the server named the note in a `crdt_updated` broadcast, or a vault-wide
-  sweep queued it, and its pull has not run yet.
+- the server named the note in a `crdt_updated` broadcast that still takes the
+  per-note pull, or the legacy sweep queued it, and its pull has not run yet.
 
 Every one of those is destructive at the same moment, and the moment is
 **before a note's first snapshot**. `storeSnapshot` computes
@@ -1178,8 +1169,9 @@ batch only when the upsert applied. Claims stay dormant until the server's
 it, so no desktop that predates them meets the refusal.
 
 Desktop claims `coversThrough = LAST_CURSOR` only when the legacy body sweep is
-`done`, the cursor is above 0, the note is not flagged, and no refusal of the
-note is outstanding. `encodeForPush` in the provider is the only way to produce
+`done`, the cursor is above 0, the note is not flagged (a `crdt_updated` wake the
+cursor has not reached counts), the debt tables are usable, the feed never dropped
+a body of the id as rowless, and no refusal of the note is outstanding. `encodeForPush` in the provider is the only way to produce
 push bytes: it reads the base revision first, then the claim and the encode in
 one synchronous step, because a feed page can land bodies and move
 `LAST_CURSOR` during any await. A refused note takes the update route until the
@@ -1187,8 +1179,8 @@ feed passes the refusing snapshot's cursor or a pull merged a newer snapshot. A
 note leaving local-only, a note with a queued full-state row at runtime start,
 a body landed while its doc compacted, and every note after the CRDT store's
 epoch fails to match the data DB's (fresh, quarantined, or either side restored
-apart), claims nothing until a pull or a vault sweep has merged it; the sweep
-takes its note set from the data DB as well as the index cache. A doc that
+apart), claims nothing until a pull or the legacy sweep has merged it; that
+sweep takes its note set from the data DB as well as the index cache. A doc that
 cannot vouch for itself (in-memory store, seeded from markdown or created this
 session, or an id the feed dropped as rowless) pushes unclaimed until a
 whole-body pull merges it.
@@ -1215,9 +1207,7 @@ the note that its doc has not merged; `crdt-body-debts.ts` owns it.
   Feed debts keep the lowest cursor of the note's entries on the page; every
   other debt is NULL, meaning the whole body. The coordinator is the only
   writer.
-- **Session-only:** speculative sweeps (except while `noteBodyLegacySweep` is
-  `pending`), `crdt_updated` broadcasts that carry a cursor once that key is
-  `done`, the full-state flag at runtime start, and a pull of a note with no
+- **Session-only:** the full-state flag at runtime start, and a pull of a note with no
   debt that was rate limited, aborted, offline, timed out, credential-less, or
   failed on a request the whole chunk shared. A session-only flag takes a
   generation, so a walk that started before it does not clear it. Only
@@ -1237,16 +1227,30 @@ the note that its doc has not merged; `crdt-body-debts.ts` owns it.
 - **Backoff.** A failing note is deferred until `2^(n-1)` minutes (capped at 32)
   after its last failure, counted from now if that failure is dated in the
   future; other debts do not extend it. A deferred note does not hold up the
-  sweep stamp or the legacy `done`, any clean walk settles it, and a timer
+  legacy `done`, any clean walk settles it, and a timer
   (never set past 32 minutes) drains it at the earliest expiry.
 - **Engine start** hydrates every row into the pending pulls and the flags
   before the first full sync, whose drain pays or defers them. A crash between
-  a record page and its CRDT batch therefore no longer leaves a stale body
-  waiting for the next vault sweep. A missing table, a table missing columns
+  a record page and its CRDT batch therefore does not leave a stale body. A
+  missing table, a table missing columns
   it cannot add, or an unreadable index cache degrades with a logged error; it
   never stops sync, and a failed mirror conversion does not stop the rows
   already in the table from loading. A table an unreleased build created
   without the later columns gains them on first use.
+- **Rowless drops are not debts.** A body the feed dropped because the id had no row yet is
+  remembered in `crdt_body_withheld` (migration `0062`, #2421), apart from the debts, so nothing
+  pulls it. `NoteBodyFeed.dropRowlessBody` writes it with the provider's claim hold at every drop
+  site, including a body skipped for a record that did not apply. The id reports unmerged, so its
+  pushes never prune, and a later record of it pulls the whole body. The walk that settles the
+  note, or an applied delete tombstone for the id, clears it; a missing table falls back to a
+  session set. Both tables are probed once per handle for `durable()`.
+- **A compaction with no sync runtime** owes its debt to the data DB handle and vault the store
+  was opened with, while that handle is still the open one; otherwise the store keeps the id and
+  the next runtime owes it. The store marker's writes and its drain run one at a time, and the
+  marker clears only after durable owes.
+- **Teardown** disposes the full-sync runner: timers cleared, re-queue and deferral hooks
+  unwired, and no flush, pump or floor timer until a later full sync, so a chunk the teardown
+  aborts pulls nothing afterwards.
 
 `sync_state.crdtUnmergedDebt` is now a write-only mirror: `'1'` while the table
 has a row, `'0'` once it is empty. This build never routes on it; builds before
@@ -1257,10 +1261,11 @@ match the data DB, and is converted once into a `legacy` debt for every syncable
 journal of the data DB and the index cache. The vault-wide blanket
 (`crdtUnmergedStateUnknown`) is gone.
 
-What is still kept, and removed later by #2421 once `minWriteVersion` guarantees
-every client ran the legacy sweep: the per-note `crdt_updated` pull, the
-reconnect and vault sweeps, the probe and the watermark sequence, the per-page
-`applyCrdtBatch` as its own path, the legacy sweep and the mirror.
+#2421 removed the reconnect and vault sweeps, made `crdt_updated` a wake once the legacy
+sweep is `done`, and made the per-page CRDT batch the payer of the run's debts. Still kept,
+and removed once `minWriteVersion` guarantees every client ran the legacy sweep: the legacy
+sweep itself, the batch probe and the watermark sequence its warm pass relies on, and the
+mirror.
 
 ## Sign-Out / Sign-In Ordering
 

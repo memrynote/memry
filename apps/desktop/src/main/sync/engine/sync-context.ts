@@ -91,7 +91,8 @@ export const SYNC_STATE_KEYS = {
   INITIAL_SEED_DONE: 'initialSeedDone',
   QUARANTINED_ITEMS: 'quarantinedItems',
   LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt',
-  LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt',
+  // `lastCrdtSweepAt` is retired (#2421): its row stays for older builds, which
+  // read it as their vault-sweep throttle. Never reuse the name.
   /**
    * Write-only mirror of the `crdt_body_debts` table (#2297): `'1'` while it
    * has a row, `'0'` once it is empty. This build never routes on it; builds
@@ -150,6 +151,14 @@ export const SYNC_STATE_KEYS = {
    * them) deletes the key, so the next negotiated page re-arms the sweep.
    */
   NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep',
+  /**
+   * LAST_CURSOR as this build last wrote it, in the same transaction (#2421).
+   * A LAST_CURSOR that differs at engine start was moved by another build,
+   * which does not serve the feed's bodies into this data dir, so
+   * `noteBodyLegacySweep` is deleted: the sweep, the per-note `crdt_updated`
+   * pull and claims-off re-arm. Missing: this build's first run, recorded.
+   */
+  NOTE_BODY_FEED_CURSOR: 'noteBodyFeedCursor',
   /**
    * The random id this data DB shares with its CRDT store (#2299). A mismatch
    * with the store's copy means the two were restored or replaced apart; see
@@ -270,32 +279,6 @@ export const YIELD_EVERY_N_ITEMS = 20
  * replaced.
  */
 export const CRDT_SNAPSHOT_CONCURRENCY = 4
-// Fallback cadence for the vault-wide CRDT sweep at the end of fullSync, used
-// ONLY when the socket cannot answer whether broadcasts were missed: no sweep
-// recorded against the current engine yet (process start, vault switch, engine
-// retry), or a socket that is down and has not reconnected. A live socket skips
-// the sweep outright and a completed reconnect runs it immediately, so this
-// number never gates the healthy path.
-//
-// It is deliberately not shorter. Where it does apply the device is receiving
-// no broadcasts at all, which makes the sweep the sole discovery path for
-// remote body edits — and each pass costs an HTTP round trip, a Y.Doc load and
-// a keychain read per note in the vault. 15 minutes caps that at four passes an
-// hour in the worst case (a socket blocked outright by a proxy) while keeping
-// the blind window short enough to be invisible in normal use.
-export const CRDT_FULL_SWEEP_MIN_INTERVAL_MS = 15 * 60 * 1000
-// Floor between reconnect-triggered sweeps. A drop/reconnect is a real gap, so
-// the sweep is genuinely owed — but a connection flapping every few seconds
-// would otherwise buy one full O(vault) pass per flap, which is precisely the
-// "one Wi-Fi blip = ~2,000 requests" storm this whole gate exists to remove.
-// Inside the floor the sweep is deferred, never dropped.
-//
-// 60 seconds: long enough to collapse a flapping burst (drops re-establish in
-// seconds) and to outlast a sweep of a large vault, so passes cannot overlap;
-// short enough that a user who lost Wi-Fi and got it back sees another device's
-// edits inside a minute. Unlike the fallback interval this one is only ever
-// paid once per burst, so it does not need to be conservative.
-export const CRDT_RECONNECT_SWEEP_FLOOR_MS = 60 * 1000
 // The pacing of the vault-wide CRDT catch-up sweep. These are the only thing
 // keeping a whole-vault sweep under the server's rate limits, so they are set
 // from those limits backwards.

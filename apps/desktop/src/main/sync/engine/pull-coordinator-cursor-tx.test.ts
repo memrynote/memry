@@ -8,6 +8,7 @@ import { SYNC_STATE_KEYS } from './sync-context'
 import { ItemApplier } from '../apply-item'
 import * as bulkApply from '../bulk-apply'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
 vi.mock('electron', () => ({
   app: { getVersion: () => '1.0.0', getPath: () => '/tmp/memry-pull-cursor-tx-test' }
@@ -375,7 +376,14 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
       content: new TextEncoder().encode(JSON.stringify({ title: 'n' })),
       verified: true
     })
-    vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+    // The row a real apply creates: a queued pull merges only into a note with one.
+    vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation((input) => {
+      getDb()
+        .db.insert(noteMetadata)
+        .values({ id: input.itemId, path: 'n.md', title: 'n', createdAt: 'x', modifiedAt: 'x' })
+        .run()
+      return 'applied'
+    })
     const crdtBatch = vi
       .spyOn(CrdtSyncCoordinator.prototype, 'applyCrdtBatch')
       .mockRejectedValue(new Error('crash'))

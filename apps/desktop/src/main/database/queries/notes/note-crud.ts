@@ -309,9 +309,8 @@ export function getAllNoteIds(db: IndexDb): string[] {
  * index-build order and says nothing about either. `idx_note_cache_modified`
  * already covers the sort.
  *
- * Ordering only, never filtering. The sweep is the sole channel by which a
- * body-only remote edit reaches a device that missed the `crdt_updated`
- * broadcast — bodies never travel in the record change feed — so it stays
+ * Ordering only, never filtering. The one-time legacy sweep (#2297) is the
+ * only channel for body rows the change feed never serves, so it stays
  * exhaustive and every markdown note is still returned. A vault with uniform
  * mtimes (restored from backup, freshly cloned, bulk-imported) simply falls
  * back to an arbitrary order, which is what it had before.

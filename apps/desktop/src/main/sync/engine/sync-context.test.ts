@@ -76,9 +76,7 @@ describe('SYNC_STATE_KEYS', () => {
         INITIAL_SEED_DONE: 'initialSeedDone',
         QUARANTINED_ITEMS: 'quarantinedItems',
         LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt',
-        // Additive: absent on installs written by older builds, which reads
-        // back as 0 and simply runs the vault-wide CRDT sweep once.
-        LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt',
+        // `lastCrdtSweepAt` is retired (#2421), its row left for older builds.
         // Additive too: absent reads as '0' — "the last session ended with
         // every note merged" — which is both what an older build's install
         // means and the answer that changes nothing.
@@ -95,6 +93,8 @@ describe('SYNC_STATE_KEYS', () => {
         // #2297: absent, `pending` or `done`; an install without it has not
         // been served bodies by the feed yet.
         NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep',
+        // #2421: absent reads as this build's first run and is recorded.
+        NOTE_BODY_FEED_CURSOR: 'noteBodyFeedCursor',
         // #2299: absent reads as a mismatch with the CRDT store's epoch, so an
         // install from before it runs the vault sweep once.
         CRDT_STORE_EPOCH: 'crdtStoreEpoch'

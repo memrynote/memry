@@ -33,7 +33,7 @@ import {
 } from './item-recovery'
 import { carriesCrdtBody, parsePullItems, purgedTombstoneApplyItems } from './pull-envelope'
 import { fetchSliceBody, planPullSlices, type PullSlice } from './changes-page'
-import { NoteBodyFeed } from './note-body-feed'
+import { NoteBodyFeed, type RecordBodyDecision } from './note-body-feed'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
 import { listedCursorOf, RunAppliedCursors } from './run-applied-cursors'
@@ -205,7 +205,8 @@ export class PullCoordinator {
     return delivered
   }
 
-  periodicPull(): void {
+  /** `run` is the pull the tick schedules; the engine passes its pull-then-flush (#2421). */
+  periodicPull(run: () => Promise<unknown> = () => this.pull()): void {
     if (
       this.ctx.syncing ||
       this.ctx.fullSyncActive ||
@@ -221,7 +222,7 @@ export class PullCoordinator {
       return
     }
     this.ctx.scheduleSync(async () => {
-      await this.pull()
+      await run()
     })
   }
 
@@ -434,8 +435,7 @@ export class PullCoordinator {
     }
     if (slices.length === 0) return { stop: 'none', cursorCommitted: false }
     if (noteBodies) slices[slices.length - 1].noteBodies = noteBodies
-    const skippedForRecord = noteBodies?.skippedForRecord
-    if (skippedForRecord) for (const slice of slices) slice.skippedForRecord = skippedForRecord
+    if (noteBodies) for (const slice of slices) slice.feedPage = noteBodies
     runState.latency.observePage(changes)
 
     // A changes page holds up to PULL_PAGE_LIMIT (500) refs, but POST
@@ -492,11 +492,8 @@ export class PullCoordinator {
 
     runState.timer.startPhase('crdt-batch')
     try {
-      await this.crdtSync.applyCrdtBatch(
-        runState.crdtNoteIds,
-        runState.accessJwt,
-        runState.vaultKey
-      )
+      // The queued-pull path (#2421): an id whose row is gone is dropped with its debt.
+      await this.crdtSync.pullCrdtForNotes(runState.crdtNoteIds, this.ctx.abortController?.signal)
     } finally {
       runState.timer.endPhase(runState.crdtNoteIds.length)
       runState.crdtNoteIds.length = 0
@@ -675,14 +672,22 @@ export class PullCoordinator {
 
   /**
    * An applied note or journal record: owed its whole body (#2297), which the
-   * next CRDT batch pulls. On a record page the debt commits with the page,
-   * ahead of any cursor write (#2294).
+   * next CRDT batch pulls, unless the feed serves it
+   * (`NoteBodyFeed.servesRecordBody`, #2421). On a record page the debt
+   * commits with the page, ahead of any cursor write (#2294). An applied
+   * delete tombstone releases the id's withheld mark, row or not (#2421).
    */
   private queueBodyPull(
     runState: PullRunState,
     dec: { id: string; type: string; content: string },
-    op: string
+    op: string,
+    decision?: RecordBodyDecision
   ): void {
+    if (op === 'delete' && (dec.type === 'note' || dec.type === 'journal')) {
+      this.crdtSync.releaseWithheldBody(dec.id)
+      return
+    }
+    if (this.noteBodyFeed.servesRecordBody(decision, dec.id)) return
     if (!this.ctx.deps.crdtProvider || !carriesCrdtBody(dec, op)) return
     this.crdtSync.oweRecordBody(dec.id)
     runState.crdtNoteIds.push(dec.id)
@@ -696,7 +701,7 @@ export class PullCoordinator {
    * against the run's earlier applies (#2429).
    */
   private async processPage(
-    { fetchIds, inline, noteBodies, skippedForRecord }: PullSlice,
+    { fetchIds, inline, noteBodies, feedPage }: PullSlice,
     runState: PullRunState,
     pageCursor: string | null,
     listedCursor: (id: string) => number
@@ -901,6 +906,8 @@ export class PullCoordinator {
         for (let i = 0; i < orderedDecrypted.length; i++) {
           if (this.ctx.abortController?.signal.aborted) break
           const dec = orderedDecrypted[i]
+          // Read before the apply: a record with no row here lost its earlier feed bodies (#2421).
+          const decision = this.noteBodyFeed.recordBodyDecision(feedPage, dec)
           try {
             const { result, operation: itemOp } = applyDecryptedItem(
               this.ctx.applier,
@@ -927,7 +934,12 @@ export class PullCoordinator {
               pageConflicts++
             }
 
-            this.queueBodyPull(runState, dec, itemOp)
+            this.queueBodyPull(
+              runState,
+              dec,
+              itemOp,
+              decision && { ...decision, conflict: result === 'conflict' }
+            )
 
             applied.record(dec, listedCursor(dec.id))
             pageApplied++
@@ -957,7 +969,7 @@ export class PullCoordinator {
         this.schemaInvalid.record(parsed.blobMissing, 'blob_missing')
         this.schemaInvalid.resolve(settled)
         // Before this slice's CRDT batch, which settles them (#2297 round 2 b-M2).
-        this.noteBodyFeed.oweSkippedForRecords(skippedForRecord, settled)
+        this.noteBodyFeed.oweSkippedForRecords(feedPage?.skippedForRecord, settled)
         if (noteBodies) this.noteBodyFeed.recordInPage(noteBodies)
         // After the commit still run: the corrupt re-fetch and its recovered
         // applies, the CRDT batch, and deferred retries. A cursor committed

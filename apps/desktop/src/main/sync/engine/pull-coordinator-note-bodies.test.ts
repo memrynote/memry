@@ -210,6 +210,24 @@ function engineWith(
   return engine
 }
 
+/** An applier stub that creates the note row: a queued pull merges only into a note with one. */
+const insertNoteRow =
+  (getDb: ReturnType<typeof setupTestDb>['getDb']) =>
+  (input: { itemId: string }): 'applied' => {
+    getDb()
+      .db.insert(noteMetadata)
+      .values({
+        id: input.itemId,
+        path: `${input.itemId}.md`,
+        title: 'x',
+        createdAt: 'x',
+        modifiedAt: 'x'
+      })
+      .onConflictDoNothing()
+      .run()
+    return 'applied'
+  }
+
 const crdtSyncOf = (engine: SyncEngine): CrdtSyncCoordinator =>
   (engine as unknown as { crdtSync: CrdtSyncCoordinator }).crdtSync
 
@@ -383,7 +401,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       verified: true
     })
     const { ItemApplier } = await import('../apply-item')
-    vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+    vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(insertNoteRow(getDb))
 
     await expect(engine.pull()).resolves.toBe(true)
 
@@ -902,7 +920,9 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
 
     expect(bodyGets(get)).toEqual(['/sync/crdt/updates?note_id=note-1&since=3&limit=1'])
     expect(provider.stored).toEqual([['note-1', C]])
-    expect(owedPulls(engine)).toEqual([])
+    // note-2's record never arrived from /sync/pull, so its skipped body is
+    // queued for this session's flush (#2421 ruling 4).
+    expect(owedPulls(engine)).toEqual(['note-2'])
   })
 
   // #2297 round 2 (A-M2, B-M1): a run from cursor 0 (bootstrap, or any reset)
@@ -1090,7 +1110,7 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       .mockImplementationOnce(() => {
         throw new Error('parent folder not pulled yet')
       })
-      .mockReturnValue('applied')
+      .mockImplementation(insertNoteRow(getDb))
 
     await engine.pull()
 
@@ -1123,15 +1143,22 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
     })
   }
 
-  /** A record page carrying `noteId`'s record; the batch POST answers `batch`. */
-  async function mockRecordPage(noteId: string, batch: () => Promise<unknown>) {
+  /**
+   * A record page carrying `noteId`'s record; the batch POST answers `batch`.
+   * `noteBodies` absent is a server that does not serve bodies in the feed.
+   */
+  async function mockRecordPage(
+    noteId: string,
+    batch: () => Promise<unknown>,
+    noteBodies?: unknown[]
+  ) {
     const http = await import('../http-client')
     vi.spyOn(http, 'getFromServer').mockResolvedValue({
       items: [{ id: noteId, type: 'note', version: 1, modifiedAt: 1, size: 10 }],
       deleted: [],
       hasMore: false,
       nextCursor: 3,
-      noteBodies: []
+      ...(noteBodies ? { noteBodies } : {})
     })
     vi.spyOn(http, 'postToServer').mockImplementation(async (path: string) => {
       if (path === '/sync/crdt/updates/batch') return batch()
@@ -1327,6 +1354,280 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
     expect(debts()).toEqual([])
     expect(engine.hasUnmergedRemoteCrdtState('note-1')).toBe(false)
+  })
+
+  // #2421: on a page whose feed serves bodies, a metadata-only update of a note
+  // this device already holds is not a body debt: the feed delivers every body
+  // row of it above LAST_CURSOR. No record debt, no whole-body pull.
+  it('owes no body for a served update of a note that is not owed', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+    const batch = vi.fn(async () => ({ notes: {} }))
+    await mockRecordPage('note-1', batch, [])
+    const pulled = vi.spyOn(crdtSyncOf(engine), 'pullCrdtForNotes')
+
+    await expect(engine.pull()).resolves.toBe(true)
+
+    expect(debts()).toEqual([])
+    expect(pulled).not.toHaveBeenCalled()
+    expect(batch).not.toHaveBeenCalled()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
+  })
+
+  // #2421: a note already owed keeps the record-arrival rule: its record page
+  // pulls the whole body, and the clean walk settles the debt.
+  it('a record page for an owed note still pulls its whole body', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    crdtSyncOf(engine).addPendingPull('note-1', 'pull_failed')
+    crdtSyncOf(engine).drainPendingPulls()
+    const batch = vi.fn(async () => ({ notes: { 'note-1': { updates: [], hasMore: false } } }))
+    await mockRecordPage('note-1', batch, [])
+
+    await engine.pull()
+
+    expect(batch).toHaveBeenCalledOnce()
+    expect(debts()).toEqual([])
+    expect(engine.hasUnmergedRemoteCrdtState('note-1')).toBe(false)
+  })
+
+  // #2421: a note this device had no row for (rowless create): the feed dropped
+  // its earlier bodies, so the record owes and pulls the whole body.
+  it('a served record of a note with no row owes and pulls its whole body', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    const batch = vi.fn(async () => ({ notes: { 'note-new': { updates: [], hasMore: false } } }))
+    await mockRecordPage('note-new', batch, [])
+    const { ItemApplier } = await import('../apply-item')
+    vi.mocked(ItemApplier.prototype.apply).mockImplementation(insertNoteRow(getDb))
+    const atCursorWrite: unknown[] = []
+    const set = SyncStateManager.prototype.setStateValue
+    vi.spyOn(SyncStateManager.prototype, 'setStateValue').mockImplementation(function (
+      this: SyncStateManager,
+      key: string,
+      value: string
+    ) {
+      if (key === SYNC_STATE_KEYS.LAST_CURSOR) atCursorWrite.push(debts())
+      set.call(this, key, value)
+    })
+
+    await engine.pull()
+
+    expect(atCursorWrite).toEqual([[]])
+    expect(batch).toHaveBeenCalledOnce()
+    expect(debts()).toEqual([])
+  })
+
+  // #2421: a merged record (conflict) keeps the whole-body pull, so a body the
+  // feed dropped before this device had the row still arrives.
+  it('a served record that merged as a conflict pulls its whole body', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    const batch = vi.fn(async () => ({ notes: { 'note-1': { updates: [], hasMore: false } } }))
+    await mockRecordPage('note-1', batch, [])
+    const { ItemApplier } = await import('../apply-item')
+    vi.mocked(ItemApplier.prototype.apply).mockReturnValue('conflict')
+
+    await engine.pull()
+
+    expect(batch).toHaveBeenCalledOnce()
+  })
+
+  // #2421: the per-page batch pays the run's debts through the queued-pull
+  // path, which drops an id whose row is gone with its debt instead of merging
+  // a deleted note back.
+  it('drops the record debt of a note whose row is gone before its batch', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    const batch = vi.fn(async () => ({ notes: {} }))
+    await mockRecordPage('note-gone', batch)
+
+    await engine.pull()
+
+    expect(batch).not.toHaveBeenCalled()
+    expect(debts()).toEqual([])
+    expect(engine.hasUnmergedRemoteCrdtState('note-gone')).toBe(false)
+  })
+
+  // #2421 ruling 5 (f, B-8): before the legacy sweep is done, rows below the
+  // cursor were never served, so a record keeps its whole-body pull.
+  it('pulls the whole body of a served update while the legacy sweep is not done', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'pending')
+    const batch = vi.fn(async () => ({ notes: { 'note-1': { updates: [], hasMore: false } } }))
+    await mockRecordPage('note-1', batch, [])
+
+    await engine.pull()
+
+    expect(batch).toHaveBeenCalledOnce()
+  })
+
+  // #2421 ruling 5 (g) and 6 (A-4, B-6): a session-only debt store cannot
+  // remember what the feed owed across a restart, so nothing is narrowed.
+  it('pulls the whole body of a served update while the debt table is unusable', async () => {
+    getDb().sqlite.exec('DROP TABLE crdt_body_debts')
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+    const batch = vi.fn(async () => ({ notes: { 'note-1': { updates: [], hasMore: false } } }))
+    await mockRecordPage('note-1', batch, [])
+
+    await engine.pull()
+
+    expect(batch).toHaveBeenCalledOnce()
+  })
+
+  // #2421 ruling 5 (h, A-5, B-5): the feed dropped a body as rowless, a local
+  // row then appears (null clock, so the record applies without a conflict),
+  // and the record's page must still pull the whole body, across a restart
+  // between the steps too.
+  it.each([false, true])(
+    'pulls the whole body of a record whose earlier body was dropped as rowless (restart: %s)',
+    async (restart) => {
+      const provider = mergeableProvider()
+      let engine = engineWith(getDb, provider)
+      engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+      await mockServer([{ noteBodies: [update('note-late', 2, A)], nextCursor: 2 }])
+      await engine.pull()
+      expect(provider.stored).toEqual([])
+      vi.restoreAllMocks()
+
+      getDb()
+        .db.insert(noteMetadata)
+        .values({
+          id: 'note-late',
+          path: 'late.md',
+          title: 'late',
+          createdAt: 'x',
+          modifiedAt: 'x'
+        })
+        .run()
+      if (restart) {
+        await engine.stop({ skipFinalPush: true })
+        engine = new SyncEngine(
+          createMockDeps(getDb(), {
+            crdtProvider: provider as unknown as CrdtProvider,
+            network: createMockNetwork(false)
+          })
+        )
+        await engine.start()
+      }
+      const batch = vi.fn(async () => ({
+        notes: { 'note-late': { updates: [], hasMore: false } }
+      }))
+      await mockRecordPage('note-late', batch, [])
+
+      await engine.pull()
+
+      expect(batch).toHaveBeenCalledOnce()
+    }
+  )
+
+  // #2421 round 2 ruling 1 (A N-1): a rowless note whose record came with its
+  // bodies but did not apply (schema_invalid) is a rowless drop too. A local
+  // row with a null clock then appears, and the next record page must still
+  // pull the whole body, across a restart as well.
+  it.each([false, true])(
+    'pulls the whole body after a rowless record that did not apply dropped its bodies (restart: %s)',
+    async (restart) => {
+      const provider = mergeableProvider()
+      let engine = engineWith(getDb, provider)
+      engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+      await mockRecordPage('note-late', async () => ({ notes: {} }), [update('note-late', 2, A)])
+      const { ItemApplier } = await import('../apply-item')
+      vi.mocked(ItemApplier.prototype.apply).mockReturnValue('schema_invalid')
+      await engine.pull()
+      expect(debts()).toEqual([])
+      vi.restoreAllMocks()
+
+      getDb()
+        .db.insert(noteMetadata)
+        .values({
+          id: 'note-late',
+          path: 'late.md',
+          title: 'late',
+          createdAt: 'x',
+          modifiedAt: 'x'
+        })
+        .run()
+      if (restart) {
+        await engine.stop({ skipFinalPush: true })
+        engine = new SyncEngine(
+          createMockDeps(getDb(), {
+            crdtProvider: provider as unknown as CrdtProvider,
+            network: createMockNetwork(false)
+          })
+        )
+        await engine.start()
+      }
+      const batch = vi.fn(async () => ({
+        notes: { 'note-late': { updates: [], hasMore: false } }
+      }))
+      await mockRecordPage('note-late', batch, [])
+
+      await engine.pull()
+
+      expect(batch).toHaveBeenCalledOnce()
+    }
+  )
+
+  // #2421 round 2 ruling 2: a delete tombstone for an id the feed withheld
+  // clears the memory, even with no local row, so it does not leak.
+  it('clears a withheld id when its delete tombstone applies', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+    await mockServer([{ noteBodies: [update('note-gone', 2, A)], nextCursor: 2 }])
+    await engine.pull()
+    expect(crdtSyncOf(engine).isBodyWithheld('note-gone')).toBe(true)
+    vi.restoreAllMocks()
+
+    await mockRecordPage('note-gone', async () => ({ notes: {} }))
+    const http = await import('../http-client')
+    vi.mocked(http.getFromServer).mockResolvedValue({
+      items: [],
+      deleted: ['note-gone'],
+      hasMore: false,
+      nextCursor: 4,
+      noteBodies: []
+    })
+    vi.mocked(http.postToServer).mockResolvedValue({
+      items: [
+        {
+          id: 'note-gone',
+          type: 'note',
+          operation: 'delete',
+          deletedAt: 5,
+          cryptoVersion: 1,
+          blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+          signature: 'sig',
+          signerDeviceId: 'device-2',
+          clock: { 'device-2': 3 }
+        }
+      ]
+    })
+
+    await engine.pull()
+
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')
+    expect(crdtSyncOf(engine).isBodyWithheld('note-gone')).toBe(false)
+  })
+
+  // #2421 ruling 4 (A-3): a record that did not apply leaves its skipped
+  // bodies owed AND queued, so this session's flush pays them.
+  it('queues the skipped bodies of a record that did not apply', async () => {
+    const provider = mergeableProvider()
+    const engine = engineWith(getDb, provider)
+    await mockRecordPage('note-1', async () => ({ notes: {} }), [update('note-1', 7, A)])
+    const { ItemApplier } = await import('../apply-item')
+    vi.mocked(ItemApplier.prototype.apply).mockReturnValue('schema_invalid')
+
+    await engine.pull()
+
+    expect(debts()).toEqual([{ noteId: 'note-1', reason: 'feed_owed', lowestCursor: 7 }])
+    expect(crdtSyncOf(engine).drainPendingPulls()).toEqual(['note-1'])
   })
 
   // #2297: a missing base owes the whole body; a failed landing owes from its cursor.

@@ -102,14 +102,42 @@ export class SyncStateManager {
     if (key === SYNC_STATE_KEYS.SYNC_PAUSED) {
       this.knownNotPaused = value !== 'true'
     }
-    this.ctx.deps.db
-      .insert(syncState)
+    if (key !== SYNC_STATE_KEYS.LAST_CURSOR) return this.writeState(this.ctx.deps.db, key, value)
+    // Both or neither (#2421): see NOTE_BODY_FEED_CURSOR.
+    this.ctx.deps.db.transaction((tx) => {
+      this.writeState(tx, key, value)
+      this.writeState(tx, SYNC_STATE_KEYS.NOTE_BODY_FEED_CURSOR, value)
+    })
+  }
+
+  private writeState(db: SyncContext['deps']['db'], key: string, value: string): void {
+    db.insert(syncState)
       .values({ key, value, updatedAt: new Date() })
       .onConflictDoUpdate({
         target: syncState.key,
         set: { value, updatedAt: new Date() }
       })
       .run()
+  }
+
+  /**
+   * Engine start (#2421): a LAST_CURSOR that differs from the one this build
+   * last wrote was moved by another build, so `noteBodyLegacySweep` no longer
+   * holds and is deleted. A missing record is this build's first run: it is
+   * written, nothing is reset. Answers whether the key was reset.
+   */
+  reconcileNoteBodyFeedCursor(): boolean {
+    const cursor = this.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
+    const recorded = this.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_FEED_CURSOR)
+    if (cursor === recorded) return false
+    if (cursor === undefined) {
+      this.deleteStateValue(SYNC_STATE_KEYS.NOTE_BODY_FEED_CURSOR)
+    } else {
+      this.writeState(this.ctx.deps.db, SYNC_STATE_KEYS.NOTE_BODY_FEED_CURSOR, cursor)
+    }
+    if (recorded === undefined) return false
+    this.deleteStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)
+    return true
   }
 
   getLastSyncAt(): number | undefined {

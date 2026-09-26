@@ -582,9 +582,9 @@ async function writebackExisting(
   // A note whose hash was never measured used to be the exception: a tier-0
   // sidebar row, listed from `stat` alone, had nothing to compare and wrote as
   // it always did. That is the hole a stranger's vault fell through (#1909) —
-  // `sweepAllCrdtNotes` queues a pull for EVERY markdown note on every
-  // reconnect, and the write-back that a remote update schedules re-serializes
-  // the whole body, so a file nobody had ever opened came back rewritten. The
+  // the vault-wide CRDT sweep queued a pull for EVERY markdown note, and the
+  // write-back that a remote update schedules re-serializes the whole body, so
+  // a file nobody had ever opened came back rewritten. The
   // rule is now the plain one: bytes this app never read are never overwritten.
   //
   // Seeding a doc fills the column in (`CrdtProvider.seedFromMarkdown`), so

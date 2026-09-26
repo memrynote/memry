@@ -100,9 +100,7 @@ export class WebSocketManager extends SyncEventEmitter {
       // the session, and it latches exactly when it hurts most: /auth/refresh
       // lives on the server this device cannot reach, so an outage that outlasts
       // the access token kills the socket permanently. With no socket there is
-      // no `crdt_updated` and no handleWsConnected catch-up, which between them
-      // are the only two routes a body-only remote edit has — note bodies never
-      // travel in the record change feed.
+      // no wake: remote edits then wait for the 60s tick's pull.
       //
       // Costs nothing on the wire while it waits: the retry shares the same
       // backoff as every other one, so a token that never returns polls at the
