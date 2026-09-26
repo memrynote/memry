@@ -270,7 +270,9 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
     case 'ITEM_SYNCED':
       return {
         ...state,
-        lastSyncAt: action.lastSyncAt,
+        // Main sets the first lastSyncAt when a pull completes. A pushed item,
+        // or an item applied mid-pull, must not stand in for it.
+        lastSyncAt: state.lastSyncAt === null ? null : action.lastSyncAt,
         syncActivity: {
           pushCount: state.syncActivity.pushCount + (action.operation === 'push' ? 1 : 0),
           pullCount: state.syncActivity.pullCount + (action.operation === 'pull' ? 1 : 0)

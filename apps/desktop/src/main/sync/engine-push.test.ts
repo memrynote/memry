@@ -130,22 +130,27 @@ describe('SyncEngine', () => {
     })
   })
 
-  describe('#given engine #when push succeeds', () => {
-    it('#then updates lastSyncAt', async () => {
+  // Home seeds its default board once lastSyncAt is set. A fresh device's
+  // first push lands before its first pull, when the account's boards are
+  // still on the server.
+  describe('#given a fresh vault that has not completed a pull #when push succeeds', () => {
+    it('#then lastSyncAt stays unset until a pull completes, and later pushes move it', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
+      const enqueueProject = (itemId: string): void => {
+        deps.queue.enqueue({
+          type: 'project',
+          itemId,
+          operation: 'create',
+          payload: JSON.stringify({ name: itemId })
+        })
+      }
 
-      deps.queue.enqueue({
-        type: 'note',
-        itemId: 'note-1',
-        operation: 'create',
-        payload: JSON.stringify({ title: 'Test' })
-      })
-
-      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation((input) => ({
         pushItem: {
-          id: 'note-1',
-          type: 'note',
+          id: input.id,
+          type: 'project',
           operation: 'create',
           encryptedKey: 'ek',
           keyNonce: 'kn',
@@ -156,19 +161,36 @@ describe('SyncEngine', () => {
           clock: { 'device-1': 1 }
         },
         sizeBytes: 100
+      }))
+      vi.spyOn(await import('./http-client'), 'postToServer').mockImplementation(
+        async (_path: string, body: unknown) => ({
+          accepted: (body as { items: Array<{ id: string }> }).items.map((item) => item.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000)
+        })
+      )
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
       })
 
-      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
-        accepted: ['note-1'],
-        rejected: [],
-        serverTime: Date.now()
-      })
-
-      expect(engine.getStatus().lastSyncAt).toBeUndefined()
-
+      vi.setSystemTime(1_790_432_488_000)
+      enqueueProject('inbox')
       await engine.push()
+      expect(engine.getStatus().lastSyncAt).toBe(undefined)
 
-      expect(engine.getStatus().lastSyncAt).toBeDefined()
+      vi.setSystemTime(1_790_432_499_000)
+      await engine.pull()
+      expect(engine.getStatus().lastSyncAt).toBe(1_790_432_499_000)
+
+      vi.setSystemTime(1_790_432_510_000)
+      enqueueProject('project-2')
+      await engine.push()
+      expect(engine.getStatus().lastSyncAt).toBe(1_790_432_510_000)
+
+      vi.useRealTimers()
       vi.restoreAllMocks()
     })
   })
