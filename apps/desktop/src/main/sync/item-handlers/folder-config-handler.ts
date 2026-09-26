@@ -8,7 +8,7 @@ import {
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { VaultError, VaultErrorCode } from '../../lib/errors'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
@@ -71,7 +71,13 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveUpsertClock(
+          ctx,
+          itemId,
+          existing.clock as VectorClock | null,
+          remoteClock,
+          data
+        )
         if (resolution.action === 'skip') {
           log.info('Skipping remote folder config update, local is newer', { itemId })
           return 'skipped'
@@ -155,7 +161,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(folderConfigs).where(isNull(folderConfigs.clock)).all()
     for (const item of items) {
-      const clock = increment({}, deviceId)
+      const clock = nextLocalClock(db, 'folder_config', item.path, null, deviceId, 'create')
       db.update(folderConfigs).set({ clock }).where(eq(folderConfigs.path, item.path)).run()
       queue.enqueue({
         type: 'folder_config',

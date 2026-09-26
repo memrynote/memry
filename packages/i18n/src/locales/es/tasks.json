@@ -29,6 +29,8 @@
     "status": "Estado",
     "priority": "Prioridad",
     "dueDate": "Fecha de vencimiento",
+    "startsOn": "Empieza {date}",
+    "dueOn": "Vence {date}",
     "project": "Proyecto",
     "repeat": "repetir",
     "createAnother": "crear otro",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Tarea de adición rápida",
     "focusDescription": "Enfoque la entrada de adición rápida",
-    "placeholder": "Añade una tarea…    !today  !!high  #project"
+    "placeholder": "Añade una tarea…    !today  !!high  #project",
+    "presets": {
+      "menu": "Opciones de la tarea",
+      "dueDate": "Vence {date}. Cambiar fecha de vencimiento",
+      "noDate": "Sin fecha",
+      "linkNote": "Vincular nota",
+      "openDetails": "Abrir todos los detalles",
+      "back": "Atrás",
+      "remove": "Quitar {name}",
+      "noReminder": "Sin recordatorio",
+      "addTags": "Añadir etiquetas…"
+    }
   },
   "drawer": {
     "close": "Cerrar detalles de la tarea",

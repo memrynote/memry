@@ -33,7 +33,7 @@ describe('settings sync — journal weekday templates', () => {
     // This device set Tuesday; the other device set Monday, neither having seen
     // the other. With a single clock for the whole map one of these would be
     // dropped with no conflict to observe.
-    mgr.updateField('journal.weekdayTemplates.2', 'weekly-review', 'B')
+    mgr.updateField('journal.weekdayTemplates.2', 'weekly-review')
 
     mgr.mergeRemote({
       settings: { journal: { weekdayTemplates: { '1': 'daily-standup' } } },
@@ -48,7 +48,7 @@ describe('settings sync — journal weekday templates', () => {
 
   it('lets a remote change to the same day win on a newer clock', () => {
     const mgr = manager('B')
-    mgr.updateField('journal.weekdayTemplates.1', 'morning-pages', 'B')
+    mgr.updateField('journal.weekdayTemplates.1', 'morning-pages')
 
     mgr.mergeRemote({
       settings: { journal: { weekdayTemplates: { '1': 'daily-standup' } } },
@@ -60,7 +60,7 @@ describe('settings sync — journal weekday templates', () => {
 
   it('propagates a cleared day as an explicit null', () => {
     const mgr = manager('B')
-    mgr.updateField('journal.weekdayTemplates.1', 'morning-pages', 'B')
+    mgr.updateField('journal.weekdayTemplates.1', 'morning-pages')
 
     mgr.mergeRemote({
       settings: { journal: { weekdayTemplates: { '1': null } } },
@@ -72,7 +72,7 @@ describe('settings sync — journal weekday templates', () => {
 
   it('does not clobber a local day when an older client omits the group', () => {
     const mgr = manager('B')
-    mgr.updateField('journal.weekdayTemplates.1', 'daily-standup', 'B')
+    mgr.updateField('journal.weekdayTemplates.1', 'daily-standup')
 
     // An app version that predates the journal group strips it from the payload
     // while still echoing back the field clock it saw.

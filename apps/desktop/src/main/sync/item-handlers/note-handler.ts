@@ -9,13 +9,15 @@ import {
   getMimeType,
   type FileType
 } from '@memry/shared/file-types'
-import { NotesChannels } from '@memry/contracts/ipc-channels'
+import { and, eq } from 'drizzle-orm'
+import { reminders } from '@memry/db-schema/schema/reminders'
+import { NotesChannels, ReminderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { getCrdtProvider } from '../crdt-provider'
-import { writeSyncedNoteFile } from '../bulk-apply'
+import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -25,12 +27,7 @@ import {
   shouldAttemptDownload
 } from '@memry/sync-client/attachment-download-state'
 import { getIndexDatabase } from '../../database/client'
-import {
-  deleteFile,
-  generateNotePath,
-  generateFilePath,
-  generateUniquePathSync
-} from '../../vault/file-ops'
+import { generateNotePath, generateFilePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
 import { getNoteAttachmentsDir } from '../../vault/attachments'
 import { getStatus as getVaultStatus } from '../../vault/index'
@@ -72,6 +69,7 @@ import {
   seedUnclockedNotes
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { belongsToOtherType } from './note-row-type'
 
 const log = createLogger('NoteHandler')
 
@@ -176,6 +174,19 @@ function requestEmbeddedAttachmentDownloads(
   }
 }
 
+/**
+ * Frontmatter is the source of truth for a markdown note's project membership,
+ * so a synced note derives its `project_links` rows here. Everything else about
+ * the note applied; a failed reconcile must not turn the pull into a retry.
+ */
+function deriveRemoteProjectLinks(itemId: string, properties: Record<string, unknown>): void {
+  try {
+    reconcileNoteLinks(itemId, properties, 'remote')
+  } catch (err) {
+    log.error('Failed to reconcile project links for a synced note', { itemId, error: err })
+  }
+}
+
 class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
   readonly type = 'note' as const
   readonly schema = NoteSyncPayloadSchema
@@ -191,10 +202,22 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const now = utcNow()
 
     const existing = getNoteMetadataById(ctx.db, itemId)
+    if (existing && belongsToOtherType(itemId, 'note', existing)) return 'skipped'
 
     if (existing) {
-      const resolution = this.resolveClock(existing.clock, remoteClock)
+      const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
       if (resolution.action === 'skip') {
+        // The only re-request for embedded attachments whose download died with
+        // the process before the page re-pulled; already-present ones are
+        // deduped (#2294).
+        if (resolution.identical) {
+          requestEmbeddedAttachmentDownloads(
+            ctx.db,
+            itemId,
+            data.attachmentReferences,
+            data.modifiedAt
+          )
+        }
         log.info('Skipping remote note update, local is newer', { itemId })
         return 'skipped'
       }
@@ -494,24 +517,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
       requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences, data.modifiedAt)
 
-      // Frontmatter is the source of truth for a markdown note's project
-      // membership, and this branch just rewrote it. The create path derives the
-      // `project_links` rows from the `note.upserted` event `syncNoteToCache`
-      // publishes; this one publishes nothing, so it has to reconcile directly.
-      // Without this the note shows its project chip here while the project hub
-      // stays empty — and the next rename of that project skips the note, which
-      // unlinks it from the renamed project on every device.
+      // This branch publishes no `note.upserted`, so no projector derives the
+      // links it just rewrote. Without this the note shows its project chip
+      // while the project hub stays empty, and the next rename of that project
+      // skips the note, which unlinks it on every device.
       if (propertiesPresent && isMarkdownNote(ctx.db, itemId)) {
-        try {
-          reconcileNoteLinks(itemId, remoteProperties)
-        } catch (err) {
-          // Everything else about the note applied; a link reconcile failure
-          // must not turn the whole pull into a retry.
-          log.error('Failed to reconcile project links for synced note update', {
-            itemId,
-            error: err
-          })
-        }
+        deriveRemoteProjectLinks(itemId, remoteProperties)
       }
 
       // This branch rewrites frontmatter, title and path — never the note body.
@@ -629,6 +640,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       },
       { isNew: true }
     )
+    // Ahead of the flush: the links projector then finds the rows in place and
+    // commits no project intent for this remote note.
+    if (data.properties) deriveRemoteProjectLinks(itemId, data.properties)
     void flushProjectionEvents()
     updateNoteCache(indexDb, itemId, { clock: remoteClock, syncedAt: now })
     updateNoteMetadata(ctx.db, itemId, {
@@ -650,7 +664,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // During a bulk page apply this defers the write until after the page's DB
     // commit (see bulk-apply.ts for the crash-safety contract); outside one it
     // is the same synchronous tmp-write + rename as always.
-    writeSyncedNoteFile(absolutePath, fileContent)
+    writeSyncedVaultFile(absolutePath, fileContent)
 
     requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences, data.modifiedAt)
 
@@ -664,7 +678,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     const existing = getNoteMetadataById(ctx.db, itemId)
-    if (!existing) return 'skipped'
+    if (!existing || belongsToOtherType(itemId, 'note', existing)) return 'skipped'
 
     if (clock && existing.clock) {
       const resolution = this.resolveDeleteClock(existing.clock, clock)
@@ -682,11 +696,25 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // synchronously, before its first await, so by the time the row below is
     // gone nothing can rebuild the note from its doc. Only the store clear is
     // late, and a doc already out of the provider's map is unreachable.
+    // Unlike the file unlink below it is not deferred to the page flush: its
+    // synchronous half is the part that must precede the row delete, and the
+    // late store clear needs no journal. A page rollback re-pulls this same
+    // delete, and a crash before the clear leaves a persisted doc whose row is
+    // gone and whose file the journal replay removes.
     void getCrdtProvider()
       .purge(itemId)
       .catch((err) => {
         log.error('Failed to purge the CRDT doc of a remotely deleted note', { itemId, error: err })
       })
+
+    // Deleted directly, with no sync hooks: the device that deleted the note
+    // owns these tombstones.
+    const clearedReminders = ctx.db
+      .delete(reminders)
+      .where(and(eq(reminders.targetType, 'note_date'), eq(reminders.targetId, itemId)))
+      .returning({ id: reminders.id })
+      .all()
+    for (const { id } of clearedReminders) ctx.emit(ReminderChannels.events.DELETED, { id })
 
     const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)
@@ -701,10 +729,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     })
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
-    markWritebackIgnored(absolutePath)
-    deleteFile(absolutePath).catch((err) => {
-      log.error('Failed to delete synced note file', { itemId, error: err })
-    })
+    // Journaled with the page and unlinked after it commits (#2385): a lost
+    // unlink would leave a file with no row for the indexer to push back.
+    deleteSyncedVaultFile(absolutePath)
     return 'applied'
   }
 

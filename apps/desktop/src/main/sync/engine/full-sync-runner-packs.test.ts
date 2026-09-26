@@ -128,6 +128,9 @@ const createHarness = (
       emitToRenderer: vi.fn(),
       ...(provider ? { crdtProvider: provider } : {})
     },
+    applier: { changedCount: 0 },
+    acquireLock: vi.fn(async () => () => {}),
+    releaseLock: vi.fn(),
     fullSyncActive: false
   } as unknown as SyncContext
 
@@ -163,7 +166,7 @@ const createHarness = (
       addPendingPull: vi.fn(),
       drainPendingPulls: vi.fn(() => []),
       pendingPullCount: 0,
-      hasUnmergedNotes: false
+      nextDeferredPullAt: vi.fn(() => null)
     } as unknown as CrdtSyncCoordinator,
     actions
   )

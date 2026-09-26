@@ -24,10 +24,30 @@ import { noteMetadata } from '@memry/db-schema/data-schema'
 import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from '@memry/sync-client/queue'
+import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
+import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
+import { tagCategories } from '@memry/db-schema/schema/tag-categories'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
+import { agentMessages } from '@memry/db-schema/schema/agent-messages'
+import { calendarSourceHandler } from '@memry/sync-client/item-handlers/calendar-source-handler'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { projectHandler } from './item-handlers/project-handler'
+import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 
 vi.mock('../database/client', () => ({
   getIndexDatabase: vi.fn()
 }))
+
+const serverRef = (type: string, id: string) => ({
+  id,
+  type,
+  version: 1,
+  modifiedAt: 1000,
+  size: 50
+})
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -255,6 +275,47 @@ describe('checkManifestIntegrity', () => {
 
       expect(getServerSpy).not.toHaveBeenCalled()
     })
+
+    it('#then reports the skip as no-token, eligible one window from now', async () => {
+      // #2310
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000_000_000)
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => null,
+        isOnline: () => true
+      })
+
+      expect(result.performed).toBe(false)
+      expect(result.skipped).toEqual({
+        reason: 'no-token',
+        nextEligibleAt: 1_000_000_000_000 + 30 * 60 * 1000
+      })
+    })
+  })
+
+  describe('#given the manifest fetch fails #when check runs', () => {
+    it('#then reports the skip as error', async () => {
+      // #2310. Imported after resetModules so withRetry sees the same class and
+      // throws the 4xx at once instead of backing off.
+      const { SyncServerError } = await import('@memry/sync-client/http-errors')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('bad request', 400)
+      )
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result.performed).toBe(false)
+      expect(result.skipped?.reason).toBe('error')
+    })
   })
 
   describe('#given rate limit not elapsed #when check runs twice', () => {
@@ -292,6 +353,28 @@ describe('checkManifestIntegrity', () => {
 
       // #then — no second network call
       expect(getServerSpy).not.toHaveBeenCalled()
+    })
+
+    it('#then the throttled result says so and when the next check is due', async () => {
+      // #2310: a throttled no-op must be distinguishable from a clean diff.
+      const getServerSpy = vi.spyOn(await import('./http-client'), 'getFromServer')
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      const lastCheckAt = Date.now() - 5 * 60 * 1000
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true,
+        lastCheckAt
+      })
+
+      expect(getServerSpy).not.toHaveBeenCalled()
+      expect(result.performed).toBe(false)
+      expect(result.skipped).toEqual({
+        reason: 'throttled',
+        nextEligibleAt: lastCheckAt + 30 * 60 * 1000
+      })
     })
   })
 
@@ -838,6 +921,26 @@ describe('checkManifestIntegrity', () => {
       })
       .run()
     testDb.db.insert(settings).values({ key: 'synced_settings', value: '{}' }).run()
+    testDb.db
+      .insert(noteMetadata)
+      .values([
+        {
+          id: 'note-1',
+          path: 'notes/a.md',
+          title: 'A',
+          createdAt: timestamp,
+          modifiedAt: timestamp
+        },
+        {
+          id: 'journal-1',
+          path: 'journals/2026-02-18.md',
+          title: '2026-02-18',
+          journalDate: '2026-02-18',
+          createdAt: timestamp,
+          modifiedAt: timestamp
+        }
+      ])
+      .run()
     testIndexDb.db
       .insert(noteCache)
       .values({
@@ -1107,6 +1210,388 @@ describe('checkManifestIntegrity', () => {
       // future re-create of that id; task-2 is still owed and stays
       const remaining = testDb.db.select().from(syncPendingDeletes).all()
       expect(remaining.map((r) => r.itemId)).toEqual(['task-2'])
+    })
+  })
+
+  // #2302: the manifest diff never deletes because something is absent. A local
+  // row the server does not list is re-uploaded (a server marker then refuses
+  // it per item, and the next pull applies the tombstone under §5.8); a lost
+  // blob held in the ledger never counts as server-only.
+  describe('#given local notes the server manifest omits because they are deleted', () => {
+    it('#then re-uploads only the one re-created past its tombstone', async () => {
+      // #given
+      const tombstone: VectorClock = { 'device-deleter': 2 }
+      const insertNote = (id: string, clock: VectorClock): void => {
+        testDb.db
+          .insert(noteMetadata)
+          .values({ id, path: `${id}.md`, title: id, clock, createdAt: 'x', modifiedAt: 'x' })
+          .run()
+      }
+      insertNote('note-concurrent', { 'device-A': 1 })
+      recordTombstoneClock(asSyncDb(testDb.db), 'note', 'note-concurrent', tombstone)
+      insertNote('note-recreated', { 'device-deleter': 2, 'device-A': 1 })
+      recordTombstoneClock(asSyncDb(testDb.db), 'note', 'note-recreated', tombstone)
+      testIndexDb.db
+        .insert(noteCache)
+        .values({
+          id: 'note-gone',
+          path: 'note-gone.md',
+          title: 'Gone',
+          clock: { 'device-A': 1 },
+          createdAt: 'x',
+          modifiedAt: 'x'
+        })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(queue.dequeue(10).map((item) => `${item.type}:${item.itemId}`)).toEqual([
+        'note:note-recreated'
+      ])
+    })
+  })
+
+  describe('#2302 absence never deletes', () => {
+    const seedTask = (id: string) =>
+      testDb.db
+        .insert(tasks)
+        .values({ id, projectId: 'proj-1', title: id, priority: 0, position: 0, clock: { d: 1 } })
+        .run()
+
+    it('#then a synced local row absent from the manifest is re-enqueued and kept, never deleted', async () => {
+      seedTask('task-purged-on-server')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(
+        testDb.db.select().from(tasks).where(eq(tasks.id, 'task-purged-on-server')).get()
+      ).toBeDefined()
+      expect(queue.dequeue(1)[0]).toMatchObject({
+        itemId: 'task-purged-on-server',
+        operation: 'create'
+      })
+    })
+
+    // #2302 review (A-F3, B-6): no re-upload when this run's pull did not deliver.
+    it('#then reuploadLocalOnly false skips the re-upload but still diffs server-only items', async () => {
+      seedTask('task-local-only')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-server-only', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true,
+        reuploadLocalOnly: false
+      })
+
+      expect(queue.getPendingCount()).toBe(0)
+      expect(result).toMatchObject({ performed: true, rePullNeeded: true, serverOnlyCount: 1 })
+      expect(
+        testDb.db.select().from(tasks).where(eq(tasks.id, 'task-local-only')).get()
+      ).toBeDefined()
+    })
+
+    it('#then a partial manifest (stalled cursor) deletes nothing', async () => {
+      seedTask('task-a')
+      seedTask('task-b')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-a', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000),
+        nextCursor: 0
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(
+        testDb.db
+          .select()
+          .from(tasks)
+          .all()
+          .map((row) => row.id)
+          .sort()
+      ).toEqual(['task-a', 'task-b'])
+    })
+
+    // #2301 review r2 A-L2/B-2
+    it('#then a pending_intent ledger entry is not server-only, so no full re-pull loop', async () => {
+      const { SchemaInvalidLedger } = await import('./engine/schema-invalid-ledger')
+      const state = new Map<string, string>()
+      const ledger = new SchemaInvalidLedger(
+        {
+          getStateValue: (key: string) => state.get(key),
+          setStateValue: (key: string, value: string) => state.set(key, value)
+        } as unknown as ConstructorParameters<typeof SchemaInvalidLedger>[0],
+        () => '1.0.0'
+      )
+      ledger.record([{ id: 'task-waiting', type: 'task' }], 'pending_intent')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-waiting', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true,
+        isQuarantined: (itemId, itemType) => ledger.has(itemType, itemId)
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+    })
+
+    it('#then a blob_missing ledger entry is not server-only, so no full re-pull loop', async () => {
+      const { SchemaInvalidLedger } = await import('./engine/schema-invalid-ledger')
+      const state = new Map<string, string>()
+      const ledger = new SchemaInvalidLedger(
+        {
+          getStateValue: (key: string) => state.get(key),
+          setStateValue: (key: string, value: string) => state.set(key, value)
+        } as unknown as ConstructorParameters<typeof SchemaInvalidLedger>[0],
+        () => '1.0.0'
+      )
+      ledger.record([{ id: 'task-lost', type: 'task' }], 'blob_missing')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-lost', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true,
+        // Wired exactly as engine.ts wires it.
+        isQuarantined: (itemId, itemType) => ledger.has(itemType, itemId)
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+    })
+  })
+
+  describe('#given server rows of calendar, folder, tag category and agent types', () => {
+    it('#then rows held locally with clocks are not server-only and are not re-uploaded', async () => {
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(calendarSources)
+        .values({
+          id: 'src-1',
+          provider: 'google',
+          kind: 'calendar',
+          remoteId: 'primary',
+          title: 'Work',
+          clock
+        })
+        .run()
+      testDb.db
+        .insert(calendarEvents)
+        .values({ id: 'evt-1', title: 'Standup', startAt: '2026-05-01T09:00:00.000Z', clock })
+        .run()
+      testDb.db
+        .insert(calendarBindings)
+        .values({
+          id: 'bind-1',
+          sourceType: 'event',
+          sourceId: 'evt-1',
+          provider: 'google',
+          remoteCalendarId: 'primary',
+          remoteEventId: 'remote-evt-1',
+          ownershipMode: 'memry_managed',
+          writebackMode: 'broad',
+          clock
+        })
+        .run()
+      testDb.db
+        .insert(calendarExternalEvents)
+        .values({
+          id: 'ext-1',
+          sourceId: 'src-1',
+          remoteEventId: 'remote-ext-1',
+          title: 'Lunch',
+          startAt: '2026-05-01T12:00:00.000Z',
+          clock
+        })
+        .run()
+      testDb.db.insert(tagCategories).values({ id: 'cat-1', name: 'Areas', clock }).run()
+      testDb.db.insert(folderConfigs).values({ path: 'Projects', icon: 'folder', clock }).run()
+      testDb.db
+        .insert(agentConversations)
+        .values({
+          id: 'conv-1',
+          vaultId: 'vault-1',
+          titleCiphertext: 'x',
+          backend: 'codex',
+          vectorClock: clock,
+          fieldClocks: {},
+          createdAt: 1,
+          updatedAt: 1
+        })
+        .run()
+      testDb.db
+        .insert(agentMessages)
+        .values({
+          id: 'msg-1',
+          conversationId: 'conv-1',
+          role: 'user',
+          contentCiphertext: 'x',
+          attachmentsCiphertext: 'x',
+          status: 'complete',
+          vectorClock: clock,
+          createdAt: 1,
+          updatedAt: 1
+        })
+        .run()
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          serverRef('calendar_source', 'src-1'),
+          serverRef('calendar_event', 'evt-1'),
+          serverRef('calendar_binding', 'bind-1'),
+          serverRef('calendar_external_event', 'ext-1'),
+          serverRef('tag_category', 'cat-1'),
+          serverRef('folder_config', 'Projects'),
+          serverRef('agent_conversation', 'conv-1'),
+          serverRef('agent_message', 'msg-1')
+        ],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+      expect(queue.getPendingCount()).toBe(0)
+    })
+
+    it('#then a calendar event missing locally still triggers a re-pull', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [serverRef('calendar_event', 'evt-missing')],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: true, serverOnlyCount: 1 })
+    })
+
+    it('#then a type this build cannot enumerate is never counted server-only', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [serverRef('whiteboard', 'wb-1')],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+    })
+  })
+
+  describe('#given ids this device declined on apply #when check runs', () => {
+    const ctx = (): ApplyContext => ({ db: testDb.db as unknown as DrizzleDb, emit: vi.fn() })
+
+    it('#then a calendar source natural-key duplicate and an inbox alias are not server-only', async () => {
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(projects)
+        .values({
+          id: 'local-inbox',
+          name: 'Inbox',
+          color: '#000',
+          position: 1,
+          isInbox: true,
+          clock
+        })
+        .run()
+      calendarSourceHandler.applyUpsert(
+        ctx(),
+        'J-ORU2rryGIPtE4XM8Cp6',
+        { provider: 'memry', kind: 'calendar', remoteId: 'local-default', title: 'Local' },
+        clock
+      )
+      calendarSourceHandler.applyUpsert(
+        ctx(),
+        'g_5wMhgKcYyOhRoh6Cm6X',
+        { provider: 'memry', kind: 'calendar', remoteId: 'local-default', title: 'Local' },
+        { 'device-B': 1 }
+      )
+      projectHandler.applyUpsert(
+        ctx(),
+        'uWYGrsxGL6FVKU08nlnmx',
+        { name: 'Inbox', isInbox: true },
+        { 'device-B': 1 }
+      )
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          serverRef('project', 'local-inbox'),
+          serverRef('project', 'uWYGrsxGL6FVKU08nlnmx'),
+          serverRef('calendar_source', 'J-ORU2rryGIPtE4XM8Cp6'),
+          serverRef('calendar_source', 'g_5wMhgKcYyOhRoh6Cm6X')
+        ],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
     })
   })
 })

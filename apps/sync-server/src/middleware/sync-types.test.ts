@@ -7,7 +7,7 @@ import { syncTypesMiddleware } from './sync-types'
 const createApp = () => {
   const app = new Hono<AppContext>()
   app.use('*', syncTypesMiddleware)
-  app.get('/probe', (c) => c.json({ syncTypes: c.get('syncTypes') }))
+  app.get('/probe', (c) => c.json({ syncSubscription: c.get('syncSubscription') }))
   return app
 }
 
@@ -17,19 +17,26 @@ describe('syncTypesMiddleware', () => {
     const res = await createApp().request('/probe', { method: 'GET' })
 
     // #then
-    const json = (await res.json()) as { syncTypes: string[] }
-    expect(json.syncTypes).toEqual([...LEGACY_RECORD_SYNC_ITEM_TYPES])
+    const json = (await res.json()) as {
+      syncSubscription: { recordTypes: string[]; noteBodies: boolean }
+    }
+    expect(json.syncSubscription).toEqual({
+      recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+      noteBodies: false
+    })
   })
 
   it('sets the declared types when the header is sent', async () => {
     // #when
     const res = await createApp().request('/probe', {
       method: 'GET',
-      headers: { 'X-Memry-Sync-Types': 'note,task' }
+      headers: { 'X-Memry-Sync-Types': 'note,task,note_body' }
     })
 
     // #then
-    const json = (await res.json()) as { syncTypes: string[] }
-    expect(json.syncTypes).toEqual(['note', 'task'])
+    const json = (await res.json()) as {
+      syncSubscription: { recordTypes: string[]; noteBodies: boolean }
+    }
+    expect(json.syncSubscription).toEqual({ recordTypes: ['note', 'task'], noteBodies: true })
   })
 })

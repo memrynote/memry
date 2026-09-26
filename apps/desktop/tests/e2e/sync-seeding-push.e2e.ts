@@ -2,19 +2,21 @@
  * Seeding-push cursor semantics E2E (#1833).
  *
  * The push rewrite stages a wave and commits the cursor range in one atomic
- * `db.batch`, so a wave lands whole or rejects whole. Two consequences are
- * observable in D1 and are what this spec pins:
+ * `db.batch`, so a wave lands whole or rejects whole. This spec pins what is
+ * observable in D1 end to end: a seeding-sized push (well past the 100-item
+ * request cap, so several waves) lands every item, and no two items share a
+ * cursor.
  *
- *   - A seeding-sized push (well past the 100-item request cap, so several
- *     waves) leaves a CONTIGUOUS cursor range with no gaps. A wave that
- *     allocated cursors and then failed part-way would burn cursors and show
- *     up here as a hole.
- *   - No two items share a cursor.
+ * The record rows alone no longer form a gap-free range: since #2295 CRDT
+ * updates and snapshots take cursors from the same per-user sequence, and a
+ * replaced snapshot or a deduplicated retry leaves its reserved cursor unused.
+ * Wave contiguity is pinned on the real D1 schema instead
+ * (`push-batch-pipeline.test.ts`, "assigns a contiguous strictly monotonic
+ * range across a full 100-item batch, in item order").
  *
  * Compat matrix: the same server still accepts the one-item batches an older
- * client produces, and those land in the same gap-free sequence. Small-batch
- * pushes are issued by the second device, which is a genuinely separate
- * client rather than a replayed payload.
+ * client produces. Small-batch pushes are issued by the second device, which
+ * is a genuinely separate client rather than a replayed payload.
  */
 
 import { test, expect, bootstrapSyncDevice } from './fixtures/sync-auth-fixtures'
@@ -29,17 +31,13 @@ const SEED_NOTE_COUNT = 130
 interface CursorShape {
   count: number
   distinctCursors: number
-  minCursor: number
-  maxCursor: number
 }
 
 async function readCursorShape(db: D1Database, email: string): Promise<CursorShape> {
   const row = await db
     .prepare(
       `SELECT COUNT(*) AS count,
-              COUNT(DISTINCT server_cursor) AS distinctCursors,
-              MIN(server_cursor) AS minCursor,
-              MAX(server_cursor) AS maxCursor
+              COUNT(DISTINCT server_cursor) AS distinctCursors
          FROM sync_items
         WHERE user_id = (SELECT id FROM users WHERE email = ?)`
     )
@@ -50,7 +48,7 @@ async function readCursorShape(db: D1Database, email: string): Promise<CursorSha
 }
 
 test.describe('Seeding push', () => {
-  test('a seeding-sized push lands as one gap-free cursor range and small batches still land', async ({
+  test('a seeding-sized push lands every item on distinct cursors and small batches still land', async ({
     electronAppA,
     electronAppB,
     pageA,
@@ -109,10 +107,6 @@ test.describe('Seeding push', () => {
 
     const afterSeed = await readCursorShape(db, syncBootstrap.email)
     expect(afterSeed.distinctCursors, 'two items shared a cursor').toBe(afterSeed.count)
-    expect(
-      afterSeed.maxCursor - afterSeed.minCursor + 1,
-      'the seeding push left a hole in the cursor sequence — a wave did not land whole'
-    ).toBe(afterSeed.count)
 
     // ---- compat: one-item batches from a second client --------------------
     await bootstrapSyncDevice(electronAppB, syncBootstrap.deviceB)
@@ -172,11 +166,7 @@ test.describe('Seeding push', () => {
       .toBeGreaterThanOrEqual(SEED_NOTE_COUNT + smallBatchTitles.length)
 
     const afterSmall = await readCursorShape(db, syncBootstrap.email)
-    expect(afterSmall.distinctCursors).toBe(afterSmall.count)
-    expect(
-      afterSmall.maxCursor - afterSmall.minCursor + 1,
-      'a one-item batch left a hole in the cursor sequence'
-    ).toBe(afterSmall.count)
+    expect(afterSmall.distinctCursors, 'two items shared a cursor').toBe(afterSmall.count)
     expect(afterSmall.count).toBeGreaterThan(afterSeed.count)
   })
 })

@@ -8,8 +8,10 @@ import {
 import { PropertiesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
+import { PropertyDefinitionsService } from '../../vault/property-definitions'
+import { writeSyncedVaultFile } from '../bulk-apply'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -47,7 +49,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock, remoteClock)
+        const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
         if (resolution.action === 'skip') {
           log.info('Skipping remote property definition update, local is newer', { itemId })
           return 'skipped'
@@ -114,14 +116,10 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
 
     ctx.db.delete(propertyDefinitions).where(eq(propertyDefinitions.name, itemId)).run()
     // `.memry/properties.md` still names it, and the post-pull reload reads
-    // that file first — without this the definition comes straight back.
-    void import('../../vault/property-definitions')
-      .then(({ PropertyDefinitionsService }) =>
-        PropertyDefinitionsService.get().applyRemoteDelete(itemId)
-      )
-      .catch(() => {
-        // No vault open, so no file to reconcile.
-      })
+    // that file first: without this the definition comes straight back. The
+    // write joins the page's crash journal (#2284).
+    const fileWrite = PropertyDefinitionsService.tryGet()?.applyRemoteDelete(itemId)
+    if (fileWrite) writeSyncedVaultFile(fileWrite.filePath, fileWrite.content)
     ctx.emit(PropertiesChannels.events.DEFINITION_DELETED, { name: itemId })
     return 'applied'
   }
@@ -165,7 +163,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
       .where(isNull(propertyDefinitions.clock))
       .all()
     for (const item of items) {
-      const clock = increment({}, deviceId)
+      const clock = nextLocalClock(db, 'property_definition', item.name, null, deviceId, 'create')
       db.update(propertyDefinitions)
         .set({ clock })
         .where(eq(propertyDefinitions.name, item.name))

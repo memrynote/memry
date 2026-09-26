@@ -11,9 +11,14 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
+import { syncTombstoneClocks } from '@memry/db-schema/schema/sync-tombstone-clocks'
+import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { ItemApplier, type ApplyItemInput, type EmitToWindows } from './apply-item'
 import { SyncQueueManager } from '@memry/sync-client/queue'
+import { SyncAdapterRegistry } from '@memry/sync-core'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { z } from 'zod'
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -836,8 +841,10 @@ describe('ItemApplier', () => {
     })
   })
 
+  // #2285: 'skipped' meant "local is newer" and dropped a newer peer's payload
+  // for good. 'schema_invalid' lets the pull record it for a retry.
   describe('#given a payload that fails schema validation', () => {
-    it('#then returns skipped and leaves the local row exactly as it was', () => {
+    it('#then returns schema_invalid and leaves the local row exactly as it was', () => {
       testDb.db
         .insert(tasks)
         .values({
@@ -859,7 +866,7 @@ describe('ItemApplier', () => {
         clock: { 'device-B': 9 }
       })
 
-      expect(result).toBe('skipped')
+      expect(result).toBe('schema_invalid')
       const task = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
       expect(task!.title).toBe('Local Title')
       expect(task!.clock).toEqual({ 'device-A': 1 })
@@ -883,7 +890,7 @@ describe('ItemApplier', () => {
         })
       ]
 
-      expect(results).toEqual(['skipped', 'applied'])
+      expect(results).toEqual(['schema_invalid', 'applied'])
       expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-bad')).get()).toBeUndefined()
       expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()).toBeDefined()
     })
@@ -1071,3 +1078,131 @@ function makeFilterPayload(overrides: Record<string, unknown> = {}): Uint8Array 
     })
   )
 }
+
+// #2294 review: inside a pull page, an item's emits wait for the page commit,
+// and an item whose apply throws (its savepoint rolled back) queues none.
+describe('ItemApplier inside a pull page', () => {
+  let testDb: TestDatabaseResult
+  beforeEach(() => {
+    testDb = createTestDataDb()
+  })
+  afterEach(() => {
+    testDb.close()
+  })
+  const emitThen = (fail: boolean): SyncAdapterRegistry<DrizzleDb, EmitToWindows> =>
+    new SyncAdapterRegistry<DrizzleDb, EmitToWindows>([
+      {
+        type: 'filter',
+        kind: 'record',
+        remote: {
+          type: 'filter',
+          schema: z.object({ name: z.string() }),
+          applyRemoteMutation: ({ emit, itemId }) => {
+            emit('saved-filters:updated', { id: itemId })
+            if (fail) throw new Error('item failed after its emit')
+            return 'applied'
+          }
+        }
+      }
+    ])
+  const input: ApplyItemInput = {
+    itemId: 'filter-1',
+    type: 'filter',
+    operation: 'update',
+    content: new TextEncoder().encode(JSON.stringify({ name: 'x' })),
+    clock: { 'device-B': 1 }
+  }
+
+  it('queues an applied item emit for after the page commits', () => {
+    const emit = vi.fn()
+    const page = { db: asSyncDb(testDb.db), afterCommit: vi.fn() }
+
+    new ItemApplier(asSyncDb(testDb.db), emit, emitThen(false)).apply(input, page)
+
+    expect(emit).not.toHaveBeenCalled()
+    expect(page.afterCommit).toHaveBeenCalledOnce()
+    page.afterCommit.mock.calls[0][0]()
+    expect(emit).toHaveBeenCalledWith('saved-filters:updated', { id: 'filter-1' })
+  })
+
+  it('drops the emits of an item whose apply throws', () => {
+    const emit = vi.fn()
+    const page = { db: asSyncDb(testDb.db), afterCommit: vi.fn() }
+
+    expect(() =>
+      new ItemApplier(asSyncDb(testDb.db), emit, emitThen(true)).apply(input, page)
+    ).toThrow('item failed after its emit')
+
+    expect(page.afterCommit).not.toHaveBeenCalled()
+    expect(emit).not.toHaveBeenCalled()
+  })
+})
+
+// #2409: every remote delete of a re-creatable id leaves its clock behind for a later re-create.
+describe('ItemApplier records the tombstone clock of a remote delete', () => {
+  let testDb: TestDatabaseResult
+  beforeEach(() => {
+    testDb = createTestDataDb()
+  })
+  afterEach(() => {
+    testDb.close()
+  })
+
+  const deleteWork = (clock: VectorClock): ApplyItemInput => ({
+    itemId: 'work',
+    type: 'tag_definition',
+    operation: 'delete',
+    content: new Uint8Array(),
+    clock
+  })
+  const recorded = () =>
+    testDb.db
+      .select({ clock: syncTombstoneClocks.clock })
+      .from(syncTombstoneClocks)
+      .where(eq(syncTombstoneClocks.itemId, 'work'))
+      .get()?.clock
+
+  it('records an applied, a skipped and an absent-row delete', () => {
+    const applier = new ItemApplier(asSyncDb(testDb.db), vi.fn())
+
+    expect(applier.apply(deleteWork({ 'device-B': 1 }))).toBe('skipped')
+    expect(recorded()).toEqual({ 'device-B': 1 })
+
+    testDb.db
+      .insert(tagDefinitions)
+      .values({ name: 'work', color: 'red', clock: { 'device-A': 1 } })
+      .run()
+    expect(applier.apply(deleteWork({ 'device-A': 1, 'device-B': 2 }))).toBe('applied')
+    expect(recorded()).toEqual({ 'device-A': 1, 'device-B': 2 })
+
+    testDb.db
+      .insert(tagDefinitions)
+      .values({ name: 'work', color: 'red', clock: { 'device-A': 9 } })
+      .run()
+    expect(applier.apply(deleteWork({ 'device-A': 3, 'device-C': 0 }))).toBe('skipped')
+    expect(recorded()).toEqual({ 'device-A': 3, 'device-B': 2, 'device-C': 0 })
+  })
+
+  it('does not record for a type whose ids never come back', () => {
+    new ItemApplier(asSyncDb(testDb.db), vi.fn()).apply({
+      ...deleteWork({ 'device-B': 1 }),
+      type: 'task'
+    })
+    expect(testDb.db.select().from(syncTombstoneClocks).all()).toEqual([])
+  })
+
+  it('rolls the record back with the page transaction', () => {
+    const db = asSyncDb(testDb.db)
+    expect(() =>
+      db.transaction(() => {
+        new ItemApplier(db, vi.fn()).apply(deleteWork({ 'device-B': 1 }), {
+          db,
+          afterCommit: vi.fn()
+        })
+        throw new Error('page failed')
+      })
+    ).toThrow('page failed')
+
+    expect(recorded()).toBeUndefined()
+  })
+})

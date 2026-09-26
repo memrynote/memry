@@ -146,7 +146,7 @@ test('Path B: consent dialog sends a redacted incident report with the raw secre
       // Open the always-enabled Settings entry → shared consent dialog.
       await page.evaluate(() => window.api.quickCapture.openSettings('general'))
       await expect(page.getByRole('dialog')).toBeVisible()
-      await page.getByRole('button', { name: 'Send diagnostic report' }).click()
+      await page.getByRole('button', { name: 'Send report…' }).click()
 
       const consent = page.getByRole('dialog').filter({ hasText: 'Send a diagnostic report?' })
       await expect(consent).toBeVisible()

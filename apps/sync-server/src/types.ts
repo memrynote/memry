@@ -1,3 +1,5 @@
+import type { SyncSubscription } from './lib/sync-types'
+
 export type Bindings = {
   DB: D1Database
   STORAGE: R2Bucket
@@ -23,6 +25,10 @@ export type Bindings = {
   GOOGLE_IOS_CLIENT_ID?: string
   WEB_OAUTH_REDIRECT_URI?: string
   MIN_APP_VERSION: string
+  // #2299: snapshot claims are honoured only once this is set and the desktop
+  // `min_write_version` is at or above it (07 §7.7.1). Unset in wrangler.toml
+  // for every environment; set during the rollout.
+  CRDT_CLAIM_MIN_DESKTOP_VERSION?: string
   RECOVERY_DUMMY_SECRET: string
   WEBHOOK_HMAC_KEY: string
   PADDLE_WEBHOOK_SECRET: string
@@ -55,6 +61,9 @@ export type Bindings = {
   // working: an absent binding makes enqueuePackCompaction a no-op and the
   // cron backfill still drains packs over time.
   PACK_QUEUE?: Queue<import('./services/pack-compaction').PackCompactionMessageBody>
+  // Socket items budget in bytes (#2300). Unset = 64 KiB; "0" turns every
+  // changes_available frame back to hint-only. It can lower the cap, never raise it.
+  SYNC_SOCKET_ITEMS_MAX_BYTES?: string
   fetch?: typeof fetch
 }
 
@@ -67,7 +76,7 @@ export type AppContext = {
     sessionNonce?: string
     vaultId?: string
     syncEntitlement?: import('./services/entitlements').SyncEntitlement
-    syncTypes?: import('@memry/contracts/sync-api').RecordSyncItemType[]
+    syncSubscription?: SyncSubscription
     client?: import('./lib/client-identity').ClientIdentity
   }
 }

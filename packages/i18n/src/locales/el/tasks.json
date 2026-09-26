@@ -29,6 +29,8 @@
     "status": "Κατάσταση",
     "priority": "Προτεραιότητα",
     "dueDate": "Ημερομηνία λήξης",
+    "startsOn": "Ξεκινά {date}",
+    "dueOn": "Λήξη {date}",
     "project": "Έργο",
     "repeat": "Επαναλάβετε",
     "createAnother": "Δημιουργήστε ένα άλλο",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Γρήγορη προσθήκη εργασίας",
     "focusDescription": "Εστίαση εισόδου γρήγορης προσθήκης",
-    "placeholder": "Προσθήκη εργασίας…    !today  !!high  #project"
+    "placeholder": "Προσθήκη εργασίας…    !today  !!high  #project",
+    "presets": {
+      "menu": "Επιλογές εργασίας",
+      "dueDate": "Λήξη {date}. Αλλαγή ημερομηνίας λήξης",
+      "noDate": "Χωρίς ημερομηνία",
+      "linkNote": "Σύνδεση σημείωσης",
+      "openDetails": "Άνοιγμα όλων των λεπτομερειών",
+      "back": "Πίσω",
+      "remove": "Αφαίρεση {name}",
+      "noReminder": "Χωρίς υπενθύμιση",
+      "addTags": "Προσθήκη ετικετών…"
+    }
   },
   "drawer": {
     "close": "Κλείστε τα στοιχεία της εργασίας",

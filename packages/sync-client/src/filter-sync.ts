@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
-
 
 interface FilterSyncDeps {
   queue: SyncQueueManager
@@ -31,14 +31,15 @@ export class FilterSyncService {
   private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: FilterSyncDeps) {
+    const load = (filterId: string): Record<string, unknown> | undefined =>
+      deps.db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get() as
+        Record<string, unknown> | undefined
+
     this.controller = new RecordSyncController({
       type: 'filter',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (filterId) =>
-        deps.db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -52,6 +53,10 @@ export class FilterSyncService {
         return { ...local, clock: newClock }
       },
       serialize: (local) => local,
+      recoverPendingChange: (filterId, deviceId) =>
+        recoverOfflineDocClock(load(filterId), deviceId, (clock) =>
+          deps.db.update(savedFilters).set({ clock }).where(eq(savedFilters.id, filterId)).run()
+        ),
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })
   }

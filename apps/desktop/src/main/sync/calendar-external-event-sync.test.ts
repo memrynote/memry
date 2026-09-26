@@ -264,12 +264,10 @@ describe('CalendarExternalEventSyncService', () => {
       expect(JSON.parse(item.payload).clock).toEqual({ 'device-A': 3 })
     })
 
-    it('#then a delete with neither snapshot nor row still enqueues an id-only tombstone', () => {
+    it('#then a delete with neither snapshot nor row pushes no fresh-clock tombstone (#2423)', () => {
       service.enqueueDelete('ext-gone')
 
-      const [item] = queue.dequeue(1)
-      expect(item.operation).toBe('delete')
-      expect(JSON.parse(item.payload)).toEqual({ id: 'ext-gone', clock: { 'device-A': 1 } })
+      expect(queue.dequeue(1)).toEqual([])
     })
   })
 

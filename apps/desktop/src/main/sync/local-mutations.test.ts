@@ -451,6 +451,6 @@ describe('local-mutations', () => {
 
     syncSettingsFieldUpdate('general.sidebarWidth', 320)
 
-    expect(updateField).toHaveBeenCalledWith('general.sidebarWidth', 320, 'local')
+    expect(updateField).toHaveBeenCalledWith('general.sidebarWidth', 320)
   })
 })

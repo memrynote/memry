@@ -27,6 +27,26 @@ inputs produce the **same winner and the same conflict set**, with no appeal to
 special treatment**: it is an ordinary key in `increment`, `merge` and `compare`.
 It is special only in the merge tie-break (§6.3) and in rebinding (§6.6).
 
+### 6.1.1 The clock a re-create ticks from (#2409)
+
+**Normative** (`packages/sync-core/src/record-sync.ts`, `recreateBaseClock`;
+`crates/memry-core/src/sync/clock.rs`, `recreate_base`). Given the local clock
+`local` (absent reads as empty), the id's known tombstone clock `T` (absent when
+the client never saw a delete of the id) and the write's operation:
+
+- `T` absent: the base is `local`, unchanged.
+- a `create`, or any write whose `local` is empty: the base is `merge(local, T)`.
+- otherwise (an `update` of a clocked row): the base is `local`, unchanged.
+
+The written clock is `increment(base, device)`. `T` keeps every key it carries,
+`_offline` included (§6.1): dropping one could leave the tombstone dominating the
+re-create. Chapter 05 §5.8 states when a client applies it.
+
+**The shared vectors are `recreate-clock.json`**
+(`packages/contracts/test-vectors/`), generated from `recreateBaseClock` and
+asserted by `packages/contracts/src/__tests__/recreate-clock.test.ts` and
+`crates/memry-core/tests/recreate_clock_vectors.rs`.
+
 ## 6.2 `clockTotal`
 
 **Normative.** `clockTotal(clock)` is the plain sum of **every** tick in the
@@ -229,16 +249,29 @@ and a client that breaks any of them reintroduces divergence.**
   (`apps/desktop/src/main/sync/engine/conflict-report.ts:56-61`, called from
   `apps/desktop/src/main/sync/engine/pull-coordinator.ts:861-864`, `:559-562`,
   `:648-651` and `:942`), and an enqueue requests a push
-  (`apps/desktop/src/main/sync/runtime.ts:949`). The queued row is rebuilt from
+  (`apps/desktop/src/main/sync/runtime.ts:893`). The queued row is rebuilt from
   the live — merged — row by P2, and its union clock has one component the
   stored row lacks, so `detectReplay` accepts it.
 - **P4 — an EQUAL incoming clock applies the remote row, it does not skip it.**
-  `packages/sync-client/src/item-handlers/types.ts:67`. This is what settles the
-  two devices whose P3 re-pushes collide: the first is accepted, the second is
-  refused as a replay (`apps/sync-server/src/services/sync.ts:179-190`) and
-  marked done anyway
+  `packages/sync-client/src/item-handlers/types.ts` (`resolveClockConflict`).
+  This is what settles the two devices whose P3 re-pushes collide: the first is
+  accepted, the second is refused as a replay
+  (`apps/sync-server/src/services/sync.ts:179-190`) and marked done anyway
   (`apps/desktop/src/main/sync/engine/push-coordinator.ts:299-305`), and the
   refused device then pulls the accepted row under the same clock and takes it.
+  **The one exception is an identical payload** (#2294): an equal clock MAY be
+  skipped when the local row's push payload, parsed by the type's payload
+  schema, is equal to the incoming one under the §6.4.2 canonical comparison.
+  Applying it would write the same values, so skipping cannot strand a device;
+  it is what makes a device's own row pulled back, and a page re-pulled after
+  a crash (chapter 05 §5.11), a no-op. A client that cannot build the local
+  payload for a type MUST apply. Desktop: `BaseItemHandler.resolveUpsertClock`
+  (`packages/sync-client/src/item-handlers/base-handler.ts`). Rust core:
+  `resolve_clock_conflict` (`crates/memry-core/src/sync/field_merge.rs`), asked
+  by `document_gate` (`crates/memry-core/src/domain/task_merge.rs`) for every
+  type but `settings`. It compares the stored `sync_items` payload, which is
+  the payload it pushes (P2), and a local row that is deleted or flagged
+  corrupt applies (#2304).
 
 In the ordinary interleavings P1 to P3 leave **at most one device running
 `mergeFields` on a given concurrent pair**; the other sees its own row (`equal` →
@@ -260,7 +293,7 @@ push payload at enqueue time reintroduces the 3c divergence **deterministically,
 not as a race**. A conforming client MUST rebuild the payload from the live row
 at send time (P2), MUST re-queue a merged item so the union-clocked row is
 pushed (P3), MUST apply — never skip — a remote row whose clock is EQUAL to the
-local one (P4), and MUST implement rule 3's asymmetric key-presence test
+local one unless its payload is identical to the local one (P4), and MUST implement rule 3's asymmetric key-presence test
 exactly — a "symmetric" rewrite breaks 3a and 3b against desktop.
 
 P3 and P4 are what make the seat-dependent winner of 3c/3d survivable: the value
@@ -331,7 +364,8 @@ happen before the first push.
 
 Desktop used to violate the rule above. `recoverDirtyItems` routes
 `syncedAt IS NULL` rows to `enqueueCreate`, not `enqueueRecoveredUpdate`
-(`apps/desktop/src/main/sync/dirty-recovery.ts:57-68`), and rebinding ran only
+(`enqueueCreateOrRecoveredUpdate` in
+`apps/desktop/src/main/sync/dirty-recovery.ts`), and rebinding ran only
 from `recoverPendingChange`, which only `enqueueRecoveredUpdate` called;
 `applyLocalChange` increments the real device id but never strips `_offline`,
 and `seedUnclocked` only touches `clock IS NULL` rows
@@ -348,14 +382,16 @@ with nothing offline about it returns `null` and is untouched. Pinned by
 `apps/desktop/src/main/sync/dirty-recovery.test.ts`.
 
 **Residual, still open.** The fix reaches the types that implement
-`recoverPendingChange` — tasks and projects. Doc-clock-only types that mint
-`_offline` through `local-mutations.ts` (inbox, saved filters, templates, home
-pages, custom icons, bookmarks, reminders, canvases, canvas folders, task
-activity) have no rebinding hook, so their `_offline` still reaches the wire.
-Notes and journals are unaffected: `incrementNoteClockOffline` ticks the real
-device id and skips the bump when none is registered
-(`packages/sync-client/src/offline-clock.ts`). **The server filters nothing**:
-there is no reference to `_offline` anywhere under `apps/sync-server/src`.
+`recoverPendingChange`: tasks and projects (field clocks), and since #2286 the
+doc-clock types inbox, saved filters, templates, home pages, custom icons,
+bookmarks, reminders, canvas folders and task activity, through
+`recoverOfflineDocClock` (`packages/sync-client/src/offline-clock.ts`). Canvases
+still mint `_offline` through `local-mutations.ts` with no rebinding hook, so
+their `_offline` still reaches the wire. Notes and journals are unaffected:
+`incrementNoteClockOffline` ticks the real device id and skips the bump when
+none is registered (`packages/sync-client/src/offline-clock.ts`). **The server
+filters nothing**: there is no reference to `_offline` anywhere under
+`apps/sync-server/src`.
 
 Why it matters wherever it remains: `_offline` is a device id two machines can
 both claim, so their clocks compare equal for edits that are genuinely
@@ -377,12 +413,24 @@ carry.** The race itself is real to describe: two devices can both run
 holding `vx`, both under clock `{X:2,Y:2}`. **It does not leave them there.**
 
 On desktop the window is additionally narrow, because a push drain and a pull
-apply cannot interleave in the first place: both take the same engine sync lock
+apply cannot interleave: both take the same engine sync lock
 (`apps/desktop/src/main/sync/engine/push-coordinator.ts:70`,
 `apps/desktop/src/main/sync/engine/pull-coordinator.ts:133`,
 `apps/desktop/src/main/sync/engine.ts:630-643`), which is held across the whole
 push including its `POST /sync/push`. Only the stale-lock watchdog
 (`apps/desktop/src/main/sync/engine.ts:686-697`, 15 minutes) can overlap them.
+The socket fast path (chapter 09 §9.13) applies without that lock, so it is
+held to the rule the lock enforces for the pull: **it never applies while a
+push is in flight**, from lock acquisition to release
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:71`); it waits for the
+push to settle instead. The stale-lock watchdog caveat above applies to this
+rule too: a push the watchdog abandons stops holding the gate
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:98`), so its late ack
+can still delete a requeue coalesced into a row it dequeued. The rule matters
+for P3: a conflict requeue carries the placeholder payload `'{}'`, and one
+coalesced into a row that push already dequeued (itself a `'{}'` requeue) is
+invisible to the payload-conditional ack, which deletes it and stamps the row
+synced. The merged union-clock row would then never be pushed.
 A client without such a lock — or a core with a background outbox — hits the
 mirrored state routinely.
 
@@ -407,7 +455,7 @@ entry can name as "winning" the value that the convergence step then discarded.
 The task itself is not affected.
 
 **Core obligation.** Implement P3 and P4. A core that merges without re-queueing,
-or that treats an equal clock as a no-op, turns this race back into the
+or that treats an equal clock with a different payload as a no-op, turns this race back into the
 permanent divergence this section once described.
 
 ## 6.7 Field lists
@@ -470,7 +518,7 @@ arbitrary depth** — `general.theme`, `journal.weekdayTemplates.3`,
 `sidebar.sortModes.collections`
 (`packages/contracts/src/settings-sync.ts:78-93`, `:111-116`). The whole settings
 blob is **one sync item** with `itemId = 'synced_settings'`
-(`packages/sync-client/src/settings-sync.ts:196`,
+(`packages/sync-client/src/settings-sync.ts:171`,
 `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
@@ -512,27 +560,64 @@ list and `journal.weekdayTemplates.3` as a key per day. A port that derived the
 unit from a hard-coded list of paths instead would drift from the writer the
 first time a new setting was added.
 
-**Normative, and it diverges from §6.3.2 row 10 on purpose: when the winning
-side has no value at that path, the path is REMOVED from the merged settings.**
-Row 10 leaves a column untouched when the winner is `undefined`, because for a
-task field an absent value means "the sender does not model this" (§13.4) and
-overwriting would let an older build delete a newer build's data. **Settings are
-not like that.** §13.2 makes a settings payload carry every preference its sender
-holds, so an absent path is the sender saying the preference is gone, not that it
-cannot see it.
+Desktop runs this rule in `mergeSettingsPayloads`
+(`packages/sync-client/src/settings-merge.ts`), which calls `mergeFields` with
+the path list as the field list, so there is one tie rule, not two (#2383).
+Before #2383 desktop picked a concurrent winner by the **largest single tick**
+and kept the local value on a tie.
 
-The consequence of getting this wrong is not subtle. §6.9.1 requires a removal to
-tick its clock precisely so it can beat the peer still holding the old value; if
-a ticked removal then failed to remove, the peer's value would win on the next
-pull, the clearing device would re-clear, and the two would **diverge
-permanently** under FR-002. The tick and the removal are one mechanism and a port
-MUST implement both halves.
+**Normative, amended by #2383: when the winning side has no value at that path,
+the local value is kept, exactly as §6.3.2 row 10 does.** The rule this section
+first stated was the opposite — remove the path — on the premise that §13.2
+makes a settings payload carry every preference its sender holds, so an absent
+path could only mean a removal. **Desktop breaks that premise.** It parses a
+settings payload with a closed schema
+(`apps/desktop/src/main/sync/apply-item.ts`, `SettingsSyncPayloadSchema`), so a
+build that does not model a path strips its **value** while `fieldClocks`, a
+plain record, keeps its **clock**; the build then echoes that clock without the
+value on its next push. Removing on absence turns that echo into a deletion on
+every device that does model the path — the `inbox` group (#16), the `journal`
+group, and `sidebar.notesFirst` / `sidebar.showFiles` all have builds in the
+field that strip them. A receiver cannot tell the echo from a removal: a real
+removal ticks the clock (§6.9.1), but an old build that merged two concurrent
+peer clocks re-pushes their union, which dominates both, with no value.
+
+The cost is the case the removal rule existed for: a cleared preference does not
+reach a peer still holding the old value. The peer keeps its value under the
+clearing device's clock, and its next push brings the value back, because that
+clock ties and the remote wins. **Removal waits until desktop keeps unmodelled
+settings keys (#2183, the nesting ceiling of chapter 13 §13.2.1).** The Rust
+core keeps the local value on an absent winner too
+(`crates/memry-core/src/sync/settings_merge.rs`, #2399).
 
 **A `fieldClocks` key that is not an addressable path** — `""`, or one with an
 empty segment such as `general.` — **rides along as a clock and arbitrates
 nothing.** §6.9 already requires a key outside the modelled set to ride along
 rather than fail the payload; an unaddressable key is that rule's limiting case,
 and refusing the payload over one would stall every other synced setting.
+
+**A merge in which any path compared `concurrent` MUST re-queue the merged
+settings** (`packages/sync-client/src/settings-sync.ts:112`; the Rust core
+enqueues in the merge's own transaction,
+`crates/memry-core/src/sync/settings_merge.rs`, #2399). This is §6.5.2 P3
+for settings, which reach it without the pull coordinator's conflict re-queue:
+the handler reports `applied`, and settings have no `buildPushPayload`, so the
+queued payload is what gets pushed. Without it, a device that kept its own value
+on a concurrent pair is the only one holding it; the server keeps the peer's row
+and the two devices stay on different values (#2287).
+
+**A mixed pair converges through that re-queue, not through the rule.** A #2287
+build (tick max, local keeps a tie) and a #2383 build can pick different winners
+for the same concurrent pair. Whichever device merges first re-pushes the union
+clock, which dominates the other device's clock for that path, so the other
+device takes the row as `before` and applies it under either rule. Pinned by
+`apps/desktop/src/main/sync/settings-sync.merge-rule.test.ts`, which runs the
+old rule as a peer.
+
+**The shared vectors are `settings-merge.json`**
+(`packages/contracts/test-vectors/`), generated from `mergeSettingsPayloads` and
+run by both the TypeScript verifier and the Rust core's `settings_merge.rs`
+tests.
 
 ### 6.9.1 Every clocked path is a leaf, including a removal
 
@@ -546,10 +631,20 @@ interleaving the per-day clock exists to allow. The single-clocked sub-objects
 above are single-clocked because their **declared** path is the whole object,
 not because a writer chose to clock higher.
 
-**Removing a key MUST tick that key's clock.** This is the one that is silently
-wrong if you do not think about it: a removal that ticks nothing loses to the
-peer still holding the old value, and the setting the user cleared comes back on
-the next pull. A removal is a write.
+**Removing a key MUST tick that key's clock.** A removal is a write. While §6.9.0
+keeps the local value on an absent winner, the tick does not yet carry the
+removal to a peer; it is still required, so the clearing device's clock is
+ahead when removal ships.
+
+**A write MUST tick the writing device's registered id, never a shared
+constant** (`packages/sync-client/src/settings-sync.ts:76`, `:87`). Desktop
+builds before #2287 ticked the literal key `local` on every device, so two
+concurrent edits compared `equal` and the pull took the remote with no merge.
+Stored `local` components stay where they are and are never rebound the way
+`_offline` is (§6.6): they already reached every peer, so they are shared
+history, and folding one into a device id would turn a peer's `before` into
+`concurrent`. A reader treats `local` as an ordinary key (§6.1). With no
+registered device, desktop writes nothing to the synced settings (`:77-80`).
 
 **This specification defines no rule for pruning the clocks under a path whose
 value is replaced by a non-object, and a client MUST NOT invent one.** Dropping

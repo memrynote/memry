@@ -194,11 +194,28 @@ async fn the_watermark_does_not_move_on_a_second_snapshot_and_the_prune_follows_
         .apply_durable_update(&update_with_a_foreign_root())
         .expect("apply");
 
-    // Server rows this device has pulled: three at or below the watermark the
-    // server is about to reuse, and two above it.
-    db.call_blocking(|conn| {
-        for seq in [10i64, 11, 12, 13, 14] {
-            update_log::append_server_update(conn, NOTE, seq, &[seq as u8], 1).expect("append");
+    // Server rows this device has pulled and the resident document holds:
+    // three at or below the watermark the server is about to reuse, and two
+    // above it.
+    let rows: Vec<(i64, Vec<u8>)> = [10i64, 11, 12, 13, 14]
+        .into_iter()
+        .map(|seq| {
+            let peer = Doc::with_client_id(seq as u64);
+            let map = peer.get_or_insert_map("pulled");
+            map.insert(&mut peer.transact_mut(), format!("row-{seq}"), seq);
+            (
+                seq,
+                peer.transact()
+                    .encode_state_as_update_v1(&StateVector::default()),
+            )
+        })
+        .collect();
+    for (_, update) in &rows {
+        document.apply_durable_update(update).expect("pulled");
+    }
+    db.call_blocking(move |conn| {
+        for (seq, update) in &rows {
+            update_log::append_server_update(conn, NOTE, *seq, update, 1).expect("append");
         }
         Ok(())
     })
@@ -323,4 +340,97 @@ async fn every_condition_of_the_gate_refuses_before_the_endpoint_is_called() {
         })
         .expect("read");
     assert!(row.is_none());
+}
+
+/// #2294, #2297: a document owed a whole-body pull has not merged what a
+/// snapshot would prune, so the push refuses it even behind a clean gate, and
+/// pushes again once the debt is settled.
+#[tokio::test]
+async fn a_document_owed_a_body_pull_refuses_the_snapshot_push() {
+    let db = scratch_db("owed");
+    let (_public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[17u8; 32]).expect("keypair");
+    let (_registry, document) = open_document(NOTE);
+    document
+        .apply_durable_update(&update_with_a_foreign_root())
+        .expect("apply");
+    db.call_blocking(|conn| memry_core::sync::body_debt::owe(conn, NOTE))
+        .expect("owe");
+
+    let refused = pusher(&db, FakeTransport::new(vec![]), secret_key.to_vec());
+    assert_eq!(
+        refused
+            .push(&document, SnapshotGate::clean(), 1)
+            .await
+            .expect("owed"),
+        SnapshotOutcome::Refused(Refusal::UnmergedRemoteState)
+    );
+
+    db.call_blocking(|conn| memry_core::sync::body_debt::settle(conn, NOTE))
+        .expect("settle");
+    let transport = FakeTransport::new(vec![response(200, &json!({"sequenceNum": 3}).to_string())]);
+    let pushed = pusher(&db, transport.clone(), secret_key.to_vec())
+        .push(&document, SnapshotGate::clean(), 1)
+        .await
+        .expect("settled");
+    assert!(
+        matches!(pushed, SnapshotOutcome::Pushed { .. }),
+        "{pushed:?}"
+    );
+    assert_eq!(transport.call_count(), 1);
+}
+
+/// #2297 review A-6/B-10: a settled debt means the update is in the log, not
+/// in the document open in memory. A feed page can land an update while the
+/// document is resident, so the push refuses until the document holds every
+/// logged update, and pushes once it does.
+#[tokio::test]
+async fn a_resident_document_behind_its_log_refuses_the_snapshot_push() {
+    let db = scratch_db("behind-log");
+    let (_public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[19u8; 32]).expect("keypair");
+    let (_registry, document) = open_document(NOTE);
+    document
+        .apply_durable_update(&update_with_a_foreign_root())
+        .expect("apply");
+
+    let peer = Doc::with_client_id(77);
+    let body = peer.get_or_insert_xml_fragment("prosemirror");
+    body.insert(
+        &mut peer.transact_mut(),
+        0,
+        XmlTextPrelim::new("from the feed"),
+    );
+    let landed = peer
+        .transact()
+        .encode_state_as_update_v1(&StateVector::default());
+    let logged = landed.clone();
+    db.call_blocking(move |conn| {
+        update_log::append_server_update(conn, NOTE, 1, &logged, 1).map_err(|error| {
+            StorageError::Failed {
+                what: error.to_string(),
+            }
+        })
+    })
+    .expect("a feed landing");
+
+    let refused = pusher(&db, FakeTransport::new(vec![]), secret_key.to_vec());
+    assert_eq!(
+        refused
+            .push(&document, SnapshotGate::clean(), 1)
+            .await
+            .expect("behind"),
+        SnapshotOutcome::Refused(Refusal::UnmergedRemoteState)
+    );
+
+    document.apply_durable_update(&landed).expect("the reload");
+    let transport = FakeTransport::new(vec![response(200, &json!({"sequenceNum": 3}).to_string())]);
+    let pushed = pusher(&db, transport.clone(), secret_key.to_vec())
+        .push(&document, SnapshotGate::clean(), 1)
+        .await
+        .expect("caught up");
+    assert!(
+        matches!(pushed, SnapshotOutcome::Pushed { .. }),
+        "{pushed:?}"
+    );
 }

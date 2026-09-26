@@ -364,14 +364,11 @@ describe('PropertyDefinitionsService', () => {
     )
     const service = PropertyDefinitionsService.init('/vault')
     await service.reload()
-    const writesBefore = atomicWriteMock.mock.calls.length
-
-    await service.applyRemoteDelete('SomethingElse')
 
     // A re-delivered tombstone, or a definition that only ever existed as a DB
     // row on this device. Rewriting a file the user edits by hand on every
     // duplicate tombstone is write amplification that buys nothing.
-    expect(atomicWriteMock.mock.calls.length).toBe(writesBefore)
+    expect(service.applyRemoteDelete('SomethingElse')).toBeNull()
     expect(service.get('Stage')).toBeDefined()
   })
 
@@ -409,6 +406,87 @@ describe('PropertyDefinitionsService', () => {
       options: [{ value: 'Work', color: 'indigo' }]
     })
     expect(service.get('Broken')).toEqual({ name: 'Broken', type: 'select', options: [] })
+  })
+
+  it('keeps a synced relation definition out of properties.md so the file still loads', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+`)
+    )
+    dataDb.rows.push(
+      {
+        name: 'related',
+        type: 'relation',
+        options: null,
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 1 },
+        syncedAt: null
+      },
+      {
+        name: 'Area',
+        type: 'select',
+        options: JSON.stringify([{ value: 'Work', color: 'indigo' }]),
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 2 },
+        syncedAt: null
+      }
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+    expect(service.get('related')).toBeUndefined()
+
+    const written = atomicWriteMock.mock.calls.at(-1)![1] as string
+    expect(written).not.toContain('relation')
+
+    safeReadMock.mockResolvedValue(written)
+    const relaunched = PropertyDefinitionsService.init('/vault')
+    await relaunched.reload()
+    expect(relaunched.getAll().map((def) => def.name)).toEqual(['Stage', 'Area'])
+  })
+
+  it('recovers the other definitions from a properties.md that already names a relation', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+  related:
+    type: relation
+    options: []
+`)
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    expect(service.getAll()).toEqual([
+      { name: 'Stage', type: 'select', options: [{ value: 'Idea', color: 'sky' }] }
+    ])
+    const written = atomicWriteMock.mock.calls.at(-1)![1] as string
+    expect(written).toContain('Stage')
+    expect(written).not.toContain('relation')
+  })
+
+  it('never serializes a relation definition into properties.md', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Area', type: 'select', options: [] })
+    await service.upsert({ name: 'related', type: 'relation' })
+
+    const written = atomicWriteMock.mock.calls.at(-1)![1] as string
+    expect(written).not.toContain('relation')
+    safeReadMock.mockResolvedValue(written)
+    const relaunched = PropertyDefinitionsService.init('/vault')
+    await relaunched.reload()
+
+    expect(relaunched.getAll()).toEqual([{ name: 'Area', type: 'select', options: [] }])
   })
 
   it('unions a synced status definition with the workflow columns it was pushed with', async () => {
@@ -549,13 +627,13 @@ describe('PropertyDefinitionsService', () => {
     const service = PropertyDefinitionsService.init('/vault')
     await service.reload()
 
-    await service.applyRemoteDelete('Stage')
+    const write = service.applyRemoteDelete('Stage')
 
     expect(service.get('Stage')).toBeUndefined()
-    expect(atomicWriteMock).toHaveBeenLastCalledWith(
-      '/vault/.memry/properties.md',
-      expect.not.stringContaining('Stage')
-    )
+    expect(write).toEqual({
+      filePath: '/vault/.memry/properties.md',
+      content: expect.not.stringContaining('Stage')
+    })
   })
 
   it('queues a push for a local definition edit but never for a pulled one', async () => {

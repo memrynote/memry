@@ -12,7 +12,7 @@ State after the G1 extraction (regenerate with the scanner for live numbers):
 
 | Tree                          | Files | Non-test | Platform-touching |
 | ----------------------------- | ----: | -------: | ----------------: |
-| `apps/desktop/src/main/sync/` |   253 |       99 |    27 (+6 adapter) |
+| `apps/desktop/src/main/sync/` |   253 |       99 |   27 (+6 adapter) |
 | `packages/app-core/src/`      |    14 |       13 |                 0 |
 | `packages/storage-vault/src/` |     5 |        3 |                 1 |
 
@@ -95,117 +95,117 @@ the adapter implementations.
 
 ### VaultFileSystem — 9 files
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `storage-vault/note-content-store.ts` | 84 | `fs/promises`, `path`, `node:crypto` |
-| `sync/crdt-writeback.ts` | 917 | `path` |
-| `sync/item-handlers/journal-handler.ts` | 259 | `fs` |
-| `sync/item-handlers/note-handler-sync-helpers.ts` | 140 | `fs` |
-| `sync/item-handlers/note-handler.ts` | 725 | `fs`, `path` |
-| `sync/journal-sync.ts` | 95 | `fs` |
-| `sync/large-notes.ts` | 87 | `fs` |
-| `sync/note-sync.ts` | 140 | `fs`, `path` |
-| `sync/vault-directory.ts` | 208 | `fs`, `path`, `electron` |
+| File                                              | LOC | Platform imports                     |
+| ------------------------------------------------- | --: | ------------------------------------ |
+| `storage-vault/note-content-store.ts`             |  84 | `fs/promises`, `path`, `node:crypto` |
+| `sync/crdt-writeback.ts`                          | 917 | `path`                               |
+| `sync/item-handlers/journal-handler.ts`           | 259 | `fs`                                 |
+| `sync/item-handlers/note-handler-sync-helpers.ts` | 140 | `fs`                                 |
+| `sync/item-handlers/note-handler.ts`              | 725 | `fs`, `path`                         |
+| `sync/journal-sync.ts`                            |  95 | `fs`                                 |
+| `sync/large-notes.ts`                             |  87 | `fs`                                 |
+| `sync/note-sync.ts`                               | 140 | `fs`, `path`                         |
+| `sync/vault-directory.ts`                         | 208 | `fs`, `path`, `electron`             |
 
 ### desktop adapter layer (platform imports legal) — 6 files
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/adapters/attachment-store.ts` | 76 | `node:fs`, `node:path`, `node:crypto` |
-| `sync/adapters/crdt-preflight.ts` | 49 | `node:fs` |
-| `sync/adapters/crdt-store-path.ts` | 23 | `node:fs` |
-| `sync/adapters/device-registration.ts` | 95 | `node:fs`, `node:path`, `node:crypto` |
-| `sync/adapters/vault-file-system.ts` | 215 | `node:fs`, `node:path`, `node:crypto` |
-| `sync/adapters/wiring.ts` | 108 | `electron` |
+| File                                   | LOC | Platform imports                      |
+| -------------------------------------- | --: | ------------------------------------- |
+| `sync/adapters/attachment-store.ts`    |  76 | `node:fs`, `node:path`, `node:crypto` |
+| `sync/adapters/crdt-preflight.ts`      |  49 | `node:fs`                             |
+| `sync/adapters/crdt-store-path.ts`     |  23 | `node:fs`                             |
+| `sync/adapters/device-registration.ts` |  95 | `node:fs`, `node:path`, `node:crypto` |
+| `sync/adapters/vault-file-system.ts`   | 215 | `node:fs`, `node:path`, `node:crypto` |
+| `sync/adapters/wiring.ts`              | 108 | `electron`                            |
 
 ### AttachmentStore — 2 files
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/attachment-outbox.ts` | 215 | `fs` |
-| `sync/attachments.ts` | 993 | `node:fs`, `node:fs/promises`, `node:crypto`, `node:path`, `electron` |
+| File                        | LOC | Platform imports                                                      |
+| --------------------------- | --: | --------------------------------------------------------------------- |
+| `sync/attachment-outbox.ts` | 215 | `fs`                                                                  |
+| `sync/attachments.ts`       | 993 | `node:fs`, `node:fs/promises`, `node:crypto`, `node:path`, `electron` |
 
 ### CrdtPersistence — 2 files
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/crdt-pending-notes.ts` | 240 | `crypto`, `fs`, `path`, `electron` |
+| File                       | LOC | Platform imports        |
+| -------------------------- | --: | ----------------------- |
 | `sync/crdt-persistence.ts` | 255 | `y-leveldb`, `fs`, `os` |
+| `sync/note-body-outbox.ts` | 334 | `fs`, `path`            |
 
 ### CrdtStorePath — 2 files
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/crdt-store-move.ts` | 48 | `fs` |
+| File                      | LOC | Platform imports                   |
+| ------------------------- | --: | ---------------------------------- |
+| `sync/crdt-store-move.ts` |  48 | `fs`                               |
 | `sync/crdt-store-path.ts` | 308 | `path`, `crypto`, `fs`, `electron` |
 
 ### DeviceRegistration — 2 files
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
+| File                          | LOC | Platform imports |
+| ----------------------------- | --: | ---------------- |
 | `sync/device-registration.ts` | 286 | `electron`, `os` |
-| `sync/linking-service.ts` | 786 | `os` |
+| `sync/linking-service.ts`     | 786 | `os`             |
 
 ### none — desktop-only — 2 files
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
+| File                    | LOC | Platform imports         |
+| ----------------------- | --: | ------------------------ |
 | `sync/worker-bridge.ts` | 459 | `worker_threads`, `path` |
-| `sync/worker.ts` | 182 | `worker_threads` |
+| `sync/worker.ts`        | 182 | `worker_threads`         |
 
 ### AttachmentStore + VaultFileSystem — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/attachment-backfill.ts` | 112 | `fs`, `path` |
+| File                          | LOC | Platform imports |
+| ----------------------------- | --: | ---------------- |
+| `sync/attachment-backfill.ts` | 112 | `fs`, `path`     |
 
 ### CertificatePinning — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
+| File                          | LOC | Platform imports                                    |
+| ----------------------------- | --: | --------------------------------------------------- |
 | `sync/certificate-pinning.ts` | 212 | `node:https`, `node:tls`, `node:crypto`, `electron` |
 
 ### CrdtPreflight — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
+| File                     | LOC | Platform imports                          |
+| ------------------------ | --: | ----------------------------------------- |
 | `sync/crdt-preflight.ts` | 260 | `child_process`, `os`, `path`, `electron` |
 
 ### CrdtPreflight (desktop-only impl) — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/crdt-preflight-child.ts` | 98 | `fs` |
+| File                           | LOC | Platform imports |
+| ------------------------------ | --: | ---------------- |
+| `sync/crdt-preflight-child.ts` |  98 | `fs`             |
 
 ### CrdtProvider — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
+| File                    |  LOC | Platform imports          |
+| ----------------------- | ---: | ------------------------- |
 | `sync/crdt-provider.ts` | 1413 | `fs/promises`, `electron` |
 
 ### HttpClient — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/http-client.ts` | 293 | `electron` |
+| File                  | LOC | Platform imports |
+| --------------------- | --: | ---------------- |
+| `sync/http-client.ts` | 293 | `electron`       |
 
 ### HttpClient + Runtime — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/network.ts` | 169 | `electron` |
+| File              | LOC | Platform imports |
+| ----------------- | --: | ---------------- |
+| `sync/network.ts` | 169 | `electron`       |
 
 ### Runtime — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/runtime.ts` | 1068 | `electron` |
+| File              |  LOC | Platform imports |
+| ----------------- | ---: | ---------------- |
+| `sync/runtime.ts` | 1068 | `electron`       |
 
 ### Runtime (logger) — 1 file
 
-| File | LOC | Platform imports |
-| --- | ---: | --- |
-| `sync/content-sync-base.ts` | 134 | `electron-log` *(type)* |
+| File                        | LOC | Platform imports        |
+| --------------------------- | --: | ----------------------- |
+| `sync/content-sync-base.ts` | 134 | `electron-log` _(type)_ |
 
 ---
 

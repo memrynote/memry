@@ -33,7 +33,9 @@ pub enum SyncState {
     Failed,
     /// The page breaker tripped (chapter 05 §5.14). **Not `Failed`**: the
     /// cursor advanced, so a retry cannot loop forever, and the run is marked
-    /// unsuccessful so no success state is written.
+    /// unsuccessful so no success state is written. Also entered when a
+    /// `/sync/pull` body is not a pull envelope (#2285); there the cursor
+    /// holds, because the fault is the server's and the page must re-pull.
     Refused,
 }
 

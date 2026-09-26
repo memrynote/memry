@@ -49,7 +49,8 @@ import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
 import { publishInboxUpserted, syncInboxUpdate } from './runtime-effects'
-import { syncTaskCreate } from '../tasks/runtime-effects'
+import { publishTaskChanged } from '../tasks/runtime-effects'
+import { commitLocalChange } from '../sync/sync-intents'
 import { recordTaskCreated } from '../tasks/activity-log'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
@@ -884,27 +885,31 @@ export async function convertToTask(
       return { success: false, taskId: null, error: 'No inbox project found' }
     }
 
-    const position = getNextTaskPosition(db, projectId, null)
-    const task = insertTask(db, {
-      id: taskId,
-      projectId,
-      statusId: null,
-      parentId: null,
-      title,
-      description,
-      priority: input?.priority ?? 0,
-      position,
-      dueDate: input?.dueDate ?? null,
-      dueTime: input?.dueTime ?? null,
-      startDate: null,
-      repeatConfig: null,
-      repeatFrom: null,
-      sourceNoteId: null
+    // The task and its sync intent commit together (#2301), before the filing
+    // bookkeeping below, so a crash after this point cannot strand the task.
+    const task = commitLocalChange(db, () => {
+      const inserted = insertTask(db, {
+        id: taskId,
+        projectId,
+        statusId: null,
+        parentId: null,
+        title,
+        description,
+        priority: input?.priority ?? 0,
+        position: getNextTaskPosition(db, projectId, null),
+        dueDate: input?.dueDate ?? null,
+        dueTime: input?.dueTime ?? null,
+        startDate: null,
+        repeatConfig: null,
+        repeatFrom: null,
+        sourceNoteId: null
+      })
+      if (mergedTags.length > 0) setTaskTags(db, taskId, mergedTags)
+      return {
+        value: inserted,
+        intents: [{ type: 'task' as const, itemId: taskId, op: 'create' as const, args: [] }]
+      }
     })
-
-    if (mergedTags.length > 0) {
-      setTaskTags(db, taskId, mergedTags)
-    }
 
     log.info(`Converted to task: ${taskId}`)
 
@@ -920,10 +925,10 @@ export async function convertToTask(
     recordTaskCreated(enrichedTask)
 
     try {
-      syncTaskCreate(taskId)
+      publishTaskChanged(taskId)
     } catch (error) {
-      log.warn('syncTaskCreate failed; task persisted locally', error)
-      trackMainError('inbox', 'task_conversion_sync_enqueue', error)
+      log.warn('Task projection update failed; task persisted locally', error)
+      trackMainError('inbox', 'task_conversion_projection', error)
     }
 
     // Tasks born here bypass the tasks domain publisher (direct insertTask),

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import { NEGOTIABLE_SYNC_TYPES, RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import * as schema from '@memry/db-schema/data-schema'
 
 const mockFetch = vi.fn()
@@ -40,11 +40,16 @@ import {
   getFromServer,
   deleteFromServer,
   pushCrdtFullUpdate,
+  pushCrdtSnapshot,
   pushCrdtSnapshotBatch,
+  fetchCrdtSnapshot,
+  isSnapshotNotCovered,
+  snapshotRefusalCursor,
   SyncServerError,
   NetworkError,
   RateLimitError,
-  parseRetryAfterHeader
+  parseRetryAfterHeader,
+  NOTE_BODY_FEED_HEADERS
 } from './http-client'
 import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
 import { resetVaultUuidCache } from '../agent/storage/vault-id'
@@ -202,7 +207,9 @@ describe('http-client', () => {
       )
     })
 
-    it('declares the supported record sync types when token provided', async () => {
+    // #2302: the build declares purged_tombstones beside the record types.
+    // #2297 round 2: note_body only rides on the change-feed GET that asks for it.
+    it('declares the record sync types and purged_tombstones when token provided', async () => {
       // #given
       mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
 
@@ -214,10 +221,44 @@ describe('http-client', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'X-Memry-Sync-Types': RECORD_SYNC_ITEM_TYPES.join(',')
+            'X-Memry-Sync-Types': [...RECORD_SYNC_ITEM_TYPES, 'purged_tombstones'].join(',')
           })
         })
       )
+    })
+
+    // #2297 round 2 (A-M2, B-M1)
+    it('adds note_body for a change-feed GET that declares it', async () => {
+      mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
+
+      await getFromServer('/sync/changes', 'my-token-123', undefined, {
+        headers: NOTE_BODY_FEED_HEADERS
+      })
+
+      const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>
+      expect(headers['X-Memry-Sync-Types']).toBe(NEGOTIABLE_SYNC_TYPES.join(','))
+    })
+
+    // #2297 round 2 (B-L2): a caller's abort reaches the request in flight.
+    it('aborts a request in flight when the caller aborts', async () => {
+      // What fetch does with its signal, aborted before or during the request.
+      mockFetch.mockImplementation(
+        (_url: string, init: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            const abort = (): void =>
+              reject(new DOMException('The operation was aborted.', 'AbortError'))
+            if (init.signal.aborted) abort()
+            init.signal.addEventListener('abort', abort)
+          })
+      )
+      const controller = new AbortController()
+
+      const request = getFromServer('/sync/crdt/snapshot/note-1', 'my-token-123', undefined, {
+        signal: controller.signal
+      })
+      controller.abort()
+
+      await expect(request).rejects.toMatchObject({ name: 'AbortError' })
     })
 
     it('does not declare sync types on unauthenticated calls', async () => {
@@ -358,6 +399,91 @@ describe('http-client', () => {
         'CRDT state too large'
       )
       expect(mockFetch).not.toHaveBeenCalled()
+    })
+  })
+
+  // #2299
+  // #2299 review round 2 (A-4, B-L1): the server answers a snapshot row whose
+  // object is missing with a 503. That is a transport failure, never "no
+  // snapshot": the caller would take null as verified-empty and seed.
+  describe('fetchCrdtSnapshot', () => {
+    it('throws on a 503 and answers null only for a snapshot the server says is absent', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createJsonResponse({ error: { code: 'STORAGE_BLOB_NOT_FOUND' } }, 503)
+      )
+      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).rejects.toThrow()
+
+      mockFetch.mockResolvedValueOnce(
+        createJsonResponse({ snapshot: null, sequenceNum: 0, signerDeviceId: null, revision: null })
+      )
+      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).resolves.toBeNull()
+    })
+  })
+
+  describe('pushCrdtSnapshot coversThrough', () => {
+    it('sends coversThrough when claimed and omits the key when not', async () => {
+      mockFetch.mockResolvedValue(createJsonResponse({ sequenceNum: 1, revision: 'r' }))
+
+      await pushCrdtSnapshot('note-1', new Uint8Array([1]), 'token-1', {
+        coversThrough: 50,
+        baseRevision: 'rev-7'
+      })
+      await pushCrdtSnapshot('note-1', new Uint8Array([1]), 'token-1')
+
+      const bodies = mockFetch.mock.calls.map((call) =>
+        JSON.parse((call[1] as { body: string }).body)
+      )
+      expect(bodies[0]).toEqual({
+        noteId: 'note-1',
+        snapshot: 'AQ==',
+        coversThrough: 50,
+        baseRevision: 'rev-7'
+      })
+      expect(bodies[1]).toEqual({ noteId: 'note-1', snapshot: 'AQ==' })
+      expect(bodies[1]).not.toHaveProperty('coversThrough')
+    })
+
+    it('sends coversThrough per batch entry', async () => {
+      mockFetch.mockResolvedValue(createJsonResponse({ results: [] }))
+
+      await pushCrdtSnapshotBatch(
+        [
+          { noteId: 'note-a', snapshot: new Uint8Array([1]), coversThrough: 50, baseRevision: 'r' },
+          { noteId: 'note-b', snapshot: new Uint8Array([1]) }
+        ],
+        'token-1'
+      )
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as { body: string }).body)
+      expect(body.snapshots).toEqual([
+        { noteId: 'note-a', snapshot: 'AQ==', coversThrough: 50, baseRevision: 'r' },
+        { noteId: 'note-b', snapshot: 'AQ==' }
+      ])
+    })
+
+    it('recognises the not-covered refusal by status and code', async () => {
+      mockFetch.mockResolvedValue(
+        createJsonResponse(
+          {
+            error: {
+              code: 'CRDT_SNAPSHOT_NOT_COVERED',
+              message: 'above coversThrough',
+              blockingCursor: 61
+            }
+          },
+          409
+        )
+      )
+
+      const err = await pushCrdtSnapshot('note-1', new Uint8Array([1]), 'token-1', {
+        coversThrough: 50
+      }).catch((e: unknown) => e)
+
+      expect(isSnapshotNotCovered(err)).toBe(true)
+      expect(snapshotRefusalCursor(err)).toBe(61)
+      expect(snapshotRefusalCursor(new SyncServerError('conflict', 409, 'X: y'))).toBeNull()
+      expect(isSnapshotNotCovered(new SyncServerError('conflict', 409, 'OTHER: x'))).toBe(false)
+      expect(isSnapshotNotCovered(new Error('CRDT_SNAPSHOT_NOT_COVERED'))).toBe(false)
     })
   })
 

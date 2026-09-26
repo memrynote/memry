@@ -8,7 +8,8 @@ import {
 } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
+import { recordDeclinedRef } from '../declined-refs'
 import { createLogger } from '../logging'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -32,7 +33,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock, remoteClock)
+        const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
         if (resolution.action === 'skip') {
           log.info('Skipping remote calendar source update, local is newer', { itemId })
           return 'skipped'
@@ -65,13 +66,39 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
+      const provider = data.provider ?? 'google'
+      const kind = data.kind ?? 'calendar'
+      const remoteId = data.remoteId ?? itemId
+      // Two devices can mint different ids for one (provider, kind, remote id),
+      // and the natural-key UNIQUE index rejects the second insert. The row we
+      // hold already is that source, so decline the duplicate id.
+      const sameSource = tx
+        .select({ id: calendarSources.id })
+        .from(calendarSources)
+        .where(
+          and(
+            eq(calendarSources.provider, provider),
+            eq(calendarSources.kind, kind),
+            eq(calendarSources.remoteId, remoteId)
+          )
+        )
+        .get()
+      if (sameSource) {
+        log.info('Declining remote calendar source, its natural key is held by another id', {
+          itemId,
+          localId: sameSource.id
+        })
+        recordDeclinedRef(tx, { type: 'calendar_source', id: itemId })
+        return 'skipped'
+      }
+
       tx.insert(calendarSources)
         .values({
           id: itemId,
-          provider: data.provider ?? 'google',
-          kind: data.kind ?? 'calendar',
+          provider,
+          kind,
           accountId: data.accountId ?? null,
-          remoteId: data.remoteId ?? itemId,
+          remoteId,
           title: data.title ?? 'Untitled calendar',
           timezone: data.timezone ?? null,
           color: data.color ?? null,
@@ -164,7 +191,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
       )
       .all()
     for (const item of items) {
-      const nextClock = increment({}, deviceId)
+      const nextClock = nextLocalClock(db, 'calendar_source', item.id, null, deviceId, 'create')
       db.update(calendarSources)
         .set({ clock: nextClock })
         .where(eq(calendarSources.id, item.id))

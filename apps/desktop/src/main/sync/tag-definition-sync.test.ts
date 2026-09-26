@@ -209,23 +209,23 @@ describe('TagDefinitionSyncService deletes', () => {
     })
   })
 
-  it('falls back to a minimal tombstone when the caller has no snapshot', () => {
+  it('with no snapshot, deletes a clocked row at its own clock (#2423)', () => {
+    seedTag({ clock: { 'device-a': 2 } })
+
     makeService().enqueueDelete('work')
 
     const rows = queueRows()
     expect(rows).toHaveLength(1)
     expect(rows[0].operation).toBe('delete')
-    // The empty colour is a placeholder that only exists to satisfy the
-    // required `color` field; the receiver's delete path ignores it.
     const payload = payloadOf(rows[0])
-    expect(payload).toEqual({ name: 'work', color: '', clock: { 'device-a': 1 } })
+    expect(payload).toMatchObject({ name: 'work', clock: { 'device-a': 3 } })
     expect(TagDefinitionSyncPayloadSchema.safeParse(payload).success).toBe(true)
   })
 
-  it('propagates a delete for a tag whose row is already gone', () => {
+  it('pushes no fresh-clock delete for a tag whose row is already gone (#2423)', () => {
     makeService().enqueueDelete('already-removed')
 
-    expect(queueRows()).toHaveLength(1)
+    expect(queueRows()).toHaveLength(0)
   })
 
   it('lets a delete win over a still-pending create instead of being dropped', () => {

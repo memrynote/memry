@@ -115,14 +115,15 @@ describe('storeSnapshotBatch', () => {
 
     // #then — order is the request's, not the database's
     expect(outcomes).toEqual([
-      { noteId: 'note_c', accepted: true, sequenceNum: 0, revision: expect.any(String) },
-      { noteId: 'note_a', accepted: true, sequenceNum: 0, revision: expect.any(String) },
-      { noteId: 'note_b', accepted: true, sequenceNum: 0, revision: expect.any(String) }
+      { noteId: 'note_c', accepted: true, sequenceNum: 0, revision: expect.any(String), cursor: 1 },
+      { noteId: 'note_a', accepted: true, sequenceNum: 0, revision: expect.any(String), cursor: 2 },
+      { noteId: 'note_b', accepted: true, sequenceNum: 0, revision: expect.any(String), cursor: 3 }
     ])
 
     for (const { noteId } of inputs) {
       const row = snapshotRow(noteId)
-      expect(row.blob_key).toBe(generateCrdtKey(USER_ID, noteId, VAULT_ID))
+      // #2299: one immutable object per write, named by its revision.
+      expect(row.blob_key).toBe(`${generateCrdtKey(USER_ID, noteId, VAULT_ID)}/${row.revision}`)
       expect(row.signer_device_id).toBe(DEVICE_ID)
       expect(row.client_platform).toBe('desktop')
       expect(row.client_version).toBe('1.2.3')
@@ -204,8 +205,20 @@ describe('storeSnapshotBatch', () => {
     // #then — the existing watermark is preserved so updates 3..4 stay pullable,
     // while the fresh note takes the current max
     expect(outcomes).toEqual([
-      { noteId: 'note_old', accepted: true, sequenceNum: 2, revision: expect.any(String) },
-      { noteId: 'note_new', accepted: true, sequenceNum: 3, revision: expect.any(String) }
+      {
+        noteId: 'note_old',
+        accepted: true,
+        sequenceNum: 2,
+        revision: expect.any(String),
+        cursor: 9
+      },
+      {
+        noteId: 'note_new',
+        accepted: true,
+        sequenceNum: 3,
+        revision: expect.any(String),
+        cursor: 10
+      }
     ])
     expect(snapshotRow('note_old').sequence_num).toBe(2)
     expect(snapshotRow('note_new').sequence_num).toBe(3)
@@ -276,7 +289,7 @@ describe('storeSnapshotBatch', () => {
     vi.spyOn(storage, 'put').mockImplementation((async (key: string, value: ArrayBuffer) => {
       // "access denied" classifies as terminal, so putBlob does not burn its
       // retry budget on a failure the test means to be permanent.
-      if (key === failingKey) throw new Error('access denied')
+      if (key.startsWith(`${failingKey}/`)) throw new Error('access denied')
       return realPut(key, value)
     }) as typeof storage.put)
 
@@ -289,9 +302,21 @@ describe('storeSnapshotBatch', () => {
 
     // #then only that note fails, and it fails with a typed reason
     expect(outcomes).toEqual([
-      { noteId: 'note_ok1', accepted: true, sequenceNum: 0, revision: expect.any(String) },
+      {
+        noteId: 'note_ok1',
+        accepted: true,
+        sequenceNum: 0,
+        revision: expect.any(String),
+        cursor: 1
+      },
       { noteId: 'note_bad', accepted: false, reason: ErrorCodes.STORAGE_UNAUTHORIZED },
-      { noteId: 'note_ok2', accepted: true, sequenceNum: 0, revision: expect.any(String) }
+      {
+        noteId: 'note_ok2',
+        accepted: true,
+        sequenceNum: 0,
+        revision: expect.any(String),
+        cursor: 2
+      }
     ])
 
     // #then the failed put left NO row behind, and its reservation came back

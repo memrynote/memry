@@ -195,6 +195,13 @@ export async function partitionInheritedLegacyStore({
 }
 
 /**
+ * Where the store has to be opened this session after the pending-rename pass:
+ * the adopted path, or the pre-adoption one when its move failed.
+ */
+export type PendingCrdtStoreRenameOutcome =
+  { status: 'open-target' } | { status: 'open-previous'; previousPath: string }
+
+/**
  * Rename this vault's store to match a uuid it has adopted since the store was
  * last opened.
  *
@@ -229,9 +236,9 @@ export async function partitionInheritedLegacyStore({
 export async function settlePendingCrdtStoreRename({
   vaultUuid,
   storagePath
-}: VaultCrdtStore): Promise<void> {
+}: VaultCrdtStore): Promise<PendingCrdtStoreRenameOutcome> {
   const previousUuid = getPendingCrdtStoreRename(vaultUuid)
-  if (previousUuid === undefined) return
+  if (previousUuid === undefined) return { status: 'open-target' }
 
   const previousPath = vaultCrdtStorePath(previousUuid)
   if (!existsSync(previousPath)) {
@@ -239,7 +246,7 @@ export async function settlePendingCrdtStoreRename({
     // — a vault provisioned for linking (`createDormantVault`) is the ordinary
     // way to get here. There is nothing to move and never will be.
     clearPendingCrdtStoreRename(vaultUuid)
-    return
+    return { status: 'open-target' }
   }
 
   if (existsSync(storagePath)) {
@@ -253,7 +260,7 @@ export async function settlePendingCrdtStoreRename({
       previousPath,
       storagePath
     })
-    return
+    return { status: 'open-target' }
   }
 
   if (await moveStoreDir(previousPath, storagePath)) {
@@ -263,15 +270,19 @@ export async function settlePendingCrdtStoreRename({
       previousUuid,
       storagePath
     })
-  } else {
-    // The record stands, so the next open retries rather than opening an empty
-    // store next to a full one.
-    log.warn('Could not move the pre-adoption CRDT store; will retry on the next open', {
-      vaultUuid,
-      previousPath,
-      storagePath
-    })
+    return { status: 'open-target' }
   }
+
+  // The record stands, so the next open retries. This session must open the
+  // store where it is: opening the adopted path would let LevelDB create an
+  // empty store there, and the `existsSync(storagePath)` branch above would
+  // then keep the history stranded under the old name on every later open.
+  log.warn('Could not move the pre-adoption CRDT store; opening it in place until the next open', {
+    vaultUuid,
+    previousPath,
+    storagePath
+  })
+  return { status: 'open-previous', previousPath }
 }
 
 /**
@@ -300,7 +311,12 @@ export async function prepareVaultCrdtStore(): Promise<VaultCrdtStore | null> {
   // whose ownership is ambiguous enough that half of it may have to be set
   // aside. When the two collide — only reachable when a legacy move already
   // failed once — the unambiguous one wins and the legacy store stays put.
-  await settlePendingCrdtStoreRename(target)
+  const rename = await settlePendingCrdtStoreRename(target)
+  // The adopted path stays empty this session, so the legacy passes must not
+  // fill it either: a legacy store moved in now would block the retried rename.
+  if (rename.status === 'open-previous') {
+    return { vaultUuid: target.vaultUuid, storagePath: rename.previousPath }
+  }
   await inheritLegacyCrdtStore(target)
   await partitionInheritedLegacyStore(target)
   return target

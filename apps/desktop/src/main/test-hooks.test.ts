@@ -17,11 +17,16 @@ const getWritebackDebugStateMock = vi.fn(() => ({ pending: false }))
 const networkSetOnlineMock = vi.fn()
 const outstandingCountMock = vi.fn(() => 3)
 const getNetworkMonitorMock = vi.fn(() => ({ setOnlineForTests: networkSetOnlineMock }))
-const getCrdtQueueMock = vi.fn(() => ({ getOutstandingCount: outstandingCountMock }))
+const getNoteBodyOutboxMock = vi.fn(() => ({ getOutstandingCount: outstandingCountMock }))
 const startSyncRuntimeMock = vi.fn(async () => ({}))
+const wsDisconnectMock = vi.fn()
+const getSyncWebSocketMock = vi.fn(() => ({ disconnect: wsDisconnectMock }))
+const getSyncEngineMock = vi.fn(() => ({
+  getStateValue: (key: string) => (key === 'lastCursor' ? '42' : undefined)
+}))
 const getOrInitializeLocalVaultKeyMock = vi.fn(async () => new Uint8Array([1]))
 const getOrCreateVaultUuidMock = vi.fn(() => 'vault-1')
-const resetVaultUuidCacheMock = vi.fn()
+const adoptVaultLocallyMock = vi.fn()
 const dbRunMock = vi.fn()
 const dbGetMock = vi.fn(() => ({ id: 'project-1' }))
 const insertRunMock = vi.fn()
@@ -86,8 +91,10 @@ vi.mock('./sync/crdt-writeback', () => ({
 }))
 
 vi.mock('./sync/runtime', () => ({
-  getCrdtQueue: getCrdtQueueMock,
+  getNoteBodyOutbox: getNoteBodyOutboxMock,
   getNetworkMonitor: getNetworkMonitorMock,
+  getSyncEngine: getSyncEngineMock,
+  getSyncWebSocket: getSyncWebSocketMock,
   startSyncRuntime: startSyncRuntimeMock
 }))
 
@@ -97,8 +104,11 @@ vi.mock('./crypto/vault-key-state', () => ({
 }))
 
 vi.mock('./agent/storage/vault-id', () => ({
-  getOrCreateVaultUuid: getOrCreateVaultUuidMock,
-  resetVaultUuidCache: resetVaultUuidCacheMock
+  getOrCreateVaultUuid: getOrCreateVaultUuidMock
+}))
+
+vi.mock('./sync/vault-adoption', () => ({
+  adoptVaultLocally: adoptVaultLocallyMock
 }))
 
 vi.mock('./database', () => ({
@@ -192,7 +202,7 @@ describe('main test hooks', () => {
     }) as typeof fetch
     dbGetMock.mockReturnValue({ id: 'project-1' })
     getNetworkMonitorMock.mockReturnValue({ setOnlineForTests: networkSetOnlineMock })
-    getCrdtQueueMock.mockReturnValue({ getOutstandingCount: outstandingCountMock })
+    getNoteBodyOutboxMock.mockReturnValue({ getOutstandingCount: outstandingCountMock })
     getGooglePushRuntimeMock.mockReturnValue({ getActiveChannelCount: vi.fn(() => 2) })
     pushSourceToGoogleCalendarMock.mockResolvedValue({
       remoteCalendarId: 'primary',
@@ -227,6 +237,7 @@ describe('main test hooks', () => {
       hooks.bootstrapSyncDevice({
         email: 'user@example.com',
         setupToken: 'setup',
+        vaultId: 'account-vault',
         masterKeyBase64: Buffer.from('master-key').toString('base64'),
         signingSecretKeyBase64: Buffer.from('signing-key').toString('base64'),
         kdfSalt: 'salt',
@@ -240,16 +251,17 @@ describe('main test hooks', () => {
         recoveryPhraseConfirmed: true
       })
     )
-    expect(dbRunMock).toHaveBeenCalled()
-    // The hook rewrites vault_metadata on the already-open handle, so the
-    // handle-keyed vault-uuid cache has to be dropped or every later call site
-    // (registration, vault key, request header) keeps the pre-bootstrap id.
-    expect(resetVaultUuidCacheMock).toHaveBeenCalled()
+    // #2424: the production adoption, so the CRDT store rename is recorded too.
+    expect(adoptVaultLocallyMock).toHaveBeenCalledWith(expect.anything(), 'account-vault')
     expect(getOrInitializeLocalVaultKeyMock).toHaveBeenCalled()
     expect(startSyncRuntimeMock).toHaveBeenCalled()
 
     await hooks.setNetworkOnlineForTests(false)
     expect(networkSetOnlineMock).toHaveBeenCalledWith(false)
+    await hooks.disconnectSyncSocketForTests()
+    expect(wsDisconnectMock).toHaveBeenCalled()
+    await expect(hooks.getSyncStateValueForTests('lastCursor')).resolves.toBe('42')
+    await expect(hooks.getSyncStateValueForTests('missing')).resolves.toBeNull()
     await expect(hooks.getCrdtPendingCount()).resolves.toBe(3)
     await expect(hooks.getCrdtDocMarkdown('note-1')).resolves.toBe('# Note')
     await expect(hooks.getCrdtDocMarkdown('missing')).resolves.toBeNull()
@@ -268,7 +280,9 @@ describe('main test hooks', () => {
   it('reports sync runtime missing states', async () => {
     process.env.NODE_ENV = 'test'
     getNetworkMonitorMock.mockReturnValue(null)
-    getCrdtQueueMock.mockReturnValue(null)
+    getNoteBodyOutboxMock.mockReturnValue(null)
+    getSyncWebSocketMock.mockReturnValue(null)
+    getSyncEngineMock.mockReturnValue(null)
     const { registerTestHooks } = await importHooks()
 
     registerTestHooks()
@@ -278,6 +292,10 @@ describe('main test hooks', () => {
       'Sync runtime is not initialized'
     )
     await expect(hooks.getCrdtPendingCount()).resolves.toBe(0)
+    await expect(hooks.disconnectSyncSocketForTests()).rejects.toThrow(
+      'Sync runtime is not initialized'
+    )
+    await expect(hooks.getSyncStateValueForTests('lastCursor')).resolves.toBeNull()
   })
 
   it('seeds calendar projections and broadcasts renderer invalidations', async () => {

@@ -84,7 +84,7 @@ import { settingsHandler } from './settings-handler'
 describe('settingsHandler — journal template settings', () => {
   const ctx: ApplyContext = {
     db: {} as unknown as DrizzleDb,
-    emit: vi.fn()
+    emit: (channel, data) => mockSend(channel, data)
   }
   const clock: VectorClock = { 'device-B': 3 }
   let testDb: TestDatabaseResult

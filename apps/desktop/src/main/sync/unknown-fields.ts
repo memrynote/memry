@@ -28,6 +28,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * Keys a row-dump push payload carries that no sync schema models: `id` is the
+ * envelope id and `syncedAt` is device-local. Keeping them wrote a row for
+ * nearly every applied item.
+ */
+const ENVELOPE_KEYS = new Set(['id', 'syncedAt'])
+
+/**
  * Called after a successful `schema.parse`, with both the raw parsed JSON and
  * the validated result. Any top-level key in the former and not the latter was
  * stripped, so it is stored verbatim. An empty remainder clears the row, which
@@ -44,7 +51,7 @@ export function recordUnknownPayloadFields(
 
   const unknown: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(raw)) {
-    if (!(key in validated)) unknown[key] = value
+    if (!(key in validated) && !ENVELOPE_KEYS.has(key)) unknown[key] = value
   }
 
   if (Object.keys(unknown).length === 0) {

@@ -17,7 +17,7 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 vi.mock('../../vault/property-definitions', () => ({
-  PropertyDefinitionsService: { get: () => ({ applyRemoteDelete: vi.fn(async () => {}) }) }
+  PropertyDefinitionsService: { tryGet: () => null }
 }))
 
 const AREA_OPTIONS = JSON.stringify([{ value: 'Work', color: 'indigo' }])

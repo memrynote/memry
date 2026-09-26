@@ -3,6 +3,10 @@ import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
 import { hasPendingDelete } from './pending-deletes'
+import { PendingSyncIntentError } from './pending-sync-intent-error'
+import { settleItemSyncIntents } from './sync-intents'
+import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
+import type { PageApplyHandle } from './bulk-apply'
 import { recordUnknownPayloadFields } from './unknown-fields'
 import { createLogger } from '../lib/logger'
 import { trackMainEvent } from '../telemetry/track'
@@ -21,7 +25,13 @@ export interface ApplyItemInput {
   vaultKey?: Uint8Array
 }
 
+/** 'schema_invalid': the payload failed this build's schema; the pull records it for a retry (#2285). */
+export type ApplyItemResult = ApplyResult | 'schema_invalid'
+
 export class ItemApplier {
+  /** Applies that changed a local row ('applied' or 'conflict') since construction. */
+  changedCount = 0
+
   constructor(
     private db: DrizzleDb,
     private emitToWindows: EmitToWindows,
@@ -29,13 +39,27 @@ export class ItemApplier {
   ) {}
 
   /**
-   * `dbOverride` lets the pull coordinator route a whole page's applies through
-   * its page-transaction-scoped data DB (see bulk-apply.ts). Absent, behavior
-   * is unchanged.
+   * `page` routes the apply through the pull's page transaction (see
+   * bulk-apply.ts): its data DB, and handler emits held until the page commits
+   * (#2294). An item whose apply throws rolls back its own savepoint, so its
+   * emits are dropped here rather than queued. Absent, behavior is unchanged.
    */
-  apply(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyResult {
-    const db = dbOverride ?? this.db
-    const ctx = { db, emit: this.emitToWindows, vaultKey: input.vaultKey }
+  apply(
+    input: ApplyItemInput,
+    page?: Pick<PageApplyHandle, 'db' | 'afterCommit'>
+  ): ApplyItemResult {
+    const itemEmits: Array<() => void> = []
+    const emit: EmitToWindows = page
+      ? (channel, data) => itemEmits.push(() => this.emitToWindows(channel, data))
+      : this.emitToWindows
+    const result = this.dispatch(input, page?.db ?? this.db, emit)
+    for (const notify of itemEmits) page?.afterCommit(notify)
+    if (result === 'applied' || result === 'conflict') this.changedCount++
+    return result
+  }
+
+  private dispatch(input: ApplyItemInput, db: DrizzleDb, emit: EmitToWindows): ApplyItemResult {
+    const ctx = { db, emit, vaultKey: input.vaultKey }
     const adapter = this.adapters?.getRemote(input.type) ?? getRemoteSyncAdapter(input.type)
     const handler = adapter ? null : getHandler(input.type)
 
@@ -56,16 +80,21 @@ export class ItemApplier {
     }
 
     if (input.operation === 'delete') {
-      return adapter
+      const result = adapter
         ? adapter.applyRemoteMutation({
             db,
-            emit: this.emitToWindows,
+            emit,
             itemId: input.itemId,
             operation: 'delete',
             clock: input.clock,
             vaultKey: input.vaultKey
           })
         : handler!.applyDelete(ctx, input.itemId, input.clock)
+      // #2409: recorded whatever the result, on the page's db so it commits with
+      // the delete and the cursor. An absent row is how a fresh install learns
+      // the clock; a skipped delete means the local row is already past it.
+      recordTombstoneClock(db, input.type, input.itemId, input.clock)
+      return result
     }
 
     // Tasks and notes are hard-deleted locally, so "no local row" means both
@@ -82,6 +111,15 @@ export class ItemApplier {
       return 'skipped'
     }
 
+    // A local edit whose sync intent has not drained still carries its
+    // pre-edit clock; compared against that, a remote row would overwrite the
+    // edit. Drain it first. If it still cannot drain, throw: the pull defers
+    // the item to its end-of-run retry, then to the schema-invalid ledger as
+    // `pending_intent`, re-fetched after the next pull-start drain (#2301).
+    if (!settleItemSyncIntents(db, input.type, input.itemId)) {
+      throw new PendingSyncIntentError(input.type, input.itemId)
+    }
+
     const decoded = new TextDecoder().decode(input.content)
     let parsed: unknown
     try {
@@ -96,18 +134,14 @@ export class ItemApplier {
       data = adapter ? adapter.schema.parse(parsed) : handler!.schema.parse(parsed)
     } catch (err) {
       log.error('Schema validation failed', { type: input.type, itemId: input.itemId, error: err })
-      // Unlike 'parse_error' (corrupt-tracker refetch flow), 'skipped' still
-      // advances the cursor and never retries — a schema-drift item from a
-      // newer peer silently never lands here. Same mixed-version tripwire as
-      // the unknown-type case above, for known types with drifted payloads.
       trackMainEvent('sync_skipped_unknown_type', {
         surface: 'sync',
         action: 'schema_validation_failed',
         objectType: 'sync_item',
-        result: 'skipped',
+        result: 'failed',
         dimensions: { itemType: input.type }
       })
-      return 'skipped'
+      return 'schema_invalid'
     }
 
     // Zod strips every key the handler schema has no field for, and the push
@@ -119,7 +153,7 @@ export class ItemApplier {
     return adapter
       ? adapter.applyRemoteMutation({
           db,
-          emit: this.emitToWindows,
+          emit,
           itemId: input.itemId,
           operation: input.operation,
           data,

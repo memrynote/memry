@@ -1,10 +1,9 @@
 import WebSocket from 'ws'
-import { SYNC_SOCKET_MESSAGE_TYPES } from '@memry/contracts/sync-socket'
+import { parseSyncSocketFrame, SYNC_SOCKET_ITEMS_HEADER } from '@memry/contracts/sync-socket'
 import { SyncEventEmitter } from '@memry/sync-client/emitter'
-import { z } from 'zod'
 import { createLogger } from '../lib/logger'
 import { getSharedPinnedAgent, CertificatePinningError } from './certificate-pinning'
-import { getSyncVaultHeaders } from './http-client'
+import { getSyncVaultHeaders, SYNC_TYPES_HEADER_VALUE } from './http-client'
 import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('WebSocket')
@@ -22,13 +21,6 @@ const HTTP_UPGRADE_REQUIRED = 426
 // the ceiling at Node's default leaves headroom without hiding an accumulating
 // subscriber behind a silent budget. See src/main/sync/emitter-budget.test.ts.
 const MAX_WEBSOCKET_MANAGER_LISTENERS = 10
-
-const WebSocketMessageSchema = z.object({
-  type: z.enum(SYNC_SOCKET_MESSAGE_TYPES),
-  payload: z.record(z.string(), z.unknown()).optional()
-})
-
-export type WebSocketMessage = z.infer<typeof WebSocketMessageSchema>
 
 export const CLOSE_CODE_DEVICE_REVOKED = 4004
 export const CLOSE_CODE_VERSION_INCOMPATIBLE = 4009
@@ -108,9 +100,7 @@ export class WebSocketManager extends SyncEventEmitter {
       // the session, and it latches exactly when it hurts most: /auth/refresh
       // lives on the server this device cannot reach, so an outage that outlasts
       // the access token kills the socket permanently. With no socket there is
-      // no `crdt_updated` and no handleWsConnected catch-up, which between them
-      // are the only two routes a body-only remote edit has — note bodies never
-      // travel in the record change feed.
+      // no wake: remote edits then wait for the 60s tick's pull.
       //
       // Costs nothing on the wire while it waits: the retry shares the same
       // backoff as every other one, so a token that never returns polls at the
@@ -128,6 +118,10 @@ export class WebSocketManager extends SyncEventEmitter {
       headers: {
         Authorization: `Bearer ${token}`,
         'X-App-Version': this.deps.getAppVersion(),
+        // Socket items (#2300, protocol 09 §9.13), negotiated with the types
+        // HTTP declares so the socket never carries a type a pull would not.
+        [SYNC_SOCKET_ITEMS_HEADER]: '1',
+        'X-Memry-Sync-Types': SYNC_TYPES_HEADER_VALUE,
         ...vaultHeaders
       },
       agent: wsUrl.startsWith('wss://') ? getSharedPinnedAgent() : undefined
@@ -159,13 +153,19 @@ export class WebSocketManager extends SyncEventEmitter {
           text = Buffer.concat(raw).toString('utf-8')
         }
         if (text === 'pong') return
-        const result = WebSocketMessageSchema.safeParse(JSON.parse(text))
-        if (!result.success) {
+        const event = parseSyncSocketFrame(text)
+        if (!event) {
           this.emit('error', new Error('Invalid WebSocket message format'))
           return
         }
-        log.debug('WebSocket message received', { type: result.data.type })
-        this.emit('message', result.data)
+        // docs/protocol/09 §9.4: an unknown type (or a known one this client
+        // cannot act on) is never an error; a newer server may send it.
+        if (event.kind === 'ignored') {
+          log.debug('WebSocket message ignored', { type: event.type })
+          return
+        }
+        log.debug('WebSocket message received', { kind: event.kind })
+        this.emit('message', event)
       } catch {
         this.emit('error', new Error('Failed to parse WebSocket message'))
       }

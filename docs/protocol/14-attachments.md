@@ -220,6 +220,17 @@ cannot leak quota, because quota is consumed by **uploads**, and a read-only
 client performs none: it never calls `upload/initiate`, so it never reserves a
 byte. Dereferencing is the writer's obligation for bytes the writer uploaded.
 
+A dereference only lowers `blob_chunks.ref_count`; the scheduled
+`cleanupOrphanedBlobChunks` sweep reaps rows at `ref_count <= 0`. It deletes a
+row only while it is still unreferenced (`DELETE ... AND ref_count <= 0
+RETURNING r2_key`), re-checks that no row claimed those keys since (an upload
+retrying the same bytes puts the object, then inserts a fresh row), and only
+then deletes the objects. An upload that re-references the hash before the
+delete keeps its bytes; one that lands between the re-check and the object
+delete can still lose them, a window of one R2 call. A failed object delete
+only leaks storage. Ids are chunked under D1's bind limit, at most 300 rows per
+tick (`apps/sync-server/src/services/cleanup.ts`, #2414).
+
 **A client that later gains the ability to delete an attachment MUST
 dereference**; until then the omission is correct rather than merely tolerated.
 

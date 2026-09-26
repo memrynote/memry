@@ -19,7 +19,11 @@ import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 const PICKER = 'Emoji and icon picker' // notes:menus.emoji.aria
-const SHORT_WINDOW = { x: 0, y: 0, width: 1100, height: 400 }
+// Short enough that the picker (~420px) cannot fit under the lowest row, tall
+// enough that the sidebar's collections list is on screen at all: since the
+// vault pager (#2443) the nav block is fixed height, and at 400px the list
+// sits behind the footer dock (#2449).
+const SHORT_WINDOW = { x: 0, y: 0, width: 1100, height: 560 }
 
 async function resizeWindow(
   electronApp: ElectronApplication,

@@ -308,4 +308,159 @@ describe('D1 schema', () => {
       ).toEqual({ id: 'snap-1', created_at: 1700000000, size_bytes: 42, revision: '' })
     })
   })
+
+  // #2280: the ms commit time is additive and never backfilled. A row the old server
+  // wrote keeps NULL, which /sync/changes answers by omitting committedAtMs.
+  describe('0010_sync_items_committed_at_ms', () => {
+    it('keeps rows written before the column existed, with a NULL commit time', () => {
+      // #given a database at 0009 with a record the old server wrote
+      const db = new Database(':memory:')
+      for (const file of migrationFiles().filter((name) => name < '0010')) {
+        db.exec(loadMigrationSql(file))
+      }
+      db.prepare(
+        `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'a@b.com', 'otp', 1, 1)`
+      ).run()
+      db.prepare(
+        `INSERT INTO sync_items
+           (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
+            signature, server_cursor, created_at, updated_at)
+         VALUES ('row-1', 'user-1', 'vault-1', 'task', 'task-1', 'k', 42, 'h', 's', 7, 1700000000, 1700000000)`
+      ).run()
+
+      // #when 0010 is applied
+      db.exec(loadMigrationSql('0010_sync_items_committed_at_ms.sql'))
+
+      // #then the row is untouched and the new column is nullable with no default
+      expect(
+        db.prepare('SELECT id, server_cursor, updated_at, committed_at_ms FROM sync_items').get()
+      ).toEqual({ id: 'row-1', server_cursor: 7, updated_at: 1700000000, committed_at_ms: null })
+      const column = (
+        db.prepare('PRAGMA table_info(sync_items)').all() as Array<{
+          name: string
+          notnull: number
+          dflt_value: unknown
+        }>
+      ).find((entry) => entry.name === 'committed_at_ms')
+      expect(column).toMatchObject({ notnull: 0, dflt_value: null })
+    })
+  })
+
+  // #2302: the tombstone marker and blob-missing columns are additive and never
+  // backfilled. Existing live rows and unshed tombstones keep NULL in both.
+  describe('0013_sync_items_tombstone_marker', () => {
+    it('keeps existing live rows and tombstones untouched, with NULL marker columns', () => {
+      const db = new Database(':memory:')
+      for (const file of migrationFiles().filter((name) => name < '0013')) {
+        db.exec(loadMigrationSql(file))
+      }
+      db.prepare(
+        `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'a@b.com', 'otp', 1, 1)`
+      ).run()
+      const insert = db.prepare(
+        `INSERT INTO sync_items
+           (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
+            signature, server_cursor, created_at, updated_at, deleted_at, clock)
+         VALUES (?, 'user-1', 'default', 'task', ?, 'k', 42, 'h', 's', ?, 1, 1, ?, '{"d":1}')`
+      )
+      insert.run('row-live', 'task-live', 7, null)
+      insert.run('row-dead', 'task-dead', 8, 1700000000)
+
+      db.exec(loadMigrationSql('0013_sync_items_tombstone_marker.sql'))
+
+      expect(
+        db
+          .prepare(
+            'SELECT id, blob_key, size_bytes, deleted_at, payload_purged_at, blob_missing_at FROM sync_items ORDER BY id'
+          )
+          .all()
+      ).toEqual([
+        {
+          id: 'row-dead',
+          blob_key: 'k',
+          size_bytes: 42,
+          deleted_at: 1700000000,
+          payload_purged_at: null,
+          blob_missing_at: null
+        },
+        {
+          id: 'row-live',
+          blob_key: 'k',
+          size_bytes: 42,
+          deleted_at: null,
+          payload_purged_at: null,
+          blob_missing_at: null
+        }
+      ])
+      const columns = db.prepare('PRAGMA table_info(sync_items)').all() as Array<{
+        name: string
+        notnull: number
+        dflt_value: unknown
+      }>
+      for (const name of ['payload_purged_at', 'blob_missing_at']) {
+        expect(columns.find((entry) => entry.name === name)).toMatchObject({
+          notnull: 0,
+          dflt_value: null
+        })
+      }
+    })
+  })
+
+  // #2408: the delete attestation column is additive and never backfilled.
+  // Every existing row, live row, signed tombstone or #2302 marker, reads NULL:
+  // unattested, which clients refuse to apply as a purged tombstone.
+  describe('0015_sync_items_delete_attestation', () => {
+    it('keeps existing rows untouched, with a NULL attestation', () => {
+      const db = new Database(':memory:')
+      for (const file of migrationFiles().filter((name) => name < '0015')) {
+        db.exec(loadMigrationSql(file))
+      }
+      db.prepare(
+        `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'a@b.com', 'otp', 1, 1)`
+      ).run()
+      const insert = db.prepare(
+        `INSERT INTO sync_items
+           (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
+            signature, server_cursor, created_at, updated_at, deleted_at, clock)
+         VALUES (?, 'user-1', 'default', 'task', ?, ?, 42, 'h', 's', ?, 1, 1, ?, '{"d":1}')`
+      )
+      insert.run('row-live', 'task-live', 'k', 7, null)
+      insert.run('row-marker', 'task-marker', '', 8, 1700000000)
+
+      db.exec(loadMigrationSql('0015_sync_items_delete_attestation.sql'))
+
+      expect(
+        db
+          .prepare(
+            'SELECT id, blob_key, deleted_at, delete_attestation FROM sync_items ORDER BY id'
+          )
+          .all()
+      ).toEqual([
+        {
+          id: 'row-live',
+          blob_key: 'k',
+          deleted_at: null,
+          delete_attestation: null
+        },
+        {
+          id: 'row-marker',
+          blob_key: '',
+          deleted_at: 1700000000,
+          delete_attestation: null
+        }
+      ])
+      const columns = db.prepare('PRAGMA table_info(sync_items)').all() as Array<{
+        name: string
+        notnull: number
+        dflt_value: unknown
+      }>
+      expect(columns.find((entry) => entry.name === 'delete_attestation')).toMatchObject({
+        notnull: 0,
+        dflt_value: null
+      })
+    })
+  })
 })

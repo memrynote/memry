@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { z } from 'zod'
 
 import { TagCategorySyncPayloadSchema, TagDefinitionSyncPayloadSchema } from './sync-payloads'
 import {
@@ -26,7 +27,9 @@ import {
   PushRequestSchema,
   PushResponseSchema,
   RecordChangesResponseSchema,
+  RecordPullBlobMissingSchema,
   RecordPullItemResponseSchema,
+  RecordPullPurgedTombstoneSchema,
   RecordPullResponseSchema,
   RecordPushItemSchema,
   RecordPushRequestSchema,
@@ -47,7 +50,14 @@ import {
   RECORD_CLOCK_REQUIRED_ITEM_TYPES,
   CRDT_SYNC_ITEM_TYPES,
   SYNC_OPERATIONS,
-  ENCRYPTABLE_ITEM_TYPES
+  ENCRYPTABLE_ITEM_TYPES,
+  FEED_ONLY_SYNC_TYPES,
+  NEGOTIABLE_SYNC_TYPES,
+  NoteBodyChangeSchema,
+  RecordPushItemIdentitySchema,
+  CrdtSnapshotBaseRevisionSchema,
+  CrdtSnapshotCoversThroughSchema,
+  CRDT_SNAPSHOT_NOT_COVERED
 } from './sync-api'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
@@ -548,6 +558,113 @@ describe('RecordChangesResponseSchema', () => {
       }).success
     ).toBe(true)
   })
+
+  // #2280
+  it('keeps the optional trace fields: ref serverCursor and committedAtMs, page serverTimeMs', () => {
+    const ref = { id: 'task-1', type: 'task', version: 2, modifiedAt: 1, size: 3 }
+    const parsed = RecordChangesResponseSchema.parse({
+      items: [{ ...ref, serverCursor: 41, committedAtMs: 1_700_000_000_123 }, ref],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 41,
+      serverTimeMs: 1_700_000_000_456
+    })
+
+    expect(parsed.items[0]).toMatchObject({ serverCursor: 41, committedAtMs: 1_700_000_000_123 })
+    expect(parsed.items[1]).not.toHaveProperty('committedAtMs')
+    expect(parsed.serverTimeMs).toBe(1_700_000_000_456)
+  })
+
+  // #2292: elements are validated per item by the reader, never as part of the page.
+  it('keeps an optional inline array without failing the page on a malformed element', () => {
+    const page = { items: [], deleted: [], hasMore: false, nextCursor: 0 }
+    const parsed = RecordChangesResponseSchema.parse({
+      ...page,
+      inline: [{ id: 'task-1' }, 'not an item']
+    })
+
+    expect(parsed.inline).toEqual([{ id: 'task-1' }, 'not an item'])
+    expect(RecordChangesResponseSchema.parse(page)).not.toHaveProperty('inline')
+    expect(RecordChangesResponseSchema.safeParse({ ...page, inline: {} }).success).toBe(false)
+  })
+
+  // #2295
+  it('keeps noteBodies optional: absent means the server does not serve bodies', () => {
+    const parsed = RecordChangesResponseSchema.parse({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 0
+    })
+    expect(parsed).not.toHaveProperty('noteBodies')
+  })
+
+  // #2295
+  it('accepts a page carrying update and snapshot body entries, each parsed on its own', () => {
+    const parsed = RecordChangesResponseSchema.parse({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 3,
+      noteBodies: [
+        {
+          op: 'update',
+          noteId: 'note-1',
+          cursor: 1,
+          sequenceNum: 1,
+          signerDeviceId: 'device-1',
+          createdAt: 1,
+          size: 3,
+          data: 'AQID'
+        },
+        {
+          op: 'update',
+          noteId: 'note-1',
+          cursor: 2,
+          sequenceNum: 2,
+          signerDeviceId: 'device-1',
+          createdAt: 1,
+          size: 70_000
+        },
+        {
+          op: 'snapshot',
+          noteId: 'note-1',
+          cursor: 3,
+          sequenceNum: 2,
+          revision: 'rev-1',
+          signerDeviceId: 'device-1',
+          createdAt: 1,
+          size: 10
+        }
+      ]
+    })
+
+    const entries = (parsed.noteBodies ?? []).map((entry) => NoteBodyChangeSchema.parse(entry))
+    expect(entries.map((entry) => entry.op)).toEqual(['update', 'update', 'snapshot'])
+    expect(entries[1]).not.toHaveProperty('data')
+  })
+
+  // #2295: like inline, one malformed body entry never fails the page.
+  it('keeps a page whose noteBodies holds a malformed entry', () => {
+    const page = { items: [], deleted: [], hasMore: false, nextCursor: 0 }
+    const parsed = RecordChangesResponseSchema.parse({ ...page, noteBodies: [{ op: 'delete' }] })
+
+    expect(parsed.noteBodies).toEqual([{ op: 'delete' }])
+    expect(NoteBodyChangeSchema.safeParse(parsed.noteBodies?.[0]).success).toBe(false)
+    expect(RecordChangesResponseSchema.safeParse({ ...page, noteBodies: {} }).success).toBe(false)
+  })
+
+  // #2280
+  it('rejects a fractional commit time', () => {
+    expect(
+      RecordChangesResponseSchema.safeParse({
+        items: [{ id: 't', type: 'task', version: 1, modifiedAt: 1, size: 1, committedAtMs: 1.5 }],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      }).success
+    ).toBe(false)
+  })
 })
 
 describe('SyncStatusSchema', () => {
@@ -681,6 +798,71 @@ describe('RecordPullResponseSchema', () => {
   it('accepts empty items', () => {
     expect(RecordPullResponseSchema.safeParse({ items: [] }).success).toBe(true)
   })
+
+  const signedItem = {
+    id: 'task-1',
+    type: 'task',
+    operation: 'update',
+    signature: 'sig',
+    signerDeviceId: 'device-1',
+    blob: validEncryptedPayload()
+  }
+  const post2302Body = {
+    items: [signedItem],
+    purgedTombstones: [
+      { id: 'task-2', type: 'task', deletedAt: 1, clock: { d: 2 }, serverCursor: 9 },
+      { not: 'an entry' }
+    ],
+    blobMissing: [{ id: 'task-3', type: 'task', serverCursor: 4 }]
+  }
+
+  // #2302: the sibling lists are typed per entry, so one bad entry never fails the page.
+  it('accepts a post-#2302 body with a malformed sibling entry', () => {
+    const parsed = RecordPullResponseSchema.safeParse(post2302Body)
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.items).toHaveLength(1)
+  })
+
+  // #2302 compat: the pre-#2302 schema (items only) drops the new keys and keeps its items.
+  it('parses a post-#2302 body with the pre-#2302 envelope unchanged', () => {
+    const legacy = z.object({ items: z.array(RecordPullItemResponseSchema) })
+    const parsed = legacy.safeParse(post2302Body)
+    expect(parsed.success).toBe(true)
+    expect(parsed.data).toEqual({ items: [RecordPullItemResponseSchema.parse(signedItem)] })
+  })
+})
+
+describe('RecordPullPurgedTombstoneSchema / RecordPullBlobMissingSchema (#2302)', () => {
+  it('accepts a purged tombstone with and without a clock', () => {
+    const entry = { id: 'task-2', type: 'task', deletedAt: 1, serverCursor: 9 }
+    expect(RecordPullPurgedTombstoneSchema.safeParse(entry).success).toBe(true)
+    expect(RecordPullPurgedTombstoneSchema.safeParse({ ...entry, clock: { d: 2 } }).success).toBe(
+      true
+    )
+  })
+
+  it('rejects a purged tombstone without deletedAt or of an unknown type', () => {
+    expect(
+      RecordPullPurgedTombstoneSchema.safeParse({ id: 'x', type: 'task', serverCursor: 1 }).success
+    ).toBe(false)
+    expect(
+      RecordPullPurgedTombstoneSchema.safeParse({
+        id: 'x',
+        type: 'attachment',
+        deletedAt: 1,
+        serverCursor: 1
+      }).success
+    ).toBe(false)
+  })
+
+  it('accepts a blob-missing entry and rejects one without an id', () => {
+    expect(
+      RecordPullBlobMissingSchema.safeParse({ id: 'x', type: 'note', serverCursor: 1 }).success
+    ).toBe(true)
+    expect(RecordPullBlobMissingSchema.safeParse({ type: 'note', serverCursor: 1 }).success).toBe(
+      false
+    )
+  })
 })
 
 describe('DeviceKeySchema / DeviceKeysResponseSchema', () => {
@@ -763,6 +945,54 @@ describe('SignatureMetadataSchema', () => {
     if (!result.success) {
       expect(result.error.issues[0].path).toContain('algorithm')
     }
+  })
+})
+
+// #2295
+describe('note_body is a feed-only negotiable type', () => {
+  it('is negotiable but never a record type, so no envelope schema can name it', () => {
+    expect(FEED_ONLY_SYNC_TYPES).toEqual(['note_body', 'purged_tombstones'])
+    expect(NEGOTIABLE_SYNC_TYPES).toEqual([
+      ...RECORD_SYNC_ITEM_TYPES,
+      'note_body',
+      'purged_tombstones'
+    ])
+    // Both clients build X-Memry-Sync-Types from RECORD_SYNC_ITEM_TYPES
+    // (apps/desktop/src/main/sync/http-client.ts, packages/sync-client/src/pull/http.ts),
+    // so this also pins that no shipped client declares bodies before it can apply them.
+    expect(RECORD_SYNC_ITEM_TYPES).not.toContain('note_body')
+    expect(LEGACY_RECORD_SYNC_ITEM_TYPES).not.toContain('note_body')
+    expect(ENCRYPTABLE_ITEM_TYPES).not.toContain('note_body')
+  })
+
+  // #2302: the capability token is not a record type either.
+  it('keeps purged_tombstones out of every record type list and the push schema', () => {
+    expect(RECORD_SYNC_ITEM_TYPES).not.toContain('purged_tombstones')
+    expect(LEGACY_RECORD_SYNC_ITEM_TYPES).not.toContain('purged_tombstones')
+    expect(
+      RecordPushItemSchema.safeParse(validPushItem({ type: 'purged_tombstones' })).success
+    ).toBe(false)
+  })
+
+  it('is refused by the push item and push identity schemas', () => {
+    expect(RecordPushItemSchema.safeParse(validPushItem({ type: 'note_body' })).success).toBe(false)
+    expect(
+      RecordPushItemIdentitySchema.safeParse({ id: 'note-1', type: 'note_body' }).success
+    ).toBe(false)
+  })
+
+  it('rejects a body entry with an unknown op', () => {
+    expect(
+      NoteBodyChangeSchema.safeParse({
+        op: 'delete',
+        noteId: 'note-1',
+        cursor: 1,
+        sequenceNum: 1,
+        signerDeviceId: 'device-1',
+        createdAt: 1,
+        size: 0
+      }).success
+    ).toBe(false)
   })
 })
 
@@ -880,5 +1110,32 @@ describe('PackListResponseSchema (#1839)', () => {
       PackListResponseSchema.safeParse({ packs: [{ ...validPack, byteSize: 0 }], serverTime: 1 })
         .success
     ).toBe(false)
+  })
+})
+
+// #2299: coversThrough is a feed cursor, never negative or fractional.
+describe('CrdtSnapshotCoversThroughSchema', () => {
+  it('accepts a non-negative integer cursor', () => {
+    expect(CrdtSnapshotCoversThroughSchema.safeParse(0).success).toBe(true)
+    expect(CrdtSnapshotCoversThroughSchema.safeParse(50).success).toBe(true)
+  })
+
+  it('rejects a negative, fractional or non-numeric cursor', () => {
+    expect(CrdtSnapshotCoversThroughSchema.safeParse(-1).success).toBe(false)
+    expect(CrdtSnapshotCoversThroughSchema.safeParse(1.5).success).toBe(false)
+    expect(CrdtSnapshotCoversThroughSchema.safeParse('50').success).toBe(false)
+  })
+
+  it('names the per-note refusal code', () => {
+    expect(CRDT_SNAPSHOT_NOT_COVERED).toBe('CRDT_SNAPSHOT_NOT_COVERED')
+  })
+})
+
+// #2299: baseRevision is an opaque revision token.
+describe('CrdtSnapshotBaseRevisionSchema', () => {
+  it('accepts a revision token and rejects an empty or non-string one', () => {
+    expect(CrdtSnapshotBaseRevisionSchema.safeParse('rev-1').success).toBe(true)
+    expect(CrdtSnapshotBaseRevisionSchema.safeParse('').success).toBe(false)
+    expect(CrdtSnapshotBaseRevisionSchema.safeParse(7).success).toBe(false)
   })
 })

@@ -31,7 +31,8 @@ export const EVENT_CHANNELS = {
   ITEM_CORRUPT: 'sync:item-corrupt',
   SECURITY_WARNING: 'sync:security-warning',
   CERTIFICATE_PIN_FAILED: 'sync:certificate-pin-failed',
-  VAULT_RECOVERY_NEEDED: 'sync:vault-recovery-needed'
+  VAULT_RECOVERY_NEEDED: 'sync:vault-recovery-needed',
+  VAULT_BINDING_CHANGED: 'sync:vault-binding-changed'
 } as const
 
 // ============================================================================

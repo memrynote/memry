@@ -29,6 +29,8 @@
     "status": "Status",
     "priority": "Prioritet",
     "dueDate": "Forfallsdato",
+    "startsOn": "Starter {date}",
+    "dueOn": "Frist {date}",
     "project": "Prosjekt",
     "repeat": "Gjenta",
     "createAnother": "Lag en annen",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Rask legge til oppgave",
     "focusDescription": "Fokuser raskt legge inn input",
-    "placeholder": "Legg til en oppgave…    !today  !!high  #project"
+    "placeholder": "Legg til en oppgave…    !today  !!high  #project",
+    "presets": {
+      "menu": "Oppgavevalg",
+      "dueDate": "Forfaller {date}. Endre forfallsdato",
+      "noDate": "Ingen dato",
+      "linkNote": "Koble notat",
+      "openDetails": "Åpne alle detaljer",
+      "back": "Tilbake",
+      "remove": "Fjern {name}",
+      "noReminder": "Ingen påminnelse",
+      "addTags": "Legg til tagger…"
+    }
   },
   "drawer": {
     "close": "Lukk oppgavedetaljer",

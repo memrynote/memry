@@ -143,6 +143,10 @@ describe('TagCategorySyncService', () => {
 
   describe('#given no snapshot payload #when enqueueDelete called', () => {
     it('#then enqueues a fallback payload that parses against the schema and carries deletedAt', () => {
+      testDb.db
+        .insert(tagCategories)
+        .values({ ...TEST_CATEGORY, clock: { 'device-A': 1 } })
+        .run()
       service.enqueueDelete('category-1')
 
       const [item] = queue.dequeue(1)

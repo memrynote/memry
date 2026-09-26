@@ -1,0 +1,14 @@
+-- coversThrough on CRDT snapshot pushes (#2299). A snapshot written with a
+-- claim records it: every note_body feed row of the note at or below this
+-- cursor is merged into the stored state, and the rows its prune deleted exist
+-- on the server only inside that snapshot. The upsert then refuses any write
+-- that does not cover the claim (protocol 07 section 7.7.1).
+--
+-- Backward compatibility:
+--   * Nullable, no default, no backfill. Every existing row reads NULL, which
+--     is exactly "no claim": pushes without coversThrough replace it as before.
+--   * A Worker older than this migration names its columns explicitly and
+--     never writes this one. It also lacks the conditional upsert, so this
+--     server change must be deployed to 100% of Workers at once (no gradual
+--     rollout), and rolling back past it re-opens overwrites of claimed rows.
+ALTER TABLE crdt_snapshots ADD COLUMN covers_through INTEGER;

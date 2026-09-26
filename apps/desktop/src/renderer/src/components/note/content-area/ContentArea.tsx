@@ -94,7 +94,7 @@ import {
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
 import { Plugin } from 'prosemirror-state'
 import { isMac } from '@/lib/shortcut-registry'
-import { serializeBlocksPreservingBlanks } from './markdown-utils'
+import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
 import { registerBlockSelection } from './marquee-block-registry'
@@ -191,17 +191,6 @@ function tagsForCreate(obsidianTags: string[], parsedTags: string[]): string[] {
     if (!byKey.has(key)) byKey.set(key, tag)
   }
   return [...byKey.values()].slice(0, TAG_MAX_COUNT)
-}
-
-/** The block's line as markdown sees it, without the `- [ ] ` marker. */
-function checkboxLineText(block: { content?: unknown }): string {
-  const content = block.content as (string | { text?: string })[] | undefined
-  return (
-    content
-      ?.map((c) => (typeof c === 'string' ? c : (c.text ?? '')))
-      .join('')
-      .trim() ?? ''
-  )
 }
 
 /**
@@ -1191,7 +1180,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (!block) return
 
       const originalContent = block.content
-      const text = checkboxLineText(block)
+      const text = checkboxLineMarkdown(editor, block)
 
       // An empty checkbox has no task in it yet. Converting one rewrites the
       // block to a `taskBlock` whose title is empty, and the create below is
@@ -1347,7 +1336,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (!block) return
 
       const originalContent = block.content
-      const text = checkboxLineText(block)
+      const text = checkboxLineMarkdown(editor, block)
 
       // Same refusal as the top-level path. A nested line is no safer to rewrite.
       if (obsidianTaskImportBlocker(text) !== null) {

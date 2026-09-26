@@ -1,0 +1,1 @@
+[cursor-skip] A lastCursor before=5 afterOwnPush=19 afterPull=19; tasks on A=1/7 on B=7/7

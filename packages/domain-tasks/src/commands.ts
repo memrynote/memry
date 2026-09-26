@@ -257,10 +257,85 @@ export interface TasksDomainPublisher {
   statusDeleted(event: StatusDeletedEvent): void | Promise<void>
 }
 
+/**
+ * One publisher call, as data. A command's write phase returns these so the
+ * host can derive what the change owes other systems (sync) inside the same
+ * storage transaction; the publisher receives them only after it commits.
+ */
+export type TasksDomainEvent =
+  | { kind: 'taskCreated'; payload: { task: Task } }
+  | { kind: 'taskUpdated'; payload: TaskUpdatedEvent }
+  | { kind: 'taskDeleted'; payload: { id: string; snapshot?: Task } }
+  | { kind: 'taskCompleted'; payload: TaskCompletedEvent }
+  | { kind: 'taskMoved'; payload: TaskMovedEvent }
+  | { kind: 'taskReordered'; payload: { id: string; changedFields: string[] } }
+  | { kind: 'projectCreated'; payload: { project: ProjectWithStatuses | Project } }
+  | { kind: 'projectUpdated'; payload: ProjectUpdatedEvent }
+  | { kind: 'projectDeleted'; payload: { id: string; snapshot?: ProjectWithStatuses } }
+  | { kind: 'statusCreated'; payload: StatusEvent }
+  | { kind: 'statusUpdated'; payload: StatusEvent }
+  | { kind: 'statusDeleted'; payload: StatusDeletedEvent }
+
+export interface TasksWrite<T> {
+  result: T
+  events: readonly TasksDomainEvent[]
+}
+
+/**
+ * Runs a command's synchronous write phase as one storage transaction and
+ * returns after it commits. A throw rolls back every write in it.
+ */
+export interface TasksUnitOfWork {
+  run<W extends TasksWrite<unknown>>(write: () => W): W
+}
+
 export interface CreateTasksCommandsDeps {
   repository: TasksCommandRepository
   publisher: TasksDomainPublisher
   generateId: () => string
+  /** Absent: each repository call commits on its own, as before #2301. */
+  unitOfWork?: TasksUnitOfWork
+  /**
+   * A publisher call threw. The write had already committed, so the remaining
+   * events are still published and the command still resolves.
+   */
+  onPublisherError?: (kind: TasksDomainEvent['kind'], error: unknown) => void
+}
+
+const AUTOCOMMIT_UNIT_OF_WORK: TasksUnitOfWork = {
+  run: (write) => write()
+}
+
+function publishTasksEvent(
+  publisher: TasksDomainPublisher,
+  event: TasksDomainEvent
+): void | Promise<void> {
+  switch (event.kind) {
+    case 'taskCreated':
+      return publisher.taskCreated(event.payload)
+    case 'taskUpdated':
+      return publisher.taskUpdated(event.payload)
+    case 'taskDeleted':
+      return publisher.taskDeleted(event.payload)
+    case 'taskCompleted':
+      return publisher.taskCompleted(event.payload)
+    case 'taskMoved':
+      return publisher.taskMoved(event.payload)
+    case 'taskReordered':
+      return publisher.taskReordered?.(event.payload)
+    case 'projectCreated':
+      return publisher.projectCreated(event.payload)
+    case 'projectUpdated':
+      return publisher.projectUpdated(event.payload)
+    case 'projectDeleted':
+      return publisher.projectDeleted(event.payload)
+    case 'statusCreated':
+      return publisher.statusCreated(event.payload)
+    case 'statusUpdated':
+      return publisher.statusUpdated(event.payload)
+    case 'statusDeleted':
+      return publisher.statusDeleted(event.payload)
+  }
 }
 
 /**
@@ -390,716 +465,886 @@ const PROJECT_MISSING_ERROR = 'errors:task.projectMissing'
 export function createTasksCommands({
   repository,
   publisher,
-  generateId
+  generateId,
+  unitOfWork = AUTOCOMMIT_UNIT_OF_WORK,
+  onPublisherError
 }: CreateTasksCommandsDeps) {
+  // The write phase commits before any publisher code runs: the publisher is
+  // async and does I/O, which a synchronous storage transaction cannot span.
+  async function commit<W extends TasksWrite<unknown>>(write: () => W): Promise<W['result']> {
+    const { result, events } = unitOfWork.run(write)
+    for (const event of events) {
+      try {
+        await publishTasksEvent(publisher, event)
+      } catch (error) {
+        onPublisherError?.(event.kind, error)
+      }
+    }
+    return result
+  }
+
   return {
     async createTask(input: TaskCreateInput) {
-      if (projectIsMissing(repository, input.projectId)) {
-        return { success: false as const, task: null, error: PROJECT_MISSING_ERROR }
-      }
+      return commit(() => {
+        if (projectIsMissing(repository, input.projectId)) {
+          return {
+            result: { success: false as const, task: null, error: PROJECT_MISSING_ERROR },
+            events: []
+          }
+        }
 
-      const id = generateId()
-      const position =
-        input.position ?? repository.getNextTaskPosition(input.projectId, input.parentId)
+        const id = generateId()
+        const position =
+          input.position ?? repository.getNextTaskPosition(input.projectId, input.parentId)
 
-      const createdTask = repository.createTask({
-        id,
-        projectId: input.projectId,
-        statusId: resolveStatusId(repository, input.statusId ?? null),
-        parentId: input.parentId ?? null,
-        title: input.title,
-        description: input.description ?? null,
-        priority: (input.priority ?? 0) as Task['priority'],
-        position,
-        dueDate: input.dueDate ?? null,
-        dueTime: input.dueTime ?? null,
-        startDate: input.startDate ?? null,
-        repeatConfig: input.repeatConfig ?? null,
-        repeatFrom: input.repeatFrom ?? null,
-        sourceNoteId: input.sourceNoteId ?? null,
-        completedAt: null,
-        archivedAt: null,
-        createdAt: new Date().toISOString(),
-        modifiedAt: new Date().toISOString()
+        const createdTask = repository.createTask({
+          id,
+          projectId: input.projectId,
+          statusId: resolveStatusId(repository, input.statusId ?? null),
+          parentId: input.parentId ?? null,
+          title: input.title,
+          description: input.description ?? null,
+          priority: (input.priority ?? 0) as Task['priority'],
+          position,
+          dueDate: input.dueDate ?? null,
+          dueTime: input.dueTime ?? null,
+          startDate: input.startDate ?? null,
+          repeatConfig: input.repeatConfig ?? null,
+          repeatFrom: input.repeatFrom ?? null,
+          sourceNoteId: input.sourceNoteId ?? null,
+          completedAt: null,
+          archivedAt: null,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString()
+        })
+
+        if (input.tags && input.tags.length > 0) {
+          repository.setTaskTags(id, input.tags)
+        }
+
+        if (input.linkedNoteIds && input.linkedNoteIds.length > 0) {
+          repository.setTaskNotes(id, input.linkedNoteIds)
+        }
+
+        if (input.linkedCanvasIds && input.linkedCanvasIds.length > 0) {
+          repository.setTaskCanvases(id, input.linkedCanvasIds)
+        }
+
+        const task = mergeTaskRelations(createdTask, {
+          tags: input.tags ?? createdTask.tags,
+          linkedNoteIds: input.linkedNoteIds ?? createdTask.linkedNoteIds,
+          linkedCanvasIds: input.linkedCanvasIds ?? createdTask.linkedCanvasIds
+        })
+        const events: TasksDomainEvent[] = [{ kind: 'taskCreated', payload: { task } }]
+        return { result: { success: true, task }, events }
       })
-
-      if (input.tags && input.tags.length > 0) {
-        repository.setTaskTags(id, input.tags)
-      }
-
-      if (input.linkedNoteIds && input.linkedNoteIds.length > 0) {
-        repository.setTaskNotes(id, input.linkedNoteIds)
-      }
-
-      if (input.linkedCanvasIds && input.linkedCanvasIds.length > 0) {
-        repository.setTaskCanvases(id, input.linkedCanvasIds)
-      }
-
-      const task = mergeTaskRelations(createdTask, {
-        tags: input.tags ?? createdTask.tags,
-        linkedNoteIds: input.linkedNoteIds ?? createdTask.linkedNoteIds,
-        linkedCanvasIds: input.linkedCanvasIds ?? createdTask.linkedCanvasIds
-      })
-      await publisher.taskCreated({ task })
-
-      return { success: true, task }
     },
 
     async updateTask(input: TaskUpdateInput) {
-      const { id, tags, linkedNoteIds, linkedCanvasIds, priority, ...rawUpdates } = input
-      const existingTask = repository.getTask(id)
+      return commit(() => {
+        const { id, tags, linkedNoteIds, linkedCanvasIds, priority, ...rawUpdates } = input
+        const existingTask = repository.getTask(id)
 
-      const updates: Partial<Task> = definedUpdates({
-        ...rawUpdates,
-        ...(priority !== undefined ? { priority: priority as Task['priority'] } : {})
-      })
-
-      if (projectIsMissing(repository, updates.projectId)) {
-        return { success: false as const, task: null, error: PROJECT_MISSING_ERROR }
-      }
-
-      if (updates.projectId && existingTask && existingTask.projectId !== updates.projectId) {
-        const currentStatus = existingTask.statusId
-          ? repository.getStatus(existingTask.statusId)
-          : undefined
-        const equivalentStatus = repository.getEquivalentStatus(updates.projectId, currentStatus)
-        if (equivalentStatus) {
-          updates.statusId = equivalentStatus.id
-        }
-      }
-
-      // Guarded: a bare assignment would re-add a `statusId: undefined` key that
-      // definedUpdates() just stripped, and computeChangedFields() would then
-      // report a cleared status on every edit that never touched it.
-      if (updates.statusId !== undefined) {
-        updates.statusId = resolveStatusId(repository, updates.statusId)
-      }
-
-      const oldTags = tags !== undefined ? repository.getTaskTags(id) : undefined
-      const oldNoteIds = linkedNoteIds !== undefined ? repository.getTaskNoteIds(id) : undefined
-      const oldCanvasIds =
-        linkedCanvasIds !== undefined ? repository.getTaskCanvasIds(id) : undefined
-
-      const task = repository.updateTask(id, updates)
-      if (!task) {
-        return { success: false, task: null, error: 'Task not found' }
-      }
-
-      if (tags !== undefined) {
-        repository.setTaskTags(id, tags)
-      }
-
-      if (linkedNoteIds !== undefined) {
-        repository.setTaskNotes(id, linkedNoteIds)
-      }
-
-      if (linkedCanvasIds !== undefined) {
-        repository.setTaskCanvases(id, linkedCanvasIds)
-      }
-
-      const resolvedTask: Task = {
-        ...task,
-        ...(tags !== undefined ? { tags } : {}),
-        ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {}),
-        ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {})
-      }
-      const changedFields = computeChangedFields(existingTask, updates, [
-        {
-          field: 'tags',
-          before: oldTags,
-          after: tags
-        },
-        {
-          field: 'linkedNoteIds',
-          before: oldNoteIds,
-          after: linkedNoteIds
-        },
-        {
-          field: 'linkedCanvasIds',
-          before: oldCanvasIds,
-          after: linkedCanvasIds
-        }
-      ])
-
-      const changes: Partial<Task> = {
-        ...updates,
-        ...(tags !== undefined ? { tags } : {}),
-        ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {}),
-        ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {})
-      }
-
-      await publisher.taskUpdated({
-        id,
-        task: resolvedTask,
-        changes,
-        changedFields,
-        // Relations live in their own tables, so `existingTask.tags` is not the
-        // pre-write truth — the explicit reads above are.
-        previous: pickPrevious(existingTask, changedFields, {
-          ...(oldTags !== undefined ? { tags: oldTags } : {}),
-          ...(oldNoteIds !== undefined ? { linkedNoteIds: oldNoteIds } : {}),
-          ...(oldCanvasIds !== undefined ? { linkedCanvasIds: oldCanvasIds } : {})
+        const updates: Partial<Task> = definedUpdates({
+          ...rawUpdates,
+          ...(priority !== undefined ? { priority: priority as Task['priority'] } : {})
         })
-      })
 
-      return { success: true, task: resolvedTask }
+        if (projectIsMissing(repository, updates.projectId)) {
+          return {
+            result: { success: false as const, task: null, error: PROJECT_MISSING_ERROR },
+            events: []
+          }
+        }
+
+        if (updates.projectId && existingTask && existingTask.projectId !== updates.projectId) {
+          const currentStatus = existingTask.statusId
+            ? repository.getStatus(existingTask.statusId)
+            : undefined
+          const equivalentStatus = repository.getEquivalentStatus(updates.projectId, currentStatus)
+          if (equivalentStatus) {
+            updates.statusId = equivalentStatus.id
+          }
+        }
+
+        // Guarded: a bare assignment would re-add a `statusId: undefined` key that
+        // definedUpdates() just stripped, and computeChangedFields() would then
+        // report a cleared status on every edit that never touched it.
+        if (updates.statusId !== undefined) {
+          updates.statusId = resolveStatusId(repository, updates.statusId)
+        }
+
+        const oldTags = tags !== undefined ? repository.getTaskTags(id) : undefined
+        const oldNoteIds = linkedNoteIds !== undefined ? repository.getTaskNoteIds(id) : undefined
+        const oldCanvasIds =
+          linkedCanvasIds !== undefined ? repository.getTaskCanvasIds(id) : undefined
+
+        const task = repository.updateTask(id, updates)
+        if (!task) {
+          return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
+        }
+
+        if (tags !== undefined) {
+          repository.setTaskTags(id, tags)
+        }
+
+        if (linkedNoteIds !== undefined) {
+          repository.setTaskNotes(id, linkedNoteIds)
+        }
+
+        if (linkedCanvasIds !== undefined) {
+          repository.setTaskCanvases(id, linkedCanvasIds)
+        }
+
+        const resolvedTask: Task = {
+          ...task,
+          ...(tags !== undefined ? { tags } : {}),
+          ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {}),
+          ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {})
+        }
+        const changedFields = computeChangedFields(existingTask, updates, [
+          {
+            field: 'tags',
+            before: oldTags,
+            after: tags
+          },
+          {
+            field: 'linkedNoteIds',
+            before: oldNoteIds,
+            after: linkedNoteIds
+          },
+          {
+            field: 'linkedCanvasIds',
+            before: oldCanvasIds,
+            after: linkedCanvasIds
+          }
+        ])
+
+        const changes: Partial<Task> = {
+          ...updates,
+          ...(tags !== undefined ? { tags } : {}),
+          ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {}),
+          ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {})
+        }
+
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'taskUpdated',
+            payload: {
+              id,
+              task: resolvedTask,
+              changes,
+              changedFields,
+              // Relations live in their own tables, so `existingTask.tags` is not the
+              // pre-write truth — the explicit reads above are.
+              previous: pickPrevious(existingTask, changedFields, {
+                ...(oldTags !== undefined ? { tags: oldTags } : {}),
+                ...(oldNoteIds !== undefined ? { linkedNoteIds: oldNoteIds } : {}),
+                ...(oldCanvasIds !== undefined ? { linkedCanvasIds: oldCanvasIds } : {})
+              })
+            }
+          }
+        ]
+        return { result: { success: true, task: resolvedTask }, events }
+      })
     },
 
     async deleteTask(id: string) {
-      const snapshot = repository.getTask(id)
-      repository.deleteTask(id)
-      await publisher.taskDeleted({ id, snapshot })
-      return { success: true }
+      return commit(() => {
+        const snapshot = repository.getTask(id)
+        repository.deleteTask(id)
+        const events: TasksDomainEvent[] = [{ kind: 'taskDeleted', payload: { id, snapshot } }]
+        return { result: { success: true }, events }
+      })
     },
 
     async completeTask(input: TaskCompleteInput) {
-      // Pre-read: completeTask writes before it returns, so by the time we have
-      // `task` the old completedAt is already gone.
-      const before = repository.getTask(input.id)
-      const task = repository.completeTask(input.id, input.completedAt)
-      if (!task) {
-        return { success: false, task: null, error: 'Task not found' }
-      }
+      return commit(() => {
+        // Pre-read: completeTask writes before it returns, so by the time we have
+        // `task` the old completedAt is already gone.
+        const before = repository.getTask(input.id)
+        const task = repository.completeTask(input.id, input.completedAt)
+        if (!task) {
+          return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
+        }
 
-      await publisher.taskCompleted({
-        id: input.id,
-        task,
-        previous: { completedAt: before?.completedAt ?? null }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'taskCompleted',
+            payload: {
+              id: input.id,
+              task,
+              previous: { completedAt: before?.completedAt ?? null }
+            }
+          }
+        ]
+        return { result: { success: true, task }, events }
       })
-      return { success: true, task }
     },
 
     async uncompleteTask(id: string) {
-      const before = repository.getTask(id)
-      const task = repository.uncompleteTask(id)
-      if (!task) {
-        return { success: false, task: null, error: 'Task not found' }
-      }
+      return commit(() => {
+        const before = repository.getTask(id)
+        const task = repository.uncompleteTask(id)
+        if (!task) {
+          return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
+        }
 
-      await publisher.taskUpdated({
-        id,
-        task,
-        changes: { completedAt: null },
-        changedFields: ['completedAt'],
-        previous: { completedAt: before?.completedAt ?? null }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'taskUpdated',
+            payload: {
+              id,
+              task,
+              changes: { completedAt: null },
+              changedFields: ['completedAt'],
+              previous: { completedAt: before?.completedAt ?? null }
+            }
+          }
+        ]
+        return { result: { success: true, task }, events }
       })
-      return { success: true, task }
     },
 
     async archiveTask(id: string) {
-      const before = repository.getTask(id)
-      const task = repository.archiveTask(id)
-      if (!task) {
-        return { success: false, error: 'Task not found' }
-      }
+      return commit(() => {
+        const before = repository.getTask(id)
+        const task = repository.archiveTask(id)
+        if (!task) {
+          return { result: { success: false, error: 'Task not found' }, events: [] }
+        }
 
-      await publisher.taskUpdated({
-        id,
-        task,
-        changes: { archivedAt: task.archivedAt },
-        changedFields: ['archivedAt'],
-        previous: { archivedAt: before?.archivedAt ?? null }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'taskUpdated',
+            payload: {
+              id,
+              task,
+              changes: { archivedAt: task.archivedAt },
+              changedFields: ['archivedAt'],
+              previous: { archivedAt: before?.archivedAt ?? null }
+            }
+          }
+        ]
+        return { result: { success: true }, events }
       })
-      return { success: true }
     },
 
     async unarchiveTask(id: string) {
-      const before = repository.getTask(id)
-      const task = repository.unarchiveTask(id)
-      if (!task) {
-        return { success: false, error: 'Task not found' }
-      }
+      return commit(() => {
+        const before = repository.getTask(id)
+        const task = repository.unarchiveTask(id)
+        if (!task) {
+          return { result: { success: false, error: 'Task not found' }, events: [] }
+        }
 
-      await publisher.taskUpdated({
-        id,
-        task,
-        changes: { archivedAt: null },
-        changedFields: ['archivedAt'],
-        previous: { archivedAt: before?.archivedAt ?? null }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'taskUpdated',
+            payload: {
+              id,
+              task,
+              changes: { archivedAt: null },
+              changedFields: ['archivedAt'],
+              previous: { archivedAt: before?.archivedAt ?? null }
+            }
+          }
+        ]
+        return { result: { success: true }, events }
       })
-      return { success: true }
     },
 
     async moveTask(input: TaskMoveInput) {
-      if (projectIsMissing(repository, input.targetProjectId)) {
-        return { success: false as const, task: null, error: PROJECT_MISSING_ERROR }
-      }
-
-      const before = repository.getTask(input.taskId)
-      let targetStatusId = input.targetStatusId
-      if (input.targetProjectId && !targetStatusId) {
-        const currentTask = before
-        if (currentTask && currentTask.projectId !== input.targetProjectId) {
-          const currentStatus = currentTask.statusId
-            ? repository.getStatus(currentTask.statusId)
-            : undefined
-          const equivalentStatus = repository.getEquivalentStatus(
-            input.targetProjectId,
-            currentStatus
-          )
-          if (equivalentStatus) {
-            targetStatusId = equivalentStatus.id
+      return commit(() => {
+        if (projectIsMissing(repository, input.targetProjectId)) {
+          return {
+            result: { success: false as const, task: null, error: PROJECT_MISSING_ERROR },
+            events: []
           }
         }
-      }
 
-      const task = repository.moveTask(input.taskId, {
-        projectId: input.targetProjectId,
-        statusId: resolveStatusId(repository, targetStatusId),
-        parentId: input.targetParentId,
-        position: input.position
+        const before = repository.getTask(input.taskId)
+        let targetStatusId = input.targetStatusId
+        if (input.targetProjectId && !targetStatusId) {
+          const currentTask = before
+          if (currentTask && currentTask.projectId !== input.targetProjectId) {
+            const currentStatus = currentTask.statusId
+              ? repository.getStatus(currentTask.statusId)
+              : undefined
+            const equivalentStatus = repository.getEquivalentStatus(
+              input.targetProjectId,
+              currentStatus
+            )
+            if (equivalentStatus) {
+              targetStatusId = equivalentStatus.id
+            }
+          }
+        }
+
+        const task = repository.moveTask(input.taskId, {
+          projectId: input.targetProjectId,
+          statusId: resolveStatusId(repository, targetStatusId),
+          parentId: input.targetParentId,
+          position: input.position
+        })
+
+        if (!task) {
+          return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
+        }
+
+        const changedFields = ['position']
+        if (input.targetProjectId) changedFields.push('projectId')
+        if (targetStatusId !== undefined) changedFields.push('statusId')
+        if (input.targetParentId !== undefined) changedFields.push('parentId')
+
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'taskMoved',
+            payload: {
+              id: input.taskId,
+              task,
+              changedFields,
+              previous: pickPrevious(before, changedFields)
+            }
+          }
+        ]
+        return { result: { success: true, task }, events }
       })
-
-      if (!task) {
-        return { success: false, task: null, error: 'Task not found' }
-      }
-
-      const changedFields = ['position']
-      if (input.targetProjectId) changedFields.push('projectId')
-      if (targetStatusId !== undefined) changedFields.push('statusId')
-      if (input.targetParentId !== undefined) changedFields.push('parentId')
-
-      await publisher.taskMoved({
-        id: input.taskId,
-        task,
-        changedFields,
-        previous: pickPrevious(before, changedFields)
-      })
-
-      return { success: true, task }
     },
 
     async reorderTasks(taskIds: string[], positions: number[]) {
-      repository.reorderTasks(taskIds, positions)
+      return commit(() => {
+        repository.reorderTasks(taskIds, positions)
 
-      for (const taskId of taskIds) {
-        if (publisher.taskReordered) {
-          await publisher.taskReordered({
-            id: taskId,
-            changedFields: ['position']
+        const events: TasksDomainEvent[] = []
+        for (const taskId of taskIds) {
+          if (publisher.taskReordered) {
+            events.push({
+              kind: 'taskReordered',
+              payload: { id: taskId, changedFields: ['position'] }
+            })
+            continue
+          }
+
+          const task = repository.getTask(taskId)
+          if (!task) {
+            continue
+          }
+
+          events.push({
+            kind: 'taskUpdated',
+            payload: {
+              id: taskId,
+              task,
+              changes: { position: task.position },
+              changedFields: ['position']
+            }
           })
-          continue
         }
 
-        const task = repository.getTask(taskId)
-        if (!task) {
-          continue
-        }
-
-        await publisher.taskUpdated({
-          id: taskId,
-          task,
-          changes: { position: task.position },
-          changedFields: ['position']
-        })
-      }
-
-      return { success: true }
+        return { result: { success: true }, events }
+      })
     },
 
     async duplicateTask(id: string) {
-      const newId = generateId()
-      const duplicatedTask = repository.duplicateTask(id, newId)
-      if (!duplicatedTask) {
-        return { success: false, task: null, error: 'Task not found' }
-      }
-
-      const tags = repository.getTaskTags(id)
-      if (tags.length > 0) {
-        repository.setTaskTags(newId, tags)
-      }
-
-      const linkedNoteIds = repository.getTaskNoteIds(id)
-      if (linkedNoteIds.length > 0) {
-        repository.setTaskNotes(newId, linkedNoteIds)
-      }
-
-      const linkedCanvasIds = repository.getTaskCanvasIds(id)
-      if (linkedCanvasIds.length > 0) {
-        repository.setTaskCanvases(newId, linkedCanvasIds)
-      }
-
-      const resolvedTask = mergeTaskRelations(duplicatedTask, {
-        tags: tags.length > 0 ? tags : duplicatedTask.tags,
-        linkedNoteIds: linkedNoteIds.length > 0 ? linkedNoteIds : duplicatedTask.linkedNoteIds,
-        linkedCanvasIds:
-          linkedCanvasIds.length > 0 ? linkedCanvasIds : duplicatedTask.linkedCanvasIds
-      })
-      await publisher.taskCreated({ task: resolvedTask })
-
-      const subtasks = repository.getSubtasks(id)
-      for (const subtask of subtasks) {
-        const newSubtaskId = generateId()
-        const duplicatedSubtask = repository.duplicateSubtask(subtask.id, newSubtaskId, newId)
-        if (!duplicatedSubtask) continue
-
-        const subtaskTags = repository.getTaskTags(subtask.id)
-        if (subtaskTags.length > 0) {
-          repository.setTaskTags(newSubtaskId, subtaskTags)
+      return commit(() => {
+        const newId = generateId()
+        const duplicatedTask = repository.duplicateTask(id, newId)
+        if (!duplicatedTask) {
+          return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
         }
 
-        const subtaskNoteIds = repository.getTaskNoteIds(subtask.id)
-        if (subtaskNoteIds.length > 0) {
-          repository.setTaskNotes(newSubtaskId, subtaskNoteIds)
+        const tags = repository.getTaskTags(id)
+        if (tags.length > 0) {
+          repository.setTaskTags(newId, tags)
         }
 
-        const subtaskCanvasIds = repository.getTaskCanvasIds(subtask.id)
-        if (subtaskCanvasIds.length > 0) {
-          repository.setTaskCanvases(newSubtaskId, subtaskCanvasIds)
+        const linkedNoteIds = repository.getTaskNoteIds(id)
+        if (linkedNoteIds.length > 0) {
+          repository.setTaskNotes(newId, linkedNoteIds)
         }
 
-        const resolvedSubtask = mergeTaskRelations(duplicatedSubtask, {
-          tags: subtaskTags.length > 0 ? subtaskTags : duplicatedSubtask.tags,
-          linkedNoteIds:
-            subtaskNoteIds.length > 0 ? subtaskNoteIds : duplicatedSubtask.linkedNoteIds,
+        const linkedCanvasIds = repository.getTaskCanvasIds(id)
+        if (linkedCanvasIds.length > 0) {
+          repository.setTaskCanvases(newId, linkedCanvasIds)
+        }
+
+        const resolvedTask = mergeTaskRelations(duplicatedTask, {
+          tags: tags.length > 0 ? tags : duplicatedTask.tags,
+          linkedNoteIds: linkedNoteIds.length > 0 ? linkedNoteIds : duplicatedTask.linkedNoteIds,
           linkedCanvasIds:
-            subtaskCanvasIds.length > 0 ? subtaskCanvasIds : duplicatedSubtask.linkedCanvasIds
+            linkedCanvasIds.length > 0 ? linkedCanvasIds : duplicatedTask.linkedCanvasIds
         })
-        await publisher.taskCreated({ task: resolvedSubtask })
-      }
+        const events: TasksDomainEvent[] = [
+          { kind: 'taskCreated', payload: { task: resolvedTask } }
+        ]
 
-      return { success: true, task: resolvedTask }
+        const subtasks = repository.getSubtasks(id)
+        for (const subtask of subtasks) {
+          const newSubtaskId = generateId()
+          const duplicatedSubtask = repository.duplicateSubtask(subtask.id, newSubtaskId, newId)
+          if (!duplicatedSubtask) continue
+
+          const subtaskTags = repository.getTaskTags(subtask.id)
+          if (subtaskTags.length > 0) {
+            repository.setTaskTags(newSubtaskId, subtaskTags)
+          }
+
+          const subtaskNoteIds = repository.getTaskNoteIds(subtask.id)
+          if (subtaskNoteIds.length > 0) {
+            repository.setTaskNotes(newSubtaskId, subtaskNoteIds)
+          }
+
+          const subtaskCanvasIds = repository.getTaskCanvasIds(subtask.id)
+          if (subtaskCanvasIds.length > 0) {
+            repository.setTaskCanvases(newSubtaskId, subtaskCanvasIds)
+          }
+
+          const resolvedSubtask = mergeTaskRelations(duplicatedSubtask, {
+            tags: subtaskTags.length > 0 ? subtaskTags : duplicatedSubtask.tags,
+            linkedNoteIds:
+              subtaskNoteIds.length > 0 ? subtaskNoteIds : duplicatedSubtask.linkedNoteIds,
+            linkedCanvasIds:
+              subtaskCanvasIds.length > 0 ? subtaskCanvasIds : duplicatedSubtask.linkedCanvasIds
+          })
+          events.push({ kind: 'taskCreated', payload: { task: resolvedSubtask } })
+        }
+
+        return { result: { success: true, task: resolvedTask }, events }
+      })
     },
 
     async convertToSubtask(taskId: string, parentId: string) {
-      const before = repository.getTask(taskId)
-      const task = repository.moveTask(taskId, { parentId })
-      if (!task) {
-        return { success: false, task: null, error: 'Task not found' }
-      }
+      return commit(() => {
+        const before = repository.getTask(taskId)
+        const task = repository.moveTask(taskId, { parentId })
+        if (!task) {
+          return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
+        }
 
-      await publisher.taskUpdated({
-        id: taskId,
-        task,
-        changes: { parentId },
-        changedFields: ['parentId'],
-        previous: { parentId: before?.parentId ?? null }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'taskUpdated',
+            payload: {
+              id: taskId,
+              task,
+              changes: { parentId },
+              changedFields: ['parentId'],
+              previous: { parentId: before?.parentId ?? null }
+            }
+          }
+        ]
+        return { result: { success: true, task }, events }
       })
-
-      return { success: true, task }
     },
 
     async convertToTask(taskId: string) {
-      const before = repository.getTask(taskId)
-      const task = repository.moveTask(taskId, { parentId: null })
-      if (!task) {
-        return { success: false, task: null, error: 'Task not found' }
-      }
+      return commit(() => {
+        const before = repository.getTask(taskId)
+        const task = repository.moveTask(taskId, { parentId: null })
+        if (!task) {
+          return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
+        }
 
-      await publisher.taskUpdated({
-        id: taskId,
-        task,
-        changes: { parentId: null },
-        changedFields: ['parentId'],
-        previous: { parentId: before?.parentId ?? null }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'taskUpdated',
+            payload: {
+              id: taskId,
+              task,
+              changes: { parentId: null },
+              changedFields: ['parentId'],
+              previous: { parentId: before?.parentId ?? null }
+            }
+          }
+        ]
+        return { result: { success: true, task }, events }
       })
-
-      return { success: true, task }
     },
 
     async createProject(input: ProjectCreateInput) {
-      const id = generateId()
-      const position = repository.getNextProjectPosition()
+      return commit(() => {
+        const id = generateId()
+        const position = repository.getNextProjectPosition()
 
-      repository.createProject({
-        id,
-        name: input.name,
-        description: input.description ?? null,
-        color: input.color ?? '#6366f1',
-        icon: input.icon ?? null,
-        position,
-        isInbox: false
+        repository.createProject({
+          id,
+          name: input.name,
+          description: input.description ?? null,
+          color: input.color ?? '#6366f1',
+          icon: input.icon ?? null,
+          position,
+          isInbox: false
+        })
+
+        if (input.statuses && input.statuses.length >= 2) {
+          repository.createCustomStatuses(id, input.statuses)
+        } else {
+          repository.createDefaultStatuses(id)
+        }
+
+        const project = repository.getProject(id)
+        if (!project) {
+          throw new Error('Project not found after create')
+        }
+
+        const events: TasksDomainEvent[] = [{ kind: 'projectCreated', payload: { project } }]
+        return { result: { success: true, project }, events }
       })
-
-      if (input.statuses && input.statuses.length >= 2) {
-        repository.createCustomStatuses(id, input.statuses)
-      } else {
-        repository.createDefaultStatuses(id)
-      }
-
-      const project = repository.getProject(id)
-      if (!project) {
-        throw new Error('Project not found after create')
-      }
-
-      await publisher.projectCreated({ project })
-      return { success: true, project }
     },
 
     async updateProject(input: ProjectUpdateInput) {
-      const { id, statuses, ...metadataUpdates } = input
-      const project = repository.updateProject(id, metadataUpdates)
-      if (!project) {
-        return { success: false, project: null, error: 'Project not found' }
-      }
+      return commit(() => {
+        const { id, statuses, ...metadataUpdates } = input
+        const project = repository.updateProject(id, metadataUpdates)
+        if (!project) {
+          return {
+            result: { success: false, project: null, error: 'Project not found' },
+            events: []
+          }
+        }
 
-      if (statuses) {
-        repository.reconcileProjectStatuses(id, statuses)
-      }
+        if (statuses) {
+          repository.reconcileProjectStatuses(id, statuses)
+        }
 
-      const resolvedProject = repository.getProject(id)
-      if (!resolvedProject) {
-        throw new Error('Project not found after update')
-      }
+        const resolvedProject = repository.getProject(id)
+        if (!resolvedProject) {
+          throw new Error('Project not found after update')
+        }
 
-      await publisher.projectUpdated({
-        id,
-        project: resolvedProject,
-        changedFields: [...Object.keys(metadataUpdates), ...(statuses ? ['statuses'] : [])]
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'projectUpdated',
+            payload: {
+              id,
+              project: resolvedProject,
+              changedFields: [...Object.keys(metadataUpdates), ...(statuses ? ['statuses'] : [])]
+            }
+          }
+        ]
+        return { result: { success: true, project: resolvedProject }, events }
       })
-
-      return { success: true, project: resolvedProject }
     },
 
     async deleteProject(id: string) {
-      const snapshot = repository.getProject(id)
-      // SQLite cascades this project's tasks away locally, but a cascade is
-      // invisible to sync: without an explicit tombstone per task the server
-      // keeps them alive forever, and every device then re-pulls a task whose
-      // project_id no longer resolves — FOREIGN KEY constraint failed on every
-      // cycle, item skipped, manifest still sees it server-only, re-pull (#837).
-      const cascadedTasks = repository.listTasks({
-        projectId: id,
-        includeCompleted: true,
-        includeArchived: true
+      return commit(() => {
+        const snapshot = repository.getProject(id)
+        // SQLite cascades this project's tasks away locally, but a cascade is
+        // invisible to sync: without an explicit tombstone per task the server
+        // keeps them alive forever, and every device then re-pulls a task whose
+        // project_id no longer resolves — FOREIGN KEY constraint failed on every
+        // cycle, item skipped, manifest still sees it server-only, re-pull (#837).
+        // The tombstones are events of this write so they commit with the
+        // cascade, not one by one after it (#2301).
+        // listTasks strips the sync clock; getTask keeps it, and the tombstone
+        // is built from the snapshot's clock.
+        const cascadedTasks = repository
+          .listTasks({ projectId: id, includeCompleted: true, includeArchived: true })
+          .map((task) => repository.getTask(task.id) ?? task)
+        repository.deleteProject(id)
+        const events: TasksDomainEvent[] = [
+          { kind: 'projectDeleted', payload: { id, snapshot } },
+          ...cascadedTasks.map((task): TasksDomainEvent => ({
+            kind: 'taskDeleted',
+            payload: { id: task.id, snapshot: task }
+          }))
+        ]
+        return { result: { success: true }, events }
       })
-      repository.deleteProject(id)
-      await publisher.projectDeleted({ id, snapshot })
-      for (const task of cascadedTasks) {
-        await publisher.taskDeleted({ id: task.id, snapshot: task })
-      }
-      return { success: true }
     },
 
     async linkItemToProject(input: ProjectLinkItemInput) {
-      // Validate before inserting — project_links.project_id carries a FK, so an
-      // unknown (or concurrently deleted) project would throw past the structured
-      // `{ success: false, error }` response instead of returning it.
-      const project = repository.getProject(input.projectId)
-      if (!project) {
-        return { success: false, error: 'Project not found' }
-      }
+      return commit(() => {
+        // Validate before inserting — project_links.project_id carries a FK, so an
+        // unknown (or concurrently deleted) project would throw past the structured
+        // `{ success: false, error }` response instead of returning it.
+        const project = repository.getProject(input.projectId)
+        if (!project) {
+          return { result: { success: false, error: 'Project not found' }, events: [] }
+        }
 
-      const existing = repository.findProjectLink(input.projectId, input.itemType, input.itemId)
-      if (!existing) {
-        repository.linkItemToProject({
-          id: generateId(),
-          projectId: input.projectId,
-          itemType: input.itemType,
-          itemId: input.itemId
-        })
-      }
+        const existing = repository.findProjectLink(input.projectId, input.itemType, input.itemId)
+        if (!existing) {
+          repository.linkItemToProject({
+            id: generateId(),
+            projectId: input.projectId,
+            itemType: input.itemType,
+            itemId: input.itemId
+          })
+        }
 
-      await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })
-      return { success: true }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'projectUpdated',
+            payload: { id: input.projectId, project, changedFields: ['links'] }
+          }
+        ]
+        return { result: { success: true }, events }
+      })
     },
 
     async unlinkItemFromProject(input: ProjectLinkItemInput) {
-      repository.unlinkItemFromProject(input.projectId, input.itemType, input.itemId)
+      return commit(() => {
+        repository.unlinkItemFromProject(input.projectId, input.itemType, input.itemId)
 
-      const project = repository.getProject(input.projectId)
-      if (!project) {
-        return { success: false, error: 'Project not found' }
-      }
+        const project = repository.getProject(input.projectId)
+        if (!project) {
+          return { result: { success: false, error: 'Project not found' }, events: [] }
+        }
 
-      await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })
-      return { success: true }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'projectUpdated',
+            payload: { id: input.projectId, project, changedFields: ['links'] }
+          }
+        ]
+        return { result: { success: true }, events }
+      })
     },
 
     async setProjectLinkPinned(input: ProjectSetLinkPinnedInput) {
-      repository.setProjectLinkPinned(input.projectId, input.itemId, input.pinned)
+      return commit(() => {
+        repository.setProjectLinkPinned(input.projectId, input.itemId, input.pinned)
 
-      const project = repository.getProject(input.projectId)
-      if (!project) {
-        return { success: false, error: 'Project not found' }
-      }
+        const project = repository.getProject(input.projectId)
+        if (!project) {
+          return { result: { success: false, error: 'Project not found' }, events: [] }
+        }
 
-      await publisher.projectUpdated({ id: input.projectId, project, changedFields: ['links'] })
-      return { success: true }
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'projectUpdated',
+            payload: { id: input.projectId, project, changedFields: ['links'] }
+          }
+        ]
+        return { result: { success: true }, events }
+      })
     },
 
     async setProjectHomeNote(input: ProjectSetHomeNoteInput) {
-      repository.setProjectHomeNote(input.projectId, input.noteId)
+      return commit(() => {
+        repository.setProjectHomeNote(input.projectId, input.noteId)
 
-      const project = repository.getProject(input.projectId)
-      if (!project) {
-        return { success: false, error: 'Project not found' }
-      }
+        const project = repository.getProject(input.projectId)
+        if (!project) {
+          return { result: { success: false, error: 'Project not found' }, events: [] }
+        }
 
-      await publisher.projectUpdated({
-        id: input.projectId,
-        project,
-        changedFields: ['homeNoteId']
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'projectUpdated',
+            payload: { id: input.projectId, project, changedFields: ['homeNoteId'] }
+          }
+        ]
+        return { result: { success: true, project }, events }
       })
-      return { success: true, project }
     },
 
     // A note's links + home-note references only sync because the project payload
     // carries them, so removing them must re-enqueue each affected project through
-    // the same publisher.projectUpdated(...) path as link/unlink/set-home-note.
+    // the same projectUpdated event as link/unlink/set-home-note.
     async cleanupProjectLinksForDeletedNote(noteId: string) {
-      const fromLinks = repository.deleteProjectLinksForItem('note', noteId)
-      const fromHome = repository.clearProjectsHomeNote(noteId)
+      return commit(() => {
+        const fromLinks = repository.deleteProjectLinksForItem('note', noteId)
+        const fromHome = repository.clearProjectsHomeNote(noteId)
 
-      const changedByProject = new Map<string, string[]>()
-      for (const id of fromLinks) changedByProject.set(id, ['links'])
-      for (const id of fromHome) {
-        const existing = changedByProject.get(id)
-        changedByProject.set(id, existing ? [...existing, 'homeNoteId'] : ['homeNoteId'])
-      }
-
-      for (const [projectId, changedFields] of changedByProject) {
-        const project = repository.getProject(projectId)
-        if (project) {
-          await publisher.projectUpdated({ id: projectId, project, changedFields })
+        const changedByProject = new Map<string, string[]>()
+        for (const id of fromLinks) changedByProject.set(id, ['links'])
+        for (const id of fromHome) {
+          const existing = changedByProject.get(id)
+          changedByProject.set(id, existing ? [...existing, 'homeNoteId'] : ['homeNoteId'])
         }
-      }
 
-      return { success: true }
+        const events: TasksDomainEvent[] = []
+        for (const [projectId, changedFields] of changedByProject) {
+          const project = repository.getProject(projectId)
+          if (project) {
+            events.push({
+              kind: 'projectUpdated',
+              payload: { id: projectId, project, changedFields }
+            })
+          }
+        }
+
+        return { result: { success: true }, events }
+      })
     },
 
     async archiveProject(id: string) {
-      const project = repository.archiveProject(id)
-      if (!project) {
-        return { success: false, error: 'Project not found' }
-      }
+      return commit(() => {
+        const project = repository.archiveProject(id)
+        if (!project) {
+          return { result: { success: false, error: 'Project not found' }, events: [] }
+        }
 
-      const resolvedProject = repository.getProject(id)
-      await publisher.projectUpdated({
-        id,
-        project: resolvedProject ?? project,
-        changedFields: ['archivedAt']
+        const resolvedProject = repository.getProject(id)
+        const events: TasksDomainEvent[] = [
+          {
+            kind: 'projectUpdated',
+            payload: { id, project: resolvedProject ?? project, changedFields: ['archivedAt'] }
+          }
+        ]
+        return { result: { success: true }, events }
       })
-
-      return { success: true }
     },
 
     async reorderProjects(projectIds: string[], positions: number[]) {
-      repository.reorderProjects(projectIds, positions)
+      return commit(() => {
+        repository.reorderProjects(projectIds, positions)
 
-      for (const projectId of projectIds) {
-        const project = repository.getProject(projectId)
-        if (project) {
-          await publisher.projectUpdated({
-            id: projectId,
-            project,
-            changedFields: ['position']
-          })
+        const events: TasksDomainEvent[] = []
+        for (const projectId of projectIds) {
+          const project = repository.getProject(projectId)
+          if (project) {
+            events.push({
+              kind: 'projectUpdated',
+              payload: { id: projectId, project, changedFields: ['position'] }
+            })
+          }
         }
-      }
 
-      return { success: true }
+        return { result: { success: true }, events }
+      })
     },
 
     async createStatus(input: StatusCreateInput) {
-      const status = repository.createStatus({
-        id: generateId(),
-        projectId: input.projectId,
-        name: input.name,
-        color: input.color ?? '#6b7280',
-        position: repository.getNextStatusPosition(input.projectId),
-        isDefault: false,
-        isDone: input.isDone ?? false
-      })
+      return commit(() => {
+        const status = repository.createStatus({
+          id: generateId(),
+          projectId: input.projectId,
+          name: input.name,
+          color: input.color ?? '#6b7280',
+          position: repository.getNextStatusPosition(input.projectId),
+          isDefault: false,
+          isDone: input.isDone ?? false
+        })
 
-      await publisher.statusCreated({ status })
-      return { success: true, status }
+        const events: TasksDomainEvent[] = [{ kind: 'statusCreated', payload: { status } }]
+        return { result: { success: true, status }, events }
+      })
     },
 
     async updateStatus(input: StatusUpdateInput) {
-      const { id, ...updates } = input
-      const status = repository.updateStatus(id, updates)
-      if (!status) {
-        return { success: false, error: 'Status not found' }
-      }
+      return commit(() => {
+        const { id, ...updates } = input
+        const status = repository.updateStatus(id, updates)
+        if (!status) {
+          return { result: { success: false, error: 'Status not found' }, events: [] }
+        }
 
-      const resolvedStatus = repository.getStatus(id) ?? status
-      await publisher.statusUpdated({ status: resolvedStatus })
-      return { success: true, status: resolvedStatus }
+        const resolvedStatus = repository.getStatus(id) ?? status
+        const events: TasksDomainEvent[] = [
+          { kind: 'statusUpdated', payload: { status: resolvedStatus } }
+        ]
+        return { result: { success: true, status: resolvedStatus }, events }
+      })
     },
 
     async deleteStatus(id: string) {
-      const status = repository.getStatus(id)
-      repository.deleteStatus(id)
-      if (status) {
-        await publisher.statusDeleted({ id, projectId: status.projectId })
-      }
-      return { success: true }
+      return commit(() => {
+        const status = repository.getStatus(id)
+        repository.deleteStatus(id)
+        const events: TasksDomainEvent[] = status
+          ? [{ kind: 'statusDeleted', payload: { id, projectId: status.projectId } }]
+          : []
+        return { result: { success: true }, events }
+      })
     },
 
     async reorderStatuses(statusIds: string[], positions: number[]) {
-      repository.reorderStatuses(statusIds, positions)
-      for (const statusId of statusIds) {
-        const status = repository.getStatus(statusId)
-        if (status) {
-          await publisher.statusUpdated({ status })
+      return commit(() => {
+        repository.reorderStatuses(statusIds, positions)
+        const events: TasksDomainEvent[] = []
+        for (const statusId of statusIds) {
+          const status = repository.getStatus(statusId)
+          if (status) {
+            events.push({ kind: 'statusUpdated', payload: { status } })
+          }
         }
-      }
-      return { success: true }
+        return { result: { success: true }, events }
+      })
     },
 
     async bulkComplete(ids: string[]) {
-      // The bulk write is a single `UPDATE … WHERE id IN (…)`, so per-row
-      // before-state costs one extra read per id. Accepted: the loop below
-      // already reads each row once, and selections are user-sized.
-      const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
-      const count = repository.bulkCompleteTasks(ids)
-      for (const id of ids) {
-        const task = repository.getTask(id)
-        if (task) {
-          await publisher.taskCompleted({
-            id,
-            task,
-            previous: { completedAt: before.get(id)?.completedAt ?? null }
-          })
+      return commit(() => {
+        // The bulk write is a single `UPDATE … WHERE id IN (…)`, so per-row
+        // before-state costs one extra read per id. Accepted: the loop below
+        // already reads each row once, and selections are user-sized.
+        const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
+        const count = repository.bulkCompleteTasks(ids)
+        const events: TasksDomainEvent[] = []
+        for (const id of ids) {
+          const task = repository.getTask(id)
+          if (task) {
+            events.push({
+              kind: 'taskCompleted',
+              payload: { id, task, previous: { completedAt: before.get(id)?.completedAt ?? null } }
+            })
+          }
         }
-      }
-      return { success: true, count }
+        return { result: { success: true, count }, events }
+      })
     },
 
     async bulkDelete(ids: string[]) {
-      const snapshots = ids.map((id) => repository.getTask(id))
-      const count = repository.bulkDeleteTasks(ids)
-      for (let index = 0; index < ids.length; index += 1) {
-        await publisher.taskDeleted({ id: ids[index], snapshot: snapshots[index] })
-      }
-      return { success: true, count }
+      return commit(() => {
+        const snapshots = ids.map((id) => repository.getTask(id))
+        const count = repository.bulkDeleteTasks(ids)
+        const events = ids.map((id, index): TasksDomainEvent => ({
+          kind: 'taskDeleted',
+          payload: { id, snapshot: snapshots[index] }
+        }))
+        return { result: { success: true, count }, events }
+      })
     },
 
     async bulkMove(ids: string[], projectId: string) {
-      const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
-      const count = repository.bulkMoveTasks(ids, projectId)
-      for (const id of ids) {
-        const task = repository.getTask(id)
-        if (task) {
-          await publisher.taskUpdated({
-            id,
-            task,
-            changes: { projectId },
-            changedFields: ['projectId', 'position'],
-            previous: pickPrevious(before.get(id), ['projectId', 'position'])
-          })
+      return commit(() => {
+        const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
+        const count = repository.bulkMoveTasks(ids, projectId)
+        const events: TasksDomainEvent[] = []
+        for (const id of ids) {
+          const task = repository.getTask(id)
+          if (task) {
+            events.push({
+              kind: 'taskUpdated',
+              payload: {
+                id,
+                task,
+                changes: { projectId },
+                changedFields: ['projectId', 'position'],
+                previous: pickPrevious(before.get(id), ['projectId', 'position'])
+              }
+            })
+          }
         }
-      }
-      return { success: true, count }
+        return { result: { success: true, count }, events }
+      })
     },
 
     async bulkArchive(ids: string[]) {
-      const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
-      const count = repository.bulkArchiveTasks(ids)
-      for (const id of ids) {
-        const task = repository.getTask(id)
-        if (task) {
-          await publisher.taskUpdated({
-            id,
-            task,
-            changes: { archivedAt: task.archivedAt },
-            changedFields: ['archivedAt'],
-            previous: { archivedAt: before.get(id)?.archivedAt ?? null }
-          })
+      return commit(() => {
+        const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
+        const count = repository.bulkArchiveTasks(ids)
+        const events: TasksDomainEvent[] = []
+        for (const id of ids) {
+          const task = repository.getTask(id)
+          if (task) {
+            events.push({
+              kind: 'taskUpdated',
+              payload: {
+                id,
+                task,
+                changes: { archivedAt: task.archivedAt },
+                changedFields: ['archivedAt'],
+                previous: { archivedAt: before.get(id)?.archivedAt ?? null }
+              }
+            })
+          }
         }
-      }
-      return { success: true, count }
+        return { result: { success: true, count }, events }
+      })
     }
   }
 }

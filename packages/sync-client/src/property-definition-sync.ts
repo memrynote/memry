@@ -2,8 +2,9 @@ import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { propertyDefinitions } from '@memry/db-schema/schema/notes-cache'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { nextLocalClock } from './tombstone-clocks'
 
 interface PropertyDefinitionSyncDeps {
   queue: SyncQueueManager
@@ -48,9 +49,15 @@ export class PropertyDefinitionSyncService {
           .from(propertyDefinitions)
           .where(eq(propertyDefinitions.name, name))
           .get() as Record<string, unknown> | undefined,
-      applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
-        const newClock = incrementClock(existingClock, deviceId)
+      applyLocalChange: ({ itemId, local, deviceId, operation }) => {
+        const newClock = nextLocalClock(
+          deps.db,
+          'property_definition',
+          itemId,
+          local.clock as VectorClock | null,
+          deviceId,
+          operation
+        )
 
         deps.db
           .update(propertyDefinitions)

@@ -59,7 +59,9 @@ describe('SyncEngine', () => {
 
       expect(getSpy).toHaveBeenCalledWith(
         expect.stringContaining('/sync/changes?limit=500'),
-        'test-token'
+        'test-token',
+        undefined,
+        expect.anything()
       )
 
       const pullCalls = postSpy.mock.calls.filter(([path]) => path === '/sync/pull')
@@ -122,6 +124,9 @@ describe('SyncEngine', () => {
         expect.objectContaining({ itemId: 'task-1', type: 'task' })
       )
 
+      // The conflict push-back now goes out at once (#2289); settle it before
+      // the mocks it runs against are restored.
+      await engine.stop({ skipFinalPush: true })
       vi.restoreAllMocks()
     })
   })

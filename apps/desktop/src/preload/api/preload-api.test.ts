@@ -751,6 +751,13 @@ describe('preload api wrappers', () => {
     )
     await expectInvoke(() => syncOps.getSyncedSettings(), SYNC_CHANNELS.GET_SYNCED_SETTINGS)
     await expectInvoke(() => syncOps.getStorageBreakdown(), SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)
+    await expectInvoke(() => syncOps.getLargeNotes(), SYNC_CHANNELS.GET_LARGE_NOTES)
+    await expectInvoke(() => syncOps.getVaultBinding(), SYNC_CHANNELS.GET_VAULT_BINDING)
+    await expectInvoke(
+      () => syncOps.resolveVaultBinding('local'),
+      SYNC_CHANNELS.RESOLVE_VAULT_BINDING,
+      { choice: 'local' }
+    )
 
     const decryptInput = {
       itemId: 'item-1',
@@ -1038,6 +1045,10 @@ describe('preload api wrappers', () => {
     )
     expect(callback).toHaveBeenLastCalledWith()
     expectSubscribe(() => syncEvents.onSyncStatusChanged(callback), SYNC_EVENTS.STATUS_CHANGED)
+    expectSubscribe(
+      () => syncEvents.onVaultBindingChanged(callback),
+      SYNC_EVENTS.VAULT_BINDING_CHANGED
+    )
     expectSubscribe(() => syncEvents.onItemSynced(callback), SYNC_EVENTS.ITEM_SYNCED)
     expectSubscribe(() => syncEvents.onConflictDetected(callback), SYNC_EVENTS.CONFLICT_DETECTED)
     expectSubscribe(() => syncEvents.onLinkingRequest(callback), SYNC_EVENTS.LINKING_REQUEST)

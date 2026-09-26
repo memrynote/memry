@@ -3,6 +3,8 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../sync/local-mutations'
+import { commitLocalChange } from '../sync/sync-intents'
+import type { DataDb } from '../database'
 
 export function syncTaggedNote(noteId: string): void {
   enqueueLocalSyncUpdate('note', noteId)
@@ -40,12 +42,6 @@ export function syncMergedTagDefinitions(
   }
 }
 
-export function syncTaggedTasks(taskIds: string[]): void {
-  for (const taskId of taskIds) {
-    enqueueLocalSyncUpdate('task', taskId)
-  }
-}
-
 export function syncTagCategoryCreate(id: string): void {
   enqueueLocalSyncCreate('tag_category', id)
 }
@@ -56,4 +52,24 @@ export function syncTagCategoryUpdate(id: string): void {
 
 export function syncTagCategoryDelete(id: string): void {
   enqueueLocalSyncDelete('tag_category', id)
+}
+
+/**
+ * Runs a task retag and commits a sync intent per retagged task with it
+ * (#2301). A `task_tags` write does not move `tasks.modified_at`, so a push
+ * lost after the retag would be invisible to the dirty sweep.
+ */
+export function commitTaskRetag<T extends { taskIds: string[] }>(db: DataDb, retag: () => T): T {
+  return commitLocalChange(db, () => {
+    const result = retag()
+    return {
+      value: result,
+      intents: result.taskIds.map((taskId) => ({
+        type: 'task' as const,
+        itemId: taskId,
+        op: 'update' as const,
+        args: [['tags']]
+      }))
+    }
+  })
 }

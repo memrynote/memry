@@ -1013,3 +1013,120 @@ describe('CaptureBar — natural-language quick-add', () => {
     expect(screen.queryByTestId('capture-bar-ghost')).not.toBeInTheDocument()
   })
 })
+
+// ============================================================================
+// Presets chip (Tasks)
+// ============================================================================
+
+describe('CaptureBar — presets', () => {
+  const presetProps = {
+    ...baseProps,
+    quickAdd: { projects: mockProjects },
+    presets: { defaultProjectId: 'inbox' }
+  }
+
+  const today = (): Date => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+
+  it('shows the Today chip only while focused', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...presetProps} onSubmit={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /^Due Today/ })).not.toBeInTheDocument()
+    await user.click(field())
+    expect(screen.getByRole('button', { name: /^Due Today/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Task options' })).toBeInTheDocument()
+  })
+
+  it('submits with the default due date of today', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...presetProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), 'Ship beta{Enter}')
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      'Ship beta',
+      expect.objectContaining({ dueDate: today(), priority: 'none', fromPresets: true })
+    )
+  })
+
+  it('applies a priority picked in the menu, then resets after submit', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...presetProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), 'Ship beta')
+    await user.click(screen.getByRole('button', { name: 'Task options' }))
+    await user.click(await screen.findByRole('button', { name: 'High (2)' }))
+    await user.keyboard('{Escape}')
+    await user.click(field())
+    await user.keyboard('{Enter}')
+
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      'Ship beta',
+      expect.objectContaining({ priority: 'high' })
+    )
+
+    await user.type(field(), 'Next one{Enter}')
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      'Next one',
+      expect.objectContaining({ priority: 'none' })
+    )
+  })
+
+  it('strips a typed token that a menu pick contradicts', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...presetProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), 'Ship it !low')
+    await user.click(screen.getByRole('button', { name: 'Task options' }))
+    await user.click(await screen.findByRole('button', { name: 'Urgent (1)' }))
+
+    expect(field()).toHaveValue('Ship it')
+  })
+
+  it('lets a typed token win over a preset', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...presetProps} onSubmit={onSubmit} />)
+
+    await user.click(field())
+    await user.click(screen.getByRole('button', { name: 'Task options' }))
+    await user.click(await screen.findByRole('button', { name: 'High (2)' }))
+    await user.keyboard('{Escape}')
+    await user.click(field())
+    await user.keyboard('Ship it !low{Enter}')
+
+    expect(onSubmit).toHaveBeenCalledWith('Ship it', expect.objectContaining({ priority: 'low' }))
+  })
+
+  it('removes the due date from the date picker', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...presetProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), 'Someday')
+    await user.click(screen.getByRole('button', { name: /^Due Today/ }))
+    await user.click(await screen.findByRole('button', { name: 'Remove date' }))
+    await user.click(field())
+
+    expect(screen.getByRole('button', { name: /^Due No date/ })).toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(onSubmit).toHaveBeenCalledWith('Someday', expect.objectContaining({ dueDate: null }))
+  })
+
+  it('does not render without the presets prop', async () => {
+    const user = userEvent.setup()
+    renderBar(
+      <CaptureBar {...baseProps} quickAdd={{ projects: mockProjects }} onSubmit={vi.fn()} />
+    )
+
+    await user.click(field())
+    expect(screen.queryByRole('button', { name: 'Task options' })).not.toBeInTheDocument()
+  })
+})

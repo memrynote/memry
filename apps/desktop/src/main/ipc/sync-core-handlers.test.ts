@@ -400,9 +400,25 @@ describe('sync IPC handlers', () => {
     })
   })
 
+  it('returns the settings sync error key when no device is registered to clock the write', async () => {
+    // #2287: updateField refuses to write without a device id to key the clock
+    mockGetSettingsSyncManager.mockReturnValue({ updateField: vi.fn(() => false) })
+    registerSyncHandlers()
+
+    const result = await invokeHandler(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, {
+      fieldPath: 'general.locale',
+      value: 'en'
+    })
+
+    expect(result).toEqual({
+      success: false,
+      error: 'errors:sync.settingsNotInitialized'
+    })
+  })
+
   it('updates and reads synced settings when the settings manager exists', async () => {
     const manager = {
-      updateField: vi.fn(),
+      updateField: vi.fn(() => true),
       getSettings: vi.fn(() => ({ general: { locale: 'en' } }))
     }
     mockGetSettingsSyncManager.mockReturnValue(manager)
@@ -414,7 +430,7 @@ describe('sync IPC handlers', () => {
         value: 'tr'
       })
     ).resolves.toEqual({ success: true })
-    expect(manager.updateField).toHaveBeenCalledWith('general.locale', 'tr', 'local')
+    expect(manager.updateField).toHaveBeenCalledWith('general.locale', 'tr')
 
     await expect(invokeHandler(SYNC_CHANNELS.GET_SYNCED_SETTINGS)).resolves.toEqual({
       general: { locale: 'en' }

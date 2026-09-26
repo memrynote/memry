@@ -21,7 +21,7 @@
  */
 
 import http from 'node:http'
-import type { AddressInfo } from 'node:net'
+import net, { type AddressInfo } from 'node:net'
 
 export interface ProxyRequestRecord {
   method: string
@@ -61,7 +61,10 @@ export interface SyncProxy {
   close(): Promise<void>
 }
 
-export async function startSyncProxy(targetUrl: string): Promise<SyncProxy> {
+export async function startSyncProxy(
+  targetUrl: string,
+  options: { forwardWebSocket?: boolean } = {}
+): Promise<SyncProxy> {
   const target = new URL(targetUrl)
   const records: ProxyRequestRecord[] = []
   let fault: FaultRule | null = null
@@ -137,6 +140,44 @@ export async function startSyncProxy(targetUrl: string): Promise<SyncProxy> {
     req.pipe(upstream)
   })
 
+  // Opt-in: a WebSocket upgrade (`/sync/ws`) is forwarded as raw bytes, never
+  // inspected. Without it a proxied device never receives a `changes_available`
+  // wake and only pulls when told to. Recorded with status 101.
+  const tunnels = new Set<net.Socket>()
+  server.on('upgrade', (req: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
+    if (!options.forwardWebSocket) {
+      socket.destroy()
+      return
+    }
+    const rawUrl = req.url ?? '/'
+    records.push({
+      method: req.method ?? 'GET',
+      path: rawUrl.split('?')[0],
+      status: 101,
+      at: Date.now(),
+      severed: false
+    })
+    const upstream = net.connect(Number(target.port), target.hostname, () => {
+      const lines = [`${req.method} ${rawUrl} HTTP/${req.httpVersion}`]
+      for (let i = 0; i < req.rawHeaders.length; i += 2) {
+        const name = req.rawHeaders[i]
+        lines.push(
+          `${name}: ${name.toLowerCase() === 'host' ? target.host : req.rawHeaders[i + 1]}`
+        )
+      }
+      upstream.write(`${lines.join('\r\n')}\r\n\r\n`)
+      if (head.length > 0) upstream.write(head)
+      upstream.pipe(socket)
+      socket.pipe(upstream)
+    })
+    for (const end of [socket, upstream]) {
+      tunnels.add(end)
+      end.on('close', () => tunnels.delete(end))
+    }
+    upstream.on('error', () => socket.destroy())
+    socket.on('error', () => upstream.destroy())
+  })
+
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
 
@@ -168,6 +209,7 @@ export async function startSyncProxy(targetUrl: string): Promise<SyncProxy> {
     },
     async close() {
       await new Promise<void>((resolve) => {
+        for (const socket of tunnels) socket.destroy()
         server.closeAllConnections?.()
         server.close(() => resolve())
       })

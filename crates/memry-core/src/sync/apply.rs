@@ -48,7 +48,8 @@ use crate::domain::{calendar_items, inbox, projects, settings, tasks};
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
-use super::{settings_merge, store};
+use super::clock::{ClockOrder, VectorClock, compare};
+use super::{body_debt, settings_merge, store};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -58,6 +59,8 @@ pub(crate) enum Pending {
         item_id: String,
         deleted_at: i64,
         server_cursor: Option<i64>,
+        /// The delete's clock; `None` for a legacy tombstone stored without one.
+        clock: Option<VectorClock>,
     },
 }
 
@@ -96,6 +99,9 @@ pub(crate) struct ApplyTotals {
     /// from disk — release these". A caller holding a registry releases each;
     /// a caller holding none has nothing resident to release.
     pub(crate) purged_documents: Vec<String>,
+    /// The `note` and `journal` records this page wrote, so the pull can tell
+    /// which of its body debts a skip made unnecessary.
+    pub(crate) applied_documents: Vec<String>,
 }
 
 /// The two item types whose bodies are CRDT documents (chapter 07, §12.3).
@@ -106,7 +112,7 @@ pub(crate) struct ApplyTotals {
 /// would delete a live note's body for a deleted tag — unrecoverable, because
 /// §7.15 leaves the server rows in place but this device would no longer be
 /// asking for them.
-const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
+pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 
 /// Applies one page's decoded items, in the order they were handed over, plus
 /// the ids §5.12.1 leaves with no type on the wire.
@@ -124,6 +130,7 @@ pub(crate) fn apply_page(
                 item_id,
                 deleted_at,
                 server_cursor,
+                clock,
             } => {
                 apply_tombstone(
                     conn,
@@ -131,6 +138,7 @@ pub(crate) fn apply_page(
                     &item_id,
                     deleted_at,
                     server_cursor,
+                    clock.as_ref(),
                     now_ms,
                     &mut totals,
                 )?;
@@ -146,13 +154,19 @@ pub(crate) fn apply_page(
                         &record.item_id,
                         now_ms,
                         record.server_cursor,
+                        None,
                         now_ms,
                         &mut totals,
                     )?;
                     continue;
                 }
                 match apply_inbound(conn, &record, now_ms)? {
-                    ApplyOutcome::Applied => totals.applied += 1,
+                    ApplyOutcome::Applied => {
+                        totals.applied += 1;
+                        if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
+                            totals.applied_documents.push(record.item_id.clone());
+                        }
+                    }
                     ApplyOutcome::Skipped => totals.skipped += 1,
                     ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
                     ApplyOutcome::Expired => totals.expired += 1,
@@ -190,19 +204,39 @@ pub(crate) fn apply_page(
 /// and propagates, so the page aborts with the cursor unmoved and the delete
 /// arrives again. A purge that quietly did nothing would be worse than one
 /// that errors: the caller would believe the body was gone.
+///
+/// **A clocked delete is recorded, then weighed** (#2409). Its clock is kept
+/// for a later re-create of the id ([`store::record_tombstone_clock`]), and a
+/// live local row whose clock happens strictly after it keeps the item: the
+/// §5.8 client rule, and what stops this device's own late tombstone from
+/// deleting the re-create that followed it. A tombstone with no clock applies
+/// unconditionally, as it always has.
+#[allow(clippy::too_many_arguments)]
 fn apply_tombstone(
     conn: &Connection,
     item_type: &str,
     item_id: &str,
     deleted_at: i64,
     server_cursor: Option<i64>,
+    clock: Option<&VectorClock>,
     now_ms: i64,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
     let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    if let Some(clock) = clock.filter(|clock| !clock.is_empty()) {
+        store::record_tombstone_clock(&txn, item_type, item_id, clock, now_ms)?;
+        if live_clock_is_after(&txn, item_type, item_id, clock)? {
+            txn.commit().map_err(sqlite_failed)?;
+            totals.skipped += 1;
+            return Ok(());
+        }
+    }
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {
+        // The body debt goes with the body: a pull owed before the delete
+        // would bring the server's surviving log back (#2297).
+        body_debt::settle(&txn, item_id)?;
         update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
     } else {
         0
@@ -213,6 +247,26 @@ fn apply_tombstone(
         totals.purged_documents.push(item_id.to_owned());
     }
     Ok(())
+}
+
+/// Whether the live local row's clock happens strictly after `tombstone`.
+///
+/// A row that is already deleted, has no clock, or whose clock will not parse
+/// is not after anything, so the delete applies exactly as before #2409.
+fn live_clock_is_after(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    tombstone: &VectorClock,
+) -> Result<bool, StorageError> {
+    let Some(row) = sync_items::load(conn, item_type, item_id)? else {
+        return Ok(false);
+    };
+    let local = row
+        .clock
+        .filter(|_| row.deleted_at.is_none())
+        .and_then(|text| serde_json::from_str::<VectorClock>(&text).ok());
+    Ok(local.is_some_and(|local| compare(&local, tombstone) == ClockOrder::After))
 }
 
 /// An id from `deleted` that arrived with **no type on the wire** (§5.12.1).
@@ -243,6 +297,7 @@ fn apply_untyped_tombstone(
     for item_type in &item_types {
         projectors::delete(&txn, item_type, item_id, now_ms)?;
     }
+    body_debt::settle(&txn, item_id)?;
     let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
     txn.commit().map_err(sqlite_failed)?;
     totals.deleted += 1;
@@ -405,6 +460,49 @@ mod tests {
         // dotted paths are a different algorithm from §6.3.1's document gate,
         // and folding one into the other is what §6.8 forbids.
         assert_eq!(settings::SETTINGS_ITEM_TYPE, "settings");
+    }
+
+    // #2409: a late tombstone the revived row already dominates keeps it; a
+    // tombstone with no clock has nothing to weigh and applies as before.
+    #[test]
+    fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_applies() {
+        use crate::domain::journal;
+        use crate::storage::{open_data, test_support::temp_dir};
+        use crate::sync::clock::clock_of;
+
+        let dir = temp_dir("apply-late-tombstone");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+        let delete = |clock| Pending::Tombstone {
+            item_type: "journal".to_owned(),
+            item_id: "j2026-04-16".to_owned(),
+            deleted_at: 5,
+            server_cursor: None,
+            clock,
+        };
+        let live = |conn: &Connection| -> bool {
+            sync_items::load(conn, "journal", "j2026-04-16")
+                .expect("read")
+                .is_some_and(|row| row.deleted_at.is_none())
+        };
+        db.call_blocking(|conn| {
+            journal::open_day(conn, "2026-04-16", "device-a", 1)?;
+            let first = clock_of([("device-a", 1), ("device-b", 1)]);
+            assert_eq!(
+                apply_page(conn, vec![delete(Some(first.clone()))], vec![], 2)?.deleted,
+                1
+            );
+            journal::open_day(conn, "2026-04-16", "device-a", 3)?;
+
+            let late = apply_page(conn, vec![delete(Some(first))], vec![], 4)?;
+            assert_eq!((late.deleted, late.skipped), (0, 1));
+            assert!(live(conn));
+
+            let clockless = apply_page(conn, vec![delete(None)], vec![], 5)?;
+            assert_eq!(clockless.deleted, 1);
+            assert!(!live(conn));
+            Ok(())
+        })
+        .expect("late tombstone");
     }
 
     #[test]

@@ -8,11 +8,14 @@ import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
 import { EVENT_CHANNELS, type VaultRecoveryNeededEvent } from '@memry/contracts/ipc-events'
 import {
   GetHistorySchema,
+  ResolveVaultBindingSchema,
   StorageBreakdownResult,
   UpdateSyncedSettingSchema
 } from '@memry/contracts/ipc-sync-ops'
 import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { listLargeNotes } from '../sync/large-notes'
+import { getVaultBindingState } from '../sync/vault-account-binding'
+import { resolveOpenVaultBinding } from '../sync/vault-binding-resolve'
 import { syncHistory } from '@memry/db-schema/schema/sync-history'
 
 import { eq, desc, count } from 'drizzle-orm'
@@ -235,9 +238,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       return { success: false, error: 'errors:sync.engineNotInitialized' }
     }
     return withErrorHandler(async () => {
-      // The user asked for this one, so it sweeps for remote body edits whatever
-      // the automatic throttle would have said — see FullSyncRunner.run.
-      await engine.fullSync({ forceCrdtSweep: true })
+      await engine.fullSync()
       return { success: true }
     }, 'errors:sync.triggerFailed')()
   })
@@ -305,7 +306,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       const manager = getSettingsSyncManager()
       if (!manager) return { success: false, error: 'errors:sync.settingsNotInitialized' }
 
-      manager.updateField(input.fieldPath, input.value, 'local')
+      if (!manager.updateField(input.fieldPath, input.value)) {
+        return { success: false, error: 'errors:sync.settingsNotInitialized' }
+      }
       return { success: true }
     },
     'errors:sync.updateSyncedSettingFailed'
@@ -346,6 +349,15 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return { status }
   })
 
+  ipcMain.handle(SYNC_CHANNELS.GET_VAULT_BINDING, () => getVaultBindingState())
+
+  registerCommand(
+    SYNC_CHANNELS.RESOLVE_VAULT_BINDING,
+    ResolveVaultBindingSchema,
+    (input) => resolveOpenVaultBinding(input.choice),
+    'Failed to update vault sync'
+  )
+
   ipcMain.handle(SYNC_CHANNELS.EMERGENCY_WIPE, async () => {
     const engine = resolveSyncEngine()
     if (engine) {
@@ -372,6 +384,8 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.RESUME)
   ipcMain.removeHandler(SYNC_CHANNELS.CHECK_DEVICE_STATUS)
   ipcMain.removeHandler(SYNC_CHANNELS.EMERGENCY_WIPE)
+  ipcMain.removeHandler(SYNC_CHANNELS.GET_VAULT_BINDING)
+  ipcMain.removeHandler(SYNC_CHANNELS.RESOLVE_VAULT_BINDING)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_QUARANTINED_ITEMS)
 
   ipcMain.removeHandler(SYNC_CHANNELS.UPDATE_SYNCED_SETTING)

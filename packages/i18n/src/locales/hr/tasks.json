@@ -29,6 +29,8 @@
     "status": "Status",
     "priority": "Prioritet",
     "dueDate": "Datum dospijeća",
+    "startsOn": "Počinje {date}",
+    "dueOn": "Rok {date}",
     "project": "Projekt",
     "repeat": "Ponovi",
     "createAnother": "Stvorite drugu",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Brzo dodavanje zadatka",
     "focusDescription": "Fokusirajte unos brzog dodavanja",
-    "placeholder": "Dodaj zadatak…    !today  !!high  #project"
+    "placeholder": "Dodaj zadatak…    !today  !!high  #project",
+    "presets": {
+      "menu": "Opcije zadatka",
+      "dueDate": "Rok {date}. Promijeni rok",
+      "noDate": "Bez datuma",
+      "linkNote": "Poveži bilješku",
+      "openDetails": "Otvori sve pojedinosti",
+      "back": "Natrag",
+      "remove": "Ukloni {name}",
+      "noReminder": "Bez podsjetnika",
+      "addTags": "Dodaj oznake…"
+    }
   },
   "drawer": {
     "close": "Zatvori detalje zadatka",

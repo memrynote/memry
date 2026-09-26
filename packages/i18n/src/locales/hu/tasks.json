@@ -29,6 +29,8 @@
     "status": "Állapot",
     "priority": "Prioritás",
     "dueDate": "Esedékesség dátuma",
+    "startsOn": "Kezdés: {date}",
+    "dueOn": "Határidő: {date}",
     "project": "Projekt",
     "repeat": "Ismételje meg",
     "createAnother": "Hozzon létre egy másikat",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Gyors hozzáadási feladat",
     "focusDescription": "Fókuszálás a gyors hozzáadási bemenetre",
-    "placeholder": "Feladat hozzáadása…    !today  !!high  #project"
+    "placeholder": "Feladat hozzáadása…    !today  !!high  #project",
+    "presets": {
+      "menu": "Feladat beállításai",
+      "dueDate": "Határidő: {date}. Határidő módosítása",
+      "noDate": "Nincs dátum",
+      "linkNote": "Jegyzet csatolása",
+      "openDetails": "Összes részlet megnyitása",
+      "back": "Vissza",
+      "remove": "{name} eltávolítása",
+      "noReminder": "Nincs emlékeztető",
+      "addTags": "Címkék hozzáadása…"
+    }
   },
   "drawer": {
     "close": "Zárja be a feladat részleteit",

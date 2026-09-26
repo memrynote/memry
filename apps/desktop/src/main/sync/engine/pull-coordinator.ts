@@ -1,71 +1,57 @@
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
-import type {
-  InitialSyncProgressEvent,
-  ItemRecoveredEvent,
-  ItemCorruptEvent
-} from '@memry/contracts/ipc-events'
-import type { RecordChangesResponse, RecordPullItemResponse } from '@memry/contracts/sync-api'
-import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
+import type { InitialSyncProgressEvent } from '@memry/contracts/ipc-events'
+import type { RecordChangesResponse } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { beginPageApply, replayBulkApplyJournal } from '../bulk-apply'
+import { drainPendingSyncIntents } from '../sync-intents'
 import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { withRetry } from '@memry/sync-client/retry'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
-import { postToServer, getFromServer, RateLimitError } from '../http-client'
+import { getFromServer, NOTE_BODY_FEED_HEADERS, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
-import { isBinaryFileType } from '@memry/shared/file-types'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainEvent } from '../../telemetry/track'
-import { trackMainLog } from '../../telemetry/diagnostics'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { QuarantineManager } from './quarantine-manager'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
-import { CorruptItemTracker } from './corrupt-item-tracker'
+import { CorruptItemTracker, type ItemRef, type RecoveredItem } from './corrupt-item-tracker'
+import { SchemaInvalidLedger } from './schema-invalid-ledger'
+import { sortByApplyOrder } from './apply-order'
+import { applyDecryptedItem } from './apply-decrypted'
+import {
+  refetchCorruptItems,
+  retrySchemaInvalidItems,
+  routeDeferredRetryFailure,
+  type ItemRecoveryDeps
+} from './item-recovery'
+import { carriesCrdtBody, parsePullItems, purgedTombstoneApplyItems } from './pull-envelope'
+import { fetchSliceBody, planPullSlices, type PullSlice } from './changes-page'
+import { prefetchWindow } from './prefetch-window'
+import { NoteBodyFeed, type RecordBodyDecision } from './note-body-feed'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
+import { listedCursorOf, RunAppliedCursors } from './run-applied-cursors'
+import type { PullRunState } from './pull-run-state'
+import { tripPullBreaker } from './pull-breaker'
+import { PullLatencyTrace } from './sync-latency-telemetry'
 import {
+  PULL_SLICE_FETCH_WINDOW,
   SYNC_STATE_KEYS,
-  PULL_REQUEST_MAX_IDS,
   YIELD_EVERY_N_ITEMS,
   yieldToEventLoop,
-  itemRefKey,
   BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT
 } from './sync-context'
 
 const log = createLogger('PullCoordinator')
 
 type DecryptedPullItem = Awaited<ReturnType<typeof decryptPullBatch>>['decrypted'][number]
-
-/**
- * FK parents must apply before their children (e.g. a task references its
- * project), but server cursor order is last-update order, not dependency
- * order. Lower rank applies first; unlisted types use the default middle rank.
- */
-const PULL_APPLY_ORDER: Record<string, number> = {
-  project: 0,
-  folder_config: 0,
-  tag_definition: 0,
-  filter: 0,
-  settings: 0,
-  calendar_source: 0,
-  agent_conversation: 0,
-  task: 2,
-  agent_message: 2,
-  calendar_event: 2,
-  calendar_external_event: 2,
-  calendar_binding: 3
-}
-
-const applyRank = (type: string): number => PULL_APPLY_ORDER[type] ?? 1
-
-export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
-  [...items].sort((a, b) => applyRank(a.type) - applyRank(b.type))
 
 // Why a page stopped the pull run:
 // - 'transition': key material is mid-swap (sign-in/recovery) — momentary, do
@@ -74,20 +60,16 @@ export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
 //   recovery must run first.
 // - 'breaker': the key is right but the page's payloads are undecryptable
 //   (server-side poisoned data) — advance past the page, mark items corrupt.
-type PageStopReason = 'none' | 'transition' | 'mismatch' | 'breaker'
-
-interface PullRunState {
-  timer: SyncTimer
-  startTime: number
-  pulledCount: number
-  totalConflictsResolved: number
-  processedIds: Set<string>
-  crdtNoteIds: string[]
-  accessJwt: string
-  vaultKey: Uint8Array
-  /** Set when the run stopped on a page it could not apply — no success finalize. */
-  refused?: boolean
-}
+// - 'invalid_response': /sync/pull answered with no pull envelope, a server
+//   contract regression — do not advance, the page re-pulls once it is fixed
+//   (#2285).
+type PageStopReason = 'none' | 'transition' | 'mismatch' | 'breaker' | 'invalid_response'
+/**
+ * Stops that hold the cursor: the page re-arrives on the next pull. Advancing
+ * on one of these made the next manual Retry resume past the failing page and
+ * report a clean sync while its items were never applied.
+ */
+const HOLDS_CURSOR = new Set<PageStopReason>(['transition', 'mismatch', 'invalid_response'])
 
 export class PullCoordinator {
   private ctx: SyncContext
@@ -96,11 +78,31 @@ export class PullCoordinator {
   private crdtSync: CrdtSyncCoordinator
   private pushCoordinator: PushCoordinator
   private corruptTracker: CorruptItemTracker
+  readonly schemaInvalid: SchemaInvalidLedger
+  private noteBodyFeed: NoteBodyFeed
   private deviceKeyCache = new Map<string, Uint8Array | null>()
   /** Items whose apply threw (e.g. FK parent not pulled yet) — retried once after all pages land */
   private pendingApplyRetries: DecryptedPullItem[] = []
   /** Items still missing an FK parent after the deferred retry — repaired at end of run (#837) */
   private orphanedItems: OrphanRef[] = []
+  /** Wired by the engine: the change feed reset the legacy note-body sweep (#2297). */
+  onNoteBodyLegacySweepReset: () => void = () => {}
+  private ownedThroughCursor = 0
+
+  /**
+   * The highest `nextCursor` of a changes page a pull has read, until
+   * LAST_CURSOR reaches it. Every row at or below it belongs to the pull: it
+   * applies it, defers it, or leaves LAST_CURSOR unwritten so the page is
+   * pulled again. Its rows can commit before LAST_CURSOR moves (a slice before
+   * the last, a page with post-commit work, a run that stops mid-page), so a
+   * socket frame at or below it may be older than a row already applied and is
+   * left alone (#2300). Too high only sends frames to the pull.
+   */
+  get ownedThrough(): number {
+    const lastCursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? 0)
+    if (this.ownedThroughCursor <= lastCursor) this.ownedThroughCursor = 0
+    return this.ownedThroughCursor
+  }
 
   constructor(
     ctx: SyncContext,
@@ -115,6 +117,15 @@ export class PullCoordinator {
     this.crdtSync = crdtSync
     this.pushCoordinator = pushCoordinator
     this.corruptTracker = new CorruptItemTracker(ctx, quarantine, (id) => this.resolveDeviceKey(id))
+    this.schemaInvalid = new SchemaInvalidLedger(stateManager)
+    this.noteBodyFeed = new NoteBodyFeed({
+      ctx,
+      stateManager,
+      ledger: this.schemaInvalid,
+      crdtSync: () => this.crdtSync,
+      resolveDeviceKey: (id) => this.resolveDeviceKey(id),
+      onLegacySweepReset: () => this.onNoteBodyLegacySweepReset()
+    })
   }
 
   /**
@@ -159,9 +170,23 @@ export class PullCoordinator {
         // between a page's DB commit and its file writes) before any new page
         // can apply on top of them.
         replayBulkApplyJournal()
+        // Before any page: a local edit whose intent failed earlier gets its
+        // clock now, so remote rows compare against it (#2301).
+        drainPendingSyncIntents(this.ctx.deps.db, 'pull')
+        await retrySchemaInvalidItems(
+          this.recoveryDeps((item, op) => {
+            this.stateManager.emitItemSynced(item.id, item.type, 'pull', op)
+            this.queueBodyPull(runState, item, op)
+          }),
+          credentials.accessJwt,
+          vaultKey
+        )
         await this.pullChanges(runState)
         await this.applyDeferredRetries(runState)
         await this.repairOrphanedItems(runState)
+        // Records these applied off their page pull their whole bodies here: a
+        // rowless feed body on that page was dropped in reliance on it (#2297).
+        await this.applyCrdtBatch(runState)
         if (runState.refused) {
           // The run stopped on a page it could not apply. Recording a success
           // history row and a fresh lastSyncAt here is what made a failing
@@ -182,7 +207,8 @@ export class PullCoordinator {
     return delivered
   }
 
-  periodicPull(): void {
+  /** `run` is the pull the tick schedules; the engine passes its pull-then-flush (#2421). */
+  periodicPull(run: () => Promise<unknown> = () => this.pull()): void {
     if (
       this.ctx.syncing ||
       this.ctx.fullSyncActive ||
@@ -198,7 +224,7 @@ export class PullCoordinator {
       return
     }
     this.ctx.scheduleSync(async () => {
-      await this.pull()
+      await run()
     })
   }
 
@@ -209,6 +235,16 @@ export class PullCoordinator {
     const key = await this.ctx.deps.getDevicePublicKey(deviceId)
     this.deviceKeyCache.set(deviceId, key)
     return key
+  }
+
+  private recoveryDeps(onChanged: ItemRecoveryDeps['onChanged']): ItemRecoveryDeps {
+    return {
+      ctx: this.ctx,
+      tracker: this.corruptTracker,
+      ledger: this.schemaInvalid,
+      onChanged,
+      pullNoteBody: (noteId, token, key) => this.noteBodyFeed.heal(noteId, token, key)
+    }
   }
 
   clearCaches(): void {
@@ -246,16 +282,17 @@ export class PullCoordinator {
       startTime,
       pulledCount: 0,
       totalConflictsResolved: 0,
-      processedIds: new Set<string>(),
+      applied: new RunAppliedCursors(),
       crdtNoteIds: [],
       accessJwt,
-      vaultKey
+      vaultKey,
+      latency: new PullLatencyTrace(getCurrentDeviceId(this.ctx.deps.db))
     }
   }
 
   // Oldest-first on purpose, even though progressive open (#1830) would rather
   // show recent notes first: /sync/changes is a strictly ascending
-  // `server_cursor > ?` feed and each page's persisted cursor below is the
+  // `server_cursor > ?` feed and each page's persisted cursor is the
   // crash-resume watermark. Newest-first would need a descending server feed
   // with a two-ended resume contract (that is P2.2 pack ordering) or buffering
   // every page before applying — which kills the page-by-page fill and makes
@@ -264,6 +301,7 @@ export class PullCoordinator {
   private async pullChanges(runState: PullRunState): Promise<void> {
     let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
     let hasMore = true
+    runState.fromZero = !cursor || cursor === '0'
 
     type ChangesRetryResult = Awaited<ReturnType<typeof this.fetchChangesPage>>
     let changesResult: ChangesRetryResult
@@ -283,11 +321,14 @@ export class PullCoordinator {
         changesResult = await prefetchedNext
         prefetchedNext = null
       } else {
-        changesResult = await this.fetchChangesPage(runState, cursor)
+        // Only a run's first page is fetched here, and only it asks for inline
+        // payloads: backlog and bootstrap keep 500-ref pages (#2292).
+        changesResult = await this.fetchChangesPage(runState, cursor, !this.ctx.fullSyncActive)
       }
 
       const changes = changesResult.value
       const nextCursor = String(changes.nextCursor)
+      this.ownedThroughCursor = Math.max(this.ownedThroughCursor, changes.nextCursor)
 
       // Fetch page N+1 WHILE page N is applied, not after: starting the
       // prefetch below the apply meant it was awaited on the very next
@@ -299,15 +340,10 @@ export class PullCoordinator {
         prefetchedNext.catch(() => {})
       }
 
-      const stop = await this.pullChangesPage(changes, runState)
+      const { stop, cursorCommitted } = await this.pullChangesPage(changes, runState, nextCursor)
       this.emitInitialSyncProgress(changes, runState.pulledCount)
 
-      // Key-state stops ('transition' mid sign-in/recovery, 'mismatch') must
-      // NOT advance the persisted cursor: the failures are a key problem that
-      // resolves out-of-band, and advancing made the next manual Retry resume
-      // past the failing page and report a clean sync while the items were
-      // never applied.
-      if (stop === 'transition' || stop === 'mismatch') {
+      if (HOLDS_CURSOR.has(stop)) {
         runState.refused = true
         break
       }
@@ -317,14 +353,19 @@ export class PullCoordinator {
       // part of the slice applied, commits that partial page and still reports
       // 'none'. Advancing the watermark past the whole page would strand the
       // items it never reached — the feed is `server_cursor > ?`, so it never
-      // offers them again. Re-check here, before the cursor moves, and refuse
-      // the run so an interrupted pull is not recorded as a clean sync.
+      // offers them again. Re-check before the cursor moves (the in-slice write
+      // makes the same check), and refuse the run so an interrupted pull is not
+      // recorded as a clean sync.
       if (this.ctx.abortController!.signal.aborted) {
         runState.refused = true
         break
       }
 
-      this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, nextCursor)
+      // A page whose last slice had post-commit work to finish did not commit
+      // the cursor with its rows; it moves here, after that work, as it did
+      // before #2294. A crash in between re-pulls the page, and the rows that
+      // already committed come back identical and skip.
+      if (!cursorCommitted) this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, nextCursor)
       cursor = nextCursor
       hasMore = changes.hasMore
 
@@ -343,16 +384,23 @@ export class PullCoordinator {
 
   private async fetchChangesPage(
     runState: PullRunState,
-    pageCursor: string | null | undefined
+    pageCursor: string | null | undefined,
+    inline = false
   ): ReturnType<typeof withRetry<RecordChangesResponse>> {
     return withRetry(
       () => {
-        const cp = pageCursor ? `&cursor=${pageCursor}` : ''
+        const cp = (pageCursor ? `&cursor=${pageCursor}` : '') + (inline ? '&inline=1' : '')
         return withAuthRetry(
           (authToken) =>
-            getFromServer<RecordChangesResponse>(
-              `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
-              authToken
+            runState.latency.timeChanges(() =>
+              getFromServer<RecordChangesResponse>(
+                `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
+                authToken,
+                undefined,
+                // A run from cursor 0 keeps 500-row record pages; its record
+                // pages and the legacy sweep deliver the bodies (#2297).
+                { headers: runState.fromZero ? undefined : NOTE_BODY_FEED_HEADERS }
+              )
             ),
           runState.accessJwt,
           engineAuthRetryDeps(this.ctx.deps),
@@ -370,38 +418,75 @@ export class PullCoordinator {
 
   private async pullChangesPage(
     changes: RecordChangesResponse,
-    runState: PullRunState
-  ): Promise<PageStopReason> {
-    const itemIds = Array.from(
-      new Set([...changes.items.map((item) => item.id), ...changes.deleted])
+    runState: PullRunState,
+    nextCursor: string
+  ): Promise<{ stop: PageStopReason; cursorCommitted: boolean }> {
+    // Fetched before any slice transaction opens: that apply loop stays
+    // synchronous (bulk-apply.ts), so the page's bodies must be in hand.
+    const noteBodies = await this.noteBodyFeed.fetchPage(
+      changes,
+      runState,
+      runState.vaultKey,
+      !runState.fromZero
     )
-    if (itemIds.length === 0) return 'none'
+    if (noteBodies?.keyStop) return { stop: noteBodies.keyStop, cursorCommitted: false }
+    const slices = planPullSlices(changes)
+    const { bodies = [], refused = [], owed = [] } = noteBodies ?? {}
+    if (slices.length === 0 && bodies.length + refused.length + owed.length > 0) {
+      slices.push({ fetchIds: [], inline: [] })
+    }
+    if (slices.length === 0) return { stop: 'none', cursorCommitted: false }
+    if (noteBodies) slices[slices.length - 1].noteBodies = noteBodies
+    if (noteBodies) for (const slice of slices) slice.feedPage = noteBodies
+    runState.latency.observePage(changes)
 
     // A changes page holds up to PULL_PAGE_LIMIT (500) refs, but POST
     // /sync/pull accepts at most PULL_REQUEST_MAX_IDS (100) ids, so the page is
     // pulled in slices — which also keeps decrypt/apply memory at the profile
     // it had when the page size WAS 100. Stop semantics per slice:
-    // - 'transition'/'mismatch' return immediately: the caller does not
-    //   advance the cursor, so unpulled slices re-arrive next cycle.
-    // - 'breaker' must NOT abort the remaining slices: the caller advances the
-    //   cursor past the WHOLE page, so a slice skipped here would neither be
-    //   re-pulled nor marked corrupt — silent loss. Every slice runs (each
+    // - The cursor never moves before the page's LAST slice (#2294). A crash
+    //   or throw before it leaves the cursor on the previous page, so the
+    //   whole page re-pulls; slices that already committed are equal-clock,
+    //   identical-payload re-deliveries and skip. The last slice commits the
+    //   cursor with its rows only when no slice of the page has post-commit
+    //   work (see `processPage`); otherwise `pullChanges` writes it after.
+    // - HOLDS_CURSOR stops return immediately, before the last slice, so the
+    //   cursor holds and unpulled slices re-arrive next cycle.
+    // - 'breaker' must NOT abort the remaining slices: the cursor then
+    //   advances past the WHOLE page, so a slice skipped here would neither
+    //   be re-pulled nor marked corrupt — silent loss. Every slice runs (each
     //   marks its own failures), then the breaker is reported.
     let breakerTripped = false
-    for (let i = 0; i < itemIds.length; i += PULL_REQUEST_MAX_IDS) {
-      const slice = itemIds.slice(i, i + PULL_REQUEST_MAX_IDS)
-      const pageResult = await this.processPage(slice, runState)
+    let postCommitWork = false
+    let cursorCommitted = false
+    const listedCursor = listedCursorOf(changes)
+    // Only the POSTs run ahead: every slice still applies after the one
+    // before it, and a stop leaves at most one prefetched body unread.
+    const sliceBody = prefetchWindow(slices, PULL_SLICE_FETCH_WINDOW, (slice) =>
+      fetchSliceBody(this.ctx, runState, slice.fetchIds)
+    )
+    for (const [index, slice] of slices.entries()) {
+      const inSliceCursor = index === slices.length - 1 && !postCommitWork ? nextCursor : null
+      const pageResult = await this.processPage(
+        slice,
+        sliceBody(index),
+        runState,
+        inSliceCursor,
+        listedCursor
+      )
       runState.pulledCount += pageResult.applied
       runState.totalConflictsResolved += pageResult.conflicts
+      postCommitWork ||= pageResult.postCommitWork === true
+      cursorCommitted ||= pageResult.cursorCommitted === true
       await this.applyCrdtBatch(runState)
 
-      if (pageResult.stop === 'transition' || pageResult.stop === 'mismatch') {
-        return pageResult.stop
+      if (HOLDS_CURSOR.has(pageResult.stop)) {
+        return { stop: pageResult.stop, cursorCommitted: false }
       }
       if (pageResult.stop === 'breaker') breakerTripped = true
     }
 
-    return breakerTripped ? 'breaker' : 'none'
+    return { stop: breakerTripped ? 'breaker' : 'none', cursorCommitted }
   }
 
   private async applyCrdtBatch(runState: PullRunState): Promise<void> {
@@ -420,11 +505,8 @@ export class PullCoordinator {
 
     runState.timer.startPhase('crdt-batch')
     try {
-      await this.crdtSync.applyCrdtBatch(
-        runState.crdtNoteIds,
-        runState.accessJwt,
-        runState.vaultKey
-      )
+      // The queued-pull path (#2421): an id whose row is gone is dropped with its debt.
+      await this.crdtSync.pullCrdtForNotes(runState.crdtNoteIds, this.ctx.abortController?.signal)
     } finally {
       runState.timer.endPhase(runState.crdtNoteIds.length)
       runState.crdtNoteIds.length = 0
@@ -533,23 +615,21 @@ export class PullCoordinator {
     this.pendingApplyRetries = []
     let applied = 0
     let failed = 0
+    // Sent after the loop, as a page sends its events after its commit: each
+    // one makes the renderer refetch through IPC, and those calls used to run
+    // at this loop's yields and stall it for seconds.
+    const synced: Array<() => void> = []
 
     for (let i = 0; i < retries.length; i++) {
       if (this.ctx.abortController?.signal.aborted) break
       if (i > 0 && i % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
       const dec = retries[i]
       try {
-        const contentBytes = new TextEncoder().encode(dec.content)
-        const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-        const result = this.ctx.applier.apply({
-          itemId: dec.id,
-          type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-          operation: itemOp,
-          content: contentBytes,
-          clock: dec.clock,
-          deletedAt: dec.deletedAt,
-          vaultKey: runState.vaultKey
-        })
+        const { result, operation: itemOp } = applyDecryptedItem(
+          this.ctx.applier,
+          dec,
+          runState.vaultKey
+        )
 
         if (result === 'parse_error') {
           failed++
@@ -560,60 +640,19 @@ export class PullCoordinator {
           runState.totalConflictsResolved++
         }
 
-        if (
-          (dec.type === 'note' || dec.type === 'journal') &&
-          this.ctx.deps.crdtProvider &&
-          itemOp !== 'delete'
-        ) {
-          let isBinary = false
-          try {
-            const p = JSON.parse(dec.content) as { fileType?: string }
-            if (p.fileType && isBinaryFileType(p.fileType)) isBinary = true
-          } catch {
-            /* safe to skip CRDT on parse failure */
-          }
-          if (!isBinary) runState.crdtNoteIds.push(dec.id)
-        }
+        this.queueBodyPull(runState, dec, itemOp)
 
-        runState.processedIds.add(itemRefKey(dec.type, dec.id))
+        runState.applied.recordDeferred(dec)
         runState.pulledCount++
         applied++
-        this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+        synced.push(() => this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp))
       } catch (retryError) {
         failed++
-        if (retryError instanceof MissingSyncParentError) {
-          // Not a dead end: the parent may simply sit outside this run's cursor
-          // window, or be gone everywhere. repairOrphanedItems() tells them
-          // apart instead of dropping the item until some future remote update
-          // (which, for a cascade-deleted project, never comes) — #837.
-          this.orphanedItems.push({
-            item: dec,
-            parentType: retryError.parentType,
-            parentId: retryError.parentId
-          })
-          log.warn('Pull: deferred retry still missing FK parent — queued for repair', {
-            itemId: dec.id,
-            type: dec.type,
-            parentType: retryError.parentType,
-            parentId: retryError.parentId
-          })
-          continue
-        }
-        log.error('Pull: deferred retry failed — item skipped until next remote update', {
-          itemId: dec.id,
-          type: dec.type,
-          error: retryError instanceof Error ? retryError.message : String(retryError)
-        })
-        // For an item that never gets another server-side update this is
-        // permanent absence on this device — count the drop per type.
-        trackMainLog('error', {
-          scope: 'PullCoordinator',
-          action: 'pull_apply_dropped',
-          errorCode: dec.type
-        })
+        routeDeferredRetryFailure(dec, retryError, this.orphanedItems, this.schemaInvalid)
       }
     }
 
+    for (const emit of synced) emit()
     log.info('Pull: deferred apply retries processed', { retried: retries.length, applied, failed })
   }
 
@@ -625,6 +664,7 @@ export class PullCoordinator {
       orphans,
       ctx: this.ctx,
       corruptTracker: this.corruptTracker,
+      schemaInvalid: this.schemaInvalid,
       accessJwt: runState.accessJwt,
       vaultKey: runState.vaultKey,
       applyItem: (item) => this.applyOrphan(item, runState)
@@ -632,68 +672,101 @@ export class PullCoordinator {
   }
 
   private applyOrphan(dec: DecryptedPullItem, runState: PullRunState): void {
-    const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-    const result = this.ctx.applier.apply({
-      itemId: dec.id,
-      type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-      operation: itemOp,
-      content: new TextEncoder().encode(dec.content),
-      clock: dec.clock,
-      deletedAt: dec.deletedAt,
-      vaultKey: runState.vaultKey
-    })
+    const { result, operation: itemOp } = applyDecryptedItem(
+      this.ctx.applier,
+      dec,
+      runState.vaultKey
+    )
     // The requeue is what carries a merged row back to the server (#2180).
     // Not counted in `totalConflictsResolved`: that number is the pull's own
     // per-page tally, and a repair pass runs after the last page is logged.
+    if (result === 'schema_invalid') return this.schemaInvalid.record([dec], 'payload')
     if (result === 'conflict') reportConflict(this.ctx.deps, dec)
-    runState.processedIds.add(itemRefKey(dec.type, dec.id))
+    this.queueBodyPull(runState, dec, itemOp)
+    runState.applied.recordDeferred(dec)
     runState.pulledCount++
     this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
   }
 
-  private async processPage(
-    itemIds: string[],
-    runState: PullRunState
-  ): Promise<{ applied: number; conflicts: number; stop: PageStopReason }> {
-    const { vaultKey, timer, processedIds, crdtNoteIds } = runState
-    const pullResult = await withRetry(
-      () =>
-        withAuthRetry(
-          (authToken) =>
-            postToServer<{ items: RecordPullItemResponse[] }>('/sync/pull', { itemIds }, authToken),
-          runState.accessJwt,
-          engineAuthRetryDeps(this.ctx.deps),
-          (fresh) => {
-            runState.accessJwt = fresh
-          }
-        ),
-      { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
-    )
+  /**
+   * An applied note or journal record: owed its whole body (#2297), which the
+   * next CRDT batch pulls, unless the feed serves it
+   * (`NoteBodyFeed.servesRecordBody`, #2421). On a record page the debt
+   * commits with the page, ahead of any cursor write (#2294). An applied
+   * delete tombstone releases the id's withheld mark, row or not (#2421).
+   */
+  private queueBodyPull(
+    runState: PullRunState,
+    dec: { id: string; type: string; content: string },
+    op: string,
+    decision?: RecordBodyDecision
+  ): void {
+    if (op === 'delete' && (dec.type === 'note' || dec.type === 'journal')) {
+      this.crdtSync.releaseWithheldBody(dec.id)
+      return
+    }
+    if (this.noteBodyFeed.servesRecordBody(decision, dec.id)) return
+    if (!this.ctx.deps.crdtProvider || !carriesCrdtBody(dec, op)) return
+    this.crdtSync.oweRecordBody(dec.id)
+    runState.crdtNoteIds.push(dec.id)
+  }
 
-    const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
-    if (!parsed.success) {
-      log.error('Invalid pull response from server', { error: parsed.error.message })
+  /**
+   * `pageCursor` is set only for a page's last slice. It commits with the
+   * slice's rows (#2294) only when nothing still has to run after that commit
+   * for the page to count as applied; `postCommitWork` reports that, and
+   * `cursorCommitted` whether the cursor went in. `listedCursor` ranks each id
+   * against the run's earlier applies (#2429).
+   */
+  private async processPage(
+    { fetchIds, inline, noteBodies, feedPage }: PullSlice,
+    body: Promise<unknown>,
+    runState: PullRunState,
+    pageCursor: string | null,
+    listedCursor: (id: string) => number
+  ): Promise<{
+    applied: number
+    conflicts: number
+    stop: PageStopReason
+    postCommitWork?: boolean
+    cursorCommitted?: boolean
+  }> {
+    const { vaultKey, timer, applied, crdtNoteIds } = runState
+    const requestedCount = fetchIds.length + inline.length
+    const pullBody = await body
+
+    const parsed = parsePullItems(pullBody, inline, fetchIds)
+    if (parsed.kind === 'not_envelope') {
+      log.error('Invalid pull response from server: not a pull envelope')
       log.warn('pull_page_dropped', {
         reason: 'invalid_pull_response',
-        droppedCount: itemIds.length
+        droppedCount: requestedCount
       })
-      // The cursor still advances past this page, so these items may never
-      // apply — a server-side contract regression must be chartable.
+      // The cursor holds (#2285); without an error state the stall is invisible.
+      this.ctx.lastError = 'The sync server returned an invalid pull response.'
+      this.ctx.lastErrorInfo = {
+        category: 'server_error',
+        message: this.ctx.lastError,
+        retryable: true
+      }
+      this.stateManager.setState('error')
       trackMainEvent('sync_error', {
         surface: 'sync',
         action: 'pull_page_dropped',
         result: 'failed',
         errorCode: 'invalid_pull_response',
-        metrics: { itemCount: itemIds.length },
+        metrics: { itemCount: requestedCount },
         source: 'pull',
         dimensions: { transport: 'record' }
       })
-      return { applied: 0, conflicts: 0, stop: 'none' }
+      return { applied: 0, conflicts: 0, stop: 'invalid_response' }
     }
 
+    if (parsed.unnamed > 0)
+      log.error('Pull: dropped items with no id or type', { count: parsed.unnamed })
     log.debug('Pull: response parsed', {
-      requestedCount: itemIds.length,
-      receivedCount: parsed.data.items.length
+      requestedCount,
+      receivedCount: parsed.items.length
     })
 
     // Bootstrap throughput (#1835), UNITS: this channel counts base64
@@ -704,24 +777,26 @@ export class PullCoordinator {
     // no-op outside a fresh-device bootstrap window.
     recordBootstrapBytes(
       'records',
-      parsed.data.items.reduce(
+      parsed.items.reduce(
         (sum, item) => sum + item.blob.encryptedData.length + item.blob.encryptedKey.length,
         0
       )
     )
 
-    const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))
+    const signerIds = new Set(parsed.items.map((i) => i.signerDeviceId))
     await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
     log.debug('Pull: device keys prefetched', { signerCount: signerIds.size })
 
     let pageApplied = 0
     let pageSkipped = 0
     let pageFailed = 0
+    const refused: ItemRef[] = []
+    const settled: ItemRef[] = []
     let cryptoFailCount = 0
     let pageConflicts = 0
 
-    const itemsToProcess = parsed.data.items.filter((item) => {
-      if (processedIds.has(itemRefKey(item.type, item.id))) {
+    const itemsToProcess = parsed.items.filter((item) => {
+      if (applied.covers(item, listedCursor(item.id))) {
         pageSkipped++
         return false
       }
@@ -731,6 +806,15 @@ export class PullCoordinator {
       }
       return true
     })
+    // #2302: purged tombstones need no decrypt; they join the apply loop as deletes.
+    const purged = await purgedTombstoneApplyItems(
+      parsed,
+      (t) =>
+        runState.fromZero === true ||
+        applied.covers(t, listedCursor(t.id)) ||
+        this.quarantine.isQuarantined(t.id, t.type),
+      { db: this.ctx.deps.db, resolveKey: (id) => this.resolveDeviceKey(id) }
+    )
 
     timer.startPhase('encrypt')
     const { decrypted, failures } = await decryptPullBatch(itemsToProcess, vaultKey, {
@@ -818,7 +902,7 @@ export class PullCoordinator {
 
     timer.startPhase('apply')
     this.pushCoordinator.suppressPushDuringPull = true
-    const orderedDecrypted = sortByApplyOrder(decrypted)
+    const orderedDecrypted = sortByApplyOrder([...decrypted, ...purged])
     // One SQLite transaction per page on both DBs, with note file writes
     // deferred until after the commit (crash-safety contract in bulk-apply.ts).
     // The loop below is deliberately synchronous while the transaction is open
@@ -826,27 +910,29 @@ export class PullCoordinator {
     // statements into the page transaction. Per-item failures stay caught and
     // deferred exactly as before; only a throw that escapes the whole loop
     // rolls the page back, and that same throw stops the cursor from
-    // advancing, so the page is re-pulled intact.
+    // advancing, so the page is re-pulled intact. Renderer events wait for
+    // the commit (#2294).
     const pageApply = beginPageApply(this.ctx.deps.db)
+    let postCommitWork = false
+    let cursorCommitted = false
+    const conflictDeps = {
+      ...this.ctx.deps,
+      emitToRenderer: (channel: string, event: unknown) =>
+        pageApply.afterCommit(() => this.ctx.deps.emitToRenderer(channel, event))
+    }
     try {
       try {
         for (let i = 0; i < orderedDecrypted.length; i++) {
           if (this.ctx.abortController?.signal.aborted) break
           const dec = orderedDecrypted[i]
+          // Read before the apply: a record with no row here lost its earlier feed bodies (#2421).
+          const decision = this.noteBodyFeed.recordBodyDecision(feedPage, dec)
           try {
-            const contentBytes = new TextEncoder().encode(dec.content)
-            const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-            const result = this.ctx.applier.apply(
-              {
-                itemId: dec.id,
-                type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-                operation: itemOp,
-                content: contentBytes,
-                clock: dec.clock,
-                deletedAt: dec.deletedAt,
-                vaultKey
-              },
-              pageApply.db
+            const { result, operation: itemOp } = applyDecryptedItem(
+              this.ctx.applier,
+              dec,
+              vaultKey,
+              pageApply
             )
 
             if (result === 'parse_error') {
@@ -854,30 +940,35 @@ export class PullCoordinator {
               pageFailed++
               continue
             }
+            if (result === 'schema_invalid') {
+              refused.push(dec)
+              pageFailed++
+              continue
+            }
+            settled.push(dec)
+            runState.latency.noteApplied(dec, result)
 
             if (result === 'conflict') {
-              reportConflict(this.ctx.deps, dec)
+              reportConflict(conflictDeps, dec)
               pageConflicts++
             }
 
-            if (
-              (dec.type === 'note' || dec.type === 'journal') &&
-              this.ctx.deps.crdtProvider &&
-              itemOp !== 'delete'
-            ) {
-              let isBinary = false
-              try {
-                const p = JSON.parse(dec.content) as { fileType?: string }
-                if (p.fileType && isBinaryFileType(p.fileType)) isBinary = true
-              } catch {
-                /* safe to skip CRDT on parse failure */
-              }
-              if (!isBinary) crdtNoteIds.push(dec.id)
-            }
+            this.queueBodyPull(
+              runState,
+              dec,
+              itemOp,
+              decision && { ...decision, conflict: result === 'conflict' }
+            )
 
-            processedIds.add(itemRefKey(dec.type, dec.id))
+            applied.record(dec, listedCursor(dec.id))
             pageApplied++
-            this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+            // A skipped row changed nothing, and every ITEM_SYNCED makes the
+            // renderer refetch (the task list re-queries per event).
+            if (result !== 'skipped') {
+              pageApply.afterCommit(() =>
+                this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+              )
+            }
           } catch (applyError) {
             log.error('Pull: failed to apply decrypted item — deferring for retry', {
               itemId: dec.id,
@@ -888,10 +979,41 @@ export class PullCoordinator {
                 : {})
             })
             this.pendingApplyRetries.push(dec)
+            applied.defer(dec, listedCursor(dec.id))
             pageFailed++
           }
         }
+        this.schemaInvalid.record(refused, 'payload')
+        this.schemaInvalid.record(parsed.invalid, 'envelope')
+        this.schemaInvalid.record(parsed.blobMissing, 'blob_missing')
+        this.schemaInvalid.resolve(settled)
+        // Before this slice's CRDT batch, which settles them (#2297 round 2 b-M2).
+        this.noteBodyFeed.oweSkippedForRecords(feedPage?.skippedForRecord, settled)
+        if (noteBodies) this.noteBodyFeed.recordInPage(noteBodies)
+        // After the commit still run: the corrupt re-fetch and its recovered
+        // applies, the CRDT batch, and deferred retries. A cursor committed
+        // ahead of them survives a crash that loses them, and nothing re-pulls
+        // the page. Nor can an untransacted page make the cursor atomic.
+        postCommitWork =
+          failures.some((f) => f.isCryptoError) ||
+          parseErrorIds.length > 0 ||
+          crdtNoteIds.length > 0 ||
+          (noteBodies?.bodies.length ?? 0) > 0 ||
+          this.pendingApplyRetries.length > 0
+        // The page's last statement: the cursor commits with the page's last
+        // rows or not at all (#2294, protocol 05 §5.11), and never after an
+        // abort broke the loop above.
+        if (
+          pageCursor !== null &&
+          !postCommitWork &&
+          pageApply.transacted &&
+          !this.ctx.abortController?.signal.aborted
+        ) {
+          this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, pageCursor)
+          cursorCommitted = true
+        }
         pageApply.commit()
+        runState.latency.flush()
       } catch (pageError) {
         pageApply.rollback()
         throw pageError
@@ -904,79 +1026,30 @@ export class PullCoordinator {
     // CRDT apply that follows this page seeds absent docs from markdown, so the
     // page's deferred note files must be on disk before it runs.
     await pageApply.flushFiles()
+    // After the files, so a note created on this page is on disk when its body
+    // is merged and written back. The cursor waits for this (postCommitWork),
+    // so a crash before it re-pulls the page (#2297).
+    if (noteBodies) await this.noteBodyFeed.land(noteBodies)
 
-    const cryptoRefetchRefs = failures
-      .filter((f) => f.isCryptoError)
-      .map((f) => ({ id: f.id, type: f.type }))
-    const parseRefetchRefs = parseErrorIds.map((p) => ({ id: p.id, type: p.type }))
-    const allRefetchRefs = [...cryptoRefetchRefs, ...parseRefetchRefs]
-
-    if (allRefetchRefs.length > 0 && pageApplied > 0) {
-      this.corruptTracker.clearExpired()
-      const { recovered, permanentFailures } = await this.corruptTracker.refetch(
-        allRefetchRefs,
+    const refetchRefs = [...failures.filter((f) => f.isCryptoError), ...parseErrorIds]
+    if (refetchRefs.length > 0 && pageApplied > 0) {
+      const onChanged = (dec: RecoveredItem, itemOp: 'create' | 'update' | 'delete'): void => {
+        this.queueBodyPull(runState, dec, itemOp)
+        applied.record(dec, listedCursor(dec.id))
+        pageApplied++
+        pageFailed--
+        this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+      }
+      await refetchCorruptItems(
+        this.recoveryDeps(onChanged),
+        refetchRefs.map(({ id, type }) => ({ id, type })),
         runState.accessJwt,
         vaultKey
       )
-
-      for (const dec of recovered) {
-        try {
-          const contentBytes = new TextEncoder().encode(dec.content)
-          const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-          const result = this.ctx.applier.apply({
-            itemId: dec.id,
-            type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-            operation: itemOp,
-            content: contentBytes,
-            clock: dec.clock,
-            deletedAt: dec.deletedAt,
-            vaultKey
-          })
-          if (result === 'applied' || result === 'conflict') {
-            // Unrequeued, the merged row keeps a union clock nothing pushes,
-            // which is the one way #2180 really strands two devices.
-            if (result === 'conflict') reportConflict(this.ctx.deps, dec)
-            processedIds.add(itemRefKey(dec.type, dec.id))
-            pageApplied++
-            pageFailed--
-            this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
-            this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_RECOVERED, {
-              itemId: dec.id,
-              type: dec.type
-            } satisfies ItemRecoveredEvent)
-            log.info('Pull: recovered corrupt item', { itemId: dec.id, type: dec.type })
-          }
-        } catch (err) {
-          log.error('Pull: failed to apply recovered item', {
-            itemId: dec.id,
-            error: err instanceof Error ? err.message : String(err)
-          })
-          trackMainLog('error', {
-            scope: 'PullCoordinator',
-            action: 'pull_apply_dropped',
-            errorCode: dec.type
-          })
-        }
-      }
-
-      for (const ref of permanentFailures) {
-        this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
-          itemId: ref.id,
-          type: ref.type,
-          error: 'Item corrupt after re-fetch attempt'
-        } satisfies ItemCorruptEvent)
-      }
-
-      if (recovered.length > 0 || permanentFailures.length > 0) {
-        log.info('Pull: re-fetch summary', {
-          recovered: recovered.length,
-          permanentFailures: permanentFailures.length
-        })
-      }
     }
 
     log.info('Pull page processed', {
-      total: parsed.data.items.length,
+      total: parsed.items.length,
       applied: pageApplied,
       skipped: pageSkipped,
       failed: pageFailed,
@@ -987,49 +1060,17 @@ export class PullCoordinator {
     if (
       pageFailed > 0 &&
       pageFailed === cryptoFailCount &&
-      parsed.data.items.length > 0 &&
+      parsed.items.length > 0 &&
       pageApplied === 0
     ) {
-      this.ctx.lastError =
-        'All items failed with crypto errors — possible vault key mismatch. ' +
-        `${cryptoFailCount} item(s) could not be decrypted.`
-      this.ctx.lastErrorInfo = {
-        category: 'crypto_failure',
-        message: this.ctx.lastError,
-        retryable: false
-      }
-      this.stateManager.setState('error')
-      log.error('Pull: circuit breaker tripped — all items failed crypto', { cryptoFailCount })
-      // 2026-07-18 poisoned-payload incident class: previously only a log line
-      // and a renderer event with no listener — invisible until a support
-      // email. The run ends 'refused' (no throw), so emit from here.
-      trackMainEvent('sync_error', {
-        surface: 'sync',
-        action: 'pull_breaker_tripped',
-        result: 'failed',
-        errorCode: 'crypto_breaker',
-        metrics: { itemCount: cryptoFailCount },
-        source: 'pull',
-        dimensions: { transport: 'record' }
-      })
-      // The account key check above said 'match' (or was unavailable), so
-      // these payloads are undecryptable with the CORRECT key — server-side
-      // poisoned data that no amount of re-pulling can fix. Record each item
-      // in the corrupt tracker (cooldown) and surface it, so the caller can
-      // advance the cursor past this page without silently losing track of
-      // what failed.
-      for (const failure of failures) {
-        if (!failure.isCryptoError) continue
-        this.corruptTracker.markFailed({ id: failure.id, type: failure.type })
-        this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
-          itemId: failure.id,
-          type: failure.type,
-          error: failure.error
-        } satisfies ItemCorruptEvent)
-      }
+      tripPullBreaker(
+        { ctx: this.ctx, stateManager: this.stateManager, corruptTracker: this.corruptTracker },
+        failures,
+        cryptoFailCount
+      )
       stop = 'breaker'
     }
 
-    return { applied: pageApplied, conflicts: pageConflicts, stop }
+    return { applied: pageApplied, conflicts: pageConflicts, stop, postCommitWork, cursorCommitted }
   }
 }

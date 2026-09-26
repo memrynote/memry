@@ -29,12 +29,11 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::json;
 
 use crate::api::errors::StorageError;
-use crate::storage::repositories::sync_items;
+use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
-use super::notes::{
-    failed, insert_local, iso, next_clock, object, seed_body, stamp, valid_document_id,
-};
+use super::notes::{failed, iso, object, require_payload, seed_body, valid_document_id};
+use super::recreate::{recreate_clock, write_over_tombstone};
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "journal";
@@ -182,11 +181,11 @@ fn create_in(
     let payload = object(json!({
         "date": date,
         "content": "",
-        "clock": next_clock(&Default::default(), device_id)?,
         "createdAt": at,
         "modifiedAt": at,
     }));
-    insert_local(tx, ITEM_TYPE, id, payload, now_ms)?;
+    // A day seen only as a metadata-only tombstone is created over it (#2409).
+    write_over_tombstone(tx, ITEM_TYPE, id, payload, device_id, now_ms)?;
     // A journal body is edited exactly as a note's is (FR-055), so it gets
     // the same materialised body row: empty text, no seed, derived from
     // the Yjs log the moment there is one.
@@ -197,7 +196,8 @@ fn create_in(
 ///
 /// The date is `UNIQUE`, so there is no second row to create; reviving the
 /// original id is the only way "open today" can succeed after today was
-/// deleted.
+/// deleted. The revival is a re-create, so its clock ticks past every delete
+/// clock this device knows for the id (#2409).
 fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<(), StorageError> {
     tx.execute(
         "UPDATE sync_items SET deleted_at = NULL, updated_at = ?3
@@ -205,7 +205,21 @@ fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<
         params![ITEM_TYPE, id, now_ms],
     )
     .map_err(failed)?;
-    let changes = stamp(tx, ITEM_TYPE, id, device_id, now_ms)?;
+    let stored = require_payload(tx, ITEM_TYPE, id)?;
+    let changes = [
+        (
+            "clock",
+            Change::Set(recreate_clock(
+                tx,
+                ITEM_TYPE,
+                id,
+                stored.object(),
+                None,
+                device_id,
+            )?),
+        ),
+        ("modifiedAt", Change::set(iso(now_ms)?)),
+    ];
     sync_items::apply_local_edit_in(tx, ITEM_TYPE, id, &changes, now_ms)?;
     Ok(())
 }

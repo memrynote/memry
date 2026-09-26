@@ -208,7 +208,7 @@ pnpm lint && pnpm typecheck
       subscribed set; storage tables and projectors for sources, events,
       external events, bindings; apply order; unknown-field round trip.
       Tests: apply / re-apply / delete / out-of-order binding.
-      Evidence: `cargo test -p memry-core --test domain_calendar_sync` 9/9 (apply, null-keeps, orphan external waits for its source, binding before event, skip, merge, seeded field clocks, unknown keys, tombstones); migration 0005; 19 subscribed types.
+      Evidence: `cargo test -p memry-core --test domain_calendar_sync` 9/9 (apply, null-keeps, orphan external waits for its source, binding before event, skip, merge, seeded field clocks, unknown keys, tombstones); migration 0005 (0006 after the merge with main); 19 subscribed types.
 - [x] CL011 Field-level merge for `calendar_event` matching
       `field-merge-calendar.ts` (syncable fields, field clocks, tie-break).
       Vectors generated from desktop, checked in core.
@@ -815,6 +815,17 @@ onboardingCompleted, promoteConfirmDismissed, pushEventsToGoogle, agentReadEvent
   Before it was restored, another client on this shared account renamed that vault
   "MemryNote-S1"; the agent does not override another client's rename. The peer was stopped
   and its local name set to "MemryNote-S1", so it can no longer push `memrynote-3`.
+- 2026-09-26 — PR — Merged `origin/main` (53 commits). Main shipped data migration 5
+  (`tombstone_clocks`), so the calendar migrations moved to 6 (`calendar`), 7
+  (`calendar_source_states`), 8 (`calendar_push_queue`); an install at main's 5 runs all
+  three. A simulator that ran this branch before the merge sits at `user_version` 7 without
+  `tombstone_clocks`: delete its vault data (dev only, never shipped). Main's #2399 keeps the
+  local value for any absent settings winner, which covers this branch's equal-clock rule, so
+  `settings_merge.rs` takes main's. Main's #2287 gave settings clocks the real device id; the
+  D3a mirror now calls `updateField(path, value)` and skips the seed until a device exists.
+  Main's #2294 routes settings events through the pull page's `emit`; the calendar apply
+  takes it too. The layout timing test asserts 100 ms under the parallel Unit plan (~10 ms
+  alone).
 - 2026-09-26 — CL094 — Restoring `calendar.caldav/ics.agentReadEventsConsent` to unset made
   the phone ask Paper 26 again while those calendars still existed (by design: unset means
   not asked). It was answered "Don't allow" to reach Disconnect, so both end at `false`

@@ -59,6 +59,19 @@ describe('unknown payload fields', () => {
     expect(JSON.parse(pushed).extra).toBe('local')
   })
 
+  it('keeps no row for the envelope id and device-local syncedAt of a row-dump payload', () => {
+    const raw = { id: 't1', syncedAt: '2026-09-01T00:00:00.000Z', title: 'A' }
+    recordUnknownPayloadFields(db, 'task', 't1', raw, { title: 'A' })
+    recordUnknownPayloadFields(db, 'task', 't2', { ...raw, id: 't2', foo: 1 }, { title: 'A' })
+
+    expect(
+      db
+        .select({ itemId: syncUnknownFields.itemId, fields: syncUnknownFields.fields })
+        .from(syncUnknownFields)
+        .all()
+    ).toEqual([{ itemId: 't2', fields: '{"foo":1}' }])
+  })
+
   it('clears the row once the payload has no unknown keys left', () => {
     recordUnknownPayloadFields(db, 'task', 't1', { id: 't1', extra: 1 }, { id: 't1' })
     recordUnknownPayloadFields(db, 'task', 't1', { id: 't1', extra: 1 }, { id: 't1', extra: 1 })

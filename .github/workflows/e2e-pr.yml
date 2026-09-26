@@ -65,9 +65,29 @@ jobs:
           bash apps/desktop/scripts/ensure-native.sh electron
           pnpm --filter @memry/desktop exec electron-vite build
 
-      - name: Run changed Electron E2E tests
+      - name: Select changed Electron E2E tests
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # About 100 tests fit the job timeout on 2 workers. A change to a
+          # module every spec imports (for example @memry/contracts) selects
+          # the whole suite, which main's sharded e2e-full job already runs.
+          MAX_SELECTED_TESTS: 100
+        run: |
+          selected=$(pnpm --filter @memry/desktop exec playwright test \
+            --config config/playwright.config.ts \
+            --only-changed="$BASE_SHA" --list \
+            | sed -n 's/^Total: \([0-9]*\) tests\{0,1\} in .*/\1/p')
+          selected=${selected:-0}
+          specs=$(git diff --name-only --diff-filter=AMR "$BASE_SHA" HEAD -- 'apps/desktop/tests/e2e/*.e2e.ts' \
+            | sed 's#^apps/desktop/##' | tr '\n' ' ')
+          if [ "$selected" -gt "$MAX_SELECTED_TESTS" ] && [ -n "$specs" ]; then
+            echo "::notice::--only-changed selects $selected tests; running the changed specs only: $specs"
+            echo "E2E_ARGS=$specs" >> "$GITHUB_ENV"
+          else
+            echo "E2E_ARGS=--only-changed=$BASE_SHA" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run changed Electron E2E tests
         run: |
           bash apps/desktop/scripts/ensure-native.sh electron
           # The quoted script expands variables in the inner bash process.
@@ -75,9 +95,11 @@ jobs:
           dbus-run-session -- bash -c '
             eval "$(printf "\n" | gnome-keyring-daemon --unlock)"
             eval "$(printf "\n" | gnome-keyring-daemon --start --components=secrets)"
+            # E2E_ARGS is a space-separated list; word splitting is intended.
+            # shellcheck disable=SC2086
             xvfb-run -a pnpm --filter @memry/desktop exec playwright test \
               --config config/playwright.config.ts \
-              --only-changed="$BASE_SHA"
+              $E2E_ARGS
           '
 
       - name: Upload E2E failure artifacts

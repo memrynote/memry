@@ -60,7 +60,10 @@ vi.mock('../../database/queries/settings', () => ({
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { settingsHandler } from './settings-handler'
 
-const ctx: ApplyContext = { db: {} as DrizzleDb, emit: vi.fn() }
+const ctx: ApplyContext = {
+  db: {} as DrizzleDb,
+  emit: (channel, data) => mocks.broadcast(channel, data)
+}
 const clock: VectorClock = { 'device-B': 3 }
 
 const broadcastFor = (key: string): unknown =>

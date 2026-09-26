@@ -65,6 +65,25 @@ export function hasOfflineClockData(
   return Object.values(fieldClocks).some((fc) => hasOfflineTick(fc))
 }
 
+/**
+ * `recoverPendingChange` for the record types that keep one whole-row `clock`
+ * and no field clocks. Moves the row's `_offline` ticks onto the real device,
+ * persists them through `persistClock`, and returns the rebound row, or null
+ * when there is no row or nothing offline about it, which is the common case.
+ */
+export function recoverOfflineDocClock(
+  row: Record<string, unknown> | undefined,
+  deviceId: string,
+  persistClock: (clock: VectorClock) => void
+): Record<string, unknown> | null {
+  const clock = row?.clock as VectorClock | null | undefined
+  if (!row || !clock || !hasOfflineTick(clock)) return null
+
+  const rebound = rebindClockDevice(clock, deviceId)
+  persistClock(rebound)
+  return { ...row, clock: rebound }
+}
+
 export function rebindOfflineClockData(
   clock: VectorClock | null | undefined,
   fieldClocks: FieldClocks | null | undefined,
@@ -217,10 +236,9 @@ export function incrementFilterClockOffline(db: DrizzleDb, filterId: string): vo
 }
 
 /**
- * Note there is no rebinding hook for these the way task-sync.ts rebinds
- * offline task clocks: an activity row stamped `_offline` keeps that key for
- * its whole life. That is fine — the row is immutable, so the clock is never
- * compared against a later local edit.
+ * The `_offline` tick is rebound onto the real device when the row is pushed
+ * (`recoverOfflineDocClock` in task-activity-sync.ts). The row's `deviceId`
+ * column is not: it records who wrote the entry and stays `_offline`.
  */
 export function incrementTaskActivityClockOffline(db: DrizzleDb, activityId: string): void {
   try {

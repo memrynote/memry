@@ -132,6 +132,25 @@ export const LEGACY_RECORD_SYNC_ITEM_TYPES = [
 
 export type LegacyRecordSyncItemType = (typeof LEGACY_RECORD_SYNC_ITEM_TYPES)[number]
 
+/**
+ * Tokens a client may declare in `X-Memry-Sync-Types` that are not record
+ * types: never pushed through /sync/push and never a manifest or bootstrap row.
+ * - `note_body` (#2295): GET /sync/changes also serves CRDT body rows.
+ * - `purged_tombstones` (#2302): the client applies purged-tombstone markers,
+ *   so GET /sync/changes lists their ids in `deleted` (never on a request from
+ *   cursor 0) and POST /sync/pull serves them in `purgedTombstones`. A client
+ *   that does not declare it never sees a marker, exactly as before markers
+ *   existed, when the row was hard-deleted.
+ *
+ * Not in RECORD_SYNC_ITEM_TYPES on purpose: clients declare that whole list as
+ * their header, so a member here would make them receive rows they cannot
+ * apply. Never in LEGACY_RECORD_SYNC_ITEM_TYPES.
+ */
+export const FEED_ONLY_SYNC_TYPES = ['note_body', 'purged_tombstones'] as const
+
+/** Everything the server recognises in `X-Memry-Sync-Types`. */
+export const NEGOTIABLE_SYNC_TYPES = [...RECORD_SYNC_ITEM_TYPES, ...FEED_ONLY_SYNC_TYPES] as const
+
 export const SYNC_OPERATIONS = ['create', 'update', 'delete'] as const
 
 export const ENCRYPTABLE_ITEM_TYPES = [
@@ -163,6 +182,43 @@ export const ENCRYPTABLE_ITEM_TYPES = [
 ] as const
 export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 
+/**
+ * Types whose id legitimately comes back after a delete (#2302, protocol 05
+ * §5.12.3), for one of two reasons:
+ * 1. The id is derived from user-visible data, so re-creating the thing
+ *    re-creates the id:
+ *    - `journal`: `j<YYYY-MM-DD>` (apps/desktop/src/main/lib/id.ts generateJournalId)
+ *    - `tag_definition`, `property_definition`: the name (primary key)
+ *    - `folder_config`: the folder path (primary key)
+ *    - `canvas_folder`: `cvf_<path>` (canvasFolderSyncId)
+ *    - `bookmark`: `bmk_<type>_<id>` (bookmarkSyncId)
+ *    - `calendar_source`: the provider calendar (`google-calendar:<remoteId>`,
+ *      caldav, EventKit, ICS ids)
+ *    - `calendar_external_event`: `calendar_external_event:<source>:<remoteEventId>`
+ *    - `calendar_binding`: `calendar_binding:<provider>:<sourceType>:<sourceId>`
+ *      (desktop calendar write-engine)
+ * 2. The id is carried in a file the user can restore: a `note`'s id lives in
+ *    its markdown frontmatter, so restoring a deleted note file from a backup
+ *    or the OS trash re-creates the same id (desktop vault watcher ->
+ *    syncNoteCreate).
+ * The server accepts a `create` over a purged-tombstone marker only for these,
+ * and the desktop refuses to apply a purged tombstone over a pending or newer
+ * local write of one of these. Every other clock-required type mints random
+ * ids that live only in the database. `settings` has no required clock.
+ */
+export const RECREATABLE_AFTER_PURGE_ITEM_TYPES = [
+  'journal',
+  'tag_definition',
+  'property_definition',
+  'folder_config',
+  'canvas_folder',
+  'bookmark',
+  'calendar_source',
+  'calendar_external_event',
+  'calendar_binding',
+  'note'
+] as const satisfies readonly (typeof RECORD_CLOCK_REQUIRED_ITEM_TYPES)[number][]
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -171,6 +227,8 @@ export type SyncItemType = (typeof SYNC_ITEM_TYPES)[number]
 export type RecordSyncItemType = (typeof RECORD_SYNC_ITEM_TYPES)[number]
 export type RecordClockRequiredItemType = (typeof RECORD_CLOCK_REQUIRED_ITEM_TYPES)[number]
 export type CrdtSyncItemType = (typeof CRDT_SYNC_ITEM_TYPES)[number]
+export type FeedOnlySyncType = (typeof FEED_ONLY_SYNC_TYPES)[number]
+export type NegotiableSyncType = (typeof NEGOTIABLE_SYNC_TYPES)[number]
 export type SyncOperation = (typeof SYNC_OPERATIONS)[number]
 
 /**
@@ -235,6 +293,8 @@ export interface PushItem {
   clock?: VectorClock
   stateVector?: string
   deletedAt?: number
+  /** Protocol 04 §4.8.4 (#2408): present only on an attestable delete (`deleteClaimOf`). */
+  deleteAttestation?: string
 }
 
 export interface PushRequest {
@@ -370,7 +430,8 @@ const PushItemBaseSchema = z.object({
   signerDeviceId: z.string().min(1),
   clock: VectorClockSchema.optional(),
   stateVector: z.string().optional(),
-  deletedAt: z.number().int().min(0).optional()
+  deletedAt: z.number().int().min(0).optional(),
+  deleteAttestation: z.string().min(1).optional()
 })
 
 const recordClockRequiredItemTypeSet = new Set<RecordSyncItemType>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
@@ -484,11 +545,121 @@ export const ChangesResponseSchema = z.object({
   nextCursor: z.number().int().min(0)
 })
 
+/**
+ * A `/sync/changes` ref. The two optional fields are the end-to-end sync trace
+ * (#2280), absent on a server that predates it and on a row written before the
+ * commit time was recorded:
+ * - `serverCursor` is the row's cursor, the join key across push accept, the
+ *   broadcast and the receiving device's apply. It is NOT a pull cursor: only
+ *   the page's `nextCursor`, after apply, advances one (protocol 05 §5.11).
+ * - `committedAtMs` is the server's epoch-ms time of the push batch that last
+ *   wrote the row.
+ */
+export const RecordChangesItemRefSchema = RecordSyncItemRefSchema.extend({
+  serverCursor: z.number().int().min(0).optional(),
+  committedAtMs: z.number().int().min(0).optional()
+})
+
+const NoteBodyChangeBaseSchema = z.object({
+  /** The CRDT document id: a note id or a journal id (protocol 07 §7.1). */
+  noteId: z.string().min(1),
+  /** The row's server_cursor. Orders the entry among the page's records; never a pull cursor. */
+  cursor: z.number().int().min(1),
+  signerDeviceId: z.string().min(1),
+  /** Epoch seconds, as the CRDT tables store it. */
+  createdAt: z.number().int().min(0),
+  /** Stored bytes of the update or snapshot. */
+  size: z.number().int().min(0)
+})
+
+/**
+ * A crdt_updates row. `data` is the same base64 packed envelope GET
+ * /sync/crdt/updates returns. Absent when the update is too large to inline:
+ * fetch it with GET /sync/crdt/updates?note_id=<noteId>&since=<sequenceNum - 1>&limit=1.
+ */
+export const NoteBodyUpdateChangeSchema = NoteBodyChangeBaseSchema.extend({
+  op: z.literal('update'),
+  sequenceNum: z.number().int().min(1),
+  data: z.string().min(1).optional()
+})
+
+/**
+ * A crdt_snapshots row, always a ref: fetch GET /sync/crdt/snapshot/<noteId>,
+ * or skip it when `revision` equals the one held.
+ */
+export const NoteBodySnapshotChangeSchema = NoteBodyChangeBaseSchema.extend({
+  op: z.literal('snapshot'),
+  sequenceNum: z.number().int().min(0),
+  revision: z.string().min(1)
+})
+
+/**
+ * One note-body row in a /sync/changes page (#2295). The op set is frozen: a
+ * new op ships under a new negotiated type, because a reader that meets an op
+ * it does not know fails the entry.
+ */
+export const NoteBodyChangeSchema = z.discriminatedUnion('op', [
+  NoteBodyUpdateChangeSchema,
+  NoteBodySnapshotChangeSchema
+])
+
+/**
+ * Optional `coversThrough` on a CRDT snapshot push, single and batch entry
+ * (#2299, protocol 07 §7.7): every note_body feed row of this note with
+ * `server_cursor <= coversThrough` is merged into the pushed state. With it the
+ * server prunes by cursor and refuses to replace a snapshot the pusher has not
+ * seen; without it, or on a server that predates it, the prune is the
+ * sequence-number rule.
+ */
+export const CrdtSnapshotCoversThroughSchema = z.number().int().min(0)
+
+/**
+ * Optional `baseRevision` beside `coversThrough` (#2299): the revision of the
+ * stored snapshot the pusher last merged or pushed. When it still names the
+ * stored snapshot, the push may replace it whatever that snapshot's cursor.
+ */
+export const CrdtSnapshotBaseRevisionSchema = z.string().min(1).max(256)
+
+/** One snapshot push: the single route's body, and one batch entry. */
+export interface CrdtSnapshotPushEntry {
+  noteId: string
+  /** Base64 of the packed envelope (protocol 04 §4.11). */
+  snapshot: string
+  coversThrough?: number
+  baseRevision?: string
+}
+
+/**
+ * The per-note refusal of a snapshot push that would replace a stored snapshot
+ * holding state the push does not cover (#2299): HTTP 409 on the single route
+ * with `error.blockingCursor`, `reason` plus `blockingCursor` in a batch.
+ */
+export const CRDT_SNAPSHOT_NOT_COVERED = 'CRDT_SNAPSHOT_NOT_COVERED' as const
+
 export const RecordChangesResponseSchema = z.object({
-  items: z.array(RecordSyncItemRefSchema),
+  items: z.array(RecordChangesItemRefSchema),
   deleted: z.array(z.string().min(1)),
   hasMore: z.boolean(),
-  nextCursor: z.number().int().min(0)
+  nextCursor: z.number().int().min(0),
+  /** Server epoch ms when the page was answered; clock-offset reference (#2280). */
+  serverTimeMs: z.number().int().min(0).optional(),
+  /**
+   * Present only on `GET /sync/changes?inline=1` (#2292, protocol 05 §5.11.2):
+   * `/sync/pull` items for some of this page's `items` and `deleted` ids,
+   * byte-identical to what `/sync/pull` returns for them. The reader pulls only
+   * the ids no element names. `unknown` on purpose: each element is validated
+   * with RecordPullItemResponseSchema on its own (§5.14), so one bad element
+   * never fails the page.
+   */
+  inline: z.array(z.unknown()).optional(),
+  /**
+   * Present, possibly empty, iff the request declared `note_body` (#2295).
+   * Absent means the server does not serve bodies in the feed. Cursor-ordered;
+   * every entry, like every item, lies in (cursor, nextCursor]. `unknown` on
+   * purpose, like `inline`: each entry is validated with NoteBodyChangeSchema
+   * on its own (§5.14), so one bad entry never fails the page.
+   */
+  noteBodies: z.array(z.unknown()).optional()
 })
 
 export const ClientPlatformSchema = z.enum(CLIENT_PLATFORMS)
@@ -620,11 +791,46 @@ export const PullResponseSchema = z.object({
 
 export type PullItemResponse = z.infer<typeof PullItemResponseSchema>
 
+/**
+ * A tombstone whose signed payload the server shed after `version_history_days`
+ * (#2302, protocol 05 §5.12.3). The row is kept as a marker so delete-wins keeps
+ * refusing stale pushes; this entry carries the delete fact only. `clock` is
+ * absent for a legacy tombstone stored without one. `signerDeviceId` and
+ * `deleteAttestation` (#2408, protocol 04 §4.8.4) are present together, only
+ * when the deleting device attested the delete; a client applies nothing else.
+ */
+export const RecordPullPurgedTombstoneSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(RECORD_SYNC_ITEM_TYPES),
+  deletedAt: z.number().int().min(0),
+  clock: VectorClockSchema.optional(),
+  serverCursor: z.number().int().min(0),
+  signerDeviceId: z.string().min(1).optional(),
+  deleteAttestation: z.string().min(1).optional()
+})
+
+/** A live row whose payload bytes are lost (#2302, protocol 05 §5.12.4). Nothing to apply. */
+export const RecordPullBlobMissingSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(RECORD_SYNC_ITEM_TYPES),
+  serverCursor: z.number().int().min(0)
+})
+
 export const RecordPullResponseSchema = z.object({
-  items: z.array(RecordPullItemResponseSchema)
+  items: z.array(RecordPullItemResponseSchema),
+  /**
+   * Present only when non-empty, and absent on a server that predates #2302.
+   * `unknown` on purpose, like `inline`: each entry is validated on its own
+   * (§5.14), so one bad entry never fails the page. Never inside `items`: a
+   * client that predates these entries would record them as invalid items.
+   */
+  purgedTombstones: z.array(z.unknown()).optional(),
+  blobMissing: z.array(z.unknown()).optional()
 })
 
 export type RecordPullItemResponse = z.infer<typeof RecordPullItemResponseSchema>
+export type RecordPullPurgedTombstone = z.infer<typeof RecordPullPurgedTombstoneSchema>
+export type RecordPullBlobMissing = z.infer<typeof RecordPullBlobMissingSchema>
 export type RecordPullResponse = z.infer<typeof RecordPullResponseSchema>
 
 // ============================================================================
@@ -695,6 +901,7 @@ export type SyncManifestInput = z.infer<typeof SyncManifestSchema>
 export type RecordSyncManifest = z.infer<typeof RecordSyncManifestSchema>
 export type ChangesResponseInput = z.infer<typeof ChangesResponseSchema>
 export type RecordChangesResponse = z.infer<typeof RecordChangesResponseSchema>
+export type NoteBodyChange = z.infer<typeof NoteBodyChangeSchema>
 export type SyncStatusInput = z.infer<typeof SyncStatusSchema>
 export type ConflictResponseInput = z.infer<typeof ConflictResponseSchema>
 export type DeviceSyncStateInput = z.infer<typeof DeviceSyncStateSchema>

@@ -78,6 +78,16 @@ For tasks, projects, and agent conversations, handlers additionally invoke `merg
 `field-merge.ts` to merge field-level vector clocks. See
 [Sync Protocol](/architecture/sync-protocol#field-level-merge-tasks-projects).
 
+Settings run the same rule per dotted path: `mergeSettingsPayloads()` (`settings-merge.ts`) calls
+`mergeFields()` over the union of both payloads' clocked paths, so the higher tick sum wins and the
+remote wins a tie. A path whose winner has no value keeps the local value: an older build strips a
+setting it does not model but still echoes its clock, and removing on that echo would delete the
+setting everywhere. Before #2383 settings picked the larger single tick and kept local on a tie; a
+peer still on that rule converges through the re-queue a concurrent merge triggers. The shared
+`settings-merge.json` vectors run against both desktop and the Rust core, including the re-queue
+flag; since #2399 the Rust core also keeps the local value on an absent winner and re-queues after a
+concurrent merge.
+
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
 
@@ -115,6 +125,10 @@ empty, and the row clears itself.
 Only top-level keys are preserved. An unknown key nested inside a known object is still stripped by
 that object's schema.
 
+`id` and `syncedAt` are never kept. Many push payloads are row dumps that carry both, but `id` is
+the envelope id and `syncedAt` is device-local, so no schema models them. Keeping them wrote a row
+for nearly every applied item.
+
 ## Canvas: the payload comes from a file
 
 `canvas-handler.ts` is the one handler whose content does not live in the data DB. A canvas scene
@@ -130,10 +144,10 @@ unchanged.
 `home-page-handler.ts` carries a board's widgets as an **opaque JSON string**, declared
 `widgets: z.string().optional()` in `HomePageSyncPayloadSchema` — the same call `canvas.scene` makes,
 and for a sharper reason. A typed `z.array(WidgetInstanceSchema)` would zod-strip widget keys written
-by a newer build and reject the legacy `{size:'S'|'M'|'L'}` blobs still on disk; `apply-item.ts`
-turns a schema failure into `'skipped'`, **not** `'parse_error'`, and `'skipped'` still advances the
-cursor and never retries. The push would succeed, `synced_at` would be stamped, and the board would
-land on zero peers forever with nothing user-visible to notice.
+by a newer build and reject the legacy `{size:'S'|'M'|'L'}` blobs still on disk. A schema failure in
+`apply-item.ts` returns `'schema_invalid'`: the cursor still advances, and the item waits in the
+schema-invalid ledger until an app update re-fetches it (see Sync Protocol, "Per-item bookkeeping and
+retry semantics"). A board that every build refuses would still land on zero peers.
 
 Shape is therefore validated at the apply site: `applyUpsert` refuses a `widgets` value that is
 present but does not `JSON.parse` to an array, and returns `'skipped'` **before** touching the clock
@@ -165,13 +179,29 @@ dropped.
 That mirrors the server. `shouldRejectResurrection` (`apps/sync-server/src/services/sync.ts`) refuses
 any non-delete push against a tombstoned id unless the incoming clock happens strictly after the
 stored one, answering `SYNC_DELETE_WINS`; `push-coordinator` drains that rejection without retrying,
-because a retry is refused identically every time.
+because a retry is refused identically every time. The rule does not expire: past the
+version-history window the server keeps the tombstone row as a payload-less marker, and a purged
+tombstone whose delete attestation verifies reaches `applyDelete` with the same clock a signed one
+would carry. An unattested one never reaches a handler.
 
 Handlers used to keep the row on a concurrent clock, and the two rules together stranded exactly one
 device: the device that edited an item before it saw the delete had its push refused forever and its
 pull decline the tombstone, so it kept a ghost copy of an item deleted on every other device. A
 handler that adds its own delete guard has to use `resolveDeleteClock`, not a hand-rolled
 `resolveClock` comparison.
+
+## Notes and Journals Share One Table
+
+Notes and journals both live in `note_metadata`, keyed by id alone, while the server keeps one row
+per (type, id). A legacy-id journal tombstone and a live note with the same id therefore both come
+back on every pull. Before the guard, the journal tombstone purged the note's CRDT doc and dropped its
+row, and the note upsert then wrote a fresh `Untitled N.md`, orphaning the old file on every pull.
+`noteHandler` and `journalHandler` now check the row's type first (`journalDate` set means journal)
+through `belongsToOtherType` (`item-handlers/note-row-type.ts`). On a mismatch they return
+`'skipped'` with no purge and no file change, and log one warning per id and type.
+
+A remote note delete also removes the note's `note_date` reminders, directly and with no sync hooks.
+The device that deleted the note owns those tombstones, so the receiver enqueues nothing.
 
 ## Atomicity
 
@@ -374,6 +404,9 @@ unclassifiable as well as fatal.
    `{}` does not parse against its schema, and seed any FK parent the fixture needs. The registry
    test fails on an unregistered type and on an applied write that does not emit, so it is the one
    place a half-wired type shows up as a failure rather than as silence.
+10. Give the type an entry in `DIRTY_RECOVERY` (`main/sync/dirty-recovery.ts`): a sweep, or an
+    exemption with a one-line reason. The table is keyed by `RecordSyncItemType`, so the build fails
+    until you do, and `dirty-recovery.test.ts` checks it against `RECORD_SYNC_ITEM_TYPES`.
 
 Steps 5 and 6 are three separate registrations and each fails silently on its own:
 `enqueueLocalSync*` typechecks and no-ops when no push service is registered, so the entity never
@@ -415,6 +448,92 @@ payload that already has a clock — handler-built or frozen — is untouched, a
 is sent as-is. This stamp is **not** persisted, because the cases that reach it have no local row to
 persist to; it matches the `{ id, clock: increment({}, deviceId) }` fallback `buildDeletePayload`
 already uses. It is a queue-unblocking backstop, not a substitute for stamping at write time.
+
+### Sync intents: row and push obligation in one transaction
+
+Tasks and projects written through the tasks domain do not enqueue from the publisher. Each command
+runs its synchronous write phase inside a unit of work (`main/tasks/domain.ts`), which commits the
+rows and one `sync_intents` row per owed mutation in a single SQLite transaction
+(`commitLocalChange`, `main/sync/sync-intents.ts`). The event-to-intent mapping lives only in
+`main/tasks/sync-intents.ts`. Right after COMMIT, `drainSyncIntents` hands each intent to the ordinary
+local sync adapter (clock bump, `sync_queue` row, offline fallback) and deletes the intent in that same
+transaction. The publisher (IPC, activity log, projections, source-note edits) runs after both; a
+failing publisher call is logged and skipped, it neither drops the remaining events nor rejects the
+command, because the write has already committed.
+
+- A throw in the write phase rolls back the rows and the intents. A throw in the sync step never
+  undoes the edit: the intent stays pending (`attempts`, `last_error`) and later intents for the same
+  item wait behind it.
+- A delete's `sync_pending_deletes` tombstone is written in the write transaction, next to its intent,
+  so a failed sync step cannot roll back the guard that keeps a pull from re-creating the item.
+- A cascade commits its tombstones with the delete. `deleteProject` writes the project delete intent
+  and one task delete intent per cascaded task, each built from `getTask` so it carries the task's
+  real clock.
+- Pending intents are drained at runtime start (`recoverDirtyItems`, before its sweep) and at the start
+  of every pull. The dirty sweep skips every item that had an intent: a failed one still carries its
+  pre-edit clock, and a sweep push at that clock is refused by the server as a replay and stamped
+  synced.
+- A remote upsert for an item with a pending intent drains that item first (`ItemApplier`). If the
+  intent still cannot drain, the apply throws `PendingSyncIntentError`; the pull defers the item to its
+  end-of-run retry and then to the schema-invalid ledger as `pending_intent`. That entry is re-fetched
+  by id at every pull start, right after the intents drain, and merges field by field once the local
+  edit is clocked. It keeps the manifest from counting the item server-only and is not listed as
+  quarantined. The remote row never overwrites the un-clocked local edit.
+- A delete intent whose row exists locally again is stale (a downgrade round trip): it is dropped with
+  its tombstone and the row is kept.
+- Only the runtime-start replay spends an intent's attempt budget; pull-start, per-item and per-edit
+  drains retry without counting. Past five start-up attempts nothing is given up: the intent stays
+  pending, so it keeps deferring remote rows for its item and keeps the sweep off it, and each start
+  reports it as over cap. The retry always uses the intent's own fields, never an all-field bump.
+- An intent this build cannot read (unknown type or op, bad `args`) belongs to a newer build. It is
+  left pending and untouched so a re-upgrade replays it, and this build ignores it: it does not own,
+  guard or block the item. It is logged once per session.
+- A tag merge retag owes `['tags']` per task and a status change owes the project `['statuses']`, the
+  same field names `updateTask` and `updateProject` report.
+- `onItemEnqueued` (the push wake-up) is deferred one microtask and coalesced, so it fires after the
+  caller's outermost COMMIT.
+
+The task and project writers outside the tasks domain use the same path: inbox task conversion
+(`inbox/filing.ts`), the note-project-links projector and the tag merge retag
+(`commitTaskRetag`, `tags/runtime-effects.ts`). The activity log's `task_activity` rows and every other
+type still enqueue after their own commit.
+
+Project links derived while applying a synced note are the exception: `reconcileNoteLinks(..., 'remote')`
+writes the rows and commits no intent. The device that edited the note's frontmatter already pushed
+the project, and that payload is where iOS reads markdown-note membership. Re-pushing from every
+receiver only bumped the project clock on each device and could push a new row's `position: 0` and
+`pinned: 0` over a pin set elsewhere. When `projectHandler` inserts a project from sync,
+`linkNotesNamingProject` links the notes whose frontmatter already names it, also without an intent,
+so a note applied before its project does not wait for a re-pull.
+
+### Dirty recovery
+
+Outside the sync-intent path, a local edit writes the row, the clock and the outbox row in three
+transactions. A crash between the last two, or an `increment*ClockOffline` fallback while the runtime
+is down, leaves a clocked row with no queue row. `recoverDirtyItems` runs at every sync runtime start
+and re-enqueues those rows, driven
+by `DIRTY_RECOVERY`: one entry per record sync item type, either a sweep (select the rows with
+`syncedAt IS NULL` or a modification time past `syncedAt`, then hand each to the type's local sync
+service) or an exemption naming why the type has no usable dirty marker. Clock-less rows are left to
+`seedUnclocked`. A never-synced row goes out as a create; a modified one as a recovered update at its
+stored clock. Both rebind `_offline` ticks first through `recoverPendingChange`, so the placeholder
+device id never reaches the wire. Exempt types (settings, tag definitions and categories, folder
+configs, property definitions, the calendar types, canvases) are not on the sync-intent path yet and
+wait for its per-type rollout (#2301); agent chat has no local push path.
+
+Three `sync_run_completed` events carry the P4.2 gate signal, with numeric metrics only:
+
+- `action: 'sync_intents_replayed'`, from the runtime-start drain whenever it finds intents, and from a
+  pull-start drain only when one applied or was dropped as stale: `itemCount` attempted, `resultCount`
+  applied, `retryCount` failed and kept, `value` stale deletes dropped.
+- `action: 'sync_intents_over_cap'` (`result: 'failed'`), once per runtime start: `itemCount` intents
+  still failing after five start-up replays.
+- `action: 'dirty_recovery_residual'` per type, with `objectType` set to the sync type: `itemCount`
+  dirty rows that had neither a queue row nor a pending intent, `resultCount` rows re-enqueued.
+
+Offline edits count as residual too, so compare migrated types against the rest. The residual count
+only sees rows whose write moves the modification time; `task_tags` and `project_links` writes do not,
+which is why the three writers above now go through intents.
 
 Handlers that persist locally encrypted fields must receive the vault key from the sync engine during
 pull apply and push payload encoding. Agent conversation and message handlers use that key to decrypt

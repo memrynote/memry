@@ -5,7 +5,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-
+import { deleteFromLocalRow } from './delete-fallback'
 
 interface TagCategorySyncDeps {
   queue: SyncQueueManager
@@ -38,8 +38,7 @@ export class TagCategorySyncService {
       getDeviceId: deps.getDeviceId,
       load: (id) =>
         deps.db.select().from(tagCategories).where(eq(tagCategories.id, id)).get() as
-          | Record<string, unknown>
-          | undefined,
+          Record<string, unknown> | undefined,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -66,13 +65,11 @@ export class TagCategorySyncService {
         // deleted row's real clock incremented -- NOT a fresh clock -- or the
         // delete won't dominate the peer's existing clock and will be
         // skipped, letting the category get resurrected.
-        const row = local as { name?: string; sortOrder?: number; clock?: VectorClock } | undefined
-        return JSON.stringify({
-          name: row?.name ?? itemId,
-          sortOrder: row?.sortOrder ?? 0,
-          deletedAt: utcNow(),
-          clock: incrementClock(row?.clock ?? {}, deviceId)
-        })
+        return deleteFromLocalRow('tag_category', itemId, local, deviceId, (row) => ({
+          name: row.name ?? itemId,
+          sortOrder: row.sortOrder ?? 0,
+          deletedAt: utcNow()
+        }))
       }
     })
   }

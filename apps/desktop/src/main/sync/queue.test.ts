@@ -1,7 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { createTestDataDb, trackPreparedSql, type TestDatabaseResult } from '@tests/utils/test-db'
-import { DEFAULT_MAX_ATTEMPTS, SyncQueueManager, type EnqueueInput } from '@memry/sync-client/queue'
+import {
+  DEFAULT_MAX_ATTEMPTS,
+  NOTE_BODY_FULL_STATE_PAYLOAD,
+  SyncQueueManager,
+  type EnqueueInput
+} from '@memry/sync-client/queue'
 
 const makeInput = (overrides: Partial<EnqueueInput> = {}): EnqueueInput => ({
   type: 'note',
@@ -140,6 +145,47 @@ describe('SyncQueueManager', () => {
       // #then
       const items = queue.peek(1)
       expect(items[0].priority).toBe(10)
+    })
+  })
+
+  // #2301: an enqueue inside a caller's transaction must not wake the push
+  // before that transaction commits, or the push reads a row that may still
+  // roll back.
+  describe('onItemEnqueued', () => {
+    it('fires only after the outer transaction commits', async () => {
+      const callback = vi.fn(() => ({
+        inTransaction: testDb.sqlite.inTransaction,
+        size: queue.getSize()
+      }))
+      queue.setOnItemEnqueued(callback)
+
+      testDb.db.transaction(() => {
+        queue.enqueue(makeInput({ itemId: 'item-1' }))
+        expect(callback).not.toHaveBeenCalled()
+      })
+      expect(callback).not.toHaveBeenCalled()
+
+      await Promise.resolve()
+
+      expect(callback).toHaveBeenCalledTimes(1)
+      expect(callback.mock.results[0]?.value).toEqual({ inTransaction: false, size: 1 })
+    })
+
+    it('wakes once for several enqueues in the same tick', async () => {
+      const callback = vi.fn()
+      queue.setOnItemEnqueued(callback)
+
+      queue.enqueue(makeInput({ itemId: 'item-1' }))
+      queue.enqueue(makeInput({ itemId: 'item-2' }))
+      queue.enqueue(makeInput({ itemId: 'item-3' }))
+      await Promise.resolve()
+
+      expect(callback).toHaveBeenCalledTimes(1)
+
+      queue.enqueue(makeInput({ itemId: 'item-4' }))
+      await Promise.resolve()
+
+      expect(callback).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -576,6 +622,35 @@ describe('SyncQueueManager', () => {
     })
   })
 
+  // #2280: sync_queue.created_at is epoch seconds; push lag is measured in ms.
+  describe('enqueuedAtMs', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('returns the millisecond time of the first enqueue, not the seconds column', () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(1_700_000_000_789)
+      queue.enqueue(makeInput({ payload: '{"v":1}' }))
+      vi.setSystemTime(1_700_000_001_500)
+      queue.enqueue(makeInput({ payload: '{"v":2}' }))
+
+      const [row] = queue.peek(1)
+      expect(row.createdAt.getTime()).toBe(1_700_000_000_000)
+      expect(queue.enqueuedAtMs(row)).toBe(1_700_000_000_789)
+    })
+
+    it('falls back to the seconds column for a row queued in an earlier session', () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(1_700_000_000_789)
+      queue.enqueue(makeInput())
+
+      const nextSession = new SyncQueueManager(testDb.db)
+      const [row] = nextSession.peek(1)
+      expect(nextSession.enqueuedAtMs(row)).toBe(1_700_000_000_000)
+    })
+  })
+
   describe('dequeue/getPendingCount consistency', () => {
     it('dequeue finds items enqueued after a previous empty dequeue', () => {
       // #given first dequeue returns nothing
@@ -610,6 +685,67 @@ describe('SyncQueueManager', () => {
       const items = queue.dequeue(100)
       expect(pending).toBe(items.length)
       expect(items.length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  // #2298: a note's CRDT body rides sync_queue as `note_body` rows. `enqueue`
+  // coalesces on (itemId, type) and overwrites the payload, which would drop
+  // every unflushed Yjs update but the last, so these rows are append-only.
+  describe('note body rows', () => {
+    it('keeps two updates enqueued for one note before a flush as two rows, in order (#2298)', () => {
+      queue.enqueueNoteBody('note-1', 'dXBkYXRlLTE=')
+      queue.enqueueNoteBody('note-1', 'dXBkYXRlLTI=')
+
+      expect(queue.takeNoteBodyRows('note-1', 10).map((row) => row.payload)).toEqual([
+        'dXBkYXRlLTE=',
+        'dXBkYXRlLTI='
+      ])
+      expect(queue.countNoteBodyRows()).toBe(2)
+    })
+
+    it('keeps note body rows away from every record push method (#2298)', () => {
+      queue.enqueue(makeInput({ itemId: 'note-1', operation: 'update' }))
+      queue.enqueueNoteBody('note-1', 'dXBkYXRl')
+
+      expect(queue.dequeue(10).map((row) => row.type)).toEqual(['note'])
+      expect(queue.peek(10).map((row) => row.type)).toEqual(['note'])
+      expect(queue.getPendingCount()).toBe(1)
+      expect(queue.getRawPendingCount()).toBe(1)
+      expect(queue.getSize()).toBe(1)
+      expect(queue.getQueueStats()).toMatchObject({ pending: 1, total: 1 })
+      expect(queue.countNoteBodyRows()).toBe(1)
+    })
+
+    it('holds at most one unsent full-state row per note (#2298)', () => {
+      queue.enqueueNoteBody('note-1', NOTE_BODY_FULL_STATE_PAYLOAD)
+      queue.enqueueNoteBody('note-1', NOTE_BODY_FULL_STATE_PAYLOAD)
+      queue.enqueueNoteBody('note-2', NOTE_BODY_FULL_STATE_PAYLOAD)
+
+      expect(queue.takeNoteBodyRows('note-1', 10)).toHaveLength(1)
+      expect(queue.listNoteBodyNoteIds().sort()).toEqual(['note-1', 'note-2'])
+    })
+
+    // #2299 review round 2 (A-7): a queued full-state row may owe skipped bodies
+    it('lists only the notes that hold a full-state row', () => {
+      queue.enqueueNoteBody('note-1', NOTE_BODY_FULL_STATE_PAYLOAD)
+      queue.enqueueNoteBody('note-1', 'dXBkYXRl')
+      queue.enqueueNoteBody('note-2', 'dXBkYXRl')
+      queue.enqueueNoteBody('note-3', NOTE_BODY_FULL_STATE_PAYLOAD)
+
+      expect(queue.listFullStateNoteBodyNoteIds().sort()).toEqual(['note-1', 'note-3'])
+    })
+
+    it('removes exactly the acknowledged rows and leaves a later one queued', () => {
+      queue.enqueueNoteBody('note-1', 'Zmlyc3Q=')
+      const [pushed] = queue.takeNoteBodyRows('note-1', 10)
+      queue.enqueueNoteBody('note-1', 'c2Vjb25k')
+
+      queue.removeNoteBodyRows([pushed.id])
+
+      expect(queue.takeNoteBodyRows('note-1', 10).map((row) => row.payload)).toEqual(['c2Vjb25k'])
+      expect(queue.hasNoteBody('note-1')).toBe(true)
+      expect(queue.removeNoteBody('note-1')).toBe(1)
+      expect(queue.hasNoteBody('note-1')).toBe(false)
     })
   })
 })

@@ -8,6 +8,18 @@ export const safeBase64Decode = (input: string): Uint8Array => {
   }
 }
 
+const BASE64_CHUNK_SIZE = 8192
+
+/** Chunked so a multi-MiB blob never spreads more arguments than `fromCharCode` takes. */
+export const safeBase64Encode = (input: ArrayBuffer | ArrayLike<number>): string => {
+  const bytes = input instanceof ArrayBuffer ? new Uint8Array(input) : Uint8Array.from(input)
+  let result = ''
+  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
+    result += String.fromCharCode(...bytes.subarray(i, i + BASE64_CHUNK_SIZE))
+  }
+  return btoa(result)
+}
+
 export const verifyEd25519 = async (
   publicKeyBase64: string,
   signatureBase64: string,

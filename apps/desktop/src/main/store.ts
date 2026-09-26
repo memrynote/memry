@@ -19,6 +19,12 @@ export interface StoredVaultInfo {
   isDefault: boolean
   /** Server vault uuid; stamped when the vault is opened while sync is set up */
   vaultUuid?: string
+  /**
+   * Mirror of the vault DB's account binding (`sync/vault-account-binding.ts`),
+   * for code that has to reason about vaults that are not open. Absent on
+   * entries written by older versions and on never-bound vaults.
+   */
+  accountBinding?: { userId: string; mode: 'sync' | 'local' }
 }
 
 export interface CachedEntitlement {
@@ -377,7 +383,11 @@ export function upsertVault(vault: StoredVaultInfo): void {
     // from scratch and stamp the uuid best-effort, so a row update without a
     // uuid must never erase one that was already stored.
     const existing = vaults[existingIndex]
-    vaults[existingIndex] = { ...vault, vaultUuid: vault.vaultUuid ?? existing.vaultUuid }
+    vaults[existingIndex] = {
+      ...vault,
+      vaultUuid: vault.vaultUuid ?? existing.vaultUuid,
+      accountBinding: vault.accountBinding ?? existing.accountBinding
+    }
   } else {
     vaults.push(vault)
   }

@@ -17,7 +17,10 @@
  * asserted against which HTTP function the push actually called. Only the HTTP
  * layer and the process-level infrastructure are mocked.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { syncState } from '@memry/db-schema/schema/sync-state'
+import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -37,19 +40,20 @@ const runtimeMocks = vi.hoisted(() => {
     setOnItemEnqueued = vi.fn((cb: () => void) => {
       this.onItemEnqueued = cb
     })
+    listFullStateNoteBodyNoteIds = vi.fn((): string[] => [])
   }
 
-  class CrdtUpdateQueue {
-    static instances: CrdtUpdateQueue[] = []
-    onBatch: ((noteId: string, updates: Uint8Array[]) => Promise<void>) | null = null
-    start = vi.fn((cb: (noteId: string, updates: Uint8Array[]) => Promise<void>) => {
-      this.onBatch = cb
-    })
+  class NoteBodyOutbox {
+    static instances: NoteBodyOutbox[] = []
+    onBatch: (noteId: string, updates: Uint8Array[]) => Promise<void>
+    start = vi.fn()
     pause = vi.fn()
     resume = vi.fn()
     stop = vi.fn()
-    constructor() {
-      CrdtUpdateQueue.instances.push(this)
+    enableFullStateFlush = vi.fn()
+    constructor(deps: { push: (noteId: string, updates: Uint8Array[]) => Promise<void> }) {
+      this.onBatch = deps.push
+      NoteBodyOutbox.instances.push(this)
     }
   }
 
@@ -99,7 +103,7 @@ const runtimeMocks = vi.hoisted(() => {
   return {
     SyncServerError,
     SyncQueueManager,
-    CrdtUpdateQueue,
+    NoteBodyOutbox,
     NetworkMonitor,
     WebSocketManager,
     SyncWorkerBridge,
@@ -127,10 +131,8 @@ const runtimeMocks = vi.hoisted(() => {
     networkOnline: true,
     engineStartError: null as Error | null,
     workerStartError: null as Error | null,
-    db: null as any,
+    db: null as TestDatabaseResult | null,
     indexRows: [] as Array<{ id: string; title: string; date: string | null }>,
-    currentDevice: { id: 'device-1', signingPublicKey: null as string | null },
-    syncStateRows: [] as Array<{ value: string }>,
     getDatabase: vi.fn(),
     getIndexDatabase: vi.fn(),
     retrieveToken: vi.fn(),
@@ -168,22 +170,18 @@ const runtimeMocks = vi.hoisted(() => {
     createCrdtSyncAdapter: vi.fn((type: string, options: unknown) => ({ type, options })),
     getRemoteSyncAdapter: vi.fn((type: string) => ({ remote: type })),
     getDeviceSigningKey: vi.fn(),
-    recordPendingCrdtNotes: vi.fn(),
-    drainPendingCrdtNotes: vi.fn(
-      async (_deps: {
-        mergeRemote: (noteId: string) => Promise<boolean>
-        pushSnapshot: (noteId: string) => Promise<boolean>
-        isSyncable: (noteId: string) => boolean
-      }) => ({ cleared: 0, retained: 0 })
-    ),
+    importLegacyPendingCrdtNotes: vi.fn(() => 0),
     resetCrdtProvider: vi.fn(),
     /** Notes the engine reports as holding server state it could not verify. */
     unverifiedCrdtNotes: new Set<string>(),
     syncGoogleCalendarSource: vi.fn(),
     crdtProvider: {
+      recordPushedSnapshot: vi.fn(async () => {}),
       isNoteLocalOnly: vi.fn(() => false),
       isNoteSyncable: vi.fn(() => true),
       init: vi.fn(),
+      setSnapshotCoverage: vi.fn(),
+      setOweRemoteMerge: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushAllSnapshots: vi.fn(),
@@ -197,6 +195,7 @@ const runtimeMocks = vi.hoisted(() => {
       applyRemoteUpdate: vi.fn(),
       getStateVector: vi.fn(() => new Uint8Array([1, 2, 3, 4])),
       seedFromMarkdownPublic: vi.fn(async () => undefined),
+      recordWholeBodyMerged: vi.fn(),
       getOpenNoteIds: vi.fn(() => [])
     },
     browserSend: vi.fn(),
@@ -206,7 +205,7 @@ const runtimeMocks = vi.hoisted(() => {
 })
 
 vi.mock('electron', () => ({
-  app: { getVersion: vi.fn(() => '1.2.3') },
+  app: { getVersion: vi.fn(() => '1.2.3'), getPath: vi.fn(() => '/user-data') },
   BrowserWindow: {
     getAllWindows: vi.fn(() => [
       {
@@ -234,7 +233,8 @@ vi.mock('../database', () => ({
 }))
 
 vi.mock('../database/client', () => ({
-  getIndexDatabase: runtimeMocks.getIndexDatabase
+  getIndexDatabase: runtimeMocks.getIndexDatabase,
+  isIndexDatabaseInitialized: () => false
 }))
 
 vi.mock('../crypto', () => ({
@@ -293,6 +293,11 @@ vi.mock('./engine', async () => {
     }
     async start(): Promise<void> {
       if (runtimeMocks.engineStartError) throw runtimeMocks.engineStartError
+      // The first thing the real start does (#2297): the debts a previous
+      // session left decide the endpoint from here on.
+      ;(
+        this as unknown as { fullSyncRunner: { loadCrdtBodyDebts(): void } }
+      ).fullSyncRunner.loadCrdtBodyDebts()
     }
     async stop(): Promise<void> {}
   }
@@ -303,7 +308,11 @@ vi.mock('../telemetry/diagnostics', () => ({
   trackMainError: runtimeMocks.trackMainError
 }))
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
-vi.mock('./crdt-queue', () => ({ CrdtUpdateQueue: runtimeMocks.CrdtUpdateQueue }))
+vi.mock('./note-body-outbox', () => ({
+  NoteBodyFlushDeferredError: class NoteBodyFlushDeferredError extends Error {},
+  NoteBodyOutbox: runtimeMocks.NoteBodyOutbox,
+  importLegacyPendingCrdtNotes: runtimeMocks.importLegacyPendingCrdtNotes
+}))
 
 vi.mock('@memry/sync-client/task-sync', () => ({
   initTaskSyncService: runtimeMocks.taskSync.init,
@@ -414,11 +423,6 @@ vi.mock('./crdt-provider', () => ({
   resetCrdtProvider: runtimeMocks.resetCrdtProvider
 }))
 
-vi.mock('./crdt-pending-notes', () => ({
-  recordPendingCrdtNotes: runtimeMocks.recordPendingCrdtNotes,
-  drainPendingCrdtNotes: runtimeMocks.drainPendingCrdtNotes
-}))
-
 vi.mock('./dirty-recovery', () => ({
   recoverDirtyItems: runtimeMocks.recoverDirtyItems
 }))
@@ -441,6 +445,8 @@ vi.mock('./http-client', () => ({
   getFromServer: runtimeMocks.getFromServer,
   fetchCrdtSnapshot: runtimeMocks.fetchCrdtSnapshot,
   SyncServerError: runtimeMocks.SyncServerError,
+  isSnapshotNotCovered: () => false,
+  snapshotRefusalCursor: () => null,
   // runtime.ts → sync-errors.ts imports these; they only need to exist here.
   NetworkError: class NetworkError extends Error {},
   RateLimitError: class RateLimitError extends Error {},
@@ -466,46 +472,18 @@ vi.mock('./token-manager', () => ({
   setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed
 }))
 
+vi.mock('./vault-account-binding', () => ({
+  applyOpenVaultBinding: vi.fn(async () => 'start'),
+  scheduleBindingRetry: vi.fn(),
+  cancelBindingRetry: vi.fn(),
+  resetVaultBindingState: vi.fn()
+}))
+
 vi.mock('./key-verification', () => ({
   // 'unknown' = account verifier unavailable → runtime proceeds as before.
   checkLocalKeyAgainstAccount: vi.fn().mockResolvedValue('unknown'),
   isKeyMaterialActivityRecent: vi.fn().mockReturnValue(false)
 }))
-
-function createDb() {
-  const updateRun = vi.fn()
-  // `sync_state` rows, read through SyncStateManager.getStateValue (`.all()`)
-  // rather than the device lookup (`.get()`). The endpoint choice reads one of
-  // them — `crdtUnmergedDebt`, the record that a previous session ended holding
-  // notes it had not merged — so this is on the path, not scenery.
-  const stateInsertRun = vi.fn()
-  return {
-    updateRun,
-    stateInsertRun,
-    db: {
-      select: vi.fn(() => ({
-        from: vi.fn(() => ({
-          where: vi.fn(() => ({
-            get: vi.fn(() => runtimeMocks.currentDevice),
-            all: vi.fn(() => runtimeMocks.syncStateRows)
-          }))
-        }))
-      })),
-      insert: vi.fn(() => ({
-        values: vi.fn(() => ({
-          onConflictDoUpdate: vi.fn(() => ({ run: stateInsertRun }))
-        }))
-      })),
-      update: vi.fn(() => ({
-        set: vi.fn(() => ({
-          where: vi.fn(() => ({
-            run: updateRun
-          }))
-        }))
-      }))
-    }
-  }
-}
 
 function createIndexDb() {
   return {
@@ -524,11 +502,13 @@ async function loadRuntime() {
 }
 
 describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
+  afterEach(() => runtimeMocks.db?.close())
+
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
     runtimeMocks.SyncQueueManager.instances = []
-    runtimeMocks.CrdtUpdateQueue.instances = []
+    runtimeMocks.NoteBodyOutbox.instances = []
     runtimeMocks.NetworkMonitor.instances = []
     runtimeMocks.WebSocketManager.instances = []
     runtimeMocks.SyncWorkerBridge.instances = []
@@ -536,9 +516,8 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     runtimeMocks.engineStartError = null
     runtimeMocks.workerStartError = null
     runtimeMocks.indexRows = [{ id: 'note-1', title: 'Note 1', date: null }]
-    runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: null }
-    runtimeMocks.syncStateRows = []
-    runtimeMocks.db = createDb()
+    // A real data DB: the coordinator's debts are rows in it (#2297).
+    runtimeMocks.db = createTestDataDb()
     runtimeMocks.getDatabase.mockReturnValue(runtimeMocks.db.db)
     runtimeMocks.getIndexDatabase.mockReturnValue(createIndexDb())
     runtimeMocks.retrieveToken.mockResolvedValue('refresh-token')
@@ -575,18 +554,26 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   async function bootRuntime(): Promise<{
     engine: { mergeRemoteCrdtForNote: (noteId: string) => Promise<boolean> }
     snapshotPush: (noteId: string, state: Uint8Array) => Promise<void>
+    readCoverage: (noteId: string) => { unmerged: boolean; coversThrough?: number }
     stop: () => Promise<void>
   }> {
     const runtime = await loadRuntime()
     await runtime.startSyncRuntime()
     const engine = runtime.getSyncEngine()
     if (!engine) throw new Error('sync runtime did not start')
+    // The provider reads coverage at the encode (#2299); drive the same reader.
+    const readCoverage = runtimeMocks.crdtProvider.setSnapshotCoverage.mock.calls.at(-1)![0] as (
+      noteId: string
+    ) => { unmerged: boolean; coversThrough?: number }
+    const push = runtimeMocks.crdtProvider.init.mock.calls[0][1] as (
+      noteId: string,
+      state: Uint8Array,
+      coverage: { unmerged: boolean; coversThrough?: number }
+    ) => Promise<void>
     return {
       engine,
-      snapshotPush: runtimeMocks.crdtProvider.init.mock.calls[0][1] as (
-        noteId: string,
-        state: Uint8Array
-      ) => Promise<void>,
+      snapshotPush: (noteId, state) => push(noteId, state, readCoverage(noteId)),
+      readCoverage,
       stop: () => runtime.stopSyncRuntime()
     }
   }
@@ -647,19 +634,46 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     expect(runtimeMocks.pushCrdtSnapshot).toHaveBeenCalledWith(
       'note-merged',
       new Uint8Array([10, 11]),
-      'access-token'
+      'access-token',
+      { unmerged: false }
     )
 
     await stop()
   })
 
+  // #2299: the reader the provider calls at the encode answers from the same
+  // real coordinator, so a note flagged there never claims a cursor.
+  it('reads a flagged note as unmerged at the encode, and a clean one as claiming nothing yet', async () => {
+    const { engine, readCoverage, stop } = await bootRuntime()
+    runtimeMocks.getFromServer.mockRejectedValue(new runtimeMocks.SyncServerError(429))
+    await engine.mergeRemoteCrdtForNote('note-unmerged')
+
+    expect(readCoverage('note-unmerged')).toEqual({ unmerged: true })
+    // No legacy sweep recorded `done` here, so the push stays the pre-#2299 one.
+    expect(readCoverage('note-clean')).toEqual({ unmerged: false })
+
+    await stop()
+  })
+
   it('routes every note away from the prune when the last session ended holding debt', async () => {
-    // #given the previous session quit with a note it had not merged. The set
-    // naming that note is per session and `clearCaches()` emptied it, and this
-    // launch is inside the sweep interval, so `shouldSweepAllCrdtNotes` queues
-    // nothing that would re-raise it. All that survives is the `sync_state`
-    // record that debt existed.
-    runtimeMocks.syncStateRows = [{ value: '1' }]
+    // #given an older build quit with a note it had not merged. It recorded
+    // only that debt existed (`crdtUnmergedDebt = '1'`), never which note, and
+    // this launch is inside the sweep interval, so `shouldSweepAllCrdtNotes`
+    // queues nothing that would re-raise it. The start converts that record
+    // into a debt for every note the data DB holds (#2297).
+    const db = runtimeMocks.db!.db
+    db.insert(syncState)
+      .values({ key: 'crdtUnmergedDebt', value: '1', updatedAt: new Date() })
+      .run()
+    db.insert(noteMetadata)
+      .values({
+        id: 'note-from-last-session',
+        path: 'n.md',
+        title: 'n',
+        createdAt: 'x',
+        modifiedAt: 'x'
+      })
+      .run()
     const { snapshotPush, stop } = await bootRuntime()
 
     // #when the user edits a note this session has never pulled, merged or even
@@ -683,7 +697,6 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   it('snapshots normally when the last session ended with nothing outstanding', async () => {
     // #given no carried-over debt — the ordinary case, and the one that keeps
     // the blanket from quietly costing every install its compaction point
-    runtimeMocks.syncStateRows = []
     const { snapshotPush, stop } = await bootRuntime()
 
     // #when
@@ -694,7 +707,8 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     expect(runtimeMocks.pushCrdtSnapshot).toHaveBeenCalledWith(
       'note-untouched',
       new Uint8Array([10, 11]),
-      'access-token'
+      'access-token',
+      { unmerged: false }
     )
 
     await stop()

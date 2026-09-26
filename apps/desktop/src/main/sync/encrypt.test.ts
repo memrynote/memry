@@ -4,9 +4,14 @@ import { initCrypto } from '../crypto/index'
 import { decrypt, unwrapFileKey } from '../crypto/encryption'
 import { verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
+import { deleteAttestationPayload } from '@memry/contracts/delete-attestation'
 import { encryptItemForPush, type EncryptItemInput } from './encrypt'
 import { decompressPayload } from '@memry/sync-client/compress'
-import { ItemTooLargeError, NOTE_SYNC_MAX_BYTES, SYNC_ITEM_MAX_ENCRYPT_BYTES } from '@memry/sync-client/note-size'
+import {
+  ItemTooLargeError,
+  NOTE_SYNC_MAX_BYTES,
+  SYNC_ITEM_MAX_ENCRYPT_BYTES
+} from '@memry/sync-client/note-size'
 
 beforeAll(async () => {
   await initCrypto()
@@ -125,6 +130,49 @@ describe('encryptItemForPush', () => {
         keys.signingPublicKey
       )
       expect(valid).toBe(true)
+    })
+  })
+
+  // #2408: the content-free signature that survives the payload shed.
+  describe('#given an attestable delete #when encryptItemForPush', () => {
+    it('#then attests exactly the pushed (purpose, id, type, deletedAt, clock)', () => {
+      const keys = generateTestKeys()
+      const claim = {
+        id: 'task-1',
+        type: 'task' as const,
+        clock: { 'dev-a': 7 },
+        deletedAt: 1_700_000_000
+      }
+      const { pushItem } = encryptItemForPush(
+        makeInput({
+          ...claim,
+          operation: 'delete',
+          signingSecretKey: keys.signingSecretKey
+        })
+      )
+
+      const valid = verifySignature(
+        deleteAttestationPayload(claim),
+        CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+        sodium.from_base64(pushItem.deleteAttestation!, sodium.base64_variants.ORIGINAL),
+        keys.signingPublicKey
+      )
+      expect(valid).toBe(true)
+      expect(pushItem.deleteAttestation).not.toBe(pushItem.signature)
+    })
+
+    it('#then attests nothing for an update, a clockless delete, or a settings delete', () => {
+      const clock = { 'dev-a': 7 }
+      for (const overrides of [
+        { operation: 'update' as const, clock, deletedAt: 5 },
+        { operation: 'delete' as const, type: 'task' as const, deletedAt: 5 },
+        { operation: 'delete' as const, type: 'settings' as const, clock, deletedAt: 5 },
+        { operation: 'delete' as const, type: 'task' as const, clock }
+      ]) {
+        expect(encryptItemForPush(makeInput(overrides)).pushItem).not.toHaveProperty(
+          'deleteAttestation'
+        )
+      }
     })
   })
 

@@ -29,6 +29,8 @@
     "status": "ステータス",
     "priority": "優先順位",
     "dueDate": "期限",
+    "startsOn": "開始 {date}",
+    "dueOn": "期限 {date}",
     "project": "プロジェクト",
     "repeat": "リピート",
     "createAnother": "別のを作成する",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "タスクのクイック追加",
     "focusDescription": "クイック追加入力に焦点を当てる",
-    "placeholder": "タスクを追加…    !today  !!high  #project"
+    "placeholder": "タスクを追加…    !today  !!high  #project",
+    "presets": {
+      "menu": "タスクのオプション",
+      "dueDate": "期限 {date}。期限を変更",
+      "noDate": "日付なし",
+      "linkNote": "ノートをリンク",
+      "openDetails": "すべての詳細を開く",
+      "back": "戻る",
+      "remove": "{name} を削除",
+      "noReminder": "リマインダーなし",
+      "addTags": "タグを追加…"
+    }
   },
   "drawer": {
     "close": "タスクの詳細を閉じる",

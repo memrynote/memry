@@ -29,6 +29,8 @@
     "status": "Tila",
     "priority": "Prioriteetti",
     "dueDate": "Eräpäivä",
+    "startsOn": "Alkaa {date}",
+    "dueOn": "Erääntyy {date}",
     "project": "Projekti",
     "repeat": "Toista",
     "createAnother": "Luo toinen",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Nopea lisätehtävä",
     "focusDescription": "Keskity nopeaan lisäyssyöttöön",
-    "placeholder": "Lisää tehtävä…    !today  !!high  #project"
+    "placeholder": "Lisää tehtävä…    !today  !!high  #project",
+    "presets": {
+      "menu": "Tehtävän asetukset",
+      "dueDate": "Erääntyy {date}. Muuta eräpäivää",
+      "noDate": "Ei päivämäärää",
+      "linkNote": "Linkitä muistiinpano",
+      "openDetails": "Avaa kaikki tiedot",
+      "back": "Takaisin",
+      "remove": "Poista {name}",
+      "noReminder": "Ei muistutusta",
+      "addTags": "Lisää tunnisteita…"
+    }
   },
   "drawer": {
     "close": "Sulje tehtävän tiedot",

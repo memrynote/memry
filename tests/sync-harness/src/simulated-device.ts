@@ -33,6 +33,8 @@ export class SimulatedDevice {
   private items = new Map<string, SyncItem>()
   private lastCursor = 0
   private devicePublicKeys = new Map<string, Uint8Array>()
+  /** Highest delete clock seen per id, local or pulled (#2409). */
+  private tombstoneClocks = new Map<string, VectorClock>()
 
   constructor(identity: DeviceIdentity, fetchFn: FetchFn) {
     this.identity = identity
@@ -64,7 +66,11 @@ export class SimulatedDevice {
   ): Promise<SyncItem> {
     await initCrypto()
 
-    const clock: VectorClock = { [this.identity.deviceId]: 1 }
+    // A conforming client seeds a create from the id's last tombstone clock,
+    // `increment(merge({}, T), device)`, so a re-create happens after the delete
+    // (protocol 05 §5.8, #2409). With no tombstone this is `{device: 1}`.
+    const clock: VectorClock = { ...(this.tombstoneClocks.get(itemId) ?? {}) }
+    clock[this.identity.deviceId] = (clock[this.identity.deviceId] ?? 0) + 1
     const item: SyncItem = {
       id: itemId,
       type,
@@ -114,6 +120,7 @@ export class SimulatedDevice {
       deletedAt: Date.now()
     }
     this.items.set(itemId, deleted)
+    this.recordTombstoneClock(itemId, newClock)
     return deleted
   }
 
@@ -189,6 +196,7 @@ export class SimulatedDevice {
 
         if (item.deletedAt) {
           this.items.delete(item.id)
+          this.recordTombstoneClock(item.id, item.clock ?? {})
           applied.push({
             id: item.id,
             type: item.type as SyncItemType,
@@ -236,6 +244,14 @@ export class SimulatedDevice {
     }
 
     return { applied: applied.length, items: applied }
+  }
+
+  private recordTombstoneClock(itemId: string, clock: VectorClock): void {
+    const merged = { ...(this.tombstoneClocks.get(itemId) ?? {}) }
+    for (const [device, tick] of Object.entries(clock)) {
+      merged[device] = Math.max(merged[device] ?? 0, tick)
+    }
+    this.tombstoneClocks.set(itemId, merged)
   }
 
   private async fetchChanges(): Promise<ChangesResponse> {

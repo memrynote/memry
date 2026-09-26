@@ -1,12 +1,21 @@
 import { createLogger } from '../../lib/logger'
 import type { RecordPullItemResponse } from '@memry/contracts/sync-api'
-import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
+import {
+  applicablePurgedTombstones,
+  parsePullItems,
+  purgedTombstoneToApplyItem
+} from './pull-envelope'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { withRetry } from '@memry/sync-client/retry'
 import { postToServer } from '../http-client'
 import type { SyncContext } from './sync-context'
 import type { QuarantineManager } from './quarantine-manager'
-import { CORRUPT_ITEM_COOLDOWN_MS, MAX_CORRUPT_ITEMS, itemRefKey } from './sync-context'
+import {
+  CORRUPT_ITEM_COOLDOWN_MS,
+  MAX_CORRUPT_ITEMS,
+  PULL_REQUEST_MAX_IDS,
+  itemRefKey
+} from './sync-context'
 
 const log = createLogger('CorruptItemTracker')
 
@@ -25,6 +34,30 @@ export interface RecoveredItem {
   deletedAt?: number
   operation: string
 }
+
+export interface RefetchResult {
+  recovered: RecoveredItem[]
+  permanentFailures: ItemRef[]
+  missing: ItemRef[]
+  invalid: ItemRef[]
+  /** Live on the server with its payload lost (#2302): neither recovered nor missing. */
+  blobMissing: ItemRef[]
+  /**
+   * No answer this time (#2302): on the re-fetch cooldown, so never requested,
+   * or served as a purged tombstone this device refuses to apply locally. A
+   * caller must treat these as unknown, never as gone.
+   */
+  skipped: ItemRef[]
+}
+
+const emptyRefetchResult = (): RefetchResult => ({
+  recovered: [],
+  permanentFailures: [],
+  missing: [],
+  invalid: [],
+  blobMissing: [],
+  skipped: []
+})
 
 export class CorruptItemTracker {
   /**
@@ -115,16 +148,44 @@ export class CorruptItemTracker {
     }
   }
 
+  /**
+   * Re-fetches items by id, in `/sync/pull`-sized chunks. `missing`: the
+   * server holds no live row it can serve (no row, or a purged tombstone this
+   * client refuses). `invalid`: the server returned them, but they still fail
+   * the envelope schema. An admitted purged tombstone (#2302) is `recovered`
+   * as a delete, applied under the same clock guard as a signed one, unless
+   * this device refuses it locally, which lands it in `skipped` with every ref
+   * the cooldown kept from being requested.
+   */
   async refetch(
     failedItems: ItemRef[],
     token: string,
     vaultKey: Uint8Array
-  ): Promise<{ recovered: RecoveredItem[]; permanentFailures: ItemRef[] }> {
+  ): Promise<RefetchResult> {
     const eligible = failedItems.filter((ref) => this.shouldRetry(ref))
-    if (eligible.length === 0) return { recovered: [], permanentFailures: [] }
+    const total = emptyRefetchResult()
+    total.skipped.push(...failedItems.filter((ref) => !eligible.includes(ref)))
+    if (eligible.length === 0) return total
 
     log.info('Attempting re-fetch for corrupt items', { count: eligible.length })
+    for (let i = 0; i < eligible.length; i += PULL_REQUEST_MAX_IDS) {
+      const chunk = await this.refetchChunk(
+        eligible.slice(i, i + PULL_REQUEST_MAX_IDS),
+        token,
+        vaultKey
+      )
+      for (const key of Object.keys(total) as Array<keyof RefetchResult>) {
+        ;(total[key] as unknown[]).push(...chunk[key])
+      }
+    }
+    return total
+  }
 
+  private async refetchChunk(
+    eligible: ItemRef[],
+    token: string,
+    vaultKey: Uint8Array
+  ): Promise<RefetchResult> {
     try {
       const pullResult = await withRetry(
         () =>
@@ -139,11 +200,15 @@ export class CorruptItemTracker {
         }
       )
 
-      const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
-      if (!parsed.success) {
-        log.error('Re-fetch: invalid response', { error: parsed.error.message })
+      const parsed = parsePullItems(
+        pullResult.value,
+        [],
+        eligible.map((ref) => ref.id)
+      )
+      if (parsed.kind === 'not_envelope') {
+        log.error('Re-fetch: invalid response')
         for (const ref of eligible) this.markFailed(ref)
-        return { recovered: [], permanentFailures: eligible }
+        return { ...emptyRefetchResult(), permanentFailures: eligible }
       }
 
       // The pull endpoint matches ids across ALL negotiated types, so an id
@@ -151,7 +216,7 @@ export class CorruptItemTracker {
       // rows. Only process the (type, id) pairs this refetch actually asked
       // for — the sibling type was not corrupt and must not be re-branded here.
       const requested = new Set(eligible.map((ref) => itemRefKey(ref.type, ref.id)))
-      const requestedItems = parsed.data.items.filter((item) =>
+      const requestedItems = parsed.items.filter((item) =>
         requested.has(itemRefKey(item.type, item.id))
       )
 
@@ -159,8 +224,28 @@ export class CorruptItemTracker {
       // away) would otherwise vanish from the accounting entirely: never
       // recovered, never failed, re-requested on every page forever. Mark it
       // failed (cooldown) and report it permanent so it surfaces once.
-      const returned = new Set(requestedItems.map((item) => itemRefKey(item.type, item.id)))
+      const invalid = parsed.invalid.filter((ref) => requested.has(itemRefKey(ref.type, ref.id)))
+      // #2408: an unverified entry is not in `returned`, so it counts as
+      // missing, like an entry the envelope refused.
+      const tombstones = await applicablePurgedTombstones(
+        this.ctx.deps.db,
+        parsed.purgedTombstones.filter((t) => requested.has(itemRefKey(t.type, t.id))),
+        this.resolveDeviceKey
+      )
+      const blobMissing = parsed.blobMissing.filter((ref) =>
+        requested.has(itemRefKey(ref.type, ref.id))
+      )
+      const returned = new Set(
+        [
+          ...requestedItems,
+          ...invalid,
+          ...tombstones.apply,
+          ...tombstones.refused,
+          ...blobMissing
+        ].map((item) => itemRefKey(item.type, item.id))
+      )
       const missing = eligible.filter((ref) => !returned.has(itemRefKey(ref.type, ref.id)))
+      for (const ref of [...invalid, ...blobMissing]) this.markFailed(ref)
       for (const ref of missing) {
         this.markFailed(ref)
         log.warn('Re-fetch: item no longer on server', { itemId: ref.id, itemType: ref.type })
@@ -176,7 +261,7 @@ export class CorruptItemTracker {
         resolveDeviceKey: (id) => this.resolveDeviceKey(id)
       })
 
-      const permanentFailures: ItemRef[] = [...missing]
+      const permanentFailures: ItemRef[] = [...missing, ...invalid, ...blobMissing]
       for (const failure of failures) {
         if (failure.isSignatureError) {
           this.quarantine.quarantineItem(
@@ -196,13 +281,20 @@ export class CorruptItemTracker {
         })
       }
 
-      return { recovered: decrypted, permanentFailures }
+      return {
+        recovered: [...decrypted, ...tombstones.apply.map(purgedTombstoneToApplyItem)],
+        permanentFailures,
+        missing,
+        invalid,
+        blobMissing,
+        skipped: tombstones.refused.map(({ id, type }) => ({ id, type }))
+      }
     } catch (error) {
       log.error('Re-fetch request failed', {
         error: error instanceof Error ? error.message : String(error)
       })
       for (const ref of eligible) this.markFailed(ref)
-      return { recovered: [], permanentFailures: eligible }
+      return { ...emptyRefetchResult(), permanentFailures: eligible }
     }
   }
 }

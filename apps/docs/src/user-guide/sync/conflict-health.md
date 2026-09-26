@@ -6,11 +6,12 @@ How memrynote handles conflicting edits across devices, and where to see sync he
 
 ## Conflict Resolution
 
-| Domain                           | Strategy                                                                                                                        |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Notes & journal entries          | **CRDT (Yjs)** — concurrent edits merge automatically                                                                           |
-| Tasks & projects                 | **Field-level vector clocks** — non-overlapping edits merge cleanly; same-field collisions resolve last-writer-wins by tick-sum |
-| Inbox items, templates, settings | **Doc-level vector clocks** — last writer wins on conflict                                                                      |
+| Domain                  | Strategy                                                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Notes & journal entries | **CRDT (Yjs)** — concurrent edits merge automatically                                                                           |
+| Tasks & projects        | **Field-level vector clocks** — non-overlapping edits merge cleanly; same-field collisions resolve last-writer-wins by tick-sum |
+| Settings                | **Per-setting vector clocks** — different settings merge cleanly; the same setting changed on two devices ends on one value     |
+| Inbox items, templates  | **Doc-level vector clocks** — last writer wins on conflict                                                                      |
 
 ### CRDT Merging (Notes / Journals)
 
@@ -26,6 +27,10 @@ Each field on a task or project carries its own vector clock. Examples:
 - Both devices change **status**. The higher tick-sum wins; ties favor the remote write deterministically.
 
 This is much friendlier than naive last-writer-wins on the whole record.
+
+### Synced Settings
+
+Each synced setting (theme, font, journal template per weekday, and so on) carries its own vector clock, keyed by the device that changed it. Device A changing the **theme** and Device B changing the **language** both apply. When both devices change the **same** setting without having seen each other's change, one value wins, and the device that merged queues the merged settings straight back for push so both devices end on that value.
 
 ### Doc-Level Conflicts
 

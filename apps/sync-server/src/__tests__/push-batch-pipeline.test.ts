@@ -4,13 +4,20 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { CRYPTO_VERSION } from '@memry/contracts/crypto'
 import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
 import { encodeSignaturePayload } from '../lib/cbor'
-import { AppError, ErrorCodes } from '../lib/errors'
-import { getSnapshot, getUpdates, storeSnapshot, storeUpdates } from '../services/crdt'
+import { ErrorCodes } from '../lib/errors'
+import {
+  getSnapshot,
+  getUpdates,
+  storeSnapshot,
+  storeSnapshotBatch,
+  storeUpdates
+} from '../services/crdt'
 import { generateItemBlobKey } from '../services/blob'
 import {
   computeContentHash,
   getChanges,
   processRecordPushBatch,
+  pullItems,
   serializePayload
 } from '../services/sync'
 
@@ -256,6 +263,137 @@ describe('cursor allocation', () => {
   })
 })
 
+// #2282
+describe('cursor order equals commit order (#2282)', () => {
+  const holdFirstUpsertBatch = (db: D1Database) => {
+    const sqlOf = new WeakMap<object, string>()
+    let release: () => void = () => {}
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let held = false
+    let reachedHold: () => void = () => {}
+    const holding = new Promise<void>((resolve) => {
+      reachedHold = resolve
+    })
+    const gated = {
+      ...db,
+      prepare: (sql: string) => {
+        const statement = db.prepare(sql)
+        sqlOf.set(statement, sql)
+        return statement
+      },
+      batch: async (statements: D1PreparedStatement[]) => {
+        const commitsItems = statements.some((s) =>
+          sqlOf.get(s)?.includes('INSERT INTO sync_items')
+        )
+        if (commitsItems && !held) {
+          held = true
+          reachedHold()
+          await released
+        }
+        return db.batch(statements)
+      }
+    } as D1Database
+    return { db: gated, release, holding }
+  }
+
+  it('never lets a reader page past a range that commits after a higher one', async () => {
+    const gate = holdFirstUpsertBatch(harness.db)
+    const xItems = await Promise.all(
+      ['x1', 'x2', 'x3'].map((id) => buildItem({ id, clock: { [DEVICE_A]: 1 } }))
+    )
+    const yItems = [
+      await buildItem({ id: 'y1', clock: { [DEVICE_B]: 1 }, signerDeviceId: DEVICE_B })
+    ]
+
+    const pushX = processRecordPushBatch(gate.db, storage, USER_ID, DEVICE_A, xItems)
+    await gate.holding
+    const fromY = await processRecordPushBatch(gate.db, storage, USER_ID, DEVICE_B, yItems)
+    expect(fromY.accepted).toEqual(['y1'])
+
+    const firstPage = await getChanges(harness.db, USER_ID, 0)
+    expect(firstPage.items.map((item) => item.id)).toEqual(['y1'])
+
+    gate.release()
+    const fromX = await pushX
+    expect(fromX.accepted).toEqual(['x1', 'x2', 'x3'])
+
+    const secondPage = await getChanges(harness.db, USER_ID, firstPage.nextCursor)
+    expect(secondPage.items.map((item) => item.id)).toEqual(['x1', 'x2', 'x3'])
+
+    const cursorById = new Map(itemRows().map((row) => [row.item_id, row.server_cursor]))
+    expect(fromX.outcomes.map((outcome) => outcome.serverCursor)).toEqual(
+      ['x1', 'x2', 'x3'].map((id) => cursorById.get(id))
+    )
+    expect(fromX.maxCursor).toBe(cursorById.get('x3'))
+    expect(fromY.maxCursor).toBe(cursorById.get('y1'))
+  })
+})
+
+// #2295: record rows and note-body rows share the one per-user cursor.
+describe('one cursor sequence across records and note bodies (#2295)', () => {
+  const allCursors = (): number[] =>
+    (
+      harness.raw
+        .prepare(
+          `SELECT server_cursor FROM sync_items WHERE user_id = ?
+           UNION ALL SELECT server_cursor FROM crdt_updates WHERE user_id = ?
+           UNION ALL SELECT server_cursor FROM crdt_snapshots WHERE user_id = ?`
+        )
+        .all(USER_ID, USER_ID, USER_ID) as Array<{ server_cursor: number | null }>
+    ).map((row) => row.server_cursor as number)
+
+  it('hands concurrent record, update and snapshot writes disjoint cursors in commit order', async () => {
+    const items = await Promise.all(
+      ['r1', 'r2', 'r3'].map((id) => buildItem({ id, clock: { [DEVICE_A]: 1 } }))
+    )
+
+    // Each committed batch's new cursors, in the order the batches commit.
+    const commits: number[][] = []
+    const observed = new Set<number>()
+    const recording = {
+      ...harness.db,
+      batch: async (statements: D1PreparedStatement[]) => {
+        const results = await harness.db.batch(statements)
+        const fresh = allCursors().filter((cursor) => cursor !== null && !observed.has(cursor))
+        fresh.forEach((cursor) => observed.add(cursor))
+        if (fresh.length > 0) commits.push(fresh.sort((a, b) => a - b))
+        return results
+      }
+    } as D1Database
+
+    const [records, sequences, snapshots] = await Promise.all([
+      processRecordPushBatch(recording, storage, USER_ID, DEVICE_A, items),
+      storeUpdates(recording, USER_ID, 'default', 'note-c', DEVICE_B, [
+        new Uint8Array([1]).buffer,
+        new Uint8Array([2]).buffer
+      ]),
+      storeSnapshotBatch(recording, storage, USER_ID, 'default', DEVICE_A, [
+        { noteId: 'note-s1', snapshotData: new Uint8Array([3]).buffer },
+        { noteId: 'note-s2', snapshotData: new Uint8Array([4]).buffer }
+      ])
+    ])
+
+    expect(records.accepted).toEqual(['r1', 'r2', 'r3'])
+    expect(sequences).toEqual([1, 2])
+    expect(snapshots.every((outcome) => outcome.accepted)).toBe(true)
+
+    const union = allCursors()
+    expect(union).toHaveLength(7)
+    expect(new Set(union).size).toBe(7)
+    expect(commits).toHaveLength(3)
+    const inCommitOrder = commits.flat()
+    expect(inCommitOrder).toEqual([...inCommitOrder].sort((a, b) => a - b))
+    expect(inCommitOrder).toEqual([1, 2, 3, 4, 5, 6, 7])
+
+    const sequence = harness.raw
+      .prepare('SELECT current_cursor FROM server_cursor_sequence WHERE user_id = ?')
+      .get(USER_ID) as { current_cursor: number }
+    expect(sequence.current_cursor).toBe(Math.max(...union))
+  })
+})
+
 describe('R2 put concurrency bound', () => {
   it('keeps at most 8 puts in flight across a 30-item batch', async () => {
     let inFlight = 0
@@ -295,8 +433,12 @@ describe('old-client compat matrix', () => {
       await buildItem({ id: 'note-1', type: 'note', clock: { [DEVICE_A]: 1 } })
     ])
 
+    // `outcomes`, `committedItems` and `committedAtMs` are internal: the route
+    // builds the push response from the other four, field by field.
     expect(Object.keys(first).sort()).toEqual([
       'accepted',
+      'committedAtMs',
+      'committedItems',
       'maxCursor',
       'outcomes',
       'rejected',
@@ -336,6 +478,44 @@ describe('old-client compat matrix', () => {
     expect(changes.items.map((item) => item.id)).toEqual(['settings-1', 'task-1'])
   })
 
+  // #2300: a socket item is byte-identical to what /sync/pull later serves.
+  it('committed items equal the /sync/pull items read back from D1 and R2', async () => {
+    const result = await processRecordPushBatch(
+      harness.db,
+      storage,
+      USER_ID,
+      DEVICE_A,
+      [
+        await buildItem({ id: 'task-s', clock: { [DEVICE_A]: 1 } }),
+        await buildItem({ id: 'settings-s', type: 'settings' }),
+        await buildItem({
+          id: 'note-s',
+          type: 'note',
+          operation: 'delete',
+          clock: { [DEVICE_A]: 1 }
+        })
+      ],
+      'default',
+      null,
+      64 * 1024
+    )
+
+    const { items: pulled } = await pullItems(
+      harness.db,
+      storage,
+      USER_ID,
+      ['task-s', 'settings-s', 'note-s'],
+      'default',
+      ['task', 'settings', 'note']
+    )
+    expect(result.committedItems.map((item) => JSON.stringify(item))).toEqual(
+      pulled.map((item) => JSON.stringify(item))
+    )
+    expect(result.committedItems.find((item) => item.id === 'note-s')?.deletedAt).toEqual(
+      expect.any(Number)
+    )
+  })
+
   it('rejects a replayed clock alone, without disturbing batch neighbours', async () => {
     await push([await buildItem({ id: 'task-r', clock: { [DEVICE_A]: 2 } })])
 
@@ -372,22 +552,56 @@ describe('old-client compat matrix', () => {
     expect(itemRows().map((row) => row.item_id)).toEqual(['ok-1', 'ok-2'])
   })
 
-  it('throws the whole-batch quota error exactly as the serial code did, writing nothing', async () => {
+  it('refuses an item that does not fit per item, writing nothing, instead of throwing', async () => {
     harness.close()
     harness = createSqliteD1()
     signingKeys.clear()
     await seed(10)
 
-    const error = await push([await buildItem({ id: 'too-big', clock: { [DEVICE_A]: 1 } })]).catch(
-      (e: unknown) => e
-    )
+    const result = await push([await buildItem({ id: 'too-big', clock: { [DEVICE_A]: 1 } })])
 
-    expect(error).toBeInstanceOf(AppError)
-    expect((error as AppError).code).toBe(ErrorCodes.STORAGE_QUOTA_EXCEEDED)
+    expect(result.accepted).toEqual([])
+    expect(result.rejected).toEqual([{ id: 'too-big', reason: ErrorCodes.STORAGE_QUOTA_EXCEEDED }])
     expect(itemRows()).toEqual([])
     expect(storageUsed()).toBe(0)
   })
 
+  // #2303: the old JSON-length pre-estimate answered the whole batch with a
+  // request-level 413, so an account at quota could not push the deletes and
+  // shrinking updates that are its way out. Stage 5 is the quota gate.
+  it('at quota, refuses only growing items and commits deletes and shrinking updates', async () => {
+    const big = await buildItem({ id: 'big', clock: { [DEVICE_A]: 1 }, data: 'x'.repeat(4000) })
+    const doomed = await buildItem({
+      id: 'doomed',
+      clock: { [DEVICE_A]: 1 },
+      data: 'y'.repeat(4000)
+    })
+    await push([big, doomed])
+    const used = storageUsed()
+    harness.raw
+      .prepare('UPDATE sync_entitlements SET storage_limit = ? WHERE user_id = ?')
+      .run(used, USER_ID)
+
+    const grow = await buildItem({ id: 'grow', clock: { [DEVICE_A]: 1 }, data: 'new-bytes' })
+    const shrink = await buildItem({ id: 'big', clock: { [DEVICE_A]: 2 }, data: 'tiny' })
+    const remove = await buildItem({
+      id: 'doomed',
+      operation: 'delete',
+      clock: { [DEVICE_A]: 2 },
+      deletedAt: now(),
+      data: 'gone'
+    })
+    const result = await push([grow, shrink, remove])
+
+    expect(result.accepted).toEqual(['big', 'doomed'])
+    expect(result.rejected).toEqual([{ id: 'grow', reason: ErrorCodes.STORAGE_QUOTA_EXCEEDED }])
+    expect(itemRows().map((row) => row.item_id)).toEqual(['big', 'doomed'])
+    expect(storageUsed()).toBe(payloadBytes(shrink) + payloadBytes(remove))
+  })
+
+  // #2303: splitIntoWaves stays. Protocol §5.5 acks per id, so rejecting one
+  // occurrence of a duplicate id would put the same id in accepted[] and
+  // rejected[] and the client could not tell which verdict is whose.
   it('replaces a same-batch duplicate identity serially: version 2, latest bytes, old blob gone', async () => {
     const v1 = await buildItem({ id: 'dup-1', clock: { [DEVICE_A]: 1 }, data: 'dup-v1' })
     const v2 = await buildItem({ id: 'dup-1', clock: { [DEVICE_A]: 2 }, data: 'dup-v2-longer' })
@@ -491,5 +705,50 @@ describe('CRDT storeUpdates batching', () => {
     )
 
     expect(sequences).toEqual(Array.from({ length: 100 }, (_, i) => i + 1))
+  })
+})
+
+// #2280: the join key and the commit time of the end-to-end sync trace, read
+// back through the change feed against the real migration ledger.
+describe('change feed trace fields', () => {
+  it('returns each live ref with its server cursor and the ms commit time of its push', async () => {
+    const before = Date.now()
+    const result = await push([
+      await buildItem({ id: 'task-t1', clock: { [DEVICE_A]: 1 } }),
+      await buildItem({ id: 'task-t2', clock: { [DEVICE_A]: 1 } })
+    ])
+    const after = Date.now()
+
+    const changes = await getChanges(harness.db, USER_ID, 0)
+
+    expect(changes.items.map((item) => item.serverCursor)).toEqual(
+      result.outcomes.map((outcome) => outcome.serverCursor)
+    )
+    for (const item of changes.items) {
+      expect(item.committedAtMs).toBeGreaterThanOrEqual(before)
+      expect(item.committedAtMs).toBeLessThanOrEqual(after)
+    }
+  })
+
+  it('rewrites the commit time when the row is written again', async () => {
+    await push([await buildItem({ id: 'task-t3', clock: { [DEVICE_A]: 1 } })])
+    harness.raw
+      .prepare('UPDATE sync_items SET committed_at_ms = 1 WHERE item_id = ?')
+      .run('task-t3')
+
+    await push([await buildItem({ id: 'task-t3', clock: { [DEVICE_A]: 2 }, data: 'v2' })])
+
+    const [ref] = (await getChanges(harness.db, USER_ID, 0)).items
+    expect(ref.committedAtMs).toBeGreaterThan(1)
+  })
+
+  it('omits committedAtMs for a row written before the column existed', async () => {
+    await push([await buildItem({ id: 'task-legacy', clock: { [DEVICE_A]: 1 } })])
+    harness.raw.prepare('UPDATE sync_items SET committed_at_ms = NULL').run()
+
+    const [ref] = (await getChanges(harness.db, USER_ID, 0)).items
+
+    expect(ref).not.toHaveProperty('committedAtMs')
+    expect(ref.serverCursor).toBe(1)
   })
 })

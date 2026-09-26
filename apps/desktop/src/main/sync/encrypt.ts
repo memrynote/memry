@@ -3,6 +3,7 @@ import { encrypt, wrapFileKey } from '../crypto/encryption'
 import { signPayload } from '../crypto/signatures'
 import { generateFileKey, secureCleanup } from '../crypto/primitives'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
+import { deleteAttestationPayload, deleteClaimOf } from '@memry/contracts/delete-attestation'
 import type { PushItem, SyncItemType, SyncOperation, VectorClock } from '@memry/contracts/sync-api'
 // Compression before encryption: compression oracle risk accepted because CRDT updates
 // have low entropy variance (attacker can't adaptively probe content) and all crypto
@@ -84,6 +85,19 @@ export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
       input.signingSecretKey
     )
 
+    // The payload signature is shed with the payload after retention; this
+    // content-free one survives it, so a purged tombstone stays verifiable (#2408).
+    const claim = deleteClaimOf(input)
+    const deleteAttestation = claim
+      ? toB64(
+          signPayload(
+            deleteAttestationPayload(claim),
+            CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+            input.signingSecretKey
+          )
+        )
+      : undefined
+
     const sizeBytes = ciphertext.length
 
     return {
@@ -99,7 +113,8 @@ export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
         signerDeviceId: input.signerDeviceId,
         ...(input.clock && { clock: input.clock }),
         ...(input.stateVector && { stateVector: input.stateVector }),
-        ...(input.deletedAt !== undefined && { deletedAt: input.deletedAt })
+        ...(input.deletedAt !== undefined && { deletedAt: input.deletedAt }),
+        ...(deleteAttestation && { deleteAttestation })
       },
       sizeBytes
     }

@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock } from '@memry/sync-core'
+import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
-
 
 interface TaskActivitySyncDeps {
   queue: SyncQueueManager
@@ -40,13 +40,15 @@ export class TaskActivitySyncService {
   private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: TaskActivitySyncDeps) {
+    const load = (activityId: string): Record<string, unknown> | undefined =>
+      deps.db.select().from(taskActivity).where(eq(taskActivity.id, activityId)).get() as
+        Record<string, unknown> | undefined
+
     this.controller = new RecordSyncController({
       type: 'task_activity',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (activityId) =>
-        deps.db.select().from(taskActivity).where(eq(taskActivity.id, activityId)).get() as
-          Record<string, unknown> | undefined,
+      load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -60,6 +62,10 @@ export class TaskActivitySyncService {
         return { ...local, clock: newClock }
       },
       serialize: (local) => local,
+      recoverPendingChange: (activityId, deviceId) =>
+        recoverOfflineDocClock(load(activityId), deviceId, (clock) =>
+          deps.db.update(taskActivity).set({ clock }).where(eq(taskActivity.id, activityId)).run()
+        ),
       buildDeletePayload: ({ extra }) => extra[0]
     })
   }

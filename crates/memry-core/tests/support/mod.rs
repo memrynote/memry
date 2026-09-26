@@ -49,6 +49,9 @@ pub fn vector_file(name: &str) -> Json {
         "field-merge" => {
             include_str!("../../../../packages/contracts/test-vectors/field-merge.json")
         }
+        "recreate-clock" => {
+            include_str!("../../../../packages/contracts/test-vectors/recreate-clock.json")
+        }
         "pack-container" => {
             include_str!("../../../../packages/contracts/test-vectors/pack-container.json")
         }
@@ -69,6 +72,9 @@ pub fn vector_file(name: &str) -> Json {
         }
         "attachment-manifest" => {
             include_str!("../../../../packages/contracts/test-vectors/attachment-manifest.json")
+        }
+        "delete-attestation" => {
+            include_str!("../../../../packages/contracts/test-vectors/delete-attestation.json")
         }
         "task-parsing" => {
             include_str!("../../../../packages/contracts/test-vectors/task-parsing.json")

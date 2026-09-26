@@ -1,9 +1,10 @@
-import { Hono } from 'hono'
+import { Hono, type MiddlewareHandler } from 'hono'
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { deviceIdentifier, type RateLimitOptions } from '../middleware/rate-limit'
+import type * as RateLimitModule from '../middleware/rate-limit'
 import type { AppContext } from '../types'
 
 // ============================================================================
@@ -38,9 +39,11 @@ vi.mock('../services/sync', () => ({
         accepted: true,
         serverCursor: 1
       }
-    ]
+    ],
+    committedItems: [],
+    committedAtMs: 0
   }),
-  pullItems: vi.fn().mockResolvedValue([]),
+  pullItems: vi.fn().mockResolvedValue({ items: [], purgedTombstones: [], blobMissing: [] }),
   getItem: vi.fn().mockResolvedValue({
     itemId: '550e8400-e29b-41d4-a716-446655440000',
     type: 'note',
@@ -70,9 +73,10 @@ vi.mock('../services/vault-deletion', () => ({
 }))
 
 vi.mock('../services/crdt', () => ({
-  storeUpdates: vi.fn().mockResolvedValue([1]),
+  storeUpdatesWithCursor: vi.fn().mockResolvedValue({ sequences: [1] }),
   getUpdates: vi.fn().mockResolvedValue({ updates: [], hasMore: false }),
   getBatchUpdates: vi.fn().mockResolvedValue({}),
+  getSnapshotMeta: vi.fn().mockResolvedValue(null),
   storeSnapshot: vi.fn().mockResolvedValue({ sequenceNum: 0, revision: 'rev-0' }),
   storeSnapshotBatch: vi.fn().mockResolvedValue([]),
   getSnapshot: vi.fn().mockResolvedValue(null),
@@ -147,7 +151,7 @@ import { ensureSyncVaultAllowed, isPaidSyncEntitlementActive } from '../services
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { deleteVaultData, vaultExistsForUser } from '../services/vault-deletion'
 import {
-  storeUpdates,
+  storeUpdatesWithCursor,
   getUpdates,
   getBatchUpdates,
   storeSnapshot,
@@ -245,6 +249,8 @@ const makePushBatchResult = (
       serverCursor: 1
     }
   ],
+  committedItems: [],
+  committedAtMs: 0,
   ...overrides
 })
 
@@ -600,7 +606,24 @@ describe('sync routes', () => {
       // #then
       expect(res.status).toBe(200)
       const json = await res.json()
-      expect(json).toEqual({ items: [], deleted: [], hasMore: false, nextCursor: 0 })
+      expect(json).toEqual({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0,
+        serverTimeMs: expect.any(Number)
+      })
+    })
+
+    // #2280: the reference a client estimates its clock offset against.
+    it('stamps the response with the server time in milliseconds', async () => {
+      const before = Date.now()
+      const res = await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
+      const after = Date.now()
+
+      const json = (await res.json()) as { serverTimeMs: number }
+      expect(json.serverTimeMs).toBeGreaterThanOrEqual(before)
+      expect(json.serverTimeMs).toBeLessThanOrEqual(after)
     })
 
     it('should forward cursor and limit query params', async () => {
@@ -608,9 +631,10 @@ describe('sync routes', () => {
       await app.request('/sync/changes?cursor=5&limit=10', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10, 'vault-1', [
-        ...LEGACY_RECORD_SYNC_ITEM_TYPES
-      ])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10, 'vault-1', {
+        recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        noteBodies: false
+      })
     })
 
     it('should default cursor to 0 when omitted', async () => {
@@ -618,9 +642,54 @@ describe('sync routes', () => {
       await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
-        ...LEGACY_RECORD_SYNC_ITEM_TYPES
-      ])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        noteBodies: false
+      })
+    })
+
+    // #2292
+    it('reads the inline page with R2 when asked with inline=1', async () => {
+      vi.mocked(getChanges).mockResolvedValueOnce({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 5,
+        inline: []
+      })
+      const res = await app.request(
+        '/sync/changes?cursor=5&limit=500&inline=1',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(getChanges).toHaveBeenCalledWith(
+        env.DB,
+        'user-1',
+        5,
+        500,
+        'vault-1',
+        { recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES], noteBodies: false },
+        env.STORAGE
+      )
+      await expect(res.json()).resolves.toMatchObject({ inline: [] })
+    })
+
+    // #2292
+    it('should return 400 for an inline value other than 1', async () => {
+      const res = await app.request(
+        '/sync/changes?inline=true',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(getChanges).not.toHaveBeenCalled()
     })
 
     it('should return 400 for non-numeric cursor', async () => {
@@ -835,20 +904,65 @@ describe('sync routes', () => {
       expect(json.rejected).toEqual([{ id: VALID_UUID, reason: 'VERSION_CONFLICT' }])
     })
 
-    it('should update device cursor when items are accepted', async () => {
-      // #given
+    // #2280: the push-accept hop of the end-to-end trace names the vault.
+    it('logs the accepted cursor range under the request vault', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({
+          accepted: [VALID_UUID],
+          maxCursor: 7,
+          outcomes: [{ id: VALID_UUID, type: 'note', accepted: true, serverCursor: 7 }]
+        })
+      )
+
+      await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        env,
+        executionCtx
+      )
+
+      const pushLine = infoSpy.mock.calls
+        .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+        .find((line) => line.message === 'Record sync push processed')
+      expect(pushLine).toMatchObject({ vaultId: 'vault-1', cursorRange: [7, 7], itemCount: 1 })
+      infoSpy.mockRestore()
+    })
+
+    // #2303: the push service no longer checks the entitlement itself for a
+    // batch that grows nothing, so the paid gate on /sync/push is this
+    // middleware. The assertion is on the middleware mock, which Hono invokes
+    // by registration order, so moving the route above it fails here.
+    it('is gated by paidSyncMiddleware before the push service runs', async () => {
+      vi.mocked(paidSyncMiddleware).mockImplementationOnce(async () => {
+        throw new AppError(ErrorCodes.SYNC_PAYMENT_REQUIRED, 'paid plan required', 402)
+      })
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(402)
+      expect(processRecordPushBatch).not.toHaveBeenCalled()
+    })
+
+    // #2283: last_cursor_seen records how far the device has PULLED. Its own
+    // accepted rows say nothing about peer rows below them.
+    it('should leave the device pull cursor alone when items are accepted', async () => {
       const body = { items: [makePushItem()] }
 
-      // #when
-      await app.request(
+      const res = await app.request(
         'http://localhost/sync/push',
         jsonPost('/sync/push', body),
         env,
         executionCtx
       )
 
-      // #then
-      expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 1, 'vault-1')
+      expect(res.status).toBe(200)
+      expect(updateDeviceCursor).not.toHaveBeenCalled()
     })
 
     it('should return 400 for empty items array', async () => {
@@ -989,7 +1103,8 @@ describe('sync routes', () => {
         'vault-1',
         // Attribution: no x-memry-client header on these requests, so the
         // handler passes null and the row is written unattributed.
-        null
+        null,
+        64 * 1024
       )
     })
 
@@ -1063,7 +1178,8 @@ describe('sync routes', () => {
         'device-1',
         [makePushItem()],
         'vault-1',
-        null
+        null,
+        64 * 1024
       )
     })
 
@@ -1087,7 +1203,8 @@ describe('sync routes', () => {
         'device-1',
         [makePushItem({ type: 'settings', clock: undefined })],
         'vault-1',
-        null
+        null,
+        64 * 1024
       )
     })
 
@@ -1106,6 +1223,81 @@ describe('sync routes', () => {
       expect(res.status).toBe(413)
       expect(updateDeviceCursor).not.toHaveBeenCalled()
       expect(updateDevice).not.toHaveBeenCalled()
+    })
+
+    // #2300: the committed items ride the broadcast only within the budget.
+    it('attaches committed items and their commit time to the push broadcast', async () => {
+      const committedItem = {
+        id: VALID_UUID,
+        type: 'note' as const,
+        operation: 'create' as const,
+        cryptoVersion: 1,
+        signature: 'sig',
+        signerDeviceId: 'device-1',
+        clock: { 'device-1': 1 },
+        blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+      }
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({ committedItems: [committedItem], committedAtMs: 1234 })
+      )
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        env,
+        executionCtx
+      )
+
+      // The pushing client's response is unchanged: the items ride the broadcast only.
+      expect(Object.keys((await res.json()) as object).sort()).toEqual([
+        'accepted',
+        'maxCursor',
+        'rejected',
+        'serverTime'
+      ])
+      const broadcast = mockDoStub.fetch.mock.calls[0][0] as Request
+      expect(await broadcast.json()).toEqual({
+        excludeDeviceId: 'device-1',
+        cursor: 1,
+        vaultId: 'vault-1',
+        items: [committedItem],
+        committedAtMs: 1234
+      })
+    })
+
+    // #2300
+    it('broadcasts hint-only when SYNC_SOCKET_ITEMS_MAX_BYTES is "0"', async () => {
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({
+          committedItems: [
+            {
+              id: VALID_UUID,
+              type: 'note',
+              operation: 'create',
+              cryptoVersion: 1,
+              signature: 'sig',
+              signerDeviceId: 'device-1',
+              blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+            }
+          ],
+          committedAtMs: 1234
+        })
+      )
+
+      await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        { ...env, SYNC_SOCKET_ITEMS_MAX_BYTES: '0' },
+        executionCtx
+      )
+
+      // The kill switch reaches the pipeline, which then builds nothing.
+      expect(vi.mocked(processRecordPushBatch).mock.calls.at(-1)?.[7]).toBe(0)
+
+      const broadcast = mockDoStub.fetch.mock.calls[0][0] as Request
+      expect(await broadcast.text()).toBe(
+        JSON.stringify({ excludeDeviceId: 'device-1', cursor: 1, vaultId: 'vault-1' })
+      )
     })
 
     it('captures background broadcast failures without failing the push response', async () => {
@@ -1194,7 +1386,8 @@ describe('sync routes', () => {
         'user-1',
         [VALID_UUID],
         'vault-1',
-        [...LEGACY_RECORD_SYNC_ITEM_TYPES]
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        false
       )
     })
 
@@ -1299,7 +1492,8 @@ describe('sync routes', () => {
         'vault-1',
         // Attribution: no x-memry-client header on these requests, so the
         // handler passes null and the row is written unattributed.
-        null
+        null,
+        64 * 1024
       )
     })
 
@@ -1320,7 +1514,8 @@ describe('sync routes', () => {
         'user-1',
         [VALID_UUID],
         'vault-1',
-        [...LEGACY_RECORD_SYNC_ITEM_TYPES]
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        false
       )
     })
   })
@@ -1337,7 +1532,7 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(storeUpdates).toHaveBeenCalledTimes(1)
+      expect(storeUpdatesWithCursor).toHaveBeenCalledTimes(1)
       expect(processRecordPushBatch).not.toHaveBeenCalled()
     })
 
@@ -1388,7 +1583,8 @@ describe('sync routes', () => {
             createdAt: 111
           }
         ],
-        hasMore: true
+        hasMore: true,
+        snapshotMeta: null
       })
       expect(getUpdates).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1', 3, 500)
     })
@@ -1525,7 +1721,8 @@ describe('sync routes', () => {
         'note_1',
         'device-1',
         expect.any(ArrayBuffer),
-        null
+        null,
+        undefined
       )
       expect(pruneUpdatesBeforeSnapshot).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1')
     })
@@ -1861,7 +2058,7 @@ describe('sync routes', () => {
     })
 
     it('logs and returns quota errors for CRDT update and snapshot writes', async () => {
-      vi.mocked(storeUpdates).mockRejectedValueOnce(
+      vi.mocked(storeUpdatesWithCursor).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
       )
 
@@ -1872,7 +2069,7 @@ describe('sync routes', () => {
         executionCtx
       )
       expect(res.status).toBe(413)
-      expect(storeUpdates).toHaveBeenCalled()
+      expect(storeUpdatesWithCursor).toHaveBeenCalled()
 
       vi.mocked(storeSnapshot).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
@@ -1954,9 +2151,10 @@ describe('sync routes', () => {
       await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
-        ...LEGACY_RECORD_SYNC_ITEM_TYPES
-      ])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        noteBodies: false
+      })
     })
 
     it('narrows to the declared types when the header is sent', async () => {
@@ -1969,10 +2167,10 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
-        'note',
-        'task'
-      ])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: ['note', 'task'],
+        noteBodies: false
+      })
     })
 
     it('passes negotiated types to pullItems', async () => {
@@ -1994,7 +2192,8 @@ describe('sync routes', () => {
         'user-1',
         [VALID_UUID],
         'vault-1',
-        ['note']
+        ['note'],
+        false
       )
     })
 
@@ -2008,7 +2207,43 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', ['note'])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: ['note'],
+        noteBodies: false
+      })
+    })
+
+    // #2295: note_body is served by /sync/changes only; pull and manifest get
+    // the record types alone.
+    it('keeps a declared note_body out of pull and manifest', async () => {
+      const headers = { 'X-Memry-Sync-Types': 'note,note_body' }
+
+      await app.request('/sync/changes', { method: 'GET', headers }, env, executionCtx)
+      await app.request(
+        '/sync/pull',
+        {
+          ...jsonPost('/sync/pull', { itemIds: [VALID_UUID] }),
+          headers: { 'Content-Type': 'application/json', ...headers }
+        },
+        env,
+        executionCtx
+      )
+      await app.request('/sync/manifest', { method: 'GET', headers }, env, executionCtx)
+
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: ['note'],
+        noteBodies: true
+      })
+      expect(pullItems).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        [VALID_UUID],
+        'vault-1',
+        ['note'],
+        false
+      )
+      expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', ['note'], undefined)
     })
   })
 })
@@ -2049,15 +2284,116 @@ describe('CRDT rate limit wiring', () => {
     expect(optionsFor('crdt_pull')).toMatchObject({ maxRequests: 600, windowSeconds: 60 })
   })
 
-  it('leaves the non-CRDT limiters keyed by the default user/IP chain', () => {
-    // #then — out of scope for this change
+  it('leaves the record pull limiters keyed by the default user/IP chain', () => {
+    // #then — sync_changes moves to per-device only once pulls are coalesced (#2290)
     expect(optionsFor('sync_pull')?.identifier).toBeUndefined()
-    expect(optionsFor('sync_push')?.identifier).toBeUndefined()
+    expect(optionsFor('sync_changes')?.identifier).toBeUndefined()
   })
 
   it('gives the manifest bucket room for a paginated integrity check', () => {
     // #then — a paginated client spends ceil(rows / 1000) requests per check
     // instead of 1; 30/min keeps a 30k-row vault inside a single window.
     expect(optionsFor('sync_manifest')).toMatchObject({ maxRequests: 30, windowSeconds: 60 })
+  })
+})
+
+// ============================================================================
+// Record push rate limit (#2288)
+//
+// Runs the real limiter middleware with the options the route was built with,
+// against a counting RATE_LIMITER stand-in, so the assertion covers both the
+// route wiring and the ceiling comparison.
+// ============================================================================
+
+describe('record push rate limit', () => {
+  const pushOptions = () => {
+    const options = rateLimiterOptions.find((o) => o.keyPrefix === 'sync_push')
+    if (!options) throw new Error('sync_push limiter was not built')
+    return options
+  }
+
+  const createCountingNamespace = () => {
+    const counts = new Map<string, number>()
+    const namespace = {
+      idFromName: (name: string) => name,
+      get: (key: string) => ({
+        fetch: async () => {
+          const count = (counts.get(key) ?? 0) + 1
+          counts.set(key, count)
+          return Response.json({ count, windowStart: Math.floor(Date.now() / 1000) })
+        }
+      })
+    }
+    return { namespace, counts }
+  }
+
+  const sendPush = async (
+    limiter: MiddlewareHandler<AppContext>,
+    namespace: unknown,
+    deviceId: string
+  ) => {
+    const c = {
+      env: { RATE_LIMITER: namespace },
+      get: (key: string) =>
+        key === 'userId' ? 'user-1' : key === 'deviceId' ? deviceId : undefined,
+      req: { url: 'http://localhost/sync/push', header: () => undefined },
+      header: vi.fn()
+    }
+    const next = vi.fn().mockResolvedValue(undefined)
+    await limiter(c as never, next)
+    return next
+  }
+
+  it('is 300 per 60 s keyed by device, with no bootstrap elevation', () => {
+    // #then — #2288: was 60/min per user, shared by every device on the account
+    expect(pushOptions()).toMatchObject({
+      keyPrefix: 'sync_push',
+      maxRequests: 300,
+      windowSeconds: 60,
+      identifier: deviceIdentifier
+    })
+    expect(pushOptions().getElevatedLimits).toBeUndefined()
+  })
+
+  it('lets one device push 300 times a minute and 429s the 301st', async () => {
+    // #given — #2288
+    const { createRateLimiter } = await vi.importActual<typeof RateLimitModule>(
+      '../middleware/rate-limit'
+    )
+    const limiter = createRateLimiter(pushOptions())
+    const { namespace } = createCountingNamespace()
+
+    // #when
+    for (let i = 0; i < 300; i++) {
+      expect(await sendPush(limiter, namespace, 'device-a')).toHaveBeenCalled()
+    }
+
+    // #then
+    await expect(sendPush(limiter, namespace, 'device-a')).rejects.toMatchObject({
+      code: ErrorCodes.RATE_LIMITED,
+      statusCode: 429
+    })
+  })
+
+  it('gives a second device of the same user its own push bucket', async () => {
+    // #given — #2288: device A spent its whole budget
+    const { createRateLimiter } = await vi.importActual<typeof RateLimitModule>(
+      '../middleware/rate-limit'
+    )
+    const limiter = createRateLimiter(pushOptions())
+    const { namespace, counts } = createCountingNamespace()
+    for (let i = 0; i < 300; i++) {
+      await sendPush(limiter, namespace, 'device-a')
+    }
+
+    // #when
+    const next = await sendPush(limiter, namespace, 'device-b')
+
+    // #then
+    expect(next).toHaveBeenCalled()
+    expect([...counts.keys()].sort()).toEqual([
+      'sync_push:device:device-a',
+      'sync_push:device:device-b'
+    ])
   })
 })

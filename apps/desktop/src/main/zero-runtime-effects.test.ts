@@ -104,13 +104,6 @@ vi.mock('./sync/crdt-provider', () => ({
   })
 }))
 
-// The CRDT half of the local-only toggle: a body that stopped going up while
-// the flag was set is owed to the server as a whole document once it clears.
-vi.mock('./sync/crdt-pending-notes', () => ({
-  recordPendingCrdtNotes: vi.fn(),
-  clearPendingCrdtNotes: vi.fn()
-}))
-
 vi.mock('./sync/local-mutations', () => ({
   enqueueLocalSyncCreate: mocks.enqueueLocalSyncCreate,
   enqueueLocalSyncUpdate: mocks.enqueueLocalSyncUpdate,
@@ -300,7 +293,6 @@ describe('main zero-covered runtime surfaces', () => {
     tags.syncTagDefinitionUpdate('tag')
     tags.syncTagDefinitionDelete('Tag', { name: 'Tag' })
     tags.syncMergedTagDefinitions('source', 'target', { name: 'source' })
-    tags.syncTaggedTasks(['task-1', 'task-2'])
 
     expect(mocks.publishProjectionEvent).toHaveBeenCalledWith({
       type: 'inbox.deleted',
@@ -318,7 +310,6 @@ describe('main zero-covered runtime surfaces', () => {
       '{"name":"Tag"}'
     )
     expect(mocks.enqueueLocalSyncCreate).not.toHaveBeenCalledWith('tag_definition', 'Ignored2')
-    expect(mocks.enqueueLocalSyncUpdate).toHaveBeenCalledWith('task', 'task-2')
   })
 
   it('syncs folder config create, update, rename, and delete mutations', async () => {
@@ -411,16 +402,13 @@ describe('main zero-covered runtime surfaces', () => {
       '{"id":"item","clock":{}}'
     )
 
+    // #2423: with no snapshot and no clocked row there is no clock to delete at.
     const tagPayload = mocks.syncControllerOptions[0].buildDeletePayload({
       itemId: 'tag-a',
       extra: [],
       deviceId: 'device-1'
     })
-    expect(JSON.parse(tagPayload)).toEqual({
-      name: 'tag-a',
-      color: '',
-      clock: { 'device-1': 1 }
-    })
+    expect(tagPayload).toBeNull()
 
     const sourcePayload = mocks.syncControllerOptions[1].buildDeletePayload({
       itemId: 'source-1',
@@ -428,10 +416,7 @@ describe('main zero-covered runtime surfaces', () => {
       extra: [],
       deviceId: 'device-1'
     })
-    expect(JSON.parse(sourcePayload)).toEqual({
-      id: 'source-1',
-      clock: { 'device-1': 1 }
-    })
+    expect(sourcePayload).toBeNull()
 
     tagSync.resetTagDefinitionSyncService()
     sourceSync.resetCalendarSourceSyncService()

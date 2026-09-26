@@ -33,6 +33,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import { CBOR_FIELD_ORDER } from '../cbor-ordering'
+import { DELETE_ATTESTATION_PURPOSE } from '../delete-attestation'
 import {
   ARGON2_PARAMS,
   CRYPTO_VERSION,
@@ -57,7 +58,10 @@ import {
   CLIENT_PLATFORMS,
   CRDT_SYNC_ITEM_TYPES,
   ENCRYPTABLE_ITEM_TYPES,
+  FEED_ONLY_SYNC_TYPES,
   LEGACY_RECORD_SYNC_ITEM_TYPES,
+  NEGOTIABLE_SYNC_TYPES,
+  RECREATABLE_AFTER_PURGE_ITEM_TYPES,
   OFFLINE_CLOCK_DEVICE_ID,
   RECORD_CLOCK_REQUIRED_ITEM_TYPES,
   RECORD_SYNC_ITEM_TYPES,
@@ -160,6 +164,24 @@ export const COVERED: readonly Covered[] = [
     label: 'ENCRYPTABLE_ITEM_TYPES size',
     value: ENCRYPTABLE_ITEM_TYPES.length,
     spelledAs: ['| `ENCRYPTABLE_ITEM_TYPES` | 25 |']
+  },
+  {
+    slug: C00,
+    label: 'FEED_ONLY_SYNC_TYPES',
+    value: FEED_ONLY_SYNC_TYPES,
+    spelledAs: ['| `FEED_ONLY_SYNC_TYPES` | 2 |']
+  },
+  {
+    slug: C00,
+    label: 'RECREATABLE_AFTER_PURGE_ITEM_TYPES size',
+    value: RECREATABLE_AFTER_PURGE_ITEM_TYPES.length,
+    spelledAs: ['| `RECREATABLE_AFTER_PURGE_ITEM_TYPES` | 10 |']
+  },
+  {
+    slug: C00,
+    label: 'NEGOTIABLE_SYNC_TYPES size',
+    value: NEGOTIABLE_SYNC_TYPES.length,
+    spelledAs: ['| `NEGOTIABLE_SYNC_TYPES` | 27 |']
   },
   {
     slug: C00,
@@ -269,6 +291,18 @@ export const COVERED: readonly Covered[] = [
     label: 'CBOR_FIELD_ORDER.TOMBSTONE',
     value: CBOR_FIELD_ORDER.TOMBSTONE,
     spelledAs: ['`id, type, deletedAt, deviceId`']
+  },
+  {
+    slug: C04,
+    label: 'CBOR_FIELD_ORDER.DELETE_ATTESTATION',
+    value: CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+    spelledAs: ['`purpose, id, type, deletedAt, clock`']
+  },
+  {
+    slug: C04,
+    label: 'DELETE_ATTESTATION_PURPOSE',
+    value: DELETE_ATTESTATION_PURPOSE,
+    spelledAs: ['`memry-delete-attestation-v1`']
   },
 
   // --- chapter 08 -----------------------------------------------------------

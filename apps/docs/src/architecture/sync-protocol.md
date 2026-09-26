@@ -176,6 +176,12 @@ manifest diff — keys on the `(type, id)` pair, never the bare id. A permanent 
 does not block its same-id sibling of another type, and a re-fetch that asks for one `(type, id)`
 pair ignores the sibling rows the server returns for the same id.
 
+The within-run apply dedup also compares cursors. For each `(type, id)` a pull run applied, it
+keeps the highest cursor at which a changes page listed it: the ref's `serverCursor`, or the page's
+`nextCursor` for a `deleted` id or a server that sends no ref cursor. A later page that lists the item
+above that cursor carries a newer version (an edit or delete committed during the run), and it goes
+through the normal clock-guarded apply. Only a listing at or below the recorded cursor is skipped.
+
 Retry semantics: the pull cursor only advances past pages that were actually applied. A page the
 client refused (all items failed crypto, or the key was mid-transition during sign-in/recovery) does
 not move the cursor, so a manual Retry lands on the same page instead of skipping it and reporting a
@@ -197,6 +203,145 @@ deliberately soft: only entries that have not yet reached the permanent threshol
 because those are attempt counters and a still-broken item simply re-quarantines. Permanent
 quarantines are the record that keeps a failed-signature item out of the vault and are never dropped
 to satisfy the cap.
+
+A payload this build's schema refuses, usually a newer peer's shape, is not dropped. The item
+returns `'schema_invalid'` and goes into a persisted ledger (`schemaInvalidItems` sync-state key)
+with the app version that refused it, and the cursor moves on, because one global cursor cannot wait
+for one item. Once another app version runs, the next pull re-fetches every ledger entry by id, in
+100-id requests, and applies it again in FK order. An entry the new build still refuses is kept with
+the new version; one that applies, or that the server no longer has, leaves the ledger. A pulled item
+that fails the envelope schema goes into the ledger too, while its page-mates apply; because that is
+usually a server fault, it is also retried after the one-hour corrupt-item cooldown. Ledger entries
+are listed with the quarantined items and count as known to the manifest check, so they never
+trigger a full re-pull. Orphan repair never tombstones a child whose parent the server still has,
+even when this build cannot apply the parent.
+
+A changes page of up to 500 refs is pulled and applied in slices of at most 100 ids, one
+transaction per slice, and `LAST_CURSOR` never moves before the last slice. Up to
+`PULL_SLICE_FETCH_WINDOW` (2) slice POSTs are in flight at once, so the next slice downloads while
+the current one applies. Slices still apply in page order, and a stop leaves at most one fetched
+slice unread. When nothing has to run
+after the last slice commits, the cursor is written as the last statement of that slice's
+transaction, so the cursor and the page's last rows commit together or not at all. A page with a
+by-id re-fetch pending, notes whose CRDT bodies are fetched after the commit, an item deferred for a
+retry, or a transaction that could not be opened writes the cursor after that work instead. The
+page's notes are flagged as holding unmerged CRDT state inside the slice transaction, before any
+cursor write. A crash before the cursor commits pulls the whole page again; the rows that already
+committed come back with an equal clock and an identical payload and are skipped without a row write
+or a renderer event (a still-dirty `syncedAt` is stamped, and missing canvas assets and note
+attachments are requested again). An equal clock with a different payload still applies, because
+that is how two devices whose merge re-pushes collided converge (protocol 06 §6.5.2 P4). Renderer
+events raised while a slice applies are held until its transaction commits and dropped if the slice
+or the item rolls back, so no window is told about rows that never landed.
+
+A tombstone past the user's version-history window loses its payload on the server but keeps its
+row as a marker, so a device that was offline longer than that window cannot push the item back:
+the marker refuses the stale write per item exactly as a fresh tombstone does, for every client.
+The exception is a re-create of an item whose id comes from what the user sees (a journal's date, a
+tag or property name, a folder path, a bookmark target, a provider calendar or event) or from a file
+the user can restore (a note's frontmatter id, restored from a backup or the trash): a `create` over
+its marker is accepted, so re-creating or restoring it reaches the other devices.
+Every device remembers the clock of each delete it makes or applies for such an id (desktop:
+`sync_tombstone_clocks`), and a re-create is minted with that clock merged in and ticked, so it
+happens strictly after the delete: the server accepts it inside retention too, a stale copy from a
+device that missed the delete is refused or merged rather than applied over it, and the device's
+own late tombstone does not delete it.
+At runtime start the desktop replays the deletes it still owes (`sync_pending_deletes`), except for
+such an id that has a live local row again: that delete is retired instead, so a re-create made
+while sync was off, or before its delete's clock was recorded, is pushed live rather than deleted on
+every device. A delete raised with no snapshot is clocked from the local row's own clock; with no
+row, or a row that was never clocked, it is not pushed at all, because a clock minted from nothing
+is refused by the server as a replay.
+
+Only a client that declares `purged_tombstones` in `X-Memry-Sync-Types` sees a marker on the read
+side; for every other client (older desktops, iOS) it is invisible, as the old hard delete was. The
+desktop declares it. `/sync/changes` then lists the marker's id, except on a request from cursor 0,
+and `/sync/pull` returns the delete in a `purgedTombstones` list next to `items`, without
+ciphertext. The entry carries no record signature, since the shed deleted the payload it covered.
+Instead, a delete pushed by a current client carries a delete attestation: an Ed25519 signature by
+the deleting device over `{purpose, id, type, deletedAt, clock}` (protocol 04 §4.8.4). The server
+verifies it on push, rejecting a bad one per item as `SYNC_INVALID_SIGNATURE`, and keeps it through
+the shed. It serves the attestation with the entry as `signerDeviceId` and `deleteAttestation`.
+The desktop applies an entry only if the request asked for that id, the type carries a required
+clock, the entry has one, and the attestation verifies under the signer's key over the entry's own
+type, id, clock and deletedAt. It then goes through the same delete path as a signed tombstone: a
+local row whose clock happens strictly after the tombstone is kept. An entry with no attestation, an
+unknown signer, or a signature that does not verify is logged and never applied. That covers every
+marker shed before attestations existed. A failure to fetch the signer's key fails the page and the
+cursor holds. It never applies one in a pull
+run that started from cursor 0, over a local row with no clock (a restored vault folder), over a
+re-created or restored item that is still queued or was touched after the delete, or when the clock
+names a device this account does not know. An applied purged tombstone is an ordinary delete inside
+the slice transaction and adds no post-commit work; a refused or skipped one is not applied at all,
+so neither changes when the cursor commits.
+
+A live row whose payload the server lost comes back in a `blobMissing` list instead of vanishing.
+The desktop applies nothing for it, keeps any local row, and records it in the schema-invalid ledger
+(retried after the one-hour cooldown, never counted server-only). Orphan repair tombstones a child
+only when the server positively says its parent is gone, never because a parent was not returned.
+An unattested purged parent counts as gone, the same as a parent the server omits.
+Nothing on the desktop deletes a local row because the server does not list it, and the manifest
+check re-uploads local rows the server lacks only after a pull that delivered in the same run.
+Tombstones the server hard-deleted before markers existed stay unprotected. Protocol 05 §5.12.3 and
+§5.12.4 have the full rules.
+
+A `/sync/pull` body that is not a pull envelope at all is a server contract regression: the cursor
+holds, the run is refused and sync shows a server error, so the page re-arrives once the server
+answers correctly.
+
+The first `/sync/changes` page of a pull outside a full sync (a socket wake or the periodic pull)
+asks for `inline=1`. The server then clamps the page to 100 refs and returns, in `inline`, the
+exact `/sync/pull` item for every id it could inline: rows up to 64 KiB, tombstones included, and
+only ids whose rows on the page all fit. The client pulls only the page ids that no inline item
+names, so a wake that delivers one small change makes no `/sync/pull` call. Inline and pulled items
+apply as one page, in one transaction and one apply order, and the cursor rules do not change.
+Later pages and full syncs (startup, Sync now, first sync) keep 500-ref pages without inline.
+Protocol 05 §5.11.2 has the full rules.
+
+Each pulled page applies inside one SQLite transaction. Handlers run synchronously inside it; the
+files they produce (a note or journal markdown file, a rewritten `.memry/properties.md` after a
+remote property-definition delete) are recorded in a crash journal just before the commit and
+written after it. A crash between the commit and the file writes is healed at the start of the next
+pull. A handler that wrote its rows from an unawaited promise could land them after the page
+committed, or inside the next page's transaction, with no crash-journal record for its file. Synced
+journal entries were applied that way until #2284.
+
+A remote note or journal delete goes through the same journal (#2385). Its row delete commits with
+the page and the file is removed after the commit. Before, the file was removed by an unawaited
+unlink with no journal record, so a crash or a failed unlink left a file with no row. The vault
+indexer could adopt that file as a new local note and push it back. On replay, a journaled delete
+removes the file unless the file's modification time is later than the moment the delete was
+journaled, so a file re-created on this device after the crash is kept. A delete entry has no
+`content` field, and replay in older builds ignores entries without one. An older build that finds
+the journal therefore skips the delete and replays only the writes. Each path keeps only its latest
+journal entry, so no earlier write to a deleted path is left behind for an older build to restore.
+
+### When a push starts
+
+A local mutation asks for a push, and the push goes out at once when the last requested push
+started more than 300 ms ago (`PUSH_DEBOUNCE_MS`). A request inside that window arms one timer for
+the rest of it, and every other request in the window rides on that timer, so continuous editing
+costs at most one `POST /sync/push` per 300 ms. That was a flat 2-second trailing timer, which made
+up most of the delay between an edit and its arrival on another device.
+
+A request that finds a sync cycle running does not arm a timer. It is held, and the push runs once
+when the cycle ends: after the scheduled cycle's promise settles, or, for a cycle started directly
+(the first full sync at startup, a manual sync, the final push on shutdown), when the engine
+releases its sync lock or the full sync returns. The old code re-armed the 2-second timer while the
+cycle ran, so a push raised during a long pull waited up to 2 seconds more after it. Nothing requested
+before or during `stop()` pushes after it.
+
+Note bodies follow the same rule per note with a 1-second window: the first update after a quiet
+second is flushed at once, updates inside the window go out in one trailing flush, and an update that
+lands while that note's push is in flight is flushed once when the push settles. The window stays at
+1 second because every CRDT push route shares one 300-per-minute `crdt_push` bucket per device.
+
+Body updates are queued durably in the same `sync_queue`, as append-only `note_body` rows the record
+push never dequeues (#2298). They are not coalesced like record rows: coalescing overwrites the
+payload, which would keep only the last of a note's unflushed Yjs updates. The note-body outbox
+merges a note's rows at flush time and deletes exactly the rows a push carried once it succeeds, so
+updates survive a crash or a quit while offline. Queued `note_body` rows survive sign-out; every
+other `sync_queue` row is cleared. See [CRDT & Notes Sync](/architecture/crdt#note-body-outbox).
 
 ### Push acknowledgements and in-flight mutations
 
@@ -243,14 +388,24 @@ of it the per-item Ed25519 signature check.
 The push loop therefore reads a `5xx` as a statement about the batch's **shape** rather than a
 transient blip. It halves the batch and keeps going — from `PUSH_BATCH_SIZE` (100) down to
 `MIN_PUSH_BATCH_SIZE` (1) — so the queue drains at whatever size the server can take. `withRetry`
-is given `retryOn5xx: false` for this one call: retrying an identical request first spends the
-backoff budget before the loop can adapt, then dead-letters the batch and ends the run. That is how
-one vault sat at 2914 pending changes for five days, with `POST /sync/pull` and `GET /sync/manifest`
-taking collateral 503s from the same isolate.
+is given `retryOn5xx: false` for any batch that can still be split: retrying an identical request
+first spends the backoff budget before the loop can adapt, then dead-letters the batch and ends the
+run. That is how one vault sat at 2914 pending changes for five days, with `POST /sync/pull` and
+`GET /sync/manifest` taking collateral 503s from the same isolate. A one-item batch has no smaller
+shape, so its 5xx is retried with the standard backoff instead of ending the run.
 
 The size that worked is remembered on the coordinator rather than re-derived per run, so a vault
-refused at 100 does not re-spend those doomed requests every cycle. It only ever shrinks; a restart
-clears it and the loop starts optimistically from the configured size again.
+refused at 100 does not re-spend those doomed requests every cycle. It is not permanent: after three
+consecutive full-size pushes that got a response the size doubles, back up to the configured one. A
+vault still too big at the doubled size pays one refused request per raise and halves again.
+
+A per-item `STORAGE_QUOTA_EXCEEDED` rejection refuses only that item. The rest of the same response
+is still acked, and the run keeps dequeuing, because the server refuses only items that grow storage:
+a delete or a shrinking update still commits and is how a vault gets back under its quota.
+`POST /sync/push` has no request-level quota check: the Worker reserves storage for the growing
+items only and answers the ones that do not fit per item. Before #2303 it first compared the JSON
+length of the whole request against the quota and refused the batch with a 413, which blocked those
+deletes too. The paid-plan check is unaffected; it runs on every `/sync/*` route.
 
 ### The per-item attempt budget is spent per sync cycle
 
@@ -375,7 +530,9 @@ alone.
 Some rows carry foreign keys — a task references its project and its status — and the data DB
 enforces them. Server cursor order is last-update order, not dependency order, so pulled items are
 sorted so FK parents apply before their children, and anything that still fails is retried once after
-every page has landed.
+every page has landed. The retried items' `ITEM_SYNCED` events go out after the whole retry loop, not
+one per item inside it. Each event can make the renderer refetch over IPC, and in one fresh-device
+bootstrap the retry of 126 items took 7 seconds, almost all of it spent waiting at the loop's yields.
 
 That covers a parent that simply arrived late. It does not cover a parent that is **gone**, which is
 what a cascade delete produces: deleting a project removes its tasks locally through SQLite
@@ -482,6 +639,10 @@ row is what replicates. Two consequences worth knowing before touching either:
   clocked rows into the cache and persists when the union gained something — including on a device
   that has no file yet. A remote delete reconciles the file too, or the next reload reads the
   definition straight back in.
+- A `relation` definition never reaches the file. The file schema has no member for it, and one
+  such entry fails the parse for the whole file. The union skips a synced `relation` row, the
+  writer skips one in the cache, and `reload()` drops and rewrites a `relation` entry an older
+  build already wrote.
 
 `property_definition` is not in `LEGACY_RECORD_SYNC_ITEM_TYPES`; clients that predate it negotiate
 it away via `X-Memry-Sync-Types` and never see it.
@@ -501,7 +662,90 @@ terminal status.
 
 ## Cursors
 
-`server_cursor_sequence` tracks per-device pull progress. Pull is incremental: fetch everything strictly after the cursor, advance, repeat.
+`server_cursor_sequence` holds one counter per user. Every accepted push row takes the next value as
+its `server_cursor`. Each device keeps its own pull cursor, `LAST_CURSOR`, which means "every row at
+or below this value is applied here". Pull is incremental: fetch everything strictly after the
+cursor, apply it, advance, repeat.
+
+Two rules keep that paging lossless.
+
+- **The server reserves a push's cursors inside the transaction that commits its rows.** When the
+  reservation ran in a separate D1 batch, a later push could take a higher range, commit first, and
+  let a reader page past the lower range before those rows existed. The reader then never saw them.
+- **Only the pull moves `LAST_CURSOR`.** The push response's `maxCursor` says where this device's own
+  rows landed, not that the rows below it were pulled. A desktop build that moved `LAST_CURSOR` to
+  `maxCursor` skipped every peer row that was still unpulled at that moment.
+
+Installs that ran a build with either bug may already have skipped a range. On the first full sync
+of a fixed build, the desktop resets `LAST_CURSOR` to 0 once, under the sync lock, and re-pulls its
+whole history. Rows it already holds at the same or a newer clock change nothing. The
+`cursorSkipRepair` sync-state key tracks the repair: `pending:<cursor>` after the reset, `done` after
+a pull delivered. An interrupted repair resumes from the persisted cursor on the next full sync, so a
+page the pull refuses every time costs one pass, not one per sync. A device with no cursor yet pulls
+from 0 anyway and records `done` without a reset.
+
+The server fix has to be live before a desktop build runs the repair: a repair pull that races a
+peer push on an old Worker can skip the range again and still record `done`.
+
+### Note bodies on the same cursor
+
+`crdt_updates` and `crdt_snapshots` rows also take a `server_cursor` from the same per-user sequence,
+reserved in the batch that writes the row (migration `0011`). A snapshot takes a new cursor every time
+it is rewritten. Rows written before the migration keep `NULL` and never enter the feed.
+
+A client that adds `note_body` to `X-Memry-Sync-Types` gets a `noteBodies` array on every
+`/sync/changes` page: update and snapshot entries in cursor order, read in the same D1 batch as the
+record rows so one page never skips a row committed between two reads. An update up to 4 KiB carries
+its bytes inline; a larger one and every snapshot are refs the client fetches from the CRDT routes.
+A page that carries bodies is capped at 100 rows. `note_body` is not a record type: it never reaches
+the manifest, `/sync/pull`, bootstrap or `/sync/push`, and a client that does not declare it gets the
+same response as before. The desktop declares it (#2297); see
+[CRDT & Notes Sync](./crdt.md#note-bodies-from-the-change-feed) for how it applies bodies.
+
+## End-to-End Latency Trace
+
+A record change crosses four hops: device A queues it and pushes it, the server commits it, the
+user's Durable Object broadcasts `changes_available`, and device B pulls and applies it. Each hop
+logged on its own, so "where did this item spend 4 seconds" had no answer. The row's `server_cursor`
+is now the join key at every hop (#2280).
+
+| Hop            | Where                                      | Emitted                                                                     |
+| -------------- | ------------------------------------------ | --------------------------------------------------------------------------- |
+| origin queue   | desktop A, PostHog                         | `sync_run_completed` `action=push_lag`, `durationMs`, `value` = `maxCursor` |
+| push accept    | Worker log `Record sync push processed`    | `vaultId`, `cursorRange: [min, max]`, `itemCount`                           |
+| broadcast      | Worker log `Record changes broadcast` (DO) | `vaultId`, `cursor`, `sent`, `itemsSent` when the push carried socket items |
+| receiver apply | desktop B, PostHog                         | `sync_run_completed` `action=e2e_latency`, `durationMs`, `value` = cursor   |
+
+`e2e_latency` carries `source=pull` for rows a pull applied and `source=socket` for rows applied from
+socket items (below). The socket path emits one event per frame, with the frame's cursor as `value`,
+and borrows the clock offset of the latest pull; before the first pull it emits nothing.
+
+The join: B's `value` falls inside the push line's `cursorRange` and is at most the broadcast
+`cursor`; A's `value` is the push response's `maxCursor`, the top of the same range. Cursors are
+per account, so PostHog events join on the person plus the cursor, and Worker lines on `vaultId`
+plus the cursor. Neither log line carries a user id, device id or item id.
+
+The two metrics:
+
+- **`push_lag`** is push accepted minus row enqueued, both on device A's clock. `sync_queue.created_at`
+  is epoch seconds, so the queue keeps a millisecond enqueue time in memory for rows queued this
+  session and falls back to `created_at` for older rows. This half covers the push debounce.
+- **`e2e_latency`** is applied minus `committedAtMs`, the server's millisecond time of the push batch
+  that wrote the row (`sync_items.committed_at_ms`, migration `0010`). The apply time is moved onto
+  the server clock by an offset estimated from `serverTimeMs` on `/sync/changes` and the request's
+  round-trip midpoint; the lowest-RTT sample of the run wins, because a prefetch that overlaps a page
+  apply reads its response late.
+
+The product number is their sum. Both are capped at 20 events per pull or push run, skip anything
+older than 10 minutes (an offline backlog or a first sync is not propagation), and report a negative
+estimate as 0. `e2e_latency` counts only items applied or merged as a conflict and signed by another
+device: the feed serves a device's own writes back; at an equal clock with an identical payload they
+are skipped, otherwise they apply like a peer write. Both reuse `sync_run_completed` because a new event name would fail the whole telemetry batch
+on an older server; a chart counting sync runs must filter on `action`.
+
+Compatibility: every field is optional. An old desktop strips the new ref fields, an old server sends
+none and the desktop then emits no `e2e_latency`, and rows written before migration `0010` keep a
+NULL commit time that the change feed omits.
 
 ## Pull Scheduling and Hang Recovery
 
@@ -510,6 +754,14 @@ schedule additional pulls in between. The interval is armed before the first ful
 failure in that first sync is logged rather than propagated, so one transient error at startup
 cannot leave a session without a pull cycle.
 
+`changes_available` wakes are filtered and coalesced. A wake whose `cursor` is at or below
+`LAST_CURSOR` is dropped: cursors are assigned in commit order and only the pull moves
+`LAST_CURSOR`, so every row it announces is already applied. The wake's cursor is only compared,
+never stored. A wake that arrives while a wake-driven pull is queued adds nothing, and any number
+that arrive while a pull runs queue exactly one trailing pull, so a peer pushing N requests in a
+burst no longer costs N serial pulls. The stale-lock watchdog clears the queued flag, so a pull
+chained behind an abandoned sync cannot swallow later wakes.
+
 The tick does not always pull. Its pull exists to heal a `changes_available` broadcast that never
 arrived, so when the socket has been continuously connected since the previous tick — same
 `connectionGeneration`, still `connected` — the request is skipped: the socket pings every 25s and
@@ -517,7 +769,7 @@ terminates itself after 31s of silence, so a half-open connection reports discon
 tick would trust it. Any drop between ticks bumps the generation and restores the every-tick pull,
 and a reconnect pulls on its own. A 5-minute floor caps the skipping, because a server that stops
 broadcasting is indistinguishable from a quiet vault from the client side. The stale-lock watchdog
-and the owed CRDT sweep run on every tick regardless.
+runs on every tick regardless.
 
 Network status feeds the same scheduling. Electron exposes no main-process event for `net.online`,
 so it is polled — every 5 seconds while offline, every 30 seconds while online, dropping back to
@@ -532,6 +784,66 @@ retryable network error instead of pinning the sync lock forever. If the lock is
 15 minutes anyway, a watchdog on the periodic tick force-releases it, aborts the in-flight run,
 and lets the next pull proceed. Skipped periodic pulls log `Periodic pull skipped` with the
 blocking flags, which is the first thing to look for when a device shows stale data.
+
+### Socket items
+
+The last hop after a wake is still one HTTP round trip, for bytes the Worker held in memory when it
+broadcast. A socket can opt in to receiving them: desktop sends `X-Memry-Socket-Items: 1` and the
+same `X-Memry-Sync-Types` its HTTP requests carry on the WebSocket handshake. When a record push
+commits at most 64 KiB of items, that socket's `changes_available` frame also carries `items` (each
+exactly what `POST /sync/pull` returns for the row) and `committedAtMs`, filtered to the types the
+socket declared. A larger push, a socket that did not opt in, a socket whose token has expired, and
+every socket accepted before this shipped get the old hint-only frame byte for byte. The Worker
+decides from the payload sizes before it builds any item, so an over-budget push costs nothing
+extra, and `SYNC_SOCKET_ITEMS_MAX_BYTES="0"` turns items off without a client release. A device
+revoked while the revoke call fails can keep receiving items until the revocation alarm closes its
+socket, at most a minute later.
+
+The items are advisory. The wake pull is scheduled for every frame, with or without items, and it
+still owns `LAST_CURSOR`, quarantine, the schema-invalid ledger, corrupt re-fetch and the breaker.
+The socket applier only applies, one frame at a time in arrival order and at most 50 items per
+frame. It skips a frame while paused, offline or in a full sync, and when the frame's cursor is at
+or below the larger of `LAST_CURSOR` and the owned-through mark. That mark is the highest
+`nextCursor` of a changes page a pull has read, kept until `LAST_CURSOR` reaches it, even when the
+run stops mid-page: a pull commits a page's rows before its cursor, so without it an older socket
+item could re-create a row a tombstone had just deleted, and nothing would re-deliver the
+tombstone. A frame that meets a local push waits for it to settle, because a conflict requeue
+coalesced into a row an in-flight push dequeued would be deleted by that push's ack. Only the push
+that set that gate clears it, and the stale-lock watchdog resets it for a push it abandons.
+
+The reverse order is an accepted transient: a frame that deletes a row after the pull fetched an
+older version of it, but before the page applied, is followed by the page re-creating the row. The
+frame's own wake pull re-delivers the tombstone within one cycle.
+
+It decrypts and verifies signatures with the pull's batch decrypt and applies what verified through
+the pull's `ItemApplier`, so pending local deletes, vector clocks, conflict push-back, tombstone
+clock recording on deletes and the sync-intent deferral behave as in a pull. The frame runs in its
+own page session like a pull page: each item's row, conflict requeue and body debt commit together
+on a savepoint or not at all, and note file writes and unlinks are journaled before the commit and
+landed in the same synchronous run. A failed unlink (a file held open on Windows) stays journaled
+and the next pull's replay removes the file, so the indexer never re-adopts it as a new note.
+Renderer events go out after the commit and only for rows that changed. Anything that fails (signature, decrypt, schema, a missing FK parent, an
+undrained sync intent) is dropped without a record and reaches the device through the pull. The
+re-delivery of an item that did land is an equal-clock, identical-payload skip.
+
+A frame never carries a note body or a purged tombstone: both are feed-only, and a purged tombstone
+applies only from `POST /sync/pull` with its delete attestation. A note or journal record applied
+from a frame and changed (applied or merged) owes its whole body exactly as a pulled one: a durable
+`record` debt plus the unmerged flag, so no snapshot push claims `coversThrough` past a body this
+device has not merged. A frame item skipped as already applied owes nothing. The wake pull
+re-delivers the record and its CRDT batch pays the debt.
+
+The apply must not race a pull page. A page commits its rows and then writes note files in an async
+flush, so a socket write to the same file in between would leave the older file under the newer row.
+The applier loops until no page transaction is open, every journaled file op has landed and no push
+is in flight (at most 5 seconds, then it drops the frame and logs once per session with the cause),
+and the last check runs in the same synchronous run as the apply: nothing is awaited between it and
+the last file write. The journal replay at the start of each pull clears the ops it healed from
+memory, so one failed flush does not turn the applier off until a restart.
+
+Socket latency events are one per changed row, like the pull's, capped at 20 per minute. The #2300
+merge gate reads the combined `e2e_latency` p50 of both sources, not the socket source alone: the
+socket source sees only the frames it applied.
 
 ## Runtime Emitters and Listener Budgets
 
@@ -556,7 +868,7 @@ the runtime keeps a reference to its `status-changed` handler so
 `stopSyncRuntime()` can remove it, and the attachment `UploadQueue` is disposed
 with the runtime that built it (see "Upload queue lifetime" under Note
 Attachments). A subscriber left attached does more than leak: it keeps the dead
-CRDT queue and provider reachable for the rest of the session.
+note-body outbox and provider reachable for the rest of the session.
 
 ## Manifest Integrity
 
@@ -564,11 +876,29 @@ Desktop periodically compares `/sync/manifest` with local syncable records. Note
 matched from canonical `note_metadata` first, with the rebuildable index cache as a fallback, so a
 freshly pushed note is not treated as server-only while indexing catches up.
 
+The full-sync log line says whether a manifest was actually diffed. `fullSync: manifest check
+complete { rePullNeeded, serverOnlyCount }` appears only after a real fetch and diff. A check that
+did not run logs `fullSync: manifest check skipped { reason, nextEligibleAt }` instead, where
+`reason` is `throttled` (the 30-minute window has not elapsed), `no-token` or `error`, and
+`nextEligibleAt` is the ISO time the next check may run. A skipped check never reports
+`serverOnlyCount: 0`, so it cannot be read as a verified clean result.
+
 The comparison reads ids only. Repair payloads are built one row at a time, and only for a record
 the server manifest is actually missing, so the usual clean check never materializes or serializes a
 single row body — the cost of the check scales with the size of the disagreement, not with the size
 of the vault. The bytes a repair pushes are unchanged: the lazy build runs the same full-row select
 through the same serialization the eager pass used.
+
+A server item counts as server-only, and so resets `LAST_CURSOR` to 0 for a full re-pull, only
+when the check can prove it is missing. Calendar events, sources, bindings and external events,
+folder configs, tag categories and agent conversations and messages are listed from their local
+tables for that direction only; they are never re-uploaded from the manifest check. A server item
+of a type this build does not list is never counted. Neither is an id the device declined on apply
+because the thing it describes is already held under another id: a second inbox project, or a
+`calendar_source` whose `(provider, kind, remote_id)` belongs to an existing row. Those ids are
+kept in `sync_state` under `declinedSyncRefs` and dropped once the server stops listing them.
+Before this, every live row of the unlisted types counted as missing, so each full sync outside
+the 30-minute throttle re-pulled the whole vault.
 
 ### Manifest pagination
 
@@ -665,6 +995,13 @@ canonical note upsert leaves it (and the sync stamp) untouched when a caller
 has nothing to say about it. Ordinary vault writes — a content save, a rename,
 a move, a re-index — carry file state only, and must not erase it.
 
+On the server, dereferencing only lowers a chunk's `ref_count`; a scheduled
+sweep reaps chunks at zero. It deletes the row first, and only while it is
+still unreferenced, then deletes the objects of the rows it removed, skipping
+any key a retried upload claimed in the meantime. A failed object delete only
+leaks storage. The sweep works in batches of 90 ids (D1 binds at most 100),
+300 chunks per tick.
+
 ## Tombstones
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.
@@ -726,6 +1063,50 @@ The renderer surfaces this as an in-account switcher section plus a download dia
 picks the destination folder. A name that fails to decrypt is shown as `null` rather than blocking the
 list.
 
+### Vault account binding
+
+Sign-out keeps every vault on disk. Before bindings, the next account to sign in on the machine
+synced those vaults into its own account, and sign-in with a non-empty vault open silently adopted
+the account's largest vault. Each vault now records the account it syncs with, and
+`startSyncRuntime` checks it before any sync service is built
+(`apps/desktop/src/main/sync/vault-account-binding.ts`).
+
+The binding is a `settings` row in the vault's data DB, `sync.account-binding.v1` =
+`{ userId, mode: 'sync' | 'local' }`, so it travels with the folder. Older app versions ignore the
+key. The store's vault entry mirrors it as `accountBinding` for vaults that are not open.
+
+The gate decides in this order, with `userId` taken from the session token's `sub`:
+
+1. Bound to this account: `sync` starts, `local` holds as `local-only`.
+2. Bound to another account for sync: holds as `foreign`.
+3. No local content (no files outside dot-directories, no tasks, no inbox items): binds and starts,
+   even offline.
+4. `GET /sync/vaults` fails: holds as `unknown`, stays sync-eligible, retries after 60 seconds.
+5. The account already lists the vault uuid: binds and starts. This is how vaults from older
+   versions bind without a prompt.
+6. A clock on a task, inbox item or note carries a device id other than this install's (or the
+   offline placeholder): holds as `foreign`. Every sign-in registers a new device id, so this is
+   history from another session.
+7. Otherwise: holds as `needs-decision` and the renderer asks once.
+
+The renderer reads the state with `sync:get-vault-binding`, listens on
+`sync:vault-binding-changed`, and answers with `sync:resolve-vault-binding`:
+
+| Choice  | Allowed from                   | Effect                                                           |
+| ------- | ------------------------------ | ---------------------------------------------------------------- |
+| `sync`  | `needs-decision`, `local-only` | Binds for sync; the vault registers as its own account vault     |
+| `merge` | `needs-decision` with a target | `adoptVaultLocally` onto the account's largest vault, then binds |
+| `local` | `needs-decision`               | Records `local`; not asked again for this account                |
+
+`foreign` accepts nothing: its items carry another account's clocks and would never be seeded, so
+syncing one needs a fresh identity and a full re-push. Binding also drops a current-device row and
+cursor left in the vault by a previous session, so `ensureDeviceRowForVault` cannot adopt a stale
+device id.
+
+Two related paths follow the binding. `adoptAccountVaultIfAbsent` at device registration only adopts
+an empty vault. `refreshVaultDirectory` only self-registers vaults whose store entry is bound to the
+signed-in account for sync, so another account's vaults never reach this account's directory.
+
 ## Endpoints
 
 | Path                                   | Direction | Purpose                                                                                       |
@@ -735,7 +1116,7 @@ list.
 | `POST /sync/crdt/updates`              | up        | Incremental Yjs binary updates                                                                |
 | `GET /sync/crdt/updates`               | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
 | `POST /sync/crdt/updates/batch`        | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
-| `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes the note's stored updates at or below it                   |
+| `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes stored updates it covers (`coversThrough`, else watermark) |
 | `POST /sync/crdt/snapshot/batch`       | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note     |
 | `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
 | `GET /sync/vaults`                     | down      | List the account's registered vaults                                                          |
@@ -816,8 +1197,8 @@ that hit it.
 
 ### The vault sweep's conditional baseline
 
-The vault-wide sweep uses `snapshotMeta` to stop re-downloading baselines a device already holds. It
-runs each chunk in two phases:
+The paced drain (the legacy sweep and durable debts, #2421) uses `snapshotMeta` to stop
+re-downloading baselines a device already holds. It runs each chunk in two phases:
 
 - **Probe.** One `POST /sync/crdt/updates/batch` for the chunk with `limit: 1`, asking only whether
   anything moved. No document is opened, no snapshot is fetched, nothing is decrypted. A note whose
@@ -858,9 +1239,8 @@ The key is additive. A store written by a build that predates it has no record, 
 what it cost before. A newer store read by an older build is inert: the older build never asks for
 the key. No protocol change, no D1 schema change, no IPC contract change.
 
-Two properties this does **not** change. The sweep stays exhaustive — every note in a chunk is still
-named in the probe, because the sweep is the only channel by which a body-only remote edit reaches a
-device that missed the broadcast; this changes what a note costs, never whether it is visited. And
+Two properties this does **not** change. The drain stays exhaustive — every note in a chunk is still
+named in the probe; this changes what a note costs, never whether it is visited. And
 the single-note pull path (`GET /sync/crdt/snapshot/:noteId` then `GET /sync/crdt/updates`) stays
 unconditional: it reports whether the server's state was fully merged, and the pending-note replay
 turns that report into a snapshot push, which prunes peers' updates.
@@ -941,13 +1321,26 @@ An oversized CRDT payload is diagnosable whichever check catches it. On the clie
 no storage code maps to `note_too_large`, which names the note in its toast — it is not, and must
 not read as, a storage-quota problem.
 
+### Retried CRDT pushes are stored once
+
+A push that times out after the server committed it is retried with the same bytes. The server
+stores the SHA-256 of each update (migration `0012`), and a unique index on the note and that hash
+makes the retried insert a no-op. The response carries the sequence number the stored row already
+has, so the client gets the answer the first attempt would have given, and storage is charged once.
+Every update carries a fresh encryption nonce, so identical bytes always mean a retry. Rows written
+before the migration have no hash and are never matched. Quota is reserved only for the bytes the
+note does not already hold, so a retry is answered even when the quota filled up after the first
+attempt.
+
 ### CRDT write notifications
 
 Both CRDT write paths notify peers the same way. Once the write is durable, the server broadcasts
-`crdt_updated` carrying the note id to every socket on that vault except the pushing device, and
-each peer pulls that one note. Nothing else carries a body — the record feed moves metadata only —
-so a body write that does not broadcast stays invisible until the receiving device's next vault
-sweep, which is up to 15 minutes away.
+`crdt_updated` carrying the note id to every socket on that vault except the pushing device. The
+frame also carries the highest `server_cursor` the write reserved, omitted when it stored nothing
+new; clients must not use it as their pull cursor. A desktop whose legacy body sweep is done treats
+a frame with a cursor as a wake and pulls the change feed, which serves the body (#2421); before
+that, or for a frame without a cursor, it pulls that one note. A body write that does not broadcast
+stays invisible until the receiving device's next pull.
 
 The symmetry matters most for `POST /sync/crdt/snapshot`, which is not only the oversized-update
 fallback. Edits made while signed out do enter the local Y.Doc, but with no session they are never
@@ -979,6 +1372,13 @@ middleware, which is what lets a request-scoped elevation hook (`getElevatedLimi
 bootstrap-session elevation) widen the effective ceiling without touching the counter. And failure
 stays fail-closed: a missing binding or DO error blocks the request with a 500, exactly as a D1
 error did before.
+
+The record push bucket, `sync_push`, allows 300 requests per 60 seconds per **device**, the same
+ceiling and key as `crdt_push`. It used to be 60 per 60 seconds per account, so every device on the
+account shared one budget: three devices editing at once split 60 pushes a minute. A request
+without a deviceId falls back to the userId → IP key. `sync_push` gets no bootstrap elevation.
+`sync_changes` is still 60 per 60 seconds per account; it can move to a per-device key once
+wake-driven pulls are coalesced.
 
 The `rate_limits` table still exists: previously-deployed code writes it during a deploy window,
 and the OTP per-email limiter plus the telemetry exception budget still use it. It is dropped only
@@ -1158,6 +1558,16 @@ changes page actually delivered items, so that is a genuine never-pulled device 
 the client's own `LAST_CURSOR` gate uses. An already-synced device gets `BOOTSTRAP_NOT_ELIGIBLE`
 (409).
 
+Any `GET /sync/changes` page that delivers an item therefore spends eligibility, including one
+that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
+used to read `/sync/changes?limit=1`, so every fresh desktop device got the 409 on its first full
+sync. It now reads `GET /sync/status`, which sits behind the same `authMiddleware` revocation check
+and writes nothing. It is not a single-row read: `getSyncStatus` also counts the vault's
+`sync_items` rows above the device cursor, which for a fresh device is the whole vault, served by
+`idx_sync_user_cursor`. A client that sends identification headers also costs one `getClientPolicy`
+read. Desktop builds that still send the old probe keep losing the session; that costs them
+elevated limits, not data.
+
 | Constant                                 | Value      | Why                                                 |
 | ---------------------------------------- | ---------- | --------------------------------------------------- |
 | `BOOTSTRAP_SESSION_TTL_SECONDS`          | 60 minutes | Per-token lifetime; slides on renewal               |
@@ -1233,24 +1643,14 @@ on this device. `maybeMarkBootstrapFullText()` fires only when four things hold 
 `sweepSettledOnThisEngine`, `bootstrapPullSucceeded`, no paced CRDT chunk in flight, and both the
 paced queue and the pending set empty.
 
-`sweepSettledOnThisEngine` deliberately does **not** mean "a sweep literally ran". The sweep
-throttle reads the persisted `LAST_CRDT_SWEEP_AT` stamp while fresh-device detection reads
-`LAST_CURSOR`, so a genuine first sync can find the sweep throttled and never run one — and a mark
-gated on a sweep having run would then never fire, holding the window and the elevated session open
-until the TTL expired. The flag is set when a sweep is queued **and** when the runner is online and
-the throttle declined, because that is the other way the question "is anything outstanding?" gets a
-real answer. Offline is not one of those ways: it means "nothing is fetchable", never "nothing is
-outstanding".
+`sweepSettledOnThisEngine` is set once a full sync ends online with a CRDT store, after queuing the
+legacy sweep if it was owed (#2421 removed the throttled vault sweep it used to wait on). Offline
+does not settle it: it means "nothing is fetchable", never "nothing is outstanding".
 
 `bootstrapPullSucceeded` is the other half, and is why `PullCoordinator.pull()` and
 `SyncEngine.pull()` return `Promise<boolean>` rather than `Promise<void>`. On a fresh device an
-empty index DB makes every sweep drain trivially whether or not the pull failed, so "queue empty"
+empty index DB makes every drain trivially empty whether or not the pull failed, so "queue empty"
 only becomes "bodies delivered" once a pull has reported that it actually delivered.
-
-`LAST_CRDT_SWEEP_AT` itself is written by `stampSweptVault()` when the paced drain has finished the
-vault — nothing in flight, nothing queued, nothing owed back to the pending set — not when the
-sweep enqueued it. `unstampedSweepAt` holds the throttle interval closed in between, so a process
-killed mid-drain does not leave a stamp claiming a drain that never completed.
 
 **Releasing the elevated session** is a resource concern, and takes any of these paths:
 
@@ -1523,9 +1923,16 @@ replaces it installs its own hook.
 ### The message contract, and the mobile client
 
 The socket's message names, the keepalive string, the close codes and a parser live in
-`packages/contracts/src/sync-socket.ts`. Desktop imports the name list; mobile parses against the
-same module. An unrecognised `type` parses successfully and is then ignored rather than failing the
-frame, so a server that starts sending a new message cannot break a client that shipped before it.
+`packages/contracts/src/sync-socket.ts`. Desktop parses every frame with its `parseSyncSocketFrame`;
+mobile parses against the same module. An unrecognised `type` parses successfully and is then
+ignored rather than failing the frame, so a server that starts sending a new message cannot break a
+client that shipped before it. Desktop drops an ignored frame with a debug log; only a frame that is
+not a `{ type, payload? }` envelope at all raises the socket's `error` event.
+
+The parser narrows `calendar_changes_available` (`sourceId`), `linking_request` (`sessionId`,
+`newDeviceName`, `newDevicePlatform`) and `linking_approved` (`sessionId`) alongside the older
+types. Unknown payload keys are stripped, and a frame missing a required field is ignored rather than
+forwarded, so a malformed linking frame no longer reaches the renderer.
 
 Mobile is a second implementation rather than a port, because React Native's WebSocket is not the
 same object as `ws`. It has no `terminate()`, no ping/pong events and no `unexpected-response`, so a

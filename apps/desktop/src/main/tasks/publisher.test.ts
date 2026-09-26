@@ -20,13 +20,24 @@ vi.mock('electron', () => ({
   }
 }))
 
-vi.mock('./runtime-effects', () => ({
-  syncTaskCreate: vi.fn(),
-  syncTaskUpdate: vi.fn(),
-  syncTaskDelete: vi.fn(),
-  syncProjectCreate: vi.fn(),
-  syncProjectUpdate: vi.fn(),
-  syncProjectDelete: vi.fn()
+vi.mock('../sync/local-mutations', () => ({
+  enqueueLocalSyncCreate: vi.fn(),
+  enqueueLocalSyncUpdate: vi.fn(),
+  enqueueLocalSyncDelete: vi.fn()
+}))
+
+vi.mock('../projections', () => ({ publishProjectionEvent: vi.fn() }))
+vi.mock('../calendar/change-events', () => ({ emitCalendarProjectionChanged: vi.fn() }))
+vi.mock('../calendar/google/local-sync-effects', () => ({
+  scheduleGoogleCalendarSourceSync: vi.fn()
+}))
+
+vi.mock('./activity-log', () => ({
+  recordTaskCompleted: vi.fn(),
+  recordTaskCreated: vi.fn(),
+  recordTaskDeleted: vi.fn(),
+  recordTaskMoved: vi.fn(),
+  recordTaskUpdated: vi.fn()
 }))
 
 vi.mock('../telemetry/track', () => ({
@@ -39,6 +50,8 @@ vi.mock('./remove-task-line-from-note', () => ({
 
 import { createTasksPublisher } from './publisher'
 import { removeTaskLineFromSourceNote } from './remove-task-line-from-note'
+import * as localMutations from '../sync/local-mutations'
+import { publishProjectionEvent } from '../projections'
 
 const TAGS_CHANGED = 'notes:tags-changed'
 
@@ -144,5 +157,42 @@ describe('createTasksPublisher source-note cleanup', () => {
     const publisher = createTasksPublisher()
     await publisher.taskDeleted({ id: 'task-1' })
     expect(removeTaskLineFromSourceNote).not.toHaveBeenCalled()
+  })
+})
+
+// #2301: sync for tasks and projects is committed by the domain's unit of work
+// together with the row (tasks/sync-intents.ts). The publisher runs after that
+// commit and must not enqueue a second time.
+describe('createTasksPublisher leaves sync to the unit of work', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('never enqueues a task or project sync, and still refreshes task projections', async () => {
+    const publisher = createTasksPublisher()
+    const task = makeTask()
+    const project = { id: 'proj-1', name: 'P' } as never
+    const status = { id: 's-1', projectId: 'proj-1' } as never
+
+    publisher.taskCreated({ task })
+    publisher.taskUpdated({ id: 'task-1', task, changes: {}, changedFields: ['title'] })
+    publisher.taskCompleted({ id: 'task-1', task })
+    publisher.taskMoved({ id: 'task-1', task, changedFields: ['position'] })
+    publisher.taskReordered?.({ id: 'task-1', changedFields: ['position'] })
+    await publisher.taskDeleted({ id: 'task-1', snapshot: task })
+    publisher.projectCreated({ project })
+    publisher.projectUpdated({ id: 'proj-1', project, changedFields: ['name'] })
+    publisher.projectDeleted({ id: 'proj-1', snapshot: project })
+    publisher.statusCreated({ status })
+    publisher.statusUpdated({ status })
+    publisher.statusDeleted({ id: 's-1', projectId: 'proj-1' })
+
+    expect(localMutations.enqueueLocalSyncCreate).not.toHaveBeenCalled()
+    expect(localMutations.enqueueLocalSyncUpdate).not.toHaveBeenCalled()
+    expect(localMutations.enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    expect(vi.mocked(publishProjectionEvent).mock.calls).toEqual([
+      ...Array.from({ length: 5 }, () => [{ type: 'task.upserted', taskId: 'task-1' }]),
+      [{ type: 'task.deleted', taskId: 'task-1' }]
+    ])
   })
 })

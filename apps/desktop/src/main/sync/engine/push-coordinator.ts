@@ -14,14 +14,16 @@ import { postToServer, RateLimitError, SyncServerError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
+import { isNoteKnownDeleted } from '../pending-deletes'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { trackMainEvent } from '../../telemetry/track'
+import { PushLagTrace } from './sync-latency-telemetry'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import {
-  SYNC_STATE_KEYS,
   MAX_PUSH_ITERATIONS,
   MIN_PUSH_BATCH_SIZE,
+  PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES,
   YIELD_EVERY_N_ITEMS,
   CRDT_SNAPSHOT_CONCURRENCY,
   PUSH_DEBOUNCE_MS,
@@ -37,17 +39,71 @@ export class PushCoordinator {
   private stateManager: SyncStateManager
   private pushDebounceTimer: ReturnType<typeof setTimeout> | null = null
   private pendingPushRequested = false
+  private lastPushStartedAt = Number.NEGATIVE_INFINITY
+  private awaitedCycle: Promise<void> | null = null
+  private stopped = false
   /**
    * Batch size the server was last able to take, or null while the configured
    * size is still believed good.
    *
    * Kept on the instance, not per run: a vault big enough to be refused at 100
    * is refused at 100 on every cycle too, so re-discovering the ceiling each
-   * time would spend the same handful of doomed requests forever. It only ever
-   * shrinks, and a restart re-optimistically clears it.
+   * time would spend the same handful of doomed requests forever. It doubles
+   * back after PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES clean full-size pushes
+   * (#2293): one transient 5xx used to pin it low until restart.
    */
   private pushBatchCeiling: number | null = null
+  private cleanPushesAtCeiling = 0
   suppressPushDuringPull = false
+  /** The generation of the push that owns the queue, 0 when none does. */
+  private inFlightGeneration = 0
+  private lastPushGeneration = 0
+  private readonly settledWaiters = new Set<() => void>()
+
+  /**
+   * True from lock acquisition until the push released it, which spans every
+   * dequeue and its payload-conditional ack. A conflict requeue carries the
+   * placeholder payload '{}', so one coalesced into a row this push dequeued is
+   * invisible to that ack and deleted with it; the socket fast path, which
+   * takes no sync lock, waits while this is set (#2300, protocol 06 §6.6.2).
+   * Only the owning push clears it, so a zombie push that the stale-lock
+   * watchdog abandoned cannot clear the gate of the push after it.
+   */
+  get pushInFlight(): boolean {
+    return this.inFlightGeneration !== 0
+  }
+
+  /** Resolves true once no push is in flight, false after `timeoutMs`. Leaves no waiter behind. */
+  whenPushSettled(timeoutMs: number): Promise<boolean> {
+    if (!this.pushInFlight) return Promise.resolve(true)
+    return new Promise((resolve) => {
+      const settle = (): void => {
+        clearTimeout(timer)
+        this.settledWaiters.delete(settle)
+        resolve(true)
+      }
+      const timer = setTimeout(() => {
+        this.settledWaiters.delete(settle)
+        resolve(false)
+      }, timeoutMs)
+      this.settledWaiters.add(settle)
+    })
+  }
+
+  /**
+   * The stale-lock watchdog abandoned the push: it can no longer be waited
+   * for, so it stops holding the gate. Its late ack can still delete a
+   * requeue coalesced into a row it dequeued, the watchdog's accepted overlap
+   * (protocol 06 §6.6.2).
+   */
+  resetPushInFlight(): void {
+    this.inFlightGeneration = 0
+    this.settlePushWaiters()
+  }
+
+  private settlePushWaiters(): void {
+    for (const settle of [...this.settledWaiters]) settle()
+  }
 
   constructor(ctx: SyncContext, stateManager: SyncStateManager) {
     this.ctx = ctx
@@ -75,20 +131,26 @@ export class PushCoordinator {
     }
 
     let released = false
+    const generation = ++this.lastPushGeneration
+    this.inFlightGeneration = generation
     const cleanup = (): void => {
       if (released) return
       released = true
+      if (this.inFlightGeneration === generation) {
+        this.inFlightGeneration = 0
+        this.settlePushWaiters()
+      }
       this.ctx.releaseLock()
       release()
     }
 
     const timer = new SyncTimer()
+    const pushLag = new PushLagTrace()
     const startTime = Date.now()
     let pushedCount = 0
     let quotaEventSent = false
     let signatureEventSent = false
     let lastServerTime = 0
-    let lastMaxCursor = 0
     let vaultKey: Uint8Array | null = null
     let signingKeyBytes: Uint8Array | null = null
 
@@ -167,6 +229,9 @@ export class PushCoordinator {
               .filter((item) => {
                 if (item.operation !== 'create') return false
                 if (item.type !== 'note' && item.type !== 'journal') return false
+                // The body goes before the record, so a create the server then
+                // refuses as delete-wins has already republished the body.
+                if (isNoteKnownDeleted(this.ctx.deps.db, item.itemId)) return false
                 try {
                   const parsed = JSON.parse(item.payload) as { fileType?: string }
                   if (parsed.fileType && isBinaryFileType(parsed.fileType)) return false
@@ -234,6 +299,10 @@ export class PushCoordinator {
           }
 
           timer.startPhase('network')
+          // A batch that can still be split answers a 5xx by splitting, never by
+          // resending itself. One that cannot has no smaller shape to try, so
+          // only then does the retry ladder back off and resend it (#2293).
+          const splittable = pushItems.length > MIN_PUSH_BATCH_SIZE
           let response: RetryResult<PushResponse>
           try {
             response = await withRetry(
@@ -254,9 +323,7 @@ export class PushCoordinator {
               {
                 signal: abortSignal,
                 isOnline: () => this.ctx.deps.network.online,
-                // A 5xx here is answered by shrinking the batch below, not by
-                // sending the same one again — see retryOn5xx.
-                retryOn5xx: false
+                retryOn5xx: !splittable
               }
             )
           } catch (error) {
@@ -268,14 +335,12 @@ export class PushCoordinator {
             // act on and nothing gets marked. Halving is the only move that
             // makes progress; without it the whole run ends here and the same
             // rows come back next cycle forever (2026-08-27 → 09-01, one vault
-            // stuck at 2914 pending).
-            if (
-              error instanceof SyncServerError &&
-              error.statusCode >= 500 &&
-              batchSize > MIN_PUSH_BATCH_SIZE
-            ) {
-              batchSize = Math.max(MIN_PUSH_BATCH_SIZE, Math.floor(batchSize / 2))
+            // stuck at 2914 pending). Halved from the size SENT, so the next
+            // request is strictly smaller than the refused one.
+            if (error instanceof SyncServerError && error.statusCode >= 500 && splittable) {
+              batchSize = Math.max(MIN_PUSH_BATCH_SIZE, Math.floor(pushItems.length / 2))
               this.pushBatchCeiling = batchSize
+              this.cleanPushesAtCeiling = 0
               log.warn('Push: server refused the batch, halving it', {
                 statusCode: error.statusCode,
                 batchSize
@@ -294,9 +359,8 @@ export class PushCoordinator {
           })
 
           lastServerTime = response.value.serverTime
-          if (response.value.maxCursor > lastMaxCursor) {
-            lastMaxCursor = response.value.maxCursor
-          }
+          pushLag.record(dedupedItems, response.value, this.ctx.deps.queue)
+          if (pushItems.length >= batchSize) batchSize = this.raiseCeilingAfterCleanPush(batchSize)
           const acceptedSet = new Set(response.value.accepted)
           for (let pi = 0; pi < pushItems.length; pi++) {
             if (this.ctx.abortController?.signal.aborted) break
@@ -366,9 +430,12 @@ export class PushCoordinator {
                 break
               } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
                 log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
-                // Ends the run via `break`, never a throw — engine.push() records
-                // it as a success, so sync_error must be emitted here. Once per
-                // run: later iterations can hit the same quota wall.
+                // Only this item is refused (#2293): the rest of the response is
+                // still acked below, and the run keeps dequeuing because the
+                // server refuses only items that grow storage. A delete or a
+                // shrinking update commits, and blocking it would block the way
+                // out of the quota. Never a throw, so engine.push() records a
+                // success and sync_error must be emitted here, once per run.
                 if (!quotaEventSent) {
                   quotaEventSent = true
                   trackMainEvent('sync_error', {
@@ -389,7 +456,6 @@ export class PushCoordinator {
                 }
                 this.ctx.lastError = 'errors:sync.storageQuotaExceeded'
                 this.stateManager.setState('error')
-                break
               } else {
                 log.warn('Push: item rejected', {
                   queueId: queueId.slice(0, 8),
@@ -410,16 +476,9 @@ export class PushCoordinator {
           this.stateManager.updateLastSyncAt()
           this.ctx.rateLimitConsecutive = 0
           if (lastServerTime > 0) this.stateManager.checkClockSkew(lastServerTime)
-
-          if (lastMaxCursor > 0) {
-            const currentCursor = Number(
-              this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? '0'
-            )
-            if (lastMaxCursor > currentCursor) {
-              this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(lastMaxCursor))
-              log.debug('Push: advanced pull cursor', { from: currentCursor, to: lastMaxCursor })
-            }
-          }
+          // The push response's maxCursor never moves LAST_CURSOR (#2283,
+          // protocol 05 §5.5): peer rows below it may still be unpulled, and
+          // every read is `server_cursor > ?`, so they would be skipped for good.
 
           if (this.ctx.deps.queue.getPendingCount() === 0) {
             this.ctx.deps.emitToRenderer(EVENT_CHANNELS.QUEUE_CLEARED, {
@@ -474,30 +533,78 @@ export class PushCoordinator {
     }
   }
 
+  /**
+   * Leading edge with a trailing guard (#2289): a request more than
+   * PUSH_DEBOUNCE_MS after the last push started goes out now, anything closer
+   * arms one timer for the rest of the window. So at most one push per window.
+   *
+   * A request that finds a cycle running is held in `pendingPushRequested` and
+   * runs once when that cycle ends, never through a new timer: re-arming used to
+   * re-debounce every window until a long cycle finished.
+   */
   requestPush(): void {
-    if (this.stateManager.isPaused() || this.suppressPushDuringPull) return
+    if (this.stopped || this.stateManager.isPaused() || this.suppressPushDuringPull) return
     this.pendingPushRequested = true
     if (!this.ctx.deps.network.online) return
     if (this.pushDebounceTimer) return
 
+    const sinceLastPush = Date.now() - this.lastPushStartedAt
+    if (sinceLastPush > PUSH_DEBOUNCE_MS) {
+      this.firePendingPush()
+      return
+    }
     this.pushDebounceTimer = setTimeout(() => {
       this.pushDebounceTimer = null
-      if (this.stateManager.isPaused()) {
-        this.pendingPushRequested = false
-        return
-      }
-      if (this.ctx.syncing || this.ctx.fullSyncActive) {
-        this.requestPush()
-        return
-      }
-      if (this.pendingPushRequested) {
-        this.pendingPushRequested = false
-        this.ctx.scheduleSync(() => (this.ctx.doPush ?? (() => this.push()))())
-      }
-    }, PUSH_DEBOUNCE_MS)
+      this.firePendingPush()
+    }, PUSH_DEBOUNCE_MS - sinceLastPush)
   }
 
-  clearDebounce(): void {
+  /**
+   * The engine's signal that a cycle ended: the sync lock was released or a
+   * fullSync returned. Needed because a cycle started directly (start()'s first
+   * fullSync, a manual sync, stop()'s final push) has no `ctx.inFlightSync` to
+   * wait on. Idempotent: with nothing pending it does nothing.
+   *
+   * Deferred a microtask so the push never starts inside `releaseLock()` itself.
+   */
+  onSyncCycleEnded(): void {
+    if (!this.pendingPushRequested || this.pushDebounceTimer) return
+    queueMicrotask(() => {
+      if (!this.pushDebounceTimer) this.firePendingPush()
+    })
+  }
+
+  private firePendingPush(): void {
+    if (this.stopped || !this.pendingPushRequested) return
+    if (this.stateManager.isPaused()) {
+      this.pendingPushRequested = false
+      return
+    }
+    if (!this.ctx.deps.network.online) return
+    if (this.ctx.syncing || this.ctx.fullSyncActive) {
+      this.runAfterInFlightCycle()
+      return
+    }
+    this.pendingPushRequested = false
+    this.lastPushStartedAt = Date.now()
+    this.ctx.scheduleSync(() => (this.ctx.doPush ?? (() => this.push()))())
+  }
+
+  private runAfterInFlightCycle(): void {
+    const inFlight = this.ctx.inFlightSync
+    // No promise: a directly started cycle, which ends in onSyncCycleEnded().
+    if (!inFlight || inFlight === this.awaitedCycle) return
+    this.awaitedCycle = inFlight
+    const onSettled = (): void => {
+      if (this.awaitedCycle === inFlight) this.awaitedCycle = null
+      this.firePendingPush()
+    }
+    void inFlight.then(onSettled, onSettled)
+  }
+
+  /** Engine teardown: nothing requested before or during stop() may push after it. */
+  stop(): void {
+    this.stopped = true
     if (this.pushDebounceTimer) {
       clearTimeout(this.pushDebounceTimer)
       this.pushDebounceTimer = null
@@ -511,6 +618,19 @@ export class PushCoordinator {
       clearTimeout(this.pushDebounceTimer)
       this.pushDebounceTimer = null
     }
+  }
+
+  /** Returns the batch size for the next request after a clean full-size push. */
+  private raiseCeilingAfterCleanPush(batchSize: number): number {
+    if (this.pushBatchCeiling === null) return batchSize
+    this.cleanPushesAtCeiling++
+    if (this.cleanPushesAtCeiling < PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES) return batchSize
+    this.cleanPushesAtCeiling = 0
+    const configured = this.ctx.options.pushBatchSize
+    const raised = Math.min(configured, batchSize * 2)
+    this.pushBatchCeiling = raised >= configured ? null : raised
+    log.info('Push: batches land cleanly again, raising the batch size', { batchSize: raised })
+    return raised
   }
 
   private markItemSynced(itemId: string, type: SyncItemType): void {

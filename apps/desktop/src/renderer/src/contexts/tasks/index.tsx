@@ -15,7 +15,8 @@ interface TasksContextValue {
   setProjects: (projects: Project[] | ((prev: Project[]) => Project[])) => void
   setSelection: (id: string, type: TaskSelectionType) => void
   setSelectedTaskIds: (ids: Set<string>) => void
-  addTask: (task: Task) => Promise<void>
+  /** Resolves with the stored task id, or null when the create failed. */
+  addTask: (task: Task) => Promise<string | null>
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>
   deleteTask: (taskId: string) => Promise<void>
   addProject: (project: Project) => Promise<void>

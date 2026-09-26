@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import { SyncQueueManager, DEFAULT_MAX_ATTEMPTS } from '@memry/sync-client/queue'
 import { setupTestDb, type TestDatabaseResult } from '@tests/utils/engine-mocks'
@@ -37,6 +37,7 @@ vi.mock('../http-client', async (importOriginal) => {
 })
 
 import { PushCoordinator } from './push-coordinator'
+import { PUSH_DEBOUNCE_MS } from './sync-context'
 import { SyncServerError } from '../http-client'
 
 interface QueueRow {
@@ -281,6 +282,38 @@ describe('PushCoordinator', () => {
     })
   })
 
+  // #2280 (Review): the origin-side half of the end-to-end latency.
+  describe('#given a queued mutation #when the server accepts it', () => {
+    it('#then reports enqueue-to-accept lag keyed by the response maxCursor', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      const track = vi.spyOn(await import('../../telemetry/track'), 'trackMainEvent')
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+        accepted: body.items.map((i) => i.id),
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 31
+      }))
+      const enqueuedAt = Date.now()
+      queue.enqueue({
+        type: 'settings',
+        itemId: 'settings-1',
+        operation: 'update',
+        payload: JSON.stringify({ theme: 'dark' })
+      })
+
+      await coordinator.push()
+
+      const lag = track.mock.calls.filter(
+        ([name, options]) => name === 'sync_run_completed' && options.action === 'push_lag'
+      )
+      expect(lag).toHaveLength(1)
+      const metrics = lag[0][1].metrics as { durationMs: number; value: number }
+      expect(metrics.value).toBe(31)
+      expect(metrics.durationMs).toBeLessThanOrEqual(Date.now() - enqueuedAt)
+      track.mockRestore()
+    })
+  })
+
   describe('#given a queued local mutation #when the server accepts it', () => {
     it('#then it is pushed, dropped from the queue, and marked synced locally', async () => {
       const { coordinator, queue, stateManager, emitToRenderer } = createHarness(getDb())
@@ -313,13 +346,16 @@ describe('PushCoordinator', () => {
       )
     })
 
-    it('#then it advances the pull cursor when the server reports a higher maxCursor', async () => {
+    // #2283
+    it('#then it leaves the pull cursor where the last pull put it', async () => {
       const { coordinator, queue, stateManager } = createHarness(getDb())
+      stateManager.setStateValue('lastCursor', '40')
+      vi.mocked(stateManager.setStateValue).mockClear()
       postToServerMock.mockResolvedValue({
         accepted: ['note-1'],
         rejected: [],
         serverTime: Math.floor(Date.now() / 1000),
-        maxCursor: 42
+        maxCursor: 100
       })
 
       queue.enqueue({
@@ -331,7 +367,9 @@ describe('PushCoordinator', () => {
 
       await coordinator.push()
 
-      expect(stateManager.setStateValue).toHaveBeenCalledWith('lastCursor', '42')
+      expect(queue.getSize()).toBe(0)
+      expect(stateManager.getStateValue('lastCursor')).toBe('40')
+      expect(stateManager.setStateValue).not.toHaveBeenCalledWith('lastCursor', expect.anything())
     })
   })
 
@@ -531,6 +569,119 @@ describe('PushCoordinator', () => {
       expect(queue.getPendingCount()).toBe(0)
       expect(stateManager.setState).not.toHaveBeenCalledWith('error')
     })
+
+    function enqueueTasks(queue: SyncQueueManager, prefix: string, count: number): void {
+      for (let i = 0; i < count; i++) {
+        queue.enqueue({
+          type: 'task',
+          itemId: `${prefix}-${i}`,
+          operation: 'update',
+          payload: JSON.stringify({ title: `${prefix} ${i}` })
+        })
+      }
+    }
+
+    // #2293
+    it('#then the lowered ceiling climbs back once full batches land cleanly again', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      ctx.options.pushBatchSize = 8
+      let edgeRefusesAbove = 2
+      const sentSizes: number[] = []
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        sentSizes.push(body.items.length)
+        if (body.items.length > edgeRefusesAbove) {
+          throw new SyncServerError('Server error (503)', 503)
+        }
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      enqueueTasks(queue, 'first', 4)
+      await coordinator.push()
+      expect(sentSizes).toEqual([4, 2, 2])
+
+      // The server recovers. Every third clean full batch doubles the size, up
+      // to the configured one, instead of pushing 2 at a time until restart.
+      edgeRefusesAbove = Number.POSITIVE_INFINITY
+      sentSizes.length = 0
+      enqueueTasks(queue, 'second', 30)
+      await coordinator.push()
+
+      expect(sentSizes).toEqual([2, 4, 4, 4, 8, 8])
+      expect(queue.getPendingCount()).toBe(0)
+    })
+
+    // #2293
+    it('#then a vault still refused at the raised size spends one refused request per raise', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      ctx.options.pushBatchSize = 8
+      const sentSizes: number[] = []
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        sentSizes.push(body.items.length)
+        if (body.items.length > 2) throw new SyncServerError('Server error (503)', 503)
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      enqueueTasks(queue, 'first', 4)
+      await coordinator.push()
+      sentSizes.length = 0
+      enqueueTasks(queue, 'second', 10)
+      await coordinator.push()
+
+      expect(sentSizes).toEqual([2, 4, 2, 2, 2, 2])
+      expect(queue.getPendingCount()).toBe(0)
+    })
+  })
+
+  describe('#given a 5xx on a batch that cannot be split any further', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    // #2293: halving a one-item batch would resend the identical request at
+    // once; the retry ladder backs off first.
+    it('#then it is retried with backoff instead of resent at once, and lands', async () => {
+      const { coordinator, queue, stateManager } = createHarness(getDb())
+      postToServerMock
+        .mockRejectedValueOnce(new SyncServerError('Server error (503)', 503))
+        .mockRejectedValueOnce(new SyncServerError('Server error (503)', 503))
+        .mockImplementation(async (_path: string, body: PushBody) => ({
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }))
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-1',
+        operation: 'update',
+        payload: JSON.stringify({ title: 'Transient' })
+      })
+
+      const run = coordinator.push()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(60_000)
+      await run
+
+      expect(postToServerMock).toHaveBeenCalledTimes(3)
+      expect(queue.getPendingCount()).toBe(0)
+      expect(stateManager.setState).not.toHaveBeenCalledWith('error')
+    })
   })
 
   describe('#given the access token is stale #when the server answers 401', () => {
@@ -620,7 +771,7 @@ describe('PushCoordinator', () => {
       expect(queue.peek()[0].payload).toBe(payload)
     })
 
-    it('#then a per-item STORAGE_QUOTA_EXCEEDED rejection keeps the row and stops the batch', async () => {
+    it('#then a per-item STORAGE_QUOTA_EXCEEDED rejection keeps the row', async () => {
       const { coordinator, queue, ctx, stateManager } = createHarness(getDb())
       const markPushSynced = vi.fn()
       getHandlerMock.mockReturnValue({ markPushSynced })
@@ -646,6 +797,75 @@ describe('PushCoordinator', () => {
       })
       expect(ctx.lastError).toBe('errors:sync.storageQuotaExceeded')
       expect(stateManager.setState).toHaveBeenCalledWith('error')
+    })
+
+    // #2293
+    it('#then the rest of the same response is still acked and recorded', async () => {
+      const { coordinator, queue, stateManager } = createHarness(getDb())
+      const markPushSynced = vi.fn()
+      getHandlerMock.mockReturnValue({ markPushSynced })
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+        accepted: body.items.filter((i) => i.id === 'task-ok').map((i) => i.id),
+        rejected: [
+          { id: 'task-big', reason: 'STORAGE_QUOTA_EXCEEDED' },
+          { id: 'task-bad', reason: 'VALIDATION_ERROR' }
+        ].filter((r) => body.items.some((i) => i.id === r.id)),
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 0
+      }))
+      for (const itemId of ['task-big', 'task-ok', 'task-bad']) {
+        queue.enqueue({
+          type: 'task',
+          itemId,
+          operation: 'update',
+          payload: JSON.stringify({ title: itemId })
+        })
+      }
+
+      await coordinator.push()
+
+      // One request: the accepted item behind the quota rejection is acked from
+      // this response, not re-sent to be acked as a replay.
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+      expect(markPushSynced).toHaveBeenCalledWith(expect.anything(), 'task-ok')
+      expect(stateManager.emitItemSynced).toHaveBeenCalledWith('task-ok', 'task', 'push')
+      const left = queue.peek()
+      expect(left.map((row) => row.itemId).sort()).toEqual(['task-bad', 'task-big'])
+      expect(left.every((row) => row.attempts === 1)).toBe(true)
+    })
+
+    // #2293: the server refuses only items that grow storage, so a delete
+    // queued behind a quota rejection must still go out in the same run.
+    it('#then later batches keep going out, so a delete that frees space is not blocked', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      ctx.options.pushBatchSize = 1
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        const [item] = body.items
+        const refused = item.operation !== 'delete'
+        return {
+          accepted: refused ? [] : [item.id],
+          rejected: refused ? [{ id: item.id, reason: 'STORAGE_QUOTA_EXCEEDED' }] : [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-new',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'New' })
+      })
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-old',
+        operation: 'delete',
+        payload: JSON.stringify({ id: 'task-old', clock: { 'device-1': 2 } })
+      })
+
+      await coordinator.push()
+
+      expect(postToServerMock).toHaveBeenCalledTimes(2)
+      expect(queue.peek().map((row) => row.itemId)).toEqual(['task-new'])
     })
   })
 
@@ -985,7 +1205,233 @@ describe('PushCoordinator', () => {
       coordinator.requestPush()
 
       expect(ctx.scheduleSync).not.toHaveBeenCalled()
-      coordinator.clearDebounce()
+      coordinator.stop()
+    })
+  })
+
+  describe('#given requestPush is the leading edge of a push window', () => {
+    /**
+     * The engine's scheduleSync: a cycle scheduled while one is in flight is
+     * chained after it, and `inFlightSync` clears when the chain settles.
+     */
+    function engineLikeScheduling(ctx: SyncContext): ReturnType<typeof vi.fn> {
+      const doPush = vi.fn(async () => undefined)
+      ctx.doPush = doPush
+      ctx.scheduleSync = vi.fn((fn: () => Promise<void>) => {
+        const run = (): Promise<void> =>
+          fn().finally(() => {
+            ctx.inFlightSync = null
+          })
+        ctx.inFlightSync = ctx.inFlightSync ? ctx.inFlightSync.then(run) : run()
+      })
+      return doPush
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    // #2289
+    it('#then a lone request starts a push within one tick', () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+
+      coordinator.requestPush()
+
+      expect(doPush).toHaveBeenCalledTimes(1)
+      expect(vi.getTimerCount()).toBe(0)
+      coordinator.stop()
+    })
+
+    // #2289
+    it('#then five requests inside one window produce one push', async () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(doPush).toHaveBeenCalledTimes(1)
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(20)
+        coordinator.requestPush()
+      }
+      expect(doPush).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(PUSH_DEBOUNCE_MS)
+      expect(doPush).toHaveBeenCalledTimes(2)
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(doPush).toHaveBeenCalledTimes(2)
+      coordinator.stop()
+    })
+
+    // #2289
+    it('#then a request during an in-flight cycle pushes exactly once after it, with no timer', async () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+      let endCycle!: () => void
+      ctx.syncing = true
+      ctx.inFlightSync = new Promise<void>((resolve) => {
+        endCycle = resolve
+      }).then(() => {
+        ctx.syncing = false
+        ctx.inFlightSync = null
+      })
+
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(PUSH_DEBOUNCE_MS * 3)
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(PUSH_DEBOUNCE_MS * 10)
+
+      expect(doPush).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+
+      endCycle()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(doPush).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(doPush).toHaveBeenCalledTimes(1)
+      coordinator.stop()
+    })
+
+    // #2289
+    it('#then a request during a directly started cycle pushes once when the engine signals its end', async () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+      ctx.fullSyncActive = true
+
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(PUSH_DEBOUNCE_MS * 10)
+      expect(doPush).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+
+      ctx.fullSyncActive = false
+      coordinator.onSyncCycleEnded()
+      coordinator.onSyncCycleEnded()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(doPush).toHaveBeenCalledTimes(1)
+
+      coordinator.onSyncCycleEnded()
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(doPush).toHaveBeenCalledTimes(1)
+      coordinator.stop()
+    })
+
+    // #2289
+    it('#then nothing requested before stop() pushes after it', async () => {
+      const { coordinator, ctx } = createHarness(getDb())
+      const doPush = engineLikeScheduling(ctx)
+      ctx.syncing = true
+      coordinator.requestPush()
+
+      coordinator.stop()
+      ctx.syncing = false
+      coordinator.onSyncCycleEnded()
+      coordinator.requestPush()
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      expect(doPush).not.toHaveBeenCalled()
+    })
+  })
+
+  // #2300 review B-F1: a conflict requeue carries the placeholder payload '{}'.
+  // Coalesced into a '{}' row a push already dequeued, it is invisible to the
+  // payload-conditional ack, which then deletes it. The socket fast path, which
+  // holds no sync lock, therefore must not apply while a push is in flight.
+  describe('#given a push awaiting its response #when a conflict requeue lands', () => {
+    it('#then pushInFlight is true for the whole push and the ack would drop the requeue', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      queue.enqueue({ type: 'task', itemId: 'task-t', operation: 'update', payload: '{}' })
+      let releasePush!: () => void
+      const pushHeld = new Promise<void>((resolve) => {
+        releasePush = resolve
+      })
+      let enteredPush!: () => void
+      const pushEntered = new Promise<void>((resolve) => {
+        enteredPush = resolve
+      })
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        enteredPush()
+        await pushHeld
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+      expect(coordinator.pushInFlight).toBe(false)
+
+      const pushing = coordinator.push()
+      await pushEntered
+      expect(coordinator.pushInFlight).toBe(true)
+      // What a fast-path conflict would do here: the same placeholder payload.
+      queue.enqueue({ type: 'task', itemId: 'task-t', operation: 'update', payload: '{}' })
+      releasePush()
+      await pushing
+
+      expect(coordinator.pushInFlight).toBe(false)
+      expect(queue.getPendingCount()).toBe(0)
+    })
+  })
+
+  // #2300 review B-L2: the stale-lock watchdog abandons a push it cannot
+  // cancel. That zombie must neither pin the socket gate shut nor clear the
+  // gate of the push that runs after it.
+  describe('#given a push abandoned by the stale-lock watchdog', () => {
+    it('#then the gate reopens, and only the owning push can close it again', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      const gates: Array<() => void> = []
+      let entered!: () => void
+      let enteredPush = new Promise<void>((resolve) => {
+        entered = resolve
+      })
+      let calls = 0
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        // The first two requests (the zombie's, then the next push's) are held.
+        if (++calls <= 2) {
+          entered()
+          await new Promise<void>((resolve) => gates.push(resolve))
+        }
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      queue.enqueue({ type: 'task', itemId: 'task-z', operation: 'update', payload: '{"a":1}' })
+      const zombie = coordinator.push()
+      await enteredPush
+      expect(coordinator.pushInFlight).toBe(true)
+      const waiting = coordinator.whenPushSettled(60_000)
+
+      coordinator.resetPushInFlight()
+
+      expect(coordinator.pushInFlight).toBe(false)
+      await expect(waiting).resolves.toBe(true)
+
+      enteredPush = new Promise<void>((resolve) => {
+        entered = resolve
+      })
+      queue.enqueue({ type: 'task', itemId: 'task-p', operation: 'update', payload: '{"b":1}' })
+      const next = coordinator.push()
+      await enteredPush
+      expect(coordinator.pushInFlight).toBe(true)
+
+      gates.shift()!()
+      await zombie
+      expect(coordinator.pushInFlight).toBe(true)
+
+      gates.shift()!()
+      await next
+      expect(coordinator.pushInFlight).toBe(false)
     })
   })
 })

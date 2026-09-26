@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
-
 
 interface InboxSyncDeps {
   queue: SyncQueueManager
@@ -56,14 +56,15 @@ export class InboxSyncService {
   private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: InboxSyncDeps) {
+    const load = (itemId: string): Record<string, unknown> | undefined =>
+      deps.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get() as
+        Record<string, unknown> | undefined
+
     this.controller = new RecordSyncController({
       type: 'inbox',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (itemId) =>
-        deps.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -74,6 +75,10 @@ export class InboxSyncService {
       },
       serialize: (local) => local,
       shouldSkip: isLocalOnly,
+      recoverPendingChange: (itemId, deviceId) =>
+        recoverOfflineDocClock(load(itemId), deviceId, (clock) =>
+          deps.db.update(inboxItems).set({ clock }).where(eq(inboxItems.id, itemId)).run()
+        ),
       buildDeletePayload: ({ extra, deviceId }) => {
         // Second home for the localOnly guard, and inbox genuinely needs it.
         // RecordSyncController.enqueueDelete applies `shouldSkip` to the row it

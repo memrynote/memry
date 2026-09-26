@@ -12,8 +12,6 @@ import {
   mirrorCalendarSettingWrite
 } from './calendar-settings-sync'
 
-vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: vi.fn() }))
-
 function manager(db: TestDataDb): { sync: SettingsSyncManager; enqueue: ReturnType<typeof vi.fn> } {
   const enqueue = vi.fn()
   const queue = { enqueue } as unknown as SyncQueueManager
@@ -21,7 +19,7 @@ function manager(db: TestDataDb): { sync: SettingsSyncManager; enqueue: ReturnTy
     sync: new SettingsSyncManager({
       db: db as unknown as DrizzleDb,
       queue,
-      getDeviceId: () => null
+      getDeviceId: () => 'desktop-a'
     }),
     enqueue
   }
@@ -135,12 +133,12 @@ describe('calendar settings sync (spec 007 D3a)', () => {
 
   it('an old-schema upload does not clobber a key it does not know', () => {
     const { sync } = manager(db)
-    sync.updateField('calendar.showNotesOnCalendar', true, 'phone')
+    sync.updateField('calendar.showNotesOnCalendar', true)
     // An older desktop strips the key from `settings` but keeps its clock.
     sync.mergeRemote({
       settings: { calendar: { weekStartDay: 'monday' } },
       fieldClocks: {
-        'calendar.showNotesOnCalendar': { phone: 1 },
+        'calendar.showNotesOnCalendar': { 'desktop-a': 1 },
         'calendar.weekStartDay': { old: 1 }
       }
     })
@@ -155,7 +153,7 @@ describe('calendar settings sync (spec 007 D3a)', () => {
 
   it('merges concurrent edits per key', () => {
     const { sync } = manager(db)
-    sync.updateField('calendar.google.pushEventsToGoogle', false, 'phone')
+    sync.updateField('calendar.google.pushEventsToGoogle', false)
     sync.mergeRemote({
       settings: { calendar: { google: { promoteConfirmDismissed: true } } },
       fieldClocks: { 'calendar.google.promoteConfirmDismissed': { desktop: 1 } }
@@ -178,12 +176,24 @@ describe('calendar settings sync (spec 007 D3a)', () => {
       JSON.stringify({ provider: 'caldav', remoteCalendarId: 'x' })
     )
     const before = enqueue.mock.calls.length
-    applyMergedCalendarSettings(db, {
-      showNotesOnCalendar: true,
-      defaultWriteTarget: null,
-      google: { agentReadEventsConsent: true },
-      caldav: { pushEventsToProvider: false }
-    })
+    const emit = vi.fn()
+    applyMergedCalendarSettings(
+      db,
+      {
+        showNotesOnCalendar: true,
+        defaultWriteTarget: null,
+        google: { agentReadEventsConsent: true },
+        caldav: { pushEventsToProvider: false }
+      },
+      emit
+    )
+    // Announced through the pull page's emit, one event per changed group.
+    expect(emit.mock.calls.map(([, data]) => (data as { key: string }).key)).toEqual([
+      'calendar',
+      'calendar.google',
+      'calendar.caldav',
+      'calendar.defaultWriteTarget'
+    ])
     expect(JSON.parse(getSetting(db, 'calendar') ?? '{}')).toEqual({
       dayCellClickBehavior: 'calendar',
       showNotesOnCalendar: true

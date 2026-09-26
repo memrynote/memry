@@ -600,8 +600,8 @@ test.describe('Body CRDT coverage variants', () => {
 
     // Convergence path, CI-hardened:
     //   (a) syncBothAndWait triggers record-side pull/push, but returns as soon
-    //       as sync-engine state is idle — the CrdtUpdateQueue can still have
-    //       pending snapshot pushes because it flushes on its own 1s timer.
+    //       as sync-engine state is idle — the note-body outbox can still have
+    //       queued body updates because it flushes on its own 1s window.
     //   (b) waitForCrdtQueueIdle drains that queue on each device, guaranteeing
     //       snapshots actually reached the server (or were fetched from it).
     //   (c) Each poll cycle nudges sync (so A's auto-sync-timer delay on CI

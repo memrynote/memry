@@ -81,6 +81,19 @@ describe('getDeviceSigningKey', () => {
     })
   })
 
+  // #2408: only a lookup that completed may say "no such device". A refresh
+  // that could not be read is a failure, so a caller holds instead of refusing.
+  describe('#given device not in DB and an unreadable /auth/devices response #when called', () => {
+    it('#then throws instead of returning null', async () => {
+      const { getFromServer } = await import('./http-client')
+      vi.mocked(getFromServer).mockResolvedValue({ invalid: true })
+
+      await expect(getDeviceSigningKey(testDb.db, 'device-x', 'test-token')).rejects.toThrow(
+        /auth\/devices/
+      )
+    })
+  })
+
   describe('#given device not found even after server fetch #when called', () => {
     it('#then returns null', async () => {
       const { getFromServer } = await import('./http-client')

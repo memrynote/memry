@@ -16,12 +16,14 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { requestOpenSettings } from '@/lib/settings-navigation'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
 import { VaultRecoveryDialog } from '@/components/sync/vault-recovery-dialog'
+import { VaultBindingDialog } from '@/components/sync/vault-binding-dialog'
 import { SessionExpiredDialog } from '@/components/sync/session-expired-dialog'
 import type {
   InitialSyncPhase,
   LinkingRequestEvent,
   VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-events'
+import type { VaultBindingChoice, VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 import { useT } from '@memry/i18n/renderer'
 import type { SyncStatus } from '@/sync/collaboration-status'
 
@@ -303,9 +305,16 @@ interface SyncContextValue {
   dismissDeviceRevoked: () => void
   vaultRecovery: VaultRecoveryNeededEvent | null
   clearVaultRecovery: () => void
+  /** Whether the open vault syncs with this account; see `VaultBindingState`. */
+  vaultBinding: VaultBindingState
+  resolveVaultBinding: (choice: VaultBindingChoice) => Promise<void>
+  /** Reopen the binding prompt after it was dismissed. */
+  openVaultBindingPrompt: () => void
 }
 
 const SyncContext = createContext<SyncContextValue | null>(null)
+
+const NEUTRAL_BINDING: VaultBindingState = { status: 'bound' }
 
 export function useSync(): SyncContextValue {
   const context = useContext(SyncContext)
@@ -338,6 +347,8 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
   const [vaultRecovery, setVaultRecovery] = useState<VaultRecoveryNeededEvent | null>(null)
   const [reauthRequired, setReauthRequired] = useState(false)
+  const [vaultBinding, setVaultBinding] = useState<VaultBindingState>(NEUTRAL_BINDING)
+  const [bindingPromptDismissed, setBindingPromptDismissed] = useState(false)
   const sessionExpiredRef = useRef(state.sessionExpired)
   useEffect(() => {
     sessionExpiredRef.current = state.sessionExpired
@@ -346,6 +357,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   useEffect(() => {
     if (authState.status !== 'authenticated') {
       dispatch({ type: 'RESET' })
+      setVaultBinding(NEUTRAL_BINDING)
       return
     }
 
@@ -372,7 +384,20 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     }
     void init()
 
+    // Main decides at runtime start, which can be before this window listens,
+    // so read the current answer as well as subscribing to changes.
+    const applyBinding = (next: VaultBindingState): void => {
+      if (cancelled) return
+      setVaultBinding(next)
+      setBindingPromptDismissed(false)
+    }
+    void window.api.syncOps
+      .getVaultBinding()
+      .then(applyBinding)
+      .catch(() => {})
+
     const cleanups: Array<() => void> = []
+    cleanups.push(window.api.onVaultBindingChanged(applyBinding))
 
     // These toasts vanish in ten seconds; the same failures are kept in the
     // vault activity log, so the toast offers the way back to them.
@@ -662,6 +687,26 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     setVaultRecovery(null)
   }, [])
 
+  const resolveVaultBinding = useCallback(
+    async (choice: VaultBindingChoice): Promise<void> => {
+      try {
+        const result = await window.api.syncOps.resolveVaultBinding(choice)
+        // The IPC error envelope carries no state; keep the current one then.
+        if (result.state) setVaultBinding(result.state)
+        if (!result.success) {
+          toast.error(extractErrorMessage(result.error, tSettings('vault.binding.dialog.failed')))
+        }
+      } catch (err) {
+        toast.error(extractErrorMessage(err, tSettings('vault.binding.dialog.failed')))
+      }
+    },
+    [tSettings]
+  )
+
+  const openVaultBindingPrompt = useCallback(() => {
+    setBindingPromptDismissed(false)
+  }, [])
+
   const value = useMemo<SyncContextValue>(
     () => ({
       state,
@@ -674,7 +719,10 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       clearLinkingRequest,
       dismissDeviceRevoked,
       vaultRecovery,
-      clearVaultRecovery
+      clearVaultRecovery,
+      vaultBinding,
+      resolveVaultBinding,
+      openVaultBindingPrompt
     }),
     [
       state,
@@ -687,7 +735,10 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       clearLinkingRequest,
       dismissDeviceRevoked,
       vaultRecovery,
-      clearVaultRecovery
+      clearVaultRecovery,
+      vaultBinding,
+      resolveVaultBinding,
+      openVaultBindingPrompt
     ]
   )
 
@@ -721,6 +772,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         onSignOut={handleDeviceRevokedSignOut}
       />
       <SessionExpiredDialog open={reauthRequired} onSignOut={handleDeviceRevokedSignOut} />
+      <VaultBindingDialog
+        state={
+          vaultBinding.status === 'needs-decision' && !bindingPromptDismissed ? vaultBinding : null
+        }
+        onChoose={resolveVaultBinding}
+        onDismiss={() => setBindingPromptDismissed(true)}
+      />
     </SyncContext.Provider>
   )
 }

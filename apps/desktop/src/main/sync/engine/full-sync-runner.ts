@@ -7,23 +7,27 @@ import { closeBootstrapSession, openBootstrapSession } from '../bootstrap-sessio
 import { getBootstrapElevationFactor } from '../bootstrap-session-state'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
+import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext } from './sync-context'
 import {
-  CRDT_FULL_SWEEP_MIN_INTERVAL_MS,
-  CRDT_RECONNECT_SWEEP_FLOOR_MS,
   CRDT_SWEEP_CHUNK_INTERVAL_MS,
   CRDT_SWEEP_CHUNK_NOTES,
   crdtSweepChunkDelayMs,
+  NOTE_BODY_LEGACY_SWEEP_DONE,
+  NOTE_BODY_LEGACY_SWEEP_PENDING,
   PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE,
   SYNC_STATE_KEYS
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
-import { getAllCrdtNoteIds } from '../../database/queries/notes'
+import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt-body-debts'
+import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
 
 const log = createLogger('SyncEngine')
+
+const CURSOR_SKIP_REPAIR_DONE = 'done'
 
 /**
  * How long the paced CRDT drain must stay CONTINUOUSLY blocked before the
@@ -44,6 +48,9 @@ const log = createLogger('SyncEngine')
  */
 export const BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS = 2 * 60 * 1000
 
+/** How long a pull re-queued after a rate limit waits for another trigger (#2421). */
+export const CRDT_REQUEUED_PULL_FLOOR_MS = 60 * 1000
+
 export interface FullSyncActions {
   /**
    * Resolves TRUE only when the pull actually delivered. Every error path out
@@ -53,7 +60,8 @@ export interface FullSyncActions {
    */
   pull: () => Promise<boolean>
   push: () => Promise<void>
-  scheduleSync: (fn: () => Promise<void>) => void
+  /** False when the engine dropped `fn` because a full sync is running. */
+  scheduleSync: (fn: () => Promise<void>) => boolean
 }
 
 export class FullSyncRunner {
@@ -70,34 +78,6 @@ export class FullSyncRunner {
   // a cursor reset and full re-pull on every single sync cycle.
   lastManifestCheckAt = 0
   /**
-   * WebSocket connection generation observed the last time this runner swept.
-   * Null until it sweeps once — deliberately in-memory only: a generation from
-   * a previous process says nothing about the current socket.
-   */
-  private lastSweepConnectionGeneration: number | null = null
-  /**
-   * When this runner last swept *because the socket had dropped and come back*.
-   * Null until that happens. The reconnect floor is measured against this and
-   * not against `LAST_CRDT_SWEEP_AT`, because that stamp also covers startup,
-   * forced and interval sweeps — none of which say anything about how often
-   * reconnects are arriving. Measuring the floor against them made the first
-   * reconnect after any recent sweep (a plain app start, then one Wi-Fi blip)
-   * wait out the whole floor before the vault was swept, which is exactly the
-   * case the floor was never meant to cover.
-   *
-   * In-memory only, like `lastSweepConnectionGeneration`: a reconnect from a
-   * previous process says nothing about this socket's flap rate.
-   */
-  private lastReconnectSweepAt: number | null = null
-  /**
-   * A reconnect gap was seen inside the floor and the deferred timer has not
-   * paid it yet. Cleared by any sweep, so a fullSync that arrives past the
-   * floor first settles the debt and the pending timer becomes a no-op instead
-   * of sweeping the vault a second time.
-   */
-  private crdtSweepOwed = false
-  private owedSweepTimer: ReturnType<typeof setTimeout> | null = null
-  /**
    * Notes drained from the pending-pull set that are waiting their turn in a
    * paced catch-up chunk.
    *
@@ -106,13 +86,20 @@ export class FullSyncRunner {
    * the server has said no. Insertion order is preserved, so it still drains
    * FIFO — which makes insertion order the catch-up's priority: open-but-
    * inactive docs are spliced in at the front by `flushPendingCrdtPulls`, and
-   * `getAllCrdtNoteIds` supplies the rest of the vault in `modifiedAt DESC`.
-   * In-memory by design: this queue is a plan for the current engine's
-   * catch-up, and the persisted sweep stamp is what carries the work across a
+   * `getAllCrdtNoteIds` supplies the rest of the legacy sweep in
+   * `modifiedAt DESC`. In-memory by design: this queue is a plan for the
+   * current engine's catch-up, and the durable debts carry the work across a
    * restart.
    */
   private pacedCrdtPullQueue = new Set<string>()
   private pacedCrdtPullTimer: ReturnType<typeof setTimeout> | null = null
+  /** Fires `flushPendingCrdtPulls` when the earliest deferred pull is due. */
+  private deferredPullTimer: ReturnType<typeof setTimeout> | null = null
+  private deferredPullTimerAt = 0
+  /** Pays pulls re-queued after a failure that counted nothing (#2421). */
+  private requeuedPullTimer: ReturnType<typeof setTimeout> | null = null
+  /** Set by `dispose()`: no timer, flush or pump runs after the teardown. */
+  private disposed = false
   private pacedCrdtChunkInFlight = false
   /**
    * Cancels the sweep's in-flight pulls when the engine goes away.
@@ -126,34 +113,10 @@ export class FullSyncRunner {
    */
   private pacedCrdtPullAbort: AbortController | null = null
   /**
-   * Did the *previous* session end holding notes whose server state it had not
-   * merged? Null until the persisted answer is read.
-   *
-   * Read lazily rather than in the constructor: this runner is built inside the
-   * SyncEngine constructor, and a `sync_state` lookup belongs to the first cycle
-   * that needs it rather than to construction.
+   * This engine queued the one-time note-body legacy sweep (#2297) and its
+   * drain is outstanding; that drain, and only it, records the sweep done.
    */
-  private carriedUnmergedDebt: boolean | null = null
-  /**
-   * When the sweep this engine ran queued the vault, while its paced drain is
-   * still outstanding. Null once the drain has been stamped (or before any
-   * sweep).
-   *
-   * `LAST_CRDT_SWEEP_AT` used to be written the moment the sweep ENQUEUED the
-   * vault, but the queue it fills is in-memory, drains ~100 notes every 4-20 s
-   * and is dropped by `dispose()`. A process killed mid-drain therefore left a
-   * FRESH stamp behind together with thousands of un-pulled bodies, and the
-   * next launch found the only discovery path for body-only remote edits
-   * throttled shut. The stamp now means "the vault was actually swept through",
-   * which is the only reading that survives a crash.
-   *
-   * This field is what keeps the throttle doing its other job in the meantime:
-   * with nothing persisted until the drain lands, an engine mid-drain would
-   * otherwise re-read the whole vault on every cycle and restart the pass.
-   * In-memory by design — a drain from a previous process is not outstanding,
-   * it is lost, and the un-advanced persisted stamp is exactly what says so.
-   */
-  private unstampedSweepAt: number | null = null
+  private legacyNoteBodySweepQueued = false
   /**
    * Does this runner own the open bootstrap telemetry window (#1835)?
    *
@@ -200,181 +163,74 @@ export class FullSyncRunner {
     this.stateManager = stateManager
     this.pushCoordinator = pushCoordinator
     this.crdtSync = crdtSync
+    this.wirePullTimers()
     this.actions = actions
     this.isQuarantined = isQuarantined
   }
 
   /**
-   * Should the end-of-cycle sweep re-queue every CRDT note in the vault?
-   *
-   * The sweep is the only way a body-only remote edit is discovered when this
-   * device was not connected to receive its `crdt_updated` broadcast — note
-   * bodies never travel in the record change feed (NoteSync sends
-   * `content: null` on update), so nothing else covers them. It therefore stays
-   * exhaustive: no note is ever excluded from a sweep that runs.
-   *
-   * What changes is WHEN it runs, and that is decided by the trigger rather
-   * than by a clock, because fullSync's callers are not equivalent. Fired by
-   * auth refresh or rate-limit release on a socket that never dropped, a sweep
-   * is provably pointless — every broadcast in that window arrived. Fired by a
-   * real reconnect, it is provably necessary, and is exactly when the user is
-   * most likely looking at a stale note, so it must not wait out the interval.
-   * Only when the trigger is unknowable does the interval decide.
+   * Engine start (#2297): convert a `crdtUnmergedDebt = '1'` this build did not
+   * write into a debt for every note, then queue every standing debt for the
+   * first full sync's drain and flag it for the snapshot routing.
    */
-  /**
-   * Can this session still not name the notes whose server state it has not
-   * merged?
-   *
-   * `CrdtSyncCoordinator.unmergedRemoteNotes` is per session and `clearCaches()`
-   * empties it at teardown, so an unmerged note came back on the next launch
-   * looking merged — and "merged" is the answer that routes its push to the
-   * endpoint that prunes every peer row at or below the new snapshot's
-   * watermark. Nor did the launch necessarily re-raise the flag on its own:
-   * `shouldSweepAllCrdtNotes` falls through to a *persisted* interval stamp, so
-   * a restart inside that interval with no reconnect gap queues no pulls at all.
-   * A single edit 30 s later was then enough to destroy a peer's updates.
-   *
-   * While this is true the answer for **every** note is "unmerged", which is the
-   * same conservative answer the per-note flag gives, applied vault-wide until
-   * the flags exist again. It costs those pushes the snapshot endpoint — they go
-   * to `/sync/crdt/updates`, which stores and broadcasts the same bytes and
-   * prunes nothing — and nothing else.
-   *
-   * It is dropped by the first vault-wide sweep, which queues a pull for every
-   * note in the vault and so flags every one of them individually: the blanket
-   * is retired because it has been made redundant, not because it went stale.
-   * That sweep is at most `CRDT_FULL_SWEEP_MIN_INTERVAL_MS` away.
-   *
-   * Persisting the note ids instead was the obvious alternative and is worse on
-   * both counts: it needs a new on-disk format in a live beta, and a crash can
-   * still leave it missing whatever it had not written yet, while a boolean that
-   * is already `'1'` cannot become wrong by not being written again.
-   */
-  get crdtUnmergedStateUnknown(): boolean {
-    this.carriedUnmergedDebt ??=
-      this.stateManager.getStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT) === '1'
-    return this.carriedUnmergedDebt
-  }
-
-  /**
-   * Persist the coordinator's empty ↔ non-empty transitions.
-   *
-   * Written as they happen rather than at teardown, because the case this has to
-   * survive is a session that never runs its teardown at all — a crash, a kill,
-   * a power cut. A transition is two writes per sweep cycle at worst: one when
-   * the sweep queues the vault, one when the paced drain finishes it.
-   */
-  recordCrdtUnmergedDebt(hasDebt: boolean): void {
-    // An empty set is not an answer while the flags have not been rebuilt — it
-    // is the emptiness this session *started* with, and clearing the key on it
-    // would hand the next launch the same false "everything is merged".
-    if (!hasDebt && this.crdtUnmergedStateUnknown) return
-    this.stateManager.setStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, hasDebt ? '1' : '0')
-  }
-
-  private shouldSweepAllCrdtNotes(force: boolean): boolean {
-    // Nothing is fetchable while offline. Sweeping here would schedule pulls
-    // that are guaranteed to fail and then stamp the interval, hiding real
-    // remote edits until the window reopened.
-    if (!this.ctx.deps.network.online) return false
-    if (force) return true
-
-    const ws = this.ctx.deps.ws
-    if (ws && this.lastSweepConnectionGeneration !== null) {
-      // A generation past the one the last sweep saw means the socket dropped
-      // and came back, so broadcasts were missed. This stays true for every
-      // later cycle until a sweep actually runs and re-reads the generation —
-      // which is what carries an unpaid debt forward, no extra flag needed.
-      if (this.hasReconnectGap()) {
-        // Due, but not necessarily now: a connection flapping every few seconds
-        // would buy one full O(vault) pass per flap. Hold it to one per floor
-        // and remember the debt — dropping it would strand whatever changed
-        // during the gap. The floor counts from the last reconnect sweep, so an
-        // isolated drop is served at once however recently the vault was swept
-        // for some other reason.
-        if (this.msSinceReconnectSweep() >= CRDT_RECONNECT_SWEEP_FLOOR_MS) return true
-        this.deferOwedSweep()
-        return false
+  loadCrdtBodyDebts(): void {
+    // Never fatal to sync start (#2297 review A-1, B-L4). Each step has its
+    // own `try`: a conversion that throws must not strand the rows that are
+    // already standing (#2297 round 2 a-L2); the next start converts again.
+    try {
+      const converted = convertUnmergedDebtMirror(this.ctx.deps.db, () => this.conversionNoteIds())
+      if (converted > 0) {
+        log.info('Converted the vault-wide CRDT debt into per-note debts', { converted })
       }
-
-      // Same socket as the last sweep and still up: no broadcast could have
-      // been missed in between, whatever the clock says.
-      if (ws.connected) return false
+    } catch (err) {
+      log.error('Could not convert the vault-wide CRDT debt', {
+        error: err instanceof Error ? err.message : String(err)
+      })
     }
-
-    // Trigger unknowable: no sweep recorded against this runner yet, no socket
-    // manager, or a socket that went down and has not reconnected. Note that
-    // "no sweep recorded yet" must NOT mean "sweep now" — this runner is
-    // rebuilt with every engine (vault switch, restart, retry), and an
-    // instance-only signal that re-armed here would sweep the whole vault on
-    // every cycle of a retry loop, the same trap documented on
-    // lastManifestCheckAt above. The persisted stamp is the authority.
-    return this.msSinceLastSweep() >= CRDT_FULL_SWEEP_MIN_INTERVAL_MS
+    try {
+      const owed = this.crdtSync.hydrateBodyDebts()
+      if (owed > 0) log.info('Loaded CRDT body debts', { owed })
+    } catch (err) {
+      log.error('Could not load CRDT body debts', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    }
   }
 
-  private msSinceLastSweep(): number {
-    const persistedRaw = Number(
-      this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT) ?? '0'
-    )
-    const now = Date.now()
-    // A future-dated stamp (clock skew, machine migration) is not a sweep that
-    // happened — treated as "never swept" so the safety net cannot be parked
-    // until the wall clock catches up. Clamping to now would not help: the
-    // elapsed time stays pinned at zero for exactly as long.
-    const lastSweepAt = Number.isFinite(persistedRaw) && persistedRaw <= now ? persistedRaw : 0
-    // A sweep this engine has run but not yet drained counts against the
-    // interval too. Nothing is persisted until the drain lands, so without this
-    // floor every cycle arriving mid-drain would re-queue the whole vault.
-    return now - Math.max(lastSweepAt, this.unstampedSweepAt ?? 0)
+  /** `sweepNoteIds`, or the data DB's alone when the index cache cannot be read. */
+  private conversionNoteIds(): string[] {
+    try {
+      return this.sweepNoteIds()
+    } catch (err) {
+      log.error('Could not read the index cache for the CRDT debt conversion', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+      return getAllSyncableNoteMetadataIds(this.ctx.deps.db)
+    }
   }
 
-  /** Did the socket drop and come back since the last sweep read its generation? */
-  private hasReconnectGap(): boolean {
-    const ws = this.ctx.deps.ws
-    if (!ws || this.lastSweepConnectionGeneration === null) return false
-    return ws.connectionGeneration !== this.lastSweepConnectionGeneration
+  private wirePullTimers(): void {
+    this.disposed = false
+    this.crdtSync.onDeferred = () => this.armDeferredPullTimer()
+    this.crdtSync.onRequeued = () => this.armRequeuedPullTimer()
   }
 
-  private msSinceReconnectSweep(): number {
-    // Never swept for a reconnect on this runner: the floor has nothing to
-    // collapse yet, so the first drop is owed a sweep immediately.
-    if (this.lastReconnectSweepAt === null) return Number.POSITIVE_INFINITY
-    return Date.now() - this.lastReconnectSweepAt
-  }
-
-  /** Hold an owed sweep until the floor expires, without losing it. */
-  private deferOwedSweep(): void {
-    this.crdtSweepOwed = true
-    // One timer, re-used: a flapping connection must not stack a timer per flap.
-    if (this.owedSweepTimer) return
-
-    const waitMs = Math.max(0, CRDT_RECONNECT_SWEEP_FLOOR_MS - this.msSinceReconnectSweep())
-    this.owedSweepTimer = setTimeout(() => {
-      this.owedSweepTimer = null
-      this.payOwedSweep()
-    }, waitMs)
-    this.owedSweepTimer.unref?.()
-  }
-
-  private payOwedSweep(): void {
-    if (!this.crdtSweepOwed) return
-    // Keep the debt rather than sweep into a wall: a fullSync in flight would
-    // have its scheduleSync calls dropped (the engine ignores them while
-    // fullSyncActive) and offline pulls cannot succeed. Both states end in
-    // another fullSync, whose finally pays the debt with the floor long past.
-    if (this.ctx.fullSyncActive || !this.ctx.deps.network.online) return
-    if (!this.ctx.deps.crdtProvider || !isIndexDatabaseInitialized()) return
-
-    log.debug('fullSync: paying owed CRDT sweep after reconnect floor')
-    this.sweepAllCrdtNotes()
-    this.flushPendingCrdtPulls()
-  }
-
-  /** Clears the deferred sweep and paced-pull timers. Call on engine teardown. */
+  /**
+   * Clears the deferred-pull and paced-pull timers. Call on engine teardown.
+   * A chunk still in flight re-queues its notes as it aborts, and nothing may
+   * arm a timer or pull for them after this (#2421), until a later `run()`.
+   */
   dispose(): void {
-    if (this.owedSweepTimer) {
-      clearTimeout(this.owedSweepTimer)
-      this.owedSweepTimer = null
+    this.disposed = true
+    this.crdtSync.onRequeued = null
+    this.crdtSync.onDeferred = null
+    if (this.deferredPullTimer) {
+      clearTimeout(this.deferredPullTimer)
+      this.deferredPullTimer = null
+    }
+    if (this.requeuedPullTimer) {
+      clearTimeout(this.requeuedPullTimer)
+      this.requeuedPullTimer = null
     }
     if (this.pacedCrdtPullTimer) {
       clearTimeout(this.pacedCrdtPullTimer)
@@ -384,6 +240,9 @@ export class FullSyncRunner {
     // chunk still in flight re-arm the pace timer from its `finally` and keep a
     // dead engine pulling against a vault it no longer owns.
     this.pacedCrdtPullQueue.clear()
+    // A chunk still in flight stamps the drain it was cut out of; that is not
+    // a completed legacy sweep, so the next engine runs it again.
+    this.legacyNoteBodySweepQueued = false
     this.pacedCrdtPullAbort?.abort()
     this.pacedCrdtPullAbort = null
     // The telemetry window dies with the engine that armed it (#1835). Without
@@ -416,87 +275,74 @@ export class FullSyncRunner {
   }
 
   /**
-   * Is the vault-wide sweep QUESTION settled on this engine — either a sweep
-   * ran, or a run finished having decided none was needed or possible?
-   *
-   * Gates the bootstrap full-text mark. Before the question is settled an
-   * empty paced queue means "nothing queued yet" (an offline first sync, a
-   * refused pull), not "every body is current".
-   *
-   * It deliberately is NOT "a sweep literally ran". The sweep throttle reads a
-   * persisted timestamp while fresh-device detection reads `LAST_CURSOR`, so a
-   * real bootstrap can find the sweep throttled and never run one — and the
-   * mark would then never fire, leaving the bootstrap window and the elevated
-   * session open until the session TTL expires.
+   * Has a full sync on this engine finished online with a CRDT store, having
+   * queued the legacy sweep if it was owed? Gates the bootstrap full-text mark:
+   * before that an empty paced queue means "nothing queued yet" (an offline
+   * first sync, a refused pull), not "every body is current".
    */
   private sweepSettledOnThisEngine = false
 
   /**
    * Has a pull actually RESOLVED on this engine? Gates the bootstrap
-   * full-text mark alongside `sweepSettledOnThisEngine`: a sweep proves it ran,
-   * never that the pull delivered — and on a fresh device an empty index DB
-   * makes every sweep drain trivially, so only pull success is evidence that
-   * any body was fetched at all.
+   * full-text mark alongside `sweepSettledOnThisEngine`: on a fresh device an
+   * empty index DB makes every drain trivially empty, so only pull success is
+   * evidence that any body was fetched at all.
    */
   private bootstrapPullSucceeded = false
 
-  private sweepAllCrdtNotes(): void {
-    this.sweepSettledOnThisEngine = true
-    // Read before the generation is re-stamped below: only a sweep that closes
-    // a real drop/reconnect gap starts the floor for the next one.
-    if (this.hasReconnectGap()) this.lastReconnectSweepAt = Date.now()
-    for (const noteId of getAllCrdtNoteIds(getIndexDatabase())) {
-      this.crdtSync.addPendingPull(noteId)
-    }
-    // Every note in the vault now carries its own flag, so the vault-wide
-    // blanket a carried-over debt raised has nothing left to cover. Dropped
-    // after the loop and never before it: in between, a push would read a
-    // not-yet-flagged note as safe to snapshot.
-    this.carriedUnmergedDebt = false
-    // Re-state the key from this session's own set now that it is authoritative.
-    // Without this, a sweep that flags nothing — an empty vault, or one whose
-    // notes all cleared before the key was ever written — would leave the
-    // previous session's `'1'` standing and blanket every launch from here on.
-    this.recordCrdtUnmergedDebt(this.crdtSync.hasUnmergedNotes)
-    this.lastSweepConnectionGeneration = this.ctx.deps.ws?.connectionGeneration ?? null
-    this.crdtSweepOwed = false
-    // Not stamped here: the vault is QUEUED, not swept. `stampSweptVault()`
-    // writes the persisted throttle once the paced drain has actually run it
-    // through, and `unstampedSweepAt` holds the interval closed in between.
-    this.unstampedSweepAt = Date.now()
+  /**
+   * Queue the one-time legacy sweep (#2297): every note owed durably, so a
+   * crash mid-sweep cannot drop a note that may hold rows the feed never
+   * served.
+   */
+  private queueLegacyNoteBodySweep(): void {
+    this.crdtSync.queuePulls(this.sweepNoteIds(), 'legacy')
+    this.legacyNoteBodySweepQueued = true
   }
 
   /**
-   * Persist the sweep throttle once the drain this engine started has finished
-   * the vault: nothing in flight, nothing queued, and nothing owed back to the
-   * pending set by a chunk the server refused.
-   *
-   * An empty QUEUE is not a drained vault — a rate-limited chunk hands its notes
-   * back to the pending set, and those bodies are still stale. Stamping on the
-   * queue alone would throttle the next launch with exactly the work the throttle
-   * is supposed to make sure gets done.
+   * The notes and journals a vault-wide sweep pulls: the index cache's order
+   * first (recent first), then every syncable markdown row of the data DB the
+   * cache lacks. The sweep that records `noteBodyLegacySweep = done` licenses
+   * snapshot claims (#2299), so a note missing from a rebuilding index must not
+   * be skipped by it.
    */
-  private stampSweptVault(): void {
-    if (this.unstampedSweepAt === null) return
+  private sweepNoteIds(): string[] {
+    const ids = new Set(isIndexDatabaseInitialized() ? getAllCrdtNoteIds(getIndexDatabase()) : [])
+    for (const id of getAllSyncableNoteMetadataIds(this.ctx.deps.db)) ids.add(id)
+    return [...ids]
+  }
+
+  /**
+   * Record the legacy sweep done once its drain has finished the vault:
+   * nothing in flight, nothing queued, and nothing owed back to the pending
+   * set by a chunk the server refused. An empty QUEUE is not a drained vault:
+   * a rate-limited chunk hands its notes back to the pending set.
+   */
+  private recordLegacyNoteBodySweepDone(): void {
+    if (!this.legacyNoteBodySweepQueued) return
     if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
     if (this.crdtSync.pendingPullCount > 0) return
-    this.unstampedSweepAt = null
-    // The completion time, not the enqueue time: the vault is current as of
-    // now, and a drain that took minutes has earned the full interval from here.
-    this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now()))
+    this.legacyNoteBodySweepQueued = false
+    // A key reset while this drained (a server rollback) is not covered by it.
+    const key = SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP
+    if (this.stateManager.getStateValue(key) !== NOTE_BODY_LEGACY_SWEEP_PENDING) return
+    this.stateManager.setStateValue(key, NOTE_BODY_LEGACY_SWEEP_DONE)
+    log.info('fullSync: note-body legacy sweep complete')
   }
 
   /**
-   * `forceCrdtSweep` is for a sync the user asked for by name. The throttle on
-   * the vault-wide sweep exists to stop an automatic reconnect loop buying one
-   * O(vault) pass per flap; it was never meant to make "Sync now" incomplete.
-   * Without it that button can skip the only discovery path for body-only
-   * remote edits — bodies never travel in the record change feed — and leave a
-   * note reading stale for up to CRDT_FULL_SWEEP_MIN_INTERVAL_MS with the app
-   * reporting a clean sync.
+   * The change feed deleted the legacy key (#2297): the server stopped serving
+   * bodies. The sweep already queued cannot cover the rows written from then
+   * on, so its drain records nothing, and the next negotiated page re-arms it.
    */
-  async run(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {
+  resetNoteBodyLegacySweep(): void {
+    this.legacyNoteBodySweepQueued = false
+  }
+
+  async run(): Promise<void> {
     log.debug('fullSync started')
+    if (this.disposed) this.wirePullTimers()
     // No persisted cursor = this device has never completed a pull for this
     // vault: a genuine fresh-device bootstrap (#1835). beginBootstrap no-ops
     // while a window is already open (the vault-download seam fires earlier
@@ -530,17 +376,24 @@ export class FullSyncRunner {
       // and the same DBs the pull is about to touch.
       await this.applyBootstrapPacks()
     }
-    // A manifest re-pull means the server holds items this device has never
-    // seen (fresh install, restored vault, rebuilt index): local CRDT state
-    // cannot be trusted, so the sweep runs regardless of the throttle.
-    let forceCrdtSweep = options.forceCrdtSweep === true
+    // A pull that delivered ran to the head of the feed unrefused (#1835): only
+    // then can a vault sweep cover every note whose record exists (#2297).
+    let pullDelivered = false
     try {
       // Evidence for the full-text mark: the pull REPORTED that it delivered.
       // "The await did not reject" is true on every production run — the engine
       // swallows every error and the coordinator returns early on a busy lock,
       // missing credentials or a page it refused to apply — so it proved
       // nothing outside a unit test whose `pull` was a bare mock.
-      if (await this.actions.pull()) this.bootstrapPullSucceeded = true
+      const repairFrom = await this.beginCursorSkipRepair()
+      const changedBeforePull = this.ctx.applier.changedCount
+      pullDelivered = await this.actions.pull()
+      if (pullDelivered) {
+        this.bootstrapPullSucceeded = true
+        if (repairFrom !== null) {
+          this.finishCursorSkipRepair(repairFrom, this.ctx.applier.changedCount - changedBeforePull)
+        }
+      }
       log.debug('fullSync: pull complete')
 
       const queueBeforeSeed = this.ctx.deps.queue.getPendingCount()
@@ -597,7 +450,9 @@ export class FullSyncRunner {
         getAccessToken: this.ctx.deps.getAccessToken,
         isOnline: () => this.ctx.deps.network.online,
         lastCheckAt: Math.max(this.lastManifestCheckAt, persistedCheckAt),
-        isQuarantined: this.isQuarantined
+        isQuarantined: this.isQuarantined,
+        // #2302: no local re-upload unless this run's pull delivered first.
+        reuploadLocalOnly: pullDelivered
       })
       this.lastManifestCheckAt = manifestResult.checkedAt
       // Persist only when a manifest was actually fetched and diffed: stamping
@@ -609,20 +464,32 @@ export class FullSyncRunner {
           String(manifestResult.checkedAt)
         )
       }
-      log.debug('fullSync: manifest check complete', {
-        rePullNeeded: manifestResult.rePullNeeded,
-        serverOnlyCount: manifestResult.serverOnlyCount
-      })
+      if (manifestResult.performed) {
+        log.debug('fullSync: manifest check complete', {
+          rePullNeeded: manifestResult.rePullNeeded,
+          serverOnlyCount: manifestResult.serverOnlyCount
+        })
+      } else {
+        // Never log serverOnlyCount here: its 0 reads as "verified clean" when
+        // no manifest was fetched (#2310).
+        const { skipped } = manifestResult
+        log.debug('fullSync: manifest check skipped', {
+          reason: skipped?.reason,
+          nextEligibleAt: skipped ? new Date(skipped.nextEligibleAt).toISOString() : undefined
+        })
+      }
 
+      // The re-pull runs from cursor 0, so every note and journal record it
+      // applies pulls its whole body (#2421).
       if (manifestResult.rePullNeeded) {
-        forceCrdtSweep = true
         log.info('fullSync: manifest detected server-only items, resetting cursor for re-pull', {
           serverOnlyCount: manifestResult.serverOnlyCount
         })
         this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
         // Same evidence rule: the re-pull can deliver where the first one was
         // refused, and that is a delivery like any other.
-        if (await this.actions.pull()) this.bootstrapPullSucceeded = true
+        pullDelivered = await this.actions.pull()
+        if (pullDelivered) this.bootstrapPullSucceeded = true
       }
 
       this.pushCoordinator.clearPendingAfterFullSync()
@@ -660,41 +527,78 @@ export class FullSyncRunner {
       throw error
     } finally {
       this.ctx.fullSyncActive = false
-      // "Could a sweep run at all?" and "should one run now?" are different
-      // questions, and only the second one settles anything. Without a CRDT
-      // provider or an initialized index DB nothing was ever queued, so an
-      // empty paced queue is not evidence that bodies are current — that case
-      // stays unsettled exactly as before.
-      const canSweep = this.ctx.deps.crdtProvider != null && isIndexDatabaseInitialized()
-      if (canSweep && this.shouldSweepAllCrdtNotes(forceCrdtSweep)) {
-        this.sweepAllCrdtNotes()
-      } else if (canSweep && this.ctx.deps.network.online) {
-        // ONLINE and the throttle declined: nothing is outstanding, because a
-        // sweep ran recently enough for the interval to still be closed.
-        //
-        // The online check is not redundant. `shouldSweepAllCrdtNotes` returns
-        // false for TWO very different reasons, and its FIRST line is
-        // `if (!network.online) return false`. Offline means "nothing is
-        // fetchable", not "nothing is outstanding" — settling there would let a
-        // device that has never swept and cannot reach the server claim every
-        // body is current. Nothing downstream will call
-        // `maybeMarkBootstrapFullText` again, so without settling here the
-        // bootstrap window and the elevated session both stay open for the life
-        // of the process, holding the per-user session slot until its TTL.
-        //
-        // This is reachable on a real bootstrap: the throttle reads a PERSISTED
-        // timestamp while fresh-device detection reads `LAST_CURSOR`. Reset the
-        // server while keeping local state and the two disagree, so a genuine
-        // first sync finds the sweep throttled and never runs one.
-        // `bootstrapPullSucceeded` still carries the "bodies were delivered"
-        // evidence independently.
-        this.sweepSettledOnThisEngine = true
+      // Without a CRDT provider or an initialized index DB nothing is ever
+      // queued, and offline nothing is fetchable, so an empty paced queue is
+      // not evidence that bodies are current: that case stays unsettled, and
+      // the bootstrap mark waits for a later cycle.
+      if (this.ctx.deps.crdtProvider != null && isIndexDatabaseInitialized()) {
+        if (this.ctx.deps.network.online) {
+          // Forced until one drains: the change feed never serves the body
+          // rows this sweep exists for (#2297 review).
+          if (
+            pullDelivered &&
+            !this.legacyNoteBodySweepQueued &&
+            this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) ===
+              NOTE_BODY_LEGACY_SWEEP_PENDING
+          ) {
+            this.queueLegacyNoteBodySweep()
+          }
+          this.sweepSettledOnThisEngine = true
+        }
       }
       // flushPendingCrdtPulls() ends with pumpPacedCrdtPulls() +
       // maybeMarkBootstrapFullText(), so the settle above is re-evaluated here
       // without a second call of our own.
       this.flushPendingCrdtPulls()
     }
+  }
+
+  /**
+   * Starts or resumes the one-time re-pull (#2382); see
+   * `SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR`. Returns the cursor the repair reset
+   * from while it is pending, else null.
+   *
+   * The reset happens under the sync lock: a pull holding the lock would
+   * otherwise overwrite the reset with its own next cursor, and the repair
+   * would be recorded without ever re-reading the skipped range.
+   */
+  private async beginCursorSkipRepair(): Promise<number | null> {
+    const recorded = this.stateManager.getStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR)
+    if (recorded === CURSOR_SKIP_REPAIR_DONE) return null
+    const pendingFrom = Number(recorded?.match(/^pending:(\d+)$/)?.[1])
+    if (Number.isInteger(pendingFrom)) return pendingFrom
+
+    const release = await this.ctx.acquireLock()
+    if (!release) return null
+    try {
+      const cursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? '0')
+      if (!Number.isInteger(cursor) || cursor <= 0) {
+        this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, CURSOR_SKIP_REPAIR_DONE)
+        return null
+      }
+      log.info('fullSync: cursor-skip repair, re-pulling from cursor 0', { fromCursor: cursor })
+      // Cursor first: a crash between the two writes leaves cursor 0 and no
+      // key, which the next run records as done with nothing lost.
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, `pending:${cursor}`)
+      return cursor
+    } finally {
+      this.ctx.releaseLock()
+      release()
+    }
+  }
+
+  private finishCursorSkipRepair(fromCursor: number, changedItems: number): void {
+    this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, CURSOR_SKIP_REPAIR_DONE)
+    log.info('fullSync: cursor-skip repair complete', { fromCursor, changedItems })
+    trackMainEvent('sync_run_completed', {
+      surface: 'sync',
+      action: 'cursor_skip_repair',
+      result: 'success',
+      metrics: { itemCount: changedItems, value: fromCursor },
+      source: 'full',
+      dimensions: { transport: 'record' }
+    })
   }
 
   /**
@@ -829,10 +733,10 @@ export class FullSyncRunner {
   }
 
   /**
-   * Always runs, gate or no gate: the set holds notes the server named in a
-   * `crdt_updated` broadcast, which is a positive signal about that specific
-   * note rather than the blanket safety net, alongside whatever the sweep just
-   * queued and whatever a failed chunk owes.
+   * Pays the queued pulls: the durable body debts (a record, a feed entry, a
+   * `crdt_updated` broadcast before the legacy sweep is done), the legacy
+   * sweep and whatever a failed chunk owes. Runs at the end of every full sync
+   * and after every pull outside one (#2421).
    *
    * Everything leaves through the batch path rather than one
    * `pullCrdtForNote` per note. The single-note path costs two GETs per note, so
@@ -849,7 +753,8 @@ export class FullSyncRunner {
    * The pacing below is what keeps a sweep inside both of the server's buckets.
    * See CRDT_SWEEP_CHUNK_NOTES for the arithmetic on each.
    */
-  private flushPendingCrdtPulls(): void {
+  flushPendingCrdtPulls(): void {
+    if (this.disposed) return
     if (this.crdtSync.pendingPullCount > 0) {
       log.debug('fullSync: flushing pending CRDT pulls', {
         count: this.crdtSync.pendingPullCount
@@ -860,7 +765,6 @@ export class FullSyncRunner {
       // takes minutes on a large vault, so it skips the pace entirely. The cost
       // is bounded by the number of open editors — a handful — which is what the
       // headroom described on CRDT_SWEEP_CHUNK_NOTES is for.
-      // SyncEngine.handleWsConnected reads the same set for the same reason.
       const activeNoteIds = new Set(
         this.ctx.deps.crdtProvider?.getOpenNoteIds({ active: true }) ?? []
       )
@@ -893,25 +797,80 @@ export class FullSyncRunner {
       for (const noteId of rest) this.pacedCrdtPullQueue.add(noteId)
 
       if (priority.length > 0) {
-        this.actions.scheduleSync(async () => {
+        const scheduled = this.actions.scheduleSync(async () => {
           // Its cost is deliberately discarded: this batch jumps the pace by
           // design — the note the user is looking at must not wait behind a
           // catch-up — and it is bounded by the number of open editors, which
           // is what the other half of each bucket's margin is reserved for.
           await this.crdtSync.pullCrdtForNotes(priority, this.sweepPullSignal())
         })
+        // Dropped by a running full sync: back to the pending set, which that
+        // sync's closing flush drains (#2421).
+        if (!scheduled) this.crdtSync.returnPendingPulls(priority)
       }
     }
 
+    this.armDeferredPullTimer()
     this.pumpPacedCrdtPulls()
     this.maybeMarkBootstrapFullText()
-    this.stampSweptVault()
+    this.recordLegacyNoteBodySweepDone()
     this.releaseBootstrapSessionIfStalled()
   }
 
   /**
-   * Bootstrap seam (#1835): the sweep queue draining to empty — with a sweep
-   * actually run and nothing owed back to the pending set — is the moment
+   * A floor for pulls re-queued after a failure that counted nothing (a rate
+   * limit, an abort): one timer, CRDT_REQUEUED_PULL_FLOOR_MS after the first
+   * re-queue, flushes them when no other trigger did (#2421). A full sync or
+   * a paused engine skips it; the sync's own flush and resume drain them.
+   */
+  private armRequeuedPullTimer(): void {
+    if (this.requeuedPullTimer || this.disposed) return
+    this.requeuedPullTimer = setTimeout(() => {
+      this.requeuedPullTimer = null
+      if (this.ctx.fullSyncActive || this.stateManager.isPaused()) return
+      this.flushPendingCrdtPulls()
+    }, CRDT_REQUEUED_PULL_FLOOR_MS)
+    this.requeuedPullTimer.unref?.()
+  }
+
+  /**
+   * One timer for the earliest deferred pull's backoff end (#2297 review A-2):
+   * nothing else drains between full syncs, so without it a failing note's
+   * retry waits for the next reconnect, restart or manual sync. Armed from
+   * each flush and from each counted failure (`onDeferred`).
+   *
+   * The delay is capped at the longest backoff: past setTimeout's 2^31 ms
+   * limit a delay fires after 1 ms, and a clock set back leaves a due time
+   * far ahead (#2297 round 2 a-M2).
+   */
+  private armDeferredPullTimer(): void {
+    const next = this.crdtSync.nextDeferredPullAt()
+    if (next === null) return
+    const now = Date.now()
+    const at = Math.min(next, now + CRDT_BODY_DEBT_MAX_BACKOFF_MS)
+    if (this.deferredPullTimer) {
+      if (this.deferredPullTimerAt <= at) return
+      clearTimeout(this.deferredPullTimer)
+    }
+    this.deferredPullTimerAt = at
+    this.deferredPullTimer = setTimeout(
+      () => {
+        this.deferredPullTimer = null
+        this.crdtSync.requeueDeferredPulls()
+        // A full sync's `finally` flush drains these and re-arms; a flush
+        // from here would drain its active-editor notes into a
+        // `scheduleSync` the engine drops while it runs (#2297 round 2 b-L2).
+        if (this.ctx.fullSyncActive) return
+        this.flushPendingCrdtPulls()
+      },
+      Math.max(0, at - now)
+    )
+    this.deferredPullTimer.unref?.()
+  }
+
+  /**
+   * Bootstrap seam (#1835): the paced queue draining to empty — after a full
+   * sync settled it and with nothing owed back to the pending set — is the moment
    * every note body the server holds is current on this device. The metrics
    * module makes this a no-op outside an active fresh-device bootstrap, so
    * steady-state cycles pay one boolean check.
@@ -922,9 +881,9 @@ export class FullSyncRunner {
    */
   private maybeMarkBootstrapFullText(): void {
     if (!this.sweepSettledOnThisEngine) return
-    // The sweep gate proves a sweep RAN; on a fresh device an empty index DB
-    // makes every sweep drain trivially, failed pull or not. Only a pull that
-    // actually resolved turns "queue empty" into "bodies delivered".
+    // On a fresh device an empty index DB makes every drain trivially empty,
+    // failed pull or not. Only a pull that actually resolved turns "queue
+    // empty" into "bodies delivered".
     if (!this.bootstrapPullSucceeded) return
     if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
     if (this.crdtSync.pendingPullCount > 0) return
@@ -998,11 +957,11 @@ export class FullSyncRunner {
    * storm this pacing exists to remove, not a new one to introduce.
    */
   private pumpPacedCrdtPulls(): void {
-    if (this.pacedCrdtPullTimer || this.pacedCrdtChunkInFlight) return
+    if (this.pacedCrdtPullTimer || this.pacedCrdtChunkInFlight || this.disposed) return
     if (this.pacedCrdtPullQueue.size === 0) return
 
     const crdtProvider = this.ctx.deps.crdtProvider
-    // The same wall `payOwedSweep` refuses to run into: `scheduleSync` silently
+    // `scheduleSync` silently
     // drops its callback while a fullSync is active, and pulls issued offline
     // are guaranteed to fail. Keep the queue intact and look again next tick
     // rather than spending a chunk on a request that cannot land.
@@ -1075,7 +1034,7 @@ export class FullSyncRunner {
         this.pacedCrdtChunkInFlight = false
         this.armPacedCrdtPullTimer(delayMs)
         this.maybeMarkBootstrapFullText()
-        this.stampSweptVault()
+        this.recordLegacyNoteBodySweepDone()
         this.releaseBootstrapSessionIfStalled()
       }
     })

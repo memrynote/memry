@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterAll, afterEach } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import * as path from 'path'
@@ -92,9 +92,9 @@ vi.mock('../../projections', () => ({
   flushProjectionEvents: (...args: unknown[]) => mockFlushProjectionEvents(...args)
 }))
 
-// `ctx.db` here is a bare stub, so the frontmatter→project_links reconcile the
-// update path performs is stubbed out. Its real behaviour is covered against a
-// real data DB in note-handler.project-links.test.ts.
+// The frontmatter→project_links reconcile the sync paths perform is stubbed
+// out here. Its real behaviour is covered against a real data DB in
+// note-handler.project-links.test.ts.
 const mockReconcileNoteLinks = vi.fn()
 vi.mock('../../projections/projectors/note-project-links-projector', () => ({
   reconcileNoteLinks: (...args: unknown[]) => mockReconcileNoteLinks(...args)
@@ -115,6 +115,15 @@ vi.mock('../crdt-writeback', () => ({
 }))
 
 const mockPurgeCrdtDoc = vi.fn(() => Promise.resolve())
+const mockDeleteSyncedVaultFile = vi.fn()
+vi.mock('../bulk-apply', async () => {
+  const actual = await vi.importActual<typeof import('../bulk-apply')>('../bulk-apply')
+  return {
+    ...actual,
+    deleteSyncedVaultFile: (...args: unknown[]) => mockDeleteSyncedVaultFile(...args)
+  }
+})
+
 vi.mock('../crdt-provider', () => ({
   getCrdtProvider: () => ({ purge: mockPurgeCrdtDoc })
 }))
@@ -135,8 +144,7 @@ vi.mock('../../vault/file-ops', async () => {
     await vi.importActual<typeof import('../../vault/file-ops')>('../../vault/file-ops')
   return {
     ...actual,
-    atomicWrite: vi.fn().mockResolvedValue(undefined),
-    deleteFile: vi.fn().mockResolvedValue(undefined)
+    atomicWrite: vi.fn().mockResolvedValue(undefined)
   }
 })
 
@@ -157,7 +165,6 @@ import {
   resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
 import { createTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
-import { deleteFile } from '../../vault/file-ops'
 import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
 import { deleteNoteFromCache, syncFileToCache, syncNoteToCache } from '../../vault/note-sync'
 import {
@@ -177,15 +184,22 @@ import {
 
 describe('noteHandler.applyUpsert — path collision', () => {
   let ctx: ApplyContext
+  let testDb: TestDatabaseResult
   const takenRelPaths = new Set<string>()
 
   afterAll(() => {
     fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
   })
 
+  afterEach(() => {
+    testDb.close()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
-    ctx = makeCtx()
+    // A real data DB: a remote delete clears the note's reminders through it.
+    testDb = createTestDatabase()
+    ctx = makeCtx(testDb)
     takenRelPaths.clear()
     mockGetNoteMetadataById.mockReturnValue(undefined)
     mockGetPropertyDefinition.mockReturnValue(undefined)
@@ -612,7 +626,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     // #then
     expect(applied).toBe('applied')
     expect(deleteNoteFromCache).toHaveBeenCalledWith({}, 'note-1')
-    expect(deleteFile).toHaveBeenCalledWith(path.join(VAULT_ROOT, 'a1', 'a1.md'))
+    expect(mockDeleteSyncedVaultFile).toHaveBeenCalledWith(path.join(VAULT_ROOT, 'a1', 'a1.md'))
     expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.DELETED, {
       id: 'note-1',
       path: path.join('a1', 'a1.md'),
@@ -794,6 +808,30 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
     downloadEvents = []
     noteHandler.applyUpsert(ctx, 'note-att-update', payload, { d1: 3 })
     expect(downloadEvents).toEqual([])
+  })
+
+  // #2294 review: an identical equal-clock re-delivery writes nothing, but it is
+  // the only re-request for downloads that died with the process.
+  it('re-requests attachments for an identical equal-clock re-delivery it skips', () => {
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-att-echo',
+      path: path.join('a1', 'a1.md'),
+      title: 'a1',
+      emoji: null,
+      fileType: 'markdown',
+      clock: { d1: 2 },
+      attachmentReferences: ['att-a']
+    } as unknown as ReturnType<typeof mockGetNoteMetadataById>)
+    const payload = makeNotePayload({ attachmentReferences: ['att-a'] })
+    vi.mocked(buildNotePushPayload).mockReturnValueOnce(JSON.stringify(payload))
+    resetAttachmentDownloadSession()
+
+    const result = noteHandler.applyUpsert(ctx, 'note-att-echo', payload, { d1: 2 })
+
+    expect(result).toBe('skipped')
+    expect(mockUpdateNoteMetadata).not.toHaveBeenCalled()
+    expect(ctx.emit).not.toHaveBeenCalled()
+    expect(downloadEvents.map((e) => e.attachmentId)).toEqual(['att-a'])
   })
 
   it('leaves the stored reference list untouched when the payload carries none', () => {

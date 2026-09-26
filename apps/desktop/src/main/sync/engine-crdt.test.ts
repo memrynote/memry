@@ -1,10 +1,21 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { SyncItemType } from '@memry/contracts/sync-api'
+import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { SyncEngine, type SyncEngineDeps } from './engine'
-import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import { SYNC_STATE_KEYS } from './engine/sync-context'
+import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
+import { asSyncDb } from '@tests/utils/test-db'
 
 describe('SyncEngine', () => {
   const { getDb } = setupTestDb()
+  const insertNoteRow = (id: string): void => {
+    getDb()
+      .db.insert(noteMetadata)
+      .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+      .run()
+  }
 
   describe('#given engine with crdtProvider and CREATE note queued #when push called', () => {
     it('#then pushes CRDT snapshot BEFORE posting sync items to server', async () => {
@@ -22,6 +33,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
@@ -78,6 +90,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('journal-1')
       deps.queue.enqueue({
         type: 'journal',
         itemId: 'journal-1',
@@ -112,6 +125,69 @@ describe('SyncEngine', () => {
 
       expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(
         ['journal-1'],
+        expect.anything()
+      )
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given queued note creates this device knows are deleted #when push called', () => {
+    it('#then offers the server no CRDT body for them', async () => {
+      const mockCrdtProvider = {
+        pushSnapshotsForNotes: vi
+          .fn()
+          .mockImplementation(async (noteIds: string[]) => new Map(noteIds.map((id) => [id, true])))
+      }
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: mockCrdtProvider as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      const db = getDb().db
+      const tombstone = { 'device-deleter': 2 }
+      const insertNote = (id: string, clock: Record<string, number> | null): void => {
+        db.insert(noteMetadata)
+          .values({ id, path: `${id}.md`, title: id, clock, createdAt: 'x', modifiedAt: 'x' })
+          .run()
+      }
+      insertNote('note-concurrent', { 'device-1': 1 })
+      recordTombstoneClock(asSyncDb(db), 'note', 'note-concurrent', tombstone)
+      insertNote('note-recreated', { 'device-deleter': 2, 'device-1': 1 })
+      recordTombstoneClock(asSyncDb(db), 'note', 'note-recreated', tombstone)
+      insertNote('note-live', { 'device-1': 1 })
+      for (const itemId of ['note-gone', 'note-concurrent', 'note-recreated', 'note-live']) {
+        deps.queue.enqueue({ type: 'note', itemId, operation: 'create', payload: '{}' })
+      }
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation(
+        (args: { id: string; type: SyncItemType; operation: string }) => ({
+          pushItem: {
+            id: args.id,
+            type: args.type,
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            clock: { 'device-1': 1 }
+          },
+          sizeBytes: 100
+        })
+      )
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['note-gone', 'note-concurrent', 'note-recreated', 'note-live'],
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 1
+      })
+
+      await engine.push()
+
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledTimes(1)
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(
+        ['note-recreated', 'note-live'],
         expect.anything()
       )
 
@@ -232,6 +308,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
@@ -288,6 +365,8 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
+      insertNoteRow('journal-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
@@ -375,7 +454,8 @@ describe('SyncEngine', () => {
       closeIfInactive: vi.fn().mockResolvedValue(true),
       applyRemoteUpdate: vi.fn(),
       getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
-      seedFromMarkdownPublic: vi.fn()
+      seedFromMarkdownPublic: vi.fn(),
+      recordWholeBodyMerged: vi.fn()
     })
 
     it('#then the engine reports the note as holding unverified server state', async () => {
@@ -393,8 +473,8 @@ describe('SyncEngine', () => {
         hasMore: false
       })
 
-      // #when — the exact entry point drainPendingCrdtNotes uses before it
-      // decides to push
+      // #when — the exact entry point the note-body outbox's full-state
+      // reader uses before it pushes
       await engine.mergeRemoteCrdtForNote('note-1')
 
       // #then a `return false` here sends the note back to /sync/crdt/snapshot,
@@ -413,17 +493,202 @@ describe('SyncEngine', () => {
       // #when the server tells this device a peer wrote the note. The handler is
       // private and only bound inside `start()`, which brings up the socket, so
       // this drives the branch directly rather than standing the socket up.
-      ;(engine as unknown as { handleWsMessage: (message: unknown) => void }).handleWsMessage({
-        type: 'crdt_updated',
-        payload: { noteId: 'note-ws' }
-      })
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws' })
 
       // #then the note is unmerged from this moment, not from whenever
       // `scheduleSync` gets around to the pull. In between, the 30s snapshot
       // scheduler would otherwise push a snapshot and prune the very update the
       // broadcast announced — #1503 with the server itself as the witness.
       expect(engine.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
+      // #2297: and durably, so a crash before the pull keeps the note owed.
+      expect(getDb().sqlite.prepare('SELECT note_id, reason FROM crdt_body_debts').all()).toEqual([
+        { note_id: 'note-ws', reason: 'broadcast' }
+      ])
 
+      vi.restoreAllMocks()
+    })
+
+    // #2421: once the legacy sweep is done the feed delivers every body above
+    // LAST_CURSOR, so a frame with a cursor only wakes the pull: no per-note
+    // pull, no flag and no debt.
+    it('#then a `crdt_updated` frame with a cursor after the legacy sweep wakes the pull, not a per-note pull', () => {
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+      engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '10')
+      const pull = vi.spyOn(engine, 'pull').mockResolvedValue(true)
+      const perNote = vi.spyOn(
+        (engine as unknown as { crdtSync: { pullCrdtForNote: () => Promise<boolean> } }).crdtSync,
+        'pullCrdtForNote'
+      )
+
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws', cursor: 12 })
+
+      expect(pull).toHaveBeenCalledOnce()
+      expect(perNote).not.toHaveBeenCalled()
+      // Session-only, until LAST_CURSOR reaches 12 (#2421 ruling 1).
+      expect(engine.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
+      expect(getDb().sqlite.prepare('SELECT count(*) AS n FROM crdt_body_debts').get()).toEqual({
+        n: 0
+      })
+      vi.restoreAllMocks()
+    })
+
+    // #2421: the wake's run pays what it owed (a feed entry past the page's GET
+    // budget, a missing base) instead of leaving it to the next full sync.
+    it('#then a `crdt_updated` wake pays the debts its pull owed', async () => {
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: {
+          ...crdtProviderStub(),
+          getOpenNoteIds: vi.fn(() => [])
+        } as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+      const crdtSync = (
+        engine as unknown as {
+          crdtSync: {
+            addPendingPull: (noteId: string, reason: 'feed_owed') => void
+            pullCrdtForNotes: (ids: string[]) => Promise<unknown>
+          }
+        }
+      ).crdtSync
+      const paid = vi
+        .spyOn(crdtSync, 'pullCrdtForNotes')
+        .mockResolvedValue({ snapshotGets: 0, batchPosts: 0 })
+      vi.spyOn(engine, 'pull').mockImplementation(async () => {
+        crdtSync.addPendingPull('note-owed', 'feed_owed')
+        return true
+      })
+
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws', cursor: 12 })
+
+      await vi.waitFor(() =>
+        expect(paid).toHaveBeenCalledWith(['note-owed'], expect.any(AbortSignal))
+      )
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+
+    // #2421: the wake takes the #2290 filter: a cursor at or below LAST_CURSOR
+    // names a write this device already pulled.
+    it('#then a `crdt_updated` wake at or below LAST_CURSOR pulls nothing', () => {
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+      engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '12')
+      const pull = vi.spyOn(engine, 'pull').mockResolvedValue(true)
+      const perNote = vi.spyOn(
+        (engine as unknown as { crdtSync: { pullCrdtForNote: () => Promise<boolean> } }).crdtSync,
+        'pullCrdtForNote'
+      )
+
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws', cursor: 12 })
+
+      expect(pull).not.toHaveBeenCalled()
+      expect(perNote).not.toHaveBeenCalled()
+      vi.restoreAllMocks()
+    })
+
+    // #2421: without the legacy key the server may not serve bodies in the
+    // feed, so the frame keeps its durable per-note pull.
+    it('#then a `crdt_updated` frame before the legacy sweep is done still pulls the note', () => {
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      const pull = vi.spyOn(engine, 'pull').mockResolvedValue(true)
+      const perNote = vi
+        .spyOn(
+          (engine as unknown as { crdtSync: { pullCrdtForNote: () => Promise<boolean> } }).crdtSync,
+          'pullCrdtForNote'
+        )
+        .mockResolvedValue(true)
+
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws', cursor: 12 })
+
+      expect(perNote).toHaveBeenCalledWith('note-ws')
+      expect(pull).not.toHaveBeenCalled()
+      expect(getDb().sqlite.prepare('SELECT note_id, reason FROM crdt_body_debts').all()).toEqual([
+        { note_id: 'note-ws', reason: 'broadcast' }
+      ])
+      vi.restoreAllMocks()
+    })
+
+    // #2297 round 2, #2421: a frame without a cursor is an old server's, which
+    // may not serve the body in the feed; it keeps the durable per-note pull
+    // after the legacy sweep (#2421 gate 3: the per-note fallback until #2420).
+    it('#then a `crdt_updated` broadcast without a cursor stays a durable per-note pull after the legacy sweep', () => {
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+      const pull = vi.spyOn(engine, 'pull').mockResolvedValue(true)
+      const perNote = vi
+        .spyOn(
+          (engine as unknown as { crdtSync: { pullCrdtForNote: () => Promise<boolean> } }).crdtSync,
+          'pullCrdtForNote'
+        )
+        .mockResolvedValue(true)
+
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws' })
+
+      expect(perNote).toHaveBeenCalledWith('note-ws')
+      expect(pull).not.toHaveBeenCalled()
+      expect(engine.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
+      expect(getDb().sqlite.prepare('SELECT note_id, reason FROM crdt_body_debts').all()).toEqual([
+        { note_id: 'note-ws', reason: 'broadcast' }
+      ])
+      vi.restoreAllMocks()
+    })
+
+    // #2297: a debt a previous engine left routes the note around the prune
+    // from the next start on, and a clean pull clears it.
+    it('#then a debt left by the previous engine flags the note after a restart until a pull settles it', async () => {
+      const provider = crdtProviderStub()
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: provider as unknown as SyncEngineDeps['crdtProvider'],
+        network: createMockNetwork(false)
+      })
+      const first = new SyncEngine(deps)
+      ;(
+        first as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws' })
+      await first.stop({ skipFinalPush: true })
+
+      const second = new SyncEngine(deps)
+      expect(second.hasUnmergedRemoteCrdtState('note-ws')).toBe(false)
+      await second.start()
+      expect(second.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
+
+      vi.spyOn(await import('./http-client'), 'fetchCrdtSnapshot').mockResolvedValue(null)
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        updates: [],
+        hasMore: false
+      })
+      await expect(second.mergeRemoteCrdtForNote('note-ws')).resolves.toBe(true)
+
+      expect(second.hasUnmergedRemoteCrdtState('note-ws')).toBe(false)
+      expect(getDb().sqlite.prepare('SELECT count(*) AS n FROM crdt_body_debts').get()).toEqual({
+        n: 0
+      })
       vi.restoreAllMocks()
     })
 
@@ -494,7 +759,8 @@ describe('SyncEngine', () => {
         closeIfInactive: vi.fn().mockResolvedValue(true),
         applyRemoteUpdate,
         getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
-        seedFromMarkdownPublic: vi.fn()
+        seedFromMarkdownPublic: vi.fn(),
+        recordWholeBodyMerged: vi.fn()
       }) as unknown as SyncEngineDeps['crdtProvider']
 
     it('#then a single-note pull skips an unresolved-signer update without misaligning the good ones', async () => {
@@ -543,6 +809,13 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine(deps)
       ;(engine as unknown as { ctx: { abortController: AbortController } }).ctx.abortController =
         new AbortController()
+      // A queued pull merges only into a note this device has a row for (#2297).
+      for (const id of ['note-a', 'note-b', 'note-c']) {
+        getDb()
+          .db.insert(noteMetadata)
+          .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+          .run()
+      }
 
       // Cold vault: no watermarks, so no probe POST runs — the first batch
       // POST below IS the apply round.

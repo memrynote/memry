@@ -75,6 +75,11 @@ sync runs — on the next launch, or as soon as the network comes back — it pu
 current state. A long offline editing session also stays cheap in memory: queued edits for a note
 are merged together rather than kept one per keystroke.
 
+The same startup check covers tasks, projects, inbox items, saved filters, bookmarks, templates, home
+boards, custom icons, reminders, canvas folders and task history: a change that was saved on disk
+but never handed to sync, for example because the app quit at the wrong moment, is pushed on the
+next launch.
+
 Deletions are kept the same way, and they are kept for every delete, not only the ones raised while
 sync is between runs. When you delete a note, task, or project, memrynote records the deletion on
 disk before anything else and keeps that record until a full check of your account confirms the
@@ -168,6 +173,32 @@ Tasks and projects that arrive from another device appear as sync applies them �
 device has been sitting untouched for a long time, returning to its window refreshes those lists as well,
 so coming back to a machine you left alone is enough to see the other one's changes. Restarting the app
 is never required to pick up tasks or completed tasks from another device.
+
+## Which Account a Vault Syncs With
+
+Every vault remembers the account it syncs with, inside its own folder. Signing out keeps your
+vaults on this computer, and they stay tied to your account. Nothing syncs them to someone else.
+
+When you sign in or open a vault, memrynote checks that link before syncing:
+
+| The open vault                          | What happens                                    |
+| --------------------------------------- | ----------------------------------------------- |
+| Already syncs with your account         | Syncs as usual                                  |
+| Empty                                   | Joins your account and syncs                    |
+| Has notes your account has not seen yet | Asks you once; nothing leaves the device before |
+| Was synced by a different account       | Stays on this computer; never syncs with yours  |
+| Could not be checked (offline)          | Waits and checks again when the account answers |
+
+When memrynote asks, you can:
+
+- **Add as a separate vault** — the vault joins your account next to the vaults you already have.
+  This uses a synced-vault slot on your plan.
+- **Merge into your account's vault** — only offered when your account already has a vault. The
+  notes on this computer are added to that vault.
+- **Keep on this device** — the vault is not synced and memrynote does not ask again. Choose
+  **Sync this vault** from the sync status popover to change your mind later.
+
+Press Escape to decide later; the question comes back the next time the vault opens.
 
 ## Deleting a Vault
 

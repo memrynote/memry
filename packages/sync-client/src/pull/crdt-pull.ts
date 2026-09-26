@@ -152,18 +152,16 @@ export class CrdtBodyPuller {
     let changed = false
     let cursor = since
 
-    // Baseline rule: a server prune means updates at or below the snapshot
-    // watermark are answered with silence, so a `since` under the watermark
-    // MUST take the snapshot first. Cold notes (since 0) always do; warm notes
-    // do whenever the server's advertised watermark is ahead, or when an old
-    // server advertises nothing and we cannot know (fetch, exactly as desktop
-    // did before the revision token existed).
+    // Baseline rule (§7.8, widened by #2299 like body_pull.rs `baseline_due`):
+    // a server prune answers updates at or below the snapshot watermark with
+    // silence, so a cold note (since 0) always takes the snapshot first, and a
+    // warm one takes any advertised snapshot whose revision it does not hold,
+    // whatever its sequence: a coversThrough push moves the watermark over the
+    // rows it prunes, and a cursor between the old and the new watermark never
+    // re-reads them. An old server that advertises nothing is not fetched.
     const localRevision = await this.deps.store.getSnapshotRevision(noteId)
     const needBaseline =
-      cursor === 0 ||
-      (snapshotMeta
-        ? snapshotMeta.sequenceNum > cursor && snapshotMeta.revision !== localRevision
-        : false)
+      cursor === 0 || (snapshotMeta ? snapshotMeta.revision !== localRevision : false)
 
     if (needBaseline) {
       const snap = await withRetry(

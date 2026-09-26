@@ -29,6 +29,8 @@
     "status": "الحالة",
     "priority": "الأولوية",
     "dueDate": "تاريخ الاستحقاق",
+    "startsOn": "يبدأ {date}",
+    "dueOn": "مستحق {date}",
     "project": "مشروع",
     "repeat": "كرر",
     "createAnother": "إنشاء آخر",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "مهمة إضافة سريعة",
     "focusDescription": "التركيز على إضافة مدخلات سريعة",
-    "placeholder": "أضف مهمة…    !today  !!high  #project"
+    "placeholder": "أضف مهمة…    !today  !!high  #project",
+    "presets": {
+      "menu": "خيارات المهمة",
+      "dueDate": "الاستحقاق {date}. تغيير تاريخ الاستحقاق",
+      "noDate": "بلا تاريخ",
+      "linkNote": "ربط ملاحظة",
+      "openDetails": "فتح كل التفاصيل",
+      "back": "رجوع",
+      "remove": "إزالة {name}",
+      "noReminder": "بلا تذكير",
+      "addTags": "إضافة وسوم…"
+    }
   },
   "drawer": {
     "close": "إغلاق تفاصيل المهمة",

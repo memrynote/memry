@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
+import type { LocalChange } from '../sync/sync-intents'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 
 // Track mock calls
@@ -92,6 +93,28 @@ vi.mock('@memry/sync-client/offline-clock', () => ({
   incrementTaskClocksOffline: vi.fn(),
   incrementProjectClocksOffline: vi.fn()
 }))
+
+// The handlers run against a mock DB with no tables, so the durable intent
+// journal (covered by sync/sync-intents.test.ts) is replaced by a direct
+// hand-off to the same local sync adapters it drains into.
+vi.mock('../sync/sync-intents', async () => {
+  const { callLocalMutation } =
+    await vi.importActual<typeof import('../sync/local-mutations')>('../sync/local-mutations')
+  const method = {
+    create: 'enqueueCreate',
+    update: 'enqueueUpdate',
+    delete: 'enqueueDelete'
+  } as const
+  return {
+    commitLocalChange: <T>(_db: unknown, write: () => LocalChange<T>): T => {
+      const { value, intents } = write()
+      for (const intent of intents) {
+        callLocalMutation(intent.type, method[intent.op], intent.itemId, [...intent.args])
+      }
+      return value
+    }
+  }
+})
 
 // Mock project queries
 vi.mock('@main/database/queries/projects', () => ({

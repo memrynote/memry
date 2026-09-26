@@ -143,22 +143,12 @@ describe('FolderConfigSyncService deletes', () => {
     })
   })
 
-  it('falls back to a minimal tombstone when the caller has no snapshot', () => {
-    makeService().enqueueDelete('Inbox')
-
-    const rows = queueRows()
-    expect(rows).toHaveLength(1)
-    expect(rows[0].itemId).toBe('Inbox')
-    expect(rows[0].operation).toBe('delete')
-    expect(payloadOf(rows[0])).toEqual({ path: 'Inbox', icon: null, clock: { 'device-a': 1 } })
-  })
-
-  it('propagates a delete for a folder whose row is already gone', () => {
-    // The delete path never loads the row, so a folder removed from disk first
-    // still gets its tombstone out.
+  it('pushes no fresh-clock delete for a folder with no snapshot and no row (#2423)', () => {
+    // A `{device-a: 1}` delete is refused by a server holding the real clock,
+    // and nothing locally would record it.
     makeService().enqueueDelete('Archived')
 
-    expect(queueRows()).toHaveLength(1)
+    expect(queueRows()).toHaveLength(0)
   })
 
   it('lets a delete win over a still-pending create instead of being dropped', () => {

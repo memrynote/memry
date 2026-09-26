@@ -91,15 +91,19 @@ import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
-import { CrdtUpdateQueue } from './crdt-queue'
+import {
+  NoteBodyFlushDeferredError,
+  NoteBodyOutbox,
+  importLegacyPendingCrdtNotes
+} from './note-body-outbox'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
-import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-notes'
 import { recoverDirtyItems } from './dirty-recovery'
 import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-eligibility'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { createCrdtSnapshotBatchPush } from './crdt-snapshot-batch'
-import { postToServer, pushCrdtSnapshot, pushCrdtFullUpdate, SyncServerError } from './http-client'
+import { createCrdtSnapshotPush } from './crdt-snapshot-push'
+import { postToServer, SyncServerError } from './http-client'
 import { classifyError } from './sync-errors'
 import {
   EVENT_CHANNELS,
@@ -122,6 +126,12 @@ import {
 } from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import {
+  applyOpenVaultBinding,
+  cancelBindingRetry,
+  resetVaultBindingState,
+  scheduleBindingRetry
+} from './vault-account-binding'
 import { store } from '../store'
 import { recordSyncStatusActivity } from './sync-activity'
 
@@ -137,12 +147,12 @@ interface SyncRuntimeState {
   network: NetworkMonitor
   ws: WebSocketManager
   engine: SyncEngine
-  crdtQueue: CrdtUpdateQueue
+  noteBodyOutbox: NoteBodyOutbox
   snapshotScheduler: CrdtSnapshotScheduler
   workerBridge: SyncWorkerBridge
   /**
    * Kept so teardown can detach it. The closure reaches this runtime's
-   * crdtQueue and crdtProvider, and the attachment UploadQueue is a module
+   * noteBodyOutbox, and the attachment UploadQueue is a module
    * singleton that holds the NetworkMonitor past a runtime stop — leaving the
    * subscriber attached keeps the whole dead graph reachable.
    */
@@ -204,12 +214,12 @@ let startPromise: Promise<SyncEngine | null> | null = null
  * Liveness for the work this runtime starts and then does not await.
  *
  * Two things hang off it and neither is awaited by `stopSyncRuntime`: the
- * initial CRDT seed, and the pending-note replay. A replay that outlives its
- * runtime calls `crdtProvider.open` on a destroyed provider, whose persistence
- * is null — so it builds a doc from markdown, applies the server's updates to
- * it, and nothing ever saves the result, against a vault this session may no
- * longer own. One signal stops both, and it is tripped before teardown touches
- * the provider.
+ * initial CRDT seed, and a full-state outbox flush. A flush that outlives its
+ * runtime would merge into a destroyed provider, whose persistence is null —
+ * so it builds a doc from markdown, applies the server's updates to it, and
+ * nothing ever saves the result, against a vault this session may no longer
+ * own. One signal stops both, and it is tripped before teardown touches the
+ * provider.
  */
 let runtimeAbortController: AbortController | null = null
 let deferredStartTimer: NodeJS.Timeout | null = null
@@ -293,13 +303,13 @@ export function getSyncEngine(): SyncEngine | null {
   return runtime?.engine ?? null
 }
 
-export function getCrdtQueue(): CrdtUpdateQueue | null {
-  return runtime?.crdtQueue ?? null
-}
+export const getNoteBodyOutbox = (): NoteBodyOutbox | null => runtime?.noteBodyOutbox ?? null
 
 export function getNetworkMonitor(): NetworkMonitor | null {
   return runtime?.network ?? null
 }
+
+export const getSyncWebSocket = (): WebSocketManager | null => runtime?.ws ?? null
 
 async function seedExistingCrdtDocs(
   crdtProvider: ReturnType<typeof getCrdtProvider>,
@@ -373,6 +383,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       markSyncEligible()
 
       const db = getDatabase()
+
+      // Only sync a vault that belongs to this account (vault-account-binding.ts).
+      const binding = await applyOpenVaultBinding(db)
+      if (binding === 'unknown') {
+        // Stay eligible: probably this account's own pre-binding vault with
+        // the account unreachable, so deletes must still be recorded.
+        scheduleBindingRetry(startSyncRuntime)
+        return null
+      }
+      if (binding === 'held') return markSyncIneligible()
       let startupVaultKey: Uint8Array | null = null
       try {
         startupVaultKey = await getVerifiedVaultKey(db)
@@ -510,33 +530,21 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       ])
 
-      const crdtQueue = new CrdtUpdateQueue({ persistUnflushed: recordPendingCrdtNotes })
       const snapshotScheduler = new CrdtSnapshotScheduler((noteId) =>
         crdtProvider.pushSnapshotForNote(noteId)
       )
-      crdtQueue.start(async (noteId, updates) => {
+      // Durable CRDT body outbox (#2298): note_body rows in sync_queue, pushed
+      // through this fn, which keeps the CRDT route's own 429 gate and window.
+      const pushNoteBody = async (noteId: string, updates: Uint8Array[]): Promise<void> => {
         let token = await getValidAccessToken()
         const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt update batch')
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) {
           if (vaultKey) secureCleanup(vaultKey)
           if (signingSecretKey) secureCleanup(signingSecretKey)
-          // Returning here DROPPED the batch: flushNote has already spliced
-          // these updates out of the note's buffer by the time this runs, and
-          // only its catch re-buffers them. Throwing is what keeps them —
-          // exactly why snapshotPushFn below throws on the same condition.
-          //
-          // The condition is transient by construction: startSyncRuntime does
-          // not get this far without a session, a paid entitlement and a
-          // verified vault key, so a null here is a credential that went away
-          // after the runtime started. The one that actually happens is the
-          // access token: a server this device cannot reach is also the server
-          // /auth/refresh lives on, so ~14 minutes into any outage
-          // getValidAccessToken starts returning null (60s pre-expiry margin on
-          // a 15-minute token) and the 1s flush loop then threw away every
-          // buffered update for every note, and every keystroke after them. The
-          // server came back to an empty queue, so nothing merged until a later
-          // edit pushed a snapshot that happened to carry the lost operations.
+          // Throwing keeps the rows queued; returning would ack them. The
+          // condition is transient: ~14 minutes into an outage the access
+          // token cannot be refreshed and getValidAccessToken returns null.
           throw new Error('Missing credentials for CRDT update push')
         }
 
@@ -577,12 +585,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             })
             const pushed = await crdtProvider.pushSnapshotForNote(noteId)
             if (!pushed) {
-              // Throwing re-buffers the batch, so the next flush retries the
-              // snapshot and shutdown records the note for replay. Returning
-              // here would be the silent drop this path exists to remove;
-              // snapshotPushFn already surfaced whatever went wrong.
+              // Throwing keeps the rows queued, so the next flush retries the
+              // snapshot. Returning here would ack them, the silent drop this
+              // path exists to remove; snapshotPushFn already surfaced it.
               log.error('CRDT snapshot fallback for an oversized update failed', { noteId })
-              throw new Error('CRDT snapshot fallback failed')
+              throw new NoteBodyFlushDeferredError('CRDT snapshot fallback failed')
             }
             // The snapshot is itself the compaction point, so no scheduled one.
             return
@@ -594,122 +601,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           snapshotScheduler.request(noteId)
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
-            // withAuthRetry already attempted a refresh. Pause so the
-            // re-buffered batch waits for the next successful refresh
-            // (setOnTokenRefreshed resumes the queue); token-manager owns the
-            // session-expired toast for terminal refresh failures.
-            crdtQueue.pause()
+            // withAuthRetry already attempted a refresh. Pause so the queued
+            // rows wait for the next successful refresh (setOnTokenRefreshed
+            // resumes the outbox); token-manager owns the session-expired
+            // toast for terminal refresh failures.
+            noteBodyOutbox.pause()
           }
           if (err instanceof SyncServerError && err.statusCode === 413) {
             if (classifyError(err).category === 'storage_quota_exceeded') {
-              crdtQueue.pause()
-              emitQuotaExceeded()
-            } else {
-              // Body-limit 413: one oversized note must not stall the queue
-              // for every other note.
-              emitNoteTooLarge(noteId)
-            }
-          }
-          throw err
-        } finally {
-          secureCleanup(vaultKey)
-          secureCleanup(signingSecretKey)
-        }
-      })
-
-      const snapshotPushFn = async (noteId: string, state: Uint8Array): Promise<void> => {
-        let token = await getValidAccessToken()
-        const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt snapshot push')
-        const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-        if (!token || !vaultKey || !signingSecretKey) {
-          log.warn('Missing credentials for CRDT snapshot push', {
-            noteId,
-            authAvailable: !!token,
-            hasVaultKey: !!vaultKey,
-            hasSigningKey: !!signingSecretKey
-          })
-          if (vaultKey) secureCleanup(vaultKey)
-          if (signingSecretKey) secureCleanup(signingSecretKey)
-          throw new Error('Missing credentials for CRDT snapshot push')
-        }
-
-        try {
-          const encrypted = encryptCrdtUpdate(state, vaultKey, noteId, signingSecretKey)
-
-          // The snapshot endpoint is the only destructive one. `storeSnapshot`
-          // overwrites the note's single R2 blob and `pruneUpdatesBeforeSnapshot`
-          // then deletes every `crdt_updates` row at or below the stored
-          // watermark — every device's rows, not just this one's. That is
-          // correct when this device really does contain everything the server
-          // has, and a lie whenever it does not: a merge pass that skipped a
-          // payload it could not verify (#1489), and equally a pull that failed,
-          // was rate-limited, was aborted, or has simply not run yet for a note
-          // the server has already told us a peer wrote (#1503). The rows it
-          // deletes are by definition absent from the snapshot replacing them.
-          // They are then gone for every device, permanently, and the vault key
-          // that could still decrypt them no longer has anything to decrypt.
-          //
-          // Every one of those funnels through this single choke point, so the
-          // routing decision belongs here rather than at each caller: the 30s
-          // `CrdtSnapshotScheduler`, the pending-note replay, `close()`,
-          // `pushAllSnapshots`, `compactDoc` and the push coordinator all reach
-          // the server through this fn.
-          //
-          // Failing closed instead — holding the note back until it merges — is
-          // not available: `GET /auth/devices` lists only non-revoked devices,
-          // so a revoked peer's key never returns, and a device that is offline
-          // or rate-limited may not merge for a long time. Either way the note
-          // would be held indefinitely, stranding this device's own edits. So
-          // the same doc state goes to the incremental endpoint, which stores
-          // and broadcasts it exactly like any other update and prunes nothing.
-          // This device's edits reach every peer; the unmerged payload stays on
-          // the server for a later pass to take in.
-          //
-          // The incremental route has a size ceiling the snapshot's R2 blob does
-          // not (`pushCrdtFullUpdate` throws past MAX_CRDT_UPDATE_PAYLOAD_CHARS),
-          // which keeps that one note pending and retried — a stall, not a loss,
-          // since its content is already durable in the local CRDT store, and it
-          // ends as soon as the note merges and the snapshot route reopens.
-          //
-          // `engine` is referenced lazily for the same reason
-          // `replayPendingCrdtNotes` does: nothing invokes this fn between
-          // `crdtProvider.init` below and the `const engine` assignment.
-          const viaUpdates = engine.hasUnmergedRemoteCrdtState(noteId)
-          await withRetry(
-            () =>
-              withAuthRetry(
-                (authToken) =>
-                  viaUpdates
-                    ? pushCrdtFullUpdate(noteId, encrypted, authToken)
-                    : pushCrdtSnapshot(noteId, encrypted, authToken),
-                token!,
-                crdtAuthRetryDeps,
-                (fresh) => {
-                  token = fresh
-                }
-              ),
-            {
-              maxRetries: 3,
-              baseDelayMs: 2000
-            }
-          )
-          // Distinct message per endpoint on purpose: log triage greps these
-          // strings, and the notes someone is grepping for are exactly the ones
-          // that did not take the snapshot route.
-          log.debug(viaUpdates ? 'Pushed CRDT full state as an update' : 'Pushed CRDT snapshot', {
-            noteId,
-            size: state.byteLength
-          })
-        } catch (err) {
-          if (err instanceof SyncServerError && err.statusCode === 401) {
-            // withAuthRetry already attempted a refresh — see the update-batch
-            // handler above. The caller keeps pendingSnapshotBytes, so the
-            // snapshot re-pushes after the queue resumes.
-            crdtQueue.pause()
-          }
-          if (err instanceof SyncServerError && err.statusCode === 413) {
-            if (classifyError(err).category === 'storage_quota_exceeded') {
-              crdtQueue.pause()
+              noteBodyOutbox.pause()
               emitQuotaExceeded()
             } else {
               // Body-limit 413: one oversized note must not stall the queue
@@ -723,6 +623,37 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           secureCleanup(signingSecretKey)
         }
       }
+      const noteBodyOutbox = new NoteBodyOutbox({ queue, push: pushNoteBody })
+
+      // `engine` is referenced lazily: nothing invokes these fns between
+      // `crdtProvider.init` below and the `const engine` assignment.
+      const snapshotPushFn = createCrdtSnapshotPush({
+        getAccessToken: () => getValidAccessToken(),
+        getVaultKey: () => getOptionalRuntimeVaultKey(db, 'crdt snapshot push'),
+        getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
+        authRetryDeps: crdtAuthRetryDeps,
+        hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
+        onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
+        onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
+        onError: (noteId, err) => {
+          if (err instanceof SyncServerError && err.statusCode === 401) {
+            // withAuthRetry already attempted a refresh — see the update-batch
+            // handler above. The caller keeps pendingSnapshotBytes, so the
+            // snapshot re-pushes after the outbox resumes.
+            noteBodyOutbox.pause()
+          }
+          if (err instanceof SyncServerError && err.statusCode === 413) {
+            if (classifyError(err).category === 'storage_quota_exceeded') {
+              noteBodyOutbox.pause()
+              emitQuotaExceeded()
+            } else {
+              // Body-limit 413: one oversized note must not stall the queue
+              // for every other note.
+              emitNoteTooLarge(noteId)
+            }
+          }
+        }
+      })
 
       // One request for up to MAX_CRDT_SNAPSHOT_BATCH_ENTRIES notes instead of
       // one per note. It reuses `snapshotPushFn` for everything the batch is
@@ -736,87 +667,37 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getVaultKey: () => getOptionalRuntimeVaultKey(db, 'crdt snapshot batch push'),
         getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
         authRetryDeps: crdtAuthRetryDeps,
+        onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
+        onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
           // reasons — see the comments in snapshotPushFn. A body-limit 413
           // never reaches here: the batch falls back to the per-note path so
           // the note that is actually too large can be named.
           if (err instanceof SyncServerError && err.statusCode === 401) {
-            crdtQueue.pause()
+            noteBodyOutbox.pause()
           }
           if (
             err instanceof SyncServerError &&
             err.statusCode === 413 &&
             classifyError(err).category === 'storage_quota_exceeded'
           ) {
-            crdtQueue.pause()
+            noteBodyOutbox.pause()
             emitQuotaExceeded()
           }
         }
       })
 
       const crdtProvider = getCrdtProvider()
-      await crdtProvider.init(crdtQueue, snapshotPushFn, snapshotBatchPushFn)
+      await crdtProvider.init(noteBodyOutbox, snapshotPushFn, snapshotBatchPushFn)
+      // Once, then the pre-#2298 file is gone: its notes become full-state rows.
+      importLegacyPendingCrdtNotes(queue, app.getPath('userData'))
 
-      // Created here rather than beside `engine.start()`, where it used to be:
-      // the replay below is also triggered by the network monitor, whose
-      // listener is attached further down, so the signal has to exist before
-      // anything can fire.
-      //
-      // Held in a local as well as the module slot, and the closures below read
-      // the LOCAL. They belong to this runtime and must carry this runtime's
-      // signal, which the module slot stops holding well before those closures
-      // stop being reachable: `stopSyncRuntime` nulls the slot up front, then
-      // awaits `pushAllSnapshots`, `engine.stop` and `workerBridge.stop` before
-      // it finally calls `network.removeListener`. NetworkMonitor's poll timer
-      // is live for all of it, so an offline→online transition landing in that
-      // window invokes `replayPendingCrdtNotes` again — and it rebuilds its deps
-      // per call. Reading the slot there would hand the drain `undefined` (no
-      // liveness check at all), or, if a new session had already filled the
-      // slot, the NEW session's live signal — either way the old runtime's drain
-      // would keep merging into the provider this teardown is about to destroy.
+      // Created before anything can flush a full-state row. Held in a local as
+      // well as the module slot, and the closure below reads the LOCAL:
+      // `stopSyncRuntime` nulls the slot up front and a new session may fill
+      // it, while this runtime's flush can still be in flight.
       const runtimeAbort = (runtimeAbortController = new AbortController())
-
-      // Notes the server is owed and has no other way to learn about:
-      //
-      //   - updates still buffered when the app last quit paused (offline /
-      //     expired token / quota), or released by the queue's memory budget;
-      //   - local edits made with no update queue at all, which is every edit
-      //     made while signed out, unpaid, or before the vault opened. The
-      //     provider records those as they happen (recordUnqueuedUpdate) —
-      //     nothing else in the system knows they exist.
-      //
-      // Their content is safe in the local CRDT store; pushing the full state
-      // is what the server missed. Full state is also the only shape that
-      // works: a queue-less edit produced no incrementals to replay.
-      //
-      // `mergeRemote` is not optional and is not an optimisation. A snapshot
-      // push asserts "I contain everything up to here" and the server acts on
-      // it by pruning the peer's incrementals, so each note's server state is
-      // pulled and merged immediately before its own push — and a merge that
-      // does not complete leaves the note pending and unpushed. `engine` is
-      // referenced lazily: this closure only ever runs after the const below
-      // is initialised (startup calls it at the end, and no network event can
-      // be delivered between `network.on` and that assignment).
-      //
-      // Nothing awaits the returned promise, here or at either call site, so the
-      // drain is handed this runtime's abort signal as its liveness check. Both
-      // of the fns above are bound to objects `stopSyncRuntime` destroys, and
-      // the merge is the one that does damage after that point — see #1514.
-      const replayPendingCrdtNotes = (): void => {
-        void drainPendingCrdtNotes({
-          mergeRemote: (noteId) => engine.mergeRemoteCrdtForNote(noteId),
-          pushSnapshot: (noteId) => crdtProvider.pushSnapshotForNote(noteId),
-          // Deliberately `isNoteSyncable` and not `validateNoteForCrdt`: the
-          // latter also gates the renderer's editor handshake, where a
-          // local-only note must still open. Without the local-only half, an id
-          // that reached the store through the toggle race is retained for good
-          // — `pushSnapshotForNote` correctly refuses a local-only note, so the
-          // drain never clears it and warns once per session forever.
-          isSyncable: (noteId) => crdtProvider.isNoteSyncable(noteId),
-          signal: runtimeAbort.signal
-        }).catch((err) => log.warn('Pending CRDT note replay failed', err))
-      }
 
       const emitFn = (channel: string, data: unknown): void => {
         if (channel === EVENT_CHANNELS.STATUS_CHANGED) recordSyncStatusActivity(data)
@@ -837,12 +718,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const network = new NetworkMonitor()
       network.start()
       if (!network.online) {
-        crdtQueue.pause()
+        noteBodyOutbox.pause()
       }
+      noteBodyOutbox.start()
       const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {
-          crdtQueue.resume()
-          replayPendingCrdtNotes()
+          noteBodyOutbox.resume()
           // Reconnect is the moment transiently-failed attachment downloads
           // become worth retrying; the re-driver is re-entrant-safe and gated
           // by each row's own backoff window.
@@ -850,7 +731,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             .then(({ redriveAttachmentDownloads }) => redriveAttachmentDownloads())
             .catch(() => {})
         } else {
-          crdtQueue.pause()
+          noteBodyOutbox.pause()
         }
       }
       network.on('status-changed', onNetworkStatusChanged)
@@ -863,7 +744,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       setOnTokenRefreshed(() => {
         if (network.online) {
-          crdtQueue.resume()
+          noteBodyOutbox.resume()
         }
         // Hand the fresh token to the live socket so the server extends it in
         // place instead of dropping it with WS_TOKEN_EXPIRED at expiry.
@@ -917,7 +798,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         },
         getDevicePublicKey: async (deviceId) => {
           const token = await getValidAccessToken()
-          if (!token) return null
+          // Null means "no such device" to every caller (#2408). Without a token
+          // the lookup never ran, so it fails and the caller holds instead.
+          if (!token) throw new Error('No access token to resolve a device signing key')
           return getDeviceSigningKey(runtimeSyncDb, deviceId, token)
         },
         emitToRenderer: emitFn,
@@ -957,6 +840,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       })
 
       queue.setOnItemEnqueued(() => engine.requestPush())
+      crdtProvider.setSnapshotCoverage((noteId, heldRevision) =>
+        engine.snapshotCoverage(noteId, heldRevision)
+      )
+      crdtProvider.setOweRemoteMerge((noteId, reason) => engine.oweCrdtPull(noteId, reason))
+      // A full-state row queued with no runtime (a note leaving local-only) may
+      // owe bodies the feed skipped: flagged, it claims nothing until its own
+      // flush pull merged, which clears the flag. No second pull is owed.
+      for (const noteId of queue.listFullStateNoteBodyNoteIds()) {
+        if (!crdtProvider.isNoteLocalOnly(noteId)) engine.markCrdtRemoteStateUnmerged(noteId)
+      }
 
       recoverDirtyItems(runtimeSyncDb, adapters)
 
@@ -965,7 +858,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         network,
         ws,
         engine,
-        crdtQueue,
+        noteBodyOutbox,
         snapshotScheduler,
         workerBridge,
         onNetworkStatusChanged
@@ -1011,17 +904,27 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         await redriveAttachmentDownloads()
       })().catch(() => {})
 
-      // Deliberately here and not next to crdtProvider.init(): the drain needs
-      // the snapshot push fn that init installs, but it also has to come after
-      // `engine.start()` awaits the first full sync, so this device has merged
-      // whatever the server already had before it pushes a full snapshot over
-      // it. Sign-in reaches this line the same way a cold start does —
-      // startSyncRuntime is what runs on both — so a signed-out backlog is
-      // replayed with no further user input. The network `status-changed`
-      // handler above calls the same fn; drainPendingCrdtNotes is re-entrant-
-      // safe and clears each id only once its state actually reached the
-      // server, so the two firing close together cannot double-push.
-      replayPendingCrdtNotes()
+      // Full-state rows (signed-out edits, a note leaving local-only, the
+      // imported pre-#2298 list) are the notes most likely to have diverged
+      // from a peer, so each is merged with the server's state immediately
+      // before its push, as the retired replay did, and only after the first
+      // full sync above; a merge that does not complete keeps the row. The
+      // state goes to `/sync/crdt/updates`, which prunes nothing; only an
+      // oversized one falls back to a snapshot. The abort check stops a flush
+      // that outlives this runtime from merging into a destroyed provider
+      // (#1514).
+      noteBodyOutbox.enableFullStateFlush(async (noteId) => {
+        if (runtimeAbort.signal.aborted) throw new Error('Sync runtime stopped')
+        if (!crdtProvider.isNoteSyncable(noteId)) {
+          engine.clearCrdtUnmergedForDroppedNote(noteId)
+          return null
+        }
+        if (!(await engine.mergeRemoteCrdtForNote(noteId))) {
+          throw new Error('Server CRDT state did not merge')
+        }
+        if (runtimeAbort.signal.aborted) throw new Error('Sync runtime stopped')
+        return crdtProvider.readSyncableState(noteId)
+      })
 
       trackMainEvent('sync_enabled', {
         surface: 'sync',
@@ -1037,7 +940,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
     } catch (error) {
       if (pendingRuntime) {
         pendingRuntime.snapshotScheduler.stop()
-        pendingRuntime.crdtQueue.stop()
+        pendingRuntime.noteBodyOutbox.stop()
         pendingRuntime.ws.disconnect()
         pendingRuntime.network.removeListener(
           'status-changed',
@@ -1048,8 +951,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         await pendingRuntime.engine.stop().catch(() => {})
       }
       // Same reason as the teardown path: this branch destroys the provider, and
-      // the network monitor can have fired a pending-note replay at any point
-      // after `network.on` above. That replay must not keep merging into it.
+      // a full-state outbox flush may be in flight. It must not merge into it.
       runtimeAbortController?.abort()
       runtimeAbortController = null
       await getCrdtProvider()
@@ -1085,6 +987,7 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
     clearTimeout(deferredStartTimer)
     deferredStartTimer = null
   }
+  cancelBindingRetry()
 
   if (startPromise) {
     // Prompt cancel BEFORE awaiting the start: startPromise includes the
@@ -1102,11 +1005,13 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
 
   // After the in-flight start is awaited, so this is the controller belonging to
   // the runtime being stopped — and before everything else, in particular before
-  // the provider is destroyed below. The seed and the pending-note replay both
-  // run unawaited, and the replay's next `mergeRemote` is the call that would
-  // open a note on a provider with no persistence left.
+  // the provider is destroyed below. The seed and a full-state outbox flush
+  // both run unawaited, and the flush's `mergeRemoteCrdtForNote` is the call
+  // that would open a note on a provider with no persistence left.
   runtimeAbortController?.abort()
   runtimeAbortController = null
+  // After the in-flight start settled, so its hold cannot land after this.
+  resetVaultBindingState()
   if (seedPromise) {
     await seedPromise.catch(() => {})
     seedPromise = null
@@ -1132,7 +1037,7 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
   startPromise = null
   // token-manager holds this runtime's callback in a single slot and keeps
   // firing it long after teardown (its refresh timer is independent), so the
-  // closure pins the dead crdtQueue/ws/network graph and resumes a stopped
+  // closure pins the dead noteBodyOutbox/ws/network graph and resumes a stopped
   // queue on the next refresh. Detach in the same tick that clears `runtime`:
   // that is the last moment before a concurrent startSyncRuntime() can get past
   // its `if (runtime) return` guard and install its own callback — clearing
@@ -1157,7 +1062,7 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
     log.error('Failed to stop sync engine cleanly', error)
   }
 
-  active.crdtQueue.stop()
+  active.noteBodyOutbox.stop()
   await active.workerBridge.stop().catch((err) => {
     log.error('Failed to stop sync worker', err)
   })

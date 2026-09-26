@@ -9,7 +9,7 @@ import {
   ManifestSignatureError,
   type AttachmentManifest
 } from './attachment-manifest.ts'
-import { encryptRecordForPush } from './record-encrypt.ts'
+import { deleteAttestationMessage, encryptRecordForPush } from './record-encrypt.ts'
 
 /**
  * The push encryptors are the inverse of the pull decryptors, and both are
@@ -150,6 +150,34 @@ describe('encryptRecordForPush', () => {
     await expect(
       decryptRecordItem(crypto, { ...pushItem, cryptoVersion: 1 }, vaultKey, signing.publicKey)
     ).resolves.toBeInstanceOf(Uint8Array)
+  })
+
+  // #2408: the attestation that outlives the payload shed covers the pushed claim.
+  it('attests an attestable delete over its own claim, and nothing else', async () => {
+    const claim = { id: 'task-3', type: 'task' as const, clock: { 'device-a': 2 }, deletedAt: 17 }
+    const base = {
+      content: new TextEncoder().encode('{}'),
+      vaultKey,
+      signingSecretKey: signing.privateKey,
+      signerDeviceId: 'device-a'
+    }
+    const { pushItem } = await encryptRecordForPush(crypto, {
+      ...base,
+      ...claim,
+      operation: 'delete'
+    })
+    const verifies = (message: Uint8Array) =>
+      sodium.crypto_sign_verify_detached(
+        crypto.fromBase64(pushItem.deleteAttestation!),
+        message,
+        signing.publicKey
+      )
+
+    expect(verifies(deleteAttestationMessage(claim))).toBe(true)
+    expect(verifies(deleteAttestationMessage({ ...claim, clock: { 'device-a': 3 } }))).toBe(false)
+
+    const update = await encryptRecordForPush(crypto, { ...base, ...claim, operation: 'update' })
+    expect(update.pushItem).not.toHaveProperty('deleteAttestation')
   })
 })
 

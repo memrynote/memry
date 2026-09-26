@@ -6,8 +6,11 @@ import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
+import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
 import {
   buildContentDeletePayload,
+  clearPendingDelete,
+  isSupersededByLiveRow,
   listPendingDeletes,
   recordPendingDelete
 } from './pending-deletes'
@@ -52,7 +55,7 @@ import { getCalendarExternalEventSyncService } from '@memry/sync-client/calendar
 
 const log = createLogger('LocalSync')
 
-type LocalSyncType = Exclude<SyncItemType, 'attachment'>
+export type LocalSyncType = Exclude<SyncItemType, 'attachment'>
 
 /**
  * One tripwire per type per half hour.
@@ -145,8 +148,12 @@ function enqueueDeleteOrDefer(
 /**
  * `reportUndeliverable` keeps the #1579 telemetry where it was: a delete with
  * no payload is only a dropped mutation when there was no service to take it.
+ *
+ * Exported for `commitLocalChange`, which writes the tombstone in the same
+ * transaction as the row delete (#2301), so a failed queueing step cannot roll
+ * the resurrection guard back.
  */
-function recordDeleteTombstone(
+export function recordDeleteTombstone(
   type: LocalSyncType,
   itemId: string,
   snapshotPayload: string | undefined,
@@ -182,6 +189,8 @@ function recordDeleteTombstone(
     }
 
     recordPendingDelete(db, type, itemId, payload)
+    // #2409: the clock a later re-create of this id must happen after.
+    recordLocalDeleteClock(db, type, itemId, payload, snapshotPayload ? 'snapshot' : 'final')
   } catch (err) {
     log.warn('Failed to record a local delete tombstone', {
       type,
@@ -206,7 +215,8 @@ function recordDeleteTombstone(
  * the server already applied is a no-op there, whereas clearing the tombstone
  * here would both destroy a replayed delete whose re-enqueue then failed and
  * re-open the resurrection window for the id. Only `checkManifestIntegrity`
- * retires a tombstone, once the server no longer lists the item.
+ * retires a tombstone, once the server no longer lists the item, and this pass
+ * retires one whose id is live here again (#2423).
  */
 export function flushPendingLocalDeletes(db: DrizzleDb): number {
   const pending = listPendingDeletes(db)
@@ -215,6 +225,18 @@ export function flushPendingLocalDeletes(db: DrizzleDb): number {
   let flushed = 0
   for (const item of pending) {
     try {
+      // #2423: a replayed delete would replace the re-create the dirty sweeps
+      // just queued (`coalesceSyncOperations`), or reach the server before the
+      // start-up seed queues it.
+      if (isSupersededByLiveRow(db, item.type, item.itemId)) {
+        clearPendingDelete(db, item.type, item.itemId)
+        log.info('Retired a pending delete; the item is live locally again', {
+          type: item.type,
+          itemId: item.itemId
+        })
+        continue
+      }
+
       if (item.type === 'note' || item.type === 'journal') {
         const service = item.type === 'note' ? getNoteSyncService() : getJournalSyncService()
         if (!service) continue
@@ -836,7 +858,12 @@ const localSyncRegistry = createSyncAdapterRegistry([
   }
 ])
 
-function callLocalMutation(
+/** Whether this build has a local sync adapter for `type`. */
+export function hasLocalSyncAdapter(type: string): type is LocalSyncType {
+  return localSyncRegistry.getLocal(type as LocalSyncType) !== undefined
+}
+
+export function callLocalMutation(
   type: LocalSyncType,
   method: 'enqueueCreate' | 'enqueueUpdate' | 'enqueueDelete',
   itemId: string,
@@ -908,5 +935,5 @@ export function bumpCanvasClockLocalOnly(canvasId: string): void {
 export function syncSettingsFieldUpdate(fieldPath: string, value: unknown): void {
   const manager = getSettingsSyncManager()
   if (!manager) return
-  manager.updateField(fieldPath, value, 'local')
+  manager.updateField(fieldPath, value)
 }

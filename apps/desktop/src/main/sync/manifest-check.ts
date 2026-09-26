@@ -16,6 +16,14 @@ import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
+import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
+import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { tagCategories } from '@memry/db-schema/schema/tag-categories'
+import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
+import { agentMessages } from '@memry/db-schema/schema/agent-messages'
 import type {
   RecordSyncItemType,
   RecordSyncManifest,
@@ -24,9 +32,10 @@ import type {
 import { withRetry } from '@memry/sync-client/retry'
 import { toOutboundReminderPayload } from '@memry/sync-client/reminder-outbound'
 import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
+import { listDeclinedRefs, retainDeclinedRefs } from '@memry/sync-client/declined-refs'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
-import { clearPendingDelete, listPendingDeletes } from './pending-deletes'
+import { clearPendingDelete, isNoteKnownDeleted, listPendingDeletes } from './pending-deletes'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
@@ -52,6 +61,14 @@ interface ManifestCheckDeps {
    * quarantined item is skipped on every pull, so counting it server-only
    * would reset the cursor and re-pull the whole vault on every check. */
   isQuarantined?: (itemId: string, itemType: string) => boolean
+  /**
+   * False skips re-uploading local rows the manifest lacks (#2302). Set it when
+   * this run's pull did not deliver: the pull is what applies a purged
+   * tombstone first, and the server accepts a `create` over the marker of a
+   * recreatable type, so a re-upload without it can resurrect a deleted item.
+   * The server-to-local diff and pending-delete retirement still run.
+   */
+  reuploadLocalOnly?: boolean
 }
 
 export interface ManifestCheckResult {
@@ -60,23 +77,34 @@ export interface ManifestCheckResult {
   serverOnlyCount: number
   /** True only when a manifest was actually fetched and diffed. */
   performed: boolean
+  /** Set on every result with `performed: false`, so a caller can tell a
+   * no-op from a clean diff. `nextEligibleAt` holds for a caller that feeds
+   * `checkedAt` back as `lastCheckAt`. */
+  skipped?: { reason: ManifestCheckSkipReason; nextEligibleAt: number }
+}
+
+export type ManifestCheckSkipReason = 'throttled' | 'no-token' | 'error'
+
+function skippedResult(checkedAt: number, reason: ManifestCheckSkipReason): ManifestCheckResult {
+  return {
+    checkedAt,
+    rePullNeeded: false,
+    serverOnlyCount: 0,
+    performed: false,
+    skipped: { reason, nextEligibleAt: checkedAt + MIN_INTERVAL_MS }
+  }
 }
 
 export async function checkManifestIntegrity(
   deps: ManifestCheckDeps
 ): Promise<ManifestCheckResult> {
   const now = Date.now()
-  const noAction: ManifestCheckResult = {
-    checkedAt: deps.lastCheckAt ?? 0,
-    rePullNeeded: false,
-    serverOnlyCount: 0,
-    performed: false
+  if (now - (deps.lastCheckAt ?? 0) < MIN_INTERVAL_MS) {
+    return skippedResult(deps.lastCheckAt ?? 0, 'throttled')
   }
 
-  if (now - (deps.lastCheckAt ?? 0) < MIN_INTERVAL_MS) return noAction
-
   const token = await deps.getAccessToken()
-  if (!token) return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0, performed: false }
+  if (!token) return skippedResult(now, 'no-token')
 
   try {
     // The diff below needs the COMPLETE server inventory, so every page must
@@ -141,12 +169,29 @@ export async function checkManifestIntegrity(
           : [itemRefKey(l.type, l.id)]
       )
     )
+    for (const key of getPresenceOnlyKeys(deps.db)) localKeys.add(key)
+    const declinedKeys = new Set(
+      listDeclinedRefs(deps.db).map((ref) => itemRefKey(ref.type, ref.id))
+    )
 
     let reEnqueuedCount = 0
-    for (const local of localRefs) {
+    for (const local of deps.reuploadLocalOnly === false ? [] : localRefs) {
       const serverRef = serverItemMap.get(itemRefKey(local.type, local.id))
 
       if (!serverRef) {
+        // The manifest omits tombstoned ids, so a deleted note is "missing"
+        // here too, and a create for it would republish its body.
+        if (
+          (local.type === 'note' || local.type === 'journal') &&
+          isNoteKnownDeleted(deps.db, local.id)
+        ) {
+          log.info('Local note missing from server manifest is deleted here, skipping', {
+            id: local.id,
+            type: local.type
+          })
+          continue
+        }
+
         // Payloads are built here and only here: the diff above needs nothing
         // but (type, id), so a clean vault never materializes a single row.
         const payload = buildRefPayload(deps.db, local)
@@ -185,8 +230,11 @@ export async function checkManifestIntegrity(
         // rest of the vault's life. The local→server direction above still
         // repairs activity rows that never reached the server.
         item.type !== 'task_activity' &&
+        // A type with no local enumeration can never be proven missing.
+        ENUMERATED_TYPES.has(item.type) &&
         !localKeys.has(itemRefKey(item.type, item.id)) &&
         !tombstonedKeys.has(itemRefKey(item.type, item.id)) &&
+        !declinedKeys.has(itemRefKey(item.type, item.id)) &&
         !deps.isQuarantined?.(item.id, item.type)
     )
     if (serverOnlyIds.length > 0) {
@@ -207,6 +255,7 @@ export async function checkManifestIntegrity(
 
       clearPendingDelete(deps.db, pending.type, pending.itemId)
     }
+    retainDeclinedRefs(deps.db, (ref) => serverItemMap.has(itemRefKey(ref.type, ref.id)))
 
     if (reEnqueuedCount > 0) {
       log.info('Manifest check complete', { reEnqueued: reEnqueuedCount })
@@ -220,7 +269,7 @@ export async function checkManifestIntegrity(
     }
   } catch (err) {
     log.error('Manifest integrity check failed', err)
-    return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0, performed: false }
+    return skippedResult(now, 'error')
   }
 }
 
@@ -235,9 +284,90 @@ function tombstoneRefKeys(type: SyncItemType, itemId: string): string[] {
     : [itemRefKey(type, itemId)]
 }
 
+/** The types `getLocalSyncableRefs` lists, and so the manifest check can re-upload. */
+const REUPLOADABLE_TYPES = [
+  'task',
+  'project',
+  'inbox',
+  'filter',
+  'task_activity',
+  'canvas_folder',
+  'template',
+  'home_page',
+  'custom_icon',
+  'bookmark',
+  'reminder',
+  'canvas',
+  'tag_definition',
+  'property_definition',
+  'settings',
+  'note',
+  'journal'
+] as const satisfies readonly RecordSyncItemType[]
+
 interface LocalSyncableRef {
   id: string
-  type: RecordSyncItemType
+  type: (typeof REUPLOADABLE_TYPES)[number]
+}
+
+/**
+ * Types listed only so a server row this device holds is not counted
+ * server-only. They are never re-uploaded from here: that needs a payload
+ * builder per type, and `buildRefPayload` has none for them. Rows of a
+ * device-local calendar provider never get a clock, so the clock filter keeps
+ * them out.
+ */
+const PRESENCE_ONLY_IDS = {
+  calendar_event: (db: DrizzleDb) =>
+    db
+      .select({ id: calendarEvents.id })
+      .from(calendarEvents)
+      .where(isNotNull(calendarEvents.clock))
+      .all(),
+  calendar_source: (db: DrizzleDb) =>
+    db
+      .select({ id: calendarSources.id })
+      .from(calendarSources)
+      .where(isNotNull(calendarSources.clock))
+      .all(),
+  calendar_binding: (db: DrizzleDb) =>
+    db
+      .select({ id: calendarBindings.id })
+      .from(calendarBindings)
+      .where(isNotNull(calendarBindings.clock))
+      .all(),
+  calendar_external_event: (db: DrizzleDb) =>
+    db
+      .select({ id: calendarExternalEvents.id })
+      .from(calendarExternalEvents)
+      .where(isNotNull(calendarExternalEvents.clock))
+      .all(),
+  folder_config: (db: DrizzleDb) =>
+    db
+      .select({ id: folderConfigs.path })
+      .from(folderConfigs)
+      .where(isNotNull(folderConfigs.clock))
+      .all(),
+  tag_category: (db: DrizzleDb) =>
+    db
+      .select({ id: tagCategories.id })
+      .from(tagCategories)
+      .where(isNotNull(tagCategories.clock))
+      .all(),
+  agent_conversation: (db: DrizzleDb) =>
+    db.select({ id: agentConversations.id }).from(agentConversations).all(),
+  agent_message: (db: DrizzleDb) => db.select({ id: agentMessages.id }).from(agentMessages).all()
+} satisfies Partial<Record<RecordSyncItemType, (db: DrizzleDb) => Array<{ id: string }>>>
+
+const ENUMERATED_TYPES: ReadonlySet<string> = new Set([
+  ...REUPLOADABLE_TYPES,
+  ...Object.keys(PRESENCE_ONLY_IDS)
+])
+
+function getPresenceOnlyKeys(db: DrizzleDb): string[] {
+  return Object.entries(PRESENCE_ONLY_IDS).flatMap(([type, listIds]) =>
+    listIds(db).map((row) => itemRefKey(type, row.id))
+  )
 }
 
 /**

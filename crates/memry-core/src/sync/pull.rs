@@ -2,9 +2,14 @@
 //!
 //! One page is: `GET /sync/changes` for the refs, `POST /sync/pull` for the
 //! bodies of those refs **unioned with the page's `deleted` ids**, apply in
-//! rank order, then advance the cursor. In that order and no other.
+//! rank order, then advance the cursor. In that order and no other. The first
+//! page of an incremental run asks for inline payloads (§5.11.2), and only the
+//! ids no inline item names go to `POST /sync/pull`. A loop built
+//! [`PullLoop::with_note_bodies`] also declares `note_body`: the page's bodies
+//! are fetched before the apply and land in the transaction that writes the
+//! cursor ([`super::note_body_feed`], chapter 07 §7.17).
 //!
-//! Four rules shape every branch below, and three of them are about not losing
+//! Five rules shape every branch below, and four of them are about not losing
 //! a user's data on a page that went wrong:
 //!
 //! - **One global record cursor per device** (§5.11), a decimal string,
@@ -20,6 +25,9 @@
 //!   *and* refuses the run, so no success state is written. Advancing without
 //!   refusing loses data silently; refusing without advancing wedges the device
 //!   on one poisoned page forever. Both halves or neither.
+//! - **A `/sync/pull` body that is not a pull envelope refuses the run and
+//!   holds the cursor** (§5.14, #2285). That is a server fault, not a poisoned
+//!   item: the page must still be there to re-pull once the server is fixed.
 //! - **A tombstone's body is never decoded** (§5.12). A present `deletedAt`
 //!   overrides the declared `operation`, and an id in `deleted` with no ref row
 //!   has no type on the wire at all (§5.12.1).
@@ -34,7 +42,6 @@ use std::sync::Arc;
 
 use serde_json::{Value as Json, json};
 
-use crate::api::errors::{ApiError, StorageError};
 use crate::protocol::envelope::{self, EnvelopeError, RecordEnvelope, SyncOperation};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
 use crate::protocol::types::{ArrivingItemType, Declaration};
@@ -42,6 +49,11 @@ use crate::storage::Db;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 
 use super::apply::{self, ApplyTotals, Pending};
+use super::body_debt;
+use super::body_pull::CrdtCipher;
+use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
+use super::feed_restart;
+use super::note_body_feed::{self, FeedClient, FetchedBodies, NOTE_BODY_SYNC_TYPE};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -65,82 +77,18 @@ pub trait RecordCipher: Send + Sync {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError>;
 }
 
-/// What a pull pass failed with. A per-item failure is **not** one of these:
-/// it is a count in [`PullReport`].
-#[derive(Debug, thiserror::Error)]
-pub enum PullError {
-    #[error("{source}")]
-    Api {
-        #[from]
-        source: ApiError,
-    },
-    #[error("{source}")]
-    Storage {
-        #[from]
-        source: StorageError,
-    },
-}
+pub use super::pull_report::{PullError, PullReport};
 
-/// What one pass did. Counts rather than a boolean, because the breaker needs
-/// three separate facts about the same page.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct PullReport {
-    pub pages: u32,
-    pub applied: usize,
-    pub deleted: usize,
-    /// Chapter 06 §6.3.1: the local clock dominated, so the remote was not
-    /// applied. **Not corrupt and not nothing**: the item was processed, the
-    /// cursor advances past it, and it counts as the page having yielded —
-    /// or one legitimately skipped item on a page with one bad one would trip
-    /// §5.14's breaker and refuse a run that did its work.
-    pub skipped: usize,
-    pub corrupt: usize,
-    /// Past the 90-day `task_activity` horizon (chapter 13 §13.12). **Not
-    /// corrupt**: the row is expired and the cursor still advances past it.
-    pub expired: usize,
-    /// Responses that were not a pull envelope at all (§5.14).
-    pub dropped_pages: u32,
-    /// The cursor now stored, after applying.
-    pub cursor: Option<String>,
-    pub has_more: bool,
-    /// The breaker tripped: the run is unsuccessful and **no success state may
-    /// be written**, even though the cursor advanced.
-    pub refused: bool,
-    /// The documents whose body log a tombstone on this pass actually emptied
-    /// (chapter 07 §7.15).
-    ///
-    /// §7.15's first consequence has two halves and this loop can only do one
-    /// of them. The local update log and both snapshot rows are gone by the
-    /// time this is read; the **in-memory** `Y.Doc` is not, because the pull
-    /// owns no [`crate::crdt::DocumentRegistry`]. A caller that holds one
-    /// releases each id here. Reporting them is the point: a purge that left
-    /// the caller believing the body was gone everywhere would be worse than
-    /// one that failed loudly.
-    pub purged_documents: Vec<String>,
-}
-
-/// One page of `GET /sync/changes`.
-///
-/// Only the **ids** of the ref rows are kept. A ref's type is read from the
-/// `/sync/pull` response instead, so a client never has two opinions about an
-/// item's type, and the presence of a ref row is the only thing §5.12.1 needs
-/// it for: an id in `deleted` **without** one has no type on the wire.
-struct ChangesPage {
-    ref_ids: Vec<String>,
-    deleted: Vec<String>,
-    has_more: bool,
-    next_cursor: Option<String>,
-}
+pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
-/// The declaration header value the record cursor was last advanced under.
-pub const META_RECORD_DECLARATION: &str = "sync.record_declaration";
-
 pub struct PullLoop {
     http: Arc<HttpClient>,
     db: Db,
     declaration: Declaration,
     cipher: Arc<dyn RecordCipher>,
+    /// Set when the feed pull declares `note_body` (chapter 07 §7.17).
+    bodies: Option<Arc<dyn CrdtCipher>>,
     vault_id: Option<String>,
 }
 
@@ -156,8 +104,19 @@ impl PullLoop {
             db,
             declaration,
             cipher,
+            bodies: None,
             vault_id: None,
         }
+    }
+
+    /// Declares `note_body` on the feed's `GET /sync/changes` and lands the
+    /// page's bodies before its cursor ([`note_body_feed`], #2304). Only the
+    /// feed pull declares it: the token is kept out of
+    /// [`PullLoop::request`], which the first sync's refs pass also uses and
+    /// which lands no bodies.
+    pub fn with_note_bodies(mut self, cipher: Arc<dyn CrdtCipher>) -> Self {
+        self.bodies = Some(cipher);
+        self
     }
 
     /// The client every record call goes out through. Public for the same
@@ -178,12 +137,17 @@ impl PullLoop {
     ///
     /// A refusal stops the loop deliberately: the cursor has moved past a page
     /// that produced only corruption, and continuing would report a successful
-    /// run that skipped it.
+    /// run that skipped it. After a non-envelope pull body the cursor held, and
+    /// continuing would re-read the same page.
     pub async fn run(&self, max_pages: u32) -> Result<PullReport, PullError> {
-        self.restart_on_new_declaration().await?;
+        let repairing = self.restart_feed().await?;
         let mut total = PullReport::default();
-        for _ in 0..max_pages {
-            let page = self.pull_page().await?;
+        for index in 0..max_pages {
+            let page = if index == 0 {
+                self.pull_first_page().await?
+            } else {
+                self.pull_page().await?
+            };
             total.pages += page.pages;
             total.applied += page.applied;
             total.deleted += page.deleted;
@@ -194,6 +158,9 @@ impl PullLoop {
             total
                 .purged_documents
                 .extend(page.purged_documents.iter().cloned());
+            total
+                .advanced_documents
+                .extend(page.advanced_documents.iter().cloned());
             total.cursor = page.cursor.clone();
             total.has_more = page.has_more;
             total.refused = page.refused;
@@ -201,45 +168,65 @@ impl PullLoop {
                 break;
             }
         }
+        if repairing && !total.refused && !total.has_more {
+            self.db
+                .call(|conn| feed_restart::finish_cursor_skip_repair(conn))
+                .await?;
+        }
         Ok(total)
     }
 
-    /// Starts the feed over once when the declared types grew.
-    ///
-    /// The record cursor is one position in one feed, and the server filters
-    /// that feed by the declaration. A type added to the declaration later
-    /// (saved filters, spec 004 TP022) has rows *behind* the stored cursor
-    /// that this device never saw, and no later page will carry them. The
-    /// declaration a device last pulled under is kept in `meta`; when the
-    /// current one differs, or a device that has pulled before never recorded
-    /// one, the cursor goes back to the start and the next pages re-read the
-    /// feed. Re-applying a known item is a no-op merge (its clocks dominate or
-    /// match), so the cost is one full pull, once.
-    async fn restart_on_new_declaration(&self) -> Result<(), PullError> {
+    /// Whether the stored record cursor is at or past `cursor`. `false` when
+    /// there is no cursor or it will not read: pulling is the safe answer.
+    pub async fn has_applied_through(&self, cursor: i64) -> bool {
+        let stored = self
+            .db
+            .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
+            .await;
+        let applied = stored
+            .ok()
+            .flatten()
+            .and_then(|text| text.parse::<i64>().ok());
+        applied.is_some_and(|applied| cursor <= applied)
+    }
+
+    /// Runs [`feed_restart`]'s two rules before the first page, and answers
+    /// whether the cursor-skip repair is pending.
+    async fn restart_feed(&self) -> Result<bool, PullError> {
         let current = self.declaration.header_value();
-        self.db
+        Ok(self
+            .db
             .call(move |conn| {
-                let stored = super::first_sync_store::read_meta(conn, META_RECORD_DECLARATION)?;
-                if stored.as_deref() == Some(current.as_str()) {
-                    return Ok(());
-                }
-                if store::read_cursor(conn, RECORD_CURSOR_SCOPE)?.is_some() {
-                    store::write_cursor(conn, RECORD_CURSOR_SCOPE, None, now_ms())?;
-                }
-                super::first_sync_store::write_meta(conn, META_RECORD_DECLARATION, &current)
+                let now = now_ms();
+                feed_restart::restart_on_new_declaration(conn, &current, now)?;
+                feed_restart::begin_cursor_skip_repair(conn, now)
             })
-            .await?;
-        Ok(())
+            .await?)
     }
 
     /// One page: refs, bodies, apply, advance.
     pub async fn pull_page(&self) -> Result<PullReport, PullError> {
+        self.page(false).await
+    }
+
+    /// The first page of a run. When a cursor is stored the pull is
+    /// incremental, so it asks `GET /sync/changes?inline=1` (chapter 05
+    /// §5.11.2, #2292) and a small page applies without a `POST /sync/pull`.
+    /// With no cursor the feed is read from the start, which is backlog and
+    /// keeps 500-ref pages. A server that ignores the query sends no `inline`
+    /// and the page is pulled exactly as [`PullLoop::pull_page`] pulls it.
+    pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
+        self.page(true).await
+    }
+
+    async fn page(&self, ask_inline: bool) -> Result<PullReport, PullError> {
         let cursor = self
             .db
             .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
             .await?;
 
-        let page = self.fetch_changes(cursor.as_deref()).await?;
+        let inline = ask_inline && cursor.is_some();
+        let page = self.fetch_changes(cursor.as_deref(), inline).await?;
         let mut report = PullReport {
             pages: 1,
             has_more: page.has_more,
@@ -248,28 +235,24 @@ impl PullLoop {
 
         let ids = requested_ids(&page);
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
-        let mut typed: Vec<String> = Vec::new();
 
-        for chunk in ids.chunks(MAX_PULL_IDS) {
+        let fetch = uncovered_ids(&page, &ids);
+
+        self.take_items(&page.inline, &mut report, &mut pending)
+            .await?;
+        for chunk in fetch.chunks(MAX_PULL_IDS) {
             let body = self.fetch_bodies(chunk).await?;
             let Some(items) = body.get("items").and_then(Json::as_array) else {
-                // §5.14: not a pull envelope at all. The chunk is dropped and
-                // the cursor still advances past it.
+                // §5.14 (#2285): not a pull envelope at all, which is a server
+                // contract regression. Nothing from the page is applied and the
+                // cursor holds, so the page is still there to re-pull once the
+                // server is fixed; the run is refused so no success is written.
                 report.dropped_pages += 1;
-                continue;
+                report.refused = true;
+                report.cursor = cursor;
+                return Ok(report);
             };
-            for item in items {
-                match self.decode(item) {
-                    Ok(decoded) => {
-                        typed.push(decoded.item_type().to_owned());
-                        pending.push(decoded);
-                    }
-                    Err(corrupt) => {
-                        report.corrupt += 1;
-                        self.record_corrupt(item, &corrupt).await?;
-                    }
-                }
-            }
+            self.take_items(items, &mut report, &mut pending).await?;
         }
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
@@ -286,7 +269,11 @@ impl PullLoop {
             .cloned()
             .collect();
 
-        let outcomes = self.apply_all(pending, untyped).await?;
+        let bodies = self.fetch_note_bodies(&page, &pending).await?;
+        // Only a loop that lands bodies owes them: its caller is the one that
+        // settles the debts (#2297 review A-7).
+        let owe_bodies = self.bodies.is_some();
+        let outcomes = self.apply_all(pending, untyped, owe_bodies).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -294,13 +281,14 @@ impl PullLoop {
         report.expired += outcomes.expired;
         report.purged_documents.extend(outcomes.purged_documents);
 
-        // §5.11: only now.
+        // §5.11: only now, and in the transaction that lands the bodies.
         let now = now_ms();
         let advanced = page.next_cursor.clone().or(cursor);
         let stored = advanced.clone();
-        self.db
+        report.advanced_documents = self
+            .db
             .call(move |conn| {
-                store::write_cursor(conn, RECORD_CURSOR_SCOPE, stored.as_deref(), now)
+                note_body_feed::land_and_advance(conn, bodies, stored.as_deref(), now)
             })
             .await?;
         report.cursor = advanced;
@@ -343,7 +331,7 @@ impl PullLoop {
         }
 
         pending.sort_by_key(|item| apply_rank(item.item_type()));
-        let outcomes = self.apply_all(pending, Vec::new()).await?;
+        let outcomes = self.apply_all(pending, Vec::new(), false).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -353,13 +341,89 @@ impl PullLoop {
         Ok(report)
     }
 
-    async fn fetch_changes(&self, cursor: Option<&str>) -> Result<ChangesPage, PullError> {
+    /// Decodes pulled items per item (§5.14): each one is pending or one
+    /// recorded corrupt item.
+    async fn take_items(
+        &self,
+        items: &[Json],
+        report: &mut PullReport,
+        pending: &mut Vec<Pending>,
+    ) -> Result<(), PullError> {
+        for item in items {
+            match self.decode(item) {
+                Ok(decoded) => pending.push(decoded),
+                Err(corrupt) => {
+                    report.corrupt += 1;
+                    self.record_corrupt(item, &corrupt).await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// [`note_body_feed::fetch`] for this page, when bodies are declared.
+    ///
+    /// The bodies dropped unfetched are those of a note or journal this page
+    /// deletes: a typed tombstone of a document type, or an id in `deleted`
+    /// with no typed item, which deletes every row under it (§5.12.1). A tag
+    /// that shares a note's id deletes no body.
+    async fn fetch_note_bodies(
+        &self,
+        page: &ChangesPage,
+        pending: &[Pending],
+    ) -> Result<FetchedBodies, PullError> {
+        let Some(cipher) = self.bodies.as_deref() else {
+            return Ok(FetchedBodies::default());
+        };
+        let dropped: Vec<String> = page
+            .deleted
+            .iter()
+            .filter(|id| {
+                let typed: Vec<&Pending> = pending
+                    .iter()
+                    .filter(|item| item.item_id() == *id)
+                    .collect();
+                typed.is_empty()
+                    || typed.iter().any(|item| {
+                        matches!(item, Pending::Tombstone { .. })
+                            && apply::DOCUMENT_TYPES.contains(&item.item_type())
+                    })
+            })
+            .cloned()
+            .collect();
+        let entries = page.note_bodies.clone();
+        let held = self
+            .db
+            .call(move |conn| note_body_feed::held_bodies(conn, entries.as_deref()))
+            .await?;
+        let request = |method: &str, path: &str| self.request(method, path);
+        let client = FeedClient {
+            http: &self.http,
+            request: &request,
+            cipher,
+        };
+        Ok(note_body_feed::fetch(&client, page.note_bodies.as_deref(), &dropped, &held).await)
+    }
+
+    async fn fetch_changes(
+        &self,
+        cursor: Option<&str>,
+        inline: bool,
+    ) -> Result<ChangesPage, PullError> {
         let mut path = format!("/sync/changes?limit={PULL_PAGE_LIMIT}");
         if let Some(cursor) = cursor {
             path.push_str("&cursor=");
             path.push_str(cursor);
         }
-        let body: Json = self.http.send_json(self.request("GET", &path)).await?;
+        if inline {
+            path.push_str("&inline=1");
+        }
+        let mut request = self.request("GET", &path);
+        if self.bodies.is_some() {
+            let declared = format!("{},{NOTE_BODY_SYNC_TYPE}", self.declaration.header_value());
+            request = request.header(SYNC_TYPES_HEADER, &declared);
+        }
+        let body: Json = self.http.send_json(request).await?;
         Ok(read_changes_page(&body))
     }
 
@@ -407,6 +471,7 @@ impl PullLoop {
                 item_id: envelope.id.clone(),
                 deleted_at,
                 server_cursor: server_cursor(item),
+                clock: envelope.clock.clone(),
             });
         }
 
@@ -457,16 +522,36 @@ impl PullLoop {
 
     /// Hands the page to [`apply`], which owns every decision about what an
     /// item's type means. The loop's only remaining job is the clock it is
-    /// applied at.
+    /// applied at, and on a feed page the body debt of its documents.
+    ///
+    /// The debt is written **before** the apply (#2294): a page re-pulled
+    /// after a crash skips its identical records (chapter 06 §6.5.2 P4), so a
+    /// debt written after them would be lost with the crash. A debt this page
+    /// created for a record it then skipped is taken back; one an earlier
+    /// page left is kept.
     async fn apply_all(
         &self,
         pending: Vec<Pending>,
         untyped: Vec<String>,
+        owe_bodies: bool,
     ) -> Result<ApplyTotals, PullError> {
         let now = now_ms();
         Ok(self
             .db
-            .call(move |conn| apply::apply_page(conn, pending, untyped, now))
+            .call(move |conn| {
+                let owed_here = if owe_bodies {
+                    body_debt::owe_page(conn, &pending)?
+                } else {
+                    Vec::new()
+                };
+                let totals = apply::apply_page(conn, pending, untyped, now)?;
+                for doc_id in &owed_here {
+                    if !totals.applied_documents.contains(doc_id) {
+                        body_debt::settle(conn, doc_id)?;
+                    }
+                }
+                Ok(totals)
+            })
             .await?)
     }
 }
@@ -482,59 +567,8 @@ pub fn apply_rank(item_type: &str) -> u8 {
     }
 }
 
-/// §5.12: the client unions `deleted` into the `/sync/pull` request for the
-/// **same** page, because tombstones arrive as full signed items.
-fn requested_ids(page: &ChangesPage) -> Vec<String> {
-    let mut ids: Vec<String> = Vec::with_capacity(page.ref_ids.len() + page.deleted.len());
-    for id in page.ref_ids.iter().chain(page.deleted.iter()) {
-        if !ids.iter().any(|kept| kept == id) {
-            ids.push(id.clone());
-        }
-    }
-    ids
-}
-
 fn typed_covers(pending: &[Pending], id: &str) -> bool {
     pending.iter().any(|item| item.item_id() == id)
-}
-
-/// Reads the page shape tolerantly: chapter 13 §13.2.2 permits ignoring an
-/// **envelope** key a client does not know, and a missing `items` or `deleted`
-/// array reads as empty rather than as a failure.
-fn read_changes_page(body: &Json) -> ChangesPage {
-    let ref_ids = body
-        .get("items")
-        .and_then(Json::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| item.get("id").and_then(Json::as_str))
-                .map(str::to_owned)
-                .collect()
-        })
-        .unwrap_or_default();
-    let deleted = body
-        .get("deleted")
-        .and_then(Json::as_array)
-        .map(|ids| {
-            ids.iter()
-                .filter_map(Json::as_str)
-                .map(str::to_owned)
-                .collect()
-        })
-        .unwrap_or_default();
-    ChangesPage {
-        ref_ids,
-        deleted,
-        has_more: body.get("hasMore").and_then(Json::as_bool).unwrap_or(false),
-        // The cursor is a decimal string on the wire; a server that sends it
-        // as a number means the same thing (§5.11).
-        next_cursor: match body.get("nextCursor") {
-            Some(Json::String(text)) => Some(text.clone()),
-            Some(Json::Number(number)) => Some(number.to_string()),
-            _ => None,
-        },
-    }
 }
 
 fn server_cursor(item: &Json) -> Option<i64> {
@@ -559,25 +593,5 @@ mod tests {
         assert_eq!(apply_rank("hologram"), 1);
         assert_eq!(apply_rank("task"), 2);
         assert_eq!(apply_rank("calendar_binding"), 3);
-    }
-
-    #[test]
-    fn the_requested_ids_union_the_refs_and_the_deleted_of_the_same_page() {
-        let page = ChangesPage {
-            ref_ids: vec!["a".into(), "b".into()],
-            deleted: vec!["b".into(), "c".into()],
-            has_more: false,
-            next_cursor: None,
-        };
-        assert_eq!(requested_ids(&page), ["a", "b", "c"]);
-    }
-
-    #[test]
-    fn a_page_shape_missing_its_arrays_reads_as_empty_rather_than_failing() {
-        let page = read_changes_page(&json!({ "nextCursor": 41, "hasMore": true }));
-        assert!(page.ref_ids.is_empty());
-        assert!(page.deleted.is_empty());
-        assert!(page.has_more);
-        assert_eq!(page.next_cursor.as_deref(), Some("41"));
     }
 }

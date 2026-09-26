@@ -20,7 +20,7 @@ const fileMocks = vi.hoisted(() => ({
   atomicWrite: vi.fn(),
   syncMergedTagDefinitions: vi.fn(),
   syncTaggedNote: vi.fn(),
-  syncTaggedTasks: vi.fn(),
+  commitTaskRetag: vi.fn((_db: unknown, retag: () => unknown) => retag()),
   syncTagDefinitionDelete: vi.fn(),
   syncTagDefinitionRename: vi.fn(),
   syncTagDefinitionUpdate: vi.fn(),
@@ -125,13 +125,13 @@ vi.mock('../telemetry/diagnostics', () => ({
 vi.mock('../tags/runtime-effects', () => ({
   syncMergedTagDefinitions: fileMocks.syncMergedTagDefinitions,
   syncTaggedNote: fileMocks.syncTaggedNote,
-  syncTaggedTasks: fileMocks.syncTaggedTasks,
   syncTagDefinitionDelete: fileMocks.syncTagDefinitionDelete,
   syncTagDefinitionRename: fileMocks.syncTagDefinitionRename,
   syncTagDefinitionUpdate: fileMocks.syncTagDefinitionUpdate,
   syncTagCategoryCreate: fileMocks.syncTagCategoryCreate,
   syncTagCategoryUpdate: fileMocks.syncTagCategoryUpdate,
-  syncTagCategoryDelete: fileMocks.syncTagCategoryDelete
+  syncTagCategoryDelete: fileMocks.syncTagCategoryDelete,
+  commitTaskRetag: fileMocks.commitTaskRetag
 }))
 
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
@@ -417,7 +417,12 @@ describe('tags-handlers', () => {
       name: 'source',
       color: 'blue'
     })
-    expect(fileMocks.syncTaggedTasks).toHaveBeenCalledWith(['task-1'])
+    // #2301 review A-3/B-5: the retag commits with its tasks' sync intents,
+    // before the note frontmatter writes an app quit could interrupt.
+    expect(fileMocks.commitTaskRetag).toHaveBeenCalledTimes(1)
+    expect(fileMocks.commitTaskRetag.mock.invocationCallOrder[0]).toBeLessThan(
+      fileMocks.serializeParsedNote.mock.invocationCallOrder[0]
+    )
 
     unregisterTagsHandlers()
     expect(removeHandlerCalls).toEqual(Object.values(TagsChannels.invoke))

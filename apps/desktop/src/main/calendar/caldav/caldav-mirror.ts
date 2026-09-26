@@ -6,7 +6,7 @@ import {
 } from '@memry/db-schema/schema/calendar-external-events'
 import type { CalendarSource } from '@memry/db-schema/schema/calendar-sources'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import type { DataDb } from '../../database'
 import { createLogger } from '../../lib/logger'
 import { emitCalendarChanged } from '../change-events'
@@ -192,7 +192,11 @@ export function replaceObjectInstances(
       archivedAt: null,
       // Same first clock `seedUnclocked` would assign: a clock-less row fails
       // the whole push batch (#1215).
-      clock: previous?.clock ?? (deviceId ? increment({}, deviceId) : undefined),
+      clock:
+        previous?.clock ??
+        (deviceId
+          ? nextLocalClock(db, 'calendar_external_event', id, null, deviceId, 'create')
+          : undefined),
       createdAt: previous?.createdAt ?? nowIso,
       modifiedAt: nowIso
     }

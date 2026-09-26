@@ -14,7 +14,9 @@ import {
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { KanbanBoard } from '@/components/tasks/kanban'
-import { CaptureBar } from '@/components/capture-bar'
+import { CaptureBar, type CaptureBarParsed } from '@/components/capture-bar'
+import { useCreateReminder } from '@/hooks/use-reminders'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
 import {
   FilterBar,
@@ -155,7 +157,7 @@ export const TasksPage = ({
   const undoable = useUndoableTaskActions({
     tasks,
     projects,
-    addTask: (...args) => void contextAddTask(...args),
+    addTask: (...args) => contextAddTask(...args),
     updateTask: (...args) => void contextUpdateTask(...args),
     deleteTask: (...args) => void contextDeleteTask(...args),
     registerUndo,
@@ -684,12 +686,17 @@ export const TasksPage = ({
     setIsAddTaskModalOpen(true)
   }
 
-  const handleOpenAddTaskModal = useCallback((prefillTitle: string): void => {
-    setAddTaskPrefillTitle(prefillTitle)
-    setAddTaskPrefillDueDate(null)
-    setAddTaskPrefillProjectId(null)
-    setIsAddTaskModalOpen(true)
-  }, [])
+  // The modal takes a title, project and due date; presets set in the capture
+  // bar carry over for those.
+  const handleOpenAddTaskModal = useCallback(
+    (prefillTitle: string, parsed?: CaptureBarParsed): void => {
+      setAddTaskPrefillTitle(prefillTitle)
+      setAddTaskPrefillDueDate(parsed?.dueDate ?? null)
+      setAddTaskPrefillProjectId(parsed?.projectId ?? null)
+      setIsAddTaskModalOpen(true)
+    },
+    []
+  )
 
   const handleAddTaskModalClose = (): void => {
     setIsAddTaskModalOpen(false)
@@ -700,7 +707,7 @@ export const TasksPage = ({
 
   const handleAddTaskFromModal = useCallback(
     (newTask: Task): void => {
-      undoable.createTask(newTask)
+      void undoable.createTask(newTask)
     },
     [undoable]
   )
@@ -716,17 +723,25 @@ export const TasksPage = ({
     [selectedType, selectedProject, taskPrefs.defaultProjectId, selectedProjectId]
   )
 
-  const quickAddProjectColor = useMemo((): string => {
-    const projectId = resolveQuickAddProject(
-      null,
-      { selectedType, selectedProject },
-      taskPrefs.defaultProjectId,
-      projects,
-      selectedProjectId
-    )
-    const project = projects.find((p) => p.id === projectId)
-    return project?.color || '#6B7280'
-  }, [selectedType, selectedProject, taskPrefs.defaultProjectId, projects, selectedProjectId])
+  const quickAddDefaultProjectId = useMemo(
+    (): string =>
+      resolveQuickAddProject(
+        null,
+        { selectedType, selectedProject },
+        taskPrefs.defaultProjectId,
+        projects,
+        selectedProjectId
+      ),
+    [selectedType, selectedProject, taskPrefs.defaultProjectId, projects, selectedProjectId]
+  )
+  const quickAddProjectColor =
+    projects.find((p) => p.id === quickAddDefaultProjectId)?.color || '#6B7280'
+  const quickAddPresets = useMemo(
+    () => ({ defaultProjectId: quickAddDefaultProjectId }),
+    [quickAddDefaultProjectId]
+  )
+
+  const { mutateAsync: createReminderAsync } = useCreateReminder()
 
   const modalDefaultDueDate = useMemo((): Date | null => {
     if (selectedId === 'today') {
@@ -747,7 +762,7 @@ export const TasksPage = ({
         repeat?: RepeatConfig | null
         tags?: string[]
         linkedNoteIds?: string[]
-      }
+      } & Pick<CaptureBarParsed, 'fromPresets' | 'startDate' | 'reminderAt'>
     ): void => {
       const projectId = resolveQuickAddProject(
         parsedData?.projectId,
@@ -759,7 +774,8 @@ export const TasksPage = ({
       let dueDate = parsedData?.dueDate || null
       const priority = parsedData?.priority || 'none'
 
-      if (!parsedData?.dueDate) {
+      // Presets always carry a final due date (null = the user chose no date).
+      if (!parsedData?.dueDate && !parsedData?.fromPresets) {
         if (selectedId === 'today') {
           dueDate = startOfDay(new Date())
         }
@@ -768,7 +784,7 @@ export const TasksPage = ({
       const project = projects.find((p) => p.id === projectId)
 
       let statusId: string
-      if (parsedData?.statusId) {
+      if (parsedData?.statusId && project?.statuses.some((s) => s.id === parsedData.statusId)) {
         statusId = parsedData.statusId
       } else {
         const defaultStatus = project ? getDefaultTodoStatus(project) : null
@@ -784,10 +800,36 @@ export const TasksPage = ({
       }
       newTask.tags = parsedData?.tags ?? []
       newTask.linkedNoteIds = parsedData?.linkedNoteIds ?? []
+      newTask.startDate = parsedData?.startDate ?? null
+      const doneStatus = project?.statuses.find((s) => s.id === statusId)
+      if (doneStatus?.type === 'done') newTask.completedAt = new Date()
 
-      undoable.createTask(newTask)
+      const created = undoable.createTask(newTask)
+
+      // Reminders are keyed by the stored task id, so they wait for the create.
+      const reminderAt = parsedData?.reminderAt
+      if (reminderAt) {
+        void created.then(async (taskId) => {
+          if (!taskId) return
+          try {
+            const result = await createReminderAsync({
+              targetType: 'task',
+              targetId: taskId,
+              remindAt: reminderAt.toISOString()
+            })
+            if (!result.success) {
+              toast.error(extractErrorMessage(result.error, t('reminders.toast.setFailed')))
+            }
+          } catch (err) {
+            log.error('Failed to set quick-add reminder:', err)
+            toast.error(extractErrorMessage(err, t('reminders.toast.setFailed')))
+          }
+        })
+      }
     },
     [
+      createReminderAsync,
+      t,
       selectedId,
       selectedType,
       selectedProject,
@@ -813,7 +855,7 @@ export const TasksPage = ({
         newTask.completedAt = new Date()
       }
 
-      undoable.createTask(newTask)
+      void undoable.createTask(newTask)
     },
     [selectedProject, projects, undoable]
   )
@@ -1020,6 +1062,7 @@ export const TasksPage = ({
               placeholder={t('quickAdd.placeholder')}
               accentColor={quickAddProjectColor}
               quickAdd={{ projects }}
+              presets={quickAddPresets}
               onSubmit={handleQuickAdd}
               onOpenDetail={handleOpenAddTaskModal}
               focusSignal={focusQuickAddSignal}

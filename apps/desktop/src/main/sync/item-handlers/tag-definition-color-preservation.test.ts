@@ -112,7 +112,7 @@ describe('tag colour: an incoming payload may only repaint a tag when it says so
       clock: { mac: 2 }
     })
 
-    expect(result).toBe('skipped')
+    expect(result).toBe('schema_invalid')
     expect(colorOf(db, 'focus')).toBe('green')
   })
 

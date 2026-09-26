@@ -246,6 +246,20 @@ pnpm db:studio      # open GUI
 
 > Migrations are hand-written from `0020` onward — see [Common Gotchas](/contribute/gotchas).
 
+Each data DB journal entry needs a `when` larger than every earlier entry's. Drizzle applies a
+migration only when its `when` is newer than the last one applied, so a stacked branch that is
+renumbered on rebase must also take a new, larger `when`; reusing the neighbour's value makes installs
+that already have the neighbour skip it silently. `migrate.test.ts` enforces the order (`0023` is the
+one shipped exception).
+
+Sync bookkeeping tables added this way, each additive and ignored by older builds:
+
+| Migration                 | Table                | Holds                                                                                                        |
+| ------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `0059_sync_intents`       | `sync_intents`       | local changes that still owe their clock bump and queue row (#2301)                                          |
+| `0060_crdt_body_debts`    | `crdt_body_debts`    | notes and journals whose server CRDT body this device has not merged (#2297); see [CRDT](/architecture/crdt) |
+| `0062_crdt_body_withheld` | `crdt_body_withheld` | ids whose change-feed body was dropped because no row existed yet (#2421); see [CRDT](/architecture/crdt)    |
+
 ## Vault Markdown Files
 
 Notes are plain `.md` files in the vault, and the write path is built around byte preservation: no write happens without a semantic change.

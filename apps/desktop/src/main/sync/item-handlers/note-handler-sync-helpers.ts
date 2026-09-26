@@ -2,7 +2,7 @@ import fs from 'fs'
 import { and, isNull, sql } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { extractFolderFromPath } from '../note-sync'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { toAbsolutePath } from '../../vault/notes'
@@ -108,7 +108,7 @@ export function seedUnclockedNotes(deviceId: string, queue: SyncQueueManager): n
     .all()
 
   for (const item of items) {
-    const clock = increment({}, deviceId)
+    const clock = nextLocalClock(dataDb, 'note', item.id, null, deviceId, 'create')
     const folderPath = extractFolderFromPath(item.path)
     const properties = propsToRecord(getNoteProperties(indexDb, item.id))
     const pinnedTags = getPinnedTagsForNote(indexDb, item.id)

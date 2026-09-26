@@ -1,11 +1,14 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import { withIncrementedClock } from '@memry/sync-core'
+import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { getHandler } from '../item-handlers'
 import type { SyncContext } from './sync-context'
 import type { CorruptItemTracker } from './corrupt-item-tracker'
+import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 import { itemRefKey } from './sync-context'
+import { PendingSyncIntentError } from '../pending-sync-intent-error'
 
 const log = createLogger('OrphanRepair')
 
@@ -21,6 +24,7 @@ export interface OrphanRepairParams {
   orphans: OrphanRef[]
   ctx: SyncContext
   corruptTracker: CorruptItemTracker
+  schemaInvalid: SchemaInvalidLedger
   accessJwt: string
   vaultKey: Uint8Array
   /** Applies the item and does the run bookkeeping; throws if it still fails. */
@@ -49,14 +53,17 @@ function parentExistsLocally(ctx: SyncContext, parentType: string, parentId: str
  * The parent is re-fetched by id, which is authoritative in a way the pull
  * cursor window is not:
  * - server still has it → apply the parent, then the child lands normally.
- * - server no longer has it → the parent is gone everywhere, so the child is a
- *   confirmed orphan. Tombstone it, which is what the cascade should have
+ * - server positively says it is gone (requested and no live row served, or
+ *   its delete applied here) → the parent is gone everywhere, so the child is
+ *   a confirmed orphan. Tombstone it, which is what the cascade should have
  *   pushed in the first place, and the loop ends on every device.
+ * - no answer (re-fetch cooldown, lost blob, a payload this build refuses) →
+ *   keep the child for a later run.
  */
 export async function repairOrphans(
   params: OrphanRepairParams
 ): Promise<{ repaired: number; tombstoned: number }> {
-  const { orphans, ctx, corruptTracker, accessJwt, vaultKey, applyItem } = params
+  const { orphans, ctx, corruptTracker, schemaInvalid, accessJwt, vaultKey, applyItem } = params
   if (orphans.length === 0) return { repaired: 0, tombstoned: 0 }
 
   const parentRefs = Array.from(
@@ -69,11 +76,26 @@ export async function repairOrphans(
   })
 
   corruptTracker.clearExpired()
-  const { recovered } = await corruptTracker.refetch(parentRefs, accessJwt, vaultKey)
+  const { recovered, invalid, blobMissing, missing, skipped } = await corruptTracker.refetch(
+    parentRefs,
+    accessJwt,
+    vaultKey
+  )
+  schemaInvalid.record(invalid, 'envelope')
+  schemaInvalid.record(blobMissing, 'blob_missing')
+
+  // A child is tombstoned only on a positive "gone" answer for its parent: the
+  // parent was requested and the server holds no live row for it, or its
+  // delete (signed, or an admitted purged tombstone) was just applied here.
+  // Everything else is unknown and keeps the child: a live parent this build
+  // cannot apply (#2285), a lost parent blob or one on the re-fetch cooldown
+  // (#2302), which a later run answers. Tombstoning on "not returned" pushed
+  // the child's delete to every device, the newer one that wrote it included.
+  const goneOnServer = new Set(missing.map((ref) => itemRefKey(ref.type, ref.id)))
 
   for (const parent of recovered) {
     try {
-      ctx.applier.apply({
+      const result = ctx.applier.apply({
         itemId: parent.id,
         type: parent.type as Parameters<typeof ctx.applier.apply>[0]['type'],
         operation: parent.deletedAt ? 'delete' : (parent.operation as 'create' | 'update'),
@@ -82,13 +104,25 @@ export async function repairOrphans(
         deletedAt: parent.deletedAt,
         vaultKey
       })
+      if (result === 'schema_invalid') schemaInvalid.record([parent], 'payload')
+      if (parent.deletedAt && result === 'applied') {
+        goneOnServer.add(itemRefKey(parent.type, parent.id))
+      }
     } catch (err) {
+      // The parent waits on this device's own sync intent (#2301): the ledger
+      // re-fetches it after the next pull-start drain.
+      if (err instanceof PendingSyncIntentError) schemaInvalid.record([parent], 'pending_intent')
       log.warn('Failed to apply refetched FK parent', {
         itemId: parent.id,
         type: parent.type,
         error: err instanceof Error ? err.message : String(err)
       })
     }
+  }
+  if (skipped.length > 0) {
+    log.info('FK parents with no answer this run; their children are kept', {
+      count: skipped.length
+    })
   }
 
   // Only needed if something actually turns out to be a confirmed orphan, but
@@ -104,6 +138,10 @@ export async function repairOrphans(
         applyItem(orphan.item)
         repaired++
       } catch (err) {
+        if (err instanceof PendingSyncIntentError) {
+          schemaInvalid.record([orphan.item], 'pending_intent')
+          continue
+        }
         log.warn('Orphan still failed after its parent was restored', {
           itemId: orphan.item.id,
           type: orphan.item.type,
@@ -113,8 +151,20 @@ export async function repairOrphans(
       continue
     }
 
-    // Parent confirmed absent locally AND not returned by the server. The child
-    // can never be written, so stop the re-pull loop at its source by
+    if (
+      !goneOnServer.has(itemRefKey(orphan.parentType, orphan.parentId)) ||
+      schemaInvalid.has(orphan.parentType, orphan.parentId)
+    ) {
+      log.warn('FK parent not confirmed gone; keeping the child', {
+        itemId: orphan.item.id,
+        type: orphan.item.type,
+        parentType: orphan.parentType
+      })
+      continue
+    }
+
+    // Parent confirmed absent locally AND confirmed gone on the server. The
+    // child can never be written, so stop the re-pull loop at its source by
     // tombstoning it server-side for every device.
     //
     // The clock has to be advanced first. `orphan.item.content` is what this
@@ -143,13 +193,22 @@ export async function repairOrphans(
       continue
     }
 
+    const payload = withIncrementedClock(orphan.item.content, tombstoneDeviceId)
     ctx.deps.queue.enqueue({
       type: orphan.item.type as SyncItemType,
       itemId: orphan.item.id,
       operation: 'delete',
-      payload: withIncrementedClock(orphan.item.content, tombstoneDeviceId),
+      payload,
       priority: 0
     })
+    // The only delete that bypasses local-mutations; a re-create must tick past it (#2409).
+    recordLocalDeleteClock(
+      ctx.deps.db,
+      orphan.item.type as SyncItemType,
+      orphan.item.id,
+      payload,
+      'final'
+    )
     tombstoned++
     log.warn('FK parent gone server-side — tombstoning orphaned item', {
       itemId: orphan.item.id,

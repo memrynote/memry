@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import path from 'path'
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
+import type * as CrdtStoreMove from './crdt-store-move'
 
 const mocks = vi.hoisted(() => ({
   userDataDir: '/userData',
@@ -13,8 +14,17 @@ const mocks = vi.hoisted(() => ({
   claim: undefined as string | undefined,
   partitionPending: undefined as string | undefined,
   pendingRenames: {} as Record<string, string>,
-  openStore: null as ((storagePath: string) => Promise<unknown>) | null
+  openStore: null as ((storagePath: string) => Promise<unknown>) | null,
+  moveFails: false
 }))
+
+vi.mock('./crdt-store-move', async (importOriginal) => {
+  const actual = await importOriginal<typeof CrdtStoreMove>()
+  return {
+    moveStoreDir: (from: string, to: string) =>
+      mocks.moveFails ? Promise.resolve(false) : actual.moveStoreDir(from, to)
+  }
+})
 
 vi.mock('electron', () => ({
   app: { getPath: () => mocks.userDataDir }
@@ -262,6 +272,7 @@ describe('a CRDT store whose vault adopted another uuid', () => {
     mocks.partitionPending = undefined
     mocks.pendingRenames = { [ADOPTED_UUID]: OWN_UUID }
     mocks.openStore = null
+    mocks.moveFails = false
   })
 
   afterEach(() => {
@@ -277,6 +288,31 @@ describe('a CRDT store whose vault adopted another uuid', () => {
     const target = await prepareVaultCrdtStore()
 
     expect(target?.storagePath).toBe(storePath(ADOPTED_UUID))
+    expect(await readDoc(storePath(ADOPTED_UUID), NOTE_ID)).toBe('written before linking')
+    expect(existsSync(storePath(OWN_UUID))).toBe(false)
+    expect(mocks.pendingRenames).toEqual({})
+  })
+
+  it('opens the pre-adoption store in place when the move fails, and moves it next launch', async () => {
+    // #2424: returning the adopted path after a failed move let LevelDB create an
+    // empty store there, which then blocked every retry of the move for good.
+    await writeDoc(storePath(OWN_UUID), NOTE_ID, 'written before linking')
+    // A legacy store moved into the empty adopted path would block the retry too.
+    await writeDoc(path.join(userData, 'crdt-store'), NOTE_ID, 'the legacy global store')
+    mocks.claim = ADOPTED_UUID
+    mocks.moveFails = true
+
+    const failed = await prepareVaultCrdtStore()
+
+    expect(failed?.storagePath).toBe(storePath(OWN_UUID))
+    expect(await readDoc(failed!.storagePath, NOTE_ID)).toBe('written before linking')
+    expect(existsSync(storePath(ADOPTED_UUID))).toBe(false)
+    expect(mocks.pendingRenames).toEqual({ [ADOPTED_UUID]: OWN_UUID })
+
+    mocks.moveFails = false
+    const next = await prepareVaultCrdtStore()
+
+    expect(next?.storagePath).toBe(storePath(ADOPTED_UUID))
     expect(await readDoc(storePath(ADOPTED_UUID), NOTE_ID)).toBe('written before linking')
     expect(existsSync(storePath(OWN_UUID))).toBe(false)
     expect(mocks.pendingRenames).toEqual({})

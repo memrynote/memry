@@ -23,7 +23,8 @@ export const UNDOABLE_FIELDS = new Set([
 export interface UseUndoableTaskActionsOptions {
   tasks: Task[]
   projects: Project[]
-  addTask: (task: Task) => void
+  /** May resolve with the stored task id; `createTask` passes it through. */
+  addTask: (task: Task) => void | Promise<string | null>
   updateTask: (taskId: string, updates: Partial<Task>) => void
   deleteTask: (taskId: string) => void
   registerUndo: (description: string, undoFn: () => void) => string
@@ -31,7 +32,8 @@ export interface UseUndoableTaskActionsOptions {
 }
 
 export interface UseUndoableTaskActionsReturn {
-  createTask: (task: Task) => void
+  /** Resolves with the stored task id when `addTask` reports one, else null. */
+  createTask: (task: Task) => Promise<string | null>
   deleteTask: (taskId: string) => void
   completeTask: (taskId: string) => void
   uncompleteTask: (taskId: string) => void
@@ -63,11 +65,12 @@ export const useUndoableTaskActions = ({
   // ========== CREATE ==========
 
   const createTaskWithUndo = useCallback(
-    (task: Task): void => {
-      addTask(task)
+    (task: Task): Promise<string | null> => {
+      const created = addTask(task)
       registerUndo(`Create "${task.title}"`, () => {
         deleteTask(task.id)
       })
+      return created instanceof Promise ? created : Promise.resolve(null)
     },
     [addTask, deleteTask, registerUndo]
   )
@@ -83,7 +86,7 @@ export const useUndoableTaskActions = ({
       deleteTask(taskId)
 
       const undoId = registerUndo(`Delete "${task.title}"`, () => {
-        addTask(snapshot)
+        void addTask(snapshot)
       })
 
       toast.success(t('toasts.deleted'), {
@@ -93,7 +96,7 @@ export const useUndoableTaskActions = ({
           label: 'Undo',
           onClick: () => {
             removeUndoEntry(undoId)
-            addTask(snapshot)
+            void addTask(snapshot)
           }
         }
       })
@@ -174,7 +177,7 @@ export const useUndoableTaskActions = ({
             }
           }
           nextOccurrenceId = newTask.id
-          addTask(newTask)
+          void addTask(newTask)
           toast.success(t('toasts.completed'), {
             description: `Next occurrence: ${formatDateShort(nextDate)}`
           })

@@ -7,6 +7,8 @@ import {
   type NewNoteCache
 } from '@memry/db-schema/schema/notes-cache'
 import type { IndexDb } from '../../types'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
 // ============================================================================
 // Note Cache CRUD
@@ -307,9 +309,8 @@ export function getAllNoteIds(db: IndexDb): string[] {
  * index-build order and says nothing about either. `idx_note_cache_modified`
  * already covers the sort.
  *
- * Ordering only, never filtering. The sweep is the sole channel by which a
- * body-only remote edit reaches a device that missed the `crdt_updated`
- * broadcast — bodies never travel in the record change feed — so it stays
+ * Ordering only, never filtering. The one-time legacy sweep (#2297) is the
+ * only channel for body rows the change feed never serves, so it stays
  * exhaustive and every markdown note is still returned. A vault with uniform
  * mtimes (restored from backup, freshly cloned, bulk-imported) simply falls
  * back to an arbitrary order, which is what it had before.
@@ -322,6 +323,21 @@ export function getAllCrdtNoteIds(db: IndexDb): string[] {
     .orderBy(desc(noteCache.modifiedAt))
     .all()
     .map((r) => r.id)
+}
+
+/**
+ * Every syncable markdown note and journal the DATA db holds, recent first
+ * (#2299). The index cache can lack notes while it rebuilds; a vault sweep that
+ * licenses snapshot claims must not skip them.
+ */
+export function getAllSyncableNoteMetadataIds(db: DrizzleDb): string[] {
+  return db
+    .select({ id: noteMetadata.id })
+    .from(noteMetadata)
+    .where(and(eq(noteMetadata.fileType, 'markdown'), eq(noteMetadata.localOnly, false)))
+    .orderBy(desc(noteMetadata.modifiedAt))
+    .all()
+    .map((row) => row.id)
 }
 
 export function getNotesModifiedAfter(db: IndexDb, date: string): NoteCache[] {

@@ -22,7 +22,7 @@ use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use http_fakes::{FakeTransport, response};
+use http_fakes::{FakeTransport, error_response, response};
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{DocumentRegistry, extract_text};
@@ -34,6 +34,8 @@ use memry_core::storage::repositories::instants;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate, crdt_cursor_scope};
 use memry_core::sync::first_sync::{FirstSync, FirstSyncProgress, ProgressSink};
+use memry_core::sync::first_sync_store::read_meta;
+use memry_core::sync::note_body_feed::META_NOTE_BODY_LEGACY_PULL;
 use memry_core::sync::pull::{PullLoop, RecordCipher};
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::{Value as Json, json};
@@ -627,6 +629,40 @@ async fn a_snapshot_that_pruned_past_the_cursor_is_taken_from_the_probe() {
     assert!(text_of(&db, NOTE).contains("from the snapshot"));
 }
 
+/// #2299 review round 2 (A-4, B-L1): a snapshot row whose object is missing
+/// answers a retryable 503, never `snapshot: null`. The pull fails; it does
+/// not page on from 0 as if the document had no snapshot.
+#[tokio::test(start_paused = true)]
+async fn a_snapshot_answered_503_fails_the_pull_and_moves_no_cursor() {
+    let db = scratch_db("baseline-503");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
+    let unavailable = || error_response(503, "STORAGE_BLOB_NOT_FOUND", "retry");
+    let transport = FakeTransport::new(vec![
+        unavailable(),
+        unavailable(),
+        unavailable(),
+        unavailable(),
+    ]);
+    let bodies = BodyPull::new(
+        http(transport.clone()),
+        db.clone(),
+        Declaration::subscribed(),
+        RealCrdtCipher::with("device-a", public_key),
+    );
+
+    assert!(bodies.pull_document(NOTE).await.is_err());
+
+    let cursor = db
+        .call_blocking(|conn| store::read_cursor(conn, &crdt_cursor_scope(NOTE)))
+        .expect("cursor");
+    assert_eq!(cursor, None);
+    assert!(
+        transport.calls_to("/sync/crdt/updates").is_empty(),
+        "no incrementals were paged as if there were no snapshot"
+    );
+}
+
 #[tokio::test]
 async fn a_tombstoned_document_is_never_body_pulled() {
     let db = scratch_db("tombstone");
@@ -648,6 +684,112 @@ async fn a_tombstoned_document_is_never_body_pulled() {
     assert_eq!(report.tombstones, 1);
     assert_eq!(report.bodies.documents, 0, "§7.15: not one body request");
     assert_eq!(transport.call_count(), 1);
+}
+
+/// #2299 review A-5: a coversThrough push moves the server's watermark, so a
+/// per-document cursor can sit between the old and the new one; the single
+/// update route now advertises the snapshot, and a revision this device does
+/// not hold is taken even when its sequence is not ahead of the cursor.
+#[tokio::test]
+async fn a_snapshot_whose_revision_is_not_held_is_taken_even_below_the_cursor() {
+    let db = scratch_db("baseline-unheld");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
+    db.call_blocking(|conn| {
+        update_log::put_server_snapshot(conn, NOTE, b"unused", 4, Some("rev-1"), 1).map_err(
+            |error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            },
+        )?;
+        store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("10"), 1)
+    })
+    .expect("seed");
+
+    let transport = FakeTransport::new(vec![
+        // The probe advertises nothing; the page's own meta is what is due.
+        response(200, &json!({"notes": {}}).to_string()),
+        response(
+            200,
+            &json!({
+                "updates": [],
+                "hasMore": false,
+                "snapshotMeta": {"sequenceNum": 8, "revision": "rev-2", "signerDeviceId": "device-a"}
+            })
+            .to_string(),
+        ),
+        response(
+            200,
+            &json!({
+                "snapshot": packed_base64(NOTE, &body_update("covered"), &secret_key),
+                "sequenceNum": 8,
+                "signerDeviceId": "device-a",
+                "revision": "rev-2"
+            })
+            .to_string(),
+        ),
+    ]);
+    let bodies = BodyPull::new(
+        http(transport.clone()),
+        db.clone(),
+        Declaration::subscribed(),
+        RealCrdtCipher::with("device-a", public_key),
+    );
+    let report = bodies.pull_document(NOTE).await.expect("the pull");
+
+    assert_eq!(report.baselines, 1);
+    let stored = db
+        .call_blocking(|conn| {
+            update_log::snapshot(conn, Namespace::Server, NOTE).map_err(|error| {
+                memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                }
+            })
+        })
+        .expect("read")
+        .expect("a snapshot");
+    assert_eq!(stored.server_revision.as_deref(), Some("rev-2"));
+    let cursor = db
+        .call_blocking(|conn| store::read_cursor(conn, &crdt_cursor_scope(NOTE)))
+        .expect("cursor");
+    assert_eq!(
+        cursor.as_deref(),
+        Some("10"),
+        "a baseline never moves the cursor back"
+    );
+}
+
+/// #2299 review A-5/B-7: the refs pass moves the record cursor past body rows
+/// it never serves, so it re-arms the legacy pull and no push claims that
+/// cursor until a page that serves bodies has owed every held document.
+#[tokio::test]
+async fn the_refs_pass_re_arms_the_legacy_body_pull() {
+    let db = scratch_db("refs-rearm");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[29u8; 32]).expect("keypair");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, 'done')",
+            [META_NOTE_BODY_LEGACY_PULL],
+        )
+        .map_err(|error| memry_core::api::errors::StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("seed");
+
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &changes_page(&[(NOTE, "note")], &[NOTE], 10, false),
+    )]);
+    first_sync(&db, transport, public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync");
+
+    let legacy = db
+        .call_blocking(|conn| read_meta(conn, META_NOTE_BODY_LEGACY_PULL))
+        .expect("read meta");
+    assert_eq!(legacy, None);
 }
 
 /// The whole first sync wired to one scripted transport.

@@ -19,11 +19,14 @@ import {
   PROJECT_SYNCABLE_FIELDS
 } from '@memry/sync-client/field-merge'
 import { createLogger } from '../../lib/logger'
+import type { DataDb } from '../../database'
 import {
   listTableOwnedProjectLinks,
   isMarkdownNote,
   getProjectLinkForItem
 } from '../../database/queries/projects'
+import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
+import { linkNotesNamingProject } from '../../projections/projectors/note-project-links-projector'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -182,12 +185,13 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
             remoteId: itemId,
             localId: localInbox.id
           })
+          recordDeclinedRef(tx, { type: 'project', id: itemId })
           return 'skipped'
         }
       }
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock, remoteClock)
+        const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
         if (resolution.action === 'skip') {
           log.info('Skipping remote project update, local is newer', { itemId })
           return 'skipped'
@@ -265,10 +269,11 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
+      const name = data.name ?? 'Untitled'
       tx.insert(projects)
         .values({
           id: itemId,
-          name: data.name ?? 'Untitled',
+          name,
           description: data.description ?? null,
           color: data.color ?? '#6366f1',
           icon: data.icon ?? null,
@@ -286,6 +291,15 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
 
       if (data.statuses) {
         reconcileStatuses(tx as unknown as DrizzleDb, itemId, data.statuses)
+      }
+
+      // Before the payload's links, so their `pinned`/`position` land on the
+      // rows this derives. The project applied either way; a failure here
+      // leaves those notes unlinked until their next apply.
+      try {
+        linkNotesNamingProject(tx as unknown as DataDb, name)
+      } catch (err) {
+        log.error('Failed to link notes that name a synced project', { itemId, error: err })
       }
 
       if (data.links) {

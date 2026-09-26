@@ -29,6 +29,8 @@
     "status": "Stare",
     "priority": "Prioritate",
     "dueDate": "Data scadentă",
+    "startsOn": "Începe {date}",
+    "dueOn": "Scadent {date}",
     "project": "Proiect",
     "repeat": "Repetați",
     "createAnother": "Creați altul",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Sarcină de adăugare rapidă",
     "focusDescription": "Concentrați intrarea de adăugare rapidă",
-    "placeholder": "Adaugă o sarcină…    !today  !!high  #project"
+    "placeholder": "Adaugă o sarcină…    !today  !!high  #project",
+    "presets": {
+      "menu": "Opțiuni sarcină",
+      "dueDate": "Scadență {date}. Schimbă scadența",
+      "noDate": "Fără dată",
+      "linkNote": "Leagă o notă",
+      "openDetails": "Deschide toate detaliile",
+      "back": "Înapoi",
+      "remove": "Elimină {name}",
+      "noReminder": "Fără memento",
+      "addTags": "Adaugă etichete…"
+    }
   },
   "drawer": {
     "close": "Închideți detaliile sarcinii",

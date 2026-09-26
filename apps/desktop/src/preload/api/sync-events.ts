@@ -24,6 +24,7 @@ import type {
   CertificatePinFailedEvent,
   VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-sync'
+import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 import { subscribe } from '../lib/ipc'
 
 export const syncEvents = {
@@ -98,5 +99,8 @@ export const syncEvents = {
     subscribe<CertificatePinFailedEvent>(SYNC_EVENTS.CERTIFICATE_PIN_FAILED, callback),
 
   onVaultRecoveryNeeded: (callback: (event: VaultRecoveryNeededEvent) => void): (() => void) =>
-    subscribe<VaultRecoveryNeededEvent>(SYNC_EVENTS.VAULT_RECOVERY_NEEDED, callback)
+    subscribe<VaultRecoveryNeededEvent>(SYNC_EVENTS.VAULT_RECOVERY_NEEDED, callback),
+
+  onVaultBindingChanged: (callback: (state: VaultBindingState) => void): (() => void) =>
+    subscribe<VaultBindingState>(SYNC_EVENTS.VAULT_BINDING_CHANGED, callback)
 }

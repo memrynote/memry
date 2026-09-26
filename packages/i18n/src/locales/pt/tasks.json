@@ -29,6 +29,8 @@
     "status": "Estado",
     "priority": "Prioridade",
     "dueDate": "Data de vencimento",
+    "startsOn": "Início {date}",
+    "dueOn": "Prazo {date}",
     "project": "Projeto",
     "repeat": "Repetir",
     "createAnother": "Crie outro",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Tarefa de adição rápida",
     "focusDescription": "Concentre-se na entrada de adição rápida",
-    "placeholder": "Adicionar uma tarefa…    !today  !!high  #project"
+    "placeholder": "Adicionar uma tarefa…    !today  !!high  #project",
+    "presets": {
+      "menu": "Opções da tarefa",
+      "dueDate": "Vence {date}. Alterar data de vencimento",
+      "noDate": "Sem data",
+      "linkNote": "Vincular nota",
+      "openDetails": "Abrir todos os detalhes",
+      "back": "Voltar",
+      "remove": "Remover {name}",
+      "noReminder": "Sem lembrete",
+      "addTags": "Adicionar tags…"
+    }
   },
   "drawer": {
     "close": "Fechar detalhes da tarefa",

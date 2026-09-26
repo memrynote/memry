@@ -3,21 +3,28 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import {
+  CrdtSnapshotBaseRevisionSchema,
+  CrdtSnapshotCoversThroughSchema,
   PullRequestSchema,
   RecordPushEnvelopeSchema,
   RecordPushItemIdentitySchema,
   RecordPushItemSchema
 } from '@memry/contracts/sync-api'
 import type { RecordPushItemInput } from '@memry/contracts/sync-api'
-import { safeBase64Decode } from '../lib/encoding'
+import { safeBase64Decode, safeBase64Encode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { clientGateMiddleware } from '../middleware/client-gate'
-import { getClientPolicy, toPolicySnapshot } from '../services/client-policies'
+import {
+  getClientPolicy,
+  snapshotClaimsEnabled,
+  toPolicySnapshot
+} from '../services/client-policies'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
 import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { syncTypesMiddleware } from '../middleware/sync-types'
+import { selectSocketItems, socketItemsMaxBytes } from '../lib/socket-items'
 import {
   getChanges,
   getItem,
@@ -47,15 +54,17 @@ import { captureBusinessEvent, safeWaitUntil, waitUntilCaptured } from '../servi
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
 import {
-  storeUpdates,
+  storeUpdatesWithCursor,
   getUpdates,
   getBatchUpdates,
+  getSnapshotMeta,
   storeSnapshot,
   storeSnapshotBatch,
   getSnapshot,
   pruneUpdatesBeforeSnapshot,
   pruneUpdatesBeforeSnapshotBatch,
-  type SnapshotBatchOutcome
+  type SnapshotBatchOutcome,
+  type SnapshotClaim
 } from '../services/crdt'
 import { enqueuePackCompaction } from '../services/pack-compaction'
 import { listPacks } from '../services/pack-list'
@@ -150,7 +159,6 @@ sync.use('*', paidSyncMiddleware)
 sync.use('*', syncTypesMiddleware)
 
 const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update
-const BASE64_CHUNK_SIZE = 8192
 
 const getRequestPath = (c: Context<AppContext>): string => new URL(c.req.url).pathname
 
@@ -187,16 +195,6 @@ function logQueryValidationFailure(
   throw new AppError(ErrorCodes[code], issue, 400)
 }
 
-function safeBase64Encode(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
-  let result = ''
-  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
-    const chunk = bytes.subarray(i, i + BASE64_CHUNK_SIZE)
-    result += String.fromCharCode(...chunk)
-  }
-  return btoa(result)
-}
-
 function decodeCrdtPayload(base64: string, endpoint: string, tooLargeMessage: string): ArrayBuffer {
   try {
     const bytes = safeBase64Decode(base64)
@@ -216,10 +214,15 @@ function decodeCrdtPayload(base64: string, endpoint: string, tooLargeMessage: st
   }
 }
 
+// Per device, like crdt_push: record pushes are device-local work, and a per-user
+// bucket made every device on an account share one 60/min budget (#2288).
+// Deviceless requests keep the userId/IP fallback. Not elevated: pushes keep
+// their abuse ceilings (BOOTSTRAP_ELEVATION_MULTIPLIERS is pull-only).
 const pushRateLimit = createRateLimiter({
   keyPrefix: 'sync_push',
-  maxRequests: 60,
-  windowSeconds: 60
+  maxRequests: 300,
+  windowSeconds: 60,
+  identifier: deviceIdentifier
 })
 
 const changesRateLimit = createRateLimiter({
@@ -337,7 +340,13 @@ const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> =
     logQueryValidationFailure('record', endpoint, 'cursor requires limit')
   }
 
-  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!, page)
+  const manifest = await getManifest(
+    c.env.DB,
+    userId,
+    vaultId,
+    c.get('syncSubscription')!.recordTypes,
+    page
+  )
   return c.json(manifest)
 }
 
@@ -361,9 +370,24 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
     logQueryValidationFailure('record', endpoint, 'Invalid limit value')
   }
 
-  const changes = await getChanges(c.env.DB, userId, cursor, limit, vaultId, c.get('syncTypes')!)
+  // Opt-in and strict (#2292, protocol 05 §5.11.2): absent keeps today's bytes,
+  // `1` inlines, anything else is a 400 rather than a silently ignored value.
+  const inlineParam = c.req.query('inline')
+  if (inlineParam !== undefined && inlineParam !== '1') {
+    logQueryValidationFailure('record', endpoint, 'Invalid inline value')
+  }
 
-  if (changes.items.length > 0 || changes.deleted.length > 0) {
+  const subscription = c.get('syncSubscription')!
+  const changes =
+    inlineParam === '1'
+      ? await getChanges(c.env.DB, userId, cursor, limit, vaultId, subscription, c.env.STORAGE)
+      : await getChanges(c.env.DB, userId, cursor, limit, vaultId, subscription)
+
+  if (
+    changes.items.length > 0 ||
+    changes.deleted.length > 0 ||
+    (changes.noteBodies?.length ?? 0) > 0
+  ) {
     await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor, vaultId)
     await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
@@ -378,7 +402,7 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
     deletedCount: changes.deleted.length
   })
 
-  return c.json(changes)
+  return c.json({ ...changes, serverTimeMs: Date.now() })
 }
 
 const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
@@ -431,6 +455,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
   if (items.length === 0) {
     logRecordPushBatch({
       endpoint,
+      vaultId,
       latencyMs: Date.now() - startedAt,
       outcomes: invalidOutcomes
     })
@@ -446,6 +471,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     })
   }
 
+  const socketItemsBudget = socketItemsMaxBytes(c.env)
   let result
   try {
     result = await processRecordPushBatch(
@@ -455,12 +481,14 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
       deviceId,
       items,
       vaultId,
-      c.get('client') ?? null
+      c.get('client') ?? null,
+      socketItemsBudget
     )
   } catch (error) {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
       logRecordPushBatch({
         endpoint,
+        vaultId,
         latencyMs: Date.now() - startedAt,
         outcomes: [
           ...invalidOutcomes,
@@ -474,10 +502,6 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
       })
     }
     throw error
-  }
-
-  if (result.maxCursor > 0) {
-    await updateDeviceCursor(c.env.DB, deviceId, userId, result.maxCursor, vaultId)
   }
 
   if (result.accepted.length > 0) {
@@ -494,13 +518,20 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     })
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
+    // Only sockets that opted in ever see these (protocol 09 §9.13, #2300).
+    const socketItems = selectSocketItems(result.committedItems, socketItemsBudget)
     waitUntilCaptured(
       c,
       stub.fetch(
         new Request(new URL('/broadcast', c.req.url), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ excludeDeviceId: deviceId, cursor: result.maxCursor, vaultId })
+          body: JSON.stringify({
+            excludeDeviceId: deviceId,
+            cursor: result.maxCursor,
+            vaultId,
+            ...(socketItems ? { items: socketItems, committedAtMs: result.committedAtMs } : {})
+          })
         })
       ),
       { source: 'UserSyncState', action: 'record_push_broadcast_failed' }
@@ -509,6 +540,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
 
   logRecordPushBatch({
     endpoint,
+    vaultId,
     latencyMs: Date.now() - startedAt,
     outcomes: [...invalidOutcomes, ...result.outcomes]
   })
@@ -540,13 +572,14 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
     label: 'pull request'
   })
 
-  const items = await pullItems(
+  const { items, purgedTombstones, blobMissing } = await pullItems(
     c.env.DB,
     c.env.STORAGE,
     userId,
     parsed.itemIds,
     vaultId,
-    c.get('syncTypes')!
+    c.get('syncSubscription')!.recordTypes,
+    c.get('syncSubscription')!.purgedTombstones === true
   )
   logRecordQueryBatch({
     endpoint,
@@ -555,7 +588,13 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
     itemTypes: items.map((item) => item.type)
   })
 
-  return c.json({ items })
+  // The #2302 siblings are sent only when non-empty, so a page without a purged
+  // or lost row stays byte-identical to what every older client reads.
+  return c.json({
+    items,
+    ...(purgedTombstones.length > 0 ? { purgedTombstones } : {}),
+    ...(blobMissing.length > 0 ? { blobMissing } : {})
+  })
 }
 
 const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {
@@ -711,8 +750,19 @@ const CrdtPushSchema = z.object({
 
 const CrdtSnapshotPushSchema = z.object({
   noteId: NoteIdSchema,
-  snapshot: z.string()
+  snapshot: z.string(),
+  coversThrough: CrdtSnapshotCoversThroughSchema.optional(),
+  baseRevision: CrdtSnapshotBaseRevisionSchema.optional()
 })
+
+/** The #2299 claim of one push; `baseRevision` means nothing without `coversThrough`. */
+const snapshotClaim = (entry: {
+  coversThrough?: number
+  baseRevision?: string
+}): SnapshotClaim | undefined =>
+  entry.coversThrough === undefined
+    ? undefined
+    : { coversThrough: entry.coversThrough, baseRevision: entry.baseRevision }
 
 /**
  * #1857. 50 notes per request: a snapshot is up to 5MB decoded (~6.7MB of
@@ -723,13 +773,17 @@ const CrdtSnapshotPushSchema = z.object({
  * `snapshot` is deliberately unbounded here. An oversized payload is a per-note
  * failure reported in `results`, not a 400 that throws away the 49 good notes
  * riding with it — decodeCrdtPayload enforces the 5MB ceiling per entry.
+ * `coversThrough` and `baseRevision` (#2299) are unchecked here for the same
+ * reason: a malformed one is that note's VALIDATION_ERROR, checked per entry.
  */
 const CrdtSnapshotBatchPushSchema = z.object({
   snapshots: z
     .array(
       z.object({
         noteId: NoteIdSchema,
-        snapshot: z.string()
+        snapshot: z.string(),
+        coversThrough: z.unknown().optional(),
+        baseRevision: z.unknown().optional()
       })
     )
     .min(1)
@@ -758,9 +812,9 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
   )
 
   const totalBytes = buffers.reduce((sum, buf) => sum + buf.byteLength, 0)
-  let sequences: number[]
+  let stored: { sequences: number[]; cursor?: number }
   try {
-    sequences = await storeUpdates(
+    stored = await storeUpdatesWithCursor(
       c.env.DB,
       userId,
       vaultId,
@@ -783,7 +837,10 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
     }
     throw error
   }
+  const { sequences, cursor } = stored
 
+  // `cursor` (#2420) is the highest cursor this push inserted; a duplicate-only
+  // retry inserted nothing and still broadcasts, without one.
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(doId)
   waitUntilCaptured(
@@ -796,7 +853,8 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
           excludeDeviceId: deviceId,
           vaultId,
           type: 'crdt_updated',
-          noteId: parsed.noteId
+          noteId: parsed.noteId,
+          cursor
         })
       })
     ),
@@ -848,6 +906,9 @@ const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> =
     Math.min(limit, 500)
   )
 
+  // Additive (#2299): null means "no snapshot"; an old server omits the key.
+  const snapshotMeta = await getSnapshotMeta(c.env.DB, userId, vaultId, noteIdResult.data)
+
   const encoded = result.updates.map((u) => ({
     sequenceNum: u.sequence_num,
     data: safeBase64Encode(u.update_data as ArrayBuffer),
@@ -864,7 +925,7 @@ const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> =
     latencyMs: Date.now() - startedAt
   })
 
-  return c.json({ updates: encoded, hasMore: result.hasMore })
+  return c.json({ updates: encoded, hasMore: result.hasMore, snapshotMeta })
 }
 
 const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> => {
@@ -934,7 +995,12 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
 
   const snapshotBytes = decodeCrdtPayload(parsed.snapshot, endpoint, 'Snapshot exceeds 5MB limit')
 
-  let result: { sequenceNum: number; revision: string }
+  const claim =
+    parsed.coversThrough !== undefined &&
+    (await snapshotClaimsEnabled(c.env.DB, c.env.CRDT_CLAIM_MIN_DESKTOP_VERSION))
+      ? snapshotClaim(parsed)
+      : undefined
+  let result: { sequenceNum: number; revision: string; cursor?: number }
   try {
     result = await storeSnapshot(
       c.env.DB,
@@ -944,10 +1010,15 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
       parsed.noteId,
       deviceId,
       snapshotBytes,
-      c.get('client') ?? null
+      c.get('client') ?? null,
+      claim
     )
   } catch (error) {
-    if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
+    if (
+      error instanceof AppError &&
+      (error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED ||
+        error.code === ErrorCodes.CRDT_SNAPSHOT_NOT_COVERED)
+    ) {
       logCrdtTraffic({
         endpoint,
         event: 'snapshot_rejected',
@@ -960,7 +1031,9 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
     throw error
   }
 
-  await pruneUpdatesBeforeSnapshot(c.env.DB, userId, vaultId, parsed.noteId)
+  // A claimed write pruned inside its own commit (#2299); only the
+  // pre-#2299 watermark rule prunes here.
+  if (!claim) await pruneUpdatesBeforeSnapshot(c.env.DB, userId, vaultId, parsed.noteId)
 
   // Snapshot pushes are pack candidates too (#1839): nudge after the store +
   // prune settle, best-effort, same reasoning as the record push path.
@@ -983,6 +1056,9 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
   // still being removed. Delivery is best-effort for the same reason as the
   // update path: the write already succeeded, so a failed broadcast is captured
   // in the background rather than returned as an error the client would retry.
+  //
+  // `cursor` (#2420) is the stored row's; an older own encode wrote nothing and
+  // is still announced, without one.
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(doId)
   waitUntilCaptured(
@@ -995,7 +1071,8 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
           excludeDeviceId: deviceId,
           vaultId,
           type: 'crdt_updated',
-          noteId: parsed.noteId
+          noteId: parsed.noteId,
+          cursor: result.cursor
         })
       })
     ),
@@ -1046,13 +1123,29 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
 
   // Decode per note: an unusable payload is that note's result, not the batch's.
   const results = new Array<SnapshotBatchOutcome | undefined>(parsed.snapshots.length)
-  const decoded: Array<{ index: number; noteId: string; snapshotData: ArrayBuffer }> = []
+  const decoded: Array<{
+    index: number
+    noteId: string
+    snapshotData: ArrayBuffer
+    claim?: SnapshotClaim
+  }> = []
   parsed.snapshots.forEach((entry, index) => {
     try {
+      const coversThrough = CrdtSnapshotCoversThroughSchema.optional().safeParse(
+        entry.coversThrough
+      )
+      const baseRevision = CrdtSnapshotBaseRevisionSchema.optional().safeParse(entry.baseRevision)
+      if (!coversThrough.success || !baseRevision.success) {
+        throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid snapshot claim', 400)
+      }
       decoded.push({
         index,
         noteId: entry.noteId,
-        snapshotData: decodeCrdtPayload(entry.snapshot, endpoint, 'Snapshot exceeds 5MB limit')
+        snapshotData: decodeCrdtPayload(entry.snapshot, endpoint, 'Snapshot exceeds 5MB limit'),
+        claim: snapshotClaim({
+          coversThrough: coversThrough.data,
+          baseRevision: baseRevision.data
+        })
       })
     } catch (error) {
       results[index] = {
@@ -1062,6 +1155,14 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
       }
     }
   })
+
+  // One policy read for the whole request; a closed gate drops every claim.
+  if (
+    decoded.some((entry) => entry.claim) &&
+    !(await snapshotClaimsEnabled(c.env.DB, c.env.CRDT_CLAIM_MIN_DESKTOP_VERSION))
+  ) {
+    for (const entry of decoded) entry.claim = undefined
+  }
 
   const totalBytes = decoded.reduce((sum, entry) => sum + entry.snapshotData.byteLength, 0)
 
@@ -1074,7 +1175,7 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
         userId,
         vaultId,
         deviceId,
-        decoded.map(({ noteId, snapshotData }) => ({ noteId, snapshotData })),
+        decoded.map(({ noteId, snapshotData, claim }) => ({ noteId, snapshotData, claim })),
         c.get('client') ?? null
       )
     } catch (error) {
@@ -1090,19 +1191,34 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
       }
       throw error
     }
+    // The response keeps its shape: the cursor rides only on the broadcast.
     decoded.forEach((entry, position) => {
-      results[entry.index] = outcomes[position]
+      const outcome = outcomes[position]
+      results[entry.index] = outcome.accepted
+        ? {
+            noteId: outcome.noteId,
+            accepted: true,
+            sequenceNum: outcome.sequenceNum,
+            revision: outcome.revision
+          }
+        : outcome
     })
   }
 
   const accepted = outcomes.filter((outcome) => outcome.accepted === true)
 
   if (accepted.length > 0) {
+    // Claimed writes pruned inside their own commit (#2299).
+    const claimedNotes = new Set(
+      decoded.filter((entry) => entry.claim).map((entry) => entry.noteId)
+    )
     await pruneUpdatesBeforeSnapshotBatch(
       c.env.DB,
       userId,
       vaultId,
-      accepted.map((outcome) => ({ noteId: outcome.noteId, sequenceNum: outcome.sequenceNum }))
+      accepted
+        .filter((outcome) => !claimedNotes.has(outcome.noteId))
+        .map((outcome) => ({ noteId: outcome.noteId, sequenceNum: outcome.sequenceNum }))
     )
 
     // One nudge for the whole batch — the queue message is per (user, vault),
@@ -1131,7 +1247,8 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
                 excludeDeviceId: deviceId,
                 vaultId,
                 type: 'crdt_updated',
-                noteId: outcome.noteId
+                noteId: outcome.noteId,
+                cursor: outcome.cursor
               })
             })
           )

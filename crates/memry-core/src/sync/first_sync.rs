@@ -57,6 +57,7 @@ use crate::storage::repositories::sync_items;
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
 use super::first_sync_store::{pending_metadata_ids, read_meta, recent_document_ids, write_meta};
+use super::note_body_feed;
 use super::pull::{PULL_PAGE_LIMIT, PullError, PullLoop};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
@@ -309,6 +310,8 @@ impl FirstSync {
                             reference_now(&refs, item_id),
                         )?;
                     }
+                    // The refs pass serves no bodies (#2299).
+                    note_body_feed::rearm_legacy_pull(&txn)?;
                     store::write_cursor(&txn, RECORD_CURSOR_SCOPE, stored.as_deref(), now_ms())?;
                     txn.commit().map_err(sqlite_failed)?;
                     Ok(())

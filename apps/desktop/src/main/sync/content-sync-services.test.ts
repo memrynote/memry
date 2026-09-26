@@ -137,6 +137,18 @@ vi.mock('../database/client', () => ({
   getIndexDatabase: vi.fn(() => ({}))
 }))
 
+// The seeding itself (#2409) is covered by recreate-clock-seeding.test.ts; with
+// no recorded tombstone the mint is exactly `incrementClock(current)`.
+vi.mock('@memry/sync-client/tombstone-clocks', () => ({
+  nextLocalClock: (
+    _db: unknown,
+    _type: string,
+    _itemId: string,
+    current: Record<string, number> | null | undefined,
+    deviceId: string
+  ) => ({ ...(current ?? {}), [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
+}))
+
 vi.mock('@memry/storage-data', () => ({
   getNoteMetadataById: vi.fn(() => mocks.local),
   updateNoteMetadata: (...args: unknown[]) => mocks.updateNoteMetadata(...args)
@@ -404,12 +416,13 @@ describe('content sync services', () => {
       clock: { 'dev-a': 1 }
     })
 
-    service.enqueueDelete('Inbox')
-    expect(JSON.parse(queue.items[3].payload)).toEqual({
-      path: 'Inbox',
-      icon: null,
-      clock: { 'dev-a': 1 }
-    })
+    // #2423: no snapshot and no row, so no `{dev-a: 1}` delete.
+    new FolderConfigSyncService({
+      queue: queue as never,
+      db: makeFolderDb(undefined) as never,
+      getDeviceId: () => 'dev-a'
+    }).enqueueDelete('Inbox')
+    expect(queue.items).toHaveLength(3)
 
     expect(getFolderConfigSyncService()).toBeNull()
     expect(

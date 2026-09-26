@@ -16,6 +16,7 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { projectLinks } from '@memry/db-schema/schema/project-links'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-links-'))
@@ -61,12 +62,17 @@ vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 
 vi.mock('@memry/domain-notes', () => ({ saveCanonicalPropertyDefinition: vi.fn() }))
 
-const mockSyncProjectUpdate = vi.fn()
-vi.mock('../../tasks/runtime-effects', () => ({
-  syncProjectUpdate: (...args: unknown[]) => mockSyncProjectUpdate(...args)
+// The link rows commit with a project sync intent (#2301); the intent drains
+// into the local sync adapter call recorded here.
+const mockLocalMutation = vi.fn()
+vi.mock('../local-mutations', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../local-mutations')>()),
+  callLocalMutation: (...args: unknown[]) => mockLocalMutation(...args)
 }))
 
 import { noteHandler } from './note-handler'
+import { syncNoteToCache } from '../../vault/note-sync'
+import { createNoteProjectLinksProjector } from '../../projections/projectors/note-project-links-projector'
 
 const NOTE_PATH = path.join('n1.md')
 
@@ -133,9 +139,49 @@ describe('noteHandler.applyUpsert — project links on a synced update', () => {
     const links = dataDb.db.select().from(projectLinks).all()
     expect(links).toHaveLength(1)
     expect(links[0]).toMatchObject({ projectId: 'p1', itemId: 'n1', itemType: 'note' })
-    // Exactly once per applied note — a second reconcile would push the project again.
-    expect(mockSyncProjectUpdate).toHaveBeenCalledTimes(1)
-    expect(mockSyncProjectUpdate).toHaveBeenCalledWith('p1', ['links'])
+    // The device that edited the note already pushed the project with this
+    // membership; a re-push from every receiver only ping-pongs its clock.
+    expect(mockLocalMutation).not.toHaveBeenCalled()
+    expect(dataDb.db.select().from(syncIntents).all()).toEqual([])
+  })
+
+  it('derives the link of a remote note create without pushing the project', async () => {
+    vi.mocked(syncNoteToCache).mockImplementation((_db, input) => {
+      dataDb.db
+        .insert(noteMetadata)
+        .values({
+          id: input.id,
+          path: input.path,
+          title: input.title,
+          fileType: 'markdown',
+          createdAt: input.createdAt,
+          modifiedAt: input.modifiedAt
+        })
+        .run()
+      return undefined as never
+    })
+
+    const result = noteHandler.applyUpsert(
+      ctx,
+      'n2',
+      { title: 'n2', content: 'body', properties: { project: ['Alpha'] } },
+      { 'device-B': 1 }
+    )
+    // The projection runtime drains the create's `note.upserted` after the page.
+    await createNoteProjectLinksProjector().project({
+      type: 'note.upserted',
+      note: { kind: 'markdown', noteId: 'n2', properties: { project: ['Alpha'] } } as never
+    })
+
+    expect(result).toBe('applied')
+    expect(
+      dataDb.db
+        .select({ projectId: projectLinks.projectId, itemId: projectLinks.itemId })
+        .from(projectLinks)
+        .all()
+    ).toEqual([{ projectId: 'p1', itemId: 'n2' }])
+    expect(mockLocalMutation).not.toHaveBeenCalled()
+    expect(dataDb.db.select().from(syncIntents).all()).toEqual([])
   })
 
   it('drops the link when the update clears the project property', () => {
@@ -168,7 +214,7 @@ describe('noteHandler.applyUpsert — project links on a synced update', () => {
     )
 
     expect(dataDb.db.select().from(projectLinks).all()).toHaveLength(1)
-    expect(mockSyncProjectUpdate).not.toHaveBeenCalled()
+    expect(mockLocalMutation).not.toHaveBeenCalled()
   })
 
   it('does not reconcile links for a non-markdown note', () => {

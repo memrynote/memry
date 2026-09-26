@@ -27,6 +27,7 @@ let securityWarningListeners: EventCallback[] = []
 let certificatePinFailedListeners: VoidCallback[] = []
 let vaultRecoveryNeededListeners: EventCallback[] = []
 let vaultStatusListeners: EventCallback[] = []
+let vaultBindingListeners: EventCallback[] = []
 let i18n: I18nInstance
 
 const toastMock = vi.hoisted(() => ({
@@ -81,7 +82,9 @@ const mockSyncOps = {
   }),
   triggerSync: vi.fn().mockResolvedValue(undefined),
   pause: vi.fn().mockResolvedValue(undefined),
-  resume: vi.fn().mockResolvedValue(undefined)
+  resume: vi.fn().mockResolvedValue(undefined),
+  getVaultBinding: vi.fn().mockResolvedValue({ status: 'bound' }),
+  resolveVaultBinding: vi.fn()
 }
 
 beforeEach(async () => {
@@ -97,6 +100,8 @@ beforeEach(async () => {
   mockSyncOps.triggerSync.mockResolvedValue(undefined)
   mockSyncOps.pause.mockResolvedValue(undefined)
   mockSyncOps.resume.mockResolvedValue(undefined)
+  mockSyncOps.getVaultBinding.mockResolvedValue({ status: 'bound' })
+  mockSyncOps.resolveVaultBinding.mockReset()
 
   syncStatusListeners = []
   pausedListeners = []
@@ -117,6 +122,7 @@ beforeEach(async () => {
   certificatePinFailedListeners = []
   vaultRecoveryNeededListeners = []
   vaultStatusListeners = []
+  vaultBindingListeners = []
   logoutMock.mockClear()
   vi.mocked(useAuth).mockReturnValue({
     state: { status: 'authenticated' },
@@ -233,6 +239,12 @@ beforeEach(async () => {
       vaultRecoveryNeededListeners = vaultRecoveryNeededListeners.filter((l) => l !== cb)
     }
   })
+  api.onVaultBindingChanged = vi.fn((cb: EventCallback) => {
+    vaultBindingListeners.push(cb)
+    return () => {
+      vaultBindingListeners = vaultBindingListeners.filter((l) => l !== cb)
+    }
+  })
   api.onVaultStatusChanged = vi.fn((cb: EventCallback) => {
     vaultStatusListeners.push(cb)
     return () => {
@@ -268,6 +280,59 @@ describe('SyncProvider', () => {
       await vi.waitFor(() => {
         expect(result.current.state.status).toBe('idle')
       })
+    })
+  })
+
+  describe('#given the open vault needs a sync decision', () => {
+    const needsDecision = {
+      status: 'needs-decision',
+      accountVaultCount: 1,
+      mergeTarget: { vaultUuid: 'account-vault', name: 'Main' }
+    }
+
+    it('#then asks at mount when main decided before the window listened', async () => {
+      mockSyncOps.getVaultBinding.mockResolvedValue(needsDecision)
+      const { result } = renderHook(() => useSync(), { wrapper })
+
+      await vi.waitFor(() => expect(result.current.vaultBinding).toEqual(needsDecision))
+      expect(screen.getByText('Sync this vault to your account?')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Merge into “Main”' })).toBeTruthy()
+    })
+
+    it('#then sends the choice and takes the state main answers with', async () => {
+      mockSyncOps.resolveVaultBinding.mockResolvedValue({
+        success: true,
+        state: { status: 'local-only' }
+      })
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+
+      act(() => {
+        for (const cb of vaultBindingListeners) cb(needsDecision)
+      })
+      act(() => {
+        screen.getByRole('button', { name: 'Keep on this device' }).click()
+      })
+
+      await vi.waitFor(() => expect(result.current.vaultBinding).toEqual({ status: 'local-only' }))
+      expect(mockSyncOps.resolveVaultBinding).toHaveBeenCalledWith('local')
+      expect(screen.queryByText('Sync this vault to your account?')).toBeNull()
+    })
+
+    it('#then keeps the current state and reports when main refuses', async () => {
+      mockSyncOps.resolveVaultBinding.mockResolvedValue({ success: false, error: 'nope' })
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      act(() => {
+        for (const cb of vaultBindingListeners) cb(needsDecision)
+      })
+
+      await act(async () => {
+        await result.current.resolveVaultBinding('sync')
+      })
+
+      expect(result.current.vaultBinding).toEqual(needsDecision)
+      expect(toastMock.error).toHaveBeenCalled()
     })
   })
 

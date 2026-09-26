@@ -46,10 +46,13 @@ import { buildCalendar } from './vectors/calendar'
 import { buildCalendarIcal } from './vectors/calendar-ical'
 import { buildCalendarWrite } from './vectors/calendar-write'
 import { buildInbox } from './vectors/inbox'
+import { buildDeleteAttestation } from './vectors/delete-attestation'
 import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
 import { buildRecordEnvelope } from './vectors/record-envelope'
+import { buildRecreateClock } from './vectors/recreate-clock'
+import { buildSettingsMerge } from './vectors/settings-merge'
 import { buildTaskFiltering } from './vectors/task-filtering'
 import { buildTaskParsing } from './vectors/task-parsing'
 import { buildTextExtract } from './vectors/text-extract'
@@ -75,6 +78,8 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'cbor-canonical', files: [{ path: 'cbor-canonical.json', build: buildCborCanonical }] },
   { name: 'compression', files: [{ path: 'compression.json', build: buildCompression }] },
   { name: 'field-merge', files: [{ path: 'field-merge.json', build: buildFieldMerge }] },
+  { name: 'settings-merge', files: [{ path: 'settings-merge.json', build: buildSettingsMerge }] },
+  { name: 'recreate-clock', files: [{ path: 'recreate-clock.json', build: buildRecreateClock }] },
   { name: 'pack-container', files: [{ path: 'pack-container.json', build: buildPackContainer }] },
   {
     name: 'payload-schemas',
@@ -104,6 +109,10 @@ const CLASSES: readonly VectorClass[] = [
   {
     name: 'attachment-manifest',
     files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]
+  },
+  {
+    name: 'delete-attestation',
+    files: [{ path: 'delete-attestation.json', build: buildDeleteAttestation }]
   },
   {
     name: 'markdown-roundtrip',

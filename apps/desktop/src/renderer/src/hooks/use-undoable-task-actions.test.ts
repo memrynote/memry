@@ -118,6 +118,21 @@ describe('useUndoableTaskActions', () => {
       expect(deps.addTask).toHaveBeenCalledWith(task)
     })
 
+    it('should resolve with the stored id that addTask reports', async () => {
+      const { result, deps } = setup()
+      deps.addTask.mockResolvedValue('stored-id')
+
+      await expect(result.current.createTask(makeTask({ id: 'temp-id' }))).resolves.toBe(
+        'stored-id'
+      )
+    })
+
+    it('should resolve with null when addTask reports nothing', async () => {
+      const { result } = setup()
+
+      await expect(result.current.createTask(makeTask({ id: 'temp-id' }))).resolves.toBeNull()
+    })
+
     it('should register undo after creating', () => {
       const { result, deps } = setup()
       const task = makeTask({ id: 'new-task', title: 'New' })

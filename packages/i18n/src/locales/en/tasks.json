@@ -35,6 +35,8 @@
     "startDate": "Start date",
     "changeStartDate": "Start: {date}. Click to change.",
     "dueDate": "Due Date",
+    "startsOn": "Starts {date}",
+    "dueOn": "Due {date}",
     "reminder": "Reminder",
     "project": "Project",
     "repeat": "Repeat",
@@ -113,7 +115,18 @@
   },
   "quickAdd": {
     "label": "Quick add task",
-    "placeholder": "Add a task…    @tomorrow  !high  +project  #tag  [[note]]  every monday"
+    "placeholder": "Add a task…    @tomorrow  !high  +project  #tag  [[note]]  every monday",
+    "presets": {
+      "menu": "Task options",
+      "dueDate": "Due {date}. Change due date",
+      "noDate": "No date",
+      "linkNote": "Link note",
+      "openDetails": "Open full details",
+      "back": "Back",
+      "remove": "Remove {name}",
+      "noReminder": "No reminder",
+      "addTags": "Add tags…"
+    }
   },
   "drawer": {
     "close": "Close task details",

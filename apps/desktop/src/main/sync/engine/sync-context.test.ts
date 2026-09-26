@@ -76,17 +76,28 @@ describe('SYNC_STATE_KEYS', () => {
         INITIAL_SEED_DONE: 'initialSeedDone',
         QUARANTINED_ITEMS: 'quarantinedItems',
         LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt',
-        // Additive: absent on installs written by older builds, which reads
-        // back as 0 and simply runs the vault-wide CRDT sweep once.
-        LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt',
+        // `lastCrdtSweepAt` is retired (#2421), its row left for older builds.
         // Additive too: absent reads as '0' — "the last session ended with
         // every note merged" — which is both what an older build's install
         // means and the answer that changes nothing.
         CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt',
+        // #2297: absent on older installs; a `crdtUnmergedDebt = '1'` without it
+        // is converted into per-note debts once.
+        CRDT_BODY_DEBT_MIRROR_AT: 'crdtBodyDebtMirrorAt',
         // Additive again (#1840): absent reads as 0 — "no pack coverage" —
         // which is what every install written before packs existed means, and
         // the answer that leaves the item-granular bootstrap untouched.
-        PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor'
+        PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor',
+        CURSOR_SKIP_REPAIR: 'cursorSkipRepair',
+        SCHEMA_INVALID_ITEMS: 'schemaInvalidItems',
+        // #2297: absent, `pending` or `done`; an install without it has not
+        // been served bodies by the feed yet.
+        NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep',
+        // #2421: absent reads as this build's first run and is recorded.
+        NOTE_BODY_FEED_CURSOR: 'noteBodyFeedCursor',
+        // #2299: absent reads as a mismatch with the CRDT store's epoch, so an
+        // install from before it runs the vault sweep once.
+        CRDT_STORE_EPOCH: 'crdtStoreEpoch'
       })
     })
 

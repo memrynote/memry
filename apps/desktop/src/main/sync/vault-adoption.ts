@@ -5,7 +5,8 @@ import type { DataDb } from '../database/types'
 import { VAULT_KEY_VERIFIER_SETTING } from '../crypto/vault-key-state'
 import { resetVaultUuidCache } from '../agent/storage/vault-id'
 import { createLogger } from '../lib/logger'
-import { recordCrdtStoreRename } from '../store'
+import { getCurrentVaultPath, recordCrdtStoreRename } from '../store'
+import { vaultHasLocalContent } from './vault-account-binding'
 import { getFromServer } from './http-client'
 
 const logger = createLogger('Sync:VaultAdoption')
@@ -29,8 +30,8 @@ function readVaultUuid(db: DataDb): string | undefined {
 
 /**
  * Adopt a shared vault identity on the local (joiner) device before device
- * registration. Mirrors the proven test-hook sequence (test-hooks.ts:255-266):
- * clear the stale local vault-key verifier so the shared master key can rebind,
+ * registration (the E2E hook `bootstrapSyncDevice` calls it too): clear the
+ * stale local vault-key verifier so the shared master key can rebind,
  * then upsert the adopted uuid into the vault_metadata singleton. After this,
  * getOrCreateVaultUuid() returns `vaultUuid`, so registration binds the device
  * to the initiator's vault and the first sync pulls that vault's items.
@@ -89,12 +90,19 @@ export function adoptVaultLocally(db: DataDb, vaultUuid: string): void {
  * ("In your account") and Settings → Vault says which vault is open, so the
  * upgrade path is the same picker QR linking uses (`finalizeVaultChoice`) if
  * the guess turns out to be wrong often enough to matter.
+ *
+ * Only an empty vault is adopted. Adopting one with content merged it into the
+ * account's vault without asking — including another account's notes left
+ * on the machine by a sign-out. A vault with content keeps its own uuid and the
+ * sync runtime's binding gate asks the user (`vault-account-binding.ts`).
  */
 export async function adoptAccountVaultIfAbsent(
   db: DataDb,
   localVaultUuid: string,
   accessToken: string
 ): Promise<string> {
+  if (vaultHasLocalContent(db, getCurrentVaultPath())) return localVaultUuid
+
   let vaults: Array<{ vaultUuid: string; itemCount?: number }>
   try {
     ;({ vaults } = await getFromServer<{

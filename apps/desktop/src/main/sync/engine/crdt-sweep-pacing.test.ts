@@ -158,6 +158,7 @@ describe('CRDT sweep pacing', () => {
       // baseline that was never fetched.
       getStateVector: () => new Uint8Array([1, 2, 3, 4]),
       seedFromMarkdownPublic: vi.fn(),
+      recordWholeBodyMerged: vi.fn(),
       getSnapshotWatermark: async (noteId: string) => watermarkStore.get(noteId) ?? null,
       putSnapshotWatermark: async (noteId: string, value: unknown) => {
         watermarkStore.set(noteId, value)

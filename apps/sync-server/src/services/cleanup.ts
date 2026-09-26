@@ -1,6 +1,10 @@
+import { createLogger } from '../lib/logger'
+import { deleteBlobs } from './blob'
 import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
 import { adjustStorageUsed } from './quota'
 import { IDENTIFY_SESSION_TTL_SECONDS } from './telemetry-identify'
+
+const logger = createLogger('Cleanup')
 
 export const cleanupExpiredOtpCodes = async (db: D1Database): Promise<number> => {
   const now = Math.floor(Date.now() / 1000)
@@ -156,35 +160,57 @@ export const cleanupStaleIdentifySessions = async (db: D1Database): Promise<numb
   return result.meta.changes ?? 0
 }
 
-const CLEANUP_BATCH_SIZE = 1000
+// Orphaned chunks reaped per tick, and ids per DELETE (D1 binds at most 100).
+// A tick spends one select, then per batch a D1 delete, a D1 re-check and one
+// bulk R2 delete: 13 subrequests at the cap.
+const ORPHAN_CHUNK_LIMIT = 300
+const ORPHAN_CHUNK_BATCH = 90
 
-// Best-effort delete each row's R2 blob, then batch-delete the D1 rows by id.
-// ponytail: table is a hardcoded caller literal, not user input — safe to interpolate.
-const deleteRowsAndBlobs = async <T extends { id: string }>(
-  db: D1Database,
-  storage: R2Bucket,
-  table: string,
-  rows: T[],
-  blobKeyOf: (row: T) => string
-): Promise<number> => {
-  for (const row of rows) {
-    try {
-      await storage.delete(blobKeyOf(row))
-    } catch {
-      // R2 delete may fail if blob already removed; proceed with D1 cleanup
-    }
-  }
+// Rows shed per tick, and users whose objects are deleted per tick. Each user
+// costs one bulk R2 delete and every 50 rows one db.batch, so a tick spends at
+// most ~25 subrequests: the scheduled invocation shares its 1000-subrequest
+// ceiling with pack_backfill, which budgets 900 for itself (pack-backfill.ts).
+const TOMBSTONE_SHED_LIMIT = 200
+const TOMBSTONE_SHED_USERS_PER_TICK = 20
+// Rows per shed transaction: two statements each, one db.batch per chunk.
+const TOMBSTONE_SHED_CHUNK = 50
 
-  const ids = rows.map((r) => r.id)
-  const placeholders = ids.map(() => '?').join(',')
-  const result = await db
-    .prepare(`DELETE FROM ${table} WHERE id IN (${placeholders})`)
-    .bind(...ids)
-    .run()
+// An unshed tombstone still holds its payload. `blob_key = ''` is the marker,
+// the same predicate as the partial index idx_sync_items_unshed_tombstones.
+const UNSHED_GUARD = "id = ? AND server_cursor = ? AND deleted_at IS NOT NULL AND blob_key <> ''"
 
-  return result.meta.changes ?? 0
+interface ExpiredTombstoneRow {
+  id: string
+  blob_key: string
+  user_id: string
+  size_bytes: number
+  server_cursor: number
 }
 
+/**
+ * Sheds the payload of tombstones past the user's `version_history_days` and
+ * keeps each row as a marker (#2302, protocol 05 §5.12.3). Deleting the row
+ * is what let a device offline past retention resurrect the item: push
+ * Stage 3 found no row, so neither replay detection nor delete-wins ran. The
+ * marker keeps `deleted_at`, `clock`, `server_cursor` and the (type, id), so
+ * every reader of the delete fact behaves exactly as for a signed tombstone.
+ *
+ * Order: select, one bulk R2 delete per user (keys are content-addressed per
+ * version, so this never hits a newer version), then per chunk one db.batch
+ * that refunds and marks each row together. Only rows whose object delete
+ * succeeded are marked: a failed delete leaves them unshed for the next tick,
+ * never an orphaned object behind a marker. Both statements are guarded on the
+ * selected `server_cursor` and on the row still holding its payload, so a push
+ * that re-created or re-deleted the item in between leaves it alone, and a
+ * re-run refunds nothing twice. A crash after the R2 delete leaves a tombstone
+ * without bytes; pull serves it as a purged tombstone and the next run marks
+ * it. Returns the number of rows shed.
+ *
+ * Known gap: a push that read the unshed tombstone (size S) in its Stage 3 and
+ * commits after this shed refunds S again through its size delta, so the
+ * user's `storage_used` can undercount by S. Bounded, in the user's favour,
+ * and needs a push of that exact expired tombstone inside the shed's window.
+ */
 export const cleanupExpiredTombstones = async (
   db: D1Database,
   storage: R2Bucket
@@ -193,40 +219,66 @@ export const cleanupExpiredTombstones = async (
 
   const expired = await db
     .prepare(
-      `SELECT si.id, si.blob_key, si.user_id, si.size_bytes
+      `SELECT si.id, si.blob_key, si.user_id, si.size_bytes, si.server_cursor
        FROM sync_items si
        LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
        WHERE si.deleted_at IS NOT NULL
+         AND si.blob_key <> ''
          AND si.deleted_at < ? - (COALESCE(e.version_history_days, 0) * 86400)
-       LIMIT ${CLEANUP_BATCH_SIZE}`
+       ORDER BY si.user_id
+       LIMIT ${TOMBSTONE_SHED_LIMIT}`
     )
     .bind(now)
-    .all<{ id: string; blob_key: string; user_id: string; size_bytes: number }>()
+    .all<ExpiredTombstoneRow>()
 
-  const rows = expired.results ?? []
-  if (rows.length === 0) return 0
-
-  const changes = await deleteRowsAndBlobs(db, storage, 'sync_items', rows, (r) => r.blob_key)
-  if (changes > 0) {
-    const bytesByUser = new Map<string, number>()
-    for (const row of rows) {
-      bytesByUser.set(row.user_id, (bytesByUser.get(row.user_id) ?? 0) + row.size_bytes)
-    }
-
-    const timestamp = Math.floor(Date.now() / 1000)
-    await Promise.all(
-      [...bytesByUser.entries()].map(([userId, bytes]) =>
-        db
-          .prepare(
-            'UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ? WHERE id = ?'
-          )
-          .bind(bytes, timestamp, userId)
-          .run()
-      )
-    )
+  const rowsByUser = new Map<string, ExpiredTombstoneRow[]>()
+  for (const row of expired.results ?? []) {
+    const group = rowsByUser.get(row.user_id)
+    if (group) group.push(row)
+    else if (rowsByUser.size < TOMBSTONE_SHED_USERS_PER_TICK) rowsByUser.set(row.user_id, [row])
   }
 
-  return changes
+  const deleted: ExpiredTombstoneRow[] = []
+  for (const [userId, rows] of rowsByUser) {
+    try {
+      await deleteBlobs(
+        storage,
+        rows.map((row) => row.blob_key),
+        userId
+      )
+      deleted.push(...rows)
+    } catch (error) {
+      logger.warn('Tombstone shed: object delete failed, rows stay unshed for the next tick', {
+        rows: rows.length,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+
+  let shed = 0
+  for (let i = 0; i < deleted.length; i += TOMBSTONE_SHED_CHUNK) {
+    const statements = deleted.slice(i, i + TOMBSTONE_SHED_CHUNK).flatMap((row) => [
+      db
+        .prepare(
+          `UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ?
+           WHERE id = ? AND EXISTS (SELECT 1 FROM sync_items WHERE ${UNSHED_GUARD})`
+        )
+        .bind(row.size_bytes, now, row.user_id, row.id, row.server_cursor),
+      db
+        .prepare(
+          `UPDATE sync_items
+           SET blob_key = '', content_hash = '', signature = '', size_bytes = 0, payload_purged_at = ?
+           WHERE ${UNSHED_GUARD}`
+        )
+        .bind(now, row.id, row.server_cursor)
+    ])
+    const results = await db.batch(statements)
+    shed += results.filter(
+      (_, index) => index % 2 === 1 && (results[index].meta.changes ?? 0) > 0
+    ).length
+  }
+
+  return shed
 }
 
 export const cleanupOrphanedBlobChunks = async (
@@ -234,13 +286,45 @@ export const cleanupOrphanedBlobChunks = async (
   storage: R2Bucket
 ): Promise<number> => {
   const orphaned = await db
-    .prepare(`SELECT id, r2_key FROM blob_chunks WHERE ref_count <= 0 LIMIT ${CLEANUP_BATCH_SIZE}`)
-    .all<{ id: string; r2_key: string }>()
+    .prepare(`SELECT id FROM blob_chunks WHERE ref_count <= 0 LIMIT ${ORPHAN_CHUNK_LIMIT}`)
+    .all<{ id: string }>()
+  const ids = (orphaned.results ?? []).map((row) => row.id)
 
-  const rows = orphaned.results ?? []
-  if (rows.length === 0) return 0
-
-  return deleteRowsAndBlobs(db, storage, 'blob_chunks', rows, (r) => r.r2_key)
+  let reaped = 0
+  for (let start = 0; start < ids.length; start += ORPHAN_CHUNK_BATCH) {
+    const batch = ids.slice(start, start + ORPHAN_CHUNK_BATCH)
+    // The row goes first, and only while it is still orphaned: an upload of the
+    // same hash re-references it (ON CONFLICT ref_count + 1) and needs the object.
+    const deleted = await db
+      .prepare(
+        `DELETE FROM blob_chunks WHERE id IN (${batch.map(() => '?').join(',')}) AND ref_count <= 0
+         RETURNING r2_key`
+      )
+      .bind(...batch)
+      .all<{ r2_key: string }>()
+    const reapedKeys = (deleted.results ?? []).map((row) => row.r2_key)
+    reaped += reapedKeys.length
+    if (reapedKeys.length === 0) continue
+    // An upload retrying the same bytes puts the object, then inserts a fresh
+    // row; skip any key such a row claimed since the delete above.
+    const reclaimed = await db
+      .prepare(
+        `SELECT r2_key FROM blob_chunks WHERE r2_key IN (${reapedKeys.map(() => '?').join(',')})`
+      )
+      .bind(...reapedKeys)
+      .all<{ r2_key: string }>()
+    const live = new Set((reclaimed.results ?? []).map((row) => row.r2_key))
+    const keys = reapedKeys.filter((key) => !live.has(key))
+    if (keys.length === 0) continue
+    try {
+      await storage.delete(keys)
+    } catch (error) {
+      // The rows are gone, so the objects are unreferenced; a failed delete only
+      // leaks storage, it never removes an object a row still points at.
+      logger.warn('Orphaned chunk object delete failed', { count: keys.length, error })
+    }
+  }
+  return reaped
 }
 
 const parseUploadedChunkHashes = (value: string): Set<string> => {

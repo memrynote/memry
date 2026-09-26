@@ -14,11 +14,17 @@
 import { createLogger } from '../lib/logger'
 import { secureCleanup } from '../crypto/index'
 import { withRetry } from '@memry/sync-client/retry'
+import { CRDT_SNAPSHOT_NOT_COVERED } from '@memry/contracts/sync-api'
 import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { pushCrdtSnapshotBatch, SyncServerError } from './http-client'
 import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
-import type { SnapshotBatchEntry, SnapshotBatchPushFn, SnapshotPushFn } from './crdt-provider'
+import type {
+  SnapshotBatchEntry,
+  SnapshotBatchPushFn,
+  SnapshotPushFn,
+  SnapshotRefusal
+} from './crdt-provider'
 
 const log = createLogger('CrdtSnapshotBatch')
 
@@ -46,6 +52,12 @@ export interface CrdtSnapshotBatchDeps {
    * what it already does for a single push: pause the queue on 401, surface a
    * quota error on 413. */
   onBatchError?: (err: unknown) => void
+  /** Told the sequence and revision each accepted snapshot got, so the
+   * provider can record it and skip this device's own echo in the change feed
+   * (#2297). */
+  onPushed?: (noteId: string, pushed: { sequenceNum?: number; revision?: string }) => unknown
+  /** A per-note CRDT_SNAPSHOT_NOT_COVERED refusal (#2299); see `CrdtSnapshotPushDeps`. */
+  onNotCovered?: (noteId: string, refusal: SnapshotRefusal) => void
 }
 
 /**
@@ -70,7 +82,7 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
   ): Promise<void> => {
     for (const entry of entries) {
       try {
-        await deps.pushSingle(entry.noteId, entry.state)
+        await deps.pushSingle(entry.noteId, entry.state, entry.coverage)
         results.set(entry.noteId, true)
       } catch (err) {
         log.warn('Single-note CRDT snapshot push failed', { noteId: entry.noteId, error: err })
@@ -84,12 +96,14 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
     if (entries.length === 0) return results
 
     // Split before anything else: an unmerged note is not eligible for the
-    // batch at any point, whether or not the server supports it.
+    // batch at any point, whether or not the server supports it. Unmerged at
+    // the encode (`coverage.unmerged`) counts as much as unmerged now.
     const batchable: SnapshotBatchEntry[] = []
     const unmerged: SnapshotBatchEntry[] = []
     for (const entry of entries) {
-      if (deps.hasUnmergedRemoteState(entry.noteId)) unmerged.push(entry)
-      else batchable.push(entry)
+      if (entry.coverage.unmerged || deps.hasUnmergedRemoteState(entry.noteId)) {
+        unmerged.push(entry)
+      } else batchable.push(entry)
     }
     if (unmerged.length > 0) {
       log.debug('Routing unmerged notes around the snapshot batch', { count: unmerged.length })
@@ -134,7 +148,9 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
 
         const encrypted = slice.map((entry) => ({
           noteId: entry.noteId,
-          snapshot: encryptCrdtUpdate(entry.state, vaultKey, entry.noteId, signingSecretKey)
+          snapshot: encryptCrdtUpdate(entry.state, vaultKey, entry.noteId, signingSecretKey),
+          coversThrough: entry.coverage.coversThrough,
+          baseRevision: entry.coverage.baseRevision
         }))
 
         try {
@@ -153,11 +169,25 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
 
           for (const result of response.value.results ?? []) {
             results.set(result.noteId, result.accepted === true)
+            if (result.accepted === true) {
+              const pushed = { sequenceNum: result.sequenceNum, revision: result.revision }
+              await Promise.resolve(deps.onPushed?.(result.noteId, pushed)).catch((err) =>
+                log.warn('Could not record a pushed snapshot revision', { error: err })
+              )
+            }
             if (result.accepted !== true) {
               log.warn('Server rejected a snapshot inside a batch', {
                 noteId: result.noteId,
                 reason: result.reason
               })
+              if (result.reason === CRDT_SNAPSHOT_NOT_COVERED) {
+                const coverage = slice.find((e) => e.noteId === result.noteId)?.coverage
+                deps.onNotCovered?.(result.noteId, {
+                  cursor: result.blockingCursor ?? null,
+                  claimed: coverage?.coversThrough !== undefined,
+                  baseRevision: coverage?.baseRevision
+                })
+              }
             }
           }
           // A note the response never mentioned did not land. Defaulting to

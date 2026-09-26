@@ -73,6 +73,11 @@ import type {
 } from '../shared/contracts/ipc-sync'
 import type { CrdtHealth, CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
 import type {
+  ResolveVaultBindingResult,
+  VaultBindingChoice,
+  VaultBindingState
+} from '@memry/contracts/ipc-sync-ops'
+import type {
   FolderViewClientAPI as ContractFolderViewClientAPI,
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
 } from '@memry/contracts/folder-view-api'
@@ -1708,6 +1713,8 @@ interface SyncOpsClientAPI {
     }
   } | null>
   getLargeNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').LargeNotesResult>
+  getVaultBinding: () => Promise<VaultBindingState>
+  resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
 }
 
 // Crypto API
@@ -1993,6 +2000,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
   onVaultRecoveryNeeded: (callback: (event: VaultRecoveryNeededEvent) => void) => () => void
+  onVaultBindingChanged: (callback: (state: VaultBindingState) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void

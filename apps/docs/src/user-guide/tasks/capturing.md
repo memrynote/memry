@@ -20,6 +20,36 @@ The new task is created in the current view's scope:
 | Inside a project                | That project, with the project's first status                    |
 | Inside a status column (kanban) | That column                                                      |
 
+In the Tasks page's capture bar, a task is due **Today** unless you change it — see [Setting Properties Before You Press Enter](#setting-properties-before-you-press-enter).
+
+## Setting Properties Before You Press Enter
+
+When the Tasks page's capture field is focused, a `Today ⌄` chip appears at its end. It shows what the task will be created with, so you don't have to find the task afterwards to finish it off.
+
+- **Click the date** to open the date picker — Today, Tomorrow, Next week, Remove date, a calendar, and Add time. **Remove date** creates the task with no due date.
+- **Click the arrow**, or press <kbd>⌥</kbd> <kbd>↓</kbd> in the field, to open the task options:
+  - **Priority** — five buttons at the top, or <kbd>1</kbd>–<kbd>5</kbd> while the menu is open
+  - **Project**, **Status**, **Start date**, **Repeat**, **Reminder**, **Tags**
+  - **Link note** — writes `[[` into the field and opens the note picker
+  - **Open full details** — the add-task dialog, same as <kbd>⌘</kbd> <kbd>Enter</kbd>
+
+In the menu, <kbd>↑</kbd> / <kbd>↓</kbd> move, <kbd>→</kbd> opens a submenu, <kbd>←</kbd> goes back, and <kbd>Esc</kbd> returns you to the text.
+
+Everything you set away from its default shows as a small chip beside the date. Click a chip to change it, or hover it and press **×** to drop it. After <kbd>Enter</kbd> the chips reset, ready for the next task.
+
+### Typed Markers and the Menu Agree
+
+The menu and the [markers](#the-whole-grammar) set the same fields, and the last thing you did wins:
+
+| You do                                       | The task gets                             |
+| -------------------------------------------- | ----------------------------------------- |
+| Pick **High**, then type `!low`              | Low — the typed marker came last          |
+| Type `Ship it !low`, then pick **Urgent**    | Urgent — `!low` is removed from the field |
+| Type `#launch`, then add the tag `design`    | Both tags — tags add up                   |
+| Type `@friday` with the date chip on _Today_ | Due Friday — the chip switches to Friday  |
+
+A reminder is attached as soon as the task has been saved.
+
 ## Natural Language Dates
 
 Start a date with `@` — the same `@` phrases the note editor understands — and quick-add parses the whole phrase into a due date:
@@ -199,6 +229,8 @@ Any list marker works (`-`, `*`, `+`), as does an uppercase `- [X]`. Other marke
 A checklist line is only a task once memrynote has a task for it. Two cases where it does not, both common in a vault you brought over from somewhere else:
 
 A **plain checkbox with no `{task:…}` suffix** — the shape Obsidian and most other editors write — is turned into a task as you go, once it has something on it to name the task with. An empty `- [ ]` you have just typed is left as a checkbox until you write the title; a line of nothing but markers (`- [ ] #errand`) stays a checkbox too, since there is no title left after the markers are read off. If the task cannot be saved — no project to create it in, or the vault is not open — the line stays a plain checklist item, keeping its text and its tick, and memrynote tries again on your next edit. It never sits there looking like a task you cannot touch.
+
+Turning the line into a task only adds the `{task:…}` suffix. Everything already on the line stays as written, including `[[wiki links]]`, links, and **bold** or _italic_ text, and the task takes that same text as its title. Opening a note that holds plain checkboxes, including one that just synced in from another device, never strips them.
 
 A **`{task:…}` suffix naming a task that is not in this vault** — usually a note copied out of another install, where the ids belong to that install's tasks — shows as "Task deleted", with a button to take the line out of the note. Its text and its tick are left exactly as they are in the file; nothing is rewritten and nothing is deleted until you ask.
 

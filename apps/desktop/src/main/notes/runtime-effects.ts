@@ -4,7 +4,6 @@ import { updateNoteCache } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { clearPendingCrdtNotes, recordPendingCrdtNotes } from '../sync/crdt-pending-notes'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -66,12 +65,10 @@ export function syncNoteUpdate(noteId: string, title?: string): void {
  * The doc stayed in the provider's open map, so the inactive-doc sweep kept
  * pulling it every five minutes, and each pull's network-origin apply schedules
  * a write-back that finds no index row and re-creates the note in the default
- * folder. The pending-CRDT store is the second route into that same write-back:
- * the replay merges remote state per id it holds. Both are closed here.
+ * folder. The purge closes that, and drops the note's queued body rows with it.
  */
 export function syncNoteDelete(noteId: string): void {
   enqueueLocalSyncDelete('note', noteId)
-  clearPendingCrdtNotes([noteId])
   void getCrdtProvider()
     ?.purge(noteId)
     .catch((error) => {
@@ -106,17 +103,16 @@ export function emitNoteAttachmentSaved(noteId: string, diskPath: string): void 
  * corrected in place or the note keeps pushing its body until it is closed and
  * reopened.
  *
- * The two branches are deliberately symmetric about the durable pending-CRDT
- * store, because turning the flag off is where a body could otherwise go
- * missing for good. Nothing else pushes an existing note's body: the push
- * coordinator's snapshot is gated on `operation === 'create'` and this raises an
- * `update`, `buildSnapshotPayload` sends `content: null` for an update, and the
- * vault sweep only pulls. So a note whose body stopped going up while it was
+ * The provider's toggle is symmetric about the note's queued CRDT body, because
+ * turning the flag off is where a body could otherwise go missing for good.
+ * Nothing else pushes an existing note's body: the push coordinator's snapshot
+ * is gated on `operation === 'create'` and this raises an `update`,
+ * `buildSnapshotPayload` sends `content: null` for an update, and the vault
+ * sweep only pulls. So a note whose body stopped going up while it was
  * local-only would sync its metadata again and leave its body frozen at the
- * state the server last saw — divergence, and worse than the leak this closes.
- * Recording it hands the whole doc to `drainPendingCrdtNotes`, which pulls and
- * merges the server's state before pushing, and keeps the id until that push
- * actually lands.
+ * state the server last saw. `setNoteLocalOnly(noteId, false)` queues a
+ * full-state row for it, which the outbox pushes after merging the server's
+ * state; going ON drops the rows queued before the toggle.
  */
 export function setNoteLocalOnlyState(noteId: string, localOnly: boolean): void {
   updateNoteMetadata(getDatabase(), noteId, {
@@ -131,13 +127,7 @@ export function setNoteLocalOnlyState(noteId: string, localOnly: boolean): void 
 
   if (localOnly) {
     removePendingNoteSyncItems(noteId)
-    // The CRDT-side twin of the line above: a backlog owed to the server is not
-    // owed any more. Nothing is lost by dropping it — the updates themselves
-    // stay in the local store, and clearing the flag re-records the note, whose
-    // replay pushes full doc state and therefore supersedes them anyway.
-    clearPendingCrdtNotes([noteId])
   } else {
     enqueueLocalSyncUpdate('note', noteId)
-    recordPendingCrdtNotes([noteId])
   }
 }

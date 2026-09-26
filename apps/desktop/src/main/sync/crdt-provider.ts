@@ -4,9 +4,18 @@ import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { getIndexDatabase } from '../database/client'
+import {
+  getDatabase,
+  getIndexDatabase,
+  isDatabaseInitialized,
+  type DataDb
+} from '../database/client'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
-import type { CrdtUpdateQueue } from './crdt-queue'
+import type { NoteBodyOutbox } from './note-body-outbox'
+import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-client/queue'
 import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
 import { parallelWithLimit } from '@memry/sync-client/concurrency'
 import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
@@ -21,11 +30,12 @@ import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
 import {
   readSnapshotWatermark,
   writeSnapshotWatermark,
+  SNAPSHOT_WATERMARK_META_KEY,
   type CrdtSnapshotWatermark
 } from '@memry/sync-client/crdt-snapshot-watermark'
 import { recordCrdtPersistenceOutcome } from '../store'
-import { recordPendingCrdtNotes } from './crdt-pending-notes'
 import { prepareVaultCrdtStore } from './crdt-store-path'
+import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
@@ -42,6 +52,10 @@ import {
 
 const log = createLogger('CrdtProvider')
 
+/** A reserved y-leveldb meta doc: never in the doc list, never opened (#2421). */
+const OWED_COMPACTIONS_DOC = '__memry_owed_compactions__'
+const OWED_COMPACTIONS_KEY = 'owedCompactions'
+
 interface IpcOrigin {
   source: 'ipc'
   windowId: number
@@ -54,12 +68,62 @@ const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
 const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
 const DEFAULT_INACTIVE_DOC_LIMIT = 32
 
-export type SnapshotPushFn = (noteId: string, state: Uint8Array) => Promise<void>
+/**
+ * What a snapshot push may claim about the state it carries (#2299, protocol 07
+ * §7.7). Read in the same synchronous step as the encode it describes: a
+ * change-feed page can land bodies and move LAST_CURSOR during any later await,
+ * and a cursor read after the encode would claim rows the state does not hold.
+ */
+export interface SnapshotCoverage {
+  /** The note held tracked, unmerged server state at the encode: never the pruning route. */
+  unmerged: boolean
+  /** The feed cursor through which the state holds every note_body row; absent claims nothing. */
+  coversThrough?: number
+  /**
+   * The server snapshot revision this doc had merged (or pushed) before the
+   * encode. Read BEFORE the bytes: a revision merged after them is not in them.
+   */
+  baseRevision?: string
+}
+
+/**
+ * The coverage of the next push of a note. `heldRevision` is the snapshot
+ * revision the doc holds, read before the encode.
+ */
+export type SnapshotCoverageReader = (
+  noteId: string,
+  heldRevision: string | undefined
+) => SnapshotCoverage
+
+/** A snapshot push the server refused as not covering its stored snapshot (#2299). */
+export interface SnapshotRefusal {
+  /** The refusing snapshot's feed cursor, when the server named one. */
+  cursor: number | null
+  /** The refused push carried a claim. */
+  claimed: boolean
+  /** The held snapshot revision the refused push was encoded against. */
+  baseRevision?: string
+}
+
+const NO_COVERAGE: SnapshotCoverageReader = () => ({ unmerged: false })
+
+/** The pre-encode read `encodeForPush` needs; only `readPushBase` makes one. */
+interface PushBase {
+  readonly noteId: string
+  readonly revision: string | undefined
+}
+
+export type SnapshotPushFn = (
+  noteId: string,
+  state: Uint8Array,
+  coverage: SnapshotCoverage
+) => Promise<void>
 
 /** One note's full document state, ready to be encrypted and sent. */
 export interface SnapshotBatchEntry {
   noteId: string
   state: Uint8Array
+  coverage: SnapshotCoverage
 }
 
 /**
@@ -86,6 +150,7 @@ export type SnapshotBatchPushFn = (entries: SnapshotBatchEntry[]) => Promise<Map
 interface PreparedSnapshot {
   noteId: string
   state: Uint8Array
+  coverage: SnapshotCoverage
   settle: (pushed: boolean) => Promise<void>
 }
 
@@ -148,13 +213,37 @@ export class CrdtProvider {
   private storeIdentity: string | null = null
   private persistenceReady = false
   private persistenceInitPromise: Promise<void> | null = null
-  private updateQueue: CrdtUpdateQueue | null = null
+  private updateQueue: NoteBodyOutbox | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
+  private snapshotCoverage: SnapshotCoverageReader = NO_COVERAGE
+  /** Answers whether the owe is durable (#2421). */
+  private oweRemoteMerge:
+    ((noteId: string, reason: 'local_only' | 'compaction') => boolean) | null = null
   /**
-   * Notes already written to the durable pending store during the current
-   * queue-less stretch — see `recordUnqueuedUpdate`. Purely a write-dedupe: the
-   * ids themselves live on disk.
+   * The data DB handle and vault the open store belongs to, bound at init
+   * (#2421): a detached compaction owes its debt there, and never to a vault
+   * opened since.
+   */
+  private boundVault: { db: DataDb; vaultUuid: string } | null = null
+  /** Runs the owed-compactions marker's read-modify-writes one at a time. */
+  private owedCompactions: Promise<void> = Promise.resolve()
+  /**
+   * Snapshot claims this session cannot vouch for (#2299, 07 §7.7.1): a claim
+   * says the doc holds every body at or below LAST_CURSOR, which holds only for
+   * a doc merged from this store. `storeUnreconciled` covers the whole store
+   * (its epoch reconcile threw); `unvouchedNotes` holds notes whose doc was
+   * created or seeded without persisted state (a new note or journal, a
+   * markdown seed, a failed store read) or that the feed dropped as rowless,
+   * until a whole-body pull of the note merges. In-memory mode vouches for
+   * nothing. Session-only: the next open re-derives them.
+   */
+  private storeUnreconciled = false
+  private unvouchedNotes = new Set<string>()
+  /**
+   * Notes already given a full-state row during the current queue-less stretch
+   * — see `recordUnqueuedUpdate`. Purely a write-dedupe: the rows live in
+   * sync_queue.
    */
   private recordedUnqueuedNotes = new Set<string>()
   private readonly inactiveDocLimit: number
@@ -209,8 +298,114 @@ export class CrdtProvider {
     }
   }
 
+  /**
+   * Wired by the sync runtime once its engine exists (#2299). Until then, and
+   * after teardown, every push claims nothing and its fn routes it as before.
+   */
+  setSnapshotCoverage(reader: SnapshotCoverageReader | null): void {
+    this.snapshotCoverage = reader ?? NO_COVERAGE
+  }
+
+  /**
+   * Wired by the sync runtime: owe a note a whole-body pull, which flags it
+   * until that pull merges. A note leaving local-only needs it (#2299): the
+   * change feed skipped its bodies without flagging it.
+   */
+  setOweRemoteMerge(
+    owe: ((noteId: string, reason: 'local_only' | 'compaction') => boolean) | null
+  ): void {
+    this.oweRemoteMerge = owe
+    if (owe) void this.oweStoredCompactions(owe)
+  }
+
+  /**
+   * Owe the compactions a detached provider could only record in its store
+   * (#2421). The marker is cleared only once every owe was durable.
+   */
+  private oweStoredCompactions(
+    owe: (noteId: string, reason: 'compaction') => boolean
+  ): Promise<void> {
+    return this.withOwedCompactions(async (persistence) => {
+      const owed = await persistence.getMeta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY)
+      if (!Array.isArray(owed) || owed.length === 0) return
+      let durable = true
+      for (const noteId of owed) {
+        if (typeof noteId === 'string' && !owe(noteId, 'compaction')) durable = false
+      }
+      if (durable) await persistence.setMeta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY, [])
+    }, 'Could not read the compactions owed while no sync runtime ran')
+  }
+
+  /** Chained after every earlier marker read-modify-write, so none loses another's ids. */
+  private withOwedCompactions(
+    fn: (persistence: CrdtPersistence) => Promise<void>,
+    failure: string
+  ): Promise<void> {
+    const persistence = this.persistence
+    if (!persistence) return Promise.resolve()
+    const run = this.owedCompactions
+      .then(() => fn(persistence))
+      .catch((err) => log.error(failure, { error: err }))
+    this.owedCompactions = run
+    return run
+  }
+
+  private canVouchFor(noteId: string): boolean {
+    return this.persistence !== null && !this.storeUnreconciled && !this.unvouchedNotes.has(noteId)
+  }
+
+  /** A whole-body pull of the note merged: its doc now holds the server state. */
+  recordWholeBodyMerged(noteId: string): void {
+    this.unvouchedNotes.delete(noteId)
+  }
+
+  /**
+   * The feed dropped a body of this id because no row existed yet (#2299,
+   * review B-L4): a note or journal created here later under the same id
+   * lacks it, so it claims nothing until a whole-body pull merges.
+   */
+  withholdClaimUntilPulled(noteId: string): void {
+    this.unvouchedNotes.add(noteId)
+  }
+
+  /** The first half of `encodeForPush`, awaited before the doc is encoded. */
+  private async readPushBase(noteId: string): Promise<PushBase> {
+    const watermark = await this.getSnapshotWatermark(noteId)
+    return { noteId, revision: watermark?.snapshotRevision }
+  }
+
+  /**
+   * The only way to produce snapshot push bytes (#2299): the claim is read in
+   * the same synchronous step as the encode, after the base revision. A feed
+   * page can land bodies and move LAST_CURSOR at any await, so a claim read
+   * after the bytes could name rows they do not hold. A reader that throws
+   * claims nothing and routes the push around the prune.
+   */
+  private encodeForPush(
+    base: PushBase,
+    encode: () => Uint8Array
+  ): { state: Uint8Array; coverage: SnapshotCoverage } {
+    let coverage: SnapshotCoverage
+    try {
+      coverage = this.snapshotCoverage(base.noteId, base.revision)
+    } catch (err) {
+      log.warn('Snapshot coverage could not be read; claiming nothing', {
+        noteId: base.noteId,
+        error: err
+      })
+      coverage = { unmerged: true }
+    }
+    if (coverage.coversThrough !== undefined && !this.canVouchFor(base.noteId)) {
+      coverage = { unmerged: coverage.unmerged }
+    }
+    if (coverage.coversThrough !== undefined && base.revision !== undefined) {
+      coverage = { ...coverage, baseRevision: base.revision }
+    }
+    return { state: encode(), coverage }
+  }
+
   async init(
-    queue?: CrdtUpdateQueue,
+    queue?: NoteBodyOutbox,
     snapshotPush?: SnapshotPushFn,
     /**
      * Optional on purpose: every caller that does not wire one keeps the
@@ -225,9 +420,9 @@ export class CrdtProvider {
     this.snapshotPushFn = snapshotPush ?? null
     this.snapshotBatchPushFn = snapshotBatchPush ?? null
     // Start the next queue-less stretch from a clean slate. Whatever was
-    // recorded during the previous one is on disk and is the drain's problem
+    // recorded during the previous one is in sync_queue and is the outbox's
     // now; keeping the ids here would suppress the re-record if this provider
-    // ever went queue-less again with the store already cleared.
+    // ever went queue-less again after the outbox pushed those rows.
     this.recordedUnqueuedNotes.clear()
     log.debug('CrdtProvider sync callbacks updated')
   }
@@ -274,6 +469,19 @@ export class CrdtProvider {
     // Preflight, quarantine and probe live in crdt-persistence.ts; null means
     // the store could not be trusted and this provider runs in-memory.
     this.persistence = await openCrdtPersistence(target.storagePath)
+    this.boundVault = { db: getDatabase(), vaultUuid: target.vaultUuid }
+    if (this.persistence) {
+      // Before anything can push from this store (#2299): a store without the
+      // marker withholds snapshot claims until the vault is swept again.
+      try {
+        await reconcileCrdtStoreEpoch(this.persistence, getDatabase())
+      } catch (err) {
+        this.storeUnreconciled = true
+        log.warn('Could not reconcile the CRDT store epoch; claims withheld until the next open', {
+          error: err
+        })
+      }
+    }
     // Minted per successful open, never derived from the path: two opens of the
     // same directory are still two store lifetimes, and anything holding state
     // that describes the first one must not carry it into the second. A store
@@ -289,7 +497,7 @@ export class CrdtProvider {
     // be optimistic: the store's preflight/probe is what the await above pays
     // for, and a window that re-opened before it settled would be rejected all
     // over again. Whatever else main attaches to a fresh provider (init()'s
-    // update queue and snapshot push) lands in the same microtask as this
+    // body outbox and snapshot push) lands in the same microtask as this
     // resolve, so a renderer's IPC round-trip can never beat it.
     broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY)
     log.info('CRDT provider ready, asked stranded editors to rebind')
@@ -368,6 +576,21 @@ export class CrdtProvider {
   }
 
   /**
+   * Drop this note's watermark from the store: a record that does not decode
+   * reads back as unknown, and unknown fetches. For a watermark shown to be
+   * ahead of the doc (#2297 review B-H2).
+   */
+  async forgetSnapshotWatermark(noteId: string): Promise<void> {
+    const persistence = this.persistence
+    if (!persistence) return
+    try {
+      await persistence.setMeta(noteId, SNAPSHOT_WATERMARK_META_KEY, null)
+    } catch (err) {
+      log.warn('Could not drop the CRDT snapshot watermark', { noteId, error: err })
+    }
+  }
+
+  /**
    * Wait for a store init that is ALREADY in flight, and do nothing when there
    * is none.
    *
@@ -431,10 +654,13 @@ export class CrdtProvider {
     const doc = new Y.Doc({ guid: noteId })
     this.initDocStructure(doc)
 
+    // y-leveldb answers an empty doc for a note it never stored.
+    let loaded = false
     if (this.persistence) {
       try {
         const persisted = await this.persistence.getYDoc(noteId)
         if (persisted) {
+          loaded = Y.encodeStateVector(persisted).length > 1
           const update = Y.encodeStateAsUpdate(persisted)
           Y.applyUpdate(doc, update)
           persisted.destroy()
@@ -461,6 +687,7 @@ export class CrdtProvider {
       }
     }
 
+    if (!loaded) this.unvouchedNotes.add(noteId)
     if (!options?.skipSeed) {
       await this.seedFromMarkdown(noteId, doc)
     }
@@ -497,8 +724,8 @@ export class CrdtProvider {
    * snapshot — re-reads the row live in `pushSnapshotForNote`.
    *
    * Public because the flag is not only a push-side concern: `CrdtSyncCoordinator`
-   * asks the same question before it pulls, and the pending-note replay asks it
-   * before it decides a note is syncable at all. Both want the live row rather
+   * asks the same question before it pulls, and the note-body outbox asks it
+   * before it pushes a full-state row at all. Both want the live row rather
    * than a doc's cached copy — neither is guaranteed to have the doc open.
    */
   isNoteLocalOnly(noteId: string): boolean {
@@ -520,27 +747,30 @@ export class CrdtProvider {
    * — immediately after the two writes, so a doc opened concurrently and this
    * doc agree. A note with no open doc needs nothing: `doOpen` re-reads.
    *
-   * Either direction also hands the doc's snapshot debt to the pending-note
-   * replay, by clearing it here. Clearing it going ON is obvious. Going OFF
-   * matters more: `setNoteLocalOnlyState` records the note for
-   * `drainPendingCrdtNotes`, which pulls and merges the server's state before
-   * it pushes, and a note that has just stopped being local-only is precisely
-   * the population most likely to have diverged from a peer. Leaving the debt
-   * would let the next `close()` fire a *blind* snapshot first — and a snapshot
-   * asserts completeness, so the server prunes the peer edits it does not
-   * contain. The replay is the carrier for this body; close() must not race it.
+   * Either direction also hands the doc's snapshot debt to the note-body
+   * outbox, by clearing it here. Clearing it going ON is obvious. Going OFF
+   * matters more: nothing else pushes the body written while the note was
+   * local-only, so this queues a full-state row, which the outbox pushes after
+   * merging the server's state. A note that has just stopped being local-only
+   * is precisely the population most likely to have diverged from a peer, and
+   * leaving the debt would let the next `close()` fire a *blind* snapshot first
+   * — a snapshot asserts completeness, so the server prunes the peer edits it
+   * does not contain.
    *
-   * Going ON also empties the update queue's buffer for this note, and that is
-   * not the same window as the flag above. `onDocUpdate` reads the flag at
-   * *enqueue* time, but the queue flushes on a ~1s loop, so every update typed
-   * in the second before the toggle is already buffered and would still be
-   * pushed. The queue is the only thing holding those bytes — clearing the
-   * pending-note store cannot reach into it — so the drop has to happen here,
-   * ahead of the `docs` lookup: a doc the LRU has since evicted still leaves a
-   * buffer behind.
+   * Going ON also drops the note's queued body rows, and that is not the same
+   * window as the flag above. `onDocUpdate` reads the flag at *enqueue* time,
+   * but the outbox flushes on a ~1s window, so every update typed in the second
+   * before the toggle is already queued and would still be pushed. The drop
+   * happens ahead of the `docs` lookup: a doc the LRU has since evicted still
+   * leaves rows behind.
    */
   setNoteLocalOnly(noteId: string, localOnly: boolean): void {
-    if (localOnly) this.updateQueue?.dropNote(noteId)
+    if (localOnly) {
+      this.dropOwedBody(noteId)
+    } else {
+      this.recordOwedFullState(noteId)
+      this.oweRemoteMerge?.(noteId, 'local_only')
+    }
 
     const entry = this.docs.get(noteId)
     if (!entry) return
@@ -561,9 +791,13 @@ export class CrdtProvider {
 
     this.flushNetworkBroadcast(noteId)
 
-    if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
-      const state = Y.encodeStateAsUpdate(entry.doc)
-      await this.snapshotPushFn(noteId, state).catch((err) => {
+    const push = this.snapshotPushFn
+    if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
+      const pushed = this.readPushBase(noteId).then((base) => {
+        const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(entry.doc))
+        return push(noteId, state, coverage)
+      })
+      await pushed.catch((err) => {
         log.warn('Failed to push snapshot on close', { noteId, error: err })
       })
       entry.pendingSnapshotBytes = 0
@@ -597,6 +831,12 @@ export class CrdtProvider {
     log.debug('Doc closed', { noteId })
   }
 
+  /**
+   * Close a doc this code opened for itself, unless a window has bound to it
+   * since. Paths that open a doc only to read or push it must close through
+   * here, never `close(noteId)`: an editor that opened the note in between
+   * would lose its doc, and every edit after it (#2448).
+   */
   async closeIfInactive(noteId: string): Promise<boolean> {
     const entry = this.docs.get(noteId)
     if (!entry || entry.closing || entry.windowIds.size > 0) return false
@@ -644,7 +884,7 @@ export class CrdtProvider {
    * Each line ahead of `close()` closes a route that survives the doc itself.
    * The armed write-back keeps its own reference to the Y.Doc and, with the
    * note's index row already gone, would re-create the file from `meta.title`.
-   * The update queue's buffer is not reachable from the doc at all. And the
+   * The note's queued body rows are not reachable from the doc at all. And the
    * snapshot debt would make `close()` push the body of a note that no longer
    * exists — a snapshot asserts completeness, so that push is what puts the
    * deleted note back on the server.
@@ -653,7 +893,7 @@ export class CrdtProvider {
    */
   async purge(noteId: string): Promise<void> {
     cancelWriteback(noteId)
-    this.updateQueue?.dropNote(noteId)
+    this.dropOwedBody(noteId)
 
     const entry = this.docs.get(noteId)
     if (entry) entry.pendingSnapshotBytes = 0
@@ -668,16 +908,21 @@ export class CrdtProvider {
     return this.docs.get(noteId)?.doc
   }
 
-  applyRemoteUpdate(noteId: string, update: Uint8Array): void {
+  /**
+   * `false` when the update was dropped (no open doc, or one closing): the
+   * caller must not record it as merged (#2297 round 2 b-M3). An update
+   * buffered by a compaction is merged when the compaction ends, so `true`.
+   */
+  applyRemoteUpdate(noteId: string, update: Uint8Array): boolean {
     const entry = this.docs.get(noteId)
     if (!entry) {
       log.warn('Received remote update for unopened doc', { noteId })
-      return
+      return false
     }
 
     if (entry.closing) {
       log.debug('Ignoring remote update for closing doc', { noteId })
-      return
+      return false
     }
 
     this.touchDoc(entry)
@@ -696,11 +941,70 @@ export class CrdtProvider {
           noteId,
           updateBytes: update.byteLength
         })
-        return
+        return true
       }
     }
 
     Y.applyUpdate(entry.doc, update, ORIGIN_NETWORK)
+    return true
+  }
+
+  /**
+   * Merge a remote update into the note's open doc, like `applyRemoteUpdate`,
+   * then store it explicitly and resolve on that write (#2297). The doc's own
+   * `onDocUpdate` write is fire-and-forget and swallows its error, so it cannot
+   * tell the change-feed landing whether the bytes reached the store; the
+   * duplicate append is cheap, and y-leveldb merges it on the next flush. An
+   * update that changed nothing (this device's own echo) is not stored again:
+   * Yjs emits `update` only for a change, deletions included.
+   *
+   * Rejects with no store, and with no open doc: bytes stored without a live
+   * merge make every later merge of the same state a no-op, so the write-back
+   * that writes the vault file would never run.
+   *
+   * Resolves `false` while the doc is compacting (#2299, review B-M4): the
+   * update is only buffered, in neither the doc nor the store, and a failed or
+   * abandoned compaction can drop it, so the caller must owe the note.
+   */
+  async mergeRemoteUpdate(noteId: string, update: Uint8Array): Promise<boolean> {
+    if (!this.persistence) throw new Error('No CRDT store to hold a change-feed body')
+    const entry = this.docs.get(noteId)
+    if (!entry || entry.closing) throw new Error('No open doc to merge a change-feed body into')
+    if (this.compactingDocs.has(noteId)) {
+      this.applyRemoteUpdate(noteId, update)
+      return false
+    }
+    let changed = false
+    const onUpdate = (): void => {
+      changed = true
+    }
+    entry.doc.on('update', onUpdate)
+    try {
+      this.applyRemoteUpdate(noteId, update)
+    } finally {
+      entry.doc.off('update', onUpdate)
+    }
+    if (changed) await this.persistence.storeUpdate(noteId, update)
+    return true
+  }
+
+  /**
+   * Record the snapshot this device just pushed as merged into its doc (#2297):
+   * the pushed state came from the doc, so it holds that blob and everything
+   * the push asserted up to `sequenceNum`. The change feed then skips this
+   * device's own snapshot instead of downloading it back. Ordered after the
+   * doc's own writes on the store, like `putSnapshotWatermark`.
+   */
+  async recordPushedSnapshot(
+    noteId: string,
+    pushed: { sequenceNum?: number; revision?: string }
+  ): Promise<void> {
+    if (!pushed.revision || typeof pushed.sequenceNum !== 'number') return
+    const held = await this.getSnapshotWatermark(noteId)
+    await this.putSnapshotWatermark(noteId, {
+      appliedSequence: Math.max(held?.appliedSequence ?? 0, pushed.sequenceNum),
+      snapshotRevision: pushed.revision
+    })
   }
 
   getStateVector(noteId: string): Uint8Array | null {
@@ -770,12 +1074,17 @@ export class CrdtProvider {
     // watermarks read out of that store now sees a different `storeId` and has
     // to throw its copy away — see the getter.
     this.storeIdentity = null
+    this.boundVault = null
     this.persistenceReady = false
 
     this.openLocks.clear()
     this.updateQueue = null
     this.snapshotPushFn = null
     this.snapshotBatchPushFn = null
+    this.snapshotCoverage = NO_COVERAGE
+    this.oweRemoteMerge = null
+    this.storeUnreconciled = false
+    this.unvouchedNotes.clear()
 
     // Write-back keeps its own module-level per-note maps, keyed by ids and
     // absolute paths belonging to the vault being torn down here.
@@ -822,8 +1131,9 @@ export class CrdtProvider {
       if (entry.localOnly) continue
       if (entry.pendingSnapshotBytes <= 0) continue
       try {
-        const state = Y.encodeStateAsUpdate(entry.doc)
-        await this.snapshotPushFn(noteId, state)
+        const base = await this.readPushBase(noteId)
+        const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(entry.doc))
+        await this.snapshotPushFn(noteId, state, coverage)
         entry.accumulatedBytes = 0
         entry.pendingSnapshotBytes = 0
         pushed++
@@ -861,7 +1171,7 @@ export class CrdtProvider {
 
     // The row is already in hand, so the authoritative read costs nothing here
     // — and this is the one push path that is reached for a note with no open
-    // doc (the pending-note replay, and the push coordinator's create), so it
+    // doc (the push coordinator's create, the oversized-update fallback), so it
     // cannot lean on the per-doc cached flag.
     //
     // `false` is honest to both callers: the replay reads it as "not settled"
@@ -878,9 +1188,10 @@ export class CrdtProvider {
     try {
       const doc = await this.open(noteId)
       const entry = this.docs.get(noteId)
-      const state = Y.encodeStateAsUpdate(doc)
+      const base = await this.readPushBase(noteId)
+      const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(doc))
       if (state.length <= 4) {
-        if (!wasOpen) await this.close(noteId)
+        if (!wasOpen) await this.closeIfInactive(noteId)
         return null
       }
 
@@ -895,6 +1206,7 @@ export class CrdtProvider {
       return {
         noteId,
         state,
+        coverage,
         settle: async (pushed: boolean): Promise<void> => {
           if (!pushed) {
             // Restore the pre-push counters (additive: updates may have landed
@@ -909,7 +1221,7 @@ export class CrdtProvider {
               live.pendingSnapshotBytes += clearedPending
             }
           }
-          if (!wasOpen) await this.close(noteId)
+          if (!wasOpen) await this.closeIfInactive(noteId)
         }
       }
     } catch (err) {
@@ -919,8 +1231,24 @@ export class CrdtProvider {
         live.accumulatedBytes += clearedAccumulated
         live.pendingSnapshotBytes += clearedPending
       }
-      if (!wasOpen) await this.close(noteId)
+      if (!wasOpen) await this.closeIfInactive(noteId)
       return null
+    }
+  }
+
+  /**
+   * The note's whole doc state for a full-state outbox row, or `null` when the
+   * note no longer syncs (deleted, binary, local-only) or is empty. A doc that
+   * was not open is closed again afterwards.
+   */
+  async readSyncableState(noteId: string): Promise<Uint8Array | null> {
+    if (!this.isNoteSyncable(noteId)) return null
+    const wasOpen = this.docs.has(noteId)
+    try {
+      const state = Y.encodeStateAsUpdate(await this.open(noteId))
+      return state.length <= 4 ? null : state
+    } finally {
+      if (!wasOpen) await this.closeIfInactive(noteId)
     }
   }
 
@@ -932,7 +1260,7 @@ export class CrdtProvider {
     if (!prepared) return false
 
     try {
-      await push(noteId, prepared.state)
+      await push(noteId, prepared.state, prepared.coverage)
       log.info('Pushed snapshot for note', { noteId, size: prepared.state.byteLength })
       await prepared.settle(true)
       return true
@@ -1018,7 +1346,9 @@ export class CrdtProvider {
 
     let outcome: Map<string, boolean>
     try {
-      outcome = await batchPush(prepared.map(({ noteId, state }) => ({ noteId, state })))
+      outcome = await batchPush(
+        prepared.map(({ noteId, state, coverage }) => ({ noteId, state, coverage }))
+      )
     } catch (err) {
       // SnapshotBatchPushFn is documented as total, so this is a bug rather
       // than a transport failure — treat it as one anyway: a thrown batch means
@@ -1234,7 +1564,7 @@ export class CrdtProvider {
         }
 
         await this.initForNote(entry.id, { title: entry.title, date: entry.date }, entry.tags)
-        await this.close(entry.id)
+        await this.closeIfInactive(entry.id)
         seeded++
       }
 
@@ -1280,8 +1610,8 @@ export class CrdtProvider {
     // exactly the same for a local-only note. This is the only branch that
     // sends bytes off the machine, and it is the one the record feed already
     // refuses for the same notes (`seedUnclockedNotes`, `offline-clock`).
-    // Recording the note for later replay is skipped for the same reason the
-    // push is: the pending store exists to get a body to the server.
+    // Recording a full-state row is skipped for the same reason the push is:
+    // that row exists to get a body to the server.
     if (origin !== ORIGIN_NETWORK && !entry.localOnly) {
       if (this.updateQueue) {
         this.updateQueue.enqueue(noteId, update)
@@ -1300,34 +1630,55 @@ export class CrdtProvider {
   }
 
   /**
-   * Remember a local edit that had no update queue to hand it to.
+   * Remember a local edit that had no outbox to hand it to.
    *
-   * `init(queue, ...)` runs from `startSyncRuntime` and nowhere else, and
-   * `destroy()` nulls the queue again, so with no session — signed out, not on
-   * a paid plan, before the vault opens — there is no queue at all. The update
-   * still reaches the doc and the local CRDT store, but until now it was
-   * recorded as owed *nowhere*: the queue's own shutdown path
-   * (`persistUnflushed`) only ever covers updates the queue accepted and could
-   * not flush, never updates it never saw. That is the whole of "edit while
-   * signed out, sign back in, the other device never sees it" — the edit was
-   * safe locally and invisible forever. `drainPendingCrdtNotes` on the next
-   * runtime start pushes the note's full doc state, which is the only shape
-   * this backlog has: there are no incrementals to replay.
+   * `init(outbox, ...)` runs from `startSyncRuntime` and nowhere else, and
+   * `destroy()` nulls it again, so with no session — signed out, not on a paid
+   * plan — there is no outbox. The update still reaches the doc and the local
+   * CRDT store; what the server is owed is recorded as one full-state row in
+   * this vault's sync_queue, which the next runtime's outbox pushes. Full state
+   * rather than one row per update: an install that never syncs would
+   * otherwise grow sync_queue by every keystroke it ever makes.
    *
-   * Deduped per note for the lifetime of the queue-less stretch, so the cost is
-   * one small synchronous JSON write per *note touched*, not per update — the
-   * same recorder the shutdown path uses, called at a rate it was built for.
-   * Eager rather than debounced on purpose: the id has to be on disk before a
-   * crash or a kill, and the dedupe means the second update for a note never
-   * pays for the write again. The mark goes up before the write for the same
-   * reason — a store that cannot be written (full disk) must not turn every
-   * later keystroke into another failing disk write.
+   * Deduped per note for the queue-less stretch, so this is one small
+   * synchronous write per *note touched*. The mark goes up before the write so
+   * a database that cannot be written does not turn every later keystroke into
+   * another failing write.
    */
   private recordUnqueuedUpdate(noteId: string): void {
     if (this.recordedUnqueuedNotes.has(noteId)) return
     this.recordedUnqueuedNotes.add(noteId)
-    recordPendingCrdtNotes([noteId])
-    log.debug('Recorded a local CRDT edit made with no update queue', { noteId })
+    this.recordOwedFullState(noteId)
+    log.debug('Recorded a local CRDT edit made with no outbox', { noteId })
+  }
+
+  private recordOwedFullState(noteId: string): void {
+    if (this.updateQueue) return this.updateQueue.enqueueFullState(noteId)
+    this.writeWithoutRuntime(noteId, (queue) =>
+      queue.enqueueNoteBody(noteId, NOTE_BODY_FULL_STATE_PAYLOAD)
+    )
+  }
+
+  private dropOwedBody(noteId: string): void {
+    if (this.updateQueue) return this.updateQueue.dropNote(noteId)
+    this.writeWithoutRuntime(noteId, (queue) => queue.removeNoteBody(noteId))
+  }
+
+  /**
+   * With no sync runtime the rows still go to this vault's sync_queue, where
+   * the next runtime's outbox finds them. A failed write is logged, not
+   * thrown: this runs on the edit path, and the edit itself is already safe in
+   * the local doc and store.
+   */
+  private writeWithoutRuntime(noteId: string, write: (queue: SyncQueueManager) => void): void {
+    try {
+      write(new SyncQueueManager(getDatabase()))
+    } catch (err) {
+      log.error('Could not write the CRDT body outbox with no sync runtime', {
+        noteId,
+        error: err
+      })
+    }
   }
 
   private broadcastToWindows(
@@ -1468,7 +1819,17 @@ export class CrdtProvider {
 
     if (this.compactingDocs.has(noteId)) return
 
-    const result = compactYDoc(entry.doc, CRDT_FRAGMENT_NAME)
+    // The base is read up front; the claim and the compaction still share one
+    // synchronous step after it (the checks above are re-run after the await).
+    const base = await this.readPushBase(noteId)
+    if (entry.closing || entry.windowIds.size > 0 || this.compactingDocs.has(noteId)) return
+    if (this.docs.get(noteId) !== entry) return
+    const compaction: { result: ReturnType<typeof compactYDoc> } = { result: null }
+    const { coverage } = this.encodeForPush(base, () => {
+      compaction.result = compactYDoc(entry.doc, CRDT_FRAGMENT_NAME)
+      return compaction.result?.compacted ?? new Uint8Array()
+    })
+    const result = compaction.result
     if (!result) return
 
     const beforeSize = entry.lastEncodedSize
@@ -1493,7 +1854,7 @@ export class CrdtProvider {
         // read as pushed and stayed unpushed until a later edit re-armed it.
         // Clamped: close() may have zeroed the counter mid-push.
         const pushedBytes = entry.pendingSnapshotBytes
-        await this.snapshotPushFn(noteId, result.compacted)
+        await this.snapshotPushFn(noteId, result.compacted, coverage)
         entry.pendingSnapshotBytes = Math.max(0, entry.pendingSnapshotBytes - pushedBytes)
       }
 
@@ -1553,8 +1914,65 @@ export class CrdtProvider {
       log.info('Doc compacted', { noteId, beforeSize, afterSize: result.compacted.byteLength })
     } finally {
       this.compactingDocs.delete(noteId)
+      // Still here only when the push or the store write threw.
+      if (this.compactionBuffers.get(noteId)?.length) this.oweDroppedRemoteUpdates(noteId)
       this.compactionBuffers.delete(noteId)
     }
+  }
+
+  /**
+   * Remote updates buffered for a compaction were dropped: their sequences are
+   * already recorded as applied and the feed cursor may be past them, so the
+   * note is owed its whole server body and flagged until that merges (#2299).
+   * The watermark is dropped either way, or a probe would call the note merged
+   * (#2297 review B-H2). With no runtime the debt is written straight to the
+   * data DB of this store's vault, which the next engine start hydrates; with
+   * that DB closed or unusable it is kept in this store until a runtime
+   * attaches (#2421).
+   */
+  private oweDroppedRemoteUpdates(noteId: string): void {
+    void this.forgetSnapshotWatermark(noteId)
+    if (!this.oweRemoteMerge) {
+      log.warn('Dropped remote updates buffered during compaction with no sync runtime', {
+        noteId
+      })
+      void this.oweDetachedCompaction(noteId)
+      return
+    }
+    log.warn('Dropped remote updates buffered during compaction; owing the note a pull', {
+      noteId
+    })
+    this.oweRemoteMerge(noteId, 'compaction')
+  }
+
+  private oweDetachedCompaction(noteId: string): Promise<void> {
+    try {
+      const db = this.boundVaultDatabase()
+      const debts = db && crdtBodyDebtStore(db)
+      if (debts?.durable()) {
+        debts.owe([noteId], 'compaction', { needsWalk: true })
+        return Promise.resolve()
+      }
+    } catch (err) {
+      log.error('Could not owe a compaction in the data DB; keeping it in the store', {
+        noteId,
+        error: err
+      })
+    }
+    return this.withOwedCompactions(async (persistence) => {
+      const owed = await persistence.getMeta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY)
+      const noteIds = new Set(Array.isArray(owed) ? owed : [])
+      noteIds.add(noteId)
+      await persistence.setMeta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY, [...noteIds])
+    }, 'Could not record a compaction owed with no sync runtime')
+  }
+
+  /** The bound data DB, while it is the open one and still this store's vault. */
+  private boundVaultDatabase(): DrizzleDb | null {
+    const bound = this.boundVault
+    if (!bound || !isDatabaseInitialized() || getDatabase() !== bound.db) return null
+    if (getOrCreateVaultUuid(bound.db) !== bound.vaultUuid) return null
+    return bound.db as unknown as DrizzleDb
   }
 
   /**
@@ -1573,7 +1991,11 @@ export class CrdtProvider {
   private drainCompactionBuffer(noteId: string, target: ActiveDoc | undefined): void {
     const buffered = this.compactionBuffers.get(noteId)
     this.compactionBuffers.delete(noteId)
-    if (!buffered?.length || !target || target.doc.isDestroyed) return
+    if (!buffered?.length) return
+    if (!target || target.doc.isDestroyed) {
+      this.oweDroppedRemoteUpdates(noteId)
+      return
+    }
 
     for (const update of buffered) {
       Y.applyUpdate(target.doc, update, ORIGIN_NETWORK)
@@ -1602,8 +2024,8 @@ export class CrdtProvider {
   /**
    * May the CRDT feed still carry this note's body to the server?
    *
-   * The union of both refusals, for the pending-note replay — which has to
-   * decide whether an id in the durable store is still owed a push at all. The
+   * The union of both refusals, for the note-body outbox — which has to decide
+   * whether a full-state row is still owed a push at all. The
    * two halves stay separate because `validateNoteForCrdt` also gates the
    * renderer's editor handshake, and a local-only note opens and edits there
    * like any other; only its *sync* is off.

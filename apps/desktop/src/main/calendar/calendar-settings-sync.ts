@@ -27,7 +27,6 @@ import {
 // The runtime imports settings sync through here so the calendar mirror
 // starts with it; `sync/runtime.ts` sits on its line ceiling.
 export { resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
-import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { DEFAULT_WRITE_TARGET_SETTINGS_KEY } from './provider/write-routing'
 
 /**
@@ -73,7 +72,8 @@ interface SyncedField {
 }
 
 export interface CalendarSettingsSyncTarget {
-  updateField(fieldPath: string, value: unknown, deviceId: string): void
+  /** False when no device is registered yet (#2287); nothing was written. */
+  updateField(fieldPath: string, value: unknown): boolean
   getPayload(): { settings: SyncedSettings; fieldClocks: Record<string, unknown> }
 }
 
@@ -154,7 +154,7 @@ export function mirrorCalendarSettingWrite(
   after: string | null
 ): void {
   for (const field of changedCalendarFields(key, before, after)) {
-    target.updateField(field.path, field.value, 'local')
+    target.updateField(field.path, field.value)
   }
 }
 
@@ -190,15 +190,23 @@ export function seedCalendarSyncedSettings(db: DataDb, target: CalendarSettingsS
     for (const field of changedCalendarFields(key, null, getSetting(db, key))) {
       if (Object.prototype.hasOwnProperty.call(fieldClocks, field.path)) continue
       if (syncedValueAt(settings, field.path) !== undefined) continue
-      target.updateField(field.path, field.value, 'local')
-      seeded += 1
+      // Before a device registers nothing ticks; the seed runs again then.
+      if (target.updateField(field.path, field.value)) seeded += 1
     }
   }
   if (seeded > 0) log.info('Seeded calendar settings into settings sync', { seeded })
   return seeded
 }
 
-function writeLocalGroup(db: DataDb, key: string, updates: Record<string, unknown>): void {
+/** Sends a renderer event; inside a pull page it is held until the page commits. */
+export type CalendarSettingsEmit = (channel: string, data: unknown) => void
+
+function writeLocalGroup(
+  db: DataDb,
+  key: string,
+  updates: Record<string, unknown>,
+  emit: CalendarSettingsEmit
+): void {
   const current = parseObject(getSetting(db, key)) ?? {}
   const changed = Object.entries(updates).filter(
     ([leaf, value]) => JSON.stringify(current[leaf]) !== JSON.stringify(value)
@@ -206,7 +214,7 @@ function writeLocalGroup(db: DataDb, key: string, updates: Record<string, unknow
   if (changed.length === 0) return
   const next = { ...current, ...Object.fromEntries(changed) }
   writeSettingRow(db, key, JSON.stringify(next))
-  broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+  emit(SettingsChannels.events.CHANGED, {
     key,
     value: Object.fromEntries(changed)
   })
@@ -217,7 +225,11 @@ function writeLocalGroup(db: DataDb, key: string, updates: Record<string, unknow
  * uses. Raw writes, so they do not echo back into settings sync. A key the
  * merged value omits leaves the local one alone.
  */
-export function applyMergedCalendarSettings(db: DataDb, merged: SyncedSettings['calendar']): void {
+export function applyMergedCalendarSettings(
+  db: DataDb,
+  merged: SyncedSettings['calendar'],
+  emit: CalendarSettingsEmit
+): void {
   if (!merged || typeof merged !== 'object') return
   const calendar = merged as Record<string, unknown>
   const pick = (
@@ -230,7 +242,7 @@ export function applyMergedCalendarSettings(db: DataDb, merged: SyncedSettings['
         .map((k) => [k, source[k]])
     )
 
-  writeLocalGroup(db, 'calendar', pick(calendar, CALENDAR_KEYS))
+  writeLocalGroup(db, 'calendar', pick(calendar, CALENDAR_KEYS), emit)
 
   for (const [name, value] of Object.entries(calendar)) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) continue
@@ -238,7 +250,7 @@ export function applyMergedCalendarSettings(db: DataDb, merged: SyncedSettings['
     const key = `calendar.${name}`
     const leaves = groupLeaves(key)
     if (!leaves) continue
-    writeLocalGroup(db, key, pick(value as Record<string, unknown>, leaves))
+    writeLocalGroup(db, key, pick(value as Record<string, unknown>, leaves), emit)
   }
 
   if (Object.prototype.hasOwnProperty.call(calendar, 'defaultWriteTarget')) {
@@ -250,7 +262,7 @@ export function applyMergedCalendarSettings(db: DataDb, merged: SyncedSettings['
     // Google's own default); on the wire it is `null`.
     if (target === null) removeSettingRow(db, DEFAULT_WRITE_TARGET_SETTINGS_KEY)
     else writeSettingRow(db, DEFAULT_WRITE_TARGET_SETTINGS_KEY, JSON.stringify(target))
-    broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+    emit(SettingsChannels.events.CHANGED, {
       key: DEFAULT_WRITE_TARGET_SETTINGS_KEY,
       value: target ?? null
     })

@@ -61,8 +61,6 @@ vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 
 vi.mock('@memry/domain-notes', () => ({ saveCanonicalPropertyDefinition: vi.fn() }))
 
-vi.mock('../../tasks/runtime-effects', () => ({ syncProjectUpdate: vi.fn() }))
-
 import { noteHandler } from './note-handler'
 import { setNoteTags } from '@main/database/queries/notes'
 import { NotesChannels } from '@memry/contracts/ipc-channels'

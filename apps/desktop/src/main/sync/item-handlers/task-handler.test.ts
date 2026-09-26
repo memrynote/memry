@@ -10,6 +10,7 @@ import {
   initAllFieldClocks,
   type FieldClocks
 } from '@memry/sync-client/field-merge'
+import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@memry/contracts/sync-payloads'
 import { taskHandler } from './task-handler'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import {
@@ -739,5 +740,81 @@ describe('taskHandler broadcasts notes:tags-changed on synced tag changes', () =
 
     taskHandler.applyDelete(ctx, 'sync-del-2')
     expect(ctx.emit).not.toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+})
+
+// #2294: an EQUAL clock skips only when the local row already carries the
+// incoming payload; any difference still applies (§6.5.2 P4).
+describe('taskHandler equal clock', () => {
+  let testDb: TestDatabaseResult
+  let ctx: ApplyContext
+  const clock = { X: 2, Y: 2 }
+
+  beforeEach(() => {
+    testDb = createTestDataDb()
+    ctx = makeCtx(testDb)
+    testDb.db.insert(projects).values(TEST_PROJECT).run()
+    testDb.db.insert(statuses).values(TEST_STATUSES).run()
+    taskHandler.applyUpsert(ctx, 'task-eq', makeTaskPayload({ title: 'vx', tags: ['a'] }), clock)
+    ctx = makeCtx(testDb)
+  })
+
+  afterEach(() => {
+    testDb.close()
+  })
+
+  const ownPushPayload = (): TaskSyncPayload =>
+    TaskSyncPayloadSchema.parse(
+      JSON.parse(
+        taskHandler.buildPushPayload(testDb.db as unknown as DrizzleDb, 'task-eq', 'X', 'update')!
+      )
+    )
+
+  it('skips its own pushed row pulled back: no row write, no emit', () => {
+    const before = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-eq')).get()
+
+    const result = taskHandler.applyUpsert(ctx, 'task-eq', ownPushPayload(), clock)
+
+    expect(result).toBe('skipped')
+    expect(ctx.emit).not.toHaveBeenCalled()
+    expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-eq')).get()).toEqual(before)
+  })
+
+  // #2294 review: the skipped echo is the row the server holds, so a lost push
+  // ack must not leave it dirty for the startup sweep to re-push.
+  it('marks a still-dirty row synced when its own push comes back', () => {
+    testDb.db.update(tasks).set({ syncedAt: null }).where(eq(tasks.id, 'task-eq')).run()
+
+    const result = taskHandler.applyUpsert(ctx, 'task-eq', ownPushPayload(), clock)
+
+    expect(result).toBe('skipped')
+    expect(ctx.emit).not.toHaveBeenCalled()
+    const row = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-eq')).get()
+    expect(row?.syncedAt).not.toBeNull()
+    expect(row?.title).toBe('vx')
+  })
+
+  it('applies the accepted row of a collided merge re-push (the §6.5.2 trace)', () => {
+    const result = taskHandler.applyUpsert(
+      ctx,
+      'task-eq',
+      { ...ownPushPayload(), title: 'vy' },
+      clock
+    )
+
+    expect(result).toBe('applied')
+    expect(ctx.emit).toHaveBeenCalled()
+    expect(testDb.db.select().from(tasks).where(eq(tasks.id, 'task-eq')).get()?.title).toBe('vy')
+  })
+
+  it('applies when only a junction list differs', () => {
+    const result = taskHandler.applyUpsert(
+      ctx,
+      'task-eq',
+      { ...ownPushPayload(), tags: ['a', 'b'] },
+      clock
+    )
+
+    expect(result).toBe('applied')
   })
 })

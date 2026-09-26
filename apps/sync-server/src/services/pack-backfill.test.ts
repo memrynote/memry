@@ -148,6 +148,37 @@ describe('runPackBackfill', () => {
     expect(packed.map((row) => row.user_id)).toEqual(['u-b1', 'u-b2'])
   })
 
+  it('moves past vaults whose snapshot tail is only deleted notes', async () => {
+    // Oldest backlog first: three vaults whose only snapshot is a deleted
+    // note sort ahead of the live vault. Unless their watermarks move, they
+    // take every tick's budget and the live vault is never packed.
+    for (let i = 1; i <= 3; i++) {
+      const userId = `u-dead${i}`
+      seedVaultWithSnapshots(userId, 'default', 1, i * 100)
+      harness.raw
+        .prepare(
+          `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
+           VALUES (?, ?, 'default', 'note', 'n-1', '', 0, 'h', 1, 1, 'delete', 1, NULL, 'sig', NULL, 1, 1, 5)`
+        )
+        .run(`${userId}-row`, userId)
+    }
+    seedVaultWithSnapshots('u-live', 'default', 1, 5000)
+
+    const ticks = [
+      await runPackBackfill(harness.db, storage),
+      await runPackBackfill(harness.db, storage)
+    ]
+
+    expect(ticks).toEqual([
+      { packsBuilt: 0, scopesVisited: 3, budgetRemaining: 0 },
+      { packsBuilt: 1, scopesVisited: 1, budgetRemaining: 600 }
+    ])
+    const packed = harness.raw
+      .prepare('SELECT DISTINCT user_id FROM pack_index ORDER BY user_id')
+      .all() as Array<{ user_id: string }>
+    expect(packed.map((row) => row.user_id)).toEqual(['u-live'])
+  })
+
   it('exposes the tick budget constant used by the cron wiring', () => {
     expect(PACKS_PER_BACKFILL_TICK).toBeGreaterThan(0)
   })

@@ -96,6 +96,8 @@ describe('runPackBootstrap', () => {
       active = true
       return {
         db: {} as PageApplyHandle['db'],
+        transacted: true,
+        afterCommit: () => {},
         commit: () => {
           for (const write of pending) {
             state.set(write.key, write.value)
@@ -109,7 +111,9 @@ describe('runPackBootstrap', () => {
           pending = []
           active = false
         },
-        flushFiles: async () => {}
+        flushFiles: async () => {},
+        savepoint: (apply) => apply(),
+        flushFilesSync: () => {}
       } satisfies PageApplyHandle
     }
 

@@ -22,8 +22,11 @@ vi.mock('../database/client', () => ({
 
 import {
   beginPageApply,
+  isPageApplyQuiescent,
+  whenPageApplyQuiescent,
   replayBulkApplyJournal,
-  writeSyncedNoteFile,
+  writeSyncedVaultFile,
+  deleteSyncedVaultFile,
   _resetBulkApplyForTests
 } from './bulk-apply'
 import { getRawIndexDatabase, isIndexDatabaseInitialized } from '../database/client'
@@ -69,6 +72,7 @@ describe('bulk apply page session', () => {
             .run(id, `v-${id}`)
         })
       }
+      expect(page.transacted).toBe(true)
       page.commit()
 
       expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 2 })
@@ -124,8 +128,8 @@ describe('bulk apply page session', () => {
       const fileB = path.join(userDataDir, 'note-b.md')
 
       const page = beginPageApply(db)
-      writeSyncedNoteFile(fileA, 'content-a')
-      writeSyncedNoteFile(fileB, 'content-b')
+      writeSyncedVaultFile(fileA, 'content-a')
+      writeSyncedVaultFile(fileB, 'content-b')
       page.commit()
 
       // Crash before flushFiles(): journal exists, files do not.
@@ -149,7 +153,7 @@ describe('bulk apply page session', () => {
       const fileA = path.join(userDataDir, 'note-c.md')
 
       const page = beginPageApply(db)
-      writeSyncedNoteFile(fileA, 'synced-content')
+      writeSyncedVaultFile(fileA, 'synced-content')
       page.commit()
 
       // A writeback or editor got there first with newer bytes, AFTER the
@@ -175,7 +179,7 @@ describe('bulk apply page session', () => {
       fs.writeFileSync(fileA, 'old-bytes', 'utf-8')
 
       const page = beginPageApply(db)
-      writeSyncedNoteFile(fileA, 'row-content')
+      writeSyncedVaultFile(fileA, 'row-content')
       page.commit()
       // Crash before flushFiles(): the row committed, the file still holds the
       // old bytes. Existence alone must not skip the heal.
@@ -193,7 +197,7 @@ describe('bulk apply page session', () => {
       const fileA = path.join(userDataDir, 'landed.md')
 
       const page = beginPageApply(db)
-      writeSyncedNoteFile(fileA, 'landed-content')
+      writeSyncedVaultFile(fileA, 'landed-content')
       page.commit()
       // The flush landed out-of-band before the crash.
       fs.writeFileSync(fileA, 'landed-content', 'utf-8')
@@ -232,8 +236,8 @@ describe('bulk apply page session', () => {
       const badFile = path.join(blocker, 'bad.md')
 
       const page1 = beginPageApply(db)
-      writeSyncedNoteFile(goodFile, 'g')
-      writeSyncedNoteFile(badFile, 'b')
+      writeSyncedVaultFile(goodFile, 'g')
+      writeSyncedVaultFile(badFile, 'b')
       page1.commit()
       await page1.flushFiles()
 
@@ -245,7 +249,7 @@ describe('bulk apply page session', () => {
       // Page 2 must not clobber page 1's unlanded entry.
       const page2 = beginPageApply(db)
       const otherFile = path.join(userDataDir, 'other.md')
-      writeSyncedNoteFile(otherFile, 'o')
+      writeSyncedVaultFile(otherFile, 'o')
       page2.commit()
       await page2.flushFiles()
 
@@ -288,9 +292,157 @@ describe('bulk apply page session', () => {
   describe('#given no active session', () => {
     it('#then note file writes stay synchronous tmp-write + rename', () => {
       const target = path.join(userDataDir, 'steady.md')
-      writeSyncedNoteFile(target, 'steady-state')
+      writeSyncedVaultFile(target, 'steady-state')
       expect(fs.existsSync(target + '.tmp')).toBe(false)
       expect(fs.readFileSync(target, 'utf-8')).toBe('steady-state')
+    })
+
+    it('#then a synced delete unlinks synchronously and tolerates a missing file', () => {
+      const target = path.join(userDataDir, 'steady-delete.md')
+      fs.writeFileSync(target, 'bytes', 'utf-8')
+
+      deleteSyncedVaultFile(target)
+
+      expect(fs.existsSync(target)).toBe(false)
+      expect(() => deleteSyncedVaultFile(target)).not.toThrow()
+      expect(readJournal()).toBeNull()
+    })
+  })
+
+  describe('#given a remote delete applied inside a page', () => {
+    const makeDoomed = (name: string): string => {
+      const target = path.join(userDataDir, name)
+      fs.writeFileSync(target, 'doomed', 'utf-8')
+      // Written well before the page, as a synced note's file would be.
+      const before = (Date.now() - 60_000) / 1000
+      fs.utimesSync(target, before, before)
+      return target
+    }
+
+    it('#then the file is unlinked only by the flush after commit, and the journal clears', async () => {
+      const { db } = makeDb()
+      const target = makeDoomed('flush-delete.md')
+
+      const page = beginPageApply(db)
+      deleteSyncedVaultFile(target)
+      expect(fs.existsSync(target)).toBe(true)
+      page.commit()
+      expect(fs.existsSync(target)).toBe(true)
+
+      await page.flushFiles()
+
+      expect(fs.existsSync(target)).toBe(false)
+      expect(readJournal()).toBeNull()
+    })
+
+    it('#then a rolled-back page leaves the file in place', () => {
+      const { db } = makeDb()
+      const target = makeDoomed('rollback-delete.md')
+
+      const page = beginPageApply(db)
+      deleteSyncedVaultFile(target)
+      page.rollback()
+
+      expect(fs.existsSync(target)).toBe(true)
+      expect(readJournal()).toBeNull()
+    })
+
+    // #2385: a crash between the page commit (row gone) and the flush (file
+    // still there) must not leave an orphan file the indexer re-adopts.
+    it('#then a crash between commit and flush is healed by replay removing the file', () => {
+      const { db } = makeDb()
+      const target = makeDoomed('crash-delete.md')
+
+      const page = beginPageApply(db)
+      deleteSyncedVaultFile(target)
+      page.commit()
+      expect(readJournalEntries()).toEqual([
+        { kind: 'delete', absolutePath: target, deferredAt: expect.any(Number) }
+      ])
+
+      _resetBulkApplyForTests()
+      replayBulkApplyJournal()
+
+      expect(fs.existsSync(target)).toBe(false)
+      expect(readJournal()).toBeNull()
+    })
+
+    // #2385: a file re-created locally after the crash is newer than the
+    // journaled delete and must survive replay.
+    it('#then a file re-created locally after the crash is not removed by replay', () => {
+      const { db } = makeDb()
+      const target = makeDoomed('recreated.md')
+
+      const page = beginPageApply(db)
+      deleteSyncedVaultFile(target)
+      page.commit()
+
+      fs.writeFileSync(target, 'created again after the crash', 'utf-8')
+      const [entry] = readJournalEntries() as unknown as Array<{ deferredAt: number }>
+      const afterJournal = (entry.deferredAt + 60_000) / 1000
+      fs.utimesSync(target, afterJournal, afterJournal)
+
+      _resetBulkApplyForTests()
+      replayBulkApplyJournal()
+
+      expect(fs.readFileSync(target, 'utf-8')).toBe('created again after the crash')
+      expect(readJournal()).toBeNull()
+    })
+
+    // #2385 compat: replay in builds before this change keeps only entries with
+    // a string `absolutePath` AND a string `content` (isPendingNoteFileWrite,
+    // 4ca8b11ab..744bbae43). A delete entry has no `content`, so those builds
+    // skip it, and the delete must supersede any unlanded write for the same
+    // path or an older build would re-create the deleted file from it.
+    it('#then an older reader finds no entry that would write the deleted path back', async () => {
+      const { db } = makeDb()
+      const blocker = path.join(userDataDir, 'delete-blocker')
+      fs.writeFileSync(blocker, 'not a dir', 'utf-8')
+      const stuck = path.join(blocker, 'stuck.md')
+      const kept = path.join(userDataDir, 'kept.md')
+
+      const page1 = beginPageApply(db)
+      writeSyncedVaultFile(stuck, 'unlanded write')
+      page1.commit()
+      await page1.flushFiles()
+      expect(readJournalEntries().map((e) => e.absolutePath)).toEqual([stuck])
+
+      const page2 = beginPageApply(db)
+      writeSyncedVaultFile(kept, 'kept')
+      deleteSyncedVaultFile(stuck)
+      page2.commit()
+
+      const oldReaderEntries = (readJournalEntries() as unknown[]).filter(
+        (e) =>
+          !!e &&
+          typeof (e as { absolutePath?: unknown }).absolutePath === 'string' &&
+          typeof (e as { content?: unknown }).content === 'string'
+      )
+      expect(oldReaderEntries.map((e) => (e as { absolutePath: string }).absolutePath)).toEqual([
+        kept
+      ])
+
+      _resetBulkApplyForTests()
+      fs.rmSync(blocker, { force: true })
+      replayBulkApplyJournal()
+
+      expect(fs.existsSync(stuck)).toBe(false)
+      expect(fs.readFileSync(kept, 'utf-8')).toBe('kept')
+    })
+
+    it('#then a write after a delete of the same path in one page lands the write', async () => {
+      const { db } = makeDb()
+      const target = makeDoomed('delete-then-write.md')
+
+      const page = beginPageApply(db)
+      deleteSyncedVaultFile(target)
+      writeSyncedVaultFile(target, 'moved in')
+      page.commit()
+      expect(readJournalEntries()).toHaveLength(1)
+      await page.flushFiles()
+
+      expect(fs.readFileSync(target, 'utf-8')).toBe('moved in')
+      expect(readJournal()).toBeNull()
     })
   })
 
@@ -323,7 +475,7 @@ describe('bulk apply page session', () => {
 
       try {
         const page = beginPageApply(db)
-        writeSyncedNoteFile(path.join(userDataDir, 'durable.md'), 'durable-content')
+        writeSyncedVaultFile(path.join(userDataDir, 'durable.md'), 'durable-content')
         page.commit()
 
         const commitCall = execSpy.mock.calls.findIndex(([sql]) => sql === 'COMMIT')
@@ -399,6 +551,32 @@ describe('bulk apply page session', () => {
       expect(order.indexOf('data:COMMIT')).toBeLessThan(order.indexOf('index:COMMIT'))
     })
 
+    // #2294 review: the page's last slice now carries the pull cursor, so a
+    // journal write that throws must roll the page back, not leave it open.
+    it('#then a journal write that fails rolls both DBs back and drops the notifications', () => {
+      const { db, raw } = makeDb()
+      const page = beginPageApply(db)
+      page.db.transaction(() => {
+        raw.prepare("INSERT INTO t (id, v) VALUES ('a', '1')").run()
+      })
+      writeSyncedVaultFile(path.join(userDataDir, 'no-space.md'), 'bytes')
+      const notify = vi.fn()
+      page.afterCommit(notify)
+      const openSpy = vi.spyOn(fs, 'openSync').mockImplementationOnce(() => {
+        throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
+      })
+
+      expect(() => page.commit()).toThrow('ENOSPC')
+      openSpy.mockRestore()
+
+      expect(raw.inTransaction).toBe(false)
+      expect(indexRaw.inTransaction).toBe(false)
+      expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 0 })
+      expect(notify).not.toHaveBeenCalled()
+      expect(() => raw.exec('BEGIN IMMEDIATE')).not.toThrow()
+      raw.exec('ROLLBACK')
+    })
+
     it('#then a failed index COMMIT rolls back and leaves the index connection usable', () => {
       const { db } = makeDb()
       const page = beginPageApply(db)
@@ -426,7 +604,7 @@ describe('bulk apply page session', () => {
     it('#then a failed data COMMIT rolls back and leaves the data connection usable too', () => {
       const { db, raw } = makeDb()
       const page = beginPageApply(db)
-      writeSyncedNoteFile(path.join(userDataDir, 'doomed.md'), 'never-committed')
+      writeSyncedVaultFile(path.join(userDataDir, 'doomed.md'), 'never-committed')
 
       const origExec = raw.exec.bind(raw)
       const sqlLog: string[] = []
@@ -476,6 +654,8 @@ describe('bulk apply page session', () => {
         expect(logger.warn).toHaveBeenCalledWith(
           'Data DB already in a transaction — page apply runs untransacted'
         )
+        // #2294 review: the pull must not treat this page as atomic with its cursor.
+        expect(page.transacted).toBe(false)
         expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 1 })
         // The page never opened the transaction, so it must not close it either.
         expect(raw.inTransaction).toBe(true)
@@ -497,6 +677,154 @@ describe('bulk apply page session', () => {
       } finally {
         if (raw.inTransaction) raw.exec('ROLLBACK')
       }
+    })
+  })
+
+  // #2294: a window must never hear "applied" for rows that roll back.
+  describe('#given renderer notifications queued during a page', () => {
+    it('#then they run only after the data COMMIT, in queue order', () => {
+      const { db, raw } = makeDb()
+      const page = beginPageApply(db)
+      const seen: string[] = []
+      page.afterCommit(() => seen.push(`first:${raw.inTransaction}`))
+      page.afterCommit(() => seen.push('second'))
+      expect(seen).toEqual([])
+
+      page.commit()
+
+      expect(seen).toEqual(['first:false', 'second'])
+    })
+
+    it('#then a rolled-back page drops them', () => {
+      const { db } = makeDb()
+      const page = beginPageApply(db)
+      const notify = vi.fn()
+      page.afterCommit(notify)
+
+      page.rollback()
+      page.commit()
+
+      expect(notify).not.toHaveBeenCalled()
+    })
+
+    it('#then a page whose data COMMIT throws drops them', () => {
+      const { db, raw } = makeDb()
+      const page = beginPageApply(db)
+      const notify = vi.fn()
+      page.afterCommit(notify)
+      const origExec = raw.exec.bind(raw)
+      raw.exec = ((sql: string) => {
+        if (sql === 'COMMIT') throw new Error('data commit boom')
+        return origExec(sql)
+      }) as typeof raw.exec
+
+      expect(() => page.commit()).toThrow('data commit boom')
+      raw.exec = origExec
+
+      expect(notify).not.toHaveBeenCalled()
+    })
+
+    it('#then one throwing notification neither fails the commit nor skips the rest', () => {
+      const { db, raw } = makeDb()
+      const page = beginPageApply(db)
+      const later = vi.fn()
+      page.afterCommit(() => {
+        throw new Error('window destroyed')
+      })
+      page.afterCommit(later)
+      page.db.transaction(() => {
+        raw.prepare("INSERT INTO t (id, v) VALUES ('a', 'x')").run()
+      })
+
+      expect(() => page.commit()).not.toThrow()
+
+      expect(later).toHaveBeenCalledOnce()
+      expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 1 })
+    })
+  })
+
+  // #2300: the socket fast path writes note files only at a quiescent point.
+  describe('#given the socket fast path waits for page apply quiescence', () => {
+    it('#then a page is not quiescent while its transaction is open', () => {
+      const { db } = makeDb()
+      expect(isPageApplyQuiescent()).toBe(true)
+      const page = beginPageApply(db)
+      expect(isPageApplyQuiescent()).toBe(false)
+      page.rollback()
+      expect(isPageApplyQuiescent()).toBe(true)
+    })
+
+    it('#then quiescence resolves only after the committed page flushed its files', async () => {
+      const { db } = makeDb()
+      const target = path.join(userDataDir, 'quiescent', 'x.md')
+      let releaseWrite!: () => void
+      const writeHeld = new Promise<void>((resolve) => {
+        releaseWrite = resolve
+      })
+      const realWriteFile = fs.promises.writeFile
+      const writeSpy = vi
+        .spyOn(fs.promises, 'writeFile')
+        .mockImplementation(async (...args: Parameters<typeof fs.promises.writeFile>) => {
+          await writeHeld
+          return realWriteFile(...args)
+        })
+
+      const page = beginPageApply(db)
+      writeSyncedVaultFile(target, 'v1')
+      page.commit()
+      const flushed = page.flushFiles()
+
+      let quiescent = false
+      const waited = whenPageApplyQuiescent(60_000).then(() => {
+        quiescent = true
+      })
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      expect(isPageApplyQuiescent()).toBe(false)
+      expect(quiescent).toBe(false)
+
+      releaseWrite()
+      await flushed
+      await waited
+      expect(quiescent).toBe(true)
+      expect(fs.readFileSync(target, 'utf-8')).toBe('v1')
+      writeSpy.mockRestore()
+    })
+
+    it('#then an unlanded op from a failed flush keeps it not quiescent', async () => {
+      const { db } = makeDb()
+      const target = path.join(userDataDir, 'quiescent', 'fail.md')
+      const writeSpy = vi
+        .spyOn(fs.promises, 'writeFile')
+        .mockRejectedValueOnce(new Error('disk full'))
+
+      const page = beginPageApply(db)
+      writeSyncedVaultFile(target, 'v1')
+      page.commit()
+      await page.flushFiles()
+
+      expect(isPageApplyQuiescent()).toBe(false)
+      writeSpy.mockRestore()
+    })
+
+    // #2300 review A-3 / B-F2: the replay that heals a failed flush also
+    // clears it from memory, or the fast path stays off until a restart.
+    it('#then the journal replay that heals the failed op makes it quiescent again', async () => {
+      const { db } = makeDb()
+      const target = path.join(userDataDir, 'quiescent', 'healed.md')
+      const writeSpy = vi.spyOn(fs.promises, 'writeFile').mockRejectedValueOnce(new Error('EBUSY'))
+      const page = beginPageApply(db)
+      writeSyncedVaultFile(target, 'v1')
+      page.commit()
+      await page.flushFiles()
+      writeSpy.mockRestore()
+      expect(isPageApplyQuiescent()).toBe(false)
+      const waited = whenPageApplyQuiescent(60_000)
+
+      replayBulkApplyJournal()
+
+      expect(fs.readFileSync(target, 'utf-8')).toBe('v1')
+      expect(isPageApplyQuiescent()).toBe(true)
+      await expect(waited).resolves.toBe(true)
     })
   })
 })

@@ -12,17 +12,20 @@ const log = createLogger('BulkApply')
 
 /**
  * Page-scoped apply machinery for the pull path: one SQLite transaction per
- * pulled page (data DB + index DB), with note markdown writes deferred out of
- * the synchronous apply loop and flushed asynchronously after commit.
+ * pulled page (data DB + index DB), with note markdown writes and remote-delete
+ * unlinks deferred out of the synchronous apply loop and flushed asynchronously
+ * after commit.
  *
  * CRASH-SAFETY INVARIANT (heal path, not write-before-commit): the DB rows for
- * a page commit FIRST, then the page's note files are written asynchronously.
- * The window between the two is covered by a journal: the pending file writes
- * are recorded in a single synchronous journal write immediately BEFORE the DB
- * commit, and the journal is deleted only after every file landed. A crash
- * inside the window is healed by `replayBulkApplyJournal()` at the start of the
- * next pull: it re-materializes exactly the files whose rows committed but
- * whose bytes never reached the vault.
+ * a page commit FIRST, then the page's note files are written (or unlinked)
+ * asynchronously. The window between the two is covered by a journal: the
+ * pending file ops are recorded in a single synchronous journal write
+ * immediately BEFORE the DB commit, and the journal is deleted only after every
+ * op landed. A crash inside the window is healed by `replayBulkApplyJournal()`
+ * at the start of the next pull: it re-materializes exactly the files whose
+ * rows committed but whose bytes never reached the vault, and removes the files
+ * whose rows a remote delete removed (#2385) — an orphan file left there would
+ * be re-adopted by the vault indexer as a new local note and pushed back.
  *
  * Why files are not written before the commit instead: the apply loop must stay
  * fully synchronous while the transaction is open. better-sqlite3 shares one
@@ -34,7 +37,7 @@ const log = createLogger('BulkApply')
  * reordering crash-safe.
  */
 
-/** Journal of file writes whose DB rows may already be committed. */
+/** Journal of file ops whose DB rows may already be committed. */
 const JOURNAL_FILE_NAME = 'sync-bulk-apply-journal.json'
 
 /**
@@ -44,7 +47,7 @@ const JOURNAL_FILE_NAME = 'sync-bulk-apply-journal.json'
  */
 interface JournalFile {
   writtenAt: number
-  entries: PendingNoteFileWrite[]
+  entries: PendingVaultFileOp[]
 }
 
 interface PendingNoteFileWrite {
@@ -52,6 +55,40 @@ interface PendingNoteFileWrite {
   content: string
   /** sha256 of `content`, recorded when the write is deferred. */
   sha256?: string
+}
+
+/**
+ * The unlink of a remotely deleted note/journal file. It must never carry a
+ * `content` field: replay in builds before #2385 keeps only entries with a
+ * string `content`, which is what makes them skip this kind instead of
+ * mistaking it for a write.
+ */
+interface PendingVaultFileDelete {
+  kind: 'delete'
+  absolutePath: string
+  /** Wall clock when the delete was deferred; replay spares newer files. */
+  deferredAt: number
+}
+
+type PendingVaultFileOp = PendingNoteFileWrite | PendingVaultFileDelete
+
+function isDeleteOp(op: PendingVaultFileOp): op is PendingVaultFileDelete {
+  return 'kind' in op && op.kind === 'delete'
+}
+
+/**
+ * The op a path ends up with is its last one, so earlier ops for the same path
+ * are dropped. For deletes this is also a compat requirement: an older build
+ * skips the delete entry, so an earlier write left beside it would be replayed
+ * and re-create the deleted file.
+ */
+function latestOpPerPath(ops: PendingVaultFileOp[]): PendingVaultFileOp[] {
+  const latest = new Map<string, PendingVaultFileOp>()
+  for (const op of ops) {
+    latest.delete(op.absolutePath)
+    latest.set(op.absolutePath, op)
+  }
+  return [...latest.values()]
 }
 
 function sha256Hex(content: string): string {
@@ -63,13 +100,13 @@ function journalPath(): string {
 }
 
 /**
- * Every file write journaled but not yet confirmed on disk, across pages.
+ * Every file op journaled but not yet confirmed on disk, across pages.
  * Pages are strictly sequential (the pull lock serializes them, and each page
  * awaits its own flush), so this is only ever appended to by a committing page
  * and drained by that page's flush — but it outlives a single session so a
  * partially-failed flush is never overwritten by the next page's commit.
  */
-let unlandedWrites: PendingNoteFileWrite[] = []
+let unlandedOps: PendingVaultFileOp[] = []
 
 /**
  * The atomic tmp-write-then-rename every synced note file gets, sync path and
@@ -93,7 +130,69 @@ async function writeNoteFileNowAsync(absolutePath: string, content: string): Pro
   await fs.promises.rename(tmpPath, absolutePath)
 }
 
+function isMissingFileError(err: unknown): boolean {
+  return (err as NodeJS.ErrnoException | null)?.code === 'ENOENT'
+}
+
+function deleteVaultFileNow(absolutePath: string): void {
+  markWritebackIgnored(absolutePath)
+  try {
+    fs.unlinkSync(absolutePath)
+  } catch (err) {
+    if (!isMissingFileError(err)) throw err
+  }
+}
+
+async function deleteVaultFileNowAsync(absolutePath: string): Promise<void> {
+  markWritebackIgnored(absolutePath)
+  try {
+    await fs.promises.unlink(absolutePath)
+  } catch (err) {
+    if (!isMissingFileError(err)) throw err
+  }
+}
+
 let activeSession: PageApplySession | null = null
+const quiescenceWaiters = new Set<() => void>()
+
+/**
+ * True when no page transaction is open and every journaled file op has
+ * landed, which includes every committed page's flush. A writer that is not
+ * the pull (the socket fast path, #2300) opens its own session only at such a
+ * point and lands its files with `flushFilesSync` in the same synchronous run:
+ * otherwise a page's deferred flush of the same path can land after it (an
+ * older file under a newer row).
+ */
+export function isPageApplyQuiescent(): boolean {
+  return activeSession === null && unlandedOps.length === 0
+}
+
+/**
+ * Resolves true at the next quiescent point (immediately when already there),
+ * false after `timeoutMs`. A timed-out wait leaves no waiter behind. Being
+ * quiescent when this resolves proves nothing a microtask later: a caller that
+ * writes must re-check `isPageApplyQuiescent()` synchronously before writing.
+ */
+export function whenPageApplyQuiescent(timeoutMs: number): Promise<boolean> {
+  if (isPageApplyQuiescent()) return Promise.resolve(true)
+  return new Promise((resolve) => {
+    const settle = (): void => {
+      clearTimeout(timer)
+      quiescenceWaiters.delete(settle)
+      resolve(true)
+    }
+    const timer = setTimeout(() => {
+      quiescenceWaiters.delete(settle)
+      resolve(false)
+    }, timeoutMs)
+    quiescenceWaiters.add(settle)
+  })
+}
+
+function settleQuiescenceWaiters(): void {
+  if (!isPageApplyQuiescent()) return
+  for (const settle of [...quiescenceWaiters]) settle()
+}
 
 /**
  * Write a synced note's markdown file, or defer it into the active page apply
@@ -101,12 +200,34 @@ let activeSession: PageApplySession | null = null
  * orphan repair, recovered items) this is byte-for-byte the synchronous
  * tmp-write + rename the note handler always performed.
  */
-export function writeSyncedNoteFile(absolutePath: string, content: string): void {
+export function writeSyncedVaultFile(absolutePath: string, content: string): void {
   if (activeSession) {
     activeSession.deferWrite(absolutePath, content)
     return
   }
   writeNoteFileNow(absolutePath, content)
+}
+
+/**
+ * Remove the vault file of a remotely deleted note or journal entry, or defer
+ * the unlink into the active page apply session so it runs after the row
+ * delete commits and is journaled until it lands. Outside a session the row
+ * delete has already auto-committed, so the unlink runs synchronously; a
+ * failure is logged, not thrown, because the delete itself has applied.
+ */
+export function deleteSyncedVaultFile(absolutePath: string): void {
+  if (activeSession) {
+    activeSession.deferDelete(absolutePath)
+    return
+  }
+  try {
+    deleteVaultFileNow(absolutePath)
+  } catch (err) {
+    log.error('Could not delete a synced vault file', {
+      path: absolutePath,
+      error: err instanceof Error ? err.message : String(err)
+    })
+  }
 }
 
 export interface PageApplyHandle {
@@ -118,24 +239,54 @@ export interface PageApplyHandle {
    * rollback semantics hold inside the page without any remapping here.
    */
   db: DrizzleDb
-  /** Journal the deferred file writes, then COMMIT both DBs (data first). */
+  /**
+   * False when the data connection was already inside someone else's
+   * transaction, so the page's statements autocommit one by one. A write that
+   * must commit atomically with the page's rows (the pull cursor, #2294) cannot
+   * rely on the page then.
+   */
+  readonly transacted: boolean
+  /**
+   * Queue a renderer notification for after the data COMMIT. A rolled-back or
+   * failed page drops it, so no window hears "applied" for rows that never
+   * landed (#2294).
+   */
+  afterCommit(notify: () => void): void
+  /**
+   * Run `apply` as one unit inside the page: a data-DB SAVEPOINT, plus the file
+   * ops and notifications it queued. A throw rolls all three back and rethrows,
+   * so the page goes on without that item.
+   */
+  savepoint<T>(apply: () => T): T
+  /** Journal the deferred file ops, then COMMIT both DBs (data first), then notify. */
   commit(): void
-  /** ROLLBACK both DBs and discard the page's deferred file writes. */
+  /** ROLLBACK both DBs and discard the page's deferred file ops and notifications. */
   rollback(): void
   /**
-   * Write the deferred note files (after commit). Resolves once every file
-   * settled; the journal is removed only when all of them landed, so a partial
-   * flush is retried by the next replay.
+   * Run the deferred file writes and unlinks (after commit). Resolves once
+   * every op settled; the journal is removed only when all of them landed, so
+   * a partial flush is retried by the next replay.
    */
   flushFiles(): Promise<void>
+  /**
+   * `flushFiles` without an await, for a writer that must land its files in
+   * the same synchronous run as its commit (the socket fast path, #2300). A
+   * failed op stays journaled for the replay, exactly as in `flushFiles`.
+   */
+  flushFilesSync(): void
 }
 
 class PageApplySession implements PageApplyHandle {
   readonly db: DrizzleDb
   private readonly dataRaw: Database.Database | null
   private readonly indexRaw: Database.Database | null
-  private pendingWrites: PendingNoteFileWrite[] = []
+  private pendingOps: PendingVaultFileOp[] = []
+  private pendingNotifications: Array<() => void> = []
   private finished = false
+
+  get transacted(): boolean {
+    return this.dataRaw !== null
+  }
 
   constructor(dataDb: DrizzleDb) {
     this.dataRaw = extractRawClient(dataDb)
@@ -166,7 +317,28 @@ class PageApplySession implements PageApplyHandle {
   }
 
   deferWrite(absolutePath: string, content: string): void {
-    this.pendingWrites.push({ absolutePath, content, sha256: sha256Hex(content) })
+    this.pendingOps.push({ absolutePath, content, sha256: sha256Hex(content) })
+  }
+
+  deferDelete(absolutePath: string): void {
+    this.pendingOps.push({ kind: 'delete', absolutePath, deferredAt: Date.now() })
+  }
+
+  afterCommit(notify: () => void): void {
+    this.pendingNotifications.push(notify)
+  }
+
+  savepoint<T>(apply: () => T): T {
+    const opsMark = this.pendingOps.length
+    const notificationsMark = this.pendingNotifications.length
+    try {
+      // Nested in the open page transaction, better-sqlite3 runs this on a SAVEPOINT.
+      return this.dataRaw ? this.dataRaw.transaction(apply)() : apply()
+    } catch (err) {
+      this.pendingOps.length = opsMark
+      this.pendingNotifications.length = notificationsMark
+      throw err
+    }
   }
 
   commit(): void {
@@ -174,53 +346,87 @@ class PageApplySession implements PageApplyHandle {
     this.finished = true
     if (activeSession === this) activeSession = null
 
-    // The journal must be durable before the rows it covers: a crash right
-    // after the data commit must still find every pending file's bytes.
-    unlandedWrites.push(...this.pendingWrites)
-    if (unlandedWrites.length > 0) {
-      writeJournal(unlandedWrites)
-    }
-
+    const unlandedBeforeCommit = unlandedOps
     try {
-      // Data first, index second. The index DB is a rebuildable cache; a crash
-      // between the two commits leaves data rows whose index rows are missing,
-      // which the next re-pull of the page treats as an update (no duplicate
-      // paths). The reverse order would leave index ghosts that collide with the
-      // re-pulled creates.
-      this.dataRaw?.exec('COMMIT')
-      try {
-        this.indexRaw?.exec('COMMIT')
-      } catch (err) {
-        // Same rule as the data connection below: a failed COMMIT leaves the
-        // connection inside an open transaction, and an index one left open
-        // would run every later FTS/graph statement uncommitted-visible and
-        // fail every future BEGIN IMMEDIATE for the life of the process. The
-        // data rows are already safe and the index is a rebuildable cache, so
-        // the rolled-back page's index rows simply re-apply on the next pull.
-        log.error('Index DB page commit failed after data commit', { error: err })
-        try {
-          if (this.indexRaw?.inTransaction) this.indexRaw.exec('ROLLBACK')
-        } catch (rollbackErr) {
-          log.error('Could not roll back the index DB page transaction', { error: rollbackErr })
-        }
+      // The journal must be durable before the rows it covers: a crash right
+      // after the data commit must still find every pending file's bytes. It is
+      // written inside this try so a failed journal write (ENOSPC, EACCES) rolls
+      // the page back like a failed COMMIT; outside it, `finished` was already
+      // set, `rollback()` became a no-op and the page transaction stayed open.
+      this.pendingOps = latestOpPerPath(this.pendingOps)
+      unlandedOps = latestOpPerPath([...unlandedOps, ...this.pendingOps])
+      if (unlandedOps.length > 0) {
+        writeJournal(unlandedOps)
       }
+
+      // Data first, index second. The index DB is a rebuildable cache. The
+      // reverse order would leave index ghosts that collide with a later
+      // re-apply of the same creates.
+      this.dataRaw?.exec('COMMIT')
     } catch (err) {
       // A failed COMMIT leaves the connection inside an open transaction — it
       // must be rolled back here, or every later statement in the process runs
-      // inside this half-dead page transaction forever. The journaled writes
-      // cover rows that no longer exist, so drop the journal with them: stray
-      // markdown without a row is inert, and the page is re-pulled whole.
+      // inside this half-dead page transaction forever. The index transaction
+      // never committed either. The journaled ops cover rows that no longer
+      // exist, so restore the journal to what it held before this page —
+      // including earlier pages' entries this page's ops superseded — and the
+      // page is re-pulled whole.
       log.error('Data DB page commit failed — rolled back', { error: err })
-      try {
-        if (this.dataRaw?.inTransaction) this.dataRaw.exec('ROLLBACK')
-      } catch (rollbackErr) {
-        log.error('Could not roll back after a failed page commit', { error: rollbackErr })
+      for (const [label, raw] of [
+        ['data', this.dataRaw],
+        ['index', this.indexRaw]
+      ] as const) {
+        try {
+          if (raw?.inTransaction) raw.exec('ROLLBACK')
+        } catch (rollbackErr) {
+          log.error(`Could not roll back the ${label} DB after a failed page commit`, {
+            error: rollbackErr
+          })
+        }
       }
-      unlandedWrites = unlandedWrites.filter((w) => !this.pendingWrites.includes(w))
-      if (unlandedWrites.length === 0) removeJournal()
-      else writeJournal(unlandedWrites)
+      this.pendingNotifications = []
+      unlandedOps = unlandedBeforeCommit
+      try {
+        if (unlandedOps.length === 0) removeJournal()
+        else writeJournal(unlandedOps)
+      } catch (journalErr) {
+        log.error('Could not restore the bulk apply journal', { error: journalErr })
+      }
+      settleQuiescenceWaiters()
       throw err
     }
+
+    try {
+      this.indexRaw?.exec('COMMIT')
+    } catch (err) {
+      // Same rule as the data connection above: a failed COMMIT leaves the
+      // connection inside an open transaction, and an index one left open
+      // would run every later FTS/graph statement uncommitted-visible and fail
+      // every future BEGIN IMMEDIATE for the life of the process. The data rows
+      // (and, for a page's last slice, the pull cursor) are already committed,
+      // so nothing re-pulls this page: its index rows come back from the vault
+      // re-index (`indexVault`, `reconcileProjections`) on the next vault open,
+      // or from the next change to each item (#2294).
+      log.error('Index DB page commit failed after data commit', { error: err })
+      try {
+        if (this.indexRaw?.inTransaction) this.indexRaw.exec('ROLLBACK')
+      } catch (rollbackErr) {
+        log.error('Could not roll back the index DB page transaction', { error: rollbackErr })
+      }
+    }
+
+    // The rows are committed; a window that throws (destroyed mid-send) must
+    // neither fail the page nor silence the windows after it.
+    const notifications = this.pendingNotifications
+    this.pendingNotifications = []
+    for (const notify of notifications) {
+      try {
+        notify()
+      } catch (err) {
+        log.error('Post-commit renderer notification failed', { error: err })
+      }
+    }
+    settleQuiescenceWaiters()
   }
 
   rollback(): void {
@@ -239,44 +445,77 @@ class PageApplySession implements PageApplyHandle {
       }
     }
 
-    // These rows never committed, so their file writes must not survive in the
+    // These rows never committed, so their file ops must not survive in the
     // journal either. Earlier pages' still-unlanded entries stay.
-    if (this.pendingWrites.length > 0) {
-      unlandedWrites = unlandedWrites.filter((w) => !this.pendingWrites.includes(w))
-      if (unlandedWrites.length === 0) removeJournal()
-      else writeJournal(unlandedWrites)
+    if (this.pendingOps.length > 0) {
+      unlandedOps = unlandedOps.filter((op) => !this.pendingOps.includes(op))
+      if (unlandedOps.length === 0) removeJournal()
+      else writeJournal(unlandedOps)
     }
-    this.pendingWrites = []
+    this.pendingOps = []
+    this.pendingNotifications = []
+    settleQuiescenceWaiters()
   }
 
   async flushFiles(): Promise<void> {
-    const writes = this.pendingWrites
-    this.pendingWrites = []
-    if (writes.length === 0) return
+    // Collapsed to one op per path by commit(), so no two ops below race on
+    // the same file.
+    const ops = this.pendingOps
+    this.pendingOps = []
+    if (ops.length === 0) return
 
     const landed = new Set<string>()
-    const failed: PendingNoteFileWrite[] = []
     await Promise.all(
-      writes.map(async (write) => {
+      ops.map(async (op) => {
         try {
-          await writeNoteFileNowAsync(write.absolutePath, write.content)
-          landed.add(write.absolutePath)
+          if (isDeleteOp(op)) await deleteVaultFileNowAsync(op.absolutePath)
+          else await writeNoteFileNowAsync(op.absolutePath, op.content)
+          landed.add(op.absolutePath)
         } catch (err) {
-          failed.push(write)
-          log.error('Deferred synced-note file write failed — journal replay will retry', {
-            path: write.absolutePath,
-            error: err instanceof Error ? err.message : String(err)
-          })
+          logFailedFileOp(op, err)
         }
       })
     )
 
-    // Only entries confirmed on disk leave the journal; anything else — this
-    // page's failures or an earlier page's — stays for `replayBulkApplyJournal`.
-    unlandedWrites = unlandedWrites.filter((w) => !landed.has(w.absolutePath))
-    if (unlandedWrites.length === 0) removeJournal()
-    else writeJournal(unlandedWrites)
+    settleLanded(landed)
   }
+
+  flushFilesSync(): void {
+    const ops = this.pendingOps
+    this.pendingOps = []
+    if (ops.length === 0) return
+
+    const landed = new Set<string>()
+    for (const op of ops) {
+      try {
+        if (isDeleteOp(op)) deleteVaultFileNow(op.absolutePath)
+        else writeNoteFileNow(op.absolutePath, op.content)
+        landed.add(op.absolutePath)
+      } catch (err) {
+        logFailedFileOp(op, err)
+      }
+    }
+    settleLanded(landed)
+  }
+}
+
+function logFailedFileOp(op: PendingVaultFileOp, err: unknown): void {
+  log.error('Deferred synced vault file op failed — journal replay will retry', {
+    path: op.absolutePath,
+    op: isDeleteOp(op) ? 'delete' : 'write',
+    error: err instanceof Error ? err.message : String(err)
+  })
+}
+
+/**
+ * Only entries confirmed on disk leave the journal; anything else — this
+ * flush's failures or an earlier page's — stays for `replayBulkApplyJournal`.
+ */
+function settleLanded(landed: ReadonlySet<string>): void {
+  unlandedOps = unlandedOps.filter((op) => !landed.has(op.absolutePath))
+  if (unlandedOps.length === 0) removeJournal()
+  else writeJournal(unlandedOps)
+  settleQuiescenceWaiters()
 }
 
 function extractRawClient(db: DrizzleDb): Database.Database | null {
@@ -323,12 +562,12 @@ export function beginPageApply(dataDb: DrizzleDb): PageApplyHandle {
  * power loss between that commit and an unfsynced journal would leave committed
  * rows with neither their files nor the record that rebuilds them.
  */
-function writeJournal(writes: PendingNoteFileWrite[]): void {
+function writeJournal(ops: PendingVaultFileOp[]): void {
   const target = journalPath()
   const tmp = target + '.tmp'
   const payload = JSON.stringify({
     writtenAt: Date.now(),
-    entries: writes
+    entries: ops
   } satisfies JournalFile)
   const fd = fs.openSync(tmp, 'w')
   try {
@@ -369,11 +608,15 @@ function removeJournal(): void {
 }
 
 /**
- * Heal the crash window: files journaled before a page commit whose async
+ * Heal the crash window: file ops journaled before a page commit whose async
  * flush never completed. Called at the start of every pull, before any page
  * applies.
  *
- * Replay decision per path (last journal entry wins):
+ * Replay decision for a delete entry (#2385): unlink the file unless it is
+ * already gone or was modified after the delete was deferred — a file the user
+ * or an editor re-created after the crash is newer than the delete and stays.
+ *
+ * Replay decision per path for a write entry (last journal entry wins):
  *
  *   - file bytes hash to the entry's sha256 → the flush landed them; skip.
  *   - the file differs but was modified AFTER the journal was written → a
@@ -396,14 +639,14 @@ export function replayBulkApplyJournal(): void {
     return
   }
 
-  let entries: PendingNoteFileWrite[] = []
+  let entries: PendingVaultFileOp[] = []
   let writtenAt = 0
   try {
     const parsed: unknown = JSON.parse(raw)
     if (Array.isArray(parsed)) {
       // Pre-`writtenAt` journals were a bare array; no mtime evidence survives,
       // so replay falls back to overwrite-on-mismatch for them.
-      entries = parsed.filter(isPendingNoteFileWrite)
+      entries = parsed.filter(isPendingVaultFileOp)
     } else if (
       parsed &&
       typeof parsed === 'object' &&
@@ -411,7 +654,7 @@ export function replayBulkApplyJournal(): void {
     ) {
       const journal = parsed as JournalFile
       if (typeof journal.writtenAt === 'number') writtenAt = journal.writtenAt
-      entries = journal.entries.filter(isPendingNoteFileWrite)
+      entries = journal.entries.filter(isPendingVaultFileOp)
     }
   } catch (err) {
     log.error('Bulk apply journal is unreadable — dropping it', { error: err })
@@ -419,36 +662,64 @@ export function replayBulkApplyJournal(): void {
     return
   }
 
-  // Same path written twice across pages: the LAST entry is the newest row
-  // content, so collapse to one entry per path before writing anything.
-  const latestByPath = new Map<string, PendingNoteFileWrite>()
-  for (const entry of entries) latestByPath.set(entry.absolutePath, entry)
+  // Same path touched twice across pages: the LAST entry is the newest row
+  // state, so collapse to one entry per path before touching anything.
+  const latest = latestOpPerPath(entries)
 
   let healed = 0
-  for (const entry of latestByPath.values()) {
+  const settledPaths = new Set<string>()
+  for (const entry of latest) {
     try {
-      if (isAlreadyLanded(entry, writtenAt)) continue
-      writeNoteFileNow(entry.absolutePath, entry.content)
-      healed++
+      if (isDeleteOp(entry)) {
+        if (isDeleteStillDue(entry)) {
+          deleteVaultFileNow(entry.absolutePath)
+          healed++
+        }
+      } else if (!isAlreadyLanded(entry, writtenAt)) {
+        writeNoteFileNow(entry.absolutePath, entry.content)
+        healed++
+      }
+      settledPaths.add(entry.absolutePath)
     } catch (err) {
-      log.error('Could not heal a journaled note file', {
+      log.error('Could not heal a journaled vault file', {
         path: entry.absolutePath,
         error: err instanceof Error ? err.message : String(err)
       })
     }
   }
   removeJournal()
+  // The in-memory list mirrors the journal: an op this replay settled is no
+  // longer owed, and one it could not heal still is. Without this a single
+  // failed flush kept page apply non-quiescent for the life of the process.
+  unlandedOps = unlandedOps.filter((op) => !settledPaths.has(op.absolutePath))
+  settleQuiescenceWaiters()
   if (healed > 0) {
-    log.info('Healed note files from the bulk apply journal', { healed, total: latestByPath.size })
+    log.info('Healed vault files from the bulk apply journal', { healed, total: latest.length })
   }
 }
 
-function isPendingNoteFileWrite(e: unknown): e is PendingNoteFileWrite {
-  return (
-    !!e &&
-    typeof (e as PendingNoteFileWrite).absolutePath === 'string' &&
-    typeof (e as PendingNoteFileWrite).content === 'string'
-  )
+/** Entries of a kind this build does not know are skipped, like older builds skip deletes. */
+function isPendingVaultFileOp(e: unknown): e is PendingVaultFileOp {
+  if (!e || typeof (e as PendingVaultFileOp).absolutePath !== 'string') return false
+  const kind = (e as { kind?: unknown }).kind
+  if (kind === 'delete') return typeof (e as PendingVaultFileDelete).deferredAt === 'number'
+  return kind === undefined && typeof (e as PendingNoteFileWrite).content === 'string'
+}
+
+/**
+ * A missing file needs no delete. A present one is deleted only when it is not
+ * newer than the delete: whole milliseconds on the mtime, as in
+ * `isAlreadyLanded`, and a file stamped in the delete's own millisecond counts
+ * as pre-crash.
+ */
+function isDeleteStillDue(entry: PendingVaultFileDelete): boolean {
+  let stat: fs.Stats
+  try {
+    stat = fs.statSync(entry.absolutePath)
+  } catch {
+    return false
+  }
+  return Math.floor(stat.mtimeMs) <= entry.deferredAt
 }
 
 /**
@@ -482,5 +753,16 @@ function isAlreadyLanded(entry: PendingNoteFileWrite, journalWrittenAt: number):
 /** Test seam: forget a session left active by a failing test. */
 export function _resetBulkApplyForTests(): void {
   activeSession = null
-  unlandedWrites = []
+  unlandedOps = []
+  quiescenceWaiters.clear()
+}
+
+/** Test seam: journaled file ops not yet confirmed on disk. */
+export function _unlandedOpCountForTests(): number {
+  return unlandedOps.length
+}
+
+/** Test seam: waiters still registered (a timed-out wait must leave none). */
+export function _pendingQuiescenceWaitersForTests(): number {
+  return quiescenceWaiters.size
 }

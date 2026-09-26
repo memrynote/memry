@@ -7,11 +7,13 @@ import { getDatabase, getIndexDatabase, type DataDb, type IndexDb } from '../dat
 import {
   PropertyDefinitionsFileSchema,
   type PropertyDefinition,
+  type PropertyType,
   type PropertyDefinitionsFileData,
   type SelectOption,
   type StatusCategories,
   DEFAULT_STATUS_CATEGORIES,
-  DEFAULT_STATUS_DEFINITION
+  DEFAULT_STATUS_DEFINITION,
+  isPersistableDefinitionType
 } from '@memry/contracts/property-types'
 import { propertyDefinitions as propertyDefinitionsTable } from '@memry/db-schema/schema/notes-cache'
 import {
@@ -49,6 +51,10 @@ export class PropertyDefinitionsService {
     return instance
   }
 
+  static tryGet(): PropertyDefinitionsService | null {
+    return instance
+  }
+
   static destroy(): void {
     instance = null
   }
@@ -71,7 +77,7 @@ export class PropertyDefinitionsService {
     }
 
     try {
-      const { data } = matter(raw)
+      const { data, healed } = withoutNonPersistableDefinitions(matter(raw).data)
       const parsed = PropertyDefinitionsFileSchema.safeParse(data)
 
       if (!parsed.success) {
@@ -86,7 +92,7 @@ export class PropertyDefinitionsService {
       // this write. `applyParsedData` above clears the cache from the file, so
       // without the union plus this persist the very next pull would rebuild
       // the DB from the file alone and delete the row that just landed.
-      if (gained) await this.persistToFile()
+      if (gained || healed) await this.persistToFile()
     } catch (err) {
       logger.warn('Failed to parse properties.md, keeping last-known-good cache:', err)
     }
@@ -121,18 +127,23 @@ export class PropertyDefinitionsService {
   }
 
   /**
-   * Drop a definition a peer deleted.
+   * Drop a definition a peer deleted, and return the `.memry/properties.md`
+   * bytes the caller must write, or null when the definition was not cached.
    *
-   * The handler has already removed the DB row, so the union above will not
-   * bring it back — but `.memry/properties.md` still names it, and the next
-   * reload would read it straight back in.
+   * The handler has already removed the DB row, so `mergeSyncedDefinitions`
+   * will not bring it back, but the file still names it and the next reload
+   * would read it straight back in. Synchronous because the handler runs
+   * inside the pull's page transaction and defers the write into its crash
+   * journal (#2284). The queued persist rewrites the file from the new cache
+   * after any write this service already had in flight, so a stale write
+   * cannot land last.
    */
-  async applyRemoteDelete(name: string): Promise<void> {
-    if (!this.cache.has(name)) return
-    await this.enqueueWrite(async () => {
-      this.cache.delete(name)
-      await this.persistToFile()
+  applyRemoteDelete(name: string): { filePath: string; content: string } | null {
+    if (!this.cache.delete(name)) return null
+    void this.enqueueWrite(() => this.persistToFile()).catch((err: unknown) => {
+      logger.warn('Failed to persist a remote property definition delete:', err)
     })
+    return { filePath: this.filePath, content: this.serializeFile() }
   }
 
   getAll(): PropertyDefinition[] {
@@ -314,9 +325,15 @@ export class PropertyDefinitionsService {
   }
 
   private async persistToFile(): Promise<void> {
+    await atomicWrite(this.filePath, this.serializeFile())
+    logger.debug('Persisted property definitions to', this.filePath)
+  }
+
+  private serializeFile(): string {
     const properties: Record<string, unknown> = {}
 
     for (const [name, def] of this.cache) {
+      if (!isPersistableDefinitionType(def.type)) continue
       // js-yaml refuses to dump `undefined`, and one such value fails the write
       // for every property in the file, not just its own.
       if (def.type === 'status') {
@@ -333,9 +350,7 @@ export class PropertyDefinitionsService {
       }
     }
 
-    const content = matter.stringify('', { properties })
-    await atomicWrite(this.filePath, content)
-    logger.debug('Persisted property definitions to', this.filePath)
+    return matter.stringify('', { properties })
   }
 
   private rebuildDbCache(): void {
@@ -427,6 +442,7 @@ function definitionFromRow(row: {
   defaultValue: string | null
 }): PropertyDefinition | null {
   const type = row.type as PropertyDefinition['type']
+  if (!isPersistableDefinitionType(type)) return null
   let parsed: unknown = null
   if (row.options) {
     try {
@@ -449,6 +465,27 @@ function definitionFromRow(row: {
     options: Array.isArray(parsed) ? (parsed as SelectOption[]) : [],
     ...(row.defaultValue ? { defaultValue: row.defaultValue } : {})
   }
+}
+
+/**
+ * The parsed `properties.md` without its non-persistable entries, and whether
+ * any were there. Older builds wrote synced `relation` definitions into the
+ * file, and one such entry fails `safeParse` for the whole file, so the vault
+ * loaded no definitions at all. Copies rather than mutates because
+ * gray-matter caches the parsed object per file content.
+ */
+function withoutNonPersistableDefinitions(data: Record<string, unknown>): {
+  data: Record<string, unknown>
+  healed: boolean
+} {
+  const properties = data.properties
+  if (typeof properties !== 'object' || properties === null) return { data, healed: false }
+  const kept = Object.entries(properties).filter(([, def]) => {
+    const type = (def as { type?: PropertyType } | null)?.type
+    return !type || isPersistableDefinitionType(type)
+  })
+  if (kept.length === Object.keys(properties).length) return { data, healed: false }
+  return { data: { ...data, properties: Object.fromEntries(kept) }, healed: true }
 }
 
 function renameOptionInDefinition(

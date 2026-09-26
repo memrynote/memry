@@ -1,0 +1,219 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "recreate-clock",
+    "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
+    "implementation": "packages/sync-core/src/record-sync.ts",
+    "caseCount": 11
+  },
+  "cases": [
+    {
+      "name": "create-without-tombstone",
+      "pins": "no recorded tombstone: the clock is exactly the pre-#2409 fresh clock",
+      "current": null,
+      "tombstone": null,
+      "operation": "create",
+      "device": "device-a",
+      "expected": {
+        "base": {},
+        "next": {
+          "device-a": 1
+        }
+      }
+    },
+    {
+      "name": "create-over-clocked-row-without-tombstone",
+      "pins": "no recorded tombstone: an existing clock ticks exactly as before",
+      "current": {
+        "device-a": 3
+      },
+      "tombstone": null,
+      "operation": "create",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-a": 3
+        },
+        "next": {
+          "device-a": 4
+        }
+      }
+    },
+    {
+      "name": "create-after-own-delete",
+      "pins": "the re-create ticks past this device’s own delete",
+      "current": null,
+      "tombstone": {
+        "device-a": 2
+      },
+      "operation": "create",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-a": 2
+        },
+        "next": {
+          "device-a": 3
+        }
+      }
+    },
+    {
+      "name": "create-after-remote-delete",
+      "pins": "the re-create happens strictly after a peer’s delete",
+      "current": null,
+      "tombstone": {
+        "device-a": 1,
+        "device-b": 2
+      },
+      "operation": "create",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-a": 1,
+          "device-b": 2
+        },
+        "next": {
+          "device-a": 2,
+          "device-b": 2
+        }
+      }
+    },
+    {
+      "name": "create-over-first-clock-merges-tombstone",
+      "pins": "a row minted with a first clock (calendar mirror) still absorbs the tombstone on create",
+      "current": {
+        "device-a": 1
+      },
+      "tombstone": {
+        "device-b": 2
+      },
+      "operation": "create",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-a": 1,
+          "device-b": 2
+        },
+        "next": {
+          "device-a": 2,
+          "device-b": 2
+        }
+      }
+    },
+    {
+      "name": "create-already-past-tombstone",
+      "pins": "a local clock that already dominates the tombstone is unchanged by the merge",
+      "current": {
+        "device-a": 3
+      },
+      "tombstone": {
+        "device-a": 1
+      },
+      "operation": "create",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-a": 3
+        },
+        "next": {
+          "device-a": 4
+        }
+      }
+    },
+    {
+      "name": "update-of-clockless-row-merges-tombstone",
+      "pins": "a first write to a clockless row is a re-create even when sent as update (property_definition)",
+      "current": null,
+      "tombstone": {
+        "device-b": 2
+      },
+      "operation": "update",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-b": 2
+        },
+        "next": {
+          "device-b": 2,
+          "device-a": 1
+        }
+      }
+    },
+    {
+      "name": "update-of-empty-clock-merges-tombstone",
+      "pins": "an empty clock is clockless",
+      "current": {},
+      "tombstone": {
+        "device-b": 2
+      },
+      "operation": "update",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-b": 2
+        },
+        "next": {
+          "device-b": 2,
+          "device-a": 1
+        }
+      }
+    },
+    {
+      "name": "update-of-clocked-row-ignores-tombstone",
+      "pins": "a row that survived a delete never absorbs it: delete-wins stays intact (§5.8)",
+      "current": {
+        "device-a": 3
+      },
+      "tombstone": {
+        "device-b": 5
+      },
+      "operation": "update",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-a": 3
+        },
+        "next": {
+          "device-a": 4
+        }
+      }
+    },
+    {
+      "name": "offline-key-in-tombstone-is-kept",
+      "pins": "§6.1: `_offline` is an ordinary key; dropping it would let the tombstone dominate",
+      "current": null,
+      "tombstone": {
+        "device-a": 1,
+        "_offline": 2
+      },
+      "operation": "create",
+      "device": "device-a",
+      "expected": {
+        "base": {
+          "device-a": 1,
+          "_offline": 2
+        },
+        "next": {
+          "device-a": 2,
+          "_offline": 2
+        }
+      }
+    },
+    {
+      "name": "empty-tombstone-is-no-tombstone",
+      "pins": "an empty tombstone clock merges nothing",
+      "current": null,
+      "tombstone": {},
+      "operation": "create",
+      "device": "device-a",
+      "expected": {
+        "base": {},
+        "next": {
+          "device-a": 1
+        }
+      }
+    }
+  ]
+}

@@ -169,7 +169,8 @@
           "clock": {
             "device-a": 3
           },
-          "deletedAt": 1760000000000
+          "deletedAt": 1760000000000,
+          "deleteAttestation": "cCb3+Wv/gVMDJKN7rb19nff0i6qmDo6fCZqDkeqpV8b4Mu4oFTxoO3d4g/2TNWtXx9GeE6npc+l4ipwiX5cACA=="
         },
         "sizeBytes": 17,
         "roundTripUtf8": ""

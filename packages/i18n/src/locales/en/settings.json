@@ -1660,6 +1660,25 @@
         "thisVault": "This vault"
       },
       "largeNotesCount": "{count, plural, one {# note} other {# notes}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "Sync this vault to your account?",
+        "description": "This vault has notes that aren’t in your account yet. You can add it to your account or keep it on this device. Nothing leaves this device until you decide.",
+        "descriptionWithVaults": "This vault has notes that aren’t in your account yet, and your account already has a vault. You can add this one next to it, merge the two, or keep it on this device. Nothing leaves this device until you decide.",
+        "addAsNew": "Add as a separate vault",
+        "merge": "Merge into “{name}”",
+        "mergeUnnamed": "Merge into your account’s vault",
+        "keepLocal": "Keep on this device",
+        "failed": "Could not update how this vault syncs"
+      },
+      "status": {
+        "localOnly": "This vault stays on this device and isn’t synced.",
+        "foreign": "This vault was synced by a different account, so it isn’t synced with yours. It stays on this device.",
+        "needsDecision": "This vault isn’t synced yet.",
+        "startSync": "Sync this vault",
+        "choose": "Choose…"
+      }
     }
   },
   "tags": {

@@ -454,6 +454,7 @@ mod tests {
             // carry them; the field is listed rather than defaulted so a new
             // count can never be added without this test seeing it.
             purged_documents: Vec::new(),
+            advanced_documents: Vec::new(),
         };
         let rendered = format_pull(&report);
         assert!(rendered.contains("applied 7"), "{rendered}");

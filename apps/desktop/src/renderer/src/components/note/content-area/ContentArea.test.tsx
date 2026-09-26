@@ -486,6 +486,11 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    // Plain text runs only: every checkbox built above is one.
+    // `checkbox-task-conversion.test.ts` covers the real serializer.
+    blocksToMarkdownLossy: vi.fn(
+      ([block]: any[]) => `- [ ] ${block.content.map((c: any) => c.text).join('')}`
+    ),
     // `getDiagramSlashMenuItems` only offers its row when the editor's schema
     // actually carries the block, so the stub has to say whether it does. The
     // real schema does (`editor-schema.ts`), and the parity gate in

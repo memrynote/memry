@@ -7,7 +7,7 @@ import {
 } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../logging'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -35,7 +35,7 @@ class CalendarBindingHandler extends BaseItemHandler<CalendarBindingSyncPayload>
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock, remoteClock)
+        const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
         if (resolution.action === 'skip') {
           log.info('Skipping remote calendar binding update, local is newer', { itemId })
           return 'skipped'
@@ -139,7 +139,7 @@ class CalendarBindingHandler extends BaseItemHandler<CalendarBindingSyncPayload>
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(calendarBindings).where(isNull(calendarBindings.clock)).all()
     for (const item of items) {
-      const nextClock = increment({}, deviceId)
+      const nextClock = nextLocalClock(db, 'calendar_binding', item.id, null, deviceId, 'create')
       db.update(calendarBindings)
         .set({ clock: nextClock })
         .where(eq(calendarBindings.id, item.id))

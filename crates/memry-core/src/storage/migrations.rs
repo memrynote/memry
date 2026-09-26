@@ -60,18 +60,25 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
     },
     Migration {
         version: 5,
-        name: "calendar",
-        sql: include_str!("migrations/data/0005_calendar.sql"),
+        name: "tombstone_clocks",
+        sql: include_str!("migrations/data/0005_tombstone_clocks.sql"),
     },
+    // Spec 007 calendar: after main's 0005, so an install that already ran
+    // 0005 still receives these.
     Migration {
         version: 6,
-        name: "calendar_source_states",
-        sql: include_str!("migrations/data/0006_calendar_source_states.sql"),
+        name: "calendar",
+        sql: include_str!("migrations/data/0006_calendar.sql"),
     },
     Migration {
         version: 7,
+        name: "calendar_source_states",
+        sql: include_str!("migrations/data/0007_calendar_source_states.sql"),
+    },
+    Migration {
+        version: 8,
         name: "calendar_push_queue",
-        sql: include_str!("migrations/data/0007_calendar_push_queue.sql"),
+        sql: include_str!("migrations/data/0008_calendar_push_queue.sql"),
     },
 ];
 
@@ -194,7 +201,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 7);
+        assert_eq!(version, 8);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -206,6 +213,7 @@ mod tests {
             "outbox",
             "sync_cursors",
             "sync_items",
+            "sync_tombstone_clocks",
             "yjs_snapshots",
             "yjs_updates",
         ] {
@@ -301,7 +309,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 7);
+        assert_eq!(version, 8);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -319,9 +327,15 @@ mod tests {
         assert_eq!(count, 1);
         // Verbatim, §A.1: a migration is not an excuse to re-serialise a payload.
         assert_eq!(payload, "{\"unmodelled\":1}");
-        // The projections 0002 and 0003 added are present and empty.
+        // The projections 0002 and 0003 added are present and empty, and so is
+        // 0004's tombstone-clock table (#2409).
         assert!(table_names(&db).iter().any(|n| n == "notes"));
         assert!(table_names(&db).iter().any(|n| n == "saved_filters"));
+        assert!(
+            table_names(&db)
+                .iter()
+                .any(|n| n == "sync_tombstone_clocks")
+        );
     }
 
     #[test]

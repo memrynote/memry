@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import Database from 'better-sqlite3'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
@@ -64,6 +64,9 @@ function createTestDataDb() {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
+
+    CREATE TABLE tasks (id TEXT PRIMARY KEY, clock TEXT);
+    CREATE TABLE inbox_items (id TEXT PRIMARY KEY, clock TEXT);
   `)
   return drizzle(sqlite, { schema })
 }
@@ -271,6 +274,17 @@ describe('adoptVaultLocally', () => {
 
     it('keeps the local uuid on a brand new account with no vaults', async () => {
       const localUuid = getOrCreateVaultUuid(db)
+
+      expect(await adoptAccountVaultIfAbsent(db, localUuid, 'access-token')).toBe(localUuid)
+      expect(getOrCreateVaultUuid(db)).toBe(localUuid)
+    })
+
+    // Adopting a vault with content merged it into the account without asking,
+    // including another account's notes left behind by a sign-out.
+    it('never adopts a vault that already has content', async () => {
+      const localUuid = getOrCreateVaultUuid(db)
+      db.run(sql`INSERT INTO tasks (id) VALUES ('t1')`)
+      mocks.accountVaults = [{ vaultUuid: INITIATOR_UUID, itemCount: 798 }]
 
       expect(await adoptAccountVaultIfAbsent(db, localUuid, 'access-token')).toBe(localUuid)
       expect(getOrCreateVaultUuid(db)).toBe(localUuid)

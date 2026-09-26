@@ -3,8 +3,8 @@ import { eq } from 'drizzle-orm'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
-
 
 interface CustomIconSyncDeps {
   queue: SyncQueueManager
@@ -31,13 +31,15 @@ export class CustomIconSyncService {
   private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: CustomIconSyncDeps) {
+    const load = (iconId: string): Record<string, unknown> | undefined =>
+      deps.db.select().from(customIcons).where(eq(customIcons.id, iconId)).get() as
+        Record<string, unknown> | undefined
+
     this.controller = new RecordSyncController({
       type: 'custom_icon',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (iconId) =>
-        deps.db.select().from(customIcons).where(eq(customIcons.id, iconId)).get() as
-          Record<string, unknown> | undefined,
+      load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -47,6 +49,10 @@ export class CustomIconSyncService {
         return { ...local, clock: newClock }
       },
       serialize: (local) => local,
+      recoverPendingChange: (iconId, deviceId) =>
+        recoverOfflineDocClock(load(iconId), deviceId, (clock) =>
+          deps.db.update(customIcons).set({ clock }).where(eq(customIcons.id, iconId)).run()
+        ),
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })
   }
@@ -57,6 +63,10 @@ export class CustomIconSyncService {
 
   enqueueUpdate(iconId: string): void {
     this.controller.enqueueUpdate(iconId)
+  }
+
+  enqueueRecoveredUpdate(iconId: string): void {
+    this.controller.enqueueRecoveredUpdate(iconId)
   }
 
   enqueueDelete(iconId: string, snapshotPayload: string): void {

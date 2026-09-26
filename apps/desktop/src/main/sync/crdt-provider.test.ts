@@ -94,6 +94,7 @@ const mocks = vi.hoisted(() => {
     markdownToYFragment: vi.fn(),
     repairEmptyBlockIds: vi.fn((..._args: unknown[]) => 0),
     compactYDoc: vi.fn(),
+    reconcileCrdtStoreEpoch: vi.fn(async (..._args: unknown[]) => false),
     scheduleWriteback: vi.fn(),
     cancelWriteback: vi.fn(),
     flushPendingWritebacks: vi.fn(),
@@ -105,6 +106,8 @@ const mocks = vi.hoisted(() => {
       destroy: ReturnType<typeof vi.fn>
       storeUpdate: ReturnType<typeof vi.fn>
       flushDocument: ReturnType<typeof vi.fn>
+      getMeta: ReturnType<typeof vi.fn>
+      setMeta: ReturnType<typeof vi.fn>
     }>
   }
 })
@@ -145,11 +148,17 @@ vi.mock('y-leveldb', () => ({
     destroy = vi.fn(async () => {})
     storeUpdate = vi.fn(() => mocks.persistenceOpFactory(() => undefined))
     flushDocument = vi.fn(() => mocks.persistenceOpFactory(() => undefined))
+    getMeta = vi.fn(async () => undefined)
+    setMeta = vi.fn(async () => {})
 
     constructor() {
       mocks.persistenceInstances.push(this)
     }
   }
+}))
+
+vi.mock('./crdt-store-epoch', () => ({
+  reconcileCrdtStoreEpoch: (...args: unknown[]) => mocks.reconcileCrdtStoreEpoch(...args)
 }))
 
 vi.mock('../database/client', () => ({
@@ -272,10 +281,13 @@ import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { NOTE_MAX_BYTES } from '@memry/shared/markdown-class'
 import { CrdtProvider, getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import type { SnapshotPushFn } from './crdt-provider'
-// Deliberately NOT mocked: the point of the signed-out suite below is that the
-// recorder and the replay meet on the same durable store, so both halves run
-// for real against the temp userData dir.
-import { drainPendingCrdtNotes, readPendingCrdtNotes } from './crdt-pending-notes'
+// Deliberately NOT mocked: the signed-out suite below writes full-state rows
+// into a real sync_queue and flushes them through a real outbox.
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
+import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { listCrdtBodyDebts } from './engine/crdt-body-debts'
+import { NoteBodyOutbox, type NoteBodyPushFn } from './note-body-outbox'
 // The real toggle, so the local-only suite crosses the seam for real.
 import { setNoteLocalOnlyState } from '../notes/runtime-effects'
 
@@ -305,9 +317,22 @@ const makeRemoteUpdate = (text: string): Uint8Array => {
   return Y.encodeStateAsUpdate(doc)
 }
 
+/** The store holds merged state for the next doc it opens, so that doc can vouch for a claim. */
+const withPersistedDoc = (): void => {
+  mocks.persistenceInstances[0].getYDoc.mockImplementationOnce(async (noteId: string) => {
+    const doc = new Y.Doc({ guid: `${noteId}:persisted` })
+    doc.getMap('meta').set('merged', true)
+    return doc
+  })
+}
+
 describe('CrdtProvider', () => {
   let provider: CrdtProvider
-  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
+  let queue: {
+    enqueue: ReturnType<typeof vi.fn>
+    enqueueFullState: ReturnType<typeof vi.fn>
+    dropNote: ReturnType<typeof vi.fn>
+  }
   let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
 
   beforeEach(async () => {
@@ -338,7 +363,7 @@ describe('CrdtProvider', () => {
       }
     )
     mocks.compactYDoc.mockReturnValue(null)
-    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
+    queue = { enqueue: vi.fn(), enqueueFullState: vi.fn(), dropNote: vi.fn() }
     pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     provider = new CrdtProvider()
     await provider.init(queue as any, pushSnapshot)
@@ -389,6 +414,80 @@ describe('CrdtProvider', () => {
     expect(queue.enqueue).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
     expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+  })
+
+  // #2297 review (B-2, A-L3): the landing resolves only on the store's own
+  // answer, so a failed write is never reported as landed.
+  it('merges a feed update into an open doc, writes it back, and awaits its explicit store write', async () => {
+    await provider.open('note-1', undefined, { skipSeed: true })
+    const store = mocks.persistenceInstances[0]
+    store.storeUpdate.mockClear()
+    const update = makeRemoteUpdate('from the feed')
+
+    await provider.mergeRemoteUpdate('note-1', update)
+
+    expect(provider.getDoc('note-1')!.getMap('meta').get('title')).toBe('from the feed')
+    expect(store.storeUpdate).toHaveBeenCalledWith('note-1', update)
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(queue.enqueue).not.toHaveBeenCalled()
+  })
+
+  // #2297 round 2 (A-L1): this device's own update echoed back through the feed
+  // changes nothing, so it is not appended to the store again.
+  it('stores a feed update only when it changed the doc', async () => {
+    await provider.open('note-1', undefined, { skipSeed: true })
+    const store = mocks.persistenceInstances[0]
+    const update = makeRemoteUpdate('from the feed')
+    await provider.mergeRemoteUpdate('note-1', update)
+    store.storeUpdate.mockClear()
+
+    await provider.mergeRemoteUpdate('note-1', update)
+
+    expect(store.storeUpdate).not.toHaveBeenCalled()
+  })
+
+  // #2297 review (B-2)
+  it('rejects a feed merge whose store write fails', async () => {
+    await provider.open('note-1', undefined, { skipSeed: true })
+    const store = mocks.persistenceInstances[0]
+    store.storeUpdate.mockRejectedValue(new Error('disk full'))
+
+    await expect(
+      provider.mergeRemoteUpdate('note-1', makeRemoteUpdate('from the feed'))
+    ).rejects.toThrow('disk full')
+  })
+
+  // #2297: bytes stored without a live merge would suppress the write-back.
+  it('refuses to merge a feed update with no open doc and stores nothing', async () => {
+    const store = mocks.persistenceInstances[0]
+    store.storeUpdate.mockClear()
+
+    await expect(
+      provider.mergeRemoteUpdate('note-2', makeRemoteUpdate('from the feed'))
+    ).rejects.toThrow()
+    expect(store.storeUpdate).not.toHaveBeenCalled()
+  })
+
+  // #2297 review (B-2): an in-memory provider cannot hold a feed body.
+  it('refuses to report a feed body landed when there is no store', async () => {
+    const inMemory = new CrdtProvider()
+    const update = makeRemoteUpdate('from the feed')
+
+    await expect(inMemory.mergeRemoteUpdate('note-2', update)).rejects.toThrow()
+  })
+
+  // #2297 review (A-M6, B-7): this device's own snapshot comes back through the
+  // feed; the revision it pushed is recorded so that echo skips the GET.
+  it('records the revision of a snapshot it pushed in the note watermark', async () => {
+    const store = mocks.persistenceInstances[0]
+
+    await provider.recordPushedSnapshot('note-1', { sequenceNum: 9, revision: 'rev-9' })
+
+    expect(store.setMeta).toHaveBeenCalledWith(
+      'note-1',
+      expect.any(String),
+      expect.objectContaining({ appliedSequence: 9, snapshotRevision: 'rev-9' })
+    )
   })
 
   it('persists and writes back an edit made with no session, and pushes nothing', async () => {
@@ -457,7 +556,9 @@ describe('CrdtProvider', () => {
   it('pushes snapshots for markdown notes and skips binary or empty docs', async () => {
     await provider.initForNote('note-1', { title: 'Snapshot' }, ['tag-a'])
     expect(await provider.pushSnapshotForNote('note-1')).toBe(true)
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
 
     mocks.getNoteCacheById.mockReturnValueOnce({
       id: 'pdf-note',
@@ -475,6 +576,207 @@ describe('CrdtProvider', () => {
     expect(await provider.pushSnapshotForNote('empty-note')).toBe(false)
   })
 
+  // #2299: coverage is read before the encode and travels with that state.
+  it('reads snapshot coverage before encoding and hands it to the push', async () => {
+    withPersistedDoc()
+    await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    // A change made while coverage is read stands in for a body that landed
+    // just before the cursor was read: the pushed state must hold it.
+    provider.setSnapshotCoverage((noteId) => {
+      provider.updateMeta(noteId, { title: 'landed before the cursor read' })
+      return { unmerged: false, coversThrough: 50 }
+    })
+
+    expect(await provider.pushSnapshotForNote('note-1')).toBe(true)
+
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false,
+      coversThrough: 50
+    })
+    const pushed = new Y.Doc()
+    Y.applyUpdate(pushed, pushSnapshot.mock.calls.at(-1)![1] as Uint8Array)
+    expect(pushed.getMap('meta').get('title')).toBe('landed before the cursor read')
+
+    provider.setSnapshotCoverage(null)
+    pushSnapshot.mockClear()
+    provider.updateMeta('note-1', { title: 'Edited' })
+    await provider.pushSnapshotForNote('note-1')
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
+  })
+
+  // #2299 review A-7/B-3: the store that just opened is reconciled against the
+  // vault's sync state before anything can push from it.
+  it('reconciles the CRDT store marker when the store opens', () => {
+    expect(mocks.reconcileCrdtStoreEpoch).toHaveBeenCalledWith(
+      mocks.persistenceInstances[0],
+      mocks.dataDb
+    )
+  })
+
+  // #2299 review A-9/B-4: the revision this doc merged is read before the
+  // encode and sent as the base of a claimed push, never with an unclaimed one.
+  it('sends the merged snapshot revision as the base of a claimed push only', async () => {
+    withPersistedDoc()
+    await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    mocks.persistenceInstances[0].getMeta.mockImplementation(async (doc: string) =>
+      doc === 'note-1' ? { appliedSequence: 3, snapshotRevision: 'rev-merged' } : undefined
+    )
+    provider.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+
+    await provider.pushSnapshotForNote('note-1')
+    expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false,
+      coversThrough: 50,
+      baseRevision: 'rev-merged'
+    })
+
+    provider.setSnapshotCoverage(() => ({ unmerged: true }))
+    provider.updateMeta('note-1', { title: 'Edited' })
+    await provider.pushSnapshotForNote('note-1')
+    expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: true
+    })
+  })
+
+  // #2299 review round 2 (A-6, B-M2, B-L4): a doc that cannot vouch for
+  // itself claims nothing; the push is the plain unclaimed one.
+  describe('claims withheld when the doc cannot vouch for itself', () => {
+    const claimFifty = (): void =>
+      provider.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+
+    it('claims for a doc loaded from the store', async () => {
+      withPersistedDoc()
+      await provider.open('note-1')
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false,
+        coversThrough: 50
+      })
+    })
+
+    it('withholds the claim for a doc seeded from markdown until a whole-body pull merges', async () => {
+      await provider.open('note-1')
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+
+      provider.recordWholeBodyMerged('note-1')
+      provider.updateMeta('note-1', { title: 'Edited' })
+      await provider.pushSnapshotForNote('note-1')
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false,
+        coversThrough: 50
+      })
+    })
+
+    it('withholds the claim for a locally created note', async () => {
+      mocks.safeRead.mockResolvedValue('')
+      await provider.initForNote('note-1', { title: 'New' }, [])
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+    })
+
+    it('withholds the claim for a doc whose store read failed', async () => {
+      mocks.persistenceInstances[0].getYDoc.mockRejectedValueOnce(new Error('LEVEL_IO_ERROR'))
+      await provider.open('note-1')
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+    })
+
+    it('withholds the claim for a note the feed dropped as rowless', async () => {
+      withPersistedDoc()
+      await provider.open('note-1')
+      provider.withholdClaimUntilPulled('note-1')
+      claimFifty()
+
+      await provider.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+    })
+
+    it('withholds every claim when the store reconcile threw this session', async () => {
+      mocks.reconcileCrdtStoreEpoch.mockRejectedValueOnce(new Error('data DB closed'))
+      const failed = new CrdtProvider()
+      await failed.init(queue as any, pushSnapshot)
+      withPersistedDoc()
+      await failed.open('note-1')
+      failed.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+
+      await failed.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+      await failed.destroy()
+    })
+
+    it('withholds every claim in in-memory mode', async () => {
+      await provider.destroy()
+      mocks.persistenceBehavior.mode = 'reject'
+      const inMemory = new CrdtProvider()
+      await inMemory.init(queue as any, pushSnapshot)
+      await inMemory.open('note-1')
+      inMemory.recordWholeBodyMerged('note-1')
+      inMemory.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+
+      await inMemory.pushSnapshotForNote('note-1')
+
+      expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
+      await inMemory.destroy()
+    })
+  })
+
+  // #2299 review A-11: a coverage reader that throws must not strand close().
+  it('claims nothing and still closes the doc when the coverage reader throws', async () => {
+    await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    provider.updateMeta('note-1', { title: 'Edited before close' })
+    provider.setSnapshotCoverage(() => {
+      throw new Error('state DB closed')
+    })
+
+    await provider.close('note-1')
+
+    expect(pushSnapshot).toHaveBeenLastCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: true
+    })
+    expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  // #2299 review A-4: the feed skipped the bodies of a local-only note without
+  // flagging it, so leaving local-only owes the note a merge before any claim.
+  it('owes a note leaving local-only a remote merge', async () => {
+    const owe = vi.fn()
+    provider.setOweRemoteMerge(owe)
+
+    provider.setNoteLocalOnly('note-1', true)
+    expect(owe).not.toHaveBeenCalled()
+    provider.setNoteLocalOnly('note-1', false)
+
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'local_only')
+  })
+
   it('keeps the pending snapshot for retry when the snapshot push fails', async () => {
     await provider.initForNote('note-1', { title: 'Snapshot' }, [])
     provider.updateMeta('note-1', { title: 'Edited before push' })
@@ -485,7 +787,9 @@ describe('CrdtProvider', () => {
     pushSnapshot.mockClear()
     pushSnapshot.mockResolvedValue(undefined)
     await expect(provider.pushAllSnapshots()).resolves.toBe(1)
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
   })
 
   it('seeds existing docs in batches, validates CRDT eligibility, purges, and destroys storage', async () => {
@@ -688,7 +992,9 @@ describe('CrdtProvider', () => {
     provider.updateMeta('note-1', { title: 'Pending snapshot' })
 
     await expect(provider.pushAllSnapshots()).resolves.toBe(1)
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
 
     pushSnapshot.mockClear()
     await expect(provider.pushAllSnapshots()).resolves.toBe(0)
@@ -782,7 +1088,7 @@ describe('CrdtProvider', () => {
 
     await provider.compactDoc('note-1')
 
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', compacted)
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', compacted, { unmerged: false })
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalledWith('note-1', compacted)
     expect(mocks.persistenceInstances[0].flushDocument).toHaveBeenCalledWith('note-1')
     expect(provider.getDocSizeMetrics()[0]).toEqual(
@@ -1032,7 +1338,8 @@ describe('CrdtProvider', () => {
         })
     )
     const closePromise = provider.close('note-1')
-    await Promise.resolve()
+    // close() reads the push base (#2299) before it encodes and pushes.
+    await vi.waitFor(() => expect(releaseClosePush).toBeDefined())
 
     mocks.compactYDoc.mockClear()
     await provider.compactDoc('note-1')
@@ -1077,6 +1384,214 @@ describe('CrdtProvider', () => {
     releaseCloseFlush?.()
     await closePromise
     expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  // #2299 review round 2 (B-M4): a feed body merged while the doc compacts is
+  // only buffered, so it is never reported landed.
+  it('reports a feed body merged during compaction as not landed', async () => {
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    const store = mocks.persistenceInstances[0]
+    const update = makeRemoteUpdate('landed during compaction')
+    let landed: boolean | undefined
+    let storedWhileCompacting: unknown[][] = []
+    pushSnapshot.mockImplementationOnce(async () => {
+      store.storeUpdate.mockClear()
+      landed = await provider.mergeRemoteUpdate('note-1', update)
+      storedWhileCompacting = [...store.storeUpdate.mock.calls]
+    })
+
+    await provider.compactDoc('note-1')
+
+    expect(landed).toBe(false)
+    expect(storedWhileCompacting).toEqual([])
+    await expect(provider.mergeRemoteUpdate('note-1', makeRemoteUpdate('after'))).resolves.toBe(
+      true
+    )
+  })
+
+  it('owes the note a pull when a failed compaction drops its buffered updates', async () => {
+    const owe = vi.fn()
+    provider.setOweRemoteMerge(owe)
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+      throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+    })
+
+    await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction')
+  })
+
+  // #2297 review B-H2, A-7; #2421 ruling 6 (A-4): the watermark goes with the
+  // dropped updates, and with no sync runtime the note is owed durably through
+  // the data DB, for the next engine start to hydrate.
+  it('drops the watermark and owes a durable debt when a failed compaction has no sync runtime', async () => {
+    const testDb = createTestDataDb()
+    try {
+      mocks.dataDb = testDb.db
+      provider = new CrdtProvider()
+      await provider.init(queue as any, pushSnapshot)
+      provider.setOweRemoteMerge(null)
+      const forget = vi.spyOn(provider, 'forgetSnapshotWatermark')
+      mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+      await provider.open('note-1', undefined, { skipSeed: true })
+      provider.updateMeta('note-1', { title: 'Before compaction' })
+      pushSnapshot.mockImplementationOnce(async () => {
+        provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+        throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+      })
+
+      await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+
+      expect(forget).toHaveBeenCalledExactlyOnceWith('note-1')
+      expect(
+        listCrdtBodyDebts(asSyncDb(testDb.db)).map((d) => [d.noteId, d.reason, d.needsWalk])
+      ).toEqual([['note-1', 'compaction', 1]])
+    } finally {
+      testDb.close()
+    }
+  })
+
+  // #2421 ruling 6: with no data DB either, the store keeps the owed note, and
+  // the next runtime to attach owes it.
+  it('keeps a detached compaction owed in the store until a runtime attaches', async () => {
+    mocks.dataDb = null
+    provider.setOweRemoteMerge(null)
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+      throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+    })
+    await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+    const store = mocks.persistenceInstances.at(-1)!
+    const marker = store.setMeta.mock.calls.find(([, key]) => key === 'owedCompactions')
+    expect(marker?.[2]).toEqual(['note-1'])
+
+    store.getMeta.mockImplementation(async (_doc: string, key: string) =>
+      key === 'owedCompactions' ? ['note-1'] : undefined
+    )
+    const owe = vi.fn(() => true)
+    provider.setOweRemoteMerge(owe)
+
+    await vi.waitFor(() => expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction'))
+    await vi.waitFor(() =>
+      expect(store.setMeta).toHaveBeenLastCalledWith(expect.any(String), 'owedCompactions', [])
+    )
+  })
+
+  // #2421 round 2 ruling 5 (A N-5, B-4): the data DB of the vault the store
+  // belongs to, never whichever vault is open when the compaction fails.
+  it('writes nothing to an incoming vault when the failed compaction outlived a switch', async () => {
+    const incoming = createTestDataDb()
+    try {
+      provider.setOweRemoteMerge(null)
+      mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+      await provider.open('note-1', undefined, { skipSeed: true })
+      provider.updateMeta('note-1', { title: 'Before compaction' })
+      pushSnapshot.mockImplementationOnce(async () => {
+        provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+        mocks.dataDb = incoming.db
+        throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+      })
+
+      await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+
+      const store = mocks.persistenceInstances.at(-1)!
+      await vi.waitFor(() =>
+        expect(store.setMeta).toHaveBeenCalledWith(expect.any(String), 'owedCompactions', [
+          'note-1'
+        ])
+      )
+      expect(listCrdtBodyDebts(asSyncDb(incoming.db))).toEqual([])
+    } finally {
+      incoming.close()
+    }
+  })
+
+  // #2421 round 2 ruling 5: the marker's read-modify-write and the attach
+  // that drains it run one at a time, and the marker clears only after owes
+  // that were durable.
+  it('loses no owed compaction when a runtime attaches during the detached write', async () => {
+    mocks.dataDb = null
+    provider.setOweRemoteMerge(null)
+    const store = mocks.persistenceInstances.at(-1)!
+    let marker: unknown = ['note-0']
+    const later = <T>(value: T): Promise<T> =>
+      new Promise((resolve) => setTimeout(() => resolve(value), 5))
+    store.getMeta.mockImplementation((_doc: string, key: string) =>
+      later(key === 'owedCompactions' ? marker : undefined)
+    )
+    store.setMeta.mockImplementation((_doc: string, key: string, value: unknown) => {
+      if (key === 'owedCompactions') marker = value
+      return later(undefined)
+    })
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+      throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+    })
+    await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+    const owed = new Set<string>()
+    provider.setOweRemoteMerge((noteId) => (owed.add(noteId), true))
+
+    await vi.waitFor(() => expect(owed).toEqual(new Set(['note-0', 'note-1'])))
+    await vi.waitFor(() => expect(marker).toEqual([]))
+  })
+
+  it('keeps the owed compactions in the store when the owe was not durable', async () => {
+    const store = mocks.persistenceInstances.at(-1)!
+    store.getMeta.mockImplementation(async (_doc: string, key: string) =>
+      key === 'owedCompactions' ? ['note-1'] : undefined
+    )
+    const owe = vi.fn(() => false)
+
+    provider.setOweRemoteMerge(owe)
+
+    await vi.waitFor(() => expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(store.setMeta).not.toHaveBeenCalledWith(expect.any(String), 'owedCompactions', [])
+  })
+
+  it('owes the note a pull when an abandoned compaction has no live doc for its buffer', async () => {
+    const owe = vi.fn()
+    provider.setOweRemoteMerge(owe)
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+      await provider.close('note-1')
+    })
+
+    await provider.compactDoc('note-1')
+
+    expect(provider.getDoc('note-1')).toBeUndefined()
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction')
+  })
+
+  it('owes nothing when a compaction replays its buffer onto the live doc', async () => {
+    const owe = vi.fn()
+    provider.setOweRemoteMerge(owe)
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+    })
+
+    await provider.compactDoc('note-1')
+
+    expect(owe).not.toHaveBeenCalled()
+    expect(provider.getDoc('note-1')?.getMap('meta').get('title')).toBe('buffered')
   })
 
   it('replays buffered remote updates onto the live doc when a reopen replaces the entry mid-compaction', async () => {
@@ -1302,7 +1817,9 @@ describe('CrdtProvider', () => {
 
     await provider.close('note-1')
 
-    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+      unmerged: false
+    })
     expect(provider.getDoc('note-1')).toBeUndefined()
 
     await provider.open('note-1', undefined, { skipSeed: true })
@@ -1543,25 +2060,27 @@ describe('CrdtProvider', () => {
   })
 
   // An edit made with no session reaches the doc and the local store — that has
-  // been true since the provider stopped being gated on a session. What it did
-  // NOT reach was anything that remembers the server is owed it: `init(queue)`
-  // runs only from startSyncRuntime, so signed out there is no update queue,
-  // and the queue's own shutdown recorder can only report updates it accepted.
-  // The edit was safe locally and invisible to every other device forever.
+  // been true since the provider stopped being gated on a session. What it must
+  // also reach is something that remembers the server is owed it: `init(outbox)`
+  // runs only from startSyncRuntime, so signed out there is no outbox, and the
+  // edit would be safe locally and invisible to every other device forever.
   describe('signed-out CRDT backlog', () => {
-    const pendingStoreFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+    let testDb: TestDatabaseResult
+    const owedNotes = (): string[] =>
+      new SyncQueueManager(testDb.db as unknown as DrizzleDb).listNoteBodyNoteIds()
 
     beforeEach(() => {
-      fs.rmSync(pendingStoreFile(), { force: true })
+      testDb = createTestDataDb()
+      mocks.dataDb = testDb.db
     })
 
     afterEach(() => {
-      fs.rmSync(pendingStoreFile(), { force: true })
+      testDb.close()
     })
 
     it('pushes an edit made with no session once the session comes back, with no further input', async () => {
       // #given the provider as it exists after sign-out: persistence re-opened
-      // (session-teardown does that), no update queue, no snapshot push fn
+      // (session-teardown does that), no outbox, no snapshot push fn
       const signedOut = new CrdtProvider()
       await signedOut.init()
 
@@ -1569,155 +2088,66 @@ describe('CrdtProvider', () => {
       const doc = await signedOut.open('note-1', 1, { skipSeed: true })
       doc.getMap('meta').set('title', 'typed while signed out')
 
-      // #then nothing in the live sync path saw it — there is nothing to see it
+      // #then nothing in the live sync path saw it, and the debt is durable
       expect(queue.enqueue).not.toHaveBeenCalled()
-      // #and the debt is durable, which is the only thing that can outlive this
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      expect(owedNotes()).toEqual(['note-1'])
 
-      // #when the user signs back in. startSyncRuntime calls init() on THIS
-      // instance — sign-out already reset the singleton, sign-in does not — and
-      // then fires the replay. No editing, no clicking, no restart.
-      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
-      await signedOut.init(queue as any, pushAfterSignIn)
-      const replayed = await drainPendingCrdtNotes({
-        mergeRemote: async () => true,
-        pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
-        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
+      // #when the user signs back in: startSyncRuntime hands THIS instance an
+      // outbox over the same vault database and enables full-state flushes
+      const push = vi.fn<NoteBodyPushFn>().mockResolvedValue(undefined)
+      const outbox = new NoteBodyOutbox({
+        queue: new SyncQueueManager(testDb.db as unknown as DrizzleDb),
+        push
       })
+      await signedOut.init(outbox, pushSnapshot)
+      outbox.start()
+      outbox.enableFullStateFlush((noteId) => signedOut.readSyncableState(noteId))
 
-      // #then the note's full state reaches the server. Full state is the only
-      // shape available: a queue-less edit produced no incrementals to replay.
-      expect(replayed).toEqual({ cleared: 1, retained: 0 })
-      expect(pushAfterSignIn).toHaveBeenCalledTimes(1)
-      expect(pushAfterSignIn.mock.calls[0]![0]).toBe('note-1')
-
+      // #then the note's full state reaches the server as an update
+      await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(1))
+      expect(push.mock.calls[0]![0]).toBe('note-1')
       const received = new Y.Doc()
-      Y.applyUpdate(received, pushAfterSignIn.mock.calls[0]![1])
+      for (const update of push.mock.calls[0]![1]) Y.applyUpdate(received, update)
       expect(received.getMap('meta').get('title')).toBe('typed while signed out')
+      expect(pushSnapshot).not.toHaveBeenCalled()
 
-      // #and the debt is settled, so the next replay does not pay for it again
-      expect(readPendingCrdtNotes()).toEqual([])
-
+      // #and the debt is settled
+      await vi.waitFor(() => expect(owedNotes()).toEqual([]))
+      outbox.stop()
       await signedOut.destroy()
     })
 
-    // The server prunes every crdt_updates row at or below a stored snapshot's
-    // sequence number, so a snapshot is an assertion that it contains
-    // everything up to that point. Push one for a note whose peer edits this
-    // device has not merged and those edits are deleted server-side AND absent
-    // from the snapshot — destroyed for every device. The pending list is
-    // precisely the notes this device edited while it could not push, so it is
-    // also the population most likely to have diverged from a peer.
-    it('keeps both sides of a note edited on two devices across a sign-out', async () => {
-      // #given the same note edited on the peer while this device was signed out
-      const peer = new Y.Doc()
-      peer.getMap('meta').set('fromPeer', 'edited on device A')
-      const peerUpdate = Y.encodeStateAsUpdate(peer)
-
-      // #and this device's own signed-out edit, recorded with no queue
-      const signedOut = new CrdtProvider()
-      await signedOut.init()
-      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
-      doc.getMap('meta').set('fromThisDevice', 'edited while signed out')
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
-
-      // #when the user signs in and the replay runs. mergeRemote stands in for
-      // engine.mergeRemoteCrdtForNote, whose only effect on the doc is the
-      // applyRemoteUpdate this performs.
-      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
-      await signedOut.init(queue as any, pushAfterSignIn)
-
-      const order: string[] = []
-      await drainPendingCrdtNotes({
-        mergeRemote: async (noteId) => {
-          order.push('merge')
-          await signedOut.open(noteId, undefined, { skipSeed: true })
-          signedOut.applyRemoteUpdate(noteId, peerUpdate)
-          return true
-        },
-        pushSnapshot: async (noteId) => {
-          order.push('push')
-          return signedOut.pushSnapshotForNote(noteId)
-        },
-        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
-      })
-
-      // #then the pull happened first — after the push it would be worthless,
-      // the destructive prune has already run server-side by then.
-      expect(order).toEqual(['merge', 'push'])
-
-      // #and the snapshot the server is told to keep carries BOTH edits, so the
-      // prune that follows it deletes nothing that is not already inside it.
-      expect(pushAfterSignIn).toHaveBeenCalledTimes(1)
-      const stored = new Y.Doc()
-      Y.applyUpdate(stored, pushAfterSignIn.mock.calls[0]![1])
-      expect(stored.getMap('meta').get('fromThisDevice')).toBe('edited while signed out')
-      expect(stored.getMap('meta').get('fromPeer')).toBe('edited on device A')
-
-      await signedOut.destroy()
-    })
-
-    it('does not push a note whose pre-push pull failed, and keeps it pending', async () => {
-      const signedOut = new CrdtProvider()
-      await signedOut.init()
-      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
-      doc.getMap('meta').set('title', 'typed while signed out')
-
-      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
-      await signedOut.init(queue as any, pushAfterSignIn)
-
-      const replayed = await drainPendingCrdtNotes({
-        // What an offline start, an expired token, or a 429 on the baseline GET
-        // looks like from here.
-        mergeRemote: async () => false,
-        pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
-        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
-      })
-
-      expect(pushAfterSignIn).not.toHaveBeenCalled()
-      expect(replayed).toEqual({ cleared: 0, retained: 1 })
-      // Still owed, so the next start or reconnect tries again rather than
-      // dropping this device's signed-out edit.
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
-
-      await signedOut.destroy()
-    })
-
-    it('records nothing when there is an update queue to take the edit', async () => {
-      // The queue owns the update from here: it flushes it as an incremental,
-      // and its own stop()/budget paths record it if that flush never lands.
-      // Recording here too would mean a redundant full-snapshot push per note.
+    it('records nothing when there is an outbox to take the edit', async () => {
       const doc = await provider.open('note-1', 1, { skipSeed: true })
       doc.getMap('meta').set('title', 'typed while signed in')
 
       expect(queue.enqueue).toHaveBeenCalledTimes(1)
-      expect(readPendingCrdtNotes()).toEqual([])
+      expect(owedNotes()).toEqual([])
     })
 
     it('writes once per note touched, not once per update', async () => {
-      // This fires on roughly every keystroke, and recordPendingCrdtNotes is a
-      // synchronous read-modify-write of a file in userData. Per update that is
-      // a disk write per keystroke; per note it is negligible.
+      // This fires on roughly every keystroke. One full-state row per note
+      // covers every later edit to it, so a row per update would only grow
+      // sync_queue on an install that is not syncing.
       const signedOut = new CrdtProvider()
       await signedOut.init()
       const doc = await signedOut.open('note-1', 1, { skipSeed: true })
 
       doc.getMap('meta').set('title', 'first')
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      expect(owedNotes()).toEqual(['note-1'])
 
-      // Blank the store behind the provider's back: any further write for this
-      // note would put the id back, so the file staying empty is proof that no
-      // second write happened.
-      fs.writeFileSync(pendingStoreFile(), '[]', 'utf8')
+      // Remove the row behind the provider's back: any further write for this
+      // note would put it back, so its absence proves no second write happened.
+      new SyncQueueManager(testDb.db as unknown as DrizzleDb).removeNoteBody('note-1')
       for (const title of ['second', 'third', 'fourth', 'fifth']) {
         doc.getMap('meta').set('title', title)
       }
-      expect(readPendingCrdtNotes()).toEqual([])
+      expect(owedNotes()).toEqual([])
 
       // A different note is still a different debt.
       const other = await signedOut.open('note-2', 1, { skipSeed: true })
       other.getMap('meta').set('title', 'other note')
-      expect(readPendingCrdtNotes()).toEqual(['note-2'])
+      expect(owedNotes()).toEqual(['note-2'])
 
       await signedOut.destroy()
     })
@@ -1730,7 +2160,9 @@ describe('CrdtProvider', () => {
   // confidentiality breach, but "local-only" reads as a promise, and the UI hid
   // the gap because the metadata genuinely did not sync.
   describe('a local-only note', () => {
-    const pendingStoreFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+    let testDb: TestDatabaseResult
+    const owedNotes = (): string[] =>
+      new SyncQueueManager(testDb.db as unknown as DrizzleDb).listNoteBodyNoteIds()
 
     const noteRow = (localOnly: boolean): Record<string, unknown> => ({
       id: 'note-1',
@@ -1741,11 +2173,12 @@ describe('CrdtProvider', () => {
     })
 
     beforeEach(() => {
-      fs.rmSync(pendingStoreFile(), { force: true })
+      testDb = createTestDataDb()
+      mocks.dataDb = testDb.db
     })
 
     afterEach(() => {
-      fs.rmSync(pendingStoreFile(), { force: true })
+      testDb.close()
     })
 
     it('never hands an edit to the update queue', async () => {
@@ -1768,7 +2201,7 @@ describe('CrdtProvider', () => {
 
       doc.getMap('meta').set('title', 'typed while signed out')
 
-      expect(readPendingCrdtNotes()).toEqual([])
+      expect(owedNotes()).toEqual([])
       await signedOut.destroy()
     })
 
@@ -1852,7 +2285,9 @@ describe('CrdtProvider', () => {
       expect(queue.enqueue).toHaveBeenCalledTimes(1)
 
       await provider.close('note-1', 1)
-      expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+      expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array), {
+        unmerged: false
+      })
     })
 
     // Crosses the seam for real: the toggle is the shipped function, the flag
@@ -1889,23 +2324,14 @@ describe('CrdtProvider', () => {
       // `operation === 'create'` and this raised an `update`, an update payload
       // carries `content: null`, and the vault sweep only pulls — so an
       // incremental carrying the last keystroke alone would leave every peer
-      // with a body frozen where the server last saw it.
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
-      const replayed = await drainPendingCrdtNotes({
-        mergeRemote: async () => true,
-        pushSnapshot: (noteId) => singleton.pushSnapshotForNote(noteId),
-        isSyncable: (noteId) => singleton.validateNoteForCrdt(noteId).ok
-      })
-
-      expect(replayed).toEqual({ cleared: 1, retained: 0 })
-      const received = new Y.Doc()
-      Y.applyUpdate(received, pushSnapshot.mock.calls.at(-1)![1])
-      expect(received.getMap('meta').get('title')).toBe('written after un-toggling')
+      // with a body frozen where the server last saw it. A full-state row
+      // carries the whole doc instead.
+      expect(queue.enqueueFullState).toHaveBeenCalledWith('note-1')
 
       await singleton.destroy()
     })
 
-    it('hands its body to the merge-first replay when the toggle clears, not to a blind close()', async () => {
+    it('hands its body to a full-state outbox row when the toggle clears, not to a blind close()', async () => {
       const singleton = getCrdtProvider()
       await singleton.init(queue as never, pushSnapshot)
       const row = noteRow(true)
@@ -1924,18 +2350,17 @@ describe('CrdtProvider', () => {
       // close() pushes blind — it never pulls first — and a snapshot asserts
       // completeness, so the server prunes every incremental below it. A note
       // that has just stopped being local-only is the population most likely to
-      // have diverged from a peer, so its body goes up through
-      // drainPendingCrdtNotes, which merges before it pushes.
+      // have diverged from a peer, so its body goes up as a full-state row,
+      // which the outbox pushes after merging the server's state.
       expect(pushSnapshot).not.toHaveBeenCalled()
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      expect(queue.enqueueFullState).toHaveBeenCalledWith('note-1')
       await singleton.destroy()
     })
 
-    it('empties the update queue buffer the toggle cannot otherwise reach', async () => {
-      // The guard is at enqueue time (`onDocUpdate`) but the queue flushes on a
-      // ~1s loop, so everything typed in the second before the toggle is already
-      // buffered and past it. `setNoteLocalOnlyState` clears the pending-note
-      // store and zeroes the snapshot debt; neither reaches into the buffer.
+    it('drops the queued body rows the toggle cannot otherwise reach', async () => {
+      // The guard is at enqueue time (`onDocUpdate`) but the outbox flushes on
+      // a ~1s window, so everything typed in the second before the toggle is
+      // already queued and past it.
       const singleton = getCrdtProvider()
       await singleton.init(queue as never, pushSnapshot)
 
@@ -1958,10 +2383,10 @@ describe('CrdtProvider', () => {
       await singleton.destroy()
     })
 
-    it('drops the queue buffer even for a note whose doc the LRU already evicted', async () => {
+    it('drops the queued body rows even for a note whose doc the LRU already evicted', async () => {
       // `setNoteLocalOnly` returns early when there is no open doc, so the drop
       // has to happen ahead of that lookup: a note can be enqueued and then have
-      // its doc closed underneath it, leaving the buffer as the only holder.
+      // its doc closed underneath it, leaving the rows as the only holder.
       const singleton = getCrdtProvider()
       await singleton.init(queue as never, pushSnapshot)
 
@@ -1978,9 +2403,9 @@ describe('CrdtProvider', () => {
     })
 
     it('drops a CRDT backlog the server is no longer owed when the real toggle sets it', async () => {
-      // The CRDT twin of `removePendingNoteSyncItems`. Nothing is lost: the
-      // updates stay in the local store, and clearing the flag re-records the
-      // note, whose replay pushes full doc state and supersedes them.
+      // The CRDT twin of `removePendingNoteSyncItems`, with no sync runtime.
+      // Nothing is lost: the updates stay in the local store, and clearing the
+      // flag queues a full-state row that supersedes them.
       const singleton = getCrdtProvider()
       await singleton.init()
 
@@ -1992,11 +2417,11 @@ describe('CrdtProvider', () => {
 
       const doc = await singleton.open('note-1', undefined, { skipSeed: true })
       doc.getMap('meta').set('title', 'typed while signed out')
-      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      expect(owedNotes()).toEqual(['note-1'])
 
       setNoteLocalOnlyState('note-1', true)
 
-      expect(readPendingCrdtNotes()).toEqual([])
+      expect(owedNotes()).toEqual([])
       expect(mocks.removePendingNoteSyncItems).toHaveBeenCalledWith('note-1')
       await singleton.destroy()
     })
@@ -2470,7 +2895,11 @@ describe('CrdtProvider persistence resilience', () => {
 
 describe('CrdtProvider bootstrap doc-capacity raise', () => {
   let provider: CrdtProvider
-  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
+  let queue: {
+    enqueue: ReturnType<typeof vi.fn>
+    enqueueFullState: ReturnType<typeof vi.fn>
+    dropNote: ReturnType<typeof vi.fn>
+  }
   let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
 
   beforeEach(async () => {
@@ -2500,7 +2929,7 @@ describe('CrdtProvider bootstrap doc-capacity raise', () => {
       }
     )
     mocks.compactYDoc.mockReturnValue(null)
-    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
+    queue = { enqueue: vi.fn(), enqueueFullState: vi.fn(), dropNote: vi.fn() }
     pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     // Steady state of 2, the smallest size that can prove a raise above it.
     provider = new CrdtProvider({ inactiveDocLimit: 2 })
@@ -2572,7 +3001,11 @@ describe('CrdtProvider bootstrap doc-capacity raise', () => {
  */
 describe('CrdtProvider batched snapshot pushes', () => {
   let provider: CrdtProvider
-  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
+  let queue: {
+    enqueue: ReturnType<typeof vi.fn>
+    enqueueFullState: ReturnType<typeof vi.fn>
+    dropNote: ReturnType<typeof vi.fn>
+  }
   let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
   let pushBatch: ReturnType<typeof vi.fn>
   /** noteId -> accepted. Anything absent is accepted, like a healthy server. */
@@ -2607,7 +3040,7 @@ describe('CrdtProvider batched snapshot pushes', () => {
     )
     mocks.compactYDoc.mockReturnValue(null)
 
-    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
+    queue = { enqueue: vi.fn(), enqueueFullState: vi.fn(), dropNote: vi.fn() }
     pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     rejected = new Set<string>()
     pushBatch = vi.fn(async (entries: Array<{ noteId: string }>) => {
@@ -2638,6 +3071,65 @@ describe('CrdtProvider batched snapshot pushes', () => {
     expect(pushSnapshot).not.toHaveBeenCalled()
     expect(results.size).toBe(120)
     expect([...results.values()].every(Boolean)).toBe(true)
+  })
+
+  // #2448: the batch opened a doc nobody held, an editor bound to it while the
+  // request was in flight, and the batch's settle then closed it without asking
+  // whether anyone held it. Every keystroke after that reached main with no doc
+  // to apply to (`applyIpcUpdate` returns on a missing entry) and was lost.
+  it('keeps a doc an editor bound to while its batch was in flight', async () => {
+    // #given a batch push holding its request open
+    let release: () => void = () => {}
+    pushBatch.mockImplementationOnce(async (entries: Array<{ noteId: string }>) => {
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+      return new Map(entries.map((e) => [e.noteId, true]))
+    })
+    const pushing = provider.pushSnapshotsForNotes(['note-1'])
+    await vi.waitFor(() => expect(pushBatch).toHaveBeenCalledTimes(1))
+
+    // #when an editor opens the same note before the request returns
+    await provider.open('note-1', 7, { skipSeed: true })
+    release()
+    await pushing
+
+    // #then the doc is still there, and the editor's edit is applied and stored
+    expect(provider.getDoc('note-1')).toBeDefined()
+    const stored = mocks.persistenceInstances[0].storeUpdate.mock.calls.length
+    provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed after the push'), 7)
+    expect(mocks.persistenceInstances[0].storeUpdate.mock.calls.length).toBe(stored + 1)
+  })
+
+  // #2448: a prepare that fails after opening the doc closes it the same way.
+  it('keeps a doc an editor bound to when preparing its snapshot fails', async () => {
+    // #given a prepare that opened the doc itself, and whose base read then
+    // fails once an editor has bound to the note
+    const watermark = provider as unknown as {
+      getSnapshotWatermark: (noteId: string) => Promise<unknown>
+    }
+    vi.spyOn(watermark, 'getSnapshotWatermark').mockImplementationOnce(async () => {
+      await provider.open('note-1', 7, { skipSeed: true })
+      throw new Error('store closed')
+    })
+
+    // #when
+    await provider.pushSnapshotsForNotes(['note-1'])
+
+    // #then the failed prepare leaves the editor's doc open
+    expect(provider.getDoc('note-1')).toBeDefined()
+  })
+
+  // #2448: the same for the other provider paths that open a doc for their own
+  // use and close it afterwards.
+  it('keeps a doc an editor bound to while its state was being read', async () => {
+    // #given a read of the note's state that has opened the doc
+    const reading = provider.readSyncableState('note-1')
+    await provider.open('note-1', 7, { skipSeed: true })
+    await reading
+
+    // #then the editor's doc survives the read's close
+    expect(provider.getDoc('note-1')).toBeDefined()
   })
 
   it('prepares a repeated id once, because the endpoint rejects a duplicated note', async () => {
