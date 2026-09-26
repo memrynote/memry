@@ -111,7 +111,9 @@ describe('runPackBootstrap', () => {
           pending = []
           active = false
         },
-        flushFiles: async () => {}
+        flushFiles: async () => {},
+        savepoint: (apply) => apply(),
+        flushFilesSync: () => {}
       } satisfies PageApplyHandle
     }
 

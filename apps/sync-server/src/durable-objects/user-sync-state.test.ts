@@ -441,6 +441,169 @@ describe('UserSyncState', () => {
     })
   })
 
+  // #2300: socket items reach only the sockets that opted in, filtered to the
+  // types each declared; every other socket gets exactly the old frame.
+  describe('/broadcast socket items', () => {
+    const pullItem = (id: string, type: string) => ({
+      id,
+      type,
+      operation: 'update',
+      cryptoVersion: 1,
+      signature: 'sig',
+      signerDeviceId: 'device-9',
+      clock: { 'device-9': 1 },
+      blob: { encryptedKey: 'k', keyNonce: 'kn', encryptedData: 'd', dataNonce: 'dn' }
+    })
+    const items = [pullItem('t1', 'task'), pullItem('n1', 'note')]
+
+    async function connectDevice(
+      doObj: UserSyncState,
+      deviceId: string,
+      extraHeaders: Record<string, string> = {}
+    ): Promise<MockWebSocket> {
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId,
+        exp: Math.floor(Date.now() / 1000) + 900
+      })
+      await doObj.fetch(
+        new Request('https://do.internal/connect', {
+          headers: {
+            Authorization: `Bearer token-${deviceId}`,
+            Upgrade: 'websocket',
+            'X-App-Version': '1.0.0',
+            'X-Memry-Vault-Id': 'vault-a',
+            ...extraHeaders
+          }
+        })
+      )
+      return getCtx(doObj).getWebSockets(`device:${deviceId}`)[0] as unknown as MockWebSocket
+    }
+
+    const broadcastWithItems = (): Request =>
+      new Request('https://do.internal/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          excludeDeviceId: 'device-9',
+          cursor: 42,
+          vaultId: 'vault-a',
+          items,
+          committedAtMs: 1234
+        })
+      })
+
+    it('a socket without the opt-in header gets the exact pre-#2300 frame', async () => {
+      const doObj = createDO()
+      const ws = await connectDevice(doObj, 'device-1', { 'X-Memry-Sync-Types': 'task,note' })
+
+      await doObj.fetch(broadcastWithItems())
+
+      expect(ws.sentMessages).toEqual([
+        JSON.stringify({ type: 'changes_available', payload: { cursor: 42, vaultId: 'vault-a' } })
+      ])
+    })
+
+    it('a hibernated attachment with no socketItemTypes gets the hint-only frame', async () => {
+      const doObj = createDO()
+      const ws = await connectDevice(doObj, 'device-1', {
+        'X-Memry-Socket-Items': '1',
+        'X-Memry-Sync-Types': 'task'
+      })
+      // An attachment serialized by a build that predates #2300.
+      const attachment = ws.deserializeAttachment() as Record<string, unknown>
+      delete attachment.socketItemTypes
+      ws.serializeAttachment(attachment)
+
+      await doObj.fetch(broadcastWithItems())
+
+      expect(ws.sentMessages).toEqual([
+        JSON.stringify({ type: 'changes_available', payload: { cursor: 42, vaultId: 'vault-a' } })
+      ])
+    })
+
+    it('socket items carry only the socket declared types', async () => {
+      const doObj = createDO()
+      const ws = await connectDevice(doObj, 'device-1', {
+        'X-Memry-Socket-Items': '1',
+        'X-Memry-Sync-Types': 'task'
+      })
+
+      await doObj.fetch(broadcastWithItems())
+
+      expect(ws.sentMessages.map((m) => JSON.parse(m) as unknown)).toEqual([
+        {
+          type: 'changes_available',
+          payload: {
+            cursor: 42,
+            vaultId: 'vault-a',
+            committedAtMs: 1234,
+            items: [pullItem('t1', 'task')]
+          }
+        }
+      ])
+    })
+
+    // #2300 review A-6: authorization was checked at connect only; a socket
+    // whose token has expired (the alarm has not closed it yet) gets no data.
+    it('a socket whose token has expired gets the hint-only frame', async () => {
+      const doObj = createDO()
+      const ws = await connectDevice(doObj, 'device-1', {
+        'X-Memry-Socket-Items': '1',
+        'X-Memry-Sync-Types': 'task'
+      })
+      const attachment = ws.deserializeAttachment() as { tokenExp: number }
+      attachment.tokenExp = Math.floor(Date.now() / 1000) - 1
+      ws.serializeAttachment(attachment)
+
+      await doObj.fetch(broadcastWithItems())
+
+      expect(ws.sentMessages).toEqual([
+        JSON.stringify({ type: 'changes_available', payload: { cursor: 42, vaultId: 'vault-a' } })
+      ])
+    })
+
+    it('a declared-type filter that leaves zero items sends the hint-only frame', async () => {
+      const doObj = createDO()
+      const ws = await connectDevice(doObj, 'device-1', {
+        'X-Memry-Socket-Items': '1',
+        'X-Memry-Sync-Types': 'project'
+      })
+
+      await doObj.fetch(broadcastWithItems())
+
+      expect(ws.sentMessages).toEqual([
+        JSON.stringify({ type: 'changes_available', payload: { cursor: 42, vaultId: 'vault-a' } })
+      ])
+    })
+
+    it('logs how many sockets received items', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      const doObj = createDO()
+      await connectDevice(doObj, 'device-1', {
+        'X-Memry-Socket-Items': '1',
+        'X-Memry-Sync-Types': 'task'
+      })
+      await connectDevice(doObj, 'device-2')
+
+      await doObj.fetch(broadcastWithItems())
+
+      const lines = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)) as object)
+      expect(lines).toEqual([
+        {
+          level: 'info',
+          scope: 'UserSyncState',
+          message: 'Record changes broadcast',
+          vaultId: 'vault-a',
+          cursor: 42,
+          sent: 2,
+          itemsSent: 1
+        }
+      ])
+      infoSpy.mockRestore()
+    })
+  })
+
   describe('webSocketMessage (rate limiting)', () => {
     it('closes connection after exceeding rate limit', async () => {
       // #given

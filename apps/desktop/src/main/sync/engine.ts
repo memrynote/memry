@@ -39,6 +39,8 @@ import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
+import { createSocketApplier, type SocketApplier } from './engine/socket-apply'
+import { reportConflict } from './engine/conflict-report'
 import { trackMainEvent } from '../telemetry/track'
 import type { SnapshotCoverage, SnapshotRefusal } from './crdt-provider'
 
@@ -110,6 +112,7 @@ export class SyncEngine extends SyncEventEmitter {
   private pullCoordinator: PullCoordinator
   private errorRecovery: ErrorRecoveryHandler
   private fullSyncRunner: FullSyncRunner
+  private socketApply: SocketApplier
   private pullInterval: ReturnType<typeof setInterval> | null = null
   private networkReconnectAbortController: AbortController | null = null
   /**
@@ -217,6 +220,43 @@ export class SyncEngine extends SyncEventEmitter {
     this.pullCoordinator.onNoteBodyLegacySweepReset = () =>
       this.fullSyncRunner.resetNoteBodyLegacySweep()
     this.ctx.doPush = () => this.push()
+    this.socketApply = createSocketApplier({
+      db: this.ctx.deps.db,
+      applier: this.ctx.applier,
+      appliedCursor: () =>
+        Math.max(
+          Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? 0),
+          this.pullCoordinator.ownedThrough
+        ),
+      eligible: () =>
+        SyncEngine.activeInstance === this &&
+        !this.cancelRequested &&
+        !this.ctx.fullSyncActive &&
+        !this.stateManager.isPaused() &&
+        this.ctx.deps.network.online,
+      pushInFlight: () => this.pushCoordinator.pushInFlight,
+      whenPushSettled: (timeoutMs) => this.pushCoordinator.whenPushSettled(timeoutMs),
+      isQuarantined: (id, type) => this.quarantine.isQuarantined(id, type),
+      getVaultKey: () => this.ctx.deps.getVaultKey(),
+      getDevicePublicKey: (id) => this.ctx.deps.getDevicePublicKey(id),
+      workerBridge: this.ctx.deps.workerBridge,
+      setPushSuppressed: (suppressed) => {
+        this.pushCoordinator.suppressPushDuringPull = suppressed
+      },
+      isPushSuppressed: () => this.pushCoordinator.suppressPushDuringPull,
+      onApplied: (dec, op) => this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', op),
+      onConflict: (dec, page) =>
+        reportConflict(
+          {
+            ...this.ctx.deps,
+            emitToRenderer: (channel, event) =>
+              page.afterCommit(() => this.ctx.deps.emitToRenderer(channel, event))
+          },
+          dec
+        ),
+      requestPush: () => this.ctx.requestPush(),
+      oweRecordBody: (noteId) => this.crdtSync.oweRecordBody(noteId)
+    })
     SyncEngine.activeInstance = this
   }
 
@@ -809,6 +849,8 @@ export class SyncEngine extends SyncEventEmitter {
     this.ctx.abortController?.abort()
     this.ctx.fullSyncActive = false
     this.ctx.inFlightSync = null
+    // An abandoned push must not hold the socket fast path off (#2300).
+    this.pushCoordinator.resetPushInFlight()
     // A wake pull chained behind the abandoned sync may never run.
     this.wakePullQueued = false
     this.activeLockRelease?.()
@@ -915,7 +957,12 @@ export class SyncEngine extends SyncEventEmitter {
   private handleWsMessage = (message: Exclude<SyncSocketEvent, { kind: 'ignored' }>): void => {
     switch (message.kind) {
       case 'changes_available':
-        if (!this.stateManager.isPaused()) this.scheduleWakePull(message.cursor)
+        if (this.stateManager.isPaused()) break
+        // Socket items (#2300) are latency only and never awaited. The wake
+        // pull below still runs, unconditionally: it owns LAST_CURSOR and every
+        // failure policy, and it delivers whatever the fast path dropped.
+        if (message.items) void this.socketApply.apply(message)
+        this.scheduleWakePull(message.cursor)
         break
       case 'crdt_updated': {
         const { noteId } = message

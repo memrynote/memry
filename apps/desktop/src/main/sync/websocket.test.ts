@@ -5,6 +5,7 @@ import {
   type WebSocketManagerDeps
 } from './websocket'
 import { CertificatePinningError } from './certificate-pinning'
+import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 
 const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
   const { EventEmitter: EE } = require('events') as typeof import('events')
@@ -627,6 +628,22 @@ describe('WebSocketManager', () => {
 
       // #then
       expect(lastWs().options?.headers?.['X-App-Version']).toBe('2.3.1')
+    })
+
+    // #2300: socket items are negotiated with the same types HTTP declares.
+    it('#then opts in to socket items with the HTTP sync types', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+
+      await manager.connect()
+
+      const headers = lastWs().options?.headers
+      expect(headers?.['X-Memry-Socket-Items']).toBe('1')
+      // The HTTP record-page value: every record type plus the purged-tombstone
+      // capability, never note_body. The server resolves only record types
+      // from it for items (#2302 restack).
+      expect(headers?.['X-Memry-Sync-Types']).toBe(
+        [...RECORD_SYNC_ITEM_TYPES, 'purged_tombstones'].join(',')
+      )
     })
   })
 

@@ -510,7 +510,9 @@ that works the debts off never blocks the push.
 Because cursors are assigned in commit order (§5.5) and the cursor moves only
 after apply, a client MAY drop a realtime wake whose `cursor` is at or below its
 applied cursor (chapter 09 §9.11). The wake's cursor is only compared, never
-stored as the device cursor.
+stored as the device cursor. Socket items (chapter 09 §9.13) never move the
+cursor either: they may be applied ahead of the feed, and the feed still
+delivers them.
 
 **The same cursor covers note bodies** (#2295). A `noteBodies` entry's `cursor`
 is on the same per-user sequence as a record's `serverCursor` and follows the

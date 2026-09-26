@@ -39,7 +39,9 @@ vi.mock('../services/sync', () => ({
         accepted: true,
         serverCursor: 1
       }
-    ]
+    ],
+    committedItems: [],
+    committedAtMs: 0
   }),
   pullItems: vi.fn().mockResolvedValue({ items: [], purgedTombstones: [], blobMissing: [] }),
   getItem: vi.fn().mockResolvedValue({
@@ -247,6 +249,8 @@ const makePushBatchResult = (
       serverCursor: 1
     }
   ],
+  committedItems: [],
+  committedAtMs: 0,
   ...overrides
 })
 
@@ -1099,7 +1103,8 @@ describe('sync routes', () => {
         'vault-1',
         // Attribution: no x-memry-client header on these requests, so the
         // handler passes null and the row is written unattributed.
-        null
+        null,
+        64 * 1024
       )
     })
 
@@ -1173,7 +1178,8 @@ describe('sync routes', () => {
         'device-1',
         [makePushItem()],
         'vault-1',
-        null
+        null,
+        64 * 1024
       )
     })
 
@@ -1197,7 +1203,8 @@ describe('sync routes', () => {
         'device-1',
         [makePushItem({ type: 'settings', clock: undefined })],
         'vault-1',
-        null
+        null,
+        64 * 1024
       )
     })
 
@@ -1216,6 +1223,81 @@ describe('sync routes', () => {
       expect(res.status).toBe(413)
       expect(updateDeviceCursor).not.toHaveBeenCalled()
       expect(updateDevice).not.toHaveBeenCalled()
+    })
+
+    // #2300: the committed items ride the broadcast only within the budget.
+    it('attaches committed items and their commit time to the push broadcast', async () => {
+      const committedItem = {
+        id: VALID_UUID,
+        type: 'note' as const,
+        operation: 'create' as const,
+        cryptoVersion: 1,
+        signature: 'sig',
+        signerDeviceId: 'device-1',
+        clock: { 'device-1': 1 },
+        blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+      }
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({ committedItems: [committedItem], committedAtMs: 1234 })
+      )
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        env,
+        executionCtx
+      )
+
+      // The pushing client's response is unchanged: the items ride the broadcast only.
+      expect(Object.keys((await res.json()) as object).sort()).toEqual([
+        'accepted',
+        'maxCursor',
+        'rejected',
+        'serverTime'
+      ])
+      const broadcast = mockDoStub.fetch.mock.calls[0][0] as Request
+      expect(await broadcast.json()).toEqual({
+        excludeDeviceId: 'device-1',
+        cursor: 1,
+        vaultId: 'vault-1',
+        items: [committedItem],
+        committedAtMs: 1234
+      })
+    })
+
+    // #2300
+    it('broadcasts hint-only when SYNC_SOCKET_ITEMS_MAX_BYTES is "0"', async () => {
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({
+          committedItems: [
+            {
+              id: VALID_UUID,
+              type: 'note',
+              operation: 'create',
+              cryptoVersion: 1,
+              signature: 'sig',
+              signerDeviceId: 'device-1',
+              blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+            }
+          ],
+          committedAtMs: 1234
+        })
+      )
+
+      await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        { ...env, SYNC_SOCKET_ITEMS_MAX_BYTES: '0' },
+        executionCtx
+      )
+
+      // The kill switch reaches the pipeline, which then builds nothing.
+      expect(vi.mocked(processRecordPushBatch).mock.calls.at(-1)?.[7]).toBe(0)
+
+      const broadcast = mockDoStub.fetch.mock.calls[0][0] as Request
+      expect(await broadcast.text()).toBe(
+        JSON.stringify({ excludeDeviceId: 'device-1', cursor: 1, vaultId: 'vault-1' })
+      )
     })
 
     it('captures background broadcast failures without failing the push response', async () => {
@@ -1410,7 +1492,8 @@ describe('sync routes', () => {
         'vault-1',
         // Attribution: no x-memry-client header on these requests, so the
         // handler passes null and the row is written unattributed.
-        null
+        null,
+        64 * 1024
       )
     })
 

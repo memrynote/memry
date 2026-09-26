@@ -24,6 +24,7 @@ import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
 import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { syncTypesMiddleware } from '../middleware/sync-types'
+import { selectSocketItems, socketItemsMaxBytes } from '../lib/socket-items'
 import {
   getChanges,
   getItem,
@@ -470,6 +471,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     })
   }
 
+  const socketItemsBudget = socketItemsMaxBytes(c.env)
   let result
   try {
     result = await processRecordPushBatch(
@@ -479,7 +481,8 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
       deviceId,
       items,
       vaultId,
-      c.get('client') ?? null
+      c.get('client') ?? null,
+      socketItemsBudget
     )
   } catch (error) {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
@@ -515,13 +518,20 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     })
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
+    // Only sockets that opted in ever see these (protocol 09 §9.13, #2300).
+    const socketItems = selectSocketItems(result.committedItems, socketItemsBudget)
     waitUntilCaptured(
       c,
       stub.fetch(
         new Request(new URL('/broadcast', c.req.url), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ excludeDeviceId: deviceId, cursor: result.maxCursor, vaultId })
+          body: JSON.stringify({
+            excludeDeviceId: deviceId,
+            cursor: result.maxCursor,
+            vaultId,
+            ...(socketItems ? { items: socketItems, committedAtMs: result.committedAtMs } : {})
+          })
         })
       ),
       { source: 'UserSyncState', action: 'record_push_broadcast_failed' }

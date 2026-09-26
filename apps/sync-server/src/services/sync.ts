@@ -90,6 +90,14 @@ export interface RecordPushBatchOutcome {
 
 export interface RecordPushBatchResult extends PushResponse {
   outcomes: RecordPushBatchOutcome[]
+  /**
+   * The `/sync/pull` item of every row this batch committed, in ascending
+   * server cursor order, built from memory (#2300 socket items). Never part of
+   * the push response.
+   */
+  committedItems: RecordPullItemResponse[]
+  /** Commit time of the batch's latest committed wave; 0 when nothing committed. */
+  committedAtMs: number
 }
 
 export const validateEncryptedFields = (item: PushItemInput): void => {
@@ -371,6 +379,41 @@ const readEncryptedPayload = async (
   }
 }
 
+/** The stored columns a `/sync/pull` item is made of, already narrowed. */
+interface PullItemColumns {
+  id: string
+  type: RecordSyncItemType
+  operation: string
+  cryptoVersion: number
+  signature: string
+  signerDeviceId: string
+  deletedAt: number | null
+  clock: string | null
+}
+
+/**
+ * The one constructor of a `/sync/pull` item. The pull feeds it a D1 row and
+ * the R2 object; a push feeds it the values it just committed, so a socket
+ * item (#2300) is byte-identical to what `/sync/pull` returns for that row.
+ */
+const pullItemFromColumns = (
+  columns: PullItemColumns,
+  payload: EncryptedItemPayload
+): RecordPullItemResponse => {
+  const parsedClock = parseStoredClock(columns.id, columns.clock)
+  return {
+    id: columns.id,
+    type: columns.type,
+    operation: columns.operation as RecordPullItemResponse['operation'],
+    cryptoVersion: columns.cryptoVersion,
+    signature: columns.signature,
+    signerDeviceId: columns.signerDeviceId,
+    ...(columns.deletedAt ? { deletedAt: columns.deletedAt } : {}),
+    ...(parsedClock ? { clock: parsedClock } : {}),
+    blob: payload
+  }
+}
+
 /**
  * What one sync_items row contributes to a POST /sync/pull response (#2302).
  * `blob_not_found` is a live row whose object 404'd: pullItems tells a lost
@@ -443,21 +486,21 @@ const readPullRow = async (
     )
   }
 
-  const parsedClock = parseStoredClock(row.item_id, row.clock)
-
   return {
     kind: 'item',
-    item: {
-      id: row.item_id,
-      type: itemType,
-      operation: row.operation as RecordPullItemResponse['operation'],
-      cryptoVersion: row.crypto_version,
-      signature: row.signature,
-      signerDeviceId: row.signer_device_id,
-      ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
-      ...(parsedClock ? { clock: parsedClock } : {}),
-      blob: payload
-    }
+    item: pullItemFromColumns(
+      {
+        id: row.item_id,
+        type: itemType,
+        operation: row.operation,
+        cryptoVersion: row.crypto_version,
+        signature: row.signature,
+        signerDeviceId: row.signer_device_id,
+        deletedAt: row.deleted_at,
+        clock: row.clock
+      },
+      payload
+    )
   }
 }
 
@@ -474,7 +517,62 @@ const readPullRow = async (
 // connections at once.
 const R2_PUSH_PUT_CONCURRENCY = 8
 
-type PushItemOutcome = { accepted: boolean; reason?: string; serverCursor?: number }
+type PushItemOutcome = {
+  accepted: boolean
+  reason?: string
+  serverCursor?: number
+  /**
+   * What a successful Stage 7 committed, kept as columns plus the R2 bytes so
+   * nothing is parsed unless a socket item is actually built (#2300). Set only
+   * when the batch asked for socket items.
+   */
+  committed?: { columns: PullItemColumns; payloadBytes: Uint8Array }
+  committedAtMs?: number
+}
+
+/**
+ * Upper bound on a socket item's serialized size beyond its R2 bytes: the
+ * envelope keys plus the variable columns. Used to refuse an over-budget push
+ * before building anything; the route still checks the exact size.
+ */
+const socketItemSizeEstimate = ({ columns, payloadBytes }: CommittedRow): number =>
+  payloadBytes.byteLength +
+  columns.id.length +
+  columns.signature.length +
+  columns.signerDeviceId.length +
+  (columns.clock?.length ?? 0) +
+  192
+
+type CommittedRow = NonNullable<PushItemOutcome['committed']>
+
+/**
+ * The socket items of a push (#2300), or none. Decided from the sizes first,
+ * so the kill switch and an over-budget push parse nothing. Runs after every
+ * wave committed, outside Stage 7: a failure here can only drop the socket
+ * items, never reject a committed row.
+ */
+const buildSocketItems = (rows: CommittedRow[], budget: number): RecordPullItemResponse[] => {
+  if (budget <= 0 || rows.length === 0) return []
+  let estimate = 0
+  for (const row of rows) {
+    estimate += socketItemSizeEstimate(row)
+    if (estimate > budget) return []
+  }
+  try {
+    return rows.map(({ columns, payloadBytes }) =>
+      // The R2 object's exact text, parsed as the pull parses it.
+      pullItemFromColumns(
+        columns,
+        JSON.parse(new TextDecoder().decode(payloadBytes)) as EncryptedItemPayload
+      )
+    )
+  } catch (error) {
+    logger.warn('Socket items dropped: a committed row did not rebuild', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return []
+  }
+}
 
 const itemIdentity = (item: { type: string; id: string }): string => `${item.type}\u0000${item.id}`
 
@@ -540,7 +638,8 @@ const processPushWave = async (
   userId: string,
   items: PushItemInput[],
   vaultId: string,
-  client: ClientIdentity | null
+  client: ClientIdentity | null,
+  collectCommitted = false
 ): Promise<PushItemOutcome[]> => {
   const outcomes: PushItemOutcome[] = new Array<PushItemOutcome>(items.length)
   const reject = (index: number, reason: string): void => {
@@ -753,9 +852,24 @@ const processPushWave = async (
     const committedAtMs = Date.now()
     const cursors = reserveCursors(db, userId, stored.length)
     const statements: D1PreparedStatement[] = []
+    const committedColumns: PullItemColumns[] = []
     for (const [position, entry] of stored.entries()) {
       const { item, existing } = entry
       const deletedAt = item.operation === 'delete' ? (item.deletedAt ?? now) : null
+      const clock = item.clock ? JSON.stringify(item.clock) : null
+      if (collectCommitted) {
+        committedColumns.push({
+          id: item.id,
+          // Stage 1 rejected every type that is not a record type.
+          type: item.type as RecordSyncItemType,
+          operation: item.operation,
+          cryptoVersion: CRYPTO_VERSION,
+          signature: item.signature,
+          signerDeviceId: item.signerDeviceId,
+          deletedAt,
+          clock
+        })
+      }
       statements.push(
         db
           .prepare(
@@ -808,7 +922,7 @@ const processPushWave = async (
             item.signerDeviceId,
             item.signature,
             item.stateVector ?? null,
-            item.clock ? JSON.stringify(item.clock) : null,
+            clock,
             existing?.created_at ?? existing?.createdAt ?? now,
             now,
             deletedAt,
@@ -832,7 +946,16 @@ const processPushWave = async (
       for (const [position, entry] of stored.entries()) {
         outcomes[entry.index] = {
           accepted: true,
-          serverCursor: cursors.cursorAt(results, position)
+          serverCursor: cursors.cursorAt(results, position),
+          ...(collectCommitted
+            ? {
+                committed: {
+                  columns: committedColumns[position],
+                  payloadBytes: entry.payloadBytes
+                }
+              }
+            : {}),
+          committedAtMs
         }
       }
     } catch (error) {
@@ -887,7 +1010,9 @@ export const processRecordPushBatch = async (
   deviceId: string,
   items: PushItemInput[],
   vaultId = 'default',
-  client: ClientIdentity | null = null
+  client: ClientIdentity | null = null,
+  /** Byte budget for socket items (#2300); 0 builds none. */
+  socketItemsBudget = 0
 ): Promise<RecordPushBatchResult> => {
   const itemOutcomes = new Array<PushItemOutcome>(items.length)
   for (const wave of splitIntoWaves(items)) {
@@ -897,7 +1022,8 @@ export const processRecordPushBatch = async (
       userId,
       wave.map((entry) => entry.item),
       vaultId,
-      client
+      client,
+      socketItemsBudget > 0
     )
     wave.forEach((entry, position) => {
       itemOutcomes[entry.index] = waveOutcomes[position]
@@ -907,7 +1033,9 @@ export const processRecordPushBatch = async (
   const accepted: string[] = []
   const rejected: Array<{ id: string; reason: string }> = []
   const outcomes: RecordPushBatchOutcome[] = []
+  const committed: Array<{ serverCursor: number; row: CommittedRow }> = []
   let maxCursor = 0
+  let committedAtMs = 0
 
   items.forEach((item, index) => {
     const result = itemOutcomes[index]
@@ -924,6 +1052,12 @@ export const processRecordPushBatch = async (
       if (result.serverCursor && result.serverCursor > maxCursor) {
         maxCursor = result.serverCursor
       }
+      if (result.committed && result.serverCursor !== undefined) {
+        committed.push({ serverCursor: result.serverCursor, row: result.committed })
+      }
+      if (result.committedAtMs && result.committedAtMs > committedAtMs) {
+        committedAtMs = result.committedAtMs
+      }
       return
     }
 
@@ -935,7 +1069,12 @@ export const processRecordPushBatch = async (
     rejected,
     serverTime: Math.floor(Date.now() / 1000),
     maxCursor,
-    outcomes
+    outcomes,
+    committedItems: buildSocketItems(
+      committed.sort((a, b) => a.serverCursor - b.serverCursor).map((entry) => entry.row),
+      socketItemsBudget
+    ),
+    committedAtMs
   }
 }
 

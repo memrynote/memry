@@ -22,6 +22,8 @@ vi.mock('../database/client', () => ({
 
 import {
   beginPageApply,
+  isPageApplyQuiescent,
+  whenPageApplyQuiescent,
   replayBulkApplyJournal,
   writeSyncedVaultFile,
   deleteSyncedVaultFile,
@@ -738,6 +740,91 @@ describe('bulk apply page session', () => {
 
       expect(later).toHaveBeenCalledOnce()
       expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 1 })
+    })
+  })
+
+  // #2300: the socket fast path writes note files only at a quiescent point.
+  describe('#given the socket fast path waits for page apply quiescence', () => {
+    it('#then a page is not quiescent while its transaction is open', () => {
+      const { db } = makeDb()
+      expect(isPageApplyQuiescent()).toBe(true)
+      const page = beginPageApply(db)
+      expect(isPageApplyQuiescent()).toBe(false)
+      page.rollback()
+      expect(isPageApplyQuiescent()).toBe(true)
+    })
+
+    it('#then quiescence resolves only after the committed page flushed its files', async () => {
+      const { db } = makeDb()
+      const target = path.join(userDataDir, 'quiescent', 'x.md')
+      let releaseWrite!: () => void
+      const writeHeld = new Promise<void>((resolve) => {
+        releaseWrite = resolve
+      })
+      const realWriteFile = fs.promises.writeFile
+      const writeSpy = vi
+        .spyOn(fs.promises, 'writeFile')
+        .mockImplementation(async (...args: Parameters<typeof fs.promises.writeFile>) => {
+          await writeHeld
+          return realWriteFile(...args)
+        })
+
+      const page = beginPageApply(db)
+      writeSyncedVaultFile(target, 'v1')
+      page.commit()
+      const flushed = page.flushFiles()
+
+      let quiescent = false
+      const waited = whenPageApplyQuiescent(60_000).then(() => {
+        quiescent = true
+      })
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      expect(isPageApplyQuiescent()).toBe(false)
+      expect(quiescent).toBe(false)
+
+      releaseWrite()
+      await flushed
+      await waited
+      expect(quiescent).toBe(true)
+      expect(fs.readFileSync(target, 'utf-8')).toBe('v1')
+      writeSpy.mockRestore()
+    })
+
+    it('#then an unlanded op from a failed flush keeps it not quiescent', async () => {
+      const { db } = makeDb()
+      const target = path.join(userDataDir, 'quiescent', 'fail.md')
+      const writeSpy = vi
+        .spyOn(fs.promises, 'writeFile')
+        .mockRejectedValueOnce(new Error('disk full'))
+
+      const page = beginPageApply(db)
+      writeSyncedVaultFile(target, 'v1')
+      page.commit()
+      await page.flushFiles()
+
+      expect(isPageApplyQuiescent()).toBe(false)
+      writeSpy.mockRestore()
+    })
+
+    // #2300 review A-3 / B-F2: the replay that heals a failed flush also
+    // clears it from memory, or the fast path stays off until a restart.
+    it('#then the journal replay that heals the failed op makes it quiescent again', async () => {
+      const { db } = makeDb()
+      const target = path.join(userDataDir, 'quiescent', 'healed.md')
+      const writeSpy = vi.spyOn(fs.promises, 'writeFile').mockRejectedValueOnce(new Error('EBUSY'))
+      const page = beginPageApply(db)
+      writeSyncedVaultFile(target, 'v1')
+      page.commit()
+      await page.flushFiles()
+      writeSpy.mockRestore()
+      expect(isPageApplyQuiescent()).toBe(false)
+      const waited = whenPageApplyQuiescent(60_000)
+
+      replayBulkApplyJournal()
+
+      expect(fs.readFileSync(target, 'utf-8')).toBe('v1')
+      expect(isPageApplyQuiescent()).toBe(true)
+      await expect(waited).resolves.toBe(true)
     })
   })
 })

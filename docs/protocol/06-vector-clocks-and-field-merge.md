@@ -413,12 +413,24 @@ carry.** The race itself is real to describe: two devices can both run
 holding `vx`, both under clock `{X:2,Y:2}`. **It does not leave them there.**
 
 On desktop the window is additionally narrow, because a push drain and a pull
-apply cannot interleave in the first place: both take the same engine sync lock
+apply cannot interleave: both take the same engine sync lock
 (`apps/desktop/src/main/sync/engine/push-coordinator.ts:70`,
 `apps/desktop/src/main/sync/engine/pull-coordinator.ts:133`,
 `apps/desktop/src/main/sync/engine.ts:630-643`), which is held across the whole
 push including its `POST /sync/push`. Only the stale-lock watchdog
 (`apps/desktop/src/main/sync/engine.ts:686-697`, 15 minutes) can overlap them.
+The socket fast path (chapter 09 §9.13) applies without that lock, so it is
+held to the rule the lock enforces for the pull: **it never applies while a
+push is in flight**, from lock acquisition to release
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:71`); it waits for the
+push to settle instead. The stale-lock watchdog caveat above applies to this
+rule too: a push the watchdog abandons stops holding the gate
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:98`), so its late ack
+can still delete a requeue coalesced into a row it dequeued. The rule matters
+for P3: a conflict requeue carries the placeholder payload `'{}'`, and one
+coalesced into a row that push already dequeued (itself a `'{}'` requeue) is
+invisible to the payload-conditional ack, which deletes it and stamps the row
+synced. The merged union-clock row would then never be pushed.
 A client without such a lock — or a core with a background outbox — hits the
 mirrored state routinely.
 
