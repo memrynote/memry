@@ -60,15 +60,22 @@ import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('MarkdownUtils')
 
-/** The block's line as markdown sees it, without the `- [ ] ` marker. */
-export function checkboxLineText(block: { content?: unknown }): string {
-  const content = block.content as (string | { text?: string })[] | undefined
-  return (
-    content
-      ?.map((c) => (typeof c === 'string' ? c : (c.text ?? '')))
-      .join('')
-      .trim() ?? ''
-  )
+const CHECKBOX_MARKER = /^[-*+] \[[ xX]\] ?/
+
+/**
+ * The block's line as the file holds it, without the `- [ ] ` marker.
+ *
+ * A task block keeps its line in one `title` string, written back verbatim
+ * before `{task:<id>}`, so whatever this leaves out (a wiki link, a link, bold)
+ * is gone from the note on every device it syncs to. Serialized as the
+ * checkbox it is, so the bytes are the ones the line already had. This is
+ * `serializeBlocks` minus the await: `blocksToMarkdownLossy` is synchronous.
+ */
+export function checkboxLineMarkdown(editor: any, block: { content?: unknown }): string {
+  const line = { type: 'checkListItem', props: { checked: false }, content: block.content }
+  const { blocks, replacements } = extractInlineColorRuns([line] as never[])
+  const md = normalizeSerializedMarkdown(editor.blocksToMarkdownLossy(blocks))
+  return restoreInlineColorTokens(md, replacements).trim().replace(CHECKBOX_MARKER, '').trim()
 }
 
 export function isEmptyParagraph(block: Block): boolean {

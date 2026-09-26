@@ -30,7 +30,7 @@ beforeAll(() => {
 
 import { editorSchema } from './editor-schema'
 import {
-  checkboxLineText,
+  checkboxLineMarkdown,
   parseMarkdownPreservingBlanks,
   serializeBlocksPreservingBlanks
 } from './markdown-utils'
@@ -47,7 +47,7 @@ async function convertAndSave(line: string): Promise<string> {
     type: 'taskBlock',
     props: {
       taskId: 't1',
-      title: checkboxLineText(checkbox),
+      title: checkboxLineMarkdown(editor, checkbox),
       checked: !!(checkbox.props as { checked?: boolean }).checked,
       parentTaskId: ''
     },
@@ -64,6 +64,7 @@ describe('checkbox to task conversion', () => {
       '- [ ] **Dune: Part Two** — bumped because [[Dune (2021)]] was so good {task:t1}'
     ],
     ['- [x] Parasite — see [[Parasite]]', '- [x] Parasite — see [[Parasite]] {task:t1}'],
+    ['- [ ] #errand buy [[Milk]]', '- [ ] #errand buy [[Milk]] {task:t1}'],
     [
       '- [ ] Call [[Anna Smith|Anna]] about *the* [lease](https://example.com/lease) #home',
       '- [ ] Call [[Anna Smith|Anna]] about *the* [lease](https://example.com/lease) #home {task:t1}'
