@@ -378,7 +378,7 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
     deletedCount: changes.deleted.length
   })
 
-  return c.json(changes)
+  return c.json({ ...changes, serverTimeMs: Date.now() })
 }
 
 const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
@@ -431,6 +431,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
   if (items.length === 0) {
     logRecordPushBatch({
       endpoint,
+      vaultId,
       latencyMs: Date.now() - startedAt,
       outcomes: invalidOutcomes
     })
@@ -461,6 +462,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
       logRecordPushBatch({
         endpoint,
+        vaultId,
         latencyMs: Date.now() - startedAt,
         outcomes: [
           ...invalidOutcomes,
@@ -505,6 +507,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
 
   logRecordPushBatch({
     endpoint,
+    vaultId,
     latencyMs: Date.now() - startedAt,
     outcomes: [...invalidOutcomes, ...result.outcomes]
   })

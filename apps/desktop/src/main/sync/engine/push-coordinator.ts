@@ -16,6 +16,7 @@ import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { trackMainEvent } from '../../telemetry/track'
+import { PushLagTrace } from './sync-latency-telemetry'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import {
@@ -82,6 +83,7 @@ export class PushCoordinator {
     }
 
     const timer = new SyncTimer()
+    const pushLag = new PushLagTrace()
     const startTime = Date.now()
     let pushedCount = 0
     let quotaEventSent = false
@@ -292,6 +294,7 @@ export class PushCoordinator {
           })
 
           lastServerTime = response.value.serverTime
+          pushLag.record(dedupedItems, response.value, this.ctx.deps.queue)
           const acceptedSet = new Set(response.value.accepted)
           for (let pi = 0; pi < pushItems.length; pi++) {
             if (this.ctx.abortController?.signal.aborted) break

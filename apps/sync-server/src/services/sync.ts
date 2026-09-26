@@ -632,6 +632,7 @@ const processPushWave = async (
   // without its shrink adjustment.
   if (stored.length > 0) {
     const now = Math.floor(Date.now() / 1000)
+    const committedAtMs = Date.now()
     const cursors = reserveCursors(db, userId, stored.length)
     const statements: D1PreparedStatement[] = []
     for (const [position, entry] of stored.entries()) {
@@ -644,8 +645,8 @@ const processPushWave = async (
               id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
               version, crypto_version, operation, server_cursor, signer_device_id, signature,
               state_vector, clock, created_at, updated_at, deleted_at,
-              client_platform, client_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cursors.cursorSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              client_platform, client_version, committed_at_ms
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cursors.cursorSql}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (user_id, vault_id, item_type, item_id) DO UPDATE SET
               blob_key = excluded.blob_key,
               size_bytes = excluded.size_bytes,
@@ -664,7 +665,8 @@ const processPushWave = async (
               -- query asks "what did iOS write", and a desktop rewrite of the same
               -- row is no longer a mobile-originated value.
               client_platform = excluded.client_platform,
-              client_version = excluded.client_version`
+              client_version = excluded.client_version,
+              committed_at_ms = excluded.committed_at_ms`
           )
           .bind(
             crypto.randomUUID(),
@@ -687,7 +689,8 @@ const processPushWave = async (
             now,
             deletedAt,
             client?.platform ?? null,
-            client?.version ?? null
+            client?.version ?? null,
+            committedAtMs
           )
       )
       if (entry.sizeDelta < 0) {
@@ -969,7 +972,8 @@ export const getChanges = async (
 
   const rows = await db
     .prepare(
-      `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at
+      `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at,
+              committed_at_ms
        FROM sync_items
        WHERE user_id = ? AND vault_id = ? AND server_cursor > ? AND item_type IN (${placeholdersFor(types)})
        ORDER BY server_cursor ASC
@@ -985,6 +989,7 @@ export const getChanges = async (
       state_vector: string | null
       server_cursor: number
       deleted_at: number | null
+      committed_at_ms: number | null
     }>()
 
   const allRows = rows.results ?? []
@@ -1006,7 +1011,9 @@ export const getChanges = async (
         type: row.item_type,
         version: row.version,
         modifiedAt: row.updated_at,
-        size: row.size_bytes
+        size: row.size_bytes,
+        serverCursor: row.server_cursor,
+        ...(typeof row.committed_at_ms === 'number' ? { committedAtMs: row.committed_at_ms } : {})
       })
     }
   }

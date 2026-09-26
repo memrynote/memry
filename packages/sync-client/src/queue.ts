@@ -26,6 +26,9 @@ export const ERROR_RETENTION_DAYS = 7
  */
 const AUTO_PURGE_CHECK_EVERY_N_ENQUEUES = 50
 
+/** Bound on the in-memory enqueue-time map; the oldest entry goes first. */
+const MAX_TRACKED_ENQUEUE_TIMES = 10_000
+
 export interface EnqueueInput {
   type: SyncItemType
   itemId: string
@@ -65,6 +68,13 @@ export class SyncQueueManager {
 
   /** Seeded at the interval so the very first enqueue still probes. */
   private enqueuesSincePurgeCheck = AUTO_PURGE_CHECK_EVERY_N_ENQUEUES
+
+  /**
+   * Millisecond insert time of rows queued this session, by queue id. The
+   * `created_at` column is epoch seconds, too coarse for push-lag telemetry
+   * (#2280). Memory only: the stored format is unchanged.
+   */
+  private readonly enqueueTimesMs = new Map<string, number>()
 
   setOnItemEnqueued(callback: () => void): void {
     this.onItemEnqueued = callback
@@ -106,6 +116,7 @@ export class SyncQueueManager {
           createdAt: new Date()
         })
         .run()
+      this.rememberEnqueueTime(newId)
       return newId
     })
 
@@ -188,8 +199,25 @@ export class SyncQueueManager {
       return false
     }
 
+    this.enqueueTimesMs.delete(id)
     log.debug('markSuccess: deleting item', { id: id.slice(0, 8) })
     return true
+  }
+
+  /**
+   * When a row was first queued, in epoch ms: the in-memory time for a row
+   * queued this session, else `created_at` (whole seconds).
+   */
+  enqueuedAtMs(row: { id: string; createdAt: Date }): number {
+    return this.enqueueTimesMs.get(row.id) ?? row.createdAt.getTime()
+  }
+
+  private rememberEnqueueTime(id: string): void {
+    this.enqueueTimesMs.set(id, Date.now())
+    if (this.enqueueTimesMs.size > MAX_TRACKED_ENQUEUE_TIMES) {
+      const oldest = this.enqueueTimesMs.keys().next().value
+      if (oldest !== undefined) this.enqueueTimesMs.delete(oldest)
+    }
   }
 
   markFailed(id: string, error: string): void {
@@ -262,11 +290,13 @@ export class SyncQueueManager {
   clear(): void {
     log.warn('clear: deleting ALL queue items', { count: this.getSize() })
     this.db.delete(syncQueue).run()
+    this.enqueueTimesMs.clear()
   }
 
   removeById(id: string): void {
     log.debug('removeById: deleting item', { id: id.slice(0, 8) })
     this.db.delete(syncQueue).where(eq(syncQueue.id, id)).run()
+    this.enqueueTimesMs.delete(id)
   }
 
   removeByItemId(itemId: string): number {

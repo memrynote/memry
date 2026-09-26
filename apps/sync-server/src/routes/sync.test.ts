@@ -600,7 +600,24 @@ describe('sync routes', () => {
       // #then
       expect(res.status).toBe(200)
       const json = await res.json()
-      expect(json).toEqual({ items: [], deleted: [], hasMore: false, nextCursor: 0 })
+      expect(json).toEqual({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0,
+        serverTimeMs: expect.any(Number)
+      })
+    })
+
+    // #2280: the reference a client estimates its clock offset against.
+    it('stamps the response with the server time in milliseconds', async () => {
+      const before = Date.now()
+      const res = await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
+      const after = Date.now()
+
+      const json = (await res.json()) as { serverTimeMs: number }
+      expect(json.serverTimeMs).toBeGreaterThanOrEqual(before)
+      expect(json.serverTimeMs).toBeLessThanOrEqual(after)
     })
 
     it('should forward cursor and limit query params', async () => {
@@ -833,6 +850,31 @@ describe('sync routes', () => {
       }
       expect(json.accepted).toEqual([])
       expect(json.rejected).toEqual([{ id: VALID_UUID, reason: 'VERSION_CONFLICT' }])
+    })
+
+    // #2280: the push-accept hop of the end-to-end trace names the vault.
+    it('logs the accepted cursor range under the request vault', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({
+          accepted: [VALID_UUID],
+          maxCursor: 7,
+          outcomes: [{ id: VALID_UUID, type: 'note', accepted: true, serverCursor: 7 }]
+        })
+      )
+
+      await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        env,
+        executionCtx
+      )
+
+      const pushLine = infoSpy.mock.calls
+        .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+        .find((line) => line.message === 'Record sync push processed')
+      expect(pushLine).toMatchObject({ vaultId: 'vault-1', cursorRange: [7, 7], itemCount: 1 })
+      infoSpy.mockRestore()
     })
 
     // #2283: last_cursor_seen records how far the device has PULLED. Its own

@@ -550,6 +550,47 @@ from 0 anyway and records `done` without a reset.
 The server fix has to be live before a desktop build runs the repair: a repair pull that races a
 peer push on an old Worker can skip the range again and still record `done`.
 
+## End-to-End Latency Trace
+
+A record change crosses four hops: device A queues it and pushes it, the server commits it, the
+user's Durable Object broadcasts `changes_available`, and device B pulls and applies it. Each hop
+logged on its own, so "where did this item spend 4 seconds" had no answer. The row's `server_cursor`
+is now the join key at every hop (#2280).
+
+| Hop            | Where                                      | Emitted                                                                     |
+| -------------- | ------------------------------------------ | --------------------------------------------------------------------------- |
+| origin queue   | desktop A, PostHog                         | `sync_run_completed` `action=push_lag`, `durationMs`, `value` = `maxCursor` |
+| push accept    | Worker log `Record sync push processed`    | `vaultId`, `cursorRange: [min, max]`, `itemCount`                           |
+| broadcast      | Worker log `Record changes broadcast` (DO) | `vaultId`, `cursor`, `sent`                                                 |
+| receiver apply | desktop B, PostHog                         | `sync_run_completed` `action=e2e_latency`, `durationMs`, `value` = cursor   |
+
+The join: B's `value` falls inside the push line's `cursorRange` and is at most the broadcast
+`cursor`; A's `value` is the push response's `maxCursor`, the top of the same range. Cursors are
+per account, so PostHog events join on the person plus the cursor, and Worker lines on `vaultId`
+plus the cursor. Neither log line carries a user id, device id or item id.
+
+The two metrics:
+
+- **`push_lag`** is push accepted minus row enqueued, both on device A's clock. `sync_queue.created_at`
+  is epoch seconds, so the queue keeps a millisecond enqueue time in memory for rows queued this
+  session and falls back to `created_at` for older rows. This half covers the push debounce.
+- **`e2e_latency`** is applied minus `committedAtMs`, the server's millisecond time of the push batch
+  that wrote the row (`sync_items.committed_at_ms`, migration `0010`). The apply time is moved onto
+  the server clock by an offset estimated from `serverTimeMs` on `/sync/changes` and the request's
+  round-trip midpoint; the lowest-RTT sample of the run wins, because a prefetch that overlaps a page
+  apply reads its response late.
+
+The product number is their sum. Both are capped at 20 events per pull or push run, skip anything
+older than 10 minutes (an offline backlog or a first sync is not propagation), and report a negative
+estimate as 0. `e2e_latency` counts only items applied or merged as a conflict and signed by another
+device: the feed serves a device's own writes back, and at an equal clock they apply like a peer
+write. Both reuse `sync_run_completed` because a new event name would fail the whole telemetry batch
+on an older server; a chart counting sync runs must filter on `action`.
+
+Compatibility: every field is optional. An old desktop strips the new ref fields, an old server sends
+none and the desktop then emits no `e2e_latency`, and rows written before migration `0010` keep a
+NULL commit time that the change feed omits.
+
 ## Pull Scheduling and Hang Recovery
 
 A periodic tick fires every 60 seconds; WebSocket `changes_available` and `connected` messages

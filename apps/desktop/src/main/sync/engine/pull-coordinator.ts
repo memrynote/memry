@@ -7,6 +7,7 @@ import { decryptPullBatch } from '../sync-crypto-batch'
 import { beginPageApply, replayBulkApplyJournal } from '../bulk-apply'
 import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { withRetry } from '@memry/sync-client/retry'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, getFromServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
@@ -32,6 +33,7 @@ import {
 import { parsePullItems } from './pull-envelope'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
+import { PullLatencyTrace } from './sync-latency-telemetry'
 import {
   SYNC_STATE_KEYS,
   PULL_REQUEST_MAX_IDS,
@@ -72,6 +74,7 @@ interface PullRunState {
   crdtNoteIds: string[]
   accessJwt: string
   vaultKey: Uint8Array
+  latency: PullLatencyTrace
   /** Set when the run stopped on a page it could not apply — no success finalize. */
   refused?: boolean
 }
@@ -249,7 +252,8 @@ export class PullCoordinator {
       processedIds: new Set<string>(),
       crdtNoteIds: [],
       accessJwt,
-      vaultKey
+      vaultKey,
+      latency: new PullLatencyTrace(getCurrentDeviceId(this.ctx.deps.db))
     }
   }
 
@@ -345,9 +349,11 @@ export class PullCoordinator {
         const cp = pageCursor ? `&cursor=${pageCursor}` : ''
         return withAuthRetry(
           (authToken) =>
-            getFromServer<RecordChangesResponse>(
-              `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
-              authToken
+            runState.latency.timeChanges(() =>
+              getFromServer<RecordChangesResponse>(
+                `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
+                authToken
+              )
             ),
           runState.accessJwt,
           engineAuthRetryDeps(this.ctx.deps),
@@ -371,6 +377,7 @@ export class PullCoordinator {
       new Set([...changes.items.map((item) => item.id), ...changes.deleted])
     )
     if (itemIds.length === 0) return 'none'
+    runState.latency.observePage(changes)
 
     // A changes page holds up to PULL_PAGE_LIMIT (500) refs, but POST
     // /sync/pull accepts at most PULL_REQUEST_MAX_IDS (100) ids, so the page is
@@ -867,6 +874,7 @@ export class PullCoordinator {
               continue
             }
             settled.push(dec)
+            runState.latency.noteApplied(dec, result)
 
             if (result === 'conflict') {
               reportConflict(this.ctx.deps, dec)
@@ -908,6 +916,7 @@ export class PullCoordinator {
         this.schemaInvalid.record(parsed.invalid, 'envelope')
         this.schemaInvalid.resolve(settled)
         pageApply.commit()
+        runState.latency.flush()
       } catch (pageError) {
         pageApply.rollback()
         throw pageError

@@ -285,6 +285,50 @@ describe('UserSyncState', () => {
       expect(await res.json()).toEqual({ sent: 0 })
     })
 
+    // #2280: the broadcast hop of the end-to-end trace, keyed by server cursor.
+    it('logs the vault, the cursor and how many sockets it reached, and nothing else', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      const doObj = createDO()
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-2',
+        exp: Math.floor(Date.now() / 1000) + 900
+      })
+      await doObj.fetch(connectRequest('token-2', '1.0.0', 'vault-a'))
+
+      await doObj.fetch(broadcastRequest('device-1', 42, 'vault-a'))
+
+      const lines = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)) as object)
+      expect(lines).toEqual([
+        {
+          level: 'info',
+          scope: 'UserSyncState',
+          message: 'Record changes broadcast',
+          vaultId: 'vault-a',
+          cursor: 42,
+          sent: 1
+        }
+      ])
+      infoSpy.mockRestore()
+    })
+
+    // #2280
+    it('does not log a broadcast that carries no cursor', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      const doObj = createDO()
+
+      await doObj.fetch(
+        new Request('https://do.internal/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ excludeDeviceId: 'device-1', type: 'crdt_updated', noteId: 'n' })
+        })
+      )
+
+      expect(infoSpy).not.toHaveBeenCalled()
+      infoSpy.mockRestore()
+    })
+
     it('carries sourceId through to payload for calendar push fan-out', async () => {
       // #given a single connected socket for the user
       const doObj = createDO()

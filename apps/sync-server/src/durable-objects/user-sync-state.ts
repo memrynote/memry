@@ -4,6 +4,7 @@ import { redactSensitive } from '@memry/contracts/telemetry-api'
 
 import { ErrorCodes } from '../lib/errors'
 import { verifyAccessToken } from '../lib/jwt-verify'
+import { createLogger } from '../lib/logger'
 import { pushPostHogLogs } from '../services/posthog-logs'
 import type { Bindings } from '../types'
 
@@ -24,6 +25,8 @@ const CLOSE_CODE_TOKEN_EXPIRED = 4003
 const CLOSE_CODE_DEVICE_REVOKED = 4004
 const CLOSE_CODE_RATE_LIMITED = 4008
 const CLOSE_CODE_VERSION_INCOMPATIBLE = 4009
+
+const logger = createLogger('UserSyncState')
 
 function parseClientMessage(
   message: string | ArrayBuffer
@@ -222,6 +225,12 @@ export class UserSyncState extends DurableObject<Bindings> {
       } catch {
         // socket may have closed between getWebSockets and send
       }
+    }
+
+    // Broadcast hop of the end-to-end trace (#2280). Only a record push carries
+    // a cursor. No device or item ids: the cursor and vault are the join key.
+    if (body.cursor !== undefined) {
+      logger.info('Record changes broadcast', { vaultId: body.vaultId, cursor: body.cursor, sent })
     }
 
     return Response.json({ sent })

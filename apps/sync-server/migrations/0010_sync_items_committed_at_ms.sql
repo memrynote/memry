@@ -1,0 +1,13 @@
+-- End-to-end sync trace (#2280). The millisecond server time of the push batch
+-- that last wrote the row, so a receiving device can measure commit-to-apply
+-- latency. updated_at is epoch seconds, too coarse for a propagation metric
+-- measured in hundreds of milliseconds.
+--
+-- Backward compatibility:
+--   * Nullable, no default, no backfill. A row written before this migration
+--     keeps NULL and /sync/changes omits committedAtMs for it. There is no
+--     honest value to backfill with, and updated_at * 1000 would report a
+--     fabricated precision.
+--   * A Worker deployed before this migration (or rolled back after it) never
+--     reads or writes the column, so old server code is unaffected.
+ALTER TABLE sync_items ADD COLUMN committed_at_ms INTEGER;

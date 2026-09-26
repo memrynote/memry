@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { createTestDataDb, trackPreparedSql, type TestDatabaseResult } from '@tests/utils/test-db'
 import { DEFAULT_MAX_ATTEMPTS, SyncQueueManager, type EnqueueInput } from '@memry/sync-client/queue'
@@ -573,6 +573,35 @@ describe('SyncQueueManager', () => {
       const ids = items.map((i) => i.itemId)
       expect(ids).toContain('persist-1')
       expect(ids).toContain('persist-2')
+    })
+  })
+
+  // #2280: sync_queue.created_at is epoch seconds; push lag is measured in ms.
+  describe('enqueuedAtMs', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('returns the millisecond time of the first enqueue, not the seconds column', () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(1_700_000_000_789)
+      queue.enqueue(makeInput({ payload: '{"v":1}' }))
+      vi.setSystemTime(1_700_000_001_500)
+      queue.enqueue(makeInput({ payload: '{"v":2}' }))
+
+      const [row] = queue.peek(1)
+      expect(row.createdAt.getTime()).toBe(1_700_000_000_000)
+      expect(queue.enqueuedAtMs(row)).toBe(1_700_000_000_789)
+    })
+
+    it('falls back to the seconds column for a row queued in an earlier session', () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(1_700_000_000_789)
+      queue.enqueue(makeInput())
+
+      const nextSession = new SyncQueueManager(testDb.db)
+      const [row] = nextSession.peek(1)
+      expect(nextSession.enqueuedAtMs(row)).toBe(1_700_000_000_000)
     })
   })
 
