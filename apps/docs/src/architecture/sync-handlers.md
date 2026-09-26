@@ -190,6 +190,19 @@ pull decline the tombstone, so it kept a ghost copy of an item deleted on every 
 handler that adds its own delete guard has to use `resolveDeleteClock`, not a hand-rolled
 `resolveClock` comparison.
 
+## Notes and Journals Share One Table
+
+Notes and journals both live in `note_metadata`, keyed by id alone, while the server keeps one row
+per (type, id). A legacy-id journal tombstone and a live note with the same id therefore both come
+back on every pull. Before the guard, the journal tombstone purged the note's CRDT doc and dropped its
+row, and the note upsert then wrote a fresh `Untitled N.md`, orphaning the old file on every pull.
+`noteHandler` and `journalHandler` now check the row's type first (`journalDate` set means journal)
+through `belongsToOtherType` (`item-handlers/note-row-type.ts`). On a mismatch they return
+`'skipped'` with no purge and no file change, and log one warning per id and type.
+
+A remote note delete also removes the note's `note_date` reminders, directly and with no sync hooks.
+The device that deleted the note owns those tombstones, so the receiver enqueues nothing.
+
 ## Atomicity
 
 All `applyUpsert` and `applyDelete` paths run inside `db.transaction()`:
@@ -484,6 +497,14 @@ The task and project writers outside the tasks domain use the same path: inbox t
 (`inbox/filing.ts`), the note-project-links projector and the tag merge retag
 (`commitTaskRetag`, `tags/runtime-effects.ts`). The activity log's `task_activity` rows and every other
 type still enqueue after their own commit.
+
+Project links derived while applying a synced note are the exception: `reconcileNoteLinks(..., 'remote')`
+writes the rows and commits no intent. The device that edited the note's frontmatter already pushed
+the project, and that payload is where iOS reads markdown-note membership. Re-pushing from every
+receiver only bumped the project clock on each device and could push a new row's `position: 0` and
+`pinned: 0` over a pin set elsewhere. When `projectHandler` inserts a project from sync,
+`linkNotesNamingProject` links the notes whose frontmatter already names it, also without an intent,
+so a note applied before its project does not wait for a re-pull.
 
 ### Dirty recovery
 
