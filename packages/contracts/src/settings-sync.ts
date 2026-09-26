@@ -2,6 +2,12 @@ import { z } from 'zod'
 import { VectorClockSchema } from './sync-api'
 import { SidebarSortModesSchema } from './sidebar-sort'
 
+/** A non-Google provider's synced settings (`calendar.<provider>`, spec 007 D3a). */
+const CalendarProviderSyncedSettingsSchema = z.object({
+  agentReadEventsConsent: z.boolean().nullable().optional(),
+  pushEventsToProvider: z.boolean().optional()
+})
+
 export const SyncedSettingsSchema = z.object({
   general: z
     .object({
@@ -43,10 +49,32 @@ export const SyncedSettingsSchema = z.object({
       sortBy: z.string().optional()
     })
     .optional(),
+  // Spec 007 D3a: calendar settings follow the user across devices, one field
+  // clock per leaf (`calendar.google.pushEventsToGoogle`, ...). Every key is
+  // optional, and `catchall` lets a provider group a newer build adds ride
+  // along instead of being stripped.
   calendar: z
     .object({
-      weekStartDay: z.enum(['sunday', 'monday']).optional()
+      weekStartDay: z.enum(['sunday', 'monday']).optional(),
+      showNotesOnCalendar: z.boolean().optional(),
+      // `null` = no cross-provider default (routing falls back to Google's).
+      defaultWriteTarget: z
+        .object({ provider: z.string(), remoteCalendarId: z.string() })
+        .nullable()
+        .optional(),
+      google: z
+        .object({
+          defaultTargetCalendarId: z.string().nullable().optional(),
+          onboardingCompleted: z.boolean().optional(),
+          promoteConfirmDismissed: z.boolean().optional(),
+          pushEventsToGoogle: z.boolean().optional(),
+          agentReadEventsConsent: z.boolean().nullable().optional()
+        })
+        .optional(),
+      caldav: CalendarProviderSyncedSettingsSchema.optional(),
+      ics: CalendarProviderSyncedSettingsSchema.optional()
     })
+    .catchall(z.unknown())
     .optional(),
   keyboard: z
     .object({

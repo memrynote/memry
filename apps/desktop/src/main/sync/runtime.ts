@@ -50,7 +50,7 @@ import {
   resetCanvasFolderSyncService
 } from '@memry/sync-client/canvas-folder-sync'
 import { initProjectSyncService, resetProjectSyncService } from '@memry/sync-client/project-sync'
-import { initSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
+import { initSettingsSync, resetSettingsSyncManager } from '../calendar/calendar-settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
 import { resetAttachmentQueue } from './attachment-outbox'
@@ -448,7 +448,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const canvasSync = initCanvasSyncService(recordSyncDeps)
       const canvasFolderSync = initCanvasFolderSyncService(recordSyncDeps)
       const projectSync = initProjectSyncService(recordSyncDeps)
-      const settingsSync = initSettingsSyncManager(recordSyncDeps)
+      const settingsSync = initSettingsSync(recordSyncDeps)
       const noteSync = initNoteSyncService({ queue, getDeviceId })
       const journalSync = initJournalSyncService({ queue, getDeviceId })
       const tagDefinitionSync = initTagDefinitionSyncService(recordSyncDeps)
