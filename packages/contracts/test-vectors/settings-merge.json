@@ -1,0 +1,828 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "settings-merge",
+    "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
+    "implementation": "packages/sync-client/src/settings-merge.ts",
+    "caseCount": 18
+  },
+  "cases": [
+    {
+      "name": "row-1-remote-total-greater",
+      "pins": "§6.3.2 row 1",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 2,
+            "device-b": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-c": 5
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 2,
+            "device-b": 1,
+            "device-c": 5
+          }
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "row-2-plain-tie-remote-wins",
+      "pins": "§6.3.2 row 2: REMOTE wins a tie; tick-max kept local here",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-b": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1,
+            "device-b": 1
+          }
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "row-3-equal-clocks",
+      "pins": "§6.3.2 row 3",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 3,
+            "device-b": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 3,
+            "device-b": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 3,
+            "device-b": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "row-4-local-offline-wins-tie",
+      "pins": "§6.3.2 row 4: the side carrying _offline wins a tie",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1,
+            "_offline": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-b": 2
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1,
+            "_offline": 1,
+            "device-b": 2
+          }
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "row-5-both-offline-remote-wins",
+      "pins": "§6.3.2 row 5",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1,
+            "_offline": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-b": 1,
+            "_offline": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1,
+            "_offline": 1,
+            "device-b": 1
+          }
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "row-6-offline-needs-differ",
+      "pins": "§6.3.2 row 6",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1,
+            "_offline": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-b": 2
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1,
+            "_offline": 1,
+            "device-b": 2
+          }
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "row-7-empty-clocks",
+      "pins": "§6.3.2 row 7",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {}
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {}
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {}
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "row-8-sum-beats-causality",
+      "pins": "§6.3.2 row 8: the sum, not compare, picks the winner",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 4
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1,
+            "device-b": 1,
+            "device-c": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 4,
+            "device-b": 1,
+            "device-c": 1
+          }
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "row-9-local-dominates",
+      "pins": "§6.3.2 row 9",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 2
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 2
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "row-10-absent-winner-keeps-local",
+      "pins": "§6.3.2 row 10 on a settings path: the remote wins with no value, the local value stays",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {}
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 2
+          }
+        }
+      },
+      "rustPending": "the Rust core removes the path when the winner has no value; §6.9.0 defers removal until desktop keeps unmodelled keys (#2183)",
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 2
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "stripped-value-echo-keeps-local",
+      "pins": "an older build stripped the value its schema does not model and echoed the clock (#16): a tie the remote wins with no value",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {}
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          }
+        }
+      },
+      "rustPending": "the Rust core removes the path when the winner has no value; §6.9.0 defers removal until desktop keeps unmodelled keys (#2183)",
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "legacy-local-key",
+      "pins": "#2287: a stored `local` component is an ordinary key",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "local": 3
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "local": 3,
+            "device-a": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "y"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "local": 3,
+            "device-a": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "two-days-two-clocks",
+      "pins": "§6.9: a clock per weekday keeps both concurrent edits",
+      "local": {
+        "settings": {
+          "journal": {
+            "weekdayTemplates": {
+              "3": "wed-local"
+            }
+          }
+        },
+        "fieldClocks": {
+          "journal.weekdayTemplates.3": {
+            "device-a": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "journal": {
+            "weekdayTemplates": {
+              "4": "thu-remote"
+            }
+          }
+        },
+        "fieldClocks": {
+          "journal.weekdayTemplates.4": {
+            "device-b": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "journal": {
+            "weekdayTemplates": {
+              "3": "wed-local",
+              "4": "thu-remote"
+            }
+          }
+        },
+        "fieldClocks": {
+          "journal.weekdayTemplates.3": {
+            "device-a": 1
+          },
+          "journal.weekdayTemplates.4": {
+            "device-b": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "single-clocked-list",
+      "pins": "§6.9: sidebar.sectionOrder moves as one value under one clock",
+      "local": {
+        "settings": {
+          "sidebar": {
+            "sectionOrder": [
+              "notes",
+              "tasks",
+              "calendar"
+            ]
+          }
+        },
+        "fieldClocks": {
+          "sidebar.sectionOrder": {
+            "device-a": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "sidebar": {
+            "sectionOrder": [
+              "calendar",
+              "notes",
+              "tasks"
+            ]
+          }
+        },
+        "fieldClocks": {
+          "sidebar.sectionOrder": {
+            "device-b": 2
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "sidebar": {
+            "sectionOrder": [
+              "calendar",
+              "notes",
+              "tasks"
+            ]
+          }
+        },
+        "fieldClocks": {
+          "sidebar.sectionOrder": {
+            "device-a": 1,
+            "device-b": 2
+          }
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "explicit-null-is-a-value",
+      "pins": "§13.4: null is a clear that wins like any value",
+      "local": {
+        "settings": {
+          "journal": {
+            "weekdayTemplates": {
+              "1": "morning-pages"
+            }
+          }
+        },
+        "fieldClocks": {
+          "journal.weekdayTemplates.1": {
+            "device-a": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "journal": {
+            "weekdayTemplates": {
+              "1": null
+            }
+          }
+        },
+        "fieldClocks": {
+          "journal.weekdayTemplates.1": {
+            "device-a": 1,
+            "device-b": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "journal": {
+            "weekdayTemplates": {
+              "1": null
+            }
+          }
+        },
+        "fieldClocks": {
+          "journal.weekdayTemplates.1": {
+            "device-a": 1,
+            "device-b": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "unaddressable-key-rides-along",
+      "pins": "§6.9.0: a clock key that is not a path keeps its union clock and arbitrates nothing",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          },
+          "general.": {
+            "device-b": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "x"
+          }
+        },
+        "fieldClocks": {
+          "general.": {
+            "device-b": 1
+          },
+          "general.accentColor": {
+            "device-a": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "unclocked-keys-local-kept-remote-not-carried",
+      "pins": "§6.9.2: only clocked paths are written; the base is the local copy",
+      "local": {
+        "settings": {
+          "notes": {
+            "defaultFolder": "local"
+          }
+        },
+        "fieldClocks": {}
+      },
+      "remote": {
+        "settings": {
+          "notes": {
+            "spellCheck": true
+          }
+        },
+        "fieldClocks": {}
+      },
+      "expected": {
+        "settings": {
+          "notes": {
+            "defaultFolder": "local"
+          }
+        },
+        "fieldClocks": {},
+        "requeue": false
+      }
+    },
+    {
+      "name": "three-paths-three-branches",
+      "pins": "one merge where each path takes a different branch, and one path is clocked on one side only",
+      "local": {
+        "settings": {
+          "general": {
+            "accentColor": "x",
+            "fontFamily": "serif"
+          },
+          "editor": {
+            "width": "full"
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 2
+          },
+          "general.fontFamily": {
+            "device-a": 1
+          },
+          "editor.width": {
+            "device-a": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "accentColor": "y",
+            "fontFamily": "inter"
+          },
+          "tasks": {
+            "showCompleted": true
+          }
+        },
+        "fieldClocks": {
+          "general.accentColor": {
+            "device-a": 1
+          },
+          "general.fontFamily": {
+            "device-b": 1
+          },
+          "tasks.showCompleted": {
+            "device-b": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "accentColor": "x",
+            "fontFamily": "inter"
+          },
+          "editor": {
+            "width": "full"
+          },
+          "tasks": {
+            "showCompleted": true
+          }
+        },
+        "fieldClocks": {
+          "editor.width": {
+            "device-a": 1
+          },
+          "general.accentColor": {
+            "device-a": 2
+          },
+          "general.fontFamily": {
+            "device-a": 1,
+            "device-b": 1
+          },
+          "tasks.showCompleted": {
+            "device-b": 1
+          }
+        },
+        "requeue": true
+      }
+    }
+  ]
+}
