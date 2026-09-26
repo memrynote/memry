@@ -39,6 +39,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     /// The Inbox tab's stack (inbox spec D1).
     @State private var inboxRouter = InboxRouter()
     private let inboxLinks = InboxLinks.shared
+    private let calendarLinks = CalendarLinks.shared
     @Environment(\.inboxStore) private var inboxStore
     /// Features (settings spec ST44): a module turned off loses its tab.
     /// Notes and More are always there.
@@ -74,6 +75,11 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         .environment(journalRouter)
         .environment(\.openJournalDay, { date in journalRouter.openDay(date) })
         .environment(inboxRouter)
+        // A `memry://calendar` link opens More › Calendar; the calendar screen
+        // takes the link itself and opens the day and the item (spec 007 CL022).
+        .onChange(of: calendarLinks.pending, initial: true) { _, pending in
+            if pending != nil { router.openCalendar() }
+        }
         // A tapped inbox notification or a Share hand-off opens the Inbox.
         .onChange(of: inboxLinks.pending, initial: true) {
             if inboxLinks.take() { inboxRouter.openInbox(in: router) }

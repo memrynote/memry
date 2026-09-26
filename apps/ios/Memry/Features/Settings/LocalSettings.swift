@@ -32,7 +32,7 @@ enum ImageFiling: String, CaseIterable, Identifiable, Sendable {
 
 /// A module that can be turned off (Features, 14).
 enum AppFeature: String, CaseIterable, Identifiable, Sendable {
-    case home, inbox, journal, tasks
+    case home, inbox, journal, tasks, calendar
     var id: String { rawValue }
 }
 
@@ -43,7 +43,7 @@ enum SettingsFeatureGates {
     /// does something. Home has no tab since the Inbox replaced it.
     static func isShipped(_ feature: AppFeature) -> Bool {
         switch feature {
-        case .inbox, .tasks, .journal: true
+        case .inbox, .tasks, .journal, .calendar: true
         case .home: false
         }
     }

@@ -127,6 +127,9 @@ struct TypeRole: Sendable, Equatable {
         case label
         /// Metadata, codes, and dense numeric readouts.
         case caption
+        /// The densest read: a time grid's hour labels, a calendar chip's time
+        /// and a week strip's weekday letters (spec 007 CL020; Paper 11px).
+        case micro
 
         var textStyle: Font.TextStyle {
             switch self {
@@ -139,6 +142,7 @@ struct TypeRole: Sendable, Equatable {
             case .supporting: .subheadline
             case .label: .callout
             case .caption: .footnote
+            case .micro: .caption2
             }
         }
 
@@ -155,6 +159,7 @@ struct TypeRole: Sendable, Equatable {
             case .supporting: .subheadline
             case .label: .callout
             case .caption: .footnote
+            case .micro: .caption2
             }
         }
     }

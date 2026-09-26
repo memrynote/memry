@@ -68,6 +68,11 @@
 	     intercepts its own callback -- but an unregistered scheme is one the
 	     system will hand to nobody if it ever arrives from outside the session,
 	     which is a silent failure rather than a refusal. -->
+	<!-- Spec 007 CL064 (goal D4): This iPhone's calendars are read on the
+	     device only, shown beside memrynote items, and never synced. -->
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Memry shows the calendars on this iPhone beside your notes and tasks. They stay on this iPhone and are never synced.</string>
+
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -78,6 +83,18 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.244914619370-slch4ku0ukadc3lljpm8cs53arn9tapi</string>
+			</array>
+		</dict>
+		<!-- Spec 007 CL022: in-app links such as memry://calendar?date=&event=
+		     (Day on the date with the item's sheet, desktop's Agent Chat focus). -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.memry.app.links</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>memry</string>
 			</array>
 		</dict>
 	</array>

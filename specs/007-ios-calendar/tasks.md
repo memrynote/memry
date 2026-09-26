@@ -162,10 +162,11 @@ pnpm lint && pnpm typecheck
 
 ## Phase 0: plan and facts
 
-- [ ] CL000 Read goal.md, root + iOS `AGENTS.md`, `DESIGN.md`, `PRODUCT.md`,
+- [x] CL000 Read goal.md, root + iOS `AGENTS.md`, `DESIGN.md`, `PRODUCT.md`,
       spec 004 §0–§1/§5/§6, spec 005 goal + tasks, artboards 00 and 00b in
       full, `get_tree_summary` + screenshot of 01–31, the desktop files in
       goal "Read first" §6, `Tokens.swift`. Create the worktree.
+      Evidence: all 33 artboards of `p-5-0` exported through `paper_export` (00, 00b read in full; 01–31 read against each build as their phase lands); goal, AGENTS, DESIGN, PRODUCT, specs 004/005, desktop sources read in Phase 0.
 - [x] CL001 Payload facts → §5: the four schemas from
       `packages/contracts/src/sync-payloads.ts` (every field, optionality,
       enums, `fieldClocks`, deletes), their DB shapes (`calendar-*.ts`,
@@ -217,7 +218,7 @@ pnpm lint && pnpm typecheck
       editability, colors, source, binding; plus `calendar_sources()`,
       `calendar_event(id)`, `calendar_external_event(id)` (attendees,
       conference, reminders, recurrence, location), `calendar_search(query,
-  range)`. Vectors from desktop projection for a fixed fixture (tasks,
+range)`. Vectors from desktop projection for a fixed fixture (tasks,
       reminders, snoozes, notes, spans, time zones, DST).
       Evidence: `Calendar.range/search/sources/event/external_event/linked_projects`; `calendar.json` `projection` (4 queries over every row type in America/New_York across the Nov DST change, 3 searches) — `every_range_query_answers_desktops_projection`, `search_ranks_as_desktop_does` green.
 - [x] CL013 Write API: create / update / delete event, move (start, end),
@@ -259,35 +260,43 @@ pnpm lint && pnpm typecheck
 
 ## Phase 2: primitives and shell
 
-- [ ] CL020 `Tokens.Calendar`: 6 type hues (rail, surface, meta ink) light +
+- [x] CL020 `Tokens.Calendar`: 6 type hues (rail, surface, meta ink) light +
       dark, dashed date-reminder style, 11 event colors, now-line, today
       fill; AA contrast checked.
-- [ ] CL021 Primitives: item chip (inline + block layout, rail, checkbox for
+      Evidence: `Tokens+Calendar.swift` (six hues rail/surface/meta light+dark, dashed `note_date`, 11 event colours, now line, today fill); `CalendarTokenTests.every_meta_ink_clears_AA_on_its_surface_in_both_styles` green (Unit, 17/17 calendar tests).
+- [x] CL021 Primitives: item chip (inline + block layout, rail, checkbox for
       tasks, ended / triggered fade, selected state, custom color), week
       strip day cell (dot row, today fill), all-day strip, time gutter +
       hour grid, now-line, overlap-lane layout (port of `overlap-layout.ts`,
       unit-tested), span-bar layout per week row (unit-tested).
-- [ ] CL022 Entry point: More › Calendar row, More tab selected state,
+      Evidence: `CalendarChip` (inline/block/compact, rail, task checkbox, ended fade, selected, custom colour), `CalendarWeekStrip`, `CalendarAllDayStrip`, `CalendarTimeGrid` (gutter, hairlines, now line); `CalendarLayoutTests.overlapping_items_share_a_cluster_of_lanes` + `spans_clip_to_the_week_and_stack_rows` green; CL01-day.png, CL03-week.png.
+- [x] CL022 Entry point: More › Calendar row, More tab selected state,
       deep-link route `memry://calendar?date=&event=`.
-- [ ] CL023 Calendar screen shell: large month title + `toolbarTitleMenu`
+      Evidence: More › Calendar row (`more.calendar`), More tab stays selected (every CL0x screenshot); `xcrun simctl openurl … memry://calendar?date=2026-09-25` opened Day on Fri Sep 25 in the open vault (driver run); `a_calendar_link_reads_its_day_and_event` green.
+- [x] CL023 Calendar screen shell: large month title + `toolbarTitleMenu`
       (02), glass capsule (search, filter), floating "+", view state
       persisted per device (view, anchor date, filters, timeline settings),
       paging model, loading and error states (`ErrorMapping`).
       Evidence: CL02-title-menu.png.
+      Evidence: CL02-title-menu.png (views, Today with date, Go to date, Calendar settings); glass capsule + floating + on every screen; view + anchor survive relaunch (reopened on the deep-linked Sep 25), `view_state_decodes_an_older_shape` green; failures go through `ErrorMapping.userFacing` in `CalendarStore.report`.
 
 ## Phase 3: views
 
-- [ ] CL030 **01 Day**: week strip paging in step with the day pager, dots,
+- [x] CL030 **01 Day**: week strip paging in step with the day pager, dots,
       all-day strip, grid scrolled to now on today, chips per CL021, pull to
       refresh. Evidence: CL01-day.png.
-- [ ] CL031 **03 Week**: 7 columns, span row, today column tint, swipe by
+      Evidence: CL01-day.png; driver: swipe on the grid moves one day (Oct 1 → Oct 2), swipe on the week strip moves a week (Sep 26 → Oct 3), vertical scroll works over the grid, today opens an hour above the now line, all-day strip pinned (three rows, then scrolls); `.refreshable` → `store.sync()`.
+- [x] CL031 **03 Week**: 7 columns, span row, today column tint, swipe by
       week, `weekStartDay`. Evidence: CL03-week.png.
-- [ ] CL032 **04 Month**: grid, dots, multi-day bars, "N more", tap day →
+      Evidence: CL03-week.png: seven columns, span row (three rows then scrolls, §6), today column tint, compact chips; swipe pages by week (`DragGesture` on the grid); columns follow `store.weekStartsOn`.
+- [x] CL032 **04 Month**: grid, dots, multi-day bars, "N more", tap day →
       list below, double tap → Day, long press + drag → CL040 all-day.
       Evidence: CL04-month.png.
-- [ ] CL033 **05 Year** + **06 day peek**: tap day → medium sheet, row →
+      Evidence: CL04-month.png (grid, dots, "+N", multi-day bars, weekends and other months dimmed, selected-day list); driver: double tap Sep 24 → Day Sep 24; long press Sep 15 + drag to Sep 17 → composer "Tue, Sep 15 – Sep 17" all-day.
+- [x] CL033 **05 Year** + **06 day peek**: tap day → medium sheet, row →
       item sheet, Open day → Day, tap month name → Month.
       Evidence: CL05-year.png, CL06-peek.png.
+      Evidence: CL05-year.png (three columns, tint month names, today, dots), CL06-peek.png; driver: tap Aug name → Month Aug; peek row "Coffee with M." → Day Sep 26 + its event sheet.
 - [ ] CL034 **07 Timeline**: zoom segmented, pinned title column, grouped
       rows, bars / due diamonds / overdue / undated hint, today line, hold +
       drag bar and ends, tap undated day to date it, Undo.
@@ -296,11 +305,13 @@ pnpm lint && pnpm typecheck
       `timeline-action-panel` (open, open in Tasks, set start, set due, week
       earlier / later, clear dates, complete / uncomplete, change project).
       Evidence: CL08-display.png, CL09-actions.png.
-- [ ] CL036 **10 Filter sheet**: sources switches, 7 type chips, per-provider
+- [x] CL036 **10 Filter sheet**: sources switches, 7 type chips, per-provider
       calendar list, tick a not-syncing calendar subscribes it (CL013),
       refresh, Manage accounts → 27. Evidence: CL10-filter.png.
-- [ ] CL037 **11 Search**: results grouped, tap → Day on date + item sheet.
+      Evidence: CL10-filter.png (sources switches, seven type chips filled when on, per-provider list, refresh, Manage accounts); subscribe-on-tick logic `source_selection_ticks_subscribe_and_unticks_only_hide` green + `set_source_selected` write vector. The account has no provider calendars yet; the list with real rows is re-shot at CL061.
+- [x] CL037 **11 Search**: results grouped, tap → Day on date + item sheet.
       Evidence: CL11-search.png.
+      Evidence: CL11-search.png (field focused, keyboard up, grouped This week / Later / Earlier, detail line per Paper 11); driver: tap "Coffee with M." → Day Sep 26 + event sheet.
 - [ ] CL038 Phase commit.
 
 ## Phase 4: create and edit
@@ -665,6 +676,35 @@ onboardingCompleted, promoteConfirmDismissed, pushEventsToGoogle, agentReadEvent
   `dayCellClickBehavior` / `calendarPageClickOverride` (desktop sidebar day panel, desktop
   only per artboard 00), EventKit enablement + its per-calendar switches, provider secrets,
   sync cursors (cursors live on the synced source row already, desktop behaviour).
+- 2026-09-26 — CL030 — SwiftUI `LongPressGesture.sequenced(before: DragGesture)` on scroll
+  content stopped the Day / Week grids from scrolling or paging at all (driver drag: no
+  movement; with the gesture off the grid scrolled). Replaced by `CalendarHoldDrag`, a
+  `UIGestureRecognizerRepresentable` long press that fails on early movement (leaving the pan
+  to the scroll view) and keeps tracking after it lands. Used for empty-time create, chip
+  move and Month range; the grid sets `scrollDisabled` while a hold is live.
+- 2026-09-26 — CL030 — The day pager re-centred a three-page window on every settle, which
+  shifted pages under a finishing scroll and skipped days (Sep 26 → Oct 1 on one swipe). It
+  now pages over ±60 days around a base that only moves near its edge or on a jump.
+- 2026-09-26 — CL031 — Desktop grows the all-day row to fit every item. On a phone five
+  all-day tasks pushed the hours off screen, so Day and Week show three rows and scroll the
+  rest inside the strip. Week chips narrower than 20 pt show the rail only (words broke
+  letter by letter).
+- 2026-09-26 — CL033 — Year follows Paper 05: three months a row (two at accessibility
+  sizes), every month name in tint ink, subtitle "Year · tap a day to peek, a month to open".
+- 2026-09-26 — CL034 — Desktop day widths (48 / 26 / 8 px) are for a wide window; the phone
+  canvas is about 260 pt beside the title column. iOS uses 20 / 7 / 2.5 pt so the three zooms
+  show about two weeks / six weeks / four months, one tick row as Paper 07 draws it (days;
+  week starts with "Oct 5" at a month change; month names). Header: "Timeline" with "By
+  project · N tasks · M events".
+- 2026-09-26 — CL034 — `VaultCalendarScope` built its store before the vault's tasks store
+  existed and never rebuilt, so Timeline had no tasks. The scope now rebuilds once the tasks
+  store arrives.
+- 2026-09-26 — CL036 — Paper 10's footer says "Filters apply to this view only"; filters here
+  are device state shared by every view, so the footer reads "Filters apply on this iPhone
+  only". Title "Calendars"; refresh on the left, filled check closes.
+- 2026-09-26 — CL035 — Bar menu per Paper 09: labelled control group (1 week earlier / 1 week
+  later / Complete), plain rows, set start / due carry the current date as a subtitle, the
+  lifted preview card (project, title, bar, dates · N days).
 
 ## 7. Blockers
 

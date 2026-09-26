@@ -66,6 +66,7 @@ struct VaultListView: View {
         // The tab shell, not the notes screen directly: an opened vault is the
         // whole product surface, and Notes is one of its five tabs.
         VaultTasksScope(vault: vault, secureStore: model.secureStore, filler: filler) { tasksStore, tasksFailure in
+            VaultCalendarScope(vault: vault, secureStore: model.secureStore, filler: filler, tasks: tasksStore) {
             VaultInboxScope(vault: vault, secureStore: model.secureStore, filler: filler) {
                 VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
                     VaultTabsView(notes: {
@@ -95,6 +96,7 @@ struct VaultListView: View {
                         MoreTabView(context: settings, browse: browse)
                     })
                 }
+            }
             }
         }
     }
