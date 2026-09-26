@@ -1375,6 +1375,9 @@ describe('main index phase2 exports', () => {
   })
 
   it('wires BrowserWindow navigation, ready, and external-link handlers', async () => {
+    // Fake timers so the post-reveal work this reveal schedules cannot fire into
+    // a later test (afterEach drops pending fake timers with useRealTimers).
+    vi.useFakeTimers()
     whenReadyMock.mockResolvedValue(undefined)
 
     await importMainModule()
