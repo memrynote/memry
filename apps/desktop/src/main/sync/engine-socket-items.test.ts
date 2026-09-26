@@ -463,7 +463,8 @@ describe('SyncEngine socket items (#2300)', () => {
 
       ws.emit('message', { kind: 'changes_available', cursor: 101 } satisfies SyncSocketEvent)
       await secondSliceEntered
-      expect(filterName('filter-x')).toBeUndefined()
+      // Slice 2's POST is prefetched while slice 1 applies.
+      await vi.waitFor(() => expect(filterName('filter-x')).toBeUndefined())
 
       ws.emit('message', staleFrame())
       await new Promise((resolve) => setTimeout(resolve, 100))

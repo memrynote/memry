@@ -14,10 +14,17 @@ import {
 import { decryptCrdtUpdate } from '../crdt-encrypt'
 import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainError } from '../../telemetry/diagnostics'
-import type { CrdtPullCost, SyncContext } from './sync-context'
+import {
+  BOOTSTRAP_CRDT_SNAPSHOT_GET_WINDOW,
+  CRDT_SNAPSHOT_GET_WINDOW,
+  type CrdtPullCost,
+  type SyncContext
+} from './sync-context'
+import { getBootstrapElevationFactor } from '../bootstrap-session-state'
 import type { CrdtProvider } from '../crdt-provider'
 import { SESSION_ONLY_CRDT_BODY_DEBTS, type CrdtBodyDebtStore } from './crdt-body-debts'
 import { CrdtPullLedger, isFailedBodyPull, type PassFailures } from './crdt-pull-ledger'
+import { prefetchWindow } from './prefetch-window'
 
 const log = createLogger('CrdtSyncCoordinator')
 
@@ -348,6 +355,17 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     }
   }
 
+  private fetchSnapshotBaseline(
+    noteId: string,
+    token: string,
+    cost: CrdtPullCost
+  ): ReturnType<typeof fetchCrdtSnapshot> {
+    // Charged before the request, not after: a GET that throws still spent the
+    // bucket, and a failure is exactly when the next chunk most needs to wait.
+    cost.snapshotGets++
+    return fetchCrdtSnapshot(noteId, token)
+  }
+
   /**
    * `verified: false` means the server's snapshot for this note was left out of
    * the local doc. The caller has to carry that up: a snapshot push would
@@ -356,15 +374,11 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    */
   private async applySnapshotBaseline(
     noteId: string,
-    token: string,
+    snapshot: ReturnType<typeof fetchCrdtSnapshot>,
     vaultKey: Uint8Array,
-    mode: 'single' | 'batch',
-    cost: CrdtPullCost
+    mode: 'single' | 'batch'
   ): Promise<{ since: number; verified: boolean; dropped?: boolean }> {
-    // Charged before the request, not after: a GET that throws still spent the
-    // bucket, and a failure is exactly when the next chunk most needs to wait.
-    cost.snapshotGets++
-    const snapshotResult = await fetchCrdtSnapshot(noteId, token)
+    const snapshotResult = await snapshot
     if (!snapshotResult || !this.ctx.deps.crdtProvider) {
       return { since: 0, verified: true }
     }
@@ -504,7 +518,12 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       // The single-note path is not paced, so nothing reads this back. It is
       // still counted rather than made optional, so there is one shape for
       // "what a baseline costs" instead of two.
-      const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single', noCost())
+      const baseline = await this.applySnapshotBaseline(
+        noteId,
+        this.fetchSnapshotBaseline(noteId, token, noCost()),
+        vaultKey,
+        'single'
+      )
       let since = baseline.since
       let sawUnmerged = !baseline.verified || baseline.dropped === true
       // Owed a pull as well as flagged, matching the batch path: a signer that
@@ -1017,6 +1036,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     // earlier debt would otherwise block its clear forever.
     try {
       const sinceMap = new Map<string, number>()
+      const opened: string[] = []
 
       for (const noteId of noteIds) {
         const wasOpen = crdtProvider.getDoc(noteId) != null
@@ -1034,7 +1054,22 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           this.owePendingPull(noteId)
           continue
         }
+        opened.push(noteId)
+      }
 
+      // The snapshot GETs run ahead of the apply, which still takes one note
+      // at a time in chunk order: only the network waits overlap.
+      const baselineIds = opened.filter((noteId) => !skipBaseline.has(noteId))
+      const width =
+        getBootstrapElevationFactor() > 1
+          ? BOOTSTRAP_CRDT_SNAPSHOT_GET_WINDOW
+          : CRDT_SNAPSHOT_GET_WINDOW
+      const snapshotOf = prefetchWindow(baselineIds, width, (noteId) =>
+        this.fetchSnapshotBaseline(noteId, token, cost)
+      )
+      let baselineIndex = 0
+
+      for (const noteId of opened) {
         const skipSince = skipBaseline.get(noteId)
         if (skipSince !== undefined) {
           // The GET this whole change exists to avoid. The doc already holds
@@ -1046,7 +1081,12 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         }
 
         try {
-          const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch', cost)
+          const baseline = await this.applySnapshotBaseline(
+            noteId,
+            snapshotOf(baselineIndex++),
+            vaultKey,
+            'batch'
+          )
           sinceMap.set(noteId, baseline.since)
           if (!baseline.verified) {
             sawUnmerged.add(noteId)

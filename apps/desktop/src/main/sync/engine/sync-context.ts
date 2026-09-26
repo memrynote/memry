@@ -206,6 +206,12 @@ export const PULL_PAGE_LIMIT = 500
 // The server's PullRequestSchema caps `itemIds` at 100 per POST /sync/pull —
 // exceeding it is a 400, so a changes page is always pulled in slices of this.
 export const PULL_REQUEST_MAX_IDS = 100
+// POST /sync/pull slices of one page kept in flight while an earlier one
+// applies. A staging slice POST takes ~1.4 s and its apply 15-300 ms, so one
+// at a time left the network idle for most of a page. 2 in flight is ~85/min
+// at that latency, under the 120/min `sync_pull` bucket without a bootstrap
+// session; a 429 still backs off inside `withRetry` as before.
+export const PULL_SLICE_FETCH_WINDOW = 2
 export const CORRUPT_ITEM_COOLDOWN_MS = 60 * 60 * 1000
 /**
  * Hard cap on live corrupt-item cooldown entries.
@@ -404,6 +410,16 @@ export const CRDT_SWEEP_CHUNK_INTERVAL_MS = 4 * 1000
 export const CRDT_SWEEP_MS_PER_SNAPSHOT_GET = 200
 /** 60_000 / 4_000 = 15 POST/min = 50% of `crdt_batch_pull`. */
 export const CRDT_SWEEP_MS_PER_BATCH_POST = 4 * 1000
+
+/**
+ * Snapshot GETs one CRDT batch pass keeps in flight. A staging GET takes
+ * ~230 ms, so 2 in flight is ~520/min, under the 600/min `crdt_pull` bucket.
+ * The paced sweep still charges every GET to its next interval
+ * (`crdtSweepChunkDelayMs`), so its average rate is unchanged.
+ */
+export const CRDT_SNAPSHOT_GET_WINDOW = 2
+/** Under a bootstrap session (#1837) `crdt_pull` is 5x; 6 in flight is ~1,560/min. */
+export const BOOTSTRAP_CRDT_SNAPSHOT_GET_WINDOW = 6
 
 /** What one paced sweep chunk actually spent, per server rate-limit bucket. */
 export interface CrdtPullCost {

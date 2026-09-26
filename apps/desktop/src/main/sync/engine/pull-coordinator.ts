@@ -33,6 +33,7 @@ import {
 } from './item-recovery'
 import { carriesCrdtBody, parsePullItems, purgedTombstoneApplyItems } from './pull-envelope'
 import { fetchSliceBody, planPullSlices, type PullSlice } from './changes-page'
+import { prefetchWindow } from './prefetch-window'
 import { NoteBodyFeed, type RecordBodyDecision } from './note-body-feed'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
@@ -41,6 +42,7 @@ import type { PullRunState } from './pull-run-state'
 import { tripPullBreaker } from './pull-breaker'
 import { PullLatencyTrace } from './sync-latency-telemetry'
 import {
+  PULL_SLICE_FETCH_WINDOW,
   SYNC_STATE_KEYS,
   YIELD_EVERY_N_ITEMS,
   yieldToEventLoop,
@@ -458,9 +460,20 @@ export class PullCoordinator {
     let postCommitWork = false
     let cursorCommitted = false
     const listedCursor = listedCursorOf(changes)
+    // Only the POSTs run ahead: every slice still applies after the one
+    // before it, and a stop leaves at most one prefetched body unread.
+    const sliceBody = prefetchWindow(slices, PULL_SLICE_FETCH_WINDOW, (slice) =>
+      fetchSliceBody(this.ctx, runState, slice.fetchIds)
+    )
     for (const [index, slice] of slices.entries()) {
       const inSliceCursor = index === slices.length - 1 && !postCommitWork ? nextCursor : null
-      const pageResult = await this.processPage(slice, runState, inSliceCursor, listedCursor)
+      const pageResult = await this.processPage(
+        slice,
+        sliceBody(index),
+        runState,
+        inSliceCursor,
+        listedCursor
+      )
       runState.pulledCount += pageResult.applied
       runState.totalConflictsResolved += pageResult.conflicts
       postCommitWork ||= pageResult.postCommitWork === true
@@ -602,6 +615,10 @@ export class PullCoordinator {
     this.pendingApplyRetries = []
     let applied = 0
     let failed = 0
+    // Sent after the loop, as a page sends its events after its commit: each
+    // one makes the renderer refetch through IPC, and those calls used to run
+    // at this loop's yields and stall it for seconds.
+    const synced: Array<() => void> = []
 
     for (let i = 0; i < retries.length; i++) {
       if (this.ctx.abortController?.signal.aborted) break
@@ -628,13 +645,14 @@ export class PullCoordinator {
         runState.applied.recordDeferred(dec)
         runState.pulledCount++
         applied++
-        this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+        synced.push(() => this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp))
       } catch (retryError) {
         failed++
         routeDeferredRetryFailure(dec, retryError, this.orphanedItems, this.schemaInvalid)
       }
     }
 
+    for (const emit of synced) emit()
     log.info('Pull: deferred apply retries processed', { retried: retries.length, applied, failed })
   }
 
@@ -702,6 +720,7 @@ export class PullCoordinator {
    */
   private async processPage(
     { fetchIds, inline, noteBodies, feedPage }: PullSlice,
+    body: Promise<unknown>,
     runState: PullRunState,
     pageCursor: string | null,
     listedCursor: (id: string) => number
@@ -714,7 +733,7 @@ export class PullCoordinator {
   }> {
     const { vaultKey, timer, applied, crdtNoteIds } = runState
     const requestedCount = fetchIds.length + inline.length
-    const pullBody = await fetchSliceBody(this.ctx, runState, fetchIds)
+    const pullBody = await body
 
     const parsed = parsePullItems(pullBody, inline, fetchIds)
     if (parsed.kind === 'not_envelope') {
