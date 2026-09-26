@@ -347,21 +347,25 @@ range)`. Vectors from desktop projection for a fixed fixture (tasks,
 
 ## Phase 5: other items and cross-feature
 
-- [ ] CL050 **17 Task sheet**: status toggle + Undo, breadcrumb, pills,
+- [x] CL050 **17 Task sheet**: status toggle + Undo, breadcrumb, pills,
       description, subtasks toggle, Move row (Later / Tomorrow / Next week
       from `snooze-options`), … (Source note, Pick date & time → Tasks When
       sheet, Remove due date), Open task → Tasks detail; chip checkbox
       completes in place. Evidence: CL17-task.png.
+      Evidence: CL17-task.png (breadcrumb, … and close on one line, status circle + title, date from the task itself, coloured pills, description, subtasks disclosure with counter, Move chips from `snooze-options` — Later only for timed tasks — Complete + Open task); driver on `[agent] Undated task`: Complete → Done pill + Reopen, circle reopened it, Tomorrow moved it off Sep 29; `[agent] Timeline task` › Open task → its Tasks detail. … holds Source note, Pick date & time (Tasks detail with the When sheet), Remove due date.
 - [ ] CL051 **19 Read-only sheet**: subscribed, read-only CalDAV and This
       iPhone events; recurrence text (`describeRecurrence`), alerts,
       conference + phone PIN, location, attendees (6, show more), links in
       text, details-load error line. Evidence: CL19-readonly.png.
-- [ ] CL052 **20 Note sheet**: note vs date reminder, Open note at anchor.
+- [x] CL052 **20 Note sheet**: note vs date reminder, Open note at anchor.
       Evidence: CL20-note.png.
-- [ ] CL053 **21 Snooze sheet**: Open in Inbox (focused), Unsnooze,
+      Evidence: CL20-note.png (Paper 20: kind line with close, title, "Mon, Sep 14", Open note, footnote); with Show notes on (then switched back off) Month showed pink note days, the Sep 14 row opened the sheet, Open note opened "Lisbon Food Map". Date reminders use the same sheet with the dashed kind mark.
+- [x] CL053 **21 Snooze sheet**: Open in Inbox (focused), Unsnooze,
       Reschedule via Inbox snooze menu. Evidence: CL21-snooze.png.
-- [ ] CL054 Deep links: Agent Chat style `date + event` opens Day + sheet;
+      Evidence: CL21-snooze.png (Paper 21: "Snoozed inbox item · back at 12:17", preview, Open in Inbox / Unsnooze now / Reschedule card, footnote); Open in Inbox opened the item's Inbox detail. Reschedule is the Inbox snooze menu (`InboxSnoozeMenuItems`) and its date sheet.
+- [x] CL054 Deep links: Agent Chat style `date + event` opens Day + sheet;
       project hub "Calendar event" row opens the event.
+      Evidence: `xcrun simctl openurl memry://calendar?date=2026-09-03&event=<id>` from the Notes tab → Day Sep 3 with the `[agent] Quick create test` sheet; project hub "Linked" row now names the event and opens it on its day (CL54-hub-link.png); a bare event id resolves the day from the record.
 - [ ] CL055 Phase commit.
 
 ## Phase 6: provider runtime, accounts and settings (D3 / D4)
@@ -725,6 +729,18 @@ onboardingCompleted, promoteConfirmDismissed, pushEventsToGoogle, agentReadEvent
 - 2026-09-26 — CL042 — The event sheet edits the title in place and saves it with the
   checkmark; every other field opens the full sheet (13) from its pill or +, as Paper 14's "+
   reveals the rest" reads. Sheet close buttons draw an ink glyph (00 rule 6).
+
+- 2026-09-26 — CL050 — All-day tasks carry local midnights (`local_instant`), so the sheets'
+  date line read them in UTC and named the day before (sheet "Fri, Sep 25", strip Sat 26).
+  Sheets now read the same day keys the grid places items by. The task sheet reads its date
+  from the task, so a Move shows the new day at once.
+- 2026-09-26 — CL054 — The project hub's linked calendar events had no action and no title.
+  The row now opens the event in the calendar on its day, and names it through the calendar
+  store (events are not related items in the Tasks core).
+- 2026-09-26 — CL051 — The read-only sheet needs an imported, subscribed, CalDAV or This
+  iPhone event; the account has none until Phase 6 connects one. Deferred there.
+- 2026-09-26 — CL060 — Changing week start or show notes in settings now re-reads the store's
+  cached settings and windows; before, the grid kept the old request until relaunch.
 
 ## 7. Blockers
 

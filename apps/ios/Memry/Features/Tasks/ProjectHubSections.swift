@@ -237,6 +237,13 @@ struct ProjectHubLinks: View {
         let kind = ProjectLinkKind(itemType: link.itemType)
         return ProjectLinkLabel(link: link, item: hub.titles[link.itemId])
             .frame(minHeight: Tokens.Size.minimumHitArea)
+            // A linked calendar event opens in the calendar on its day (spec
+            // 007 CL054).
+            .contentShape(.rect)
+            .onTapGesture {
+                if kind == .event { CalendarLinks.shared.request(CalendarLink(date: nil, event: link.itemId)) }
+            }
+            .accessibilityAddTraits(kind == .event ? .isButton : [])
             .listRowInsets(EdgeInsets(top: 0, leading: TaskLayout.edge, bottom: 0, trailing: TaskLayout.edge))
             .alignmentGuide(.listRowSeparatorLeading) { _ in ProjectHubHeader.textLeading }
             .accessibilityIdentifier("tasks.projectHub.link.\(link.itemId)")
@@ -272,6 +279,8 @@ struct ProjectHubLinks: View {
 struct ProjectLinkLabel: View {
     let link: ProjectLinkItem
     let item: RelatedItemRecord?
+    @Environment(\.calendarStore) private var calendar
+    @State private var eventTitle: String?
 
     private var kind: ProjectLinkKind { ProjectLinkKind(itemType: link.itemType) }
 
@@ -289,7 +298,7 @@ struct ProjectLinkLabel: View {
             .accessibilityHidden(true)
             Text(title)
                 .font(Tokens.Typography.body.font)
-                .foregroundStyle(item == nil ? Tokens.Text.tertiary.color : Tokens.Text.primary.color)
+                .foregroundStyle(item == nil && eventTitle == nil ? Tokens.Text.tertiary.color : Tokens.Text.primary.color)
                 .lineLimit(2)
             Spacer(minLength: 0)
             if link.pinned {
@@ -300,10 +309,17 @@ struct ProjectLinkLabel: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .task(id: link.itemId) {
+            // Events are not related items; the calendar names them.
+            guard kind == .event, item == nil, let calendar else { return }
+            let core = calendar.core, id = link.itemId
+            eventTitle = await calendar.read { try core.event(id: id) }??.title
+        }
     }
 
     private var title: String {
         if let item { return item.title.isEmpty ? Copy.untitled : item.title }
+        if kind == .event, let eventTitle, !eventTitle.isEmpty { return eventTitle }
         return kind == .event ? Copy.calendarEvent : Copy.itemMissing
     }
 

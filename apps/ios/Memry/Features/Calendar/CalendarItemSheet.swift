@@ -64,15 +64,17 @@ struct CalendarSheetHeader: View {
 }
 
 enum CalendarSheetText {
-    /// "Thu, Sep 24 · 10:00 – 11:30", all-day items read in UTC with an
-    /// exclusive end (desktop `whenLabel`).
+    /// "Thu, Sep 24 · 10:00 – 11:30"; all-day items read by their day keys
+    /// with the exclusive end dropped (desktop `whenLabel`).
     static func when(_ item: CalendarItem) -> String {
         if item.isAllDay {
-            var utc = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
-            utc.timeZone = TimeZone(identifier: "UTC") ?? .current
-            let start = item.startDate
-            let last = item.endDate.map { $0.addingTimeInterval(-86_400) } ?? start
-            return last > start ? "\(start.formatted(utc)) – \(last.formatted(utc))" : start.formatted(utc)
+            // The same day keys the grid places the item by, so the sheet and
+            // the strip agree on the day (tasks and notes carry local
+            // midnights, not UTC ones).
+            let style = Date.FormatStyle.dateTime.weekday(.abbreviated).month(.abbreviated).day()
+            let first = CalendarDates.spanStart(item), last = CalendarDates.spanEnd(item)
+            let start = CalendarDates.start(of: first).formatted(style)
+            return last > first ? "\(start) – \(CalendarDates.start(of: last).formatted(style))" : start
         }
         let day = item.startDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
         guard let end = item.endDate else { return "\(day) · \(CalendarItemStyle.time(item.startDate))" }

@@ -166,12 +166,22 @@ extension CalendarScreen {
     func apply(_ link: CalendarLink) {
         let event = link.event
         let isProjection = event?.contains(":") == true
-        store.focus = CalendarFocus(
-            date: link.date ?? store.today,
-            projectionId: isProjection ? event : nil,
-            sourceType: isProjection ? nil : "event",
-            sourceId: isProjection ? nil : event
-        )
+        Task {
+            // A bare event id (project hub, Agent Chat without a day) opens on
+            // the event's own day.
+            var date = link.date
+            if date == nil, let event, !isProjection {
+                let core = store.core
+                let record = await store.read { try core.event(id: event) } ?? nil
+                date = record.flatMap { CalendarDates.date($0.startAt) }.map(CalendarDates.key)
+            }
+            store.focus = CalendarFocus(
+                date: date ?? store.today,
+                projectionId: isProjection ? event : nil,
+                sourceType: isProjection ? nil : "event",
+                sourceId: isProjection ? nil : event
+            )
+        }
     }
 
     func delete(_ item: CalendarItem) async {

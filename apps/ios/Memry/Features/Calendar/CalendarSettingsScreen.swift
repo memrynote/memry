@@ -106,8 +106,12 @@ struct CalendarSettingsScreen: View {
         dateProperties = await store.datePropertyNames()
     }
 
+    /// Week start and show notes change what the grid asks for: re-read the
+    /// settings the store caches, then its windows.
     private func save(_ path: String, _ json: String) async {
         await store.write { try $0.setSetting(path: path, valueJson: json) }
+        await store.refreshSources()
+        await store.refreshAllWindows()
     }
 
     /// One provider holds the default (`write-routing.ts`): a Google calendar

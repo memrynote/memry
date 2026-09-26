@@ -161,7 +161,7 @@ extension CalendarCopy {
     static let unsnoozeNow = "Unsnooze now"
     static let reschedule = "Reschedule"
     static let reminderKind = "Reminder"
-    static func backAt(_ time: String) -> String { "Back at \(time)" }
+    static func backAt(_ time: String) -> String { "back at \(time)" }
 
     // MARK: Event sheets (14, 19, `metadata.*`, `subscribedEvent.*`)
 
@@ -170,6 +170,8 @@ extension CalendarCopy {
     static let subscribedKind = "Subscribed calendar"
     static let thisIPhone = "This iPhone"
     static let joinMeeting = "Join meeting"
+    static let noteFootnote = "A note's date property shows as an all-day item. An inline date in the text shows as a dashed, timed item and opens the note at that line."
+    static let snoozeFootnote = "Reschedule opens the same snooze menu as Inbox: Later today, Tomorrow, This weekend, Next week, Pick a date."
     static let join = "Join"
     static let videoCall = "Video call"
     static let moreFields = "More fields"
