@@ -145,6 +145,10 @@ export const readWatermark = async (
   return row ?? { last_sort_value: 0, last_sort_tiebreak: '' }
 }
 
+const NOTE_RECORD_ROWS = `SELECT 1 FROM sync_items r
+  WHERE r.user_id = s.user_id AND r.vault_id = s.vault_id
+    AND r.item_type IN ('note', 'journal') AND r.item_id = s.note_id`
+
 /**
  * Select up to PACK_MAX_ITEMS un-packed rows ordered ascending, capped so the
  * projected payload stays within PACK_TARGET_BYTES (itself far below
@@ -181,8 +185,15 @@ export const selectCandidates = async (
           ]
         }
       : {
-          sql: `SELECT created_at AS sort_key, note_id AS tiebreak, note_id, blob_key, size_bytes
-                FROM crdt_snapshots
+          // A deleted note keeps its snapshot row, and a packed body lands on a
+          // fresh device before the tombstone that deletes it. A note id with
+          // any live note or journal row still packs, as does one whose record
+          // has not arrived yet. Dead rows stay in the scan so the watermark
+          // moves past a tail of them, as it does past oversized rows.
+          sql: `SELECT created_at AS sort_key, note_id AS tiebreak, note_id, blob_key, size_bytes,
+                  (EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NOT NULL)
+                    AND NOT EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NULL)) AS dead
+                FROM crdt_snapshots s
                 WHERE user_id = ? AND vault_id = ?
                   AND (created_at > ? OR (created_at = ? AND note_id > ?))
                 ORDER BY created_at ASC, note_id ASC
@@ -205,11 +216,13 @@ export const selectCandidates = async (
       tiebreak: string
       blob_key: string
       size_bytes: number
+      dead?: number
     }>()
 
   const candidates: PackSelection['candidates'] = []
   let bytes = 0
   for (const row of rowList(rows)) {
+    if (row.dead) continue
     if (row.size_bytes > MAX_PACKED_ITEM_BYTES) continue // oversized: permanent item-granular tail
     if (bytes + row.size_bytes > PACK_TARGET_BYTES) break
     bytes += row.size_bytes

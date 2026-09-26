@@ -41,6 +41,34 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given a vault this device never pulled #when start called', () => {
+    it('#then the bootstrap session opens before any change-feed read', async () => {
+      // The server spends bootstrap eligibility on the first change-feed page
+      // it serves this device, so a launch probe on /sync/changes made every
+      // fresh device lose its elevated session (#1837).
+      const http = await import('./http-client')
+      const requests: string[] = []
+      vi.spyOn(http, 'getFromServer').mockImplementation(async (path: string) => {
+        requests.push(`GET ${path.split('?')[0]}`)
+        return { items: [], deleted: [], hasMore: false, nextCursor: 0 }
+      })
+      vi.spyOn(http, 'postToServer').mockImplementation(async (path: string) => {
+        requests.push(`POST ${path}`)
+        return {}
+      })
+      const engine = new SyncEngine(createMockDeps(getDb()))
+
+      await engine.start()
+      await engine.stop()
+
+      expect(requests.slice(0, requests.indexOf('POST /sync/bootstrap') + 1)).toEqual([
+        'GET /sync/status',
+        'POST /sync/bootstrap'
+      ])
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given initial full sync fails #when start called', () => {
     it('#then start resolves and the periodic pull is armed', async () => {
       vi.useFakeTimers()
