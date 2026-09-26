@@ -74,9 +74,10 @@ test.describe('Update notice focus', () => {
     // the debounce window that the focus steal used to destroy.
     await surfaceUpdate(electronApp)
 
-    const updateRow = page.getByRole('button', { name: 'Update ready' })
-    await expect(updateRow).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByText(SURFACED_VERSION)).toBeVisible()
+    // The release surfaces as a badge on the footer-dock gear (#2443); its
+    // version lives in the popover the gear opens, which nothing here clicks.
+    const updateBadge = page.getByRole('button', { name: /Update ready/ })
+    await expect(updateBadge).toBeVisible({ timeout: 20_000 })
 
     // The announcement stays in the sidebar: no tab opened, nothing took focus.
     expect(await page.locator(SELECTORS.tab).count()).toBe(tabsBefore)
