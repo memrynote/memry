@@ -35,6 +35,7 @@ import { agentMessages } from '@memry/db-schema/schema/agent-messages'
 import { calendarSourceHandler } from '@memry/sync-client/item-handlers/calendar-source-handler'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { projectHandler } from './item-handlers/project-handler'
+import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 
 vi.mock('../database/client', () => ({
   getIndexDatabase: vi.fn()
@@ -920,6 +921,26 @@ describe('checkManifestIntegrity', () => {
       })
       .run()
     testDb.db.insert(settings).values({ key: 'synced_settings', value: '{}' }).run()
+    testDb.db
+      .insert(noteMetadata)
+      .values([
+        {
+          id: 'note-1',
+          path: 'notes/a.md',
+          title: 'A',
+          createdAt: timestamp,
+          modifiedAt: timestamp
+        },
+        {
+          id: 'journal-1',
+          path: 'journals/2026-02-18.md',
+          title: '2026-02-18',
+          journalDate: '2026-02-18',
+          createdAt: timestamp,
+          modifiedAt: timestamp
+        }
+      ])
+      .run()
     testIndexDb.db
       .insert(noteCache)
       .values({
@@ -1196,6 +1217,54 @@ describe('checkManifestIntegrity', () => {
   // row the server does not list is re-uploaded (a server marker then refuses
   // it per item, and the next pull applies the tombstone under §5.8); a lost
   // blob held in the ledger never counts as server-only.
+  describe('#given local notes the server manifest omits because they are deleted', () => {
+    it('#then re-uploads only the one re-created past its tombstone', async () => {
+      // #given
+      const tombstone: VectorClock = { 'device-deleter': 2 }
+      const insertNote = (id: string, clock: VectorClock): void => {
+        testDb.db
+          .insert(noteMetadata)
+          .values({ id, path: `${id}.md`, title: id, clock, createdAt: 'x', modifiedAt: 'x' })
+          .run()
+      }
+      insertNote('note-concurrent', { 'device-A': 1 })
+      recordTombstoneClock(asSyncDb(testDb.db), 'note', 'note-concurrent', tombstone)
+      insertNote('note-recreated', { 'device-deleter': 2, 'device-A': 1 })
+      recordTombstoneClock(asSyncDb(testDb.db), 'note', 'note-recreated', tombstone)
+      testIndexDb.db
+        .insert(noteCache)
+        .values({
+          id: 'note-gone',
+          path: 'note-gone.md',
+          title: 'Gone',
+          clock: { 'device-A': 1 },
+          createdAt: 'x',
+          modifiedAt: 'x'
+        })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(queue.dequeue(10).map((item) => `${item.type}:${item.itemId}`)).toEqual([
+        'note:note-recreated'
+      ])
+    })
+  })
+
   describe('#2302 absence never deletes', () => {
     const seedTask = (id: string) =>
       testDb.db

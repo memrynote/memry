@@ -15,7 +15,8 @@ import { getNoteMetadataById } from '@memry/storage-data'
 import { incrementClock } from '@memry/sync-core'
 import { RECREATABLE_AFTER_PURGE_ITEM_TYPES, type SyncItemType } from '@memry/contracts/sync-api'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
-import type { RecreatableItemType } from '@memry/sync-client/tombstone-clocks'
+import { readTombstoneClock, type RecreatableItemType } from '@memry/sync-client/tombstone-clocks'
+import { compare } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/client'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
@@ -123,6 +124,24 @@ export function hasPendingDelete(db: DrizzleDb, type: SyncItemType, itemId: stri
 
 const liveNote = (db: DrizzleDb, itemId: string): boolean =>
   db.select().from(noteMetadata).where(eq(noteMetadata.id, itemId)).get() !== undefined
+
+/**
+ * This device knows the note or journal is deleted: it has no row, or it
+ * recorded a tombstone (#2409) that the row's clock does not follow. A row
+ * minted past the tombstone is a re-create and stays live. The server keeps
+ * a deleted note's CRDT state and accepts bodies for it, so offering one of
+ * these as a create puts the deleted body back on every device.
+ */
+export function isNoteKnownDeleted(db: DrizzleDb, noteId: string): boolean {
+  const row = db
+    .select({ clock: noteMetadata.clock })
+    .from(noteMetadata)
+    .where(eq(noteMetadata.id, noteId))
+    .get()
+  if (!row) return true
+  const tombstone = readTombstoneClock(db, 'note', noteId)
+  return tombstone !== null && (!row.clock || compare(row.clock, tombstone) !== 'after')
+}
 
 const LIVE_LOCAL_ROW: Record<RecreatableItemType, (db: DrizzleDb, itemId: string) => boolean> = {
   note: liveNote,

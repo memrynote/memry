@@ -36,7 +36,11 @@ const familyTypes = (type: string): string[] =>
 const isEmptyClock = (clock: VectorClock | null | undefined): boolean =>
   !clock || Object.keys(clock).length === 0
 
-function readTombstoneClock(db: DrizzleDb, type: string, itemId: string): VectorClock | null {
+export function readTombstoneClock(
+  db: DrizzleDb,
+  type: string,
+  itemId: string
+): VectorClock | null {
   const row = db
     .select({ clock: syncTombstoneClocks.clock })
     .from(syncTombstoneClocks)

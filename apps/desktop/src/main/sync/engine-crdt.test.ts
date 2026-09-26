@@ -5,9 +5,17 @@ import { SyncEngine, type SyncEngineDeps } from './engine'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
 import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
+import { asSyncDb } from '@tests/utils/test-db'
 
 describe('SyncEngine', () => {
   const { getDb } = setupTestDb()
+  const insertNoteRow = (id: string): void => {
+    getDb()
+      .db.insert(noteMetadata)
+      .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+      .run()
+  }
 
   describe('#given engine with crdtProvider and CREATE note queued #when push called', () => {
     it('#then pushes CRDT snapshot BEFORE posting sync items to server', async () => {
@@ -25,6 +33,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
@@ -81,6 +90,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('journal-1')
       deps.queue.enqueue({
         type: 'journal',
         itemId: 'journal-1',
@@ -115,6 +125,69 @@ describe('SyncEngine', () => {
 
       expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(
         ['journal-1'],
+        expect.anything()
+      )
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given queued note creates this device knows are deleted #when push called', () => {
+    it('#then offers the server no CRDT body for them', async () => {
+      const mockCrdtProvider = {
+        pushSnapshotsForNotes: vi
+          .fn()
+          .mockImplementation(async (noteIds: string[]) => new Map(noteIds.map((id) => [id, true])))
+      }
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: mockCrdtProvider as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      const db = getDb().db
+      const tombstone = { 'device-deleter': 2 }
+      const insertNote = (id: string, clock: Record<string, number> | null): void => {
+        db.insert(noteMetadata)
+          .values({ id, path: `${id}.md`, title: id, clock, createdAt: 'x', modifiedAt: 'x' })
+          .run()
+      }
+      insertNote('note-concurrent', { 'device-1': 1 })
+      recordTombstoneClock(asSyncDb(db), 'note', 'note-concurrent', tombstone)
+      insertNote('note-recreated', { 'device-deleter': 2, 'device-1': 1 })
+      recordTombstoneClock(asSyncDb(db), 'note', 'note-recreated', tombstone)
+      insertNote('note-live', { 'device-1': 1 })
+      for (const itemId of ['note-gone', 'note-concurrent', 'note-recreated', 'note-live']) {
+        deps.queue.enqueue({ type: 'note', itemId, operation: 'create', payload: '{}' })
+      }
+
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation(
+        (args: { id: string; type: SyncItemType; operation: string }) => ({
+          pushItem: {
+            id: args.id,
+            type: args.type,
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            clock: { 'device-1': 1 }
+          },
+          sizeBytes: 100
+        })
+      )
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        accepted: ['note-gone', 'note-concurrent', 'note-recreated', 'note-live'],
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 1
+      })
+
+      await engine.push()
+
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledTimes(1)
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(
+        ['note-recreated', 'note-live'],
         expect.anything()
       )
 
@@ -235,6 +308,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
@@ -291,6 +365,8 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
+      insertNoteRow('journal-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
