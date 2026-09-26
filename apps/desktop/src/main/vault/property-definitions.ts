@@ -7,11 +7,13 @@ import { getDatabase, getIndexDatabase, type DataDb, type IndexDb } from '../dat
 import {
   PropertyDefinitionsFileSchema,
   type PropertyDefinition,
+  type PropertyType,
   type PropertyDefinitionsFileData,
   type SelectOption,
   type StatusCategories,
   DEFAULT_STATUS_CATEGORIES,
-  DEFAULT_STATUS_DEFINITION
+  DEFAULT_STATUS_DEFINITION,
+  isPersistableDefinitionType
 } from '@memry/contracts/property-types'
 import { propertyDefinitions as propertyDefinitionsTable } from '@memry/db-schema/schema/notes-cache'
 import {
@@ -75,7 +77,7 @@ export class PropertyDefinitionsService {
     }
 
     try {
-      const { data } = matter(raw)
+      const { data, healed } = withoutNonPersistableDefinitions(matter(raw).data)
       const parsed = PropertyDefinitionsFileSchema.safeParse(data)
 
       if (!parsed.success) {
@@ -90,7 +92,7 @@ export class PropertyDefinitionsService {
       // this write. `applyParsedData` above clears the cache from the file, so
       // without the union plus this persist the very next pull would rebuild
       // the DB from the file alone and delete the row that just landed.
-      if (gained) await this.persistToFile()
+      if (gained || healed) await this.persistToFile()
     } catch (err) {
       logger.warn('Failed to parse properties.md, keeping last-known-good cache:', err)
     }
@@ -331,6 +333,7 @@ export class PropertyDefinitionsService {
     const properties: Record<string, unknown> = {}
 
     for (const [name, def] of this.cache) {
+      if (!isPersistableDefinitionType(def.type)) continue
       // js-yaml refuses to dump `undefined`, and one such value fails the write
       // for every property in the file, not just its own.
       if (def.type === 'status') {
@@ -439,6 +442,7 @@ function definitionFromRow(row: {
   defaultValue: string | null
 }): PropertyDefinition | null {
   const type = row.type as PropertyDefinition['type']
+  if (!isPersistableDefinitionType(type)) return null
   let parsed: unknown = null
   if (row.options) {
     try {
@@ -461,6 +465,27 @@ function definitionFromRow(row: {
     options: Array.isArray(parsed) ? (parsed as SelectOption[]) : [],
     ...(row.defaultValue ? { defaultValue: row.defaultValue } : {})
   }
+}
+
+/**
+ * The parsed `properties.md` without its non-persistable entries, and whether
+ * any were there. Older builds wrote synced `relation` definitions into the
+ * file, and one such entry fails `safeParse` for the whole file, so the vault
+ * loaded no definitions at all. Copies rather than mutates because
+ * gray-matter caches the parsed object per file content.
+ */
+function withoutNonPersistableDefinitions(data: Record<string, unknown>): {
+  data: Record<string, unknown>
+  healed: boolean
+} {
+  const properties = data.properties
+  if (typeof properties !== 'object' || properties === null) return { data, healed: false }
+  const kept = Object.entries(properties).filter(([, def]) => {
+    const type = (def as { type?: PropertyType } | null)?.type
+    return !type || isPersistableDefinitionType(type)
+  })
+  if (kept.length === Object.keys(properties).length) return { data, healed: false }
+  return { data: { ...data, properties: Object.fromEntries(kept) }, healed: true }
 }
 
 function renameOptionInDefinition(
