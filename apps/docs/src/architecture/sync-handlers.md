@@ -499,12 +499,23 @@ The task and project writers outside the tasks domain use the same path: inbox t
 type still enqueue after their own commit.
 
 Project links derived while applying a synced note are the exception: `reconcileNoteLinks(..., 'remote')`
-writes the rows and commits no intent. The device that edited the note's frontmatter already pushed
-the project, and that payload is where iOS reads markdown-note membership. Re-pushing from every
+writes the rows and normally commits no intent. The device that edited the note's frontmatter already
+pushed the project, and that payload is where iOS reads markdown-note membership. Re-pushing from every
 receiver only bumped the project clock on each device and could push a new row's `position: 0` and
 `pinned: 0` over a pin set elsewhere. When `projectHandler` inserts a project from sync,
-`linkNotesNamingProject` links the notes whose frontmatter already names it, also without an intent,
-so a note applied before its project does not wait for a re-pull.
+`linkNotesNamingProject` links the notes whose frontmatter already names it, so a note applied before
+its project does not wait for a re-pull.
+
+A derived link still pushes the project when the project's last synced `links` payload is known to
+lack that note. That happens when the note's writer could not resolve the project name (the project
+was created elsewhere while it was offline) or had no frontmatter projector. The projector keeps the
+note ids of the last payload this device applied or had acknowledged, per project, in memory. A
+project not synced since start-up counts as carrying the note, so nothing is pushed on a guess. Once a
+peer's push carries the note, receivers stop pushing.
+
+The tier-0 stat ingest (an external rename, a re-add) and the large-file tier never read frontmatter.
+They publish `note.upserted` with `properties: null`, and the links projector skips them, so those
+paths keep the note's link rows, their ids and their `pinned`/`position`.
 
 ### Dirty recovery
 
