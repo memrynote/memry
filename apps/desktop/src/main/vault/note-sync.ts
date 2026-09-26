@@ -20,7 +20,7 @@ import {
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'
-import type { PropertyType } from '@memry/contracts/property-types'
+import { isPersistableDefinitionType, type PropertyType } from '@memry/contracts/property-types'
 import {
   deleteCanonicalNote,
   saveCanonicalNote,
@@ -58,7 +58,9 @@ function syncCanonicalMetadata(
         existing?.type as PropertyType | undefined,
         inferPropertyType
       )
-      saveCanonicalPropertyDefinition(dataDb, { name, type: type })
+      if (isPersistableDefinitionType(type)) {
+        saveCanonicalPropertyDefinition(dataDb, { name, type })
+      }
     }
   }
 }
