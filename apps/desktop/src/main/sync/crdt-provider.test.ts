@@ -422,7 +422,7 @@ describe('CrdtProvider', () => {
   // answer, so a failed write is never reported as landed.
   // A doc that took its server state before the note had a row: merging the
   // same state again fires no update, so only this writes its body.
-  it('materializes a closed note from its doc and releases it, leaving an open one open', async () => {
+  it('materializes a note from its doc, leaving an open one open and an empty one unwritten', async () => {
     const written: Array<[string, string]> = []
     mocks.writebackNow.mockImplementation(async (noteId: string, doc: Y.Doc) => {
       written.push([noteId, doc.getMap('meta').get('title') as string])
@@ -430,13 +430,12 @@ describe('CrdtProvider', () => {
     await provider.open('note-2', 4, { skipSeed: true })
     provider.applyRemoteUpdate('note-2', new Uint8Array(makeRemoteUpdate('packed body')))
 
-    await provider.materialize('note-1')
-    await provider.materialize('note-2')
+    // note-1 holds no state: writing it would put an empty body over the
+    // record's file.
+    const results = [await provider.materialize('note-1'), await provider.materialize('note-2')]
 
-    expect(written).toEqual([
-      ['note-1', undefined],
-      ['note-2', 'packed body']
-    ])
+    expect(results).toEqual([false, true])
+    expect(written).toEqual([['note-2', 'packed body']])
     expect(provider.getOpenNoteIds()).toEqual(['note-2'])
   })
 

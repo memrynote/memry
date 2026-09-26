@@ -6,6 +6,8 @@ import * as Y from 'yjs'
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
+import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { encryptCrdtUpdate } from '../crdt-encrypt'
 import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
 import { generateUniquePathSync } from '../../vault/file-ops'
@@ -18,7 +20,7 @@ import {
   writebackNow
 } from '../crdt-writeback'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
-import type { SyncContext } from './sync-context'
+import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import type { SyncStateManager } from './sync-state-manager'
@@ -188,10 +190,20 @@ interface Outcome {
 let vaultKey: Uint8Array
 let peer: { publicKey: Uint8Array; privateKey: Uint8Array }
 
-function packedUpdate(noteId: string, body: string): Uint8Array {
+/** The server's state for a note: one update per note, so a re-merge is a no-op. */
+const serverStates = new Map<string, Uint8Array>()
+function serverUpdate(noteId: string, body: string): Uint8Array {
+  const known = serverStates.get(noteId)
+  if (known) return known
   const doc = new Y.Doc()
   doc.getText('body').insert(0, body)
-  return encryptCrdtUpdate(Y.encodeStateAsUpdate(doc), vaultKey, noteId, peer.privateKey)
+  const update = Y.encodeStateAsUpdate(doc)
+  serverStates.set(noteId, update)
+  return update
+}
+
+function packedUpdate(noteId: string, body: string): Uint8Array {
+  return encryptCrdtUpdate(serverUpdate(noteId, body), vaultKey, noteId, peer.privateKey)
 }
 
 function readVault(dir: string, prefix = ''): Record<string, string> {
@@ -239,24 +251,62 @@ function applyRecord(record: PulledRecord, docs: Map<string, Y.Doc>): void {
   })
 }
 
-async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
+/**
+ * One device's durable state: its data DB, its CRDT store (docs and snapshot
+ * watermarks) and its vault. A crash is a run whose pull throws; the next run
+ * starts from whatever the previous one left here.
+ */
+interface Device {
+  db: TestDatabaseResult
+  docs: Map<string, Y.Doc>
+  watermarks: Map<string, { appliedSequence: number; snapshotRevision?: string }>
+  provider: {
+    materialize: (noteId: string) => Promise<boolean>
+    applyRemoteUpdate: (noteId: string, update: Uint8Array) => boolean
+  }
+}
+
+const devices: Device[] = []
+
+function makeDevice(options: { materializeFails?: (noteId: string) => boolean } = {}): Device {
+  const db = createTestDataDb()
+  db.db
+    .insert(syncDevices)
+    .values({
+      id: 'peer',
+      name: 'peer',
+      platform: 'macos',
+      appVersion: '1',
+      linkedAt: new Date(),
+      signingPublicKey: sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL)
+    })
+    .run()
   const docs = new Map<string, Y.Doc>()
+  const watermarks: Device['watermarks'] = new Map()
   const docFor = (noteId: string): Y.Doc => {
-    const doc = docs.get(noteId) ?? new Y.Doc()
+    const existing = docs.get(noteId)
+    if (existing) return existing
+    const doc = new Y.Doc()
+    // What `CrdtProvider.onDocUpdate` does with a network-origin update.
+    doc.on('update', (_update: Uint8Array, origin: unknown) => {
+      if (origin === 'network') scheduleWriteback(noteId, doc, 'remote')
+    })
     docs.set(noteId, doc)
     return doc
   }
   const provider = {
     storeId: 'store-1',
     inactiveDocCapacity: 32,
-    getSnapshotWatermark: async () => null,
-    putSnapshotWatermark: async () => {},
+    getSnapshotWatermark: async (noteId: string) => watermarks.get(noteId) ?? null,
+    putSnapshotWatermark: async (
+      noteId: string,
+      watermark: { appliedSequence: number; snapshotRevision?: string }
+    ) => {
+      watermarks.set(noteId, watermark)
+    },
     open: async (noteId: string) => docFor(noteId),
-    // What `CrdtProvider.onDocUpdate` does with a network-origin update.
     applyRemoteUpdate: (noteId: string, update: Uint8Array) => {
-      const doc = docFor(noteId)
-      Y.applyUpdate(doc, update, 'network')
-      scheduleWriteback(noteId, doc, 'remote')
+      Y.applyUpdate(docFor(noteId), update, 'network')
       return true
     },
     getStateVector: (noteId: string) => {
@@ -267,13 +317,32 @@ async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
     getOpenNoteIds: () => [],
     purge: async (noteId: string) => {
       docs.delete(noteId)
+      watermarks.delete(noteId)
     },
     // `CrdtProvider.materialize`: open the doc, write it back now.
-    materialize: (noteId: string) => writebackNow(noteId, docFor(noteId))
+    materialize: async (noteId: string) => {
+      if (options.materializeFails?.(noteId)) throw new Error('process killed mid-settle')
+      await writebackNow(noteId, docFor(noteId))
+      return true
+    }
   }
+  const device = { db, docs, watermarks, provider }
+  devices.push(device)
+  return device
+}
 
+async function runSync(
+  device: Device,
+  options: {
+    fresh: boolean
+    packed: Array<{ id: string; body: string }>
+    pull: () => Promise<boolean>
+    /** The process dies at the end of the run: armed write-backs die with it. */
+    killed?: boolean
+  }
+): Promise<void> {
   mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {
-    for (const [index, { id, body }] of scenario.packed.entries()) {
+    for (const [index, { id, body }] of options.packed.entries()) {
       const meta = { sequenceNum: index + 1, revision: `r${index + 1}` }
       if (await deps.snapshots.shouldApply(id, meta)) {
         await deps.snapshots.apply(id, packedUpdate(id, body), meta)
@@ -282,17 +351,16 @@ async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
     return {
       usedPacks: true,
       packsApplied: 1,
-      entriesApplied: scenario.packed.length,
+      entriesApplied: options.packed.length,
       entriesSkipped: 0,
       entriesFailed: 0,
       appliedThroughCursor: 100
     }
   })
 
-  const signingKey = sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL)
   const ctx = {
     deps: {
-      db: { select: () => ({ from: () => ({ all: () => [{ key: signingKey }] }) }) },
+      db: device.db.db,
       queue: { getPendingCount: () => 0, purgeOldErrors: vi.fn() },
       network: { online: true },
       ws: { connected: true, connectionGeneration: 1 },
@@ -300,7 +368,7 @@ async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
       getVaultKey: async () => new Uint8Array(vaultKey),
       getSigningKeys: async () => null,
       emitToRenderer: vi.fn(),
-      crdtProvider: provider
+      crdtProvider: device.provider
     },
     applier: { changedCount: 0 },
     acquireLock: async () => () => {},
@@ -308,22 +376,11 @@ async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
     fullSyncActive: false
   } as unknown as SyncContext
 
-  const actions: FullSyncActions = {
-    pull: async () => {
-      // The pack phase takes seconds on a real vault, so the write-backs its
-      // applies armed (500ms debounce) fire before the first record page.
-      await flushPendingWritebacks()
-      for (const record of scenario.pulled) applyRecord(record, docs)
-      return true
-    },
-    push: async () => {},
-    scheduleSync: vi.fn()
-  }
-
   const runner = new FullSyncRunner(
     ctx,
     {
-      getStateValue: () => undefined,
+      getStateValue: (key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CURSOR && !options.fresh ? '500' : undefined,
       setStateValue: vi.fn(),
       isPaused: () => false,
       recordHistory: vi.fn(),
@@ -334,19 +391,36 @@ async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
       addPendingPull: vi.fn(),
       drainPendingPulls: () => [],
       pendingPullCount: 0,
-      nextDeferredPullAt: () => null
+      nextDeferredPullAt: () => null,
+      oweWholeBody: vi.fn(() => true)
     } as unknown as CrdtSyncCoordinator,
-    actions
+    { pull: options.pull, push: async () => {}, scheduleSync: vi.fn() } satisfies FullSyncActions
   )
 
-  await runner.run()
-  await flushPendingWritebacks()
+  await runner.run().catch(() => {})
+  if (options.killed) cancelPendingWritebacks()
+  else await flushPendingWritebacks()
+}
+
+async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
+  const device = makeDevice()
+  await runSync(device, {
+    fresh: true,
+    packed: scenario.packed,
+    pull: async () => {
+      // The pack phase takes seconds on a real vault, so the write-backs its
+      // applies armed (500ms debounce) fire before the first record page.
+      await flushPendingWritebacks()
+      for (const record of scenario.pulled) applyRecord(record, device.docs)
+      return true
+    }
+  })
 
   return {
     files: readVault(mocks.vaultRoot),
     rows: Object.fromEntries([...mocks.rows.values()].map((row) => [row.id, row.path])),
     reminders: [...mocks.reminders.keys()].sort(),
-    docs: [...docs.keys()].sort(),
+    docs: [...device.docs.keys()].sort(),
     createdEvents: mocks.sent.filter((channel) => channel.endsWith('created'))
   }
 }
@@ -363,12 +437,14 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
     mocks.rows.clear()
     mocks.reminders.clear()
     mocks.sent = []
+    serverStates.clear()
     resetWritebackState()
   })
 
   afterEach(() => {
     cancelPendingWritebacks()
     fs.rmSync(mocks.vaultRoot, { recursive: true, force: true })
+    for (const device of devices.splice(0)) device.db.close()
   })
 
   it('leaves nothing behind for packed notes and journals the pull tombstones', async () => {
@@ -430,5 +506,100 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
 
     expect(outcome.files).toEqual({ [path.join('journal', '2026-09-08.md')]: 'Journal body' })
     expect(outcome.createdEvents).toEqual([])
+  })
+
+  // A crash or kill between pack apply and the end of the settle must not
+  // strand a live note: its record walk merges nothing the doc lacks, so no
+  // write-back is ever armed for it again.
+  describe('when the run that applied the packs dies before its settle finishes', () => {
+    const live = { id: 'livenote0001', body: 'Live note body' }
+    const dead = { id: 'deletednote1', body: 'Deleted note body' }
+
+    it('settles the packed docs on the next run that delivers a pull', async () => {
+      const device = makeDevice()
+
+      await runSync(device, {
+        fresh: true,
+        packed: [live, dead],
+        pull: async () => {
+          applyRecord(
+            { op: 'upsert', type: 'note', id: live.id, title: 'Plans', content: '' },
+            device.docs
+          )
+          device.provider.applyRemoteUpdate(live.id, serverUpdate(live.id, live.body))
+          throw new Error('process killed after the record pages committed')
+        },
+        killed: true
+      })
+      await runSync(device, {
+        fresh: false,
+        packed: [],
+        pull: async () => {
+          device.provider.applyRemoteUpdate(live.id, serverUpdate(live.id, live.body))
+          return true
+        }
+      })
+
+      expect({
+        files: readVault(mocks.vaultRoot),
+        docs: [...device.docs.keys()],
+        watermarks: [...device.watermarks.keys()]
+      }).toEqual({
+        files: { 'Plans.md': 'Live note body' },
+        docs: [live.id],
+        watermarks: [live.id]
+      })
+    })
+
+    it('finishes a settle the previous run left half done', async () => {
+      const second = { id: 'livenote0002', body: 'Second body' }
+      let killed = true
+      const device = makeDevice({ materializeFails: (id) => killed && id === second.id })
+      const pullRecords = async (): Promise<boolean> => {
+        for (const note of [live, second]) {
+          applyRecord(
+            { op: 'upsert', type: 'note', id: note.id, title: note.id, content: '' },
+            device.docs
+          )
+        }
+        return true
+      }
+
+      await runSync(device, {
+        fresh: true,
+        packed: [live, second, dead],
+        pull: pullRecords,
+        killed: true
+      })
+      killed = false
+      await runSync(device, { fresh: false, packed: [], pull: async () => true })
+
+      expect(readVault(mocks.vaultRoot)).toEqual({
+        'livenote0001.md': 'Live note body',
+        'livenote0002.md': 'Second body'
+      })
+      expect([...device.docs.keys()].sort()).toEqual([live.id, second.id])
+    })
+
+    it('keeps the packed docs through a pull that does not deliver', async () => {
+      const device = makeDevice()
+
+      await runSync(device, { fresh: true, packed: [live], pull: async () => false })
+      const kept = { docs: [...device.docs.keys()], watermarks: [...device.watermarks.keys()] }
+      await runSync(device, {
+        fresh: false,
+        packed: [],
+        pull: async () => {
+          applyRecord(
+            { op: 'upsert', type: 'note', id: live.id, title: 'Plans', content: '' },
+            device.docs
+          )
+          return true
+        }
+      })
+
+      expect(kept).toEqual({ docs: [live.id], watermarks: [live.id] })
+      expect(readVault(mocks.vaultRoot)).toEqual({ 'Plans.md': 'Live note body' })
+    })
   })
 })
