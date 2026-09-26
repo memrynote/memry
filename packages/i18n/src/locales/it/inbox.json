@@ -195,6 +195,7 @@
     "deletePermanently": "Elimina definitivamente",
     "archive": "Archivio",
     "file": "Archivio",
+    "fileToFolder": "Archivia in {folder}",
     "keyboardHint": "{modifier}⏎ file · cartella 1-5 · Esc chiudi",
     "voiceTitlePlaceholder": "Assegna un nome a questo memo vocale...",
     "fileTo": "Archiviare in",
@@ -389,7 +390,8 @@
       "tags": "Tag",
       "selectedTags": "Tag selezionati",
       "addTags": "Aggiungi tag",
-      "tagSuggestions": "Suggerimenti per i tag"
+      "tagSuggestions": "Suggerimenti per i tag",
+      "removeTag": "Rimuovi {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tag",

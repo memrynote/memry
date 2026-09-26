@@ -4,17 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import {
-  Folder,
-  Sparkles,
-  Loader2,
-  ChevronDown,
-  Check,
-  FileText,
-  Search,
-  Plus,
-  Link2
-} from '@/lib/icons'
+import { Folder, Sparkles, Loader2, Check, Search, Plus, Image as ImageIcon } from '@/lib/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
@@ -23,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { LinkInput } from './link-input'
+import { DRAWER_ROW, DrawerSectionHeading } from '@/components/tasks/drawer-section'
 import { cn } from '@/lib/utils'
 import { confidenceBand } from '@/lib/confidence-band'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
@@ -91,7 +82,6 @@ export const FilingSection = ({
   const [showAllFolders, setShowAllFolders] = useState(false)
   const [folderSearch, setFolderSearch] = useState('')
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
-  const [showLinks, setShowLinks] = useState(false)
 
   // Fetch real folders from vault
   const { data: vaultFolders = [] } = useQuery({
@@ -284,239 +274,65 @@ export const FilingSection = ({
   // destination the filing never uses.
   const showFolderPicker = imageFiling?.mode !== 'embed'
 
-  return (
-    <div className={cn(className)}>
-      {/* File To + Tags — line by line */}
-      <div className="flex flex-col py-4 px-5 border-b border-border">
-        {/* File To */}
-        {showFolderPicker && (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-                {t('detail.fileTo')}
-              </span>
-              {isLoadingAISuggestions ? (
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <Loader2 className="size-3 animate-spin" />
-                </div>
-              ) : hasAISuggestions ? (
-                <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
-                  <Sparkles className="size-3" />
-                  <span>{t('detail.ai')}</span>
-                </div>
-              ) : null}
-            </div>
+  // The panel binds 1-5 to its AI folder suggestions in this same order, so
+  // each chip carries its shortcut number. The selected one is the row itself.
+  const folderChips = hasAISuggestions
+    ? suggestedFolders
+        .map((folder, index) => ({ folder, shortcut: index + 1 }))
+        .filter(({ folder }) => folder.id !== selectedFolder?.id)
+    : []
 
-            {/* Folder Dropdown */}
-            <Popover
-              open={showAllFolders}
-              onOpenChange={(open) => {
-                setShowAllFolders(open)
-                if (!open) setFolderSearch('')
-              }}
+  const unlinkedNoteSuggestions = noteSuggestions.filter(
+    (s) => !linkedNotes.some((ln) => ln.id === s.note.id)
+  )
+
+  const folderParent = displayFolder?.path.includes('/')
+    ? displayFolder.path.split('/').slice(0, -1).join(' / ')
+    : null
+  const folderLeaf = displayFolder?.path
+    ? (displayFolder.path.split('/').pop() ?? displayFolder.path)
+    : displayFolder?.name || t('detail.selectFolder')
+
+  return (
+    // Rows sit in a px-3 column with their own px-2, the task drawer's lane:
+    // every icon starts 20px in, under the type selector above.
+    <div className={cn('flex flex-col gap-0.5 px-3 pt-1.5 pb-3', className)}>
+      {/* How the image lands in the notes it is linked to (#807). First,
+          because it decides whether the folder row is shown at all. */}
+      {imageFiling?.askUser && (
+        <div className="flex flex-col" data-testid="image-filing-mode">
+          <div
+            title={t('detail.imageFilingModeLabel')}
+            className="flex h-8 items-center gap-2.5 px-2"
+          >
+            <ImageIcon className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+            <div
+              role="group"
+              aria-label={t('detail.imageFilingModeLabel')}
+              className="flex gap-0.5 rounded-[7px] bg-surface-active/70 p-0.5"
             >
-              <PopoverTrigger asChild>
+              {(['embed', 'link'] as const).map((mode) => (
                 <button
+                  key={mode}
                   type="button"
+                  data-testid={`image-filing-mode-${mode}`}
+                  aria-pressed={imageFiling.mode === mode}
+                  onClick={() => imageFiling.onModeChange(mode)}
                   className={cn(
-                    'flex items-center w-full rounded-md py-2 px-3 transition-colors',
-                    hasAISuggestions
-                      ? 'bg-[var(--tint)]/[0.03] border border-[var(--tint)]/12'
-                      : 'bg-foreground/[0.02] border border-border'
+                    'h-[22px] rounded-[5px] px-2 text-[12px] leading-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+                    imageFiling.mode === mode
+                      ? 'bg-background font-medium text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
+                      : 'text-text-secondary hover:text-text-primary'
                   )}
                 >
-                  <div className="flex items-center grow gap-2 min-w-0">
-                    {displayFolder?.icon ? (
-                      <NoteIconDisplay value={displayFolder.icon} className="size-4 shrink-0" />
-                    ) : (
-                      <Folder
-                        className={cn(
-                          'size-4 shrink-0',
-                          hasAISuggestions ? 'text-[var(--tint)]' : 'text-muted-foreground'
-                        )}
-                      />
-                    )}
-                    <span className="text-[13px] leading-4 font-medium text-foreground truncate">
-                      {displayPath}
-                    </span>
-                  </div>
-                  <ChevronDown className="size-3 text-muted-foreground/50 shrink-0" />
+                  {mode === 'embed'
+                    ? t('detail.imageFilingModeEmbed')
+                    : t('detail.imageFilingModeLink')}
                 </button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-[var(--radix-popover-trigger-width)] p-0 rounded-md bg-[var(--popover)] border-border shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
-                align="start"
-                sideOffset={4}
-              >
-                {/* Search */}
-                <div className="flex items-center py-2 px-3 gap-2 border-b border-border/40">
-                  <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
-                  <Input
-                    placeholder={t('detail.searchOrCreateFolder')}
-                    value={folderSearch}
-                    onChange={(e) => setFolderSearch(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && canCreateFolder) {
-                        e.preventDefault()
-                        void handleCreateFolder()
-                      }
-                    }}
-                    className="h-5 p-0 border-0 bg-transparent text-[13px] leading-5 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent focus-visible:ring-0 shadow-none"
-                    autoFocus
-                  />
-                </div>
-
-                <div className="max-h-56 overflow-y-auto">
-                  {/* Suggested */}
-                  {suggestedFolders.length > 0 && !folderSearch.trim() && (
-                    <div className="flex flex-col py-1">
-                      <span className="text-[10px] [letter-spacing:0.05em] uppercase text-muted-foreground/40 px-3 py-1">
-                        {t('detail.suggested')}
-                      </span>
-                      {suggestedFolders.map((folder) => {
-                        const isSelected = selectedFolder?.id === folder.id
-                        return (
-                          <button
-                            type="button"
-                            key={folder.id || 'root-suggested'}
-                            onClick={() => {
-                              onFolderSelect(folder)
-                              setShowAllFolders(false)
-                            }}
-                            className={cn(
-                              'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
-                              isSelected ? 'bg-[var(--tint)]/[0.05]' : 'hover:bg-foreground/[0.03]'
-                            )}
-                          >
-                            {folder.icon ? (
-                              <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
-                            ) : (
-                              <Folder className="size-3.5 shrink-0 text-[var(--tint)]" />
-                            )}
-                            <span className="text-[13px] leading-4 text-foreground truncate grow">
-                              {folder.path
-                                ? folder.path.replace(/\//g, ' / ')
-                                : t('detail.notesRoot')}
-                            </span>
-                            {isSelected && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* All folders */}
-                  <div
-                    className={cn(
-                      'flex flex-col py-1',
-                      suggestedFolders.length > 0 &&
-                        !folderSearch.trim() &&
-                        'border-t border-border/40'
-                    )}
-                  >
-                    {canCreateFolder && (
-                      <button
-                        type="button"
-                        onClick={() => void handleCreateFolder()}
-                        disabled={isCreatingFolder}
-                        className="flex items-center gap-2 py-1.5 px-3 mx-1 text-start transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
-                      >
-                        {isCreatingFolder ? (
-                          <Loader2 className="size-3.5 shrink-0 text-[var(--tint)] animate-spin" />
-                        ) : (
-                          <Plus className="size-3.5 shrink-0 text-[var(--tint)]" />
-                        )}
-                        <span className="text-[13px] leading-4 text-[var(--tint)]">
-                          {t('detail.createFolder', { name: trimmedSearch })}
-                        </span>
-                      </button>
-                    )}
-                    {filteredFolders.length === 0 && !canCreateFolder ? (
-                      <p className="text-xs text-muted-foreground text-center py-3">
-                        {t('empty.noFolders')}
-                      </p>
-                    ) : filteredFolders.length === 0 ? null : (
-                      filteredFolders.map((folder) => {
-                        const isSelected = selectedFolder?.id === folder.id
-                        return (
-                          <button
-                            type="button"
-                            key={folder.id}
-                            onClick={() => {
-                              onFolderSelect(folder)
-                              setShowAllFolders(false)
-                            }}
-                            className={cn(
-                              'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
-                              isSelected ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
-                            )}
-                          >
-                            {folder.icon ? (
-                              <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
-                            ) : (
-                              <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-                            )}
-                            <span className="grow text-[13px] leading-4 text-foreground truncate">
-                              {folder.path ? folder.path.replace(/\//g, ' / ') : folder.name}
-                            </span>
-                            {isSelected && (
-                              <Check className="size-3 shrink-0 text-muted-foreground" />
-                            )}
-                          </button>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+              ))}
+            </div>
           </div>
-        )}
-
-        {/* Tags */}
-        <TagAutocomplete
-          tags={tags}
-          onTagsChange={onTagsChange}
-          placeholder={t('detail.addTags')}
-          showSections={false}
-          maxSuggestions={5}
-          aiSuggestedTags={aiSuggestedTags}
-          className="mt-4 py-0 px-0 border-b-0"
-        />
-      </div>
-
-      {/* How the image lands in the notes it is linked to (#807). Sits above the
-          link row because it decides whether the folder picker is shown at all. */}
-      {imageFiling?.askUser && (
-        <div
-          className="flex flex-col gap-2 py-4 px-5 border-b border-border"
-          data-testid="image-filing-mode"
-        >
-          <span className="text-[11px] leading-3.5 text-muted-foreground/60">
-            {t('detail.imageFilingModeLabel')}
-          </span>
-          <div className="flex items-center gap-1.5">
-            {(['embed', 'link'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                data-testid={`image-filing-mode-${mode}`}
-                aria-pressed={imageFiling.mode === mode}
-                onClick={() => imageFiling.onModeChange(mode)}
-                className={cn(
-                  'px-2.5 py-1 rounded-md text-[12px] leading-4 border transition-colors',
-                  imageFiling.mode === mode
-                    ? 'bg-foreground/[0.06] border-border text-foreground'
-                    : 'bg-transparent border-border/50 text-muted-foreground hover:bg-muted/40'
-                )}
-              >
-                {mode === 'embed'
-                  ? t('detail.imageFilingModeEmbed')
-                  : t('detail.imageFilingModeLink')}
-              </button>
-            ))}
-          </div>
-          <label className="flex items-center gap-2 text-[11px] leading-3.5 text-muted-foreground/60">
+          <label className="flex items-center gap-2 ps-[34px] pe-2 pb-1 text-[12px] leading-4 text-text-tertiary">
             <input
               type="checkbox"
               data-testid="image-filing-mode-remember"
@@ -529,89 +345,242 @@ export const FilingSection = ({
         </div>
       )}
 
-      {/* Link to note — collapsed by default to keep the panel calm */}
-      <div className="flex flex-col gap-2 py-4 px-5 border-b border-border">
-        {!(showLinks || linkedNotes.length > 0) ? (
-          <button
-            type="button"
-            onClick={() => setShowLinks(true)}
-            className="flex items-center justify-between w-full rounded-md py-2 px-3 bg-foreground/[0.02] border border-border text-start transition-colors hover:bg-foreground/[0.03]"
+      {showFolderPicker && (
+        <>
+          <Popover
+            open={showAllFolders}
+            onOpenChange={(open) => {
+              setShowAllFolders(open)
+              if (!open) setFolderSearch('')
+            }}
           >
-            <span className="flex items-center gap-2 text-[13px] leading-4 text-muted-foreground">
-              <Link2 className="size-3.5 shrink-0" aria-hidden="true" />
-              {t('detail.linkANote')}
-            </span>
-            {noteSuggestions.length > 0 && (
-              <span className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
-                <Sparkles className="size-3" />
-                {t('detail.suggestedCount', { count: noteSuggestions.length })}
-              </span>
-            )}
-          </button>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-                {t('detail.linkToNote')}
-              </span>
-              {noteSuggestions.length > 0 && (
-                <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
-                  <Sparkles className="size-3" />
-                  <span>{t('detail.ai')}</span>
-                </div>
-              )}
-            </div>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title={t('detail.fileTo')}
+                aria-label={`${t('detail.fileTo')}: ${displayPath}`}
+                className="flex h-8 w-full min-w-0 items-center gap-2.5 rounded-md px-2 text-start text-[13px] leading-[18px] transition-colors hover:bg-surface-active/60 focus-visible:bg-surface-active/60 focus-visible:outline-none data-[state=open]:bg-surface-active/60"
+              >
+                {displayFolder?.icon ? (
+                  <NoteIconDisplay value={displayFolder.icon} className="size-3.5 shrink-0" />
+                ) : (
+                  <Folder className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+                )}
+                <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                  {folderParent && (
+                    <span className="min-w-0 truncate text-text-tertiary">{folderParent} /</span>
+                  )}
+                  <span className="shrink-0 truncate font-medium text-text-primary">
+                    {folderLeaf}
+                  </span>
+                </span>
+                {isLoadingAISuggestions ? (
+                  <Loader2
+                    className="size-3 shrink-0 animate-spin text-text-tertiary"
+                    aria-hidden="true"
+                  />
+                ) : hasAISuggestions ? (
+                  <Sparkles
+                    className="size-3 shrink-0 text-[var(--tint)]"
+                    aria-label={t('detail.ai')}
+                  />
+                ) : null}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[var(--radix-popover-trigger-width)] p-0 rounded-md bg-[var(--popover)] border-border shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+              align="start"
+              sideOffset={4}
+            >
+              {/* Search */}
+              <div className="flex items-center py-2 px-3 gap-2 border-b border-border/40">
+                <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
+                <Input
+                  placeholder={t('detail.searchOrCreateFolder')}
+                  value={folderSearch}
+                  onChange={(e) => setFolderSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && canCreateFolder) {
+                      e.preventDefault()
+                      void handleCreateFolder()
+                    }
+                  }}
+                  className="h-5 p-0 border-0 bg-transparent text-[13px] leading-5 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent focus-visible:ring-0 shadow-none"
+                  autoFocus
+                />
+              </div>
 
-            {/* AI Note Suggestions */}
-            {noteSuggestions.length > 0 && (
-              <div className="space-y-1.5">
-                {noteSuggestions.map((suggestion, index) => {
-                  const isLinked = linkedNotes.some((ln) => ln.id === suggestion.note.id)
-                  const bgOpacity = [0.05, 0.02, 0.01][index] ?? 0.01
-                  const borderOpacity = [0.12, 0.06, 0.03][index] ?? 0.03
-                  const band = confidenceBand(suggestion.confidence)
-                  return (
+              <div className="max-h-56 overflow-y-auto">
+                {/* Suggested */}
+                {suggestedFolders.length > 0 && !folderSearch.trim() && (
+                  <div className="flex flex-col py-1">
+                    <span className="text-[11px] leading-4 text-text-tertiary px-3 py-1">
+                      {t('detail.suggested')}
+                    </span>
+                    {suggestedFolders.map((folder) => {
+                      const isSelected = selectedFolder?.id === folder.id
+                      return (
+                        <button
+                          type="button"
+                          key={folder.id || 'root-suggested'}
+                          onClick={() => {
+                            onFolderSelect(folder)
+                            setShowAllFolders(false)
+                          }}
+                          className={cn(
+                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
+                            isSelected ? 'bg-[var(--tint)]/[0.05]' : 'hover:bg-foreground/[0.03]'
+                          )}
+                        >
+                          {folder.icon ? (
+                            <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
+                          ) : (
+                            <Folder className="size-3.5 shrink-0 text-[var(--tint)]" />
+                          )}
+                          <span className="text-[13px] leading-4 text-foreground truncate grow">
+                            {folder.path
+                              ? folder.path.replace(/\//g, ' / ')
+                              : t('detail.notesRoot')}
+                          </span>
+                          {isSelected && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* All folders */}
+                <div
+                  className={cn(
+                    'flex flex-col py-1',
+                    suggestedFolders.length > 0 &&
+                      !folderSearch.trim() &&
+                      'border-t border-border/40'
+                  )}
+                >
+                  {canCreateFolder && (
                     <button
                       type="button"
-                      key={suggestion.note.id}
-                      onClick={() => handleLinkSuggestedNote(suggestion.note)}
-                      className="w-full flex items-center gap-2 rounded-md px-3 py-2.5 text-start transition-colors border border-dashed"
-                      style={{
-                        backgroundColor: `color-mix(in srgb, var(--tint) ${Math.round(bgOpacity * 100)}%, transparent)`,
-                        borderColor: isLinked
-                          ? `color-mix(in srgb, var(--tint) 50%, transparent)`
-                          : `color-mix(in srgb, var(--tint) ${Math.round(borderOpacity * 100)}%, transparent)`
-                      }}
+                      onClick={() => void handleCreateFolder()}
+                      disabled={isCreatingFolder}
+                      className="flex items-center gap-2 py-1.5 px-3 mx-1 text-start transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
                     >
-                      {suggestion.note.emoji ? (
-                        <NoteIconDisplay
-                          value={suggestion.note.emoji}
-                          className="size-3.5 shrink-0"
-                        />
+                      {isCreatingFolder ? (
+                        <Loader2 className="size-3.5 shrink-0 text-[var(--tint)] animate-spin" />
                       ) : (
-                        <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                        <Plus className="size-3.5 shrink-0 text-[var(--tint)]" />
                       )}
-                      <span className="truncate text-[13px] leading-4 font-medium text-foreground flex-1 min-w-0">
-                        {suggestion.note.title}
-                      </span>
-                      {isLinked && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
-                      <span className="text-[10px] leading-3 text-muted-foreground/40 shrink-0">
-                        {band === 'strong'
-                          ? t('detail.match.strong')
-                          : band === 'likely'
-                            ? t('detail.match.likely')
-                            : t('detail.match.weak')}
+                      <span className="text-[13px] leading-4 text-[var(--tint)]">
+                        {t('detail.createFolder', { name: trimmedSearch })}
                       </span>
                     </button>
-                  )
-                })}
+                  )}
+                  {filteredFolders.length === 0 && !canCreateFolder ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">
+                      {t('empty.noFolders')}
+                    </p>
+                  ) : filteredFolders.length === 0 ? null : (
+                    filteredFolders.map((folder) => {
+                      const isSelected = selectedFolder?.id === folder.id
+                      return (
+                        <button
+                          type="button"
+                          key={folder.id}
+                          onClick={() => {
+                            onFolderSelect(folder)
+                            setShowAllFolders(false)
+                          }}
+                          className={cn(
+                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
+                            isSelected ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
+                          )}
+                        >
+                          {folder.icon ? (
+                            <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
+                          ) : (
+                            <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="grow text-[13px] leading-4 text-foreground truncate">
+                            {folder.path ? folder.path.replace(/\//g, ' / ') : folder.name}
+                          </span>
+                          {isSelected && (
+                            <Check className="size-3 shrink-0 text-muted-foreground" />
+                          )}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
               </div>
-            )}
+            </PopoverContent>
+          </Popover>
 
-            {/* Link notes search input */}
-            <LinkInput linkedNotes={linkedNotes} onLinkedNotesChange={onLinkedNotesChange} />
-          </>
-        )}
+          {folderChips.length > 0 && (
+            <div className="flex flex-wrap gap-1 ps-[34px] pe-2 pb-1">
+              {folderChips.map(({ folder, shortcut }) => (
+                <button
+                  key={folder.id || 'root-chip'}
+                  type="button"
+                  onClick={() => onFolderSelect(folder)}
+                  aria-keyshortcuts={String(shortcut)}
+                  className="flex h-[22px] min-w-0 items-center gap-1.5 rounded-[5px] border border-border px-1.5 text-[12px] leading-4 text-text-secondary transition-colors hover:bg-surface-active/60 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  <span aria-hidden="true" className="text-[10px] text-text-tertiary">
+                    {shortcut}
+                  </span>
+                  <span className="truncate">
+                    {folder.path ? folder.path.replace(/\//g, ' / ') : t('detail.notesRoot')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <TagAutocomplete
+        tags={tags}
+        onTagsChange={onTagsChange}
+        placeholder={t('detail.addTags')}
+        showSections={false}
+        maxSuggestions={5}
+        aiSuggestedTags={aiSuggestedTags}
+        variant="row"
+      />
+
+      <div className="flex flex-col gap-0.5 pt-3">
+        <DrawerSectionHeading count={linkedNotes.length || undefined}>
+          {t('detail.linkToNote')}
+        </DrawerSectionHeading>
+
+        {/* AI note suggestions not yet linked: muted rows, one click links.
+            Once linked they move into LinkInput's list, where × unlinks. */}
+        {unlinkedNoteSuggestions.map((suggestion) => {
+          const band = confidenceBand(suggestion.confidence)
+          return (
+            <button
+              type="button"
+              key={suggestion.note.id}
+              onClick={() => handleLinkSuggestedNote(suggestion.note)}
+              title={suggestion.reason}
+              className={cn(DRAWER_ROW, 'group')}
+            >
+              <Sparkles className="size-3.5 shrink-0 text-[var(--tint)]" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-text-secondary group-hover:text-text-primary">
+                {suggestion.note.title}
+              </span>
+              <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
+                {band === 'strong'
+                  ? t('detail.match.strong')
+                  : band === 'likely'
+                    ? t('detail.match.likely')
+                    : t('detail.match.weak')}
+              </span>
+            </button>
+          )
+        })}
+
+        <LinkInput linkedNotes={linkedNotes} onLinkedNotesChange={onLinkedNotesChange} />
       </div>
     </div>
   )

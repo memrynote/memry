@@ -195,6 +195,7 @@
     "deletePermanently": "ลบถาวร",
     "archive": "เก็บถาวร",
     "file": "แฟ้ม",
+    "fileToFolder": "จัดเก็บใน {folder}",
     "keyboardHint": "{modifier}⏎ จัดเก็บ · 1-5 โฟลเดอร์ · Esc ปิด",
     "voiceTitlePlaceholder": "ตั้งชื่อบันทึกเสียงนี้...",
     "fileTo": "จัดเก็บไปที่",
@@ -389,7 +390,8 @@
       "tags": "แท็ก",
       "selectedTags": "แท็กที่เลือก",
       "addTags": "เพิ่มแท็ก",
-      "tagSuggestions": "คำแนะนำแท็ก"
+      "tagSuggestions": "คำแนะนำแท็ก",
+      "removeTag": "นำ {tag} ออก"
     },
     "componentsFilingTagInput": {
       "tags": "แท็ก",

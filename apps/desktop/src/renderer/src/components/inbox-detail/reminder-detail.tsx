@@ -3,8 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
-import { BellRing, FileText, Calendar, Clock, ChevronRight, CheckSquare } from '@/lib/icons'
-import { Button } from '@/components/ui/button'
+import { BellRing, FileText, Calendar, ChevronRight, CheckSquare } from '@/lib/icons'
+import { DRAWER_ROW } from '@/components/tasks/drawer-section'
 import { SnoozePicker } from '@/components/snooze/snooze-picker'
 import { inOneHour, tomorrow, nextWeek } from '@/components/snooze/snooze-presets'
 import { inboxService } from '@/services/inbox-service'
@@ -145,138 +145,107 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
   }
 
   return (
-    <div className="flex flex-col gap-3.5 p-5 text-xs/4">
-      {/* Triggered banner */}
-      <div
-        className={cn(
-          'flex items-center rounded-lg py-2 px-3 gap-1.5',
-          'bg-[var(--accent-orange)]/5 border border-[var(--accent-orange)]/15'
-        )}
-      >
-        <BellRing className="size-4 text-[var(--accent-orange)]" aria-hidden="true" />
-        <span className="text-[var(--accent-orange)] font-medium text-xs">
-          {t('reminder.triggered')}
-        </span>
-        <span className="ms-auto text-text-tertiary text-[11px]">
-          {formatTriggerDate(metadata.remindAt)}
-        </span>
+    <div className="flex flex-col text-[13px] leading-[18px]">
+      {/* The reminder's own words are the headline; when and whether it has
+          been seen sit under it as one muted line. */}
+      <div className="flex flex-col gap-1.5 px-5 pt-4 pb-3">
+        <h3 className="text-[15px] leading-[22px] font-semibold text-text-primary">
+          {metadata.reminderNote || item.title}
+        </h3>
+        <p className="flex flex-wrap items-center gap-x-1.5 text-[12px] leading-4 text-text-tertiary">
+          <BellRing className="size-3 text-[var(--accent-orange)]" aria-hidden="true" />
+          <span>{t('reminder.triggered')}</span>
+          <span aria-hidden="true">·</span>
+          <span>{formatTriggerDate(metadata.remindAt)}</span>
+          <span aria-hidden="true">·</span>
+          {isViewed ? (
+            <span>{t('reminder.viewed')}</span>
+          ) : (
+            <>
+              <span>{t('reminder.notYetViewed')}</span>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => void handleArchive()}
+                disabled={isArchiving}
+                className="text-text-secondary underline-offset-2 hover:text-text-primary hover:underline disabled:opacity-50"
+              >
+                {t('reminder.archive')}
+              </button>
+            </>
+          )}
+        </p>
       </div>
 
-      {/* Reminder note */}
-      {metadata.reminderNote && (
-        <div className="flex flex-col gap-1">
-          <span className="uppercase tracking-[0.04em] text-text-tertiary font-medium text-[11px]">
-            {t('reminder.noteLabel')}
-          </span>
-          <p className="text-muted-foreground text-[13px] leading-5">{metadata.reminderNote}</p>
-        </div>
-      )}
-
-      {/* Source card */}
-      <div className="flex flex-col gap-1">
-        <span className="uppercase tracking-[0.04em] text-text-tertiary font-medium text-[11px]">
-          {t('reminder.source')}
-        </span>
+      {/* Source: one row on the drawer's icon lane, the highlight under it. */}
+      <div className="flex flex-col px-3 pb-3">
         <button
           type="button"
           onClick={handleNavigateToSource}
-          className={cn(
-            'flex items-center rounded-lg py-2.5 px-3 gap-2.5 w-full text-start',
-            'bg-muted/30 border border-border',
-            'hover:bg-muted/50 transition-colors cursor-pointer'
-          )}
+          title={t('reminder.source')}
+          className={cn(DRAWER_ROW, 'group')}
         >
-          <TargetIcon className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-            <span className="text-foreground text-xs truncate">
-              {metadata.targetType === 'journal'
-                ? t('reminder.journalTitle', {
-                    date: new Date(metadata.targetId).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })
+          <TargetIcon className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate text-text-primary">
+            {metadata.targetType === 'journal'
+              ? t('reminder.journalTitle', {
+                  date: new Date(metadata.targetId).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
                   })
-                : metadata.targetTitle || t('reminder.noteFallback')}
-            </span>
-            {metadata.highlightText && (
-              <span className="text-text-tertiary text-[11px] truncate">
-                {t('reminder.highlighted', { text: metadata.highlightText })}
-              </span>
-            )}
-          </div>
-          <ChevronRight className="size-2.5 text-text-tertiary shrink-0" aria-hidden="true" />
-        </button>
-      </div>
-
-      {/* Mark as viewed */}
-      <div className="flex items-center gap-2">
-        {isViewed ? (
-          <span className="text-text-tertiary text-[11px]">{t('reminder.viewed')}</span>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void handleArchive()}
-            disabled={isArchiving}
-            className="h-auto py-0.5 px-2 text-[11px] text-muted-foreground border-border"
-          >
-            {t('reminder.archive')}
-          </Button>
-        )}
-        {!isViewed && (
-          <span className="text-text-tertiary text-[11px]">
-            {`· ${t('reminder.notYetViewed')}`}
+                })
+              : metadata.targetTitle || t('reminder.noteFallback')}
           </span>
-        )}
-      </div>
-
-      {/* Snooze section */}
-      <div className="flex flex-col gap-2.5 pt-3.5 border-t border-border">
-        <div className="flex items-center gap-1.5">
-          <Clock className="size-3.5 text-muted-foreground/60" aria-hidden="true" />
-          <span className="uppercase tracking-[0.04em] text-muted-foreground/60 text-xs font-medium">
-            {t('reminder.snooze')}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {SNOOZE_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => handlePresetSnooze(preset.getTime)}
-              disabled={isSnoozing}
-              className={cn(
-                'rounded-md py-1 px-2.5 text-[13px]',
-                'bg-muted/50 text-muted-foreground',
-                'hover:bg-muted/80 transition-colors',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-            >
-              {presetLabels[preset.id]}
-            </button>
-          ))}
-          <SnoozePicker
-            onSnooze={(snoozeUntil) => void handleSnooze(snoozeUntil)}
-            disabled={isSnoozing}
-            trigger={
-              <button
-                type="button"
-                disabled={isSnoozing}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-md py-1 px-2.5 text-[13px]',
-                  'border border-border text-muted-foreground/60',
-                  'hover:bg-muted/30 transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-              >
-                <Calendar className="size-3" aria-hidden="true" />
-                {t('reminder.custom')}
-              </button>
-            }
+          <ChevronRight
+            className="size-3 shrink-0 text-text-tertiary rtl:rotate-180"
+            aria-hidden="true"
           />
-        </div>
+        </button>
+        {metadata.highlightText && (
+          <p className="ps-[34px] pe-2 pt-1 text-[12px] leading-[17px] text-text-tertiary">
+            {t('reminder.highlighted', { text: metadata.highlightText })}
+          </p>
+        )}
+      </div>
+
+      {/* Snooze: a label and the presets on one line. */}
+      <div className="flex flex-wrap items-center gap-1.5 px-5 pt-3 pb-4 border-t border-border">
+        <span className="pe-1 text-[12px] leading-4 text-text-tertiary">
+          {t('reminder.snooze')}
+        </span>
+        {SNOOZE_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            onClick={() => handlePresetSnooze(preset.getTime)}
+            disabled={isSnoozing}
+            className={SNOOZE_CHIP}
+          >
+            {presetLabels[preset.id]}
+          </button>
+        ))}
+        <SnoozePicker
+          onSnooze={(snoozeUntil) => void handleSnooze(snoozeUntil)}
+          disabled={isSnoozing}
+          trigger={
+            <button
+              type="button"
+              disabled={isSnoozing}
+              className={cn(SNOOZE_CHIP, 'border-transparent text-text-secondary')}
+            >
+              <Calendar className="size-3" aria-hidden="true" />
+              {t('reminder.custom')}
+            </button>
+          }
+        />
       </div>
     </div>
   )
 }
+
+const SNOOZE_CHIP = cn(
+  'flex h-6 items-center gap-1.5 rounded-md border border-border px-2 text-[12px] leading-4 text-text-primary',
+  'transition-colors hover:bg-surface-active/60',
+  'disabled:opacity-50 disabled:cursor-not-allowed'
+)

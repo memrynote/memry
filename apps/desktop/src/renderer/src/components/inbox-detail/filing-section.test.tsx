@@ -210,8 +210,7 @@ describe('FilingSection', () => {
     expect(await screen.findAllByText('Projects / memrynote')).not.toHaveLength(0)
     expect(screen.getByText('ai tags research,link')).toBeInTheDocument()
 
-    // Links collapse by default — expand to reveal AI note suggestions.
-    await userEvent.click(screen.getByRole('button', { name: /linkANote/i }))
+    // AI note suggestions are listed up front as one-click rows.
     expect(screen.getByText('memrynote research')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('searchOrCreateFolder')).toHaveClass(
       'h-5',
@@ -236,6 +235,41 @@ describe('FilingSection', () => {
     expect(onFolderSelect).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: 'Areas/Writing', path: 'Areas/Writing', parent: 'Areas' })
     )
+  })
+
+  it('offers the other AI folder suggestions as chips numbered like the 1-5 shortcuts', async () => {
+    const api = getMockApi() as any
+    api.notes.getFolders.mockResolvedValue([{ path: 'Projects/memrynote' }, { path: 'Archive' }])
+    api.inbox.getSuggestions.mockResolvedValue({
+      suggestions: [
+        { destination: { type: 'folder', path: 'Projects/memrynote' }, confidence: 0.9 },
+        { destination: { type: 'folder', path: 'Archive' }, confidence: 0.6 }
+      ]
+    })
+    const onFolderSelect = vi.fn()
+
+    renderWithProviders(
+      <FilingSection
+        item={item}
+        selectedFolder={{ id: 'Projects/memrynote', name: 'memrynote', path: 'Projects/memrynote' }}
+        tags={[]}
+        linkedNotes={[]}
+        onFolderSelect={onFolderSelect}
+        onTagsChange={vi.fn()}
+        onLinkedNotesChange={vi.fn()}
+      />
+    )
+
+    // The selected folder is the row itself, so only #2 gets a chip. (The
+    // folder popover is mocked open, so its list rows share these names.)
+    await screen.findAllByRole('button', { name: 'Archive' })
+    const chips = document.querySelectorAll('[aria-keyshortcuts]')
+    expect([...chips].map((c) => c.getAttribute('aria-keyshortcuts'))).toEqual(['2'])
+    const chip = chips[0] as HTMLElement
+    expect(chip).toHaveTextContent('2Archive')
+
+    await userEvent.click(chip)
+    expect(onFolderSelect).toHaveBeenCalledWith(expect.objectContaining({ path: 'Archive' }))
   })
 
   it('does not fetch or display AI filing suggestions when AI is disabled', async () => {

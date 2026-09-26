@@ -195,6 +195,7 @@
     "deletePermanently": "永久删除",
     "archive": "归档",
     "file": "文件",
+    "fileToFolder": "归档到 {folder}",
     "keyboardHint": "{modifier}⏎ 存档 · 1-5 文件夹 · Esc 关闭",
     "voiceTitlePlaceholder": "为此语音备忘录命名...",
     "fileTo": "存档到",
@@ -389,7 +390,8 @@
       "tags": "标签",
       "selectedTags": "已选标签",
       "addTags": "添加标签",
-      "tagSuggestions": "标签建议"
+      "tagSuggestions": "标签建议",
+      "removeTag": "移除 {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "标签",

@@ -195,6 +195,7 @@
     "deletePermanently": "מחק לצמיתות",
     "archive": "ארכיון",
     "file": "קובץ",
+    "fileToFolder": "תיוק ב־{folder}",
     "keyboardHint": "קובץ {modifier}⏎ · תיקייה 1-5 · Esc close",
     "voiceTitlePlaceholder": "תן שם לתזכיר הקולי הזה...",
     "fileTo": "קובץ ל",
@@ -389,7 +390,8 @@
       "tags": "תגים",
       "selectedTags": "תגים נבחרים",
       "addTags": "הוסף תגים",
-      "tagSuggestions": "הצעות לתייג"
+      "tagSuggestions": "הצעות לתייג",
+      "removeTag": "הסרת {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "תגים",

@@ -1,66 +1,55 @@
 /**
  * LinkInput Component
- * Modern card-based link input with search functionality
- * Follows Option E design: icon in input, card-based linked notes below
+ * Linked-note rows plus a "find or create" search row, on the same icon lane
+ * as the task drawer's lists
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Link2, FileText, X, Loader2, Folder, Plus } from '@/lib/icons'
+import { FileText, X, Loader2, Folder, Plus } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { DRAWER_ROW } from '@/components/tasks/drawer-section'
 import type { LinkedNote } from '@/types'
 
 import { useDebouncedValue } from '@/hooks/use-task-filters'
 
 // =============================================================================
-// LinkedNoteCard Component
+// LinkedNoteRow Component
 // =============================================================================
 
-interface LinkedNoteCardProps {
+interface LinkedNoteRowProps {
   note: LinkedNote
   onRemove: (id: string) => void
 }
 
-const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Element => {
+/** A linked note on the drawer's icon lane; × on hover or focus unlinks it. */
+const LinkedNoteRow = ({ note, onRemove }: LinkedNoteRowProps): React.JSX.Element => {
   const { t } = useT('inbox')
   const Icon = note.type === 'folder' ? Folder : FileText
 
   return (
-    <div
-      className={cn(
-        'group flex items-center gap-3 px-3 py-2.5 rounded-md',
-        'bg-muted/40 border border-border/50',
-        'transition-colors hover:bg-muted/60'
+    <div role="listitem" className={cn(DRAWER_ROW, 'group')}>
+      {note.emoji ? (
+        <NoteIconDisplay value={note.emoji} className="size-3.5 shrink-0" />
+      ) : (
+        <Icon className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
       )}
-    >
-      <div className="flex items-center justify-center size-7 rounded-md bg-foreground/[0.03] border border-border/50 shrink-0">
-        {note.emoji ? (
-          <NoteIconDisplay value={note.emoji} className="size-3.5" />
-        ) : (
-          <Icon className="size-3.5 text-muted-foreground" aria-hidden="true" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] leading-4 font-medium truncate text-foreground">{note.title}</p>
-        {note.type === 'note' && (
-          <p className="text-[11px] leading-3.5 text-muted-foreground/60 truncate">
-            {note.isPending ? t('detail.pendingNote') : t('type.note')}
-          </p>
-        )}
-      </div>
+      <span className="min-w-0 flex-1 truncate text-text-primary">{note.title}</span>
+      {note.isPending && (
+        <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
+          {t('detail.pendingNote')}
+        </span>
+      )}
       <button
         type="button"
         onClick={() => onRemove(note.id)}
-        className={cn(
-          'p-1 rounded-md opacity-0 group-hover:opacity-100',
-          'transition-opacity hover:bg-destructive/10 hover:text-destructive'
-        )}
+        className="shrink-0 rounded-sm p-0.5 text-text-tertiary opacity-0 transition-opacity hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100"
         aria-label={t('detail.removeLinkTo', { title: note.title })}
       >
-        <X className="size-4" aria-hidden="true" />
+        <X className="size-3" aria-hidden="true" />
       </button>
     </div>
   )
@@ -295,11 +284,20 @@ export const LinkInput = ({
   }
 
   return (
-    <div ref={containerRef} className={cn('space-y-3', className)}>
-      {/* Search Input */}
+    <div ref={containerRef} className={cn('flex flex-col gap-0.5', className)}>
+      {linkedNotes.length > 0 && (
+        <div className="flex flex-col gap-0.5" role="list" aria-label={t('detail.linkedNotesAria')}>
+          {linkedNotes.map((note) => (
+            <LinkedNoteRow key={note.id} note={note} onRemove={handleRemoveNote} />
+          ))}
+        </div>
+      )}
+
+      {/* The search is the list's last row: a + on the icon lane and a bare
+          input, so it reads as "add another" rather than a boxed field. */}
       <div className="relative">
-        <div className="flex items-center rounded-md py-2 px-3 gap-2 bg-foreground/[0.02] border border-border">
-          <Link2 className="size-3.5 text-muted-foreground/30 shrink-0" aria-hidden="true" />
+        <div className={cn(DRAWER_ROW, 'cursor-text focus-within:bg-surface-active/60')}>
+          <Plus className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"
@@ -315,7 +313,7 @@ export const LinkInput = ({
             aria-haspopup="listbox"
             aria-autocomplete="list"
             autoComplete="off"
-            className="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/30 outline-none focus:outline-none"
+            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-text-primary placeholder:text-text-tertiary outline-none focus:outline-none"
           />
         </div>
 
@@ -323,7 +321,7 @@ export const LinkInput = ({
         {isDropdownOpen && (
           <div
             ref={dropdownRef}
-            className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-48 overflow-y-auto"
+            className="absolute z-50 start-[26px] end-0 mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-48 overflow-y-auto"
             id="link-input-listbox"
             role="listbox"
           >
@@ -371,15 +369,6 @@ export const LinkInput = ({
           </div>
         )}
       </div>
-
-      {/* Linked Notes List */}
-      {linkedNotes.length > 0 && (
-        <div className="space-y-2" role="list" aria-label={t('detail.linkedNotesAria')}>
-          {linkedNotes.map((note) => (
-            <LinkedNoteCard key={note.id} note={note} onRemove={handleRemoveNote} />
-          ))}
-        </div>
-      )}
     </div>
   )
 }

@@ -195,6 +195,7 @@
     "deletePermanently": "Radera permanent",
     "archive": "Arkiv",
     "file": "Fil",
+    "fileToFolder": "Arkivera i {folder}",
     "keyboardHint": "{modifier}⏎ arkivera · 1-5 mapp · Esc stäng",
     "voiceTitlePlaceholder": "Namnge detta röstmeddelande...",
     "fileTo": "Arkivera till",
@@ -389,7 +390,8 @@
       "tags": "Taggar",
       "selectedTags": "Valda etiketter",
       "addTags": "Lägg till etiketter",
-      "tagSuggestions": "Etikettförslag"
+      "tagSuggestions": "Etikettförslag",
+      "removeTag": "Ta bort {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Taggar",

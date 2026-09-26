@@ -195,6 +195,7 @@
     "deletePermanently": "Trvale smazat",
     "archive": "Archiv",
     "file": "Soubor",
+    "fileToFolder": "Zařadit do {folder}",
     "keyboardHint": "{modifier}⏎ soubor · 1-5 složka · Esc zavřít",
     "voiceTitlePlaceholder": "Pojmenujte tuto hlasovou poznámku...",
     "fileTo": "Soubor do",
@@ -389,7 +390,8 @@
       "tags": "Tagy",
       "selectedTags": "Vybrané značky",
       "addTags": "Přidejte značky",
-      "tagSuggestions": "Návrhy značek"
+      "tagSuggestions": "Návrhy značek",
+      "removeTag": "Odebrat {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tagy",

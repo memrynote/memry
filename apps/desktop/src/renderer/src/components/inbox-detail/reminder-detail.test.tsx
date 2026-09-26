@@ -79,7 +79,8 @@ describe('ReminderDetail task navigation', () => {
   it('opens the Tasks tab with the task drawer when a task reminder source is clicked', () => {
     render(<ReminderDetail item={taskItem as never} />)
 
-    fireEvent.click(screen.getByText('Ship release').closest('button') as HTMLButtonElement)
+    // The title also heads the panel; the source is the row that navigates.
+    fireEvent.click(screen.getByRole('button', { name: /Ship release/ }))
 
     expect(mocks.markViewed).toHaveBeenCalledWith('inbox_rem_1')
     expect(mocks.openTab).toHaveBeenCalledWith(

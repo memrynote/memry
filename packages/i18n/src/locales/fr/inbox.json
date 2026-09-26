@@ -195,6 +195,7 @@
     "deletePermanently": "Supprimer définitivement",
     "archive": "Archiver",
     "file": "Fichier",
+    "fileToFolder": "Classer dans {folder}",
     "keyboardHint": "Fichier {modifier}⏎ · Dossier 1-5 · Esc fermer",
     "voiceTitlePlaceholder": "Nommez ce mémo vocal...",
     "fileTo": "Fichier vers",
@@ -389,7 +390,8 @@
       "tags": "Balises",
       "selectedTags": "Balises sélectionnées",
       "addTags": "Ajouter des balises",
-      "tagSuggestions": "Suggestions de balises"
+      "tagSuggestions": "Suggestions de balises",
+      "removeTag": "Retirer {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Balises",

@@ -195,6 +195,7 @@
     "deletePermanently": "Poista pysyvästi",
     "archive": "Arkisto",
     "file": "Tiedosto",
+    "fileToFolder": "Arkistoi kansioon {folder}",
     "keyboardHint": "{modifier}⏎ tiedosto · 1-5 kansiota · Esc sulkea",
     "voiceTitlePlaceholder": "Nimeä tämä äänimuistio...",
     "fileTo": "Tiedosto kohteeseen",
@@ -389,7 +390,8 @@
       "tags": "Tunnisteet",
       "selectedTags": "Valitut tunnisteet",
       "addTags": "Lisää tunnisteita",
-      "tagSuggestions": "Tunnisteehdotukset"
+      "tagSuggestions": "Tunnisteehdotukset",
+      "removeTag": "Poista {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tunnisteet",

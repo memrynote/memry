@@ -10,7 +10,6 @@
 
 import { useId } from 'react'
 import { LayoutGroup, motion, useReducedMotion } from 'motion/react'
-import { FileText, ListTodo, CalendarClock, Bell } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
@@ -21,12 +20,7 @@ interface TypeSelectorProps {
   onChange: (type: ConvertType) => void
 }
 
-const OPTIONS: { type: ConvertType; icon: React.ReactNode }[] = [
-  { type: 'note', icon: <FileText className="size-3.5" aria-hidden="true" /> },
-  { type: 'task', icon: <ListTodo className="size-3.5" aria-hidden="true" /> },
-  { type: 'event', icon: <CalendarClock className="size-3.5" aria-hidden="true" /> },
-  { type: 'reminder', icon: <Bell className="size-3.5" aria-hidden="true" /> }
-]
+const OPTIONS: ConvertType[] = ['note', 'task', 'event', 'reminder']
 
 export const TypeSelector = ({ value, onChange }: TypeSelectorProps): React.JSX.Element => {
   const { t } = useT('inbox')
@@ -35,48 +29,52 @@ export const TypeSelector = ({ value, onChange }: TypeSelectorProps): React.JSX.
 
   return (
     <LayoutGroup id={layoutGroupId}>
-      <div
-        role="radiogroup"
-        aria-label={t('convert.chooseType')}
-        className="grid grid-cols-4 gap-1 p-1 rounded-md bg-foreground/[0.03] border border-border"
-      >
-        {OPTIONS.map((opt) => {
-          const selected = value === opt.type
-          return (
-            <span key={opt.type} className="flex">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => onChange(opt.type)}
-                className={cn(
-                  'relative flex w-full items-center justify-center gap-1.5 rounded-sm py-1.5 text-[12px]',
-                  'transition-colors duration-150 active:scale-[0.97]',
-                  selected
-                    ? 'text-[var(--tint)] font-medium'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {selected && (
-                  <motion.span
-                    layoutId="type-selector-pill"
-                    aria-hidden="true"
-                    transition={
-                      prefersReducedMotion
-                        ? { duration: 0 }
-                        : { type: 'spring', bounce: 0, duration: 0.3 }
-                    }
-                    className="absolute inset-0 rounded-sm bg-[var(--tint)]/10"
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  {opt.icon}
-                  {t(`convert.${opt.type}`)}
-                </span>
-              </button>
-            </span>
-          )
-        })}
+      {/* A quiet label + compact segmented control, not a full-width bordered
+          grid: it picks the form below, it is not the form. */}
+      <div className="flex items-center gap-2.5">
+        <span aria-hidden="true" className="text-[12px] leading-4 text-text-tertiary">
+          {t('convert.chooseType')}
+        </span>
+        <div
+          role="radiogroup"
+          aria-label={t('convert.chooseType')}
+          className="flex gap-0.5 p-0.5 rounded-[7px] bg-surface-active/70"
+        >
+          {OPTIONS.map((type) => {
+            const selected = value === type
+            return (
+              <span key={type} className="flex">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => onChange(type)}
+                  className={cn(
+                    'relative flex h-6 items-center rounded-[5px] px-2.5 text-[12px] leading-4',
+                    'transition-colors duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+                    selected
+                      ? 'text-text-primary font-medium'
+                      : 'text-text-secondary hover:text-text-primary'
+                  )}
+                >
+                  {selected && (
+                    <motion.span
+                      layoutId="type-selector-pill"
+                      aria-hidden="true"
+                      transition={
+                        prefersReducedMotion
+                          ? { duration: 0 }
+                          : { type: 'spring', bounce: 0, duration: 0.3 }
+                      }
+                      className="absolute inset-0 rounded-[5px] bg-background shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                    />
+                  )}
+                  <span className="relative z-10">{t(`convert.${type}`)}</span>
+                </button>
+              </span>
+            )
+          })}
+        </div>
       </div>
     </LayoutGroup>
   )

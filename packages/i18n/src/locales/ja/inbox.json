@@ -195,6 +195,7 @@
     "deletePermanently": "完全に削除",
     "archive": "アーカイブ",
     "file": "ファイル",
+    "fileToFolder": "{folder} に保存",
     "keyboardHint": "{modifier}⏎ ファイル · 1-5 フォルダ · Esc 閉じる",
     "voiceTitlePlaceholder": "このボイスメモに名前を付けます...",
     "fileTo": "ファイルに保存する",
@@ -389,7 +390,8 @@
       "tags": "タグ",
       "selectedTags": "選択したタグ",
       "addTags": "タグを追加する",
-      "tagSuggestions": "タグの提案"
+      "tagSuggestions": "タグの提案",
+      "removeTag": "{tag} を削除"
     },
     "componentsFilingTagInput": {
       "tags": "タグ",

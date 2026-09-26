@@ -195,6 +195,7 @@
     "deletePermanently": "I-delete nang permanente",
     "archive": "I-archive",
     "file": "file",
+    "fileToFolder": "I-file sa {folder}",
     "keyboardHint": "{modifier}⏎ i-file · 1-5 folder · Esc isara",
     "voiceTitlePlaceholder": "Pangalanan ang voice memo na ito...",
     "fileTo": "I-file sa",
@@ -389,7 +390,8 @@
       "tags": "Mga tag",
       "selectedTags": "Mga napiling tag",
       "addTags": "Magdagdag ng mga tag",
-      "tagSuggestions": "I-tag ang mga mungkahi"
+      "tagSuggestions": "I-tag ang mga mungkahi",
+      "removeTag": "Alisin ang {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Mga tag",

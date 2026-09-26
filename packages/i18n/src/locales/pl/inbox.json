@@ -195,6 +195,7 @@
     "deletePermanently": "Usuń trwale",
     "archive": "Archiwum",
     "file": "Plik",
+    "fileToFolder": "Zapisz w {folder}",
     "keyboardHint": "{modifier}⏎ plik · 1-5 folderów · Esc zamknij",
     "voiceTitlePlaceholder": "Nazwij tę notatkę głosową...",
     "fileTo": "Plik do",
@@ -389,7 +390,8 @@
       "tags": "Tagi",
       "selectedTags": "Wybrane tagi",
       "addTags": "Dodaj tagi",
-      "tagSuggestions": "Sugestie tagów"
+      "tagSuggestions": "Sugestie tagów",
+      "removeTag": "Usuń {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tagi",

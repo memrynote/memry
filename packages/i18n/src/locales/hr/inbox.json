@@ -195,6 +195,7 @@
     "deletePermanently": "Izbriši trajno",
     "archive": "Arhiva",
     "file": "Razvrstaj",
+    "fileToFolder": "Spremi u {folder}",
     "keyboardHint": "{modifier}⏎ datoteka · 1-5 mapa · Esc zatvori",
     "voiceTitlePlaceholder": "Imenuj ovaj glasovni zapis...",
     "fileTo": "Datoteka u",
@@ -389,7 +390,8 @@
       "tags": "oznake",
       "selectedTags": "Odabrane oznake",
       "addTags": "Dodajte oznake",
-      "tagSuggestions": "Prijedlozi oznaka"
+      "tagSuggestions": "Prijedlozi oznaka",
+      "removeTag": "Ukloni {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "oznake",

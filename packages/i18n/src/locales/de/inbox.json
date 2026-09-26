@@ -195,6 +195,7 @@
     "deletePermanently": "Dauerhaft löschen",
     "archive": "Archiv",
     "file": "Datei",
+    "fileToFolder": "In {folder} ablegen",
     "keyboardHint": "{modifier}⏎ Datei · 1-5 Ordner · Esc schließen",
     "voiceTitlePlaceholder": "Benennen Sie diese Sprachnotiz...",
     "fileTo": "Datei an",
@@ -389,7 +390,8 @@
       "tags": "Schlagworte",
       "selectedTags": "Ausgewählte Tags",
       "addTags": "Fügen Sie Tags hinzu",
-      "tagSuggestions": "Tag-Vorschläge"
+      "tagSuggestions": "Tag-Vorschläge",
+      "removeTag": "{tag} entfernen"
     },
     "componentsFilingTagInput": {
       "tags": "Schlagworte",

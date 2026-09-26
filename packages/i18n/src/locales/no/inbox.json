@@ -195,6 +195,7 @@
     "deletePermanently": "Slett permanent",
     "archive": "Arkiv",
     "file": "Fil",
+    "fileToFolder": "Arkiver i {folder}",
     "keyboardHint": "{modifier}⏎ fil · 1-5 mappe · Esc close",
     "voiceTitlePlaceholder": "Gi dette talememoet et navn...",
     "fileTo": "Fil til",
@@ -389,7 +390,8 @@
       "tags": "Tagger",
       "selectedTags": "Valgte tagger",
       "addTags": "Legg til tagger",
-      "tagSuggestions": "Tag-forslag"
+      "tagSuggestions": "Tag-forslag",
+      "removeTag": "Fjern {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tagger",

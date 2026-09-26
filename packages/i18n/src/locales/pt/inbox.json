@@ -195,6 +195,7 @@
     "deletePermanently": "Excluir permanentemente",
     "archive": "Arquivo",
     "file": "Arquivo",
+    "fileToFolder": "Arquivar em {folder}",
     "keyboardHint": "Arquivo {modifier}⏎ · Pasta 1-5 · Esc fechar",
     "voiceTitlePlaceholder": "Dê um nome a este memorando de voz...",
     "fileTo": "Arquivo para",
@@ -389,7 +390,8 @@
       "tags": "Etiquetas",
       "selectedTags": "Tags selecionadas",
       "addTags": "Adicionar tags",
-      "tagSuggestions": "Sugestões de tags"
+      "tagSuggestions": "Sugestões de tags",
+      "removeTag": "Remover {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Etiquetas",

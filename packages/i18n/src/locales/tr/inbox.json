@@ -195,6 +195,7 @@
     "deletePermanently": "Kalıcı olarak sil",
     "archive": "Arşiv",
     "file": "Dosya",
+    "fileToFolder": "{folder} klasörüne kaydet",
     "keyboardHint": "{modifier}⏎ dosya · 1-5 klasör · Esc kapat",
     "voiceTitlePlaceholder": "Bu sesli nota bir ad verin...",
     "fileTo": "Şuraya dosyala:",
@@ -389,7 +390,8 @@
       "tags": "Etiketler",
       "selectedTags": "Seçilen etiketler",
       "addTags": "Etiket ekle",
-      "tagSuggestions": "Etiket önerileri"
+      "tagSuggestions": "Etiket önerileri",
+      "removeTag": "{tag} etiketini kaldır"
     },
     "componentsFilingTagInput": {
       "tags": "Etiketler",

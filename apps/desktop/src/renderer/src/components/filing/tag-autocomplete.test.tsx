@@ -182,4 +182,39 @@ describe('TagAutocomplete', () => {
       expect(screen.queryByRole('listbox', { name: 'tagSuggestions' })).not.toBeInTheDocument()
     })
   })
+
+  describe('row variant', () => {
+    it('removes a tag from its pill button, without the field-variant chrome', async () => {
+      const user = userEvent.setup()
+      render(
+        <TagAutocomplete tags={['existing', 'last']} onTagsChange={onTagsChange} variant="row" />
+      )
+
+      // No section heading: the row is named by its tooltip.
+      expect(screen.queryByText('tags')).not.toBeInTheDocument()
+      expect(screen.getByTitle('tags')).toBeInTheDocument()
+
+      // The i18n mock drops the {tag} param, so buttons are told apart by order.
+      await user.click(screen.getAllByRole('button', { name: 'removeTag' })[0])
+      expect(onTagsChange).toHaveBeenCalledWith(['last'])
+    })
+
+    it('ends a filled row on + , which opens the input in place', async () => {
+      const user = userEvent.setup()
+      render(<TagAutocomplete tags={['existing']} onTagsChange={onTagsChange} variant="row" />)
+
+      await user.click(screen.getByRole('button', { name: 'addTags' }))
+
+      expect(screen.getByRole('combobox', { name: 'addTags' })).toHaveFocus()
+      expect(screen.queryByRole('button', { name: 'addTags' })).not.toBeInTheDocument()
+      expect(await screen.findByRole('listbox', { name: 'tagSuggestions' })).toBeInTheDocument()
+    })
+
+    it('shows the input with an Add tags placeholder when empty', () => {
+      render(<TagAutocomplete tags={[]} onTagsChange={onTagsChange} variant="row" />)
+
+      expect(screen.getByPlaceholderText('addTags')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'addTags' })).not.toBeInTheDocument()
+    })
+  })
 })

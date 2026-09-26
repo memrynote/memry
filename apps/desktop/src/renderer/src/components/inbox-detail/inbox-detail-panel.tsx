@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
-import { Archive, Check, Loader2, GripHorizontal, RotateCcw, Trash2 } from '@/lib/icons'
+import { Archive, Loader2, GripHorizontal, RotateCcw, Trash2 } from '@/lib/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
@@ -27,6 +27,7 @@ import { DetailHeader } from './detail-header'
 import { NoteDetail } from './note-detail'
 import { FilingSection, useFilingState } from './filing-section'
 import { ConvertActions } from './convert-actions'
+import { FOOTER_ACTION_CLASS } from './footer-action'
 import { TypeSelector } from './type-selector'
 import { NOTE_ONLY_TYPES, type ConvertType } from './convert-types'
 import { InboxTitleInput } from './inbox-title-input'
@@ -188,6 +189,11 @@ export const InboxDetailPanel = ({
 
   // What the captured item becomes: note (file to folder) / task / event / reminder.
   const [selectedType, setSelectedType] = useState<ConvertType>('note')
+
+  // Task/event/reminder forms own their submit (and its pending/disabled
+  // state), but the button belongs in the footer beside Archive. They portal it
+  // into this slot rather than lifting every form's state up here.
+  const [primaryActionSlot, setPrimaryActionSlot] = useState<HTMLDivElement | null>(null)
 
   // Reset manual height and selected type during render when the item changes.
   const [storedItemId, setStoredItemId] = useState(item?.id)
@@ -437,6 +443,12 @@ export const InboxDetailPanel = ({
 
   const modifierKeyDisplay = isMac ? '⌘' : 'Ctrl+'
   const keyboardHint = t('detail.keyboardHint', { modifier: modifierKeyDisplay })
+  // Name the destination on the button itself. Embedding has no folder (the
+  // file goes under the linked note), so it keeps the plain verb.
+  const fileLabel =
+    selectedFolder && !isEmbeddingImage
+      ? t('detail.fileToFolder', { folder: selectedFolder.name })
+      : t('detail.file')
 
   // Enter and exit along the same path: slide from the end edge (RTL-aware).
   // 112% clears the pane edge including the start border.
@@ -551,26 +563,30 @@ export const InboxDetailPanel = ({
 
               {!readOnly && item.type !== 'reminder' && (
                 <>
-                  {/* Resize Handle */}
+                  {/* Resize handle, drawn as the single hairline between the
+                      preview and the form. The 8px hit area stays; the grip
+                      only appears on hover, focus or drag. */}
                   <div
                     onMouseDown={handleResizeStart}
-                    className={cn(
-                      'relative h-2 shrink-0 cursor-row-resize group',
-                      'border-t border-border/50 bg-muted/20',
-                      'hover:bg-muted/50 transition-colors',
-                      isResizing && 'bg-primary/20'
-                    )}
+                    className="relative h-2 -my-1 shrink-0 cursor-row-resize group z-10 focus-visible:outline-none"
                     role="separator"
                     aria-orientation="horizontal"
                     aria-label={t('detail.resizeFiling')}
                     tabIndex={0}
                   >
+                    <div
+                      aria-hidden="true"
+                      className={cn(
+                        'absolute inset-x-0 top-1/2 h-px transition-colors',
+                        isResizing ? 'bg-primary/40' : 'bg-border group-hover:bg-foreground/20'
+                      )}
+                    />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <GripHorizontal
                         className={cn(
-                          'size-4 text-muted-foreground/50',
-                          'group-hover:text-muted-foreground transition-colors',
-                          isResizing && 'text-primary'
+                          'size-4 rounded-sm bg-surface text-muted-foreground opacity-0 transition-opacity',
+                          'group-hover:opacity-100 group-focus-visible:opacity-100',
+                          isResizing && 'opacity-100 text-primary'
                         )}
                       />
                     </div>
@@ -582,7 +598,7 @@ export const InboxDetailPanel = ({
                         outcome, so the selector is hidden rather than shown
                         with three dead options. */}
                     {!NOTE_ONLY_TYPES.includes(item.type) && (
-                      <div className="px-5 pt-4">
+                      <div className="px-5 pt-4 pb-1">
                         <TypeSelector value={selectedType} onChange={setSelectedType} />
                       </div>
                     )}
@@ -598,75 +614,80 @@ export const InboxDetailPanel = ({
                         imageFiling={item.type === 'image' ? imageFiling : undefined}
                       />
                     ) : (
-                      <ConvertActions item={item} type={selectedType} onConverted={onClose} />
+                      <ConvertActions
+                        item={item}
+                        type={selectedType}
+                        onConverted={onClose}
+                        primaryActionSlot={primaryActionSlot}
+                      />
                     )}
                   </div>
                 </>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="shrink-0 px-5 py-3 border-t border-border flex flex-col gap-1.5">
+            {/* Footer: a quiet secondary action on the start side, the one
+                primary action on the end side. Task/event/reminder forms portal
+                their submit into the slot. */}
+            <div className="shrink-0 px-5 py-3 border-t border-border flex items-center gap-2">
               {readOnly ? (
-                <div className="flex items-center w-full gap-2">
+                <>
                   <Button
-                    variant="outline"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => item && onRestore?.(item.id)}
-                    className="flex-1 text-muted-foreground border-border transition-all duration-150 ease-out active:scale-[0.98]"
+                    className={cn(FOOTER_ACTION_CLASS, 'text-text-secondary')}
                   >
-                    <RotateCcw className="size-4 me-1.5" aria-hidden="true" />
+                    <RotateCcw className="size-3.5" aria-hidden="true" />
                     {t('detail.restore')}
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => item && onDelete?.(item.id)}
-                    className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 transition-all duration-150 ease-out active:scale-[0.98]"
+                    className={cn(
+                      FOOTER_ACTION_CLASS,
+                      'ms-auto text-destructive hover:bg-destructive/10 hover:text-destructive'
+                    )}
                   >
-                    <Trash2 className="size-4 me-1.5" aria-hidden="true" />
+                    <Trash2 className="size-3.5" aria-hidden="true" />
                     {t('detail.delete')}
                   </Button>
-                </div>
-              ) : item?.type === 'reminder' ? (
-                <Button
-                  variant="outline"
-                  onClick={handleArchive}
-                  className="w-full text-muted-foreground border-border transition-all duration-150 ease-out active:scale-[0.98]"
-                >
-                  <Archive className="size-4 me-1.5" aria-hidden="true" />
-                  {t('detail.archive')}
-                </Button>
+                </>
               ) : (
                 <>
-                  <div className="flex items-center w-full gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={handleArchive}
-                      className="flex-1 text-muted-foreground border-border transition-all duration-150 ease-out active:scale-[0.98]"
-                    >
-                      <Archive className="size-4 me-1.5" aria-hidden="true" />
-                      {t('detail.archive')}
-                    </Button>
-                    {selectedType === 'note' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleArchive}
+                    className={cn(FOOTER_ACTION_CLASS, 'text-text-secondary')}
+                  >
+                    <Archive className="size-3.5" aria-hidden="true" />
+                    {t('detail.archive')}
+                  </Button>
+                  {item.type !== 'reminder' &&
+                    (selectedType === 'note' ? (
                       <Button
+                        size="sm"
                         onClick={() => void handleFileItem()}
                         disabled={!canFileItem || isFilingLoading}
-                        className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0 transition-all duration-150 ease-out active:scale-[0.98] disabled:active:scale-100"
+                        // The shortcut legend used to be a line of its own under
+                        // the footer; the numbered folder chips now show 1-5, so
+                        // the rest lives in the tooltip.
+                        title={keyboardHint}
+                        className={cn(FOOTER_ACTION_CLASS, 'ms-auto min-w-0')}
                       >
-                        {isFilingLoading ? (
-                          <Loader2 className="size-4 animate-spin me-1.5" aria-hidden="true" />
-                        ) : (
-                          <Check className="size-4 me-1.5" aria-hidden="true" />
+                        {isFilingLoading && (
+                          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
                         )}
-                        {t('detail.file')}
-                        <kbd className="ms-2 text-[11px] opacity-60">{modifierKeyDisplay}⏎</kbd>
+                        <span className="truncate">{fileLabel}</span>
+                        <kbd className="text-[11px] font-normal opacity-60">
+                          {modifierKeyDisplay}⏎
+                        </kbd>
                       </Button>
-                    )}
-                  </div>
-                  {selectedType === 'note' && (
-                    <p className="text-[10px] text-muted-foreground/50 text-center w-full">
-                      {keyboardHint}
-                    </p>
-                  )}
+                    ) : (
+                      <div ref={setPrimaryActionSlot} className="ms-auto flex" />
+                    ))}
                 </>
               )}
             </div>

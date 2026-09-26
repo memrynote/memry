@@ -195,6 +195,7 @@
     "deletePermanently": "Διαγραφή οριστικά",
     "archive": "Αρχείο",
     "file": "Αρχείο",
+    "fileToFolder": "Αρχειοθέτηση στο {folder}",
     "keyboardHint": "Αρχείο {modifier}⏎ · 1-5 φάκελος · Κλείσιμο Esc",
     "voiceTitlePlaceholder": "Ονομάστε αυτό το φωνητικό σημείωμα...",
     "fileTo": "Αρχείο σε",
@@ -389,7 +390,8 @@
       "tags": "Ετικέτες",
       "selectedTags": "Επιλεγμένες ετικέτες",
       "addTags": "Προσθήκη ετικετών",
-      "tagSuggestions": "Προτάσεις ετικέτας"
+      "tagSuggestions": "Προτάσεις ετικέτας",
+      "removeTag": "Αφαίρεση {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Ετικέτες",

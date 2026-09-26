@@ -195,6 +195,7 @@
     "deletePermanently": "Permanent verwijderen",
     "archive": "Archief",
     "file": "Bestand",
+    "fileToFolder": "Opbergen in {folder}",
     "keyboardHint": "{modifier}⏎-bestand · map 1-5 · Esc sluiten",
     "voiceTitlePlaceholder": "Geef deze spraakmemo een naam...",
     "fileTo": "Bestand naar",
@@ -389,7 +390,8 @@
       "tags": "Labels",
       "selectedTags": "Geselecteerde labels",
       "addTags": "Tags toevoegen",
-      "tagSuggestions": "Tag suggesties"
+      "tagSuggestions": "Tag suggesties",
+      "removeTag": "{tag} verwijderen"
     },
     "componentsFilingTagInput": {
       "tags": "Labels",

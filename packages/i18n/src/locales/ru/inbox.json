@@ -195,6 +195,7 @@
     "deletePermanently": "Удалить навсегда",
     "archive": "Архив",
     "file": "Файл",
+    "fileToFolder": "Сохранить в {folder}",
     "keyboardHint": "Файл {modifier}⏎ · Папка 1–5 · Esc закрыть",
     "voiceTitlePlaceholder": "Назовите эту голосовую заметку...",
     "fileTo": "Файл в",
@@ -389,7 +390,8 @@
       "tags": "Теги",
       "selectedTags": "Выбранные теги",
       "addTags": "Добавить теги",
-      "tagSuggestions": "Предложения по тегам"
+      "tagSuggestions": "Предложения по тегам",
+      "removeTag": "Удалить {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Теги",

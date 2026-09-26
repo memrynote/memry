@@ -195,6 +195,7 @@
     "deletePermanently": "Xóa vĩnh viễn",
     "archive": "Lưu trữ",
     "file": "Tập tin",
+    "fileToFolder": "Lưu vào {folder}",
     "keyboardHint": "{modifier}⏎ lưu tệp · 1-5 thư mục · Esc đóng",
     "voiceTitlePlaceholder": "Đặt tên ghi âm này...",
     "fileTo": "Lưu tệp vào",
@@ -389,7 +390,8 @@
       "tags": "Thẻ",
       "selectedTags": "Thẻ đã chọn",
       "addTags": "Thêm thẻ",
-      "tagSuggestions": "Gợi ý thẻ"
+      "tagSuggestions": "Gợi ý thẻ",
+      "removeTag": "Xóa {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Thẻ",

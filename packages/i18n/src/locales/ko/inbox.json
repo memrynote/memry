@@ -195,6 +195,7 @@
     "deletePermanently": "영구 삭제",
     "archive": "아카이브",
     "file": "파일",
+    "fileToFolder": "{folder}에 보관",
     "keyboardHint": "{modifier}⏎ 파일 · 1-5 폴더 · Esc 닫기",
     "voiceTitlePlaceholder": "이 음성 메모의 이름을 지정하세요.",
     "fileTo": "파일 대상",
@@ -389,7 +390,8 @@
       "tags": "태그",
       "selectedTags": "선택된 태그",
       "addTags": "태그 추가",
-      "tagSuggestions": "태그 제안"
+      "tagSuggestions": "태그 제안",
+      "removeTag": "{tag} 제거"
     },
     "componentsFilingTagInput": {
       "tags": "태그",

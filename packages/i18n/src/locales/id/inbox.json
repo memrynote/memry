@@ -195,6 +195,7 @@
     "deletePermanently": "Hapus secara permanen",
     "archive": "Arsip",
     "file": "Mengajukan",
+    "fileToFolder": "Simpan ke {folder}",
     "keyboardHint": "File {modifier}⏎ · 1-5 folder · Esc tutup",
     "voiceTitlePlaceholder": "Beri nama memo suara ini...",
     "fileTo": "File ke",
@@ -389,7 +390,8 @@
       "tags": "Tag",
       "selectedTags": "Tag yang dipilih",
       "addTags": "Tambahkan tag",
-      "tagSuggestions": "Tandai saran"
+      "tagSuggestions": "Tandai saran",
+      "removeTag": "Hapus {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tag",

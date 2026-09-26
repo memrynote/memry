@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { Plus } from '@/lib/icons'
+import { Hash, Plus, X } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useAllTags } from '@/hooks/use-all-tags'
@@ -30,21 +30,46 @@ function getColorForTag(tagName: string): string {
 const TagPill = ({
   tag,
   color,
-  icon
+  icon,
+  onRemove,
+  removeLabel
 }: {
   tag: string
   color?: string
   icon?: string | null
+  /** Row variant only: shows a remove button on hover/focus. */
+  onRemove?: () => void
+  removeLabel?: string
 }): React.JSX.Element => {
   const colors = getTagColors(color ?? '', tag)
 
   return (
     <li
-      className="inline-flex items-center gap-1 rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5 tag-pill-enter motion-reduce:animate-none"
+      className={cn(
+        'group/tag inline-flex items-center gap-1 tag-pill-enter motion-reduce:animate-none',
+        onRemove
+          ? 'h-5 rounded-[5px] ps-[7px] pe-[7px] text-[12px] font-medium leading-4 focus-within:pe-[3px] hover:pe-[3px]'
+          : 'rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5'
+      )}
       style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
     >
       {icon ? <NoteIconDisplay value={icon} className="size-3 text-[11px] leading-none" /> : null}
       {tag}
+      {onRemove && (
+        // Collapsed to zero width until the pill is hovered or the button is
+        // focused, so keyboard users can still reach it.
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove()
+          }}
+          aria-label={removeLabel}
+          className="flex size-0 items-center justify-center overflow-hidden rounded-[3px] opacity-0 transition-opacity hover:bg-current/15 focus-visible:size-3.5 focus-visible:opacity-100 focus-visible:outline-none group-hover/tag:size-3.5 group-hover/tag:opacity-100"
+        >
+          <X className="size-2.5" aria-hidden="true" />
+        </button>
+      )}
     </li>
   )
 }
@@ -63,6 +88,12 @@ interface TagAutocompleteProps {
   aiSuggestedTags?: string[]
   className?: string
   dropdownPlacement?: 'top' | 'bottom'
+  /**
+   * `field` (default): labelled section with a bordered input box.
+   * `row`: the task drawer's label-less property row. A `#` icon on the drawer's
+   * icon lane, removable pills, and a `+` that opens the input in place.
+   */
+  variant?: 'field' | 'row'
 }
 
 const LISTBOX_ID = 'tag-autocomplete-listbox'
@@ -76,7 +107,8 @@ export const TagAutocomplete = ({
   autoFocus = false,
   aiSuggestedTags = [],
   className,
-  dropdownPlacement = 'bottom'
+  dropdownPlacement = 'bottom',
+  variant = 'field'
 }: TagAutocompleteProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('inbox')
   const [inputValue, setInputValue] = useState('')
@@ -400,6 +432,116 @@ export const TagAutocomplete = ({
 
   const showDropdown = isDropdownOpen && flatItems.length > 0
 
+  const renderInput = (inputClassName: string, inputPlaceholder: string): React.JSX.Element => (
+    <input
+      ref={inputRef}
+      type="text"
+      placeholder={tags.length === 0 ? inputPlaceholder : ''}
+      value={inputValue}
+      onChange={handleInputChange}
+      onKeyDown={handleKeyDown}
+      onFocus={() => {
+        setIsDropdownOpen(true)
+        setIsFocused(true)
+      }}
+      onBlur={() => {
+        setIsFocused(false)
+        setTimeout(() => setIsDropdownOpen(false), 150)
+      }}
+      role="combobox"
+      aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.addTags')}
+      aria-expanded={isDropdownOpen}
+      aria-haspopup="listbox"
+      aria-controls={LISTBOX_ID}
+      aria-autocomplete="list"
+      autoComplete="off"
+      className={inputClassName}
+    />
+  )
+
+  const renderDropdown = (positionClassName: string): React.JSX.Element | null =>
+    showDropdown ? (
+      <div
+        ref={dropdownRef}
+        id={LISTBOX_ID}
+        className={cn(
+          'absolute z-50 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-64 overflow-x-hidden overflow-y-auto',
+          positionClassName,
+          dropdownPlacement === 'top' ? 'bottom-full mb-1' : 'mt-1'
+        )}
+        role="listbox"
+        aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.tagSuggestions')}
+      >
+        {renderAiSection()}
+        {renderMatchingSection()}
+        {renderCreateFooter()}
+      </div>
+    ) : null
+
+  if (variant === 'row') {
+    const addLabel = tPhaseF('phaseF.componentsFilingTagAutocomplete.addTags')
+    // The input stays mounted (focus target for `+`) but takes no room until
+    // it is in use, so a filled row ends on `+` rather than on empty space.
+    const isInputOpen = tags.length === 0 || isFocused || inputValue !== ''
+
+    return (
+      <div ref={containerRef} className={cn('relative', className)}>
+        {/* Pointer convenience only: the `+` button and the input itself are
+            the keyboard paths into the field. */}
+        <div
+          title={tPhaseF('phaseF.componentsFilingTagAutocomplete.tags')}
+          onClick={() => inputRef.current?.focus()}
+          className="flex cursor-text items-start gap-2.5 rounded-md py-1 px-2 transition-colors duration-150 hover:bg-surface-active/60 focus-within:bg-surface-active/60"
+        >
+          <Hash className="mt-[3px] size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <menu
+            className="flex min-h-5 min-w-0 flex-1 flex-wrap items-center gap-1"
+            aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.selectedTags')}
+          >
+            {tags.map((tag) => {
+              const def = metaByName.get(tag.toLowerCase())
+              return (
+                <TagPill
+                  key={tag}
+                  tag={tag}
+                  color={def?.color}
+                  icon={def?.icon}
+                  onRemove={() => removeTag(tag)}
+                  removeLabel={tPhaseF('phaseF.componentsFilingTagAutocomplete.removeTag', {
+                    tag
+                  })}
+                />
+              )
+            })}
+            {!isInputOpen && (
+              <li className="flex">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    inputRef.current?.focus()
+                  }}
+                  aria-label={addLabel}
+                  className="flex size-5 items-center justify-center rounded-[5px] text-text-tertiary transition-colors hover:bg-foreground/[0.06] hover:text-text-secondary focus-visible:outline-none"
+                >
+                  <Plus className="size-2.5" aria-hidden="true" />
+                </button>
+              </li>
+            )}
+            <li className={cn('flex', isInputOpen ? 'min-w-[60px] flex-1' : 'w-0 overflow-hidden')}>
+              {renderInput(
+                'w-full bg-transparent border-0 p-0 text-[13px] leading-5 text-text-primary placeholder:text-text-tertiary outline-none focus:outline-none',
+                addLabel
+              )}
+            </li>
+          </menu>
+        </div>
+        {/* Starts on the pills' edge, past the icon lane. */}
+        {renderDropdown('start-[34px] end-0')}
+      </div>
+    )
+  }
+
   return (
     <div
       ref={containerRef}
@@ -422,48 +564,13 @@ export const TagAutocomplete = ({
             const def = metaByName.get(tag.toLowerCase())
             return <TagPill key={tag} tag={tag} color={def?.color} icon={def?.icon} />
           })}
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder={tags.length === 0 ? placeholder : ''}
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => {
-              setIsDropdownOpen(true)
-              setIsFocused(true)
-            }}
-            onBlur={() => {
-              setIsFocused(false)
-              setTimeout(() => setIsDropdownOpen(false), 150)
-            }}
-            role="combobox"
-            aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.addTags')}
-            aria-expanded={isDropdownOpen}
-            aria-haspopup="listbox"
-            aria-controls={LISTBOX_ID}
-            aria-autocomplete="list"
-            autoComplete="off"
-            className="flex-1 min-w-[60px] bg-transparent border-0 p-0 text-xs text-foreground placeholder:text-muted-foreground/30 outline-none focus:outline-none"
-          />
+          {renderInput(
+            'flex-1 min-w-[60px] bg-transparent border-0 p-0 text-xs text-foreground placeholder:text-muted-foreground/30 outline-none focus:outline-none',
+            placeholder
+          )}
         </menu>
 
-        {showDropdown && (
-          <div
-            ref={dropdownRef}
-            id={LISTBOX_ID}
-            className={cn(
-              'absolute z-50 w-full p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-64 overflow-x-hidden overflow-y-auto',
-              dropdownPlacement === 'top' ? 'bottom-full mb-1' : 'mt-1'
-            )}
-            role="listbox"
-            aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.tagSuggestions')}
-          >
-            {renderAiSection()}
-            {renderMatchingSection()}
-            {renderCreateFooter()}
-          </div>
-        )}
+        {renderDropdown('w-full')}
       </div>
     </div>
   )

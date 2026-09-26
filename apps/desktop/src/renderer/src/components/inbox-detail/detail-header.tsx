@@ -30,11 +30,11 @@ export const DetailHeader = ({
   }
 
   return (
-    <div className="flex items-center justify-between py-4 px-5 h-[47px] border-b border-border shrink-0">
+    <div className="flex items-center justify-between px-5 h-11 border-b border-border shrink-0">
       <div className="flex items-center gap-1.5">
         <TypeIcon type={type} className="size-3.5" />
-        <span className="text-[11px] leading-3.5 text-muted-foreground">{typeLabels[type]}</span>
-        <span className="text-[11px] leading-3.5 text-muted-foreground/60">
+        <span className="text-[12px] leading-4 text-text-secondary">{typeLabels[type]}</span>
+        <span className="text-[12px] leading-4 text-text-tertiary">
           · {formatCompactDate(createdAt)}
         </span>
       </div>

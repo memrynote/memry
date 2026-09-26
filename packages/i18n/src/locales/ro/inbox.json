@@ -195,6 +195,7 @@
     "deletePermanently": "Ștergeți definitiv",
     "archive": "Arhiva",
     "file": "Fișier",
+    "fileToFolder": "Arhivează în {folder}",
     "keyboardHint": "{modifier}⏎ fișier · 1-5 folder · Esc close",
     "voiceTitlePlaceholder": "Denumiți această notă vocală...",
     "fileTo": "Depune în",
@@ -389,7 +390,8 @@
       "tags": "Etichete",
       "selectedTags": "Etichete selectate",
       "addTags": "Adăugați etichete",
-      "tagSuggestions": "Sugestii de etichete"
+      "tagSuggestions": "Sugestii de etichete",
+      "removeTag": "Elimină {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Etichete",

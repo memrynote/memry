@@ -195,6 +195,7 @@
     "deletePermanently": "Végleges törlés",
     "archive": "Archívum",
     "file": "Fájl",
+    "fileToFolder": "Iktatás ide: {folder}",
     "keyboardHint": "{modifier}⏎ fájl · 1-5 mappa · Esc bezár",
     "voiceTitlePlaceholder": "Nevezze el ezt a hangjegyzetet...",
     "fileTo": "Fájl ide",
@@ -389,7 +390,8 @@
       "tags": "Címkék",
       "selectedTags": "Kiválasztott címkék",
       "addTags": "Címkék hozzáadása",
-      "tagSuggestions": "Címkejavaslatok"
+      "tagSuggestions": "Címkejavaslatok",
+      "removeTag": "{tag} eltávolítása"
     },
     "componentsFilingTagInput": {
       "tags": "Címkék",

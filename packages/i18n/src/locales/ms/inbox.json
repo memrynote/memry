@@ -195,6 +195,7 @@
     "deletePermanently": "Padam secara kekal",
     "archive": "Arkib",
     "file": "Fail",
+    "fileToFolder": "Fail ke {folder}",
     "keyboardHint": "Fail {modifier}⏎ · 1-5 folder · Esc tutup",
     "voiceTitlePlaceholder": "Namakan memo suara ini...",
     "fileTo": "Failkan ke",
@@ -389,7 +390,8 @@
       "tags": "Tag",
       "selectedTags": "Tag yang dipilih",
       "addTags": "Tambah tag",
-      "tagSuggestions": "Tag cadangan"
+      "tagSuggestions": "Tag cadangan",
+      "removeTag": "Alih keluar {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tag",

@@ -195,6 +195,7 @@
     "deletePermanently": "حذف نهائيا",
     "archive": "أرشيف",
     "file": "ملف",
+    "fileToFolder": "حفظ في {folder}",
     "keyboardHint": "{modifier}⏎ ملف · 1-5 مجلد · إغلاق Esc",
     "voiceTitlePlaceholder": "قم بتسمية هذه المذكرة الصوتية...",
     "fileTo": "ملف ل",
@@ -389,7 +390,8 @@
       "tags": "العلامات",
       "selectedTags": "العلامات المختارة",
       "addTags": "إضافة العلامات",
-      "tagSuggestions": "اقتراحات العلامات"
+      "tagSuggestions": "اقتراحات العلامات",
+      "removeTag": "إزالة {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "العلامات",
