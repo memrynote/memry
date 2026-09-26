@@ -14,6 +14,7 @@ import { postToServer, RateLimitError, SyncServerError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
+import { isNoteKnownDeleted } from '../pending-deletes'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { trackMainEvent } from '../../telemetry/track'
 import { PushLagTrace } from './sync-latency-telemetry'
@@ -228,6 +229,9 @@ export class PushCoordinator {
               .filter((item) => {
                 if (item.operation !== 'create') return false
                 if (item.type !== 'note' && item.type !== 'journal') return false
+                // The body goes before the record, so a create the server then
+                // refuses as delete-wins has already republished the body.
+                if (isNoteKnownDeleted(this.ctx.deps.db, item.itemId)) return false
                 try {
                   const parsed = JSON.parse(item.payload) as { fileType?: string }
                   if (parsed.fileType && isBinaryFileType(parsed.fileType)) return false

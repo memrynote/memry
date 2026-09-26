@@ -10,6 +10,12 @@ import { asSyncDb } from '@tests/utils/test-db'
 
 describe('SyncEngine', () => {
   const { getDb } = setupTestDb()
+  const insertNoteRow = (id: string): void => {
+    getDb()
+      .db.insert(noteMetadata)
+      .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+      .run()
+  }
 
   describe('#given engine with crdtProvider and CREATE note queued #when push called', () => {
     it('#then pushes CRDT snapshot BEFORE posting sync items to server', async () => {
@@ -27,6 +33,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
@@ -83,6 +90,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('journal-1')
       deps.queue.enqueue({
         type: 'journal',
         itemId: 'journal-1',
@@ -300,6 +308,7 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',
@@ -356,6 +365,8 @@ describe('SyncEngine', () => {
       })
       const engine = new SyncEngine(deps)
 
+      insertNoteRow('note-1')
+      insertNoteRow('journal-1')
       deps.queue.enqueue({
         type: 'note',
         itemId: 'note-1',

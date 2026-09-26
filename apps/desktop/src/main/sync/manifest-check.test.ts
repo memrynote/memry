@@ -921,6 +921,26 @@ describe('checkManifestIntegrity', () => {
       })
       .run()
     testDb.db.insert(settings).values({ key: 'synced_settings', value: '{}' }).run()
+    testDb.db
+      .insert(noteMetadata)
+      .values([
+        {
+          id: 'note-1',
+          path: 'notes/a.md',
+          title: 'A',
+          createdAt: timestamp,
+          modifiedAt: timestamp
+        },
+        {
+          id: 'journal-1',
+          path: 'journals/2026-02-18.md',
+          title: '2026-02-18',
+          journalDate: '2026-02-18',
+          createdAt: timestamp,
+          modifiedAt: timestamp
+        }
+      ])
+      .run()
     testIndexDb.db
       .insert(noteCache)
       .values({
