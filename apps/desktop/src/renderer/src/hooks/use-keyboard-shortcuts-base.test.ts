@@ -11,6 +11,7 @@ import {
   getModifierSymbol,
   type KeyboardShortcut
 } from './use-keyboard-shortcuts-base'
+import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
 
 // ============================================================================
 // Test Helpers
@@ -436,6 +437,30 @@ describe('useKeyboardShortcuts', () => {
   // ==========================================================================
   // Condition Tests
   // ==========================================================================
+
+  describe('vault switch', () => {
+    afterEach(() => resetVaultSwitchState())
+
+    it('should not trigger actions while a vault switch is pending', () => {
+      const action = vi.fn()
+
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
+
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+      const event = createKeyboardEvent('a')
+      act(() => {
+        window.dispatchEvent(event)
+      })
+      expect(action).not.toHaveBeenCalled()
+      expect(event.defaultPrevented).toBe(false)
+
+      endVaultSwitch(true)
+      act(() => {
+        window.dispatchEvent(createKeyboardEvent('a'))
+      })
+      expect(action).toHaveBeenCalledTimes(1)
+    })
+  })
 
   describe('when condition', () => {
     it('should not trigger action when condition returns false', () => {

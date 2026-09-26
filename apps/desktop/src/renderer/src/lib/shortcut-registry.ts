@@ -17,6 +17,8 @@ export type ShortcutId =
   | 'nav.search'
   | 'nav.settings'
   | 'nav.switchVault'
+  | 'nav.nextVault'
+  | 'nav.prevVault'
   | 'tabs.closeTab'
   | 'tabs.nextTab'
   | 'tabs.prevTab'
@@ -93,6 +95,30 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     description: 'Open the vault switcher',
     category: 'Navigation',
     defaultBinding: { key: 'o', modifiers: { meta: true, shift: true } }
+  },
+  // ⌃⌘←/→ on macOS. Elsewhere `meta` already means Ctrl, and Ctrl+arrow is
+  // word-jump in every text field, so the chord adds Alt instead.
+  {
+    id: 'nav.nextVault',
+    i18nKey: 'nav.nextVault',
+    label: 'Next Vault',
+    description: 'Move to the next vault in the sidebar',
+    category: 'Navigation',
+    defaultBinding: {
+      key: 'ArrowRight',
+      modifiers: isMac ? { meta: true, ctrl: true } : { meta: true, alt: true }
+    }
+  },
+  {
+    id: 'nav.prevVault',
+    i18nKey: 'nav.prevVault',
+    label: 'Previous Vault',
+    description: 'Move to the previous vault in the sidebar',
+    category: 'Navigation',
+    defaultBinding: {
+      key: 'ArrowLeft',
+      modifiers: isMac ? { meta: true, ctrl: true } : { meta: true, alt: true }
+    }
   },
 
   // Tabs

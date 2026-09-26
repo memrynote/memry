@@ -9,11 +9,6 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
 }))
 
-vi.mock('@/lib/icons', () => ({
-  Star: () => <svg data-testid="icon-star" />,
-  X: () => <svg data-testid="icon-close" />
-}))
-
 /** Mirrors what the tour does when it ends: write the flag, then announce it. */
 const armPrompt = (): void => {
   localStorage.setItem(STAR_PROMPT_KEY, 'pending')
@@ -51,7 +46,7 @@ describe('GithubStarCard', () => {
     localStorage.setItem(STAR_PROMPT_KEY, 'pending')
     render(<GithubStarCard />)
 
-    const link = screen.getByRole('link', { name: /action/ })
+    const link = screen.getByRole('link', { name: /star/ })
     expect(link).toHaveAttribute('href', 'https://github.com/memrynote/memry')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
@@ -61,7 +56,32 @@ describe('GithubStarCard', () => {
     localStorage.setItem(STAR_PROMPT_KEY, 'pending')
     render(<GithubStarCard />)
 
-    fireEvent.click(screen.getByRole('link', { name: /action/ }))
+    fireEvent.click(screen.getByRole('link', { name: /star/ }))
+
+    expect(localStorage.getItem(STAR_PROMPT_KEY)).toBe('done')
+    expect(screen.queryByText('title')).not.toBeInTheDocument()
+  })
+
+  it('thanks the user after starring, then collapses', () => {
+    vi.useFakeTimers()
+    localStorage.setItem(STAR_PROMPT_KEY, 'pending')
+    render(<GithubStarCard />)
+
+    fireEvent.click(screen.getByRole('link', { name: /star/ }))
+    expect(screen.getByText('thanks')).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    expect(screen.queryByText('thanks')).not.toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
+  it('settles the prompt on "Not now"', () => {
+    localStorage.setItem(STAR_PROMPT_KEY, 'pending')
+    render(<GithubStarCard />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'later' }))
 
     expect(localStorage.getItem(STAR_PROMPT_KEY)).toBe('done')
     expect(screen.queryByText('title')).not.toBeInTheDocument()

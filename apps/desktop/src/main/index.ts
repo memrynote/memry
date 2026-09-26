@@ -53,6 +53,7 @@ import {
   beginVaultShutdown,
   closeVault,
   getStatus as getVaultStatus,
+  isVaultSwitchInProgress,
   onVaultStatusChanged
 } from './vault'
 import { readPreferences } from './vault/vault-preferences'
@@ -863,6 +864,11 @@ function createWindow(): void {
       // come from a previous app window the user left maximized: honor it here too.
       if (saved?.isMaximized) mainWindow.maximize()
     } else {
+      // A switch closes the old vault before it opens the next. Shrinking to
+      // the picker in that gap (and growing back a moment later) made the
+      // window jump on every switch, and at picker width the sidebar dropped
+      // into its mobile sheet. A switch that fails re-emits once it settles.
+      if (isVaultSwitchInProgress()) return
       resizeWindowIfNeeded(mainWindow, VAULT_PICKER_WINDOW_SIZE)
     }
   })

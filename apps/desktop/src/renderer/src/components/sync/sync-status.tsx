@@ -1,5 +1,6 @@
 import React from 'react'
-import { Settings } from '@/lib/icons'
+import { Cloud, CloudOff, RefreshCw, Settings } from '@/lib/icons'
+import type { AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { useSyncStatus } from '@/hooks/use-sync-status'
@@ -7,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarMenuButton } from '@/components/ui/sidebar'
+import { DockButton, type DockBadgeTone } from '@/components/sidebar/footer-dock'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('SyncStatus')
@@ -29,8 +31,34 @@ function UnpaidSyncPanel({ onOpenSettings }: { onOpenSettings: () => void }): Re
   )
 }
 
+/**
+ * Footer-dock glyph: one cloud whose corner dot carries the state, so the dock
+ * never flips between five unrelated icons. Syncing swaps to the spinning arrows
+ * and a plan-less or unknown account shows the struck cloud with no dot.
+ */
+function dockGlyph(
+  status: string,
+  hasIssues: boolean
+): { Icon: AppIcon; badge: DockBadgeTone | null; spin: boolean } {
+  if (hasIssues || status === 'error') return { Icon: Cloud, badge: 'destructive', spin: false }
+  switch (status) {
+    case 'syncing':
+      return { Icon: RefreshCw, badge: null, spin: true }
+    case 'idle':
+      return { Icon: Cloud, badge: 'success', spin: false }
+    case 'offline':
+    case 'paused':
+      return { Icon: Cloud, badge: 'warning', spin: false }
+    case 'local_only':
+      return { Icon: CloudOff, badge: null, spin: false }
+    default:
+      return { Icon: Cloud, badge: null, spin: false }
+  }
+}
+
 interface SyncStatusProps {
   onOpenSettings: () => void
+  /** Renders the trigger as the sidebar footer-dock button. */
   iconOnly?: boolean
 }
 
@@ -64,6 +92,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
   // No plan, no sync runtime — nothing here is retryable and nothing failed.
   // The popover sells the upgrade instead of showing a dead Retry (#2201).
   const isLocalOnly = status === 'local_only'
+  const glyph = dockGlyph(status, hasIssues)
 
   const handleSync = async (): Promise<void> => {
     try {
@@ -88,19 +117,35 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <SidebarMenuButton
-          size="sm"
-          data-tour="sync-status"
-          tooltip={label}
-          aria-label={`Sync status: ${label}`}
-          className={cn('text-muted-foreground', hasIssues && 'text-destructive')}
-        >
-          <IconComponent
-            className={cn('size-4', isAnimating && 'animate-spin')}
-            aria-hidden="true"
-          />
-          {!iconOnly && <span className="text-xs">{label}</span>}
-        </SidebarMenuButton>
+        {iconOnly ? (
+          <DockButton
+            data-tour="sync-status"
+            aria-label={`Sync status: ${label}`}
+            title={label}
+            badge={glyph.badge}
+          >
+            <glyph.Icon
+              aria-hidden="true"
+              className={cn(
+                glyph.spin && 'animate-spin text-[var(--tint)] motion-reduce:animate-none'
+              )}
+            />
+          </DockButton>
+        ) : (
+          <SidebarMenuButton
+            size="sm"
+            data-tour="sync-status"
+            tooltip={label}
+            aria-label={`Sync status: ${label}`}
+            className={cn('text-muted-foreground', hasIssues && 'text-destructive')}
+          >
+            <IconComponent
+              className={cn('size-4', isAnimating && 'animate-spin')}
+              aria-hidden="true"
+            />
+            <span className="text-xs">{label}</span>
+          </SidebarMenuButton>
+        )}
       </PopoverTrigger>
 
       <PopoverContent side="top" align="start" className="w-72 p-0">

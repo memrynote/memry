@@ -39,6 +39,7 @@ vi.mock('@/sync/yjs-ipc-provider', () => ({
       return Promise.resolve()
     }
     destroy(): void {}
+    resumeRebind(): void {}
   }
 }))
 

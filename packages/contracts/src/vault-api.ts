@@ -30,6 +30,12 @@ export interface VaultInfo {
    * stays registered until the user forgets it.
    */
   isMissing?: boolean
+  /**
+   * The vault's own accent (`#rrggbb`), read from its config.json. Set by
+   * `vault:get-all` only, and absent for missing folders; consumers fall back
+   * to the default tint.
+   */
+  accentColor?: string
 }
 
 export interface AccountVaultInfo {

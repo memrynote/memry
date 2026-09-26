@@ -157,6 +157,7 @@ vi.mock('@/components/download-vault-dialog', () => ({
 
 import { VaultSwitcher } from './vault-switcher'
 import { requestVaultSwitcherOpen } from '@/lib/vault-switcher-open'
+import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
 
 describe('VaultSwitcher shortcut opening', () => {
   beforeEach(() => {
@@ -212,6 +213,19 @@ describe('VaultSwitcher shortcut opening', () => {
     expect(mocks.setSidebarOpen).not.toHaveBeenCalled()
   })
 
+  it('stays closed on an open request while a vault switch is in flight', () => {
+    resetVaultSwitchState()
+    render(<VaultSwitcher />)
+
+    beginVaultSwitch({ path: '/vaults/Old', name: 'Old' }, null)
+    act(() => requestVaultSwitcherOpen())
+    expect(screen.queryByTestId('vault-picker')).not.toBeInTheDocument()
+
+    endVaultSwitch(true)
+    act(() => requestVaultSwitcherOpen())
+    expect(screen.getByTestId('vault-picker')).toBeInTheDocument()
+  })
+
   it('closes on Escape without switching the vault', () => {
     render(<VaultSwitcher />)
     act(() => requestVaultSwitcherOpen())
@@ -248,7 +262,10 @@ describe('VaultSwitcher shortcut opening', () => {
 
     fireEvent.click(screen.getByText('Old'))
 
-    expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/Old')
+    expect(mocks.switchVault).toHaveBeenCalledWith(
+      '/vaults/Old',
+      expect.objectContaining({ name: 'Old' })
+    )
   })
 
   it('opens focused on the active vault, so the arrow keys start where the user is', () => {
@@ -274,7 +291,10 @@ describe('VaultSwitcher shortcut opening', () => {
     row.focus()
     await userEvent.keyboard('{Enter}')
 
-    expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/Old')
+    expect(mocks.switchVault).toHaveBeenCalledWith(
+      '/vaults/Old',
+      expect.objectContaining({ name: 'Old' })
+    )
   })
 
   it('stops listening once unmounted', () => {

@@ -1001,6 +1001,7 @@
         "createNote": "Create a note",
         "openSettings": "Open settings",
         "switchVault": "Switch vault",
+        "adjacentVault": "Previous or next vault",
         "keyboardShortcuts": "Open keyboard shortcuts",
         "undoTaskAction": "Undo last task action",
         "toggleSidebar": "Toggle the sidebar",
@@ -1103,7 +1104,8 @@
       "moreOptions": "More update options",
       "skipVersion": "Skip {version}",
       "turnOffAuto": "Turn off automatic updates",
-      "copyVersionInfo": "Copy version info"
+      "copyVersionInfo": "Copy version info",
+      "openSettings": "Open settings"
     },
     "installing": {
       "title": "Installing {version}",
@@ -1120,5 +1122,27 @@
       "tryAgain": "Try again",
       "copyDetails": "Copy details"
     }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Vaults",
+    "position": "{name}, vault {index} of {count}",
+    "openList": "{position}. Open the vault list",
+    "switchTo": "Switch to {name}",
+    "switchingTo": "Switching to {name}"
+  },
+  "sidebarHelp": {
+    "label": "Help and feedback",
+    "reportBug": "Report a bug",
+    "requestFeature": "Request a feature",
+    "starOnGithub": "Star on GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "What's new"
+  },
+  "sidebarStar": {
+    "title": "MemryNote is open source",
+    "body": "Built in the open. A star helps others find it.",
+    "star": "Star",
+    "later": "Not now",
+    "thanks": "Thank you. That means a lot."
   }
 }

@@ -472,6 +472,30 @@ describe('sync components coverage', () => {
     expect(mocks.syncStatus.clearError).toHaveBeenCalledTimes(1)
   })
 
+  it('carries sync state as one dock badge on the footer trigger', () => {
+    const openSettings = vi.fn()
+    mocks.syncStatus.error = null
+    mocks.syncStatus.conflicts = []
+    mocks.syncStatus.hasIssues = false
+
+    mocks.syncStatus.status = 'idle'
+    const { rerender } = render(<SyncStatus onOpenSettings={openSettings} iconOnly />)
+    expect(screen.getByTestId('dock-badge')).toHaveAttribute('data-tone', 'success')
+
+    mocks.syncStatus.status = 'offline'
+    rerender(<SyncStatus onOpenSettings={openSettings} iconOnly />)
+    expect(screen.getByTestId('dock-badge')).toHaveAttribute('data-tone', 'warning')
+
+    mocks.syncStatus.hasIssues = true
+    rerender(<SyncStatus onOpenSettings={openSettings} iconOnly />)
+    expect(screen.getByTestId('dock-badge')).toHaveAttribute('data-tone', 'destructive')
+
+    mocks.syncStatus.hasIssues = false
+    mocks.syncStatus.status = 'syncing'
+    rerender(<SyncStatus onOpenSettings={openSettings} iconOnly />)
+    expect(screen.queryByTestId('dock-badge')).not.toBeInTheDocument()
+  })
+
   it('sells the upgrade instead of a dead Retry when the account has no sync plan', () => {
     mocks.syncStatus.status = 'local_only'
     mocks.syncStatus.error = null

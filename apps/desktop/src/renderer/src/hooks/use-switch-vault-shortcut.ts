@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { matchesShortcut } from './use-keyboard-shortcuts-base'
 import { isPlainTextInputFocused } from './use-keyboard-shortcuts'
+import { getVaultSwitchState } from '@/lib/vault-switch-state'
 
 /**
  * Switch vault. ⌘⇧O (⌃⇧O off Mac) opens the sidebar's vault switcher from
@@ -23,6 +24,9 @@ export function useSwitchVaultShortcut(onOpen: () => void): void {
 
       e.preventDefault()
       e.stopPropagation()
+      // This listener sits on window, so the inert workspace does not stop it
+      // mid-switch; a switcher opened then could start a second switch.
+      if (getVaultSwitchState().pending) return
       onOpen()
     },
     [binding, onOpen]

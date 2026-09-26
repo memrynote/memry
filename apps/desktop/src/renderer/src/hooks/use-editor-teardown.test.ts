@@ -1,7 +1,13 @@
 import { renderHook } from '@testing-library/react'
-import { StrictMode } from 'react'
+import { Activity, StrictMode, createElement, type ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEditorTeardown } from './use-editor-teardown'
+import {
+  VaultWorkspaceLifecycleContext,
+  createVaultWorkspaceLifecycle,
+  disposeVaultWorkspace,
+  runVaultLeaveFlushes
+} from '@/lib/vault-workspace-lifecycle'
 
 /** Teardown is deferred by a microtask so StrictMode can cancel it. */
 const settleTeardown = (): Promise<void> => Promise.resolve()
@@ -138,5 +144,70 @@ describe('useEditorTeardown', () => {
   it('does nothing when there is no editor', () => {
     const { unmount } = renderHook(() => useEditorTeardown(null))
     expect(() => unmount()).not.toThrow()
+  })
+
+  describe('in a vault workspace kept mounted while hidden', () => {
+    function renderInWorkspace(editor: unknown, beforeDestroy?: () => void) {
+      const lifecycle = createVaultWorkspaceLifecycle()
+      let mode: 'visible' | 'hidden' = 'visible'
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(
+          VaultWorkspaceLifecycleContext.Provider,
+          { value: lifecycle },
+          createElement(Activity, { mode, children })
+        )
+      const view = renderHook(() => useEditorTeardown(editor, beforeDestroy), { wrapper })
+      const setHidden = (hidden: boolean): void => {
+        // VaultStack flags the workspace in its layout phase, before the hide runs cleanups.
+        lifecycle.hidden = hidden
+        mode = hidden ? 'hidden' : 'visible'
+        view.rerender()
+      }
+      return { lifecycle, setHidden, view }
+    }
+
+    it('keeps the editor alive across a hide and a reveal', async () => {
+      const { editor, tiptap } = createEditor()
+      const beforeDestroy = vi.fn()
+      const { lifecycle, setHidden } = renderInWorkspace(editor, beforeDestroy)
+
+      setHidden(true)
+      await settleTeardown()
+      expect(tiptap.destroy).not.toHaveBeenCalled()
+
+      setHidden(false)
+      await settleTeardown()
+      disposeVaultWorkspace(lifecycle)
+      expect(tiptap.destroy).not.toHaveBeenCalled()
+      expect(beforeDestroy).not.toHaveBeenCalled()
+    })
+
+    it('destroys a hidden editor when its workspace is dropped, without saving into the next vault', async () => {
+      const { editor, tiptap } = createEditor()
+      const beforeDestroy = vi.fn()
+      const { lifecycle, setHidden } = renderInWorkspace(editor, beforeDestroy)
+
+      setHidden(true)
+      await settleTeardown()
+      disposeVaultWorkspace(lifecycle)
+
+      expect(tiptap.destroy).toHaveBeenCalledTimes(1)
+      expect(beforeDestroy).not.toHaveBeenCalled()
+    })
+
+    it('flushes pending edits when the vault is left', async () => {
+      const { editor } = createEditor()
+      const beforeDestroy = vi.fn()
+      const { view } = renderInWorkspace(editor, beforeDestroy)
+
+      await runVaultLeaveFlushes()
+      expect(beforeDestroy).toHaveBeenCalledTimes(1)
+
+      view.unmount()
+      await settleTeardown()
+      beforeDestroy.mockClear()
+      await runVaultLeaveFlushes()
+      expect(beforeDestroy).not.toHaveBeenCalled()
+    })
   })
 })

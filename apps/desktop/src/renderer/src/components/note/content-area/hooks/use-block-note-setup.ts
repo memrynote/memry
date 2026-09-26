@@ -72,6 +72,11 @@ export function useBlockNoteSetup({
       window.clearTimeout(readyTimer)
       document.removeEventListener('keydown', handleKeyDown)
       editor.unregisterExtension('ai')
+      // The editor can outlive this cleanup: a vault workspace kept mounted
+      // while hidden runs it on hide and the setup again on reveal. Drop the
+      // flag with the extension, so the reveal's setup flips it back and
+      // renders the AI menu again.
+      setAiReady(false)
     }
   }, [aiPort, editor])
 
@@ -256,6 +261,9 @@ export function useBlockNoteSetup({
     return () => clearTimeout(timeoutId)
   }, [initialAnchorId, editorContainerRef])
 
-  // Derive aiReady so we don't reset state in an effect on prop change.
-  return { aiReady: aiPort ? aiReady : false }
+  // Derive aiReady so we don't reset state in an effect on prop change. The
+  // registration is checked too: the AI components throw without the extension,
+  // and a hidden workspace can render between the cleanup that unregisters it
+  // and the state update that follows.
+  return { aiReady: aiPort ? aiReady && Boolean(editor.getExtension('ai')) : false }
 }

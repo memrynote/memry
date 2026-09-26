@@ -3,6 +3,13 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import {
+  useVaultWorkspaceLifecycle,
+  type VaultWorkspaceLifecycle
+} from '@/lib/vault-workspace-lifecycle'
+import { getVaultSwitchState } from '@/lib/vault-switch-state'
+import { getCachedVaultStatus } from '@/lib/vault-status-cache'
+import { useVaultScope } from '@/contexts/vault-scope'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { JournalEntry } from '../../../preload/index.d'
 import {
@@ -29,6 +36,22 @@ import {
 import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:JournalEntry')
+
+/**
+ * Whether the vault this journal renders is no longer the open one. Saves are
+ * addressed by date only, so a save issued from a hidden workspace's cleanup
+ * (which runs after main has opened the next vault) would overwrite that
+ * vault's entry for the same day. Outside any workspace (scope null) the
+ * journal always belongs to the open vault.
+ */
+function hasLeftVault(lifecycle: VaultWorkspaceLifecycle | null, vaultScope: string | null) {
+  if (lifecycle?.hidden) return true
+  if (vaultScope === null) return false
+  const pending = getVaultSwitchState().pending
+  if (pending && pending.path !== vaultScope) return true
+  const openPath = getCachedVaultStatus()?.path ?? null
+  return openPath !== null && openPath !== vaultScope
+}
 
 /**
  * Seed text for a day from its template. The token substitution is
@@ -74,6 +97,8 @@ export interface UseJournalEntryResult {
 
 export function useJournalEntry(date: string): UseJournalEntryResult {
   const queryClient = useQueryClient()
+  const lifecycle = useVaultWorkspaceLifecycle()
+  const vaultScope = useVaultScope()
 
   const [isSaving, setIsSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
@@ -89,6 +114,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const liveDateRef = useRef<string | null>(null)
   const isDirtyRef = useRef(isDirty)
   const isSavingRef = useRef(false)
+  // The running performSave, so the pre-switch flush can wait for it instead
+  // of returning while its edits (or newer ones) are still unsaved.
+  const inFlightSaveRef = useRef<Promise<void> | null>(null)
   const templateSeedKeyRef = useRef<string | null>(null)
   // Separate from the success latch above: the latch must only be set once an
   // entry actually exists, but the effect can re-run while the async seed is
@@ -262,6 +290,11 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     isSavingRef.current = true
     setIsSaving(true)
 
+    let settle: () => void = () => {}
+    inFlightSaveRef.current = new Promise<void>((resolve) => {
+      settle = resolve
+    })
+
     try {
       const updateInput: { date: string; content?: string; tags?: string[] } = {
         date: currentDate
@@ -272,10 +305,14 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       await updateMutation.mutateAsync(updateInput)
 
       if (currentDateRef.current === currentDate) {
-        setIsDirty(false)
         setSaveError(null)
-        pendingContentRef.current = null
-        pendingTagsRef.current = null
+        // Edits made while this save was in flight are newer than what it
+        // wrote; they stay pending for the next save.
+        if (pendingContentRef.current === content) pendingContentRef.current = null
+        if (pendingTagsRef.current === tags) pendingTagsRef.current = null
+        if (pendingContentRef.current === null && pendingTagsRef.current === null) {
+          setIsDirty(false)
+        }
       }
     } catch (err) {
       trackRendererError('journal_save_failed', err)
@@ -294,6 +331,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
     } finally {
       isSavingRef.current = false
+      inFlightSaveRef.current = null
+      settle()
       if (currentDateRef.current === currentDate) {
         setIsSaving(false)
       }
@@ -319,6 +358,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       // open now, or sit in a timer the save registry cannot see, so it is
       // saved now, to the date it was typed on.
       if (liveDateRef.current !== date) {
+        if (hasLeftVault(lifecycle, vaultScope)) {
+          log.warn(`Dropped a late journal edit for ${date}: its vault closed before it arrived`)
+          return
+        }
         updateMutation.mutateAsync({ date, content }).catch((err: unknown) => {
           trackRendererError('journal_pending_save_failed', err)
           log.error(`Failed to save late changes for ${date}:`, err)
@@ -329,7 +372,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       setIsDirty(true)
       scheduleSave()
     },
-    [date, scheduleSave, updateMutation]
+    [date, lifecycle, scheduleSave, updateMutation, vaultScope]
   )
 
   const updateTags = useCallback(
@@ -401,7 +444,11 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     const registryKey = `journal:${date}`
     liveDateRef.current = date
 
+    // The vault switch runs this before main closes the vault, so it must
+    // leave nothing pending: a save already in flight would make performSave
+    // return early, and edits typed during it would stay unsaved.
     registerPendingSave(registryKey, async () => {
+      while (inFlightSaveRef.current) await inFlightSaveRef.current
       if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
         await performSaveRef.current()
       }
@@ -413,12 +460,22 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         saveTimerRef.current = null
       }
       if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
-        void performSaveRef.current()
+        if (hasLeftVault(lifecycle, vaultScope)) {
+          // Hiding a vault's workspace runs this after the next vault is open;
+          // a date-addressed save now would land in that vault's journal.
+          // Pending stays set: if the workspace is shown again, the next save
+          // still writes it to this vault.
+          log.warn(
+            `Skipped saving journal edits for ${date}: its vault closed before they were flushed`
+          )
+        } else {
+          void performSaveRef.current()
+        }
       }
       unregisterPendingSave(registryKey)
       liveDateRef.current = null
     }
-  }, [date])
+  }, [date, lifecycle, vaultScope])
 
   // External update subscriptions
   useEffect(() => {

@@ -11,6 +11,7 @@ import i18next from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { IcuFormatter } from '@memry/i18n/shared'
 import { RESOURCES } from '@memry/i18n/locales'
+import { resetVaultStatusCache } from '@/lib/vault-status-cache'
 
 // ============================================================================
 // i18n singleton: initialize English so components using useT without an
@@ -58,6 +59,8 @@ vi.mock('electron-log/renderer', () => {
 
 afterEach(() => {
   cleanup()
+  // useVault/useVaultList seed from this; one test's vault must not leak into the next.
+  resetVaultStatusCache()
 })
 
 // ============================================================================

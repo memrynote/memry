@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { arrayMove } from '@dnd-kit/sortable'
 import { createLogger } from '@/lib/logger'
+import { useVaultScope } from '@/contexts/vault-scope'
 
 const log = createLogger('Hook:TaskOrder')
 
@@ -53,6 +54,34 @@ interface UseTaskOrderReturn {
 
 const STORAGE_KEY = 'task-orders'
 
+/**
+ * Storage key holding one vault's task order.
+ *
+ * Several vault workspaces stay mounted at once, so a single global key would
+ * be rewritten by each of them with its own order. Each vault gets its own
+ * entry; outside any vault scope the unscoped (legacy) key is used as before.
+ */
+export const taskOrderStorageKey = (
+  vaultPath: string | null | undefined,
+  storageKeyPrefix = ''
+): string => {
+  const baseKey = storageKeyPrefix ? `${storageKeyPrefix}-${STORAGE_KEY}` : STORAGE_KEY
+  return vaultPath ? `${baseKey}:${vaultPath}` : baseKey
+}
+
+/**
+ * Forget one vault's stored task order. Meant for vault removal, so a vault
+ * the user will never open again does not keep its entry. The legacy unscoped
+ * key is left alone.
+ */
+export const clearTaskOrderForVault = (vaultPath: string): void => {
+  try {
+    localStorage.removeItem(taskOrderStorageKey(vaultPath))
+  } catch (err) {
+    log.warn('Failed to clear task order for removed vault:', err)
+  }
+}
+
 // ============================================================================
 // HOOK
 // ============================================================================
@@ -61,7 +90,9 @@ export const useTaskOrder = ({
   storageKeyPrefix = '',
   persist = true
 }: UseTaskOrderProps = {}): UseTaskOrderReturn => {
-  const storageKey = storageKeyPrefix ? `${storageKeyPrefix}-${STORAGE_KEY}` : STORAGE_KEY
+  const vaultPath = useVaultScope()
+  const storageKey = taskOrderStorageKey(vaultPath, storageKeyPrefix)
+  const legacyStorageKey = taskOrderStorageKey(null, storageKeyPrefix)
 
   // Initialize state from localStorage
   const [state, setState] = useState<TaskOrderState>(() => {
@@ -70,7 +101,13 @@ export const useTaskOrder = ({
     }
 
     try {
-      const saved = localStorage.getItem(storageKey)
+      // Installs from before per-vault keys hold the order under the unscoped
+      // key. A vault without its own entry starts from it; the persist effect
+      // below then copies it into the vault's key. The legacy key is never
+      // written or removed here, so every vault can still fall back to it.
+      const saved =
+        localStorage.getItem(storageKey) ??
+        (storageKey !== legacyStorageKey ? localStorage.getItem(legacyStorageKey) : null)
       if (saved) {
         const parsed = JSON.parse(saved)
         return {

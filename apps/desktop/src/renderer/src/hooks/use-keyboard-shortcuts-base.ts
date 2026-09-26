@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from 'react'
 import { hintModeActiveRef } from '@/contexts/hint-mode'
+import { getVaultSwitchState } from '@/lib/vault-switch-state'
 
 // =============================================================================
 // TYPES
@@ -141,6 +142,10 @@ export const useKeyboardShortcuts = (
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (hintModeActiveRef.current) return
+      // The leaving workspace stays on screen while main opens the next vault.
+      // `inert` does not stop window listeners, so its shortcuts would act on a
+      // half-open vault.
+      if (getVaultSwitchState().pending) return
 
       const target = e.target as HTMLElement
 

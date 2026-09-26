@@ -5,23 +5,26 @@ import { useMemo, useState, useCallback, useRef } from 'react'
 import { getI18n } from 'react-i18next'
 import {
   Calendar2,
-  CloudOff,
   ChevronDown,
   ChevronsDown,
   ChevronsUp,
   FilePlus,
   FolderPlus,
   ChartRelationship,
+  CloudOff,
   Home,
   Plus,
-  Settings,
   Upload
 } from '@/lib/icons'
 import { SidebarInbox, SidebarJournal, SidebarTasks } from '@/lib/icons/sidebar-nav-icons'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
-import { VaultSwitcher } from '@/components/vault-switcher'
+import {
+  SidebarVaultIndicator,
+  SidebarVaultPager,
+  useSidebarVaultPages
+} from '@/components/sidebar/sidebar-vault-paging'
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +38,9 @@ import { NotesTree, type NotesTreeActions } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarUpdateRow } from '@/components/sidebar/sidebar-update-row'
 import { SidebarFeedbackButton } from '@/components/sidebar/sidebar-feedback-button'
+import { SidebarSettingsButton } from '@/components/sidebar/sidebar-settings-button'
+import { FooterDock, DockButton } from '@/components/sidebar/footer-dock'
+import { GithubStarCard } from '@/components/onboarding/github-star-card'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { CanvasTree, type CanvasTreeActions } from '@/components/sidebar/canvas-tree/canvas-tree'
 import { SidebarSortPicker } from '@/components/sidebar/sidebar-sort-picker'
@@ -48,7 +54,6 @@ import { SortableSidebarSections } from '@/components/sidebar/sortable-sidebar-s
 import { resolveSidebarSectionOrder } from '@/components/sidebar/sidebar-section-order'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Picker } from '@/components/ui/picker'
 import { NewItemMenuItems } from '@/components/tabs/new-item-menu-items'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
@@ -806,124 +811,105 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     openSettings('account')
   }, [openSettings])
 
-  const settingsLabel = tPhaseF('phaseF.componentsVaultSwitcher.settings')
+  const vaultPages = useSidebarVaultPages()
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeaderContent />
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
-        {/* Quick Action: New — persistent, stays visible during drill-down */}
-        <div className="shrink-0 flex items-center px-3 pt-2 pb-0 group-data-[collapsible=icon]:hidden">
-          <div className="flex flex-1 items-center h-[30px] rounded-[5px] bg-sidebar-surface overflow-hidden">
-            <button
-              type="button"
-              data-tour="new-note"
-              onClick={() => void handleNewNote()}
-              className="flex flex-1 items-center justify-center gap-2 h-full hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-              title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
-            >
-              <Plus className="size-[15px] text-muted-foreground/70" />
-              <span className="text-[13px] text-muted-foreground/70 font-normal">
-                {tPhaseF('phaseF.componentsAppSidebar.new')}
-              </span>
-            </button>
-            <Picker>
-              <Picker.Trigger asChild>
-                <button
-                  type="button"
-                  aria-label={tPhaseF('phaseF.componentsAppSidebar.newItemMenu')}
-                  className="flex h-full w-7 shrink-0 items-center justify-center border-s border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-                >
-                  <ChevronDown className="size-3.5 text-muted-foreground/70" />
-                </button>
-              </Picker.Trigger>
-              <Picker.Content width={200} align="end" side="bottom">
-                <NewItemMenuItems
-                  actions={{
-                    onNewNote: () => void handleNewNote(),
-                    onJournal: () =>
-                      openSidebarItem({ type: 'journal', title: 'Journal', path: '/journal' }),
-                    onCalendar: () =>
-                      openSidebarItem({
-                        type: 'calendar',
-                        title: 'Calendar',
-                        path: '/calendar',
-                        viewState: newItemViewState('calendar')
-                      }),
-                    onInbox: () =>
-                      openSidebarItem({
-                        type: 'inbox',
-                        title: 'Inbox',
-                        path: '/inbox',
-                        viewState: newItemViewState('inbox')
-                      }),
-                    onTasks: () =>
-                      openSidebarItem({
-                        type: 'tasks',
-                        title: 'Tasks',
-                        path: '/tasks',
-                        viewState: newItemViewState('tasks')
-                      }),
-                    onTags: () => openSidebarItem({ type: 'tags', title: 'Tags', path: '/tags' })
-                  }}
-                />
-              </Picker.Content>
-            </Picker>
+        <SidebarVaultPager pages={vaultPages}>
+          {/* Quick Action: New — persistent, stays visible during drill-down */}
+          <div className="shrink-0 flex items-center px-3 pt-1 pb-0 group-data-[collapsible=icon]:hidden">
+            <div className="flex flex-1 items-center h-[30px] rounded-[5px] bg-sidebar-surface overflow-hidden">
+              <button
+                type="button"
+                data-tour="new-note"
+                onClick={() => void handleNewNote()}
+                className="flex flex-1 items-center justify-center gap-2 h-full hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
+              >
+                <Plus className="size-[15px] text-muted-foreground/70" />
+                <span className="text-[13px] text-muted-foreground/70 font-normal">
+                  {tPhaseF('phaseF.componentsAppSidebar.new')}
+                </span>
+              </button>
+              <Picker>
+                <Picker.Trigger asChild>
+                  <button
+                    type="button"
+                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newItemMenu')}
+                    className="flex h-full w-7 shrink-0 items-center justify-center border-s border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  >
+                    <ChevronDown className="size-3.5 text-muted-foreground/70" />
+                  </button>
+                </Picker.Trigger>
+                <Picker.Content width={200} align="end" side="bottom">
+                  <NewItemMenuItems
+                    actions={{
+                      onNewNote: () => void handleNewNote(),
+                      onJournal: () =>
+                        openSidebarItem({ type: 'journal', title: 'Journal', path: '/journal' }),
+                      onCalendar: () =>
+                        openSidebarItem({
+                          type: 'calendar',
+                          title: 'Calendar',
+                          path: '/calendar',
+                          viewState: newItemViewState('calendar')
+                        }),
+                      onInbox: () =>
+                        openSidebarItem({
+                          type: 'inbox',
+                          title: 'Inbox',
+                          path: '/inbox',
+                          viewState: newItemViewState('inbox')
+                        }),
+                      onTasks: () =>
+                        openSidebarItem({
+                          type: 'tasks',
+                          title: 'Tasks',
+                          path: '/tasks',
+                          viewState: newItemViewState('tasks')
+                        }),
+                      onTags: () => openSidebarItem({ type: 'tags', title: 'Tags', path: '/tags' })
+                    }}
+                  />
+                </Picker.Content>
+              </Picker>
+            </div>
           </div>
-        </div>
-        <SidebarNav
-          items={visibleNav}
-          isActive={isActiveItem}
-          onNavClick={handleNavClick}
-          onNavMiddleClick={handleNavMiddleClick}
-          isModifierHeld={isModifierHeld}
-          inboxCount={inboxCount}
-          todayTasksCount={todayTasksCount}
-          onOpenJournalSettings={() => openSettings('journal')}
-        />
-        <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
+          <SidebarNav
+            items={visibleNav}
+            isActive={isActiveItem}
+            onNavClick={handleNavClick}
+            onNavMiddleClick={handleNavMiddleClick}
+            isModifierHeld={isModifierHeld}
+            inboxCount={inboxCount}
+            todayTasksCount={todayTasksCount}
+            onOpenJournalSettings={() => openSettings('journal')}
+          />
+          <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
+        </SidebarVaultPager>
       </SidebarContent>
       <SidebarFooter className="gap-0 p-2">
+        <GithubStarCard />
         <SidebarUpdateRow />
-        <div className="flex items-center gap-1">
+        <FooterDock>
           {authState.status === 'authenticated' ? (
-            <div className="shrink-0 w-7 [&>button]:w-7 [&>button]:justify-center">
-              <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
-            </div>
+            <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
           ) : authState.status === 'checking' ? null : (
-            <button
-              type="button"
+            <DockButton
               data-tour="sync-status"
               onClick={handleSyncClick}
               aria-label={tPhaseF('phaseF.componentsAppSidebar.syncDisabled')}
               title={tPhaseF('phaseF.componentsAppSidebar.syncDisabled2')}
-              className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
             >
-              <CloudOff className="size-4" />
-            </button>
+              <CloudOff aria-hidden="true" />
+            </DockButton>
           )}
-          <div className="flex-1 min-w-0">
-            <VaultSwitcher />
-          </div>
+          <SidebarVaultIndicator pages={vaultPages} />
           <SidebarFeedbackButton />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                data-tour="settings"
-                onClick={() => openSettings()}
-                aria-label={settingsLabel}
-                title={settingsLabel}
-                className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
-              >
-                <Settings className="size-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              {settingsLabel}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+          <SidebarSettingsButton />
+        </FooterDock>
       </SidebarFooter>
       <SidebarRail />
       <ProjectModal

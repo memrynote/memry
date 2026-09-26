@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { ArrowUpRight, MoreHorizontal } from '@/lib/icons'
+import { ArrowUpRight, MoreHorizontal, Settings } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { createLogger } from '@/lib/logger'
@@ -47,6 +47,10 @@ interface UpdatePopoverProps {
   version: string
   state: AppUpdateState
   onClose: () => void
+  /** Popover alignment against its trigger. */
+  align?: 'start' | 'end'
+  /** When set, a trailing row links on to Settings (the gear trigger's usual job). */
+  onOpenSettings?: () => void
   onMouseEnter?: () => void
   onMouseLeave?: () => void
 }
@@ -61,6 +65,8 @@ export function UpdatePopover({
   version,
   state,
   onClose,
+  align = 'start',
+  onOpenSettings,
   onMouseEnter,
   onMouseLeave
 }: UpdatePopoverProps): React.JSX.Element {
@@ -114,7 +120,7 @@ export function UpdatePopover({
   return (
     <PopoverContent
       side="top"
-      align="start"
+      align={align}
       sideOffset={6}
       className="w-80 p-0"
       onMouseEnter={onMouseEnter}
@@ -207,6 +213,19 @@ export function UpdatePopover({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {onOpenSettings && (
+        <div className="border-t p-1">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="flex h-7 w-full items-center gap-2 rounded-md px-2.5 text-xs text-text-secondary hover:bg-surface-active hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tint-ring)]"
+          >
+            <Settings className="size-3.5" aria-hidden="true" />
+            <span className="flex-1 text-start">{t('update.popover.openSettings')}</span>
+          </button>
+        </div>
+      )}
     </PopoverContent>
   )
 }

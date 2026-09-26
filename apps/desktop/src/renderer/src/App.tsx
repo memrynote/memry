@@ -1,9 +1,17 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { Activity, useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useToday } from '@/hooks/use-today'
 import { resolveProjectReorderTarget } from '@/components/sidebar/sidebar-drag-types'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
-import { useQueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { APP_QUERY_DEFAULT_OPTIONS } from '@/lib/query-client-options'
+import { VaultScopeProvider } from '@/contexts/vault-scope'
+import {
+  VaultWorkspaceLifecycleContext,
+  createVaultWorkspaceLifecycle,
+  disposeVaultWorkspace,
+  type VaultWorkspaceLifecycle
+} from '@/lib/vault-workspace-lifecycle'
 import { Loader2 } from '@/lib/icons'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -67,9 +75,16 @@ import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { IncidentReportProvider } from '@/components/diagnostics/incident-report-provider'
 import { VaultOnboarding } from '@/components/vault-onboarding'
+import { VaultSwitchingScreen } from '@/components/vault-switching-screen'
+import { VaultSwitchContentCover } from '@/components/vault-switch-content-cover'
+import {
+  getVaultSwitchState,
+  subscribeVaultSwitchState,
+  useVaultSwitchState,
+  wasEnteredBySwitch
+} from '@/lib/vault-switch-state'
 import { UpdatingScreen } from '@/components/updating-screen'
 import { UpdateInstallFailedDialog } from '@/components/updater/update-install-failed-dialog'
-import { GithubStarCard } from '@/components/onboarding/github-star-card'
 import { ReleaseNotesDevTrigger } from '@/components/updater/release-notes-dev-trigger'
 import { UpdateReleaseNotesTabOpener } from '@/components/updater/update-release-notes-tab-opener'
 import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
@@ -143,7 +158,12 @@ function TabPersistenceManager({
   //
   // The vault path decides which session that is: each vault keeps its own tabs,
   // so switching reads the other vault's set instead of destroying either.
-  useTabSessionPersistence({ vaultPath })
+  //
+  // "Restore session on start" is about launching the app. A vault entered by
+  // an in-app switch always comes back as it was left, tabs and all; read once
+  // at mount, since this tree lives exactly as long as the vault is open.
+  const [enteredBySwitch] = useState(() => wasEnteredBySwitch(vaultPath))
+  useTabSessionPersistence({ vaultPath, restoreFullSession: enteredBySwitch })
 
   return <>{children}</>
 }
@@ -176,6 +196,17 @@ const TAB_TYPE_TO_SURFACE: Partial<Record<TabType, TelemetrySurface>> = {
   'agent-chat': 'ai'
 }
 
+/**
+ * During a vault switch the leaving workspace is still on screen, inert, while
+ * main is already opening the next vault. `inert` does not stop window
+ * listeners or menu IPC, so a ⌘N there would create a note in the half-open
+ * next vault and open its tab in the leaving one. Window-level create and
+ * navigation commands stand down until the switch settles.
+ */
+function isVaultSwitchPending(): boolean {
+  return getVaultSwitchState().pending !== null
+}
+
 const AppContent = (): React.JSX.Element => {
   const { openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
@@ -201,6 +232,7 @@ const AppContent = (): React.JSX.Element => {
 
   // Handle creating a new note
   const handleNewNote = useCallback(async () => {
+    if (isVaultSwitchPending()) return
     try {
       const result = await notesService.create({
         title: 'Untitled',
@@ -246,7 +278,14 @@ const AppContent = (): React.JSX.Element => {
   useCalendarChangeEvents() // Global cache invalidation for calendar ranges in background tabs
   useJournalChangeEvents() // Global cache invalidation for journal entries/heatmaps in background tabs
   useCloseTabsOnEntityDelete() // A deleted canvas takes its tabs with it, in every group
-  const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
+  const toggleSearch = useCallback(() => {
+    if (isVaultSwitchPending()) return
+    setSearchOpen((prev) => !prev)
+  }, [])
+  const openSearch = useCallback(() => {
+    if (isVaultSwitchPending()) return
+    setSearchOpen(true)
+  }, [])
   const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])
   const toggleShortcutsDialog = useCallback(() => setShowShortcutsDialog((prev) => !prev), [])
   const shortcutsHelpBinding = useShortcutBinding('view.shortcuts')
@@ -254,14 +293,13 @@ const AppContent = (): React.JSX.Element => {
   useHintActivation()
   useMenuCommands({
     onNewNote: () => void handleNewNote(),
-    onOpenSearch: () => setSearchOpen(true)
+    onOpenSearch: openSearch
   })
 
   useEffect(() => {
-    const openSearch = () => setSearchOpen(true)
     window.addEventListener('memry:open-search', openSearch)
     return () => window.removeEventListener('memry:open-search', openSearch)
-  }, [])
+  }, [openSearch])
 
   useEffect(() => {
     window.addEventListener('memry:open-shortcuts', openShortcutsDialog)
@@ -348,6 +386,7 @@ const AppContent = (): React.JSX.Element => {
 
   useEffect(() => {
     return window.api.onInboxOpenItem((itemId) => {
+      if (isVaultSwitchPending()) return
       openTab({
         type: 'inbox',
         title: 'Inbox',
@@ -395,48 +434,21 @@ const AppContent = (): React.JSX.Element => {
 }
 
 // =============================================================================
-// MAIN APP COMPONENT
+// VAULT WORKSPACE
 // =============================================================================
 
-function App(): React.JSX.Element {
-  // Flush pending saves when main process requests it (Cmd+Q, window close)
-  useFlushOnQuit()
-
-  // Update state - show a dedicated "Installing update…" screen while quitting to
-  // install, so vault teardown never surfaces as a broken picker / frozen window.
-  // Read only the two fields this screen needs: subscribing to the whole updater
-  // state re-rendered the entire app tree on every download-progress tick.
-  const isInstallingUpdate = useAppUpdaterSelector((state) => state.status === 'installing')
-  const installingVersion = useAppUpdaterSelector((state) => state.availableVersion)
-
-  // Vault state - check if vault is open
-  const { status: vaultStatus, isLoading: vaultLoading } = useVault()
-  const isVaultOpen = vaultStatus?.isOpen ?? false
-  const vaultPath = vaultStatus?.path ?? null
-  const queryClient = useQueryClient()
-
-  const prevVaultPathRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (!vaultPath) return
-    if (prevVaultPathRef.current && prevVaultPathRef.current !== vaultPath) {
-      queryClient.clear()
-      // Cached rows and expanded folder ids belong to the vault being left and
-      // mean nothing in the one being entered, so they go. Tab state does not:
-      // it is stored per vault and read back on the way in, so deleting it here
-      // was what left every switch on a bare Home tab, in both directions.
-      localStorage.removeItem('sidebar-tree-expanded')
-      log.info('Vault switched, cleared query cache')
-    }
-    prevVaultPathRef.current = vaultPath
-  }, [vaultPath, queryClient])
-
+/**
+ * Everything that belongs to one open vault: its task data, tabs, sidebar and
+ * content. Rendered by VaultStack, which keeps recently visited vaults mounted
+ * (hidden) so switching back is a visibility change, not a cold mount.
+ */
+function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element {
   // Navigation state
   // Note: navigation is now handled by tabs
   // currentPage is still used for sidebar highlight state
   const [currentPage] = useState<AppPage>('inbox')
 
-  const { tasks, projects } = useTaskWorkspaceData({ enabled: isVaultOpen })
+  const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
   const {
     setProjects,
     updateTask: handleUpdateTask,
@@ -556,6 +568,7 @@ function App(): React.JSX.Element {
                                 <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
                                 <SidebarInset className="flex flex-col overflow-hidden">
                                   <AppContent />
+                                  <VaultSwitchContentCover />
                                 </SidebarInset>
                                 {/* Opens the ephemeral read-only release-notes tab after an
                                     update+restart. Lives inside TabProvider for openTab(). */}
@@ -585,6 +598,207 @@ function App(): React.JSX.Element {
     </IncidentReportProvider>
   )
 
+  return (
+    <ThemeSyncManager>
+      <SidebarProvider>
+        <DragProvider
+          tasks={tasks}
+          selectedIds={selectedTaskIds}
+          selectedIdsRef={selectedTaskIdsRef}
+          onDragEnd={(event, state) => void handleDragEnd(event, state)}
+        >
+          <DroppedPriorityProvider value={droppedPriorities}>{mainContent}</DroppedPriorityProvider>
+        </DragProvider>
+      </SidebarProvider>
+    </ThemeSyncManager>
+  )
+}
+
+// =============================================================================
+// VAULT STACK
+// =============================================================================
+
+/** Vault workspaces kept mounted, the open one included. */
+const MAX_KEPT_VAULTS = 3
+
+/**
+ * Main opens one vault at a time, but the renderer does not have to forget the
+ * others. Each visited vault keeps its workspace mounted inside a hidden
+ * <Activity>, with its own QueryClient (query keys are not vault-scoped, so one
+ * cache cannot hold two vaults). Hidden, a workspace runs no effects: no IPC,
+ * no listeners, no shortcuts. Switching back shows the same DOM, tabs, scroll
+ * and cached rows at once, while its queries refetch in the background.
+ */
+function VaultStack({ activePath }: { activePath: string | null }): React.JSX.Element {
+  const clientsRef = useRef(new Map<string, QueryClient>())
+  const { pending } = useVaultSwitchState()
+  // While main swaps vaults the outgoing workspace stays on screen, but its
+  // vault is closing: nothing in it may start work against it.
+  const leaving = pending !== null && pending.path !== activePath
+  const [kept, setKept] = useState<string[]>(() => (activePath ? [activePath] : []))
+
+  // Most recent last; adjusted during render so the incoming vault mounts in
+  // the same commit that reveals it.
+  if (activePath && kept[kept.length - 1] !== activePath) {
+    setKept([...kept.filter((path) => path !== activePath), activePath].slice(-MAX_KEPT_VAULTS))
+  }
+
+  // The vault main has open, as of the last commit. Read by the cache fence
+  // below at event time, not during render.
+  const activePathRef = useRef(activePath)
+
+  const clientFor = (path: string): QueryClient => {
+    let client = clientsRef.current.get(path)
+    if (!client) {
+      const created = new QueryClient({ defaultOptions: APP_QUERY_DEFAULT_OPTIONS })
+      // Cache fence. Once a switch away from this vault starts, main may
+      // already serve the next vault, and the leaving workspace's observers
+      // can still fetch (retries, reconnect, event-driven invalidations). A
+      // result that lands then answers for another vault: reset the query so
+      // it cannot be served as this vault's fresh rows. Manual writes
+      // (setQueryData) are not reads from main and are left alone.
+      created.getQueryCache().subscribe((event) => {
+        if (event.type !== 'updated' || event.action.type !== 'success') return
+        if (event.action.manual) return
+        const { pending } = getVaultSwitchState()
+        const isOpenVault =
+          path === activePathRef.current && (pending === null || pending.path === path)
+        if (!isOpenVault) event.query.reset()
+      })
+      clientsRef.current.set(path, created)
+      client = created
+    }
+    return client
+  }
+
+  const lifecyclesRef = useRef(new Map<string, VaultWorkspaceLifecycle>())
+  const lifecycleFor = (path: string): VaultWorkspaceLifecycle => {
+    let lifecycle = lifecyclesRef.current.get(path)
+    if (!lifecycle) {
+      lifecycle = createVaultWorkspaceLifecycle()
+      lifecyclesRef.current.set(path, lifecycle)
+    }
+    return lifecycle
+  }
+
+  // Flag hidden workspaces in the layout phase: a hide runs the workspace's
+  // effect cleanups after this, and those read the flag to tell a hide from an
+  // unmount (see `vault-workspace-lifecycle`).
+  useLayoutEffect(() => {
+    activePathRef.current = activePath
+    for (const [path, lifecycle] of lifecyclesRef.current) {
+      lifecycle.hidden = path !== activePath
+    }
+  }, [activePath, kept])
+
+  // Evicted vaults drop their cache, and whatever their hidden tree parked.
+  useEffect(() => {
+    for (const [path, client] of clientsRef.current) {
+      if (kept.includes(path)) continue
+      client.clear()
+      clientsRef.current.delete(path)
+    }
+    for (const [path, lifecycle] of lifecyclesRef.current) {
+      if (kept.includes(path)) continue
+      disposeVaultWorkspace(lifecycle)
+      lifecyclesRef.current.delete(path)
+    }
+  }, [kept])
+
+  useEffect(() => {
+    const lifecycles = lifecyclesRef.current
+    return () => {
+      for (const lifecycle of lifecycles.values()) disposeVaultWorkspace(lifecycle)
+      lifecycles.clear()
+    }
+  }, [])
+
+  // Leaving a vault: stop its in-flight reads before main closes it, and mark
+  // everything stale so the workspace refetches when it is shown again. If the
+  // switch fails and this vault stays open, refetch what the cache fence
+  // emptied meanwhile, or those views would sit on an empty loading state.
+  useEffect(() => {
+    let leaving = false
+    return subscribeVaultSwitchState(() => {
+      if (!activePath) return
+      const client = clientsRef.current.get(activePath)
+      if (!client) return
+      const { pending, arrival } = getVaultSwitchState()
+      if (pending === null) {
+        if (!leaving) return
+        leaving = false
+        // Only a failed switch leaves this vault open. After a successful one
+        // main already serves the next vault, and `activePath` here is still
+        // this one until React commits: a refetch now would ask the wrong vault.
+        if (arrival !== null && arrival.path !== activePath) return
+        void client.refetchQueries({
+          type: 'active',
+          predicate: (query) =>
+            query.state.status === 'pending' && query.state.fetchStatus === 'idle'
+        })
+        return
+      }
+      if (pending.path === activePath || leaving) return
+      leaving = true
+      void client.cancelQueries()
+      void client.invalidateQueries({ refetchType: 'none' })
+    })
+  }, [activePath])
+
+  return (
+    <>
+      {kept.map((path) => (
+        <Activity key={path} mode={path === activePath ? 'visible' : 'hidden'}>
+          <div className="contents" inert={leaving && path === activePath}>
+            <QueryClientProvider client={clientFor(path)}>
+              <VaultWorkspaceLifecycleContext.Provider value={lifecycleFor(path)}>
+                <VaultScopeProvider vaultPath={path}>
+                  <VaultWorkspace vaultPath={path} />
+                </VaultScopeProvider>
+              </VaultWorkspaceLifecycleContext.Provider>
+            </QueryClientProvider>
+          </div>
+        </Activity>
+      ))}
+    </>
+  )
+}
+
+// =============================================================================
+// MAIN APP COMPONENT
+// =============================================================================
+
+function App(): React.JSX.Element {
+  // Flush pending saves when main process requests it (Cmd+Q, window close)
+  useFlushOnQuit()
+
+  // Update state - show a dedicated "Installing update…" screen while quitting to
+  // install, so vault teardown never surfaces as a broken picker / frozen window.
+  // Read only the two fields this screen needs: subscribing to the whole updater
+  // state re-rendered the entire app tree on every download-progress tick.
+  const isInstallingUpdate = useAppUpdaterSelector((state) => state.status === 'installing')
+  const installingVersion = useAppUpdaterSelector((state) => state.availableVersion)
+
+  // Vault state - check if vault is open
+  const { status: vaultStatus, isLoading: vaultLoading } = useVault()
+  const isVaultOpen = vaultStatus?.isOpen ?? false
+  const vaultPath = vaultStatus?.path ?? null
+  const { pending: pendingVaultSwitch } = useVaultSwitchState()
+
+  const prevVaultPathRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!vaultPath) return
+    if (prevVaultPathRef.current && prevVaultPathRef.current !== vaultPath) {
+      // Expanded folder ids belong to the vault being left and mean nothing in
+      // the one being entered. Query caches are per vault (see VaultStack), and
+      // tab state is stored per vault and read back on the way in.
+      localStorage.removeItem('sidebar-tree-expanded')
+      log.info('Vault switched')
+    }
+    prevVaultPathRef.current = vaultPath
+  }, [vaultPath])
+
   // Highest priority: once the user triggered install, keep this screen up
   // through the whole quit/relaunch regardless of vault state.
   if (isInstallingUpdate) {
@@ -596,6 +810,22 @@ function App(): React.JSX.Element {
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="size-6 animate-spin text-sidebar-terracotta" />
       </div>
+    )
+  }
+
+  // Mid-switch the old vault is closed and the next is not open yet. That gap
+  // is not "no vault": keep the shell instead of flashing onboarding.
+  if (!isVaultOpen && pendingVaultSwitch) {
+    return (
+      <ThemeProvider
+        attribute="class"
+        defaultTheme={startupTheme}
+        enableSystem
+        themes={['light', 'dark', 'white', 'system']}
+        storageKey={THEME_STORAGE_KEY}
+      >
+        <VaultSwitchingScreen target={pendingVaultSwitch} />
+      </ThemeProvider>
     )
   }
 
@@ -638,24 +868,9 @@ function App(): React.JSX.Element {
       themes={['light', 'dark', 'white', 'system']}
       storageKey={THEME_STORAGE_KEY}
     >
-      <ThemeSyncManager>
-        <SidebarProvider key={vaultPath}>
-          <DragProvider
-            tasks={tasks}
-            selectedIds={selectedTaskIds}
-            selectedIdsRef={selectedTaskIdsRef}
-            onDragEnd={(event, state) => void handleDragEnd(event, state)}
-          >
-            <DroppedPriorityProvider value={droppedPriorities}>
-              {mainContent}
-            </DroppedPriorityProvider>
-          </DragProvider>
-        </SidebarProvider>
-        <UpdateInstallFailedDialog />
-        {/* Vault-open branch only: the tour that arms this never runs without a vault. */}
-        <GithubStarCard />
-        <Toaster />
-      </ThemeSyncManager>
+      <VaultStack activePath={vaultPath} />
+      <UpdateInstallFailedDialog />
+      <Toaster />
     </ThemeProvider>
   )
 }

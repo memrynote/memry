@@ -222,6 +222,12 @@ interface UseSessionRestoreOptions {
   vaultPath?: string | null
   /** Auto-restore on mount (default: true) */
   autoRestore?: boolean
+  /**
+   * Restore every tab even when "restore session on start" is off. Set for a
+   * vault entered by an in-app switch: that setting governs launches, and a
+   * switch must bring the vault back the way the user left it.
+   */
+  restoreFullSession?: boolean
 }
 
 /**
@@ -230,7 +236,12 @@ interface UseSessionRestoreOptions {
 export const useSessionRestore = (
   options: UseSessionRestoreOptions = {}
 ): UseSessionRestoreResult => {
-  const { vaultPath = null, storage = getDefaultStorage(vaultPath), autoRestore = true } = options
+  const {
+    vaultPath = null,
+    storage = getDefaultStorage(vaultPath),
+    autoRestore = true,
+    restoreFullSession = false
+  } = options
   const { dispatch, state } = useTabs()
   const { flags, isLoading: flagsLoading } = useFeatureFlags()
   const hasRestoredRef = useRef(false)
@@ -242,7 +253,7 @@ export const useSessionRestore = (
       const persisted = await storage.load()
 
       if (persisted) {
-        if (state.settings.restoreSessionOnStart) {
+        if (restoreFullSession || state.settings.restoreSessionOnStart) {
           const restored = deserializeTabState(persisted, flags)
           dispatch({
             type: 'RESTORE_SESSION',
@@ -303,7 +314,7 @@ export const useSessionRestore = (
       log.error('Failed to restore session:', error)
       throw error instanceof Error ? error : new Error('Failed to restore session')
     }
-  }, [storage, state.settings.restoreSessionOnStart, dispatch, flags])
+  }, [storage, restoreFullSession, state.settings.restoreSessionOnStart, dispatch, flags])
 
   const [autoRestoreState, setAutoRestoreState] = useState<{
     pending: boolean
@@ -366,6 +377,8 @@ export const useSessionRestore = (
 interface UseTabSessionPersistenceOptions extends UseTabPersistenceOptions {
   /** Auto-restore on mount (default: true) */
   autoRestore?: boolean
+  /** See `UseSessionRestoreOptions.restoreFullSession`. */
+  restoreFullSession?: boolean
 }
 
 /**
@@ -385,9 +398,16 @@ interface UseTabSessionPersistenceOptions extends UseTabPersistenceOptions {
 export const useTabSessionPersistence = (
   options: UseTabSessionPersistenceOptions = {}
 ): UseSessionRestoreResult => {
-  const { storage, vaultPath = null, debounceMs, enabled = true, autoRestore } = options
+  const {
+    storage,
+    vaultPath = null,
+    debounceMs,
+    enabled = true,
+    autoRestore,
+    restoreFullSession
+  } = options
 
-  const restore = useSessionRestore({ storage, vaultPath, autoRestore })
+  const restore = useSessionRestore({ storage, vaultPath, autoRestore, restoreFullSession })
 
   useTabPersistence({
     storage,
