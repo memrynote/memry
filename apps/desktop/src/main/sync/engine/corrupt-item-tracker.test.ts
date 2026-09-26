@@ -211,7 +211,32 @@ describe('CorruptItemTracker', () => {
           new Uint8Array(32)
         )
 
-        expect(result).toEqual({ recovered: [], permanentFailures: [] })
+        expect(result).toEqual({ recovered: [], permanentFailures: [], missing: [], invalid: [] })
+      })
+    })
+
+    // #2285
+    describe('#given more ids than one /sync/pull accepts #when refetch runs', () => {
+      it('#then it sends 100-id chunks and reports a still-invalid item apart from a missing one', async () => {
+        vi.mocked(postToServer).mockClear()
+        const tracker = createTracker()
+        const refs = Array.from({ length: 150 }, (_, i) => ({ id: `task-${i}`, type: 'task' }))
+        vi.mocked(postToServer).mockImplementation(async (_path, body) => {
+          const ids = (body as { itemIds: string[] }).itemIds
+          return { items: ids.includes('task-120') ? [{ id: 'task-120', type: 'task' }] : [] }
+        })
+        vi.mocked(decryptPullBatch).mockResolvedValue({ decrypted: [], failures: [] })
+
+        const result = await tracker.refetch(refs, 'token', new Uint8Array(32))
+
+        expect(
+          vi
+            .mocked(postToServer)
+            .mock.calls.map(([, body]) => (body as { itemIds: string[] }).itemIds.length)
+        ).toEqual([100, 50])
+        expect(result.invalid).toEqual([{ id: 'task-120', type: 'task' }])
+        expect(result.missing).toHaveLength(149)
+        expect(result.missing).not.toContainEqual({ id: 'task-120', type: 'task' })
       })
     })
 

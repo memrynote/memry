@@ -130,10 +130,10 @@ unchanged.
 `home-page-handler.ts` carries a board's widgets as an **opaque JSON string**, declared
 `widgets: z.string().optional()` in `HomePageSyncPayloadSchema` — the same call `canvas.scene` makes,
 and for a sharper reason. A typed `z.array(WidgetInstanceSchema)` would zod-strip widget keys written
-by a newer build and reject the legacy `{size:'S'|'M'|'L'}` blobs still on disk; `apply-item.ts`
-turns a schema failure into `'skipped'`, **not** `'parse_error'`, and `'skipped'` still advances the
-cursor and never retries. The push would succeed, `synced_at` would be stamped, and the board would
-land on zero peers forever with nothing user-visible to notice.
+by a newer build and reject the legacy `{size:'S'|'M'|'L'}` blobs still on disk. A schema failure in
+`apply-item.ts` returns `'schema_invalid'`: the cursor still advances, and the item waits in the
+schema-invalid ledger until an app update re-fetches it (see Sync Protocol, "Per-item bookkeeping and
+retry semantics"). A board that every build refuses would still land on zero peers.
 
 Shape is therefore validated at the apply site: `applyUpsert` refuses a `widgets` value that is
 present but does not `JSON.parse` to an array, and returns `'skipped'` **before** touching the clock

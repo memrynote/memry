@@ -7,6 +7,12 @@ import { BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT, SYNC_STATE_KEYS } from './sync-conte
 import { ItemApplier } from '../apply-item'
 import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import type { ManifestCheckResult } from '../manifest-check'
+
+const { appVersion } = vi.hoisted(() => ({ appVersion: { current: '1.0.0' } }))
+vi.mock('electron', () => ({
+  app: { getVersion: () => appVersion.current, getPath: () => '/tmp/memry-pull-coordinator-test' }
+}))
 
 vi.mock('../../lib/logger', () => {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -16,7 +22,7 @@ vi.mock('../../lib/logger', () => {
 describe('PullCoordinator', () => {
   const { getDb } = setupTestDb()
 
-  describe('#given a pull page whose server response fails schema validation #when the page is processed', () => {
+  describe('#given a /sync/pull response that is not a pull envelope #when the page is processed', () => {
     it('#then logs pull_page_dropped with the dropped item count instead of failing silently', async () => {
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
@@ -29,18 +35,129 @@ describe('PullCoordinator', () => {
         nextCursor: 1
       })
 
-      // Malformed: `type` isn't a recognized record sync item type, so
-      // RecordPullResponseSchema.safeParse fails for the whole page.
       vi.spyOn(await import('../http-client'), 'postToServer').mockResolvedValue({
-        items: [{ id: 'task-1', type: 'not_a_real_type' }]
+        error: 'not a pull envelope'
       })
 
-      await engine.pull()
+      engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
+      const delivered = await engine.pull()
 
       expect(logger.warn).toHaveBeenCalledWith('pull_page_dropped', {
         reason: 'invalid_pull_response',
         droppedCount: 2
       })
+      // #2285: the page must re-arrive, so the cursor holds and the run is refused.
+      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('0')
+      expect(delivered).toBe(false)
+      expect(engine.getStatus()).toMatchObject({ status: 'error', errorCategory: 'server_error' })
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  // #2285
+  describe('#given one pulled item fails the envelope schema #when the page is processed', () => {
+    it('#then its page-mates apply, the item is recorded, and the cursor moves on', async () => {
+      appVersion.current = '1.0.0'
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      vi.spyOn(await import('../http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          { id: 'task-ok', type: 'task', version: 1, modifiedAt: 1000, size: 10 },
+          { id: 'task-bad', type: 'task', version: 1, modifiedAt: 1000, size: 10 }
+        ],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 4
+      })
+      vi.spyOn(await import('../http-client'), 'postToServer').mockResolvedValue({
+        items: [
+          {
+            id: 'task-ok',
+            type: 'task',
+            operation: 'update',
+            cryptoVersion: 1,
+            blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+            signature: 'sig',
+            signerDeviceId: 'device-2',
+            clock: { 'device-2': 1 }
+          },
+          { id: 'task-bad', type: 'task', operation: 'a-newer-operation' }
+        ]
+      })
+      vi.spyOn(await import('../decrypt'), 'decryptItemFromPull').mockReturnValue({
+        content: new TextEncoder().encode(JSON.stringify({ title: 'ok' })),
+        verified: true
+      })
+      const applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockReturnValue('applied')
+
+      await engine.pull()
+
+      expect(applySpy.mock.calls.map(([input]) => input.itemId)).toEqual(['task-ok'])
+      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')
+      expect(engine.getQuarantinedItems()).toEqual([
+        expect.objectContaining({ itemId: 'task-bad', itemType: 'task' })
+      ])
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  // #2285
+  describe('#given a payload this build cannot parse #when a later app version pulls', () => {
+    it('#then the item is re-fetched by id and applied, though the cursor moved past it', async () => {
+      appVersion.current = '1.0.0'
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      const pullItem = {
+        id: 'task-new',
+        type: 'task',
+        operation: 'update',
+        cryptoVersion: 1,
+        blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+        signature: 'sig',
+        signerDeviceId: 'device-2',
+        clock: { 'device-2': 3 }
+      }
+      const getSpy = vi.spyOn(await import('../http-client'), 'getFromServer')
+      getSpy.mockResolvedValue({
+        items: [{ id: 'task-new', type: 'task', version: 3, modifiedAt: 1000, size: 10 }],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 9
+      })
+      const postSpy = vi
+        .spyOn(await import('../http-client'), 'postToServer')
+        .mockResolvedValue({ items: [pullItem] })
+      vi.spyOn(await import('../decrypt'), 'decryptItemFromPull').mockReturnValue({
+        content: new TextEncoder().encode(JSON.stringify({ title: 'from a newer build' })),
+        verified: true
+      })
+      const applySpy = vi
+        .spyOn(ItemApplier.prototype, 'apply')
+        .mockReturnValueOnce('schema_invalid')
+        .mockReturnValue('applied')
+
+      await engine.pull()
+
+      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
+      expect(engine.getQuarantinedItems()).toEqual([
+        expect.objectContaining({ itemId: 'task-new', itemType: 'task' })
+      ])
+
+      getSpy.mockResolvedValue({ items: [], deleted: [], hasMore: false, nextCursor: 9 })
+      postSpy.mockClear()
+      await engine.pull()
+      expect(postSpy).not.toHaveBeenCalled()
+
+      appVersion.current = '1.1.0'
+      await engine.pull()
+
+      expect(postSpy).toHaveBeenCalledWith('/sync/pull', { itemIds: ['task-new'] }, 'test-token')
+      expect(applySpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ itemId: 'task-new', type: 'task' })
+      )
+      expect(engine.getQuarantinedItems()).toEqual([])
 
       vi.restoreAllMocks()
     })
@@ -395,5 +512,49 @@ describe('#given a pull whose page the run refused to apply #when the pull finis
     expect(eng.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
 
     vi.restoreAllMocks()
+  })
+
+  // #2285: an item the ledger holds is not "server-only". Counting it would
+  // reset the cursor and re-pull the whole vault on every manifest check.
+  describe('#given a ledger entry #when the manifest check runs', () => {
+    it('#then the entry is excluded from the server-only count', async () => {
+      appVersion.current = '1.0.0'
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      engine.setStateValue(
+        SYNC_STATE_KEYS.SCHEMA_INVALID_ITEMS,
+        JSON.stringify({
+          'task:task-new': {
+            id: 'task-new',
+            type: 'task',
+            kind: 'payload',
+            lastRefusedByVersion: '1.0.0',
+            failedAt: 1
+          }
+        })
+      )
+      vi.spyOn(await import('../http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const manifest = vi
+        .spyOn(await import('../manifest-check'), 'checkManifestIntegrity')
+        .mockResolvedValue({
+          checkedAt: Date.now(),
+          rePullNeeded: false,
+          serverOnlyCount: 0,
+          performed: true
+        } satisfies ManifestCheckResult)
+
+      await engine.fullSync()
+
+      const isQuarantined = manifest.mock.calls[0]?.[0].isQuarantined
+      expect(isQuarantined?.('task-new', 'task')).toBe(true)
+      expect(isQuarantined?.('task-other', 'task')).toBe(false)
+
+      vi.restoreAllMocks()
+    })
   })
 })

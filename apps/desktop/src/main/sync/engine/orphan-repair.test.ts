@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import type { SyncContext } from './sync-context'
 import type { CorruptItemTracker } from './corrupt-item-tracker'
+import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 
 const fetchLocal = vi.fn()
 
@@ -41,11 +42,12 @@ function makeCtx(signingKeys: { deviceId: string } | null = { deviceId: 'device-
 function makeTracker(recovered: unknown[] = []): CorruptItemTracker {
   return {
     clearExpired: vi.fn(),
-    refetch: vi.fn(async () => ({ recovered, permanentFailures: [] }))
+    refetch: vi.fn(async () => ({ recovered, permanentFailures: [], missing: [], invalid: [] }))
   } as unknown as CorruptItemTracker
 }
 
 const VAULT_KEY = new Uint8Array(32)
+const ledger = { record: vi.fn() } as unknown as SchemaInvalidLedger
 
 describe('repairOrphans (#837)', () => {
   beforeEach(() => {
@@ -60,6 +62,7 @@ describe('repairOrphans (#837)', () => {
       orphans: [],
       ctx,
       corruptTracker: tracker,
+      schemaInvalid: ledger,
       accessJwt: 'jwt',
       vaultKey: VAULT_KEY,
       applyItem: vi.fn()
@@ -90,6 +93,7 @@ describe('repairOrphans (#837)', () => {
       orphans: [makeOrphan()],
       ctx,
       corruptTracker: tracker,
+      schemaInvalid: ledger,
       accessJwt: 'jwt',
       vaultKey: VAULT_KEY,
       applyItem
@@ -115,6 +119,7 @@ describe('repairOrphans (#837)', () => {
       orphans: [makeOrphan()],
       ctx,
       corruptTracker: tracker,
+      schemaInvalid: ledger,
       accessJwt: 'jwt',
       vaultKey: VAULT_KEY,
       applyItem: vi.fn()
@@ -131,6 +136,61 @@ describe('repairOrphans (#837)', () => {
     expect(ctx.requestPush).toHaveBeenCalled()
   })
 
+  // #2285: the parent is on the server but this build refuses its payload.
+  // Tombstoning the child would delete it on every device.
+  it('keeps the child when the server still has a parent this build cannot apply', async () => {
+    const ctx = makeCtx()
+    vi.mocked(ctx.applier.apply).mockReturnValue('schema_invalid')
+    const tracker = makeTracker([
+      { id: 'proj-gone', type: 'project', content: '{}', clock: {}, operation: 'update' }
+    ])
+    fetchLocal.mockReturnValue(undefined)
+
+    const result = await repairOrphans({
+      orphans: [makeOrphan()],
+      ctx,
+      corruptTracker: tracker,
+      schemaInvalid: ledger,
+      accessJwt: 'jwt',
+      vaultKey: VAULT_KEY,
+      applyItem: vi.fn()
+    })
+
+    expect(result).toEqual({ repaired: 0, tombstoned: 0 })
+    expect(ctx.deps.queue.enqueue).not.toHaveBeenCalled()
+    expect(ledger.record).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'proj-gone', type: 'project' })],
+      'payload'
+    )
+  })
+
+  it('still tombstones the child when the server returns the parent as deleted', async () => {
+    const ctx = makeCtx()
+    const tracker = makeTracker([
+      {
+        id: 'proj-gone',
+        type: 'project',
+        content: '{}',
+        clock: {},
+        operation: 'delete',
+        deletedAt: 5
+      }
+    ])
+    fetchLocal.mockReturnValue(undefined)
+
+    const result = await repairOrphans({
+      orphans: [makeOrphan()],
+      ctx,
+      corruptTracker: tracker,
+      schemaInvalid: ledger,
+      accessJwt: 'jwt',
+      vaultKey: VAULT_KEY,
+      applyItem: vi.fn()
+    })
+
+    expect(result).toEqual({ repaired: 0, tombstoned: 1 })
+  })
+
   it('stamps the tombstone with a clock that outranks the server copy', async () => {
     // #given an orphan whose content still carries the clock it was pulled with
     const ctx = makeCtx()
@@ -141,6 +201,7 @@ describe('repairOrphans (#837)', () => {
       orphans: [makeOrphan({ item: { ...makeOrphan().item, content: JSON.stringify(pulled) } })],
       ctx,
       corruptTracker: makeTracker([]),
+      schemaInvalid: ledger,
       accessJwt: 'jwt',
       vaultKey: VAULT_KEY,
       applyItem: vi.fn()
@@ -165,6 +226,7 @@ describe('repairOrphans (#837)', () => {
       orphans: [makeOrphan()],
       ctx,
       corruptTracker: makeTracker([]),
+      schemaInvalid: ledger,
       accessJwt: 'jwt',
       vaultKey: VAULT_KEY,
       applyItem: vi.fn()
@@ -190,6 +252,7 @@ describe('repairOrphans (#837)', () => {
       ],
       ctx,
       corruptTracker: tracker,
+      schemaInvalid: ledger,
       accessJwt: 'jwt',
       vaultKey: VAULT_KEY,
       applyItem: vi.fn()
@@ -214,6 +277,7 @@ describe('repairOrphans (#837)', () => {
       orphans: [makeOrphan()],
       ctx,
       corruptTracker: tracker,
+      schemaInvalid: ledger,
       accessJwt: 'jwt',
       vaultKey: VAULT_KEY,
       applyItem: vi.fn(() => {

@@ -463,17 +463,26 @@ item is recorded corrupt and skipped, never allowed to poison its 99 page-mates
 record: a whole-page `safeParse` drops the page, and on a first sync that wedges
 every item sharing a chunk with one bad row.
 
-- A page whose envelope is **not a pull envelope at all** is dropped and the
-  cursor advances past it
-  (`packages/sync-client/src/pull/engine.ts:199-205`, `:358`).
+- A page whose envelope is **not a pull envelope at all** MUST NOT advance the
+  cursor; the run is refused (#2285). Such a body is a server contract
+  regression, not a poisoned item: it is fixed on the server, and the page must
+  still be there to re-pull when it is. Dropping it lost every item on the page.
+  Desktop: `apps/desktop/src/main/sync/engine/pull-envelope.ts`. The shared
+  pull engine (`packages/sync-client/src/pull/engine.ts:199-205`) and the Rust
+  core (`crates/memry-core/src/sync/pull.rs`) still drop and advance; #2304
+  tracks bringing them in line.
+- An item that fails its schema (the envelope schema, or the handler's payload
+  schema) is recorded, not dropped: the cursor moves on, and the client
+  re-fetches it by id after an app update (#2285).
 - **The breaker**: if a page yielded zero decoded items, produced at least one
   new corrupt item, and asked for at least one id, the cursor advances past the
   page but the run is **refused** so no success state is written
   (`packages/sync-client/src/pull/engine.ts:365-371`).
 
-A conforming client MUST implement all three behaviours. Advancing the cursor
+A conforming client MUST implement all of these behaviours. Advancing the cursor
 without reporting the refusal loses data silently; refusing without advancing the
-cursor wedges the device on one poisoned page forever.
+cursor on a poisoned page (the breaker) wedges the device on that page forever.
+The non-envelope case is the exception because the fault is on the server.
 
 ### 5.12.2 How a bare tombstone is stored
 

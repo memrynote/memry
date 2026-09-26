@@ -1,12 +1,7 @@
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
-import type {
-  InitialSyncProgressEvent,
-  ItemRecoveredEvent,
-  ItemCorruptEvent
-} from '@memry/contracts/ipc-events'
+import type { InitialSyncProgressEvent, ItemCorruptEvent } from '@memry/contracts/ipc-events'
 import type { RecordChangesResponse, RecordPullItemResponse } from '@memry/contracts/sync-api'
-import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { beginPageApply, replayBulkApplyJournal } from '../bulk-apply'
@@ -26,7 +21,15 @@ import type { SyncStateManager } from './sync-state-manager'
 import type { QuarantineManager } from './quarantine-manager'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
-import { CorruptItemTracker } from './corrupt-item-tracker'
+import { CorruptItemTracker, type ItemRef, type RecoveredItem } from './corrupt-item-tracker'
+import { SchemaInvalidLedger } from './schema-invalid-ledger'
+import { sortByApplyOrder } from './apply-order'
+import {
+  applyRecoveredItems,
+  retrySchemaInvalidItems,
+  type ItemRecoveryDeps
+} from './item-recovery'
+import { parsePullItems } from './pull-envelope'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
 import {
@@ -42,31 +45,6 @@ const log = createLogger('PullCoordinator')
 
 type DecryptedPullItem = Awaited<ReturnType<typeof decryptPullBatch>>['decrypted'][number]
 
-/**
- * FK parents must apply before their children (e.g. a task references its
- * project), but server cursor order is last-update order, not dependency
- * order. Lower rank applies first; unlisted types use the default middle rank.
- */
-const PULL_APPLY_ORDER: Record<string, number> = {
-  project: 0,
-  folder_config: 0,
-  tag_definition: 0,
-  filter: 0,
-  settings: 0,
-  calendar_source: 0,
-  agent_conversation: 0,
-  task: 2,
-  agent_message: 2,
-  calendar_event: 2,
-  calendar_external_event: 2,
-  calendar_binding: 3
-}
-
-const applyRank = (type: string): number => PULL_APPLY_ORDER[type] ?? 1
-
-export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
-  [...items].sort((a, b) => applyRank(a.type) - applyRank(b.type))
-
 // Why a page stopped the pull run:
 // - 'transition': key material is mid-swap (sign-in/recovery) — momentary, do
 //   not advance the cursor, the flow re-pulls cleanly once the key settles.
@@ -74,7 +52,16 @@ export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
 //   recovery must run first.
 // - 'breaker': the key is right but the page's payloads are undecryptable
 //   (server-side poisoned data) — advance past the page, mark items corrupt.
-type PageStopReason = 'none' | 'transition' | 'mismatch' | 'breaker'
+// - 'invalid_response': /sync/pull answered with no pull envelope, a server
+//   contract regression — do not advance, the page re-pulls once it is fixed
+//   (#2285).
+type PageStopReason = 'none' | 'transition' | 'mismatch' | 'breaker' | 'invalid_response'
+/**
+ * Stops that hold the cursor: the page re-arrives on the next pull. Advancing
+ * on one of these made the next manual Retry resume past the failing page and
+ * report a clean sync while its items were never applied.
+ */
+const HOLDS_CURSOR = new Set<PageStopReason>(['transition', 'mismatch', 'invalid_response'])
 
 interface PullRunState {
   timer: SyncTimer
@@ -96,6 +83,7 @@ export class PullCoordinator {
   private crdtSync: CrdtSyncCoordinator
   private pushCoordinator: PushCoordinator
   private corruptTracker: CorruptItemTracker
+  readonly schemaInvalid: SchemaInvalidLedger
   private deviceKeyCache = new Map<string, Uint8Array | null>()
   /** Items whose apply threw (e.g. FK parent not pulled yet) — retried once after all pages land */
   private pendingApplyRetries: DecryptedPullItem[] = []
@@ -115,6 +103,7 @@ export class PullCoordinator {
     this.crdtSync = crdtSync
     this.pushCoordinator = pushCoordinator
     this.corruptTracker = new CorruptItemTracker(ctx, quarantine, (id) => this.resolveDeviceKey(id))
+    this.schemaInvalid = new SchemaInvalidLedger(stateManager)
   }
 
   /**
@@ -159,6 +148,13 @@ export class PullCoordinator {
         // between a page's DB commit and its file writes) before any new page
         // can apply on top of them.
         replayBulkApplyJournal()
+        await retrySchemaInvalidItems(
+          this.recoveryDeps((item, op) =>
+            this.stateManager.emitItemSynced(item.id, item.type, 'pull', op)
+          ),
+          credentials.accessJwt,
+          vaultKey
+        )
         await this.pullChanges(runState)
         await this.applyDeferredRetries(runState)
         await this.repairOrphanedItems(runState)
@@ -209,6 +205,10 @@ export class PullCoordinator {
     const key = await this.ctx.deps.getDevicePublicKey(deviceId)
     this.deviceKeyCache.set(deviceId, key)
     return key
+  }
+
+  private recoveryDeps(onChanged: ItemRecoveryDeps['onChanged']): ItemRecoveryDeps {
+    return { ctx: this.ctx, tracker: this.corruptTracker, ledger: this.schemaInvalid, onChanged }
   }
 
   clearCaches(): void {
@@ -302,12 +302,7 @@ export class PullCoordinator {
       const stop = await this.pullChangesPage(changes, runState)
       this.emitInitialSyncProgress(changes, runState.pulledCount)
 
-      // Key-state stops ('transition' mid sign-in/recovery, 'mismatch') must
-      // NOT advance the persisted cursor: the failures are a key problem that
-      // resolves out-of-band, and advancing made the next manual Retry resume
-      // past the failing page and report a clean sync while the items were
-      // never applied.
-      if (stop === 'transition' || stop === 'mismatch') {
+      if (HOLDS_CURSOR.has(stop)) {
         runState.refused = true
         break
       }
@@ -381,8 +376,8 @@ export class PullCoordinator {
     // /sync/pull accepts at most PULL_REQUEST_MAX_IDS (100) ids, so the page is
     // pulled in slices — which also keeps decrypt/apply memory at the profile
     // it had when the page size WAS 100. Stop semantics per slice:
-    // - 'transition'/'mismatch' return immediately: the caller does not
-    //   advance the cursor, so unpulled slices re-arrive next cycle.
+    // - HOLDS_CURSOR stops return immediately: the caller does not advance the
+    //   cursor, so unpulled slices re-arrive next cycle.
     // - 'breaker' must NOT abort the remaining slices: the caller advances the
     //   cursor past the WHOLE page, so a slice skipped here would neither be
     //   re-pulled nor marked corrupt — silent loss. Every slice runs (each
@@ -395,7 +390,7 @@ export class PullCoordinator {
       runState.totalConflictsResolved += pageResult.conflicts
       await this.applyCrdtBatch(runState)
 
-      if (pageResult.stop === 'transition' || pageResult.stop === 'mismatch') {
+      if (HOLDS_CURSOR.has(pageResult.stop)) {
         return pageResult.stop
       }
       if (pageResult.stop === 'breaker') breakerTripped = true
@@ -625,6 +620,7 @@ export class PullCoordinator {
       orphans,
       ctx: this.ctx,
       corruptTracker: this.corruptTracker,
+      schemaInvalid: this.schemaInvalid,
       accessJwt: runState.accessJwt,
       vaultKey: runState.vaultKey,
       applyItem: (item) => this.applyOrphan(item, runState)
@@ -645,6 +641,7 @@ export class PullCoordinator {
     // The requeue is what carries a merged row back to the server (#2180).
     // Not counted in `totalConflictsResolved`: that number is the pull's own
     // per-page tally, and a repair pass runs after the last page is logged.
+    if (result === 'schema_invalid') return this.schemaInvalid.record([dec], 'payload')
     if (result === 'conflict') reportConflict(this.ctx.deps, dec)
     runState.processedIds.add(itemRefKey(dec.type, dec.id))
     runState.pulledCount++
@@ -670,15 +667,21 @@ export class PullCoordinator {
       { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
     )
 
-    const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
-    if (!parsed.success) {
-      log.error('Invalid pull response from server', { error: parsed.error.message })
+    const parsed = parsePullItems(pullResult.value)
+    if (parsed.kind === 'not_envelope') {
+      log.error('Invalid pull response from server: not a pull envelope')
       log.warn('pull_page_dropped', {
         reason: 'invalid_pull_response',
         droppedCount: itemIds.length
       })
-      // The cursor still advances past this page, so these items may never
-      // apply — a server-side contract regression must be chartable.
+      // The cursor holds (#2285); without an error state the stall is invisible.
+      this.ctx.lastError = 'The sync server returned an invalid pull response.'
+      this.ctx.lastErrorInfo = {
+        category: 'server_error',
+        message: this.ctx.lastError,
+        retryable: true
+      }
+      this.stateManager.setState('error')
       trackMainEvent('sync_error', {
         surface: 'sync',
         action: 'pull_page_dropped',
@@ -688,12 +691,14 @@ export class PullCoordinator {
         source: 'pull',
         dimensions: { transport: 'record' }
       })
-      return { applied: 0, conflicts: 0, stop: 'none' }
+      return { applied: 0, conflicts: 0, stop: 'invalid_response' }
     }
 
+    if (parsed.unnamed > 0)
+      log.error('Pull: dropped items with no id or type', { count: parsed.unnamed })
     log.debug('Pull: response parsed', {
       requestedCount: itemIds.length,
-      receivedCount: parsed.data.items.length
+      receivedCount: parsed.items.length
     })
 
     // Bootstrap throughput (#1835), UNITS: this channel counts base64
@@ -704,23 +709,25 @@ export class PullCoordinator {
     // no-op outside a fresh-device bootstrap window.
     recordBootstrapBytes(
       'records',
-      parsed.data.items.reduce(
+      parsed.items.reduce(
         (sum, item) => sum + item.blob.encryptedData.length + item.blob.encryptedKey.length,
         0
       )
     )
 
-    const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))
+    const signerIds = new Set(parsed.items.map((i) => i.signerDeviceId))
     await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
     log.debug('Pull: device keys prefetched', { signerCount: signerIds.size })
 
     let pageApplied = 0
     let pageSkipped = 0
     let pageFailed = 0
+    const refused: ItemRef[] = []
+    const settled: ItemRef[] = []
     let cryptoFailCount = 0
     let pageConflicts = 0
 
-    const itemsToProcess = parsed.data.items.filter((item) => {
+    const itemsToProcess = parsed.items.filter((item) => {
       if (processedIds.has(itemRefKey(item.type, item.id))) {
         pageSkipped++
         return false
@@ -854,6 +861,12 @@ export class PullCoordinator {
               pageFailed++
               continue
             }
+            if (result === 'schema_invalid') {
+              refused.push(dec)
+              pageFailed++
+              continue
+            }
+            settled.push(dec)
 
             if (result === 'conflict') {
               reportConflict(this.ctx.deps, dec)
@@ -891,6 +904,9 @@ export class PullCoordinator {
             pageFailed++
           }
         }
+        this.schemaInvalid.record(refused, 'payload')
+        this.schemaInvalid.record(parsed.invalid, 'envelope')
+        this.schemaInvalid.resolve(settled)
         pageApply.commit()
       } catch (pageError) {
         pageApply.rollback()
@@ -919,45 +935,13 @@ export class PullCoordinator {
         vaultKey
       )
 
-      for (const dec of recovered) {
-        try {
-          const contentBytes = new TextEncoder().encode(dec.content)
-          const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-          const result = this.ctx.applier.apply({
-            itemId: dec.id,
-            type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-            operation: itemOp,
-            content: contentBytes,
-            clock: dec.clock,
-            deletedAt: dec.deletedAt,
-            vaultKey
-          })
-          if (result === 'applied' || result === 'conflict') {
-            // Unrequeued, the merged row keeps a union clock nothing pushes,
-            // which is the one way #2180 really strands two devices.
-            if (result === 'conflict') reportConflict(this.ctx.deps, dec)
-            processedIds.add(itemRefKey(dec.type, dec.id))
-            pageApplied++
-            pageFailed--
-            this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
-            this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_RECOVERED, {
-              itemId: dec.id,
-              type: dec.type
-            } satisfies ItemRecoveredEvent)
-            log.info('Pull: recovered corrupt item', { itemId: dec.id, type: dec.type })
-          }
-        } catch (err) {
-          log.error('Pull: failed to apply recovered item', {
-            itemId: dec.id,
-            error: err instanceof Error ? err.message : String(err)
-          })
-          trackMainLog('error', {
-            scope: 'PullCoordinator',
-            action: 'pull_apply_dropped',
-            errorCode: dec.type
-          })
-        }
+      const onChanged = (dec: RecoveredItem, itemOp: 'create' | 'update' | 'delete'): void => {
+        processedIds.add(itemRefKey(dec.type, dec.id))
+        pageApplied++
+        pageFailed--
+        this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
       }
+      applyRecoveredItems(this.recoveryDeps(onChanged), recovered, vaultKey)
 
       for (const ref of permanentFailures) {
         this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
@@ -976,7 +960,7 @@ export class PullCoordinator {
     }
 
     log.info('Pull page processed', {
-      total: parsed.data.items.length,
+      total: parsed.items.length,
       applied: pageApplied,
       skipped: pageSkipped,
       failed: pageFailed,
@@ -987,7 +971,7 @@ export class PullCoordinator {
     if (
       pageFailed > 0 &&
       pageFailed === cryptoFailCount &&
-      parsed.data.items.length > 0 &&
+      parsed.items.length > 0 &&
       pageApplied === 0
     ) {
       this.ctx.lastError =

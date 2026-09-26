@@ -5,6 +5,7 @@ import { decryptPullBatch } from '../sync-crypto-batch'
 import { getHandler } from '../item-handlers'
 import type { SyncContext } from './sync-context'
 import type { CorruptItemTracker } from './corrupt-item-tracker'
+import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 import { itemRefKey } from './sync-context'
 
 const log = createLogger('OrphanRepair')
@@ -21,6 +22,7 @@ export interface OrphanRepairParams {
   orphans: OrphanRef[]
   ctx: SyncContext
   corruptTracker: CorruptItemTracker
+  schemaInvalid: SchemaInvalidLedger
   accessJwt: string
   vaultKey: Uint8Array
   /** Applies the item and does the run bookkeeping; throws if it still fails. */
@@ -56,7 +58,7 @@ function parentExistsLocally(ctx: SyncContext, parentType: string, parentId: str
 export async function repairOrphans(
   params: OrphanRepairParams
 ): Promise<{ repaired: number; tombstoned: number }> {
-  const { orphans, ctx, corruptTracker, accessJwt, vaultKey, applyItem } = params
+  const { orphans, ctx, corruptTracker, schemaInvalid, accessJwt, vaultKey, applyItem } = params
   if (orphans.length === 0) return { repaired: 0, tombstoned: 0 }
 
   const parentRefs = Array.from(
@@ -69,11 +71,20 @@ export async function repairOrphans(
   })
 
   corruptTracker.clearExpired()
-  const { recovered } = await corruptTracker.refetch(parentRefs, accessJwt, vaultKey)
+  const { recovered, invalid } = await corruptTracker.refetch(parentRefs, accessJwt, vaultKey)
+  // A live parent the server still has is not gone everywhere, even when this
+  // build cannot apply it: tombstoning its children would delete them on every
+  // device, including the newer one that wrote them (#2285).
+  const liveOnServer = new Set(
+    [...recovered.filter((parent) => !parent.deletedAt), ...invalid].map((ref) =>
+      itemRefKey(ref.type, ref.id)
+    )
+  )
+  schemaInvalid.record(invalid, 'envelope')
 
   for (const parent of recovered) {
     try {
-      ctx.applier.apply({
+      const result = ctx.applier.apply({
         itemId: parent.id,
         type: parent.type as Parameters<typeof ctx.applier.apply>[0]['type'],
         operation: parent.deletedAt ? 'delete' : (parent.operation as 'create' | 'update'),
@@ -82,6 +93,7 @@ export async function repairOrphans(
         deletedAt: parent.deletedAt,
         vaultKey
       })
+      if (result === 'schema_invalid') schemaInvalid.record([parent], 'payload')
     } catch (err) {
       log.warn('Failed to apply refetched FK parent', {
         itemId: parent.id,
@@ -110,6 +122,15 @@ export async function repairOrphans(
           error: err instanceof Error ? err.message : String(err)
         })
       }
+      continue
+    }
+
+    if (liveOnServer.has(itemRefKey(orphan.parentType, orphan.parentId))) {
+      log.warn('FK parent exists on the server but this build cannot apply it', {
+        itemId: orphan.item.id,
+        type: orphan.item.type,
+        parentType: orphan.parentType
+      })
       continue
     }
 
