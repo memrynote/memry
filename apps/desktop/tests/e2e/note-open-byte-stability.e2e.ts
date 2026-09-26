@@ -66,6 +66,16 @@ function seedVaultFile(vaultPath: string, title: string, body: string): string {
 }
 
 /** Drop the YAML frontmatter block, leaving the body this loop actually owns. */
+/** The file's bytes and mtime from one open handle, so both describe the same file. */
+function readWithMtime(absPath: string): { bytes: string; mtimeMs: number } {
+  const fd = fs.openSync(absPath, 'r')
+  try {
+    return { bytes: fs.readFileSync(fd, 'utf8'), mtimeMs: fs.fstatSync(fd).mtimeMs }
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
 function stripFrontmatter(markdown: string): string {
   const match = markdown.match(/^---\n[\s\S]*?\n---\n?/)
   return match ? markdown.slice(match[0].length) : markdown
@@ -201,8 +211,7 @@ test.describe('Note open byte stability', () => {
     await expect
       .poll(() => stripFrontmatter(fs.readFileSync(absPath, 'utf8')), { timeout: 20_000 })
       .toBe(stripFrontmatter(first.bytes))
-    const afterFirstOpen = fs.readFileSync(absPath, 'utf8')
-    const mtimeAfterFirstOpen = fs.statSync(absPath).mtimeMs
+    const { bytes: afterFirstOpen, mtimeMs: mtimeAfterFirstOpen } = readWithMtime(absPath)
 
     // #when the app is reloaded and the note opened again — a cold open, with
     // the shared doc rebuilt from the CRDT store
@@ -220,8 +229,9 @@ test.describe('Note open byte stability', () => {
     // file. What must hold is that the file is neither rewritten nor changed:
     // same bytes, same mtime.
     await pageA.waitForTimeout(3_000)
-    expect(fs.readFileSync(absPath, 'utf8')).toBe(afterFirstOpen)
-    expect(fs.statSync(absPath).mtimeMs).toBe(mtimeAfterFirstOpen)
+    const after = readWithMtime(absPath)
+    expect(after.bytes).toBe(afterFirstOpen)
+    expect(after.mtimeMs).toBe(mtimeAfterFirstOpen)
   })
 
   test('an inline #hashtag does not add a tags: block on first open', async ({

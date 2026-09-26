@@ -3101,6 +3101,25 @@ describe('CrdtProvider batched snapshot pushes', () => {
     expect(mocks.persistenceInstances[0].storeUpdate.mock.calls.length).toBe(stored + 1)
   })
 
+  // #2448: a prepare that fails after opening the doc closes it the same way.
+  it('keeps a doc an editor bound to when preparing its snapshot fails', async () => {
+    // #given a prepare that opened the doc itself, and whose base read then
+    // fails once an editor has bound to the note
+    const watermark = provider as unknown as {
+      getSnapshotWatermark: (noteId: string) => Promise<unknown>
+    }
+    vi.spyOn(watermark, 'getSnapshotWatermark').mockImplementationOnce(async () => {
+      await provider.open('note-1', 7, { skipSeed: true })
+      throw new Error('store closed')
+    })
+
+    // #when
+    await provider.pushSnapshotsForNotes(['note-1'])
+
+    // #then the failed prepare leaves the editor's doc open
+    expect(provider.getDoc('note-1')).toBeDefined()
+  })
+
   // #2448: the same for the other provider paths that open a doc for their own
   // use and close it afterwards.
   it('keeps a doc an editor bound to while its state was being read', async () => {
