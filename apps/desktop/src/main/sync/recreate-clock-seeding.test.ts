@@ -82,7 +82,8 @@ import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
-  enqueueLocalSyncUpdate
+  enqueueLocalSyncUpdate,
+  flushPendingLocalDeletes
 } from './local-mutations'
 import { ItemApplier, type EmitToWindows } from './apply-item'
 import { getRemoteSyncAdapter, resolveClockConflict } from './item-handlers'
@@ -493,6 +494,24 @@ describe('re-create clock seeding (#2409)', () => {
       expect(db.select().from(syncQueue).all()).toEqual([])
       expect(rowClock(type)).toBeNull()
     })
+
+    it.each(CONTENT_TYPES)(
+      '%s: deleted and re-created with the runtime down, the next runtime start pushes it past the delete',
+      (type) => {
+        const fixture = FIXTURES[type]
+        fixture.insert(db, { [DEVICE]: 2 })
+        enqueueLocalSyncDelete(type, fixture.id, ...fixture.deleteArgs(db))
+        fixture.remove(db)
+        fixture.insert(db, null)
+
+        startService(type)
+        flushPendingLocalDeletes(db)
+        runInitialSeed({ db, queue, deviceId: DEVICE, adapters: [getRemoteSyncAdapter(type)!] })
+
+        expect(queuedClock(type, 'create')).toEqual({ [DEVICE]: 4 })
+        expect(rowClock(type)).toEqual({ [DEVICE]: 4 })
+      }
+    )
 
     it.each(CONTENT_TYPES)('%s: a user edit re-creates it past the tombstone', (type) => {
       leaveGhostRow(type)
