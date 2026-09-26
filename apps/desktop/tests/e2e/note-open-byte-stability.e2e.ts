@@ -102,18 +102,18 @@ async function openInEditor(page, title: string): Promise<void> {
   await page.locator(SELECTORS.noteEditor).first().waitFor({ state: 'visible', timeout: 15_000 })
 }
 
-/** How many times write-back has run for this note so far. */
-async function getWritebackRuns(electronApp, noteId: string): Promise<number> {
-  return (await getWritebackDebugById(electronApp, noteId))?.performedCount ?? 0
-}
-
-/** Wait until write-back has actually run for this note at least `count` times. */
-async function waitForWritebackRuns(electronApp, noteId: string, count: number): Promise<void> {
+/**
+ * Wait until opening the note has seeded its shared doc.
+ *
+ * Seeding is what these tests need to have happened, not a write-back: since
+ * BlockNote 0.51 an open that changes nothing in the doc schedules no
+ * write-back at all (see the last test), so waiting for one is a race the
+ * editor can win by being correct.
+ */
+async function waitForSeededDoc(electronApp, noteId: string): Promise<void> {
   await expect
-    .poll(async () => (await getWritebackDebugById(electronApp, noteId))?.performedCount ?? 0, {
-      timeout: 30_000
-    })
-    .toBeGreaterThanOrEqual(count)
+    .poll(() => getCrdtDocBodyById(electronApp, noteId), { timeout: 30_000 })
+    .not.toBeNull()
 }
 
 test.describe('Note open byte stability', () => {
@@ -134,8 +134,8 @@ test.describe('Note open byte stability', () => {
 
     // #when it is opened in the real editor, on the collaborative path…
     await openInEditor(pageA, title)
-    // …and write-back has genuinely run (otherwise this test passes vacuously)
-    await waitForWritebackRuns(electronAppA, baseline.id, 1)
+    // …and the shared doc was seeded from it (otherwise this passes vacuously)
+    await waitForSeededDoc(electronAppA, baseline.id)
 
     // #then the body is byte-identical: the wiki links the renderer promoted to
     // nodes came back as the same `[[…]]` text, in the same blocks, and the
@@ -143,7 +143,7 @@ test.describe('Note open byte stability', () => {
     expect(stripFrontmatter(fs.readFileSync(absPath, 'utf8'))).toBe(
       stripFrontmatter(baseline.bytes)
     )
-    expect((await getWritebackDebugById(electronAppA, baseline.id))?.lastError).toBeNull()
+    expect((await getWritebackDebugById(electronAppA, baseline.id))?.lastError ?? null).toBeNull()
   })
 
   test('a note with no inline tag is byte-identical, frontmatter included', async ({
@@ -162,7 +162,7 @@ test.describe('Note open byte stability', () => {
 
     // #when
     await openInEditor(pageA, title)
-    await waitForWritebackRuns(electronAppA, baseline.id, 1)
+    await waitForSeededDoc(electronAppA, baseline.id)
 
     // #then nothing about the file changed at all
     expect(fs.readFileSync(absPath, 'utf8')).toBe(baseline.bytes)
@@ -183,12 +183,12 @@ test.describe('Note open byte stability', () => {
     const absPath = seedVaultFile(vaultPathA, title, BODY)
     const first = await indexedBaseline(pageA, title, absPath)
     await openInEditor(pageA, title)
-    await waitForWritebackRuns(electronAppA, first.id, 1)
+    await waitForSeededDoc(electronAppA, first.id)
     await expect
       .poll(() => stripFrontmatter(fs.readFileSync(absPath, 'utf8')), { timeout: 20_000 })
       .toBe(stripFrontmatter(first.bytes))
     const afterFirstOpen = fs.readFileSync(absPath, 'utf8')
-    const runsAfterFirstOpen = await getWritebackRuns(electronAppA, first.id)
+    const mtimeAfterFirstOpen = fs.statSync(absPath).mtimeMs
 
     // #when the app is reloaded and the note opened again — a cold open, with
     // the shared doc rebuilt from the CRDT store
@@ -197,19 +197,17 @@ test.describe('Note open byte stability', () => {
     await waitForSyncOnline(pageA, 60_000)
     await openInEditor(pageA, title)
 
-    // #then nothing happens at all, and that IS the convergence proof.
+    // #then the file is not touched at all, and that IS the convergence proof.
     //
-    // This test used to wait for a second write-back before checking the bytes,
-    // which can never arrive: `scheduleWriteback` has one production caller,
-    // `onDocUpdate`. The second open rebuilds the doc from the CRDT store with
-    // the `wikiLink` nodes already promoted, so `normalizeWikiLinks` finds
-    // nothing to change, the doc never updates, and write-back never runs. The
-    // suite's own unit sibling asserts exactly that ("reopening a doc that
-    // already holds the node does not re-promote it") — the old assertion
-    // contradicted the property the rest of the file exists to prove.
+    // The reopened editor can still send the doc an update (its schema
+    // normalization over IPC), which schedules a write-back pass. That pass
+    // serializes the same bytes and returns before writing (`writebackExisting`
+    // skips an unchanged file), so counting passes proves nothing about the
+    // file. What must hold is that the file is neither rewritten nor changed:
+    // same bytes, same mtime.
     await pageA.waitForTimeout(3_000)
-    expect(await getWritebackRuns(electronAppA, first.id)).toBe(runsAfterFirstOpen)
     expect(fs.readFileSync(absPath, 'utf8')).toBe(afterFirstOpen)
+    expect(fs.statSync(absPath).mtimeMs).toBe(mtimeAfterFirstOpen)
   })
 
   test('an inline #hashtag does not add a tags: block on first open', async ({
@@ -253,12 +251,17 @@ test.describe('Note open byte stability', () => {
     const writeback = await getWritebackDebugById(electronAppA, baseline.id)
     expect(writeback?.performedCount ?? 0).toBe(0)
 
-    // and the note really does carry the tag, so this is not a lost feature
+    // and the note really does carry the tag, so this is not a lost feature.
+    // The body tag reaches the note through the index, which projects it on its
+    // own schedule, so it is polled rather than read once.
     const note = await getNoteHandleByTitle(pageA, title)
-    const tags = await pageA.evaluate(
-      (id) => window.api.notes.get(id).then((loaded) => loaded?.tags ?? []),
-      note.id
-    )
-    expect(tags).toContain('hashtag')
+    await expect
+      .poll(() =>
+        pageA.evaluate(
+          (id) => window.api.notes.get(id).then((loaded) => loaded?.tags ?? []),
+          note.id
+        )
+      )
+      .toContain('hashtag')
   })
 })
