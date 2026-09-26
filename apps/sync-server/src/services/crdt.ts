@@ -11,7 +11,8 @@ import { createLogger } from '../lib/logger'
 const logger = createLogger('CrdtService')
 
 /**
- * Refunds a storage reservation after a failed write.
+ * Refunds a storage reservation for bytes a write did not store: a failed
+ * write, or an update ignored as a duplicate.
  *
  * The refund is itself a D1 write, so during a D1 outage it fails too. It must
  * never replace the error that actually caused the write to fail: that turns a
@@ -113,6 +114,13 @@ const getMaxSequenceNumber = async (
   return row?.max_seq ?? 0
 }
 
+/**
+ * D1 rejects any single query carrying more than 100 bound parameters, and the
+ * rejection is a 500 on the whole request, not a partial result. Mirrors the
+ * constant in `services/sync.ts`; the margin under 100 is deliberate.
+ */
+const D1_MAX_BIND_PARAMS = 95
+
 export const storeUpdates = async (
   db: D1Database,
   userId: string,
@@ -124,9 +132,46 @@ export const storeUpdates = async (
 ): Promise<number[]> => {
   if (updates.length === 0) return []
 
-  const totalBytes = updates.reduce((sum, update) => sum + update.byteLength, 0)
-  if (totalBytes > 0) {
-    await reserveStorage(db, userId, totalBytes)
+  const ids = updates.map(() => crypto.randomUUID())
+  const hashes = await Promise.all(
+    updates.map(async (update) =>
+      Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', update)), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('')
+    )
+  )
+
+  // Reserve only the bytes this request will really store (#2296): a retry of
+  // bytes the note already holds needs no new storage, so a quota that filled
+  // up since the first attempt must not refuse it. Chunked at the bind ceiling:
+  // user, vault and note ride ahead of the hashes.
+  const distinctHashes = [...new Set(hashes)]
+  const hashChunkSize = D1_MAX_BIND_PARAMS - 3
+  const lookups: D1PreparedStatement[] = []
+  for (let i = 0; i < distinctHashes.length; i += hashChunkSize) {
+    const chunk = distinctHashes.slice(i, i + hashChunkSize)
+    lookups.push(
+      db
+        .prepare(
+          `SELECT update_hash FROM crdt_updates
+           WHERE user_id = ? AND vault_id = ? AND note_id = ? AND update_hash IN (${chunk.map(() => '?').join(', ')})`
+        )
+        .bind(userId, vaultId, noteId, ...chunk)
+    )
+  }
+  const knownHashes = new Set(
+    (await db.batch<{ update_hash: string }>(lookups)).flatMap((result) =>
+      (result.results ?? []).map((row) => row.update_hash)
+    )
+  )
+  let reservedBytes = 0
+  updates.forEach((update, position) => {
+    if (knownHashes.has(hashes[position])) return
+    knownHashes.add(hashes[position])
+    reservedBytes += update.byteLength
+  })
+  if (reservedBytes > 0) {
+    await reserveStorage(db, userId, reservedBytes)
   }
 
   const now = Math.floor(Date.now() / 1000)
@@ -139,21 +184,26 @@ export const storeUpdates = async (
   // round trip instead of one per update. The feed cursors are reserved in the
   // same batch (#2295), so no reader can see a cursor above a row that has not
   // committed.
+  //
+  // Idempotent per note (#2296). Every packed envelope carries a fresh nonce,
+  // so identical bytes are a retried push, never a new edit. INSERT OR IGNORE
+  // on the (note, update_hash) unique index keeps one row, and the SELECT in
+  // the same batch answers the sequence number the stored row has, whichever
+  // request wrote it. An ignored row leaves its reserved cursor unused.
   const cursors = reserveCursors(db, userId, updates.length)
-  const statements = updates.map((update, position) =>
+  const statements = updates.flatMap((update, position) => [
     db
       .prepare(
-        `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, client_platform, client_version, server_cursor)
-         SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?, ?, ?, ${cursors.cursorSql}
+        `INSERT OR IGNORE INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, client_platform, client_version, update_hash, server_cursor)
+         SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?, ?, ?, ?, ${cursors.cursorSql}
          FROM (
            SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
            UNION ALL
            SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?
-         )
-         RETURNING sequence_num`
+         )`
       )
       .bind(
-        crypto.randomUUID(),
+        ids[position],
         userId,
         vaultId,
         noteId,
@@ -162,6 +212,7 @@ export const storeUpdates = async (
         now,
         client?.platform ?? null,
         client?.version ?? null,
+        hashes[position],
         ...cursors.cursorBinds(position),
         userId,
         vaultId,
@@ -169,14 +220,19 @@ export const storeUpdates = async (
         userId,
         vaultId,
         noteId
+      ),
+    db
+      .prepare(
+        'SELECT id, sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND update_hash = ?'
       )
-  )
+      .bind(userId, vaultId, noteId, hashes[position])
+  ])
 
-  let results: Array<D1Result<{ sequence_num: number }>>
+  let results: D1Result[]
   try {
-    results = await db.batch<{ sequence_num: number }>(cursors.batch(statements))
+    results = await db.batch(cursors.batch(statements))
   } catch (error) {
-    await refundReservation(db, userId, totalBytes, {
+    await refundReservation(db, userId, reservedBytes, {
       operation: 'storeUpdates',
       vaultId,
       noteId
@@ -184,9 +240,42 @@ export const storeUpdates = async (
     throw error
   }
 
-  return results
-    .slice(results.length - statements.length)
-    .map((result) => result.results[0].sequence_num)
+  const writeResults = results.slice(results.length - statements.length)
+  let storedBytes = 0
+  const sequences = updates.map((update, position) => {
+    const [stored] = writeResults[position * 2 + 1].results as Array<{
+      id: string
+      sequence_num: number
+    }>
+    if (stored.id === ids[position]) storedBytes += update.byteLength
+    return stored.sequence_num
+  })
+
+  // The lookup can race a concurrent write of the same note. An update that
+  // became a duplicate after the lookup stored nothing: refund it. One whose
+  // row was pruned after the lookup was stored uncharged: charge it now,
+  // logging rather than failing a write that already committed.
+  if (storedBytes < reservedBytes) {
+    await refundReservation(db, userId, reservedBytes - storedBytes, {
+      operation: 'storeUpdates',
+      vaultId,
+      noteId
+    })
+  } else if (storedBytes > reservedBytes) {
+    try {
+      await adjustStorageUsed(db, userId, storedBytes - reservedBytes)
+    } catch (chargeError) {
+      logger.error('storage charge failed', {
+        operation: 'storeUpdates',
+        vaultId,
+        noteId,
+        chargeBytes: storedBytes - reservedBytes,
+        error: chargeError instanceof Error ? chargeError.message : String(chargeError)
+      })
+    }
+  }
+
+  return sequences
 }
 
 export const getUpdates = async (
@@ -212,13 +301,6 @@ export const getUpdates = async (
     hasMore
   }
 }
-
-/**
- * D1 rejects any single query carrying more than 100 bound parameters, and the
- * rejection is a 500 on the whole request, not a partial result. Mirrors the
- * constant in `services/sync.ts`; the margin under 100 is deliberate.
- */
-const D1_MAX_BIND_PARAMS = 95
 
 /**
  * The statements that read snapshot metadata for a whole batch of notes.

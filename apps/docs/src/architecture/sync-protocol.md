@@ -1097,6 +1097,17 @@ An oversized CRDT payload is diagnosable whichever check catches it. On the clie
 no storage code maps to `note_too_large`, which names the note in its toast — it is not, and must
 not read as, a storage-quota problem.
 
+### Retried CRDT pushes are stored once
+
+A push that times out after the server committed it is retried with the same bytes. The server
+stores the SHA-256 of each update (migration `0012`), and a unique index on the note and that hash
+makes the retried insert a no-op. The response carries the sequence number the stored row already
+has, so the client gets the answer the first attempt would have given, and storage is charged once.
+Every update carries a fresh encryption nonce, so identical bytes always mean a retry. Rows written
+before the migration have no hash and are never matched. Quota is reserved only for the bytes the
+note does not already hold, so a retry is answered even when the quota filled up after the first
+attempt.
+
 ### CRDT write notifications
 
 Both CRDT write paths notify peers the same way. Once the write is durable, the server broadcasts

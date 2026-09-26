@@ -189,6 +189,20 @@ envelopes (chapter 04 §4.11), **at most 100 per call**, each capped at twice
 and the cap is applied to the encoded string. It answers `{ sequences: number[] }`
 (`apps/sync-server/src/routes/sync.ts:748`).
 
+**The update store is idempotent per document** (#2296). The server stores the
+SHA-256 of each update's bytes and ignores a second insert of the same bytes for
+the same document (migration `0012_crdt_update_hash.sql`, a unique index on
+`(user_id, vault_id, note_id, update_hash)`). A retried push therefore stores
+nothing new and answers the sequence number the stored row already has, so the
+response is the one the first attempt would have returned; the same bytes twice
+in one request answer the same number twice. Storage is charged once: before
+writing, the server looks up which of the request's hashes the document already
+holds and reserves quota only for the rest, so a retry is answered even when the
+quota filled up after the first attempt
+(`apps/sync-server/src/services/crdt.ts:144-278`). Every packed envelope carries
+a fresh nonce (chapter 04 §4.11), so identical bytes are a retry, never a new
+edit. Rows written before the migration have no hash and are never matched.
+
 ## 7.5 Snapshot revision
 
 **Normative.** A fresh `crypto.randomUUID()` on **every** snapshot write, insert
@@ -541,14 +555,14 @@ bound; a counter would collide across devices immediately.
 **Normative.** `crdt_updates` and `crdt_snapshots` carry a `server_cursor`
 (migration `0011_crdt_server_cursor.sql`) drawn from the same per-user
 `server_cursor_sequence` as `sync_items`. The cursor is reserved **inside the
-batch that commits the row** (`apps/sync-server/src/services/crdt.ts:142`,
-`:375`, `:621`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
+batch that commits the row** (`apps/sync-server/src/services/crdt.ts:193`,
+`:457`, `:703`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
 above a row that has not committed. Push requests and responses are unchanged,
 and no push response carries the cursor.
 
 - **A snapshot is re-cursored on every write**, insert and conflict alike, like
   a `sync_items` row: the upsert sets `server_cursor = excluded.server_cursor`
-  (`apps/sync-server/src/services/crdt.ts:327-331`). Its `sequence_num` stays
+  (`apps/sync-server/src/services/crdt.ts:409-413`). Its `sequence_num` stays
   pinned (§7.6). A reader past the old cursor therefore sees the replaced
   snapshot again at its new cursor.
 - **Rows written before migration `0011` have a NULL cursor** and are never in
@@ -558,19 +572,20 @@ and no push response carries the cursor.
 - **Cursor order is commit order across all three tables.** Within one
   document, the cursor order of updates equals their `sequence_num` order.
 - **A reader never assumes cursors are contiguous**: a pruned update leaves a
-  gap in the sequence.
+  gap in the sequence, and so does an update ignored as a duplicate (#2296),
+  whose reserved cursor is never used.
 
 ### 7.17.1 What the feed serves
 
 A client that declared `note_body` (chapter 05 §5.3) gets `noteBodies` on every
 `GET /sync/changes` page, with the entry shape of chapter 05 §5.11.1. The body
 rows come from one statement over both tables
-(`apps/sync-server/src/services/crdt.ts:785`) read in the same D1 batch as the
+(`apps/sync-server/src/services/crdt.ts:867`) read in the same D1 batch as the
 record rows, so a page is one consistent snapshot.
 
 - **An update entry carries `data` when the update is at most
   `NOTE_BODY_INLINE_MAX_BYTES` (4 KiB) stored bytes**
-  (`apps/sync-server/src/services/crdt.ts:735`). A larger one is a ref without
+  (`apps/sync-server/src/services/crdt.ts:817`). A larger one is a ref without
   `data`: fetch it with
   `GET /sync/crdt/updates?note_id=<noteId>&since=<sequenceNum - 1>&limit=1` and
   check `sequenceNum`. An empty or different answer means the update was pruned;
@@ -609,7 +624,7 @@ snapshot contains the updates it prunes (§7.6).
 
 - `GET /sync/crdt/snapshot/:noteId` reads the D1 row and then the R2 blob, which
   is overwritten in place, so it can pair an older `revision` with newer bytes
-  (`apps/sync-server/src/services/crdt.ts:691-726`). The feed converges it: the
+  (`apps/sync-server/src/services/crdt.ts:773-808`). The feed converges it: the
   write that replaced the blob re-cursored the row, so the client sees a snapshot
   entry again and re-fetches.
 - **Rolling the Worker back past this change is unsafe once a client depends on

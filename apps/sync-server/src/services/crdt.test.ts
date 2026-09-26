@@ -21,6 +21,7 @@ interface FakeUpdateRow {
   created_at: number
   client_platform: string | null
   client_version: string | null
+  update_hash: string | null
 }
 
 interface FakeSnapshotRow {
@@ -131,21 +132,34 @@ function createD1Database(): D1Database {
           return null
         },
         async all<T>() {
-          if (sql.startsWith('INSERT INTO crdt_updates')) {
+          if (sql.startsWith('INSERT OR IGNORE INTO crdt_updates')) {
             // storeUpdates sends these through db.batch, whose statements run
             // sequentially inside one transaction — which this double models by
             // executing each insert synchronously, so statement N's MAX sees
             // statement N-1's row. Bindings are positional and this double
             // reads them by index, so the insert's own column list and the
             // subquery's offsets have to be kept in step with crdt.ts by hand.
-            // Attribution added two columns to the SELECT list, and the feed
-            // cursor (#2295) two binds after them, pushing the subquery's
-            // (user, vault, note) triple from 7-9 to 11-13.
+            // Attribution added two columns to the SELECT list, then the
+            // update hash (#2296) and the feed cursor's two binds (#2295),
+            // pushing the subquery's (user, vault, note) triple from 7-9 to 12-14.
             const nextSequence =
               sql.includes('crdt_snapshots') && sql.includes('UNION ALL')
-                ? getCombinedMax(params[11] as string, params[12] as string, params[13] as string) +
+                ? getCombinedMax(params[12] as string, params[13] as string, params[14] as string) +
                   1
-                : getUpdateMax(params[11] as string, params[12] as string, params[13] as string) + 1
+                : getUpdateMax(params[12] as string, params[13] as string, params[14] as string) + 1
+
+            // INSERT OR IGNORE against the (user, vault, note, update_hash) unique index.
+            if (
+              updates.some(
+                (row) =>
+                  row.user_id === params[1] &&
+                  row.vault_id === params[2] &&
+                  row.note_id === params[3] &&
+                  row.update_hash === params[9]
+              )
+            ) {
+              return { results: [] as T[], meta: { changes: 0 } }
+            }
 
             updates.push({
               id: params[0] as string,
@@ -157,10 +171,22 @@ function createD1Database(): D1Database {
               signer_device_id: params[5] as string,
               created_at: params[6] as number,
               client_platform: (params[7] as string | null) ?? null,
-              client_version: (params[8] as string | null) ?? null
+              client_version: (params[8] as string | null) ?? null,
+              update_hash: params[9] as string
             })
 
-            return { results: [{ sequence_num: nextSequence }] as T[] }
+            return { results: [] as T[], meta: { changes: 1 } }
+          }
+
+          if (sql.startsWith('SELECT id, sequence_num FROM crdt_updates')) {
+            const row = updates.find(
+              (candidate) =>
+                candidate.user_id === params[0] &&
+                candidate.vault_id === params[1] &&
+                candidate.note_id === params[2] &&
+                candidate.update_hash === params[3]
+            )
+            return { results: (row ? [{ id: row.id, sequence_num: row.sequence_num }] : []) as T[] }
           }
 
           if (
@@ -700,8 +726,16 @@ describe('CRDT service sequencing', () => {
 
 describe('CRDT storage accounting', () => {
   it('increments storage usage by the actual stored update bytes', async () => {
+    // Each SELECT after an insert answers the row that insert just wrote.
+    let insertedId: unknown
     const { db, statements } = createRecordingDatabase({
-      first: (sql) => (sql.includes('INSERT INTO crdt_updates') ? { sequence_num: 1 } : null)
+      first: (sql, bindings) => {
+        if (sql.includes('INTO crdt_updates')) insertedId = bindings[0]
+        if (sql.startsWith('SELECT id, sequence_num FROM crdt_updates')) {
+          return { id: insertedId, sequence_num: 1 }
+        }
+        return null
+      }
     })
 
     await storeUpdates(db, 'user-1', 'vault-1', 'note-1', 'device-1', [
@@ -792,7 +826,7 @@ function createAccountingDatabase(options: { failRefund?: boolean; failInsert?: 
     }),
     batch: vi.fn(async (batched: Array<{ sql: string }>) =>
       batched.map((stmt) => {
-        if (stmt.sql.includes('INSERT INTO crdt_updates')) {
+        if (stmt.sql.includes('INTO crdt_updates')) {
           // A D1 batch is one transaction: an outage fails it whole.
           if (options.failInsert) throw new Error(D1_OUTAGE_MESSAGE)
           return { results: [{ sequence_num: 1 }] }

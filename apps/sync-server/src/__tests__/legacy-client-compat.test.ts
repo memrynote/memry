@@ -310,6 +310,32 @@ describe('legacy (header-less) clients', () => {
   })
 })
 
+// #2296: a client that retries a CRDT push after a timeout gets the response
+// it would have got the first time, and the server keeps one row.
+describe('retried CRDT update push (#2296)', () => {
+  it('answers the same sequences and stores the update once', async () => {
+    const app = buildApp()
+    const body = JSON.stringify({
+      noteId: 'note_retry',
+      updates: [Buffer.from([1, 2]).toString('base64'), Buffer.from([3]).toString('base64')]
+    })
+
+    const first = await request(app, '/sync/crdt/updates', { method: 'POST', body })
+    const retry = await request(app, '/sync/crdt/updates', { method: 'POST', body })
+
+    expect(first.status).toBe(200)
+    expect(retry.status).toBe(200)
+    const firstBody = await first.json()
+    expect(firstBody).toEqual({ sequences: [1, 2] })
+    expect(await retry.json()).toEqual(firstBody)
+    expect(
+      harness.raw
+        .prepare(`SELECT COUNT(*) AS n FROM crdt_updates WHERE note_id = 'note_retry'`)
+        .get()
+    ).toEqual({ n: 2 })
+  })
+})
+
 describe('note_body subscribers (#2295)', () => {
   const deviceCursor = () =>
     (

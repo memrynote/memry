@@ -359,7 +359,7 @@ describe('/sync/changes negotiation of note bodies (#2295)', () => {
       VAULT_ID,
       'note-1',
       DEVICE_ID,
-      Array.from({ length: 100 }, () => bytes(1))
+      Array.from({ length: 100 }, (_, i) => new Uint8Array([i, 1]).buffer)
     )
     await storeUpdates(harness.db, USER_ID, VAULT_ID, 'note-1', DEVICE_ID, [bytes(1)])
     for (let i = 0; i < 3; i++) await writeRecord(`task-${i}`)
