@@ -7,6 +7,7 @@ import {
 } from '@memry/contracts/sync-payloads'
 import { PropertiesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import { isPersistableDefinitionType, type PropertyType } from '@memry/contracts/property-types'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
@@ -157,11 +158,15 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
   }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
+    // Older builds wrote unclocked `relation` rows from note frontmatter. A
+    // pushed one breaks `properties.md` on every peer that lacks the reload
+    // filter, so it stays local until the next reload drops it.
     const items = db
       .select()
       .from(propertyDefinitions)
       .where(isNull(propertyDefinitions.clock))
       .all()
+      .filter((item) => isPersistableDefinitionType(item.type as PropertyType))
     for (const item of items) {
       const clock = nextLocalClock(db, 'property_definition', item.name, null, deviceId, 'create')
       db.update(propertyDefinitions)
