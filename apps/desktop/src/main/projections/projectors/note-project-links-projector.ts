@@ -1,10 +1,15 @@
 import { randomUUID } from 'crypto'
 import { createLogger } from '../../lib/logger'
 import { trackMainError } from '../../telemetry/diagnostics'
-import { getDatabase, type DataDb } from '../../database'
+import { eq } from 'drizzle-orm'
+import { PROJECT_PROPERTY_KEY } from '@memry/contracts/property-types'
+import { noteProperties } from '@memry/db-schema/schema/notes-cache'
+import { getDatabase, getIndexDatabase, type DataDb } from '../../database'
+import { deserializeValue } from '../../database/queries/notes/query-helpers'
 import {
   deleteProjectLink,
   insertProjectLink,
+  isMarkdownNote,
   listNoteProjectLinkIds,
   listProjectsByNames
 } from '../../database/queries/projects'
@@ -20,15 +25,75 @@ const logger = createLogger('Projections:NoteProjectLinks')
  * reinserted — that is what preserves `position` and `pinned`, which are
  * project-hub state that has nothing to do with the note.
  *
- * Exported because the sync update path writes a note's properties without
- * publishing `note.upserted` (see `sync/item-handlers/note-handler.ts`), so it
- * has to drive this directly. Callers outside the projector must guard on the
- * note actually being markdown, and must not let a throw here fail their own
- * work.
+ * Exported because the sync apply paths drive it directly (see
+ * `sync/item-handlers/note-handler.ts` and `project-handler.ts`). Callers
+ * outside the projector must guard on the note actually being markdown, and
+ * must not let a throw here fail their own work.
+ *
+ * `origin` decides whether the project is pushed. A `local` change commits the
+ * rows with a project sync intent: the project payload is where every other
+ * device, and iOS in particular, learns the membership. A `remote` note
+ * arrived by sync, and the device that changed its frontmatter already pushed
+ * the project, so only the rows are written. Pushing from every receiver bumps
+ * the project clock on each device and pushes the new row's `position` and
+ * `pinned` defaults over a pin set elsewhere.
  */
-export function reconcileNoteLinks(noteId: string, properties: Record<string, unknown>): void {
+export function reconcileNoteLinks(
+  noteId: string,
+  properties: Record<string, unknown>,
+  origin: 'local' | 'remote'
+): void {
   const db = getDatabase()
+  const desired = resolveNamedProjects(db, noteId, properties)
 
+  if (origin === 'remote') {
+    writeNoteLinks(db, noteId, desired)
+    return
+  }
+
+  // A project's links only sync because its own payload carries them, and a
+  // link write does not move `projects.modified_at`, so no sweep would find a
+  // lost one: the link rows and the project's sync intent commit together (#2301).
+  commitLocalChange(db, () => {
+    const touched = writeNoteLinks(db, noteId, desired)
+    return {
+      value: undefined,
+      intents: [...touched].map((projectId) => ({
+        type: 'project' as const,
+        itemId: projectId,
+        op: 'update' as const,
+        args: [['links']]
+      }))
+    }
+  })
+}
+
+/**
+ * A note applied before the project it names found nothing to link to. When
+ * that project row lands from sync, link every markdown note whose frontmatter
+ * names it, with no intent: the project's own payload came with it.
+ */
+export function linkNotesNamingProject(db: DataDb, projectName: string): void {
+  const key = projectName.toLowerCase()
+  const rows = getIndexDatabase()
+    .select({ noteId: noteProperties.noteId, value: noteProperties.value })
+    .from(noteProperties)
+    .where(eq(noteProperties.name, PROJECT_PROPERTY_KEY))
+    .all()
+
+  for (const row of rows) {
+    const properties = { [PROJECT_PROPERTY_KEY]: deserializeValue(row.value, 'project') }
+    if (!readProjectNames(properties).some((name) => name.toLowerCase() === key)) continue
+    if (!isMarkdownNote(db, row.noteId)) continue
+    writeNoteLinks(db, row.noteId, resolveNamedProjects(db, row.noteId, properties))
+  }
+}
+
+function resolveNamedProjects(
+  db: DataDb,
+  noteId: string,
+  properties: Record<string, unknown>
+): Set<string> {
   const names = readProjectNames(properties)
   const resolved = listProjectsByNames(db, names)
 
@@ -53,22 +118,7 @@ export function reconcileNoteLinks(noteId: string, properties: Record<string, un
     }
     desired.add(projectId)
   }
-
-  // A project's links only sync because its own payload carries them, and a
-  // link write does not move `projects.modified_at`, so no sweep would find a
-  // lost one: the link rows and the project's sync intent commit together (#2301).
-  commitLocalChange(db, () => {
-    const touched = writeNoteLinks(db, noteId, desired)
-    return {
-      value: undefined,
-      intents: [...touched].map((projectId) => ({
-        type: 'project' as const,
-        itemId: projectId,
-        op: 'update' as const,
-        args: [['links']]
-      }))
-    }
-  })
+  return desired
 }
 
 function writeNoteLinks(db: DataDb, noteId: string, desired: ReadonlySet<string>): Set<string> {
@@ -111,7 +161,7 @@ export function createNoteProjectLinksProjector(): ProjectionProjector {
       if (event.note.kind !== 'markdown') return
 
       try {
-        reconcileNoteLinks(event.note.noteId, event.note.properties)
+        reconcileNoteLinks(event.note.noteId, event.note.properties, 'local')
       } catch (err) {
         // A reconcile failure must not stall the projection queue behind it.
         // Frontmatter is the source of truth for note→project membership, so a

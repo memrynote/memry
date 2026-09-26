@@ -23,6 +23,7 @@ import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import { belongsToOtherType } from './note-row-type'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('JournalHandler')
@@ -51,6 +52,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
     const now = utcNow()
     const existing = getNoteMetadataById(ctx.db, itemId)
+    if (existing && belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
     const indexDb = getIndexDatabase()
 
     let mergedClock = remoteClock
@@ -120,7 +122,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     const existing = getNoteMetadataById(ctx.db, itemId)
-    if (!existing) return 'skipped'
+    if (!existing || belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
 
     if (clock && existing.clock) {
       const resolution = this.resolveDeleteClock(existing.clock, clock)
