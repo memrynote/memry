@@ -711,7 +711,7 @@ function configureCertificatePinning(): void {
 }
 
 const DEFAULT_MAIN_WINDOW_SIZE = { width: 1550, height: 900 } as const
-const VAULT_PICKER_WINDOW_SIZE = { width: 760, height: 560 } as const
+const VAULT_PICKER_WINDOW_SIZE = { width: 900, height: 720 } as const
 
 function getInitialMainWindowSize():
   typeof DEFAULT_MAIN_WINDOW_SIZE | typeof VAULT_PICKER_WINDOW_SIZE {

@@ -21,11 +21,14 @@ export const vaultService: VaultClientAPI = {
   },
 
   /**
-   * Create a new vault at the specified path.
-   * Note: Currently uses select() internally - full create support in future phase.
+   * Create `<parentPath>/<name>` as a new folder and open it as the vault.
    */
-  create: (path: string, name: string): Promise<SelectVaultResponse> => {
-    return window.api.vault.create(path, name)
+  create: (parentPath: string, name: string): Promise<SelectVaultResponse> => {
+    return window.api.vault.create(parentPath, name)
+  },
+
+  getDefaultParent: (): Promise<string> => {
+    return window.api.vault.getDefaultParent()
   },
 
   /**

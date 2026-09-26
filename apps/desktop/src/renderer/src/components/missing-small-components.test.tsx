@@ -250,7 +250,7 @@ describe('missing small component surfaces', () => {
 
     expect(screen.queryByTestId('setup-wizard')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /signInToSync/ })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /createNewVault/ }))
+    await user.click(screen.getByRole('button', { name: /flow\.openFolder/ }))
     expect(mocks.selectVault).toHaveBeenCalled()
     expect(screen.getByText('Vault failed')).toBeInTheDocument()
 

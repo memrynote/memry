@@ -75,8 +75,9 @@ export const SelectVaultSchema = z.object({
 })
 
 export const CreateVaultSchema = z.object({
-  path: z.string(),
-  name: z.string().min(1).max(100)
+  /** Parent folder; the vault folder `<path>/<name>` is created inside it */
+  path: z.string().min(1),
+  name: z.string().trim().min(1).max(100)
 })
 
 export const DownloadRemoteVaultSchema = z.object({
@@ -100,6 +101,8 @@ export interface SelectVaultResponse {
   success: boolean
   vault: VaultInfo | null
   error?: string
+  /** Machine-readable failure reason; absent on success and on older builds */
+  errorCode?: 'already-exists' | 'invalid-name'
 }
 
 export interface GetVaultsResponse {
@@ -137,6 +140,8 @@ export interface VaultHandlers {
   [VaultChannels.invoke.CREATE]: (
     input: z.infer<typeof CreateVaultSchema>
   ) => Promise<SelectVaultResponse>
+
+  [VaultChannels.invoke.GET_DEFAULT_PARENT]: () => Promise<string>
 
   [VaultChannels.invoke.GET_ALL]: () => Promise<GetVaultsResponse>
 
@@ -194,7 +199,9 @@ export interface VaultHandlers {
  */
 export interface VaultClientAPI {
   select(path?: string): Promise<SelectVaultResponse>
-  create(path: string, name: string): Promise<SelectVaultResponse>
+  /** Create `<parentPath>/<name>` and open it */
+  create(parentPath: string, name: string): Promise<SelectVaultResponse>
+  getDefaultParent(): Promise<string>
   getAll(): Promise<GetVaultsResponse>
   getStatus(): Promise<VaultStatus>
   getConfig(): Promise<VaultConfig>

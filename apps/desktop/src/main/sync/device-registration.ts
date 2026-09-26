@@ -20,7 +20,7 @@ import {
   storeKey
 } from '../crypto'
 import { getStoredDeviceId, setStoredDeviceId } from '../store'
-import { getDatabase } from '../database/client'
+import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 import { deleteFromServer, postToServer } from './http-client'
@@ -52,7 +52,7 @@ export const PLATFORM_MAP: Record<string, string> = {
 const registerDevice = async (
   setupToken: string,
   signingSecretKey: Uint8Array,
-  vaultId: string
+  vaultId: string | undefined
 ): Promise<DeviceRegisterResponse> => {
   await sodium.ready
 
@@ -116,8 +116,13 @@ export const persistKeysAndRegisterDevice = async (
 
   await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
 
-  const db = getDatabase()
-  const localVaultUuid = getOrCreateVaultUuid(db)
+  // No vault is open when signing in from the first-run onboarding: the user
+  // picks (or creates) the vault only after the account is unlocked. In that
+  // case this registers the install-wide identity only (keychain keys + store
+  // device id) and leaves every per-vault step to the first vault open, where
+  // the sync runtime binds the key and seeds the device row.
+  const db = isDatabaseInitialized() ? getDatabase() : null
+  const localVaultUuid = db ? getOrCreateVaultUuid(db) : undefined
 
   let deviceResponse: DeviceRegisterResponse & { deviceId: string; accessToken: string }
   try {
@@ -134,7 +139,10 @@ export const persistKeysAndRegisterDevice = async (
   // vault's identity can still be corrected, and the first at which an access
   // token exists to ask what the account already holds (#2226). Everything
   // below binds to the returned uuid, adopted or not.
-  const vaultId = await adoptAccountVaultIfAbsent(db, localVaultUuid, deviceResponse.accessToken)
+  const vaultId =
+    db && localVaultUuid
+      ? await adoptAccountVaultIfAbsent(db, localVaultUuid, deviceResponse.accessToken)
+      : null
 
   if (!skipSetup) {
     const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
@@ -154,7 +162,7 @@ export const persistKeysAndRegisterDevice = async (
 
   try {
     await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-    await bindLocalVaultToMasterKey(db, vaultId, masterKey)
+    if (db && vaultId) await bindLocalVaultToMasterKey(db, vaultId, masterKey)
     // The verifier the account now lives under — the local copy lets vault-key
     // mismatch detection work offline from here on. Best-effort cache: its
     // absence only means the next check fetches from the server instead.
@@ -188,7 +196,7 @@ export const persistKeysAndRegisterDevice = async (
   const pubKey = getDevicePublicKey(signingSecretKey)
   const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
 
-  db.transaction((tx) => {
+  db?.transaction((tx) => {
     tx.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true)).run()
     tx.delete(syncState)
       .where(inArray(syncState.key, ['lastCursor', 'lastSyncAt', 'initialSeedDone', 'syncPaused']))
@@ -217,16 +225,20 @@ export const persistKeysAndRegisterDevice = async (
 
   // Stamp the registered uuid onto the current vault's store entry so the
   // account vault directory can self-register it (with its name) right away.
-  try {
-    const { getCurrentVaultPath, findVault, upsertVault } = await import('../store')
-    const currentPath = getCurrentVaultPath()
-    const storedVault = currentPath ? findVault(currentPath) : undefined
-    if (storedVault) upsertVault({ ...storedVault, vaultUuid: vaultId })
-  } catch (err) {
-    logger.warn('Failed to stamp vault uuid after device registration', err)
+  if (db && vaultId) {
+    try {
+      const { getCurrentVaultPath, findVault, upsertVault } = await import('../store')
+      const currentPath = getCurrentVaultPath()
+      const storedVault = currentPath ? findVault(currentPath) : undefined
+      if (storedVault) upsertVault({ ...storedVault, vaultUuid: vaultId })
+    } catch (err) {
+      logger.warn('Failed to stamp vault uuid after device registration', err)
+    }
   }
 
-  if (!skipActivation) {
+  // Vault-less registration has nothing to activate yet: opening the chosen
+  // vault starts the sync runtime.
+  if (!skipActivation && db) {
     const engine = getSyncEngine()
     if (engine) {
       void engine.activate()

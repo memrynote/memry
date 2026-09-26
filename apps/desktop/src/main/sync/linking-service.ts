@@ -26,7 +26,7 @@ import {
   retrieveKey,
   secureCleanup
 } from '../crypto'
-import { getDatabase } from '../database/client'
+import { getDatabase, isDatabaseInitialized } from '../database/client'
 import type { GoogleProviderAuthTransfer } from '../calendar/google/provider-auth-transfer'
 import {
   collectGoogleProviderAuthTransfer,
@@ -425,6 +425,15 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
     }
 
     const vaults = adoptedTransfer?.vaults ?? []
+    // First-run onboarding links with no vault open: register the install-wide
+    // identity only and let the onboarding's account vault picker (which shows
+    // decrypted names) choose what to download. There is no local vault to
+    // adopt into, so neither the deferred choice nor the auto-adopt applies.
+    if (!isDatabaseInitialized()) {
+      void finalizeLinking(masterKey, setupToken, undefined, importedProviderAuth, importWarning)
+      log.info('Linking approved with no vault open — registering device only')
+      return { success: true }
+    }
     if (vaults.length >= 2) {
       // Defer finalize: the user picks which vault(s) to pull. Ownership of the
       // decrypted master key moves to pendingVaultChoice (cleaned on finalize,

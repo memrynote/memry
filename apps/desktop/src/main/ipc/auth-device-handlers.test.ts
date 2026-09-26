@@ -49,7 +49,9 @@ vi.mock('../crypto', () => ({
 
 const mockStoreGet = vi.fn()
 const mockStoreSet = vi.fn()
+const mockGetStoredDeviceId = vi.fn((): string | undefined => undefined)
 vi.mock('../store', () => ({
+  getStoredDeviceId: () => mockGetStoredDeviceId(),
   store: {
     get: (...args: unknown[]) => mockStoreGet(...args),
     set: (...args: unknown[]) => mockStoreSet(...args)
@@ -707,6 +709,32 @@ describe('auth-device handlers', () => {
         email: undefined,
         needsRecoveryConfirmation: false
       })
+    })
+
+    // Signed in from the first-run onboarding: no vault DB yet, but the install
+    // identity exists, so the session must still read as authenticated.
+    it('reports the server device list when signed in with no vault open', async () => {
+      registerAuthDeviceHandlers()
+      mockIsDatabaseInitialized.mockReturnValueOnce(false)
+      mockGetStoredDeviceId.mockReturnValueOnce('dev-2')
+      mockStoreGet.mockReturnValueOnce({ email: 'user@example.com' })
+      mockGetFromServer.mockResolvedValueOnce({
+        devices: [
+          { id: 'dev-1', name: 'Old Mac', platform: 'macos', createdAt: 1_700_000_000 },
+          { id: 'dev-2', name: 'This Mac', platform: 'macos', createdAt: 1_700_000_100 }
+        ]
+      })
+
+      const result = (await invokeHandler(SYNC_CHANNELS.GET_DEVICES)) as {
+        devices: Array<{ id: string; isCurrentDevice: boolean }>
+        email?: string
+      }
+
+      expect(result.email).toBe('user@example.com')
+      expect(result.devices.map((d) => [d.id, d.isCurrentDevice])).toEqual([
+        ['dev-1', false],
+        ['dev-2', true]
+      ])
     })
 
     it('maps persisted devices and sync email for the renderer', async () => {

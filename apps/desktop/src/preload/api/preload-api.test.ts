@@ -391,9 +391,11 @@ describe('preload api wrappers', () => {
     await expectInvoke(() => vaultApi.select('/vault'), VaultChannels.invoke.SELECT, {
       path: '/vault'
     })
-    await expectInvoke(() => vaultApi.create('/vault', 'Main'), VaultChannels.invoke.SELECT, {
-      path: '/vault'
+    await expectInvoke(() => vaultApi.create('/parent', 'Main'), VaultChannels.invoke.CREATE, {
+      path: '/parent',
+      name: 'Main'
     })
+    await expectInvoke(() => vaultApi.getDefaultParent(), VaultChannels.invoke.GET_DEFAULT_PARENT)
     await expectInvoke(() => vaultApi.getAll(), VaultChannels.invoke.GET_ALL)
     await expectInvoke(() => vaultApi.getStatus(), VaultChannels.invoke.GET_STATUS)
     await expectInvoke(() => vaultApi.getConfig(), VaultChannels.invoke.GET_CONFIG)
