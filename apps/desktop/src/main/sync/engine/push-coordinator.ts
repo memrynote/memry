@@ -469,7 +469,10 @@ export class PushCoordinator {
 
         if (pushedCount > 0) {
           this.stateManager.recordHistory('push', pushedCount, Date.now() - startTime)
-          this.stateManager.updateLastSyncAt()
+          // Only a completed pull may set lastSyncAt first: Home reads it as
+          // "the account's boards have arrived", and a fresh device pushes
+          // its local inbox project before its first pull.
+          if (this.stateManager.getLastSyncAt() !== undefined) this.stateManager.updateLastSyncAt()
           this.ctx.rateLimitConsecutive = 0
           if (lastServerTime > 0) this.stateManager.checkClockSkew(lastServerTime)
           // The push response's maxCursor never moves LAST_CURSOR (#2283,

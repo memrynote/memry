@@ -130,6 +130,7 @@ function createHarness(testDb: TestDatabaseResult): {
     isPaused: vi.fn(() => false),
     emitItemSynced: vi.fn(),
     recordHistory: vi.fn(),
+    getLastSyncAt: vi.fn(() => 1_790_000_000_000),
     updateLastSyncAt: vi.fn(),
     checkClockSkew: vi.fn(),
     getStateValue: vi.fn((key: string) => stateValues.get(key)),
