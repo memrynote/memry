@@ -880,6 +880,17 @@ single row body — the cost of the check scales with the size of the disagreeme
 of the vault. The bytes a repair pushes are unchanged: the lazy build runs the same full-row select
 through the same serialization the eager pass used.
 
+A server item counts as server-only, and so resets `LAST_CURSOR` to 0 for a full re-pull, only
+when the check can prove it is missing. Calendar events, sources, bindings and external events,
+folder configs, tag categories and agent conversations and messages are listed from their local
+tables for that direction only; they are never re-uploaded from the manifest check. A server item
+of a type this build does not list is never counted. Neither is an id the device declined on apply
+because the thing it describes is already held under another id: a second inbox project, or a
+`calendar_source` whose `(provider, kind, remote_id)` belongs to an existing row. Those ids are
+kept in `sync_state` under `declinedSyncRefs` and dropped once the server stops listing them.
+Before this, every live row of the unlisted types counted as missing, so each full sync outside
+the 30-minute throttle re-pulled the whole vault.
+
 ### Manifest pagination
 
 `GET /sync/manifest` pages **opt-in** via `limit` (with an optional `cursor`). A param-less
