@@ -181,6 +181,16 @@ newer main process, and a missing channel breaks the app in that window.
   its key and exact shape. Other providers share a base (`agentReadEventsConsent`); writable
   ones add the one-way switch `pushEventsToProvider`. Nothing is migrated: new providers only
   write new keys.
+- **Settings sync (D3a).** The synced leaves — `calendar.weekStartDay`,
+  `calendar.showNotesOnCalendar`, `calendar.defaultWriteTarget`, `calendar.google.*` and
+  `calendar.<provider>.{agentReadEventsConsent,pushEventsToProvider}` — travel in the settings
+  sync item under per-path field clocks. `calendar/calendar-settings-sync.ts` mirrors each local
+  write into settings sync (a settings-store listener, so every writer is covered), seeds keys
+  no device synced yet once, and applies merged values back to the local groups without echoing
+  them. A write is compared against the defaults readers see: saving one field writes its whole
+  group, and treating defaults as changes would push them over another device's real values.
+  An older build that lacks a key keeps its own value under an equal clock. Day-cell click
+  behaviour, EventKit and credentials stay device-local.
 - **Agent read consent** is per provider. The agent's calendar reads carry an allow-list of the
   providers the user consented to, so an ICS feed is hidden from the agent until ICS itself is
   allowed, whatever the answer for Google was. See

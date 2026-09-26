@@ -296,6 +296,12 @@ Settings → Calendar has one section per calendar service memrynote supports on
 - **Default Day Cell Click** — clicking a date opens the journal entry or the calendar view
 - **Calendar Page Override** — same behavior, overridable for the calendar page specifically
 
+### What syncs between your devices
+
+These calendar settings follow you to your other devices, including the iPhone app: **Week Start**, **Show notes on calendar**, the default calendar for new events, each service's **Show memrynote events in …** switch, **Let AI read these events**, and whether Google's first-run calendar picker was answered. A change on one device shows on the others after their next sync.
+
+These stay on the device where you set them: **Day Cell Click Behavior**, This Mac / This iPhone calendars, which date properties show on the calendar, and every sign-in. Google, CalDAV, and subscribed-calendar credentials never leave the device, so a second device signs in to the same account itself.
+
 ---
 
 ## Features

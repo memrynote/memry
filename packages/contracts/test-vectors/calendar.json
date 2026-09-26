@@ -1,0 +1,4155 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "calendar",
+    "chapter": "docs/protocol/13-payload-schemas.md",
+    "sources": "packages/sync-client/src/item-handlers/calendar-*-handler.ts, apps/desktop/src/main/sync/item-handlers/calendar-event-handler.ts, apps/desktop/src/main/calendar/projection.ts, apps/desktop/src/main/ipc/calendar-handlers.ts, apps/desktop/src/main/calendar/promote-external-event.ts",
+    "caseCount": 28
+  },
+  "apply": [
+    {
+      "name": "a desktop source row inserts with its values",
+      "id": "src-work",
+      "type": "calendar_source",
+      "steps": [
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "provider": "google",
+        "kind": "calendar",
+        "accountId": "acct-1",
+        "remoteId": "work@group.calendar.google.com",
+        "title": "Work",
+        "timezone": "Europe/Istanbul",
+        "color": "#9fc6e7",
+        "isPrimary": false,
+        "isSelected": true,
+        "isMemryManaged": false,
+        "syncCursor": "CPj1",
+        "syncStatus": "ok",
+        "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+        "metadata": {
+          "accessRole": "owner"
+        },
+        "archivedAt": null,
+        "clock": {
+          "desktop": 1
+        }
+      }
+    },
+    {
+      "name": "a source missing every optional key takes the insert defaults",
+      "id": "src-bare",
+      "type": "calendar_source",
+      "steps": [
+        {
+          "type": "calendar_source",
+          "payload": {
+            "clock": {
+              "desktop": 1
+            }
+          }
+        }
+      ],
+      "expected": {
+        "provider": "google",
+        "kind": "calendar",
+        "accountId": null,
+        "remoteId": "src-bare",
+        "title": "Untitled calendar",
+        "timezone": null,
+        "color": null,
+        "isPrimary": false,
+        "isSelected": false,
+        "isMemryManaged": false,
+        "syncCursor": null,
+        "syncStatus": "idle",
+        "lastSyncedAt": null,
+        "metadata": null,
+        "archivedAt": null,
+        "clock": {
+          "desktop": 1
+        }
+      }
+    },
+    {
+      "name": "a source null keeps the local value, a value replaces it",
+      "id": "src-work",
+      "type": "calendar_source",
+      "steps": [
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": null,
+            "color": null,
+            "isPrimary": false,
+            "isSelected": false,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 2
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "provider": "google",
+        "kind": "calendar",
+        "accountId": "acct-1",
+        "remoteId": "work@group.calendar.google.com",
+        "title": "Work",
+        "timezone": "Europe/Istanbul",
+        "color": "#9fc6e7",
+        "isPrimary": false,
+        "isSelected": false,
+        "isMemryManaged": false,
+        "syncCursor": "CPj1",
+        "syncStatus": "ok",
+        "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+        "metadata": {
+          "accessRole": "owner"
+        },
+        "archivedAt": null,
+        "clock": {
+          "desktop": 2
+        }
+      }
+    },
+    {
+      "name": "a stale source is skipped",
+      "id": "src-work",
+      "type": "calendar_source",
+      "steps": [
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "desktop": 3
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Stale",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "desktop": 2
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "provider": "google",
+        "kind": "calendar",
+        "accountId": "acct-1",
+        "remoteId": "work@group.calendar.google.com",
+        "title": "Work",
+        "timezone": "Europe/Istanbul",
+        "color": "#9fc6e7",
+        "isPrimary": false,
+        "isSelected": true,
+        "isMemryManaged": false,
+        "syncCursor": "CPj1",
+        "syncStatus": "ok",
+        "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+        "metadata": {
+          "accessRole": "owner"
+        },
+        "archivedAt": null,
+        "clock": {
+          "desktop": 3
+        }
+      }
+    },
+    {
+      "name": "a concurrent source applies the remote under the union clock",
+      "id": "src-work",
+      "type": "calendar_source",
+      "steps": [
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "phone": 2
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Renamed",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "provider": "google",
+        "kind": "calendar",
+        "accountId": "acct-1",
+        "remoteId": "work@group.calendar.google.com",
+        "title": "Renamed",
+        "timezone": "Europe/Istanbul",
+        "color": "#9fc6e7",
+        "isPrimary": false,
+        "isSelected": true,
+        "isMemryManaged": false,
+        "syncCursor": "CPj1",
+        "syncStatus": "ok",
+        "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+        "metadata": {
+          "accessRole": "owner"
+        },
+        "archivedAt": null,
+        "clock": {
+          "phone": 2,
+          "desktop": 1
+        }
+      }
+    },
+    {
+      "name": "a source tombstone deletes it",
+      "id": "src-work",
+      "type": "calendar_source",
+      "steps": [
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_source",
+          "payload": {
+            "id": "src-work",
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+            "lastError": null,
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "desktop": 2
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-01T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          },
+          "deleted": true
+        }
+      ],
+      "expected": null
+    },
+    {
+      "name": "an external event with every field",
+      "id": "ext-1",
+      "type": "calendar_external_event",
+      "steps": [
+        {
+          "type": "calendar_external_event",
+          "payload": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+            "title": "Design review",
+            "description": "Agenda",
+            "location": "Room 4",
+            "startAt": "2026-09-24T07:00:00.000Z",
+            "endAt": "2026-09-24T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "attendees": [
+              {
+                "email": "deniz@example.com",
+                "responseStatus": "accepted"
+              }
+            ],
+            "reminders": {
+              "useDefault": true
+            },
+            "visibility": null,
+            "colorId": "9",
+            "conferenceData": {
+              "entryPoints": [
+                {
+                  "uri": "https://meet.google.com/abc"
+                }
+              ]
+            },
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "createdAt": "2026-09-24T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "sourceId": "src-work",
+        "remoteEventId": "g-1",
+        "title": "Design review",
+        "isAllDay": false,
+        "status": "confirmed",
+        "clock": {
+          "desktop": 1
+        },
+        "remoteEtag": "\"etag-1\"",
+        "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+        "description": "Agenda",
+        "location": "Room 4",
+        "endAt": "2026-09-24T08:30:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "recurrenceRule": null,
+        "rawPayload": null,
+        "archivedAt": null,
+        "attendees": [
+          {
+            "email": "deniz@example.com",
+            "responseStatus": "accepted"
+          }
+        ],
+        "reminders": {
+          "useDefault": true
+        },
+        "visibility": null,
+        "colorId": "9",
+        "conferenceData": {
+          "entryPoints": [
+            {
+              "uri": "https://meet.google.com/abc"
+            }
+          ]
+        },
+        "startAt": "2026-09-24T07:00:00.000Z"
+      }
+    },
+    {
+      "name": "external rich fields clear on null, the rest keep",
+      "id": "ext-1",
+      "type": "calendar_external_event",
+      "steps": [
+        {
+          "type": "calendar_external_event",
+          "payload": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+            "title": "Design review",
+            "description": "Agenda",
+            "location": "Room 4",
+            "startAt": "2026-09-24T07:00:00.000Z",
+            "endAt": "2026-09-24T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "attendees": [
+              {
+                "email": "deniz@example.com",
+                "responseStatus": "accepted"
+              }
+            ],
+            "reminders": {
+              "useDefault": true
+            },
+            "visibility": null,
+            "colorId": "9",
+            "conferenceData": {
+              "entryPoints": [
+                {
+                  "uri": "https://meet.google.com/abc"
+                }
+              ]
+            },
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "createdAt": "2026-09-24T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_external_event",
+          "payload": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+            "title": "Design review",
+            "description": null,
+            "location": null,
+            "startAt": "2026-09-24T07:00:00.000Z",
+            "endAt": "2026-09-24T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "attendees": null,
+            "reminders": {
+              "useDefault": true
+            },
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 2
+            },
+            "createdAt": "2026-09-24T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "sourceId": "src-work",
+        "remoteEventId": "g-1",
+        "title": "Design review",
+        "isAllDay": false,
+        "status": "confirmed",
+        "clock": {
+          "desktop": 2
+        },
+        "remoteEtag": "\"etag-1\"",
+        "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+        "description": "Agenda",
+        "location": "Room 4",
+        "endAt": "2026-09-24T08:30:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "recurrenceRule": null,
+        "rawPayload": null,
+        "archivedAt": null,
+        "attendees": null,
+        "reminders": {
+          "useDefault": true
+        },
+        "visibility": null,
+        "colorId": null,
+        "conferenceData": null,
+        "startAt": "2026-09-24T07:00:00.000Z"
+      }
+    },
+    {
+      "name": "an external event without its rich keys keeps them",
+      "id": "ext-1",
+      "type": "calendar_external_event",
+      "steps": [
+        {
+          "type": "calendar_external_event",
+          "payload": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+            "title": "Design review",
+            "description": "Agenda",
+            "location": "Room 4",
+            "startAt": "2026-09-24T07:00:00.000Z",
+            "endAt": "2026-09-24T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "attendees": [
+              {
+                "email": "deniz@example.com",
+                "responseStatus": "accepted"
+              }
+            ],
+            "reminders": {
+              "useDefault": true
+            },
+            "visibility": null,
+            "colorId": "9",
+            "conferenceData": {
+              "entryPoints": [
+                {
+                  "uri": "https://meet.google.com/abc"
+                }
+              ]
+            },
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "createdAt": "2026-09-24T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_external_event",
+          "payload": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+            "title": "Moved",
+            "description": "Agenda",
+            "location": "Room 4",
+            "startAt": "2026-09-24T07:00:00.000Z",
+            "endAt": "2026-09-24T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "visibility": null,
+            "colorId": "9",
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 2
+            },
+            "createdAt": "2026-09-24T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "sourceId": "src-work",
+        "remoteEventId": "g-1",
+        "title": "Moved",
+        "isAllDay": false,
+        "status": "confirmed",
+        "clock": {
+          "desktop": 2
+        },
+        "remoteEtag": "\"etag-1\"",
+        "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+        "description": "Agenda",
+        "location": "Room 4",
+        "endAt": "2026-09-24T08:30:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "recurrenceRule": null,
+        "rawPayload": null,
+        "archivedAt": null,
+        "attendees": [
+          {
+            "email": "deniz@example.com",
+            "responseStatus": "accepted"
+          }
+        ],
+        "reminders": {
+          "useDefault": true
+        },
+        "visibility": null,
+        "colorId": "9",
+        "conferenceData": {
+          "entryPoints": [
+            {
+              "uri": "https://meet.google.com/abc"
+            }
+          ]
+        },
+        "startAt": "2026-09-24T07:00:00.000Z"
+      }
+    },
+    {
+      "name": "a binding inserts with defaults for absent keys",
+      "id": "bind-1",
+      "type": "calendar_binding",
+      "steps": [
+        {
+          "type": "calendar_binding",
+          "payload": {
+            "sourceId": "evt-1",
+            "remoteEventId": "g-1",
+            "clock": {
+              "d": 1
+            }
+          }
+        }
+      ],
+      "expected": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "provider": "google",
+        "remoteCalendarId": "primary",
+        "remoteEventId": "g-1",
+        "ownershipMode": "memry_managed",
+        "writebackMode": "broad",
+        "remoteVersion": null,
+        "lastLocalSnapshot": null,
+        "archivedAt": null,
+        "clock": {
+          "d": 1
+        }
+      }
+    },
+    {
+      "name": "a binding update keeps on null",
+      "id": "bind-1",
+      "type": "calendar_binding",
+      "steps": [
+        {
+          "type": "calendar_binding",
+          "payload": {
+            "sourceType": "event",
+            "sourceId": "evt-1",
+            "provider": "google",
+            "remoteCalendarId": "work@group.calendar.google.com",
+            "remoteEventId": "g-1",
+            "ownershipMode": "provider_managed",
+            "writebackMode": "time_and_text",
+            "remoteVersion": "\"etag-1\"",
+            "lastLocalSnapshot": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "createdAt": "2026-09-24T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_binding",
+          "payload": {
+            "sourceType": "event",
+            "sourceId": "evt-1",
+            "provider": "google",
+            "remoteCalendarId": "work@group.calendar.google.com",
+            "remoteEventId": "g-1",
+            "ownershipMode": "provider_managed",
+            "writebackMode": "broad",
+            "remoteVersion": null,
+            "lastLocalSnapshot": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 2
+            },
+            "createdAt": "2026-09-24T08:00:00.000Z",
+            "modifiedAt": "2026-09-24T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "provider": "google",
+        "remoteCalendarId": "work@group.calendar.google.com",
+        "remoteEventId": "g-1",
+        "ownershipMode": "provider_managed",
+        "writebackMode": "broad",
+        "remoteVersion": "\"etag-1\"",
+        "lastLocalSnapshot": null,
+        "archivedAt": null,
+        "clock": {
+          "desktop": 2
+        }
+      }
+    },
+    {
+      "name": "an event insert keeps its field clocks",
+      "id": "evt-1",
+      "type": "calendar_event",
+      "steps": [
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "desktop": 1
+              }
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "title": "Lunch with Deniz",
+        "startAt": "2026-09-24T10:00:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "isAllDay": false,
+        "clock": {
+          "desktop": 1
+        },
+        "fieldClocks": {
+          "title": {
+            "desktop": 1
+          }
+        },
+        "description": null,
+        "location": null,
+        "endAt": "2026-09-24T11:00:00.000Z",
+        "recurrenceRule": null,
+        "recurrenceExceptions": null,
+        "attendees": null,
+        "reminders": null,
+        "visibility": null,
+        "colorId": null,
+        "conferenceData": null,
+        "archivedAt": null,
+        "targetCalendarId": "work@group.calendar.google.com",
+        "parentEventId": null,
+        "originalStartTime": null
+      }
+    },
+    {
+      "name": "an event without field clocks seeds them from its clock",
+      "id": "evt-1",
+      "type": "calendar_event",
+      "steps": [
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 3
+            },
+            "fieldClocks": null,
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "title": "Lunch with Deniz",
+        "startAt": "2026-09-24T10:00:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "isAllDay": false,
+        "clock": {
+          "desktop": 3
+        },
+        "fieldClocks": {
+          "title": {
+            "desktop": 3
+          },
+          "description": {
+            "desktop": 3
+          },
+          "location": {
+            "desktop": 3
+          },
+          "startAt": {
+            "desktop": 3
+          },
+          "endAt": {
+            "desktop": 3
+          },
+          "timezone": {
+            "desktop": 3
+          },
+          "isAllDay": {
+            "desktop": 3
+          },
+          "recurrenceRule": {
+            "desktop": 3
+          },
+          "recurrenceExceptions": {
+            "desktop": 3
+          },
+          "attendees": {
+            "desktop": 3
+          },
+          "reminders": {
+            "desktop": 3
+          },
+          "visibility": {
+            "desktop": 3
+          },
+          "colorId": {
+            "desktop": 3
+          },
+          "conferenceData": {
+            "desktop": 3
+          }
+        },
+        "description": null,
+        "location": null,
+        "endAt": "2026-09-24T11:00:00.000Z",
+        "recurrenceRule": null,
+        "recurrenceExceptions": null,
+        "attendees": null,
+        "reminders": null,
+        "visibility": null,
+        "colorId": null,
+        "conferenceData": null,
+        "archivedAt": null,
+        "targetCalendarId": "work@group.calendar.google.com",
+        "parentEventId": null,
+        "originalStartTime": null
+      }
+    },
+    {
+      "name": "a dominating remote event overlays with the event presence rules",
+      "id": "evt-1",
+      "type": "calendar_event",
+      "steps": [
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": "Cafe",
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": "5",
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "fieldClocks": null,
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": null,
+            "archivedAt": "2026-09-25T08:00:00.000Z",
+            "clock": {
+              "desktop": 2
+            },
+            "fieldClocks": null,
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "title": "Lunch with Deniz",
+        "startAt": "2026-09-24T10:00:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "isAllDay": false,
+        "clock": {
+          "desktop": 2
+        },
+        "fieldClocks": {
+          "title": {
+            "desktop": 2
+          },
+          "description": {
+            "desktop": 2
+          },
+          "location": {
+            "desktop": 2
+          },
+          "startAt": {
+            "desktop": 2
+          },
+          "endAt": {
+            "desktop": 2
+          },
+          "timezone": {
+            "desktop": 2
+          },
+          "isAllDay": {
+            "desktop": 2
+          },
+          "recurrenceRule": {
+            "desktop": 2
+          },
+          "recurrenceExceptions": {
+            "desktop": 2
+          },
+          "attendees": {
+            "desktop": 2
+          },
+          "reminders": {
+            "desktop": 2
+          },
+          "visibility": {
+            "desktop": 2
+          },
+          "colorId": {
+            "desktop": 2
+          },
+          "conferenceData": {
+            "desktop": 2
+          }
+        },
+        "description": null,
+        "location": "Cafe",
+        "endAt": "2026-09-24T11:00:00.000Z",
+        "recurrenceRule": null,
+        "recurrenceExceptions": null,
+        "attendees": null,
+        "reminders": null,
+        "visibility": null,
+        "colorId": null,
+        "conferenceData": null,
+        "archivedAt": "2026-09-25T08:00:00.000Z",
+        "targetCalendarId": null,
+        "parentEventId": null,
+        "originalStartTime": null
+      }
+    },
+    {
+      "name": "a concurrent event merges field by field",
+      "id": "evt-1",
+      "type": "calendar_event",
+      "steps": [
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Phone title",
+            "description": null,
+            "location": "Office",
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "phone": 2
+            },
+            "fieldClocks": {
+              "title": {
+                "phone": 2
+              },
+              "startAt": {
+                "phone": 1
+              }
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Desktop title",
+            "description": null,
+            "location": "Cafe",
+            "startAt": "2026-09-24T12:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "archivedAt": null,
+            "clock": {
+              "phone": 1,
+              "desktop": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "phone": 1
+              },
+              "startAt": {
+                "phone": 1,
+                "desktop": 1
+              },
+              "location": {
+                "desktop": 1
+              }
+            },
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "title": "Phone title",
+        "startAt": "2026-09-24T12:00:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "isAllDay": false,
+        "clock": {
+          "phone": 2,
+          "desktop": 1
+        },
+        "fieldClocks": {
+          "title": {
+            "phone": 2
+          },
+          "description": {},
+          "location": {
+            "desktop": 1
+          },
+          "startAt": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "endAt": {},
+          "timezone": {},
+          "isAllDay": {},
+          "recurrenceRule": {},
+          "recurrenceExceptions": {},
+          "attendees": {},
+          "reminders": {},
+          "visibility": {},
+          "colorId": {},
+          "conferenceData": {}
+        },
+        "description": null,
+        "location": "Cafe",
+        "endAt": "2026-09-24T11:00:00.000Z",
+        "recurrenceRule": null,
+        "recurrenceExceptions": null,
+        "attendees": null,
+        "reminders": null,
+        "visibility": null,
+        "colorId": null,
+        "conferenceData": null,
+        "archivedAt": null,
+        "targetCalendarId": "work@group.calendar.google.com",
+        "parentEventId": null,
+        "originalStartTime": null
+      }
+    },
+    {
+      "name": "a concurrent event where the remote omits a merged field keeps the local one",
+      "id": "evt-1",
+      "type": "calendar_event",
+      "steps": [
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Lunch with Deniz",
+            "description": "Bring slides",
+            "location": null,
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "cal-a",
+            "archivedAt": null,
+            "clock": {
+              "phone": 1
+            },
+            "fieldClocks": null,
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Lunch with Deniz",
+            "location": null,
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": "p-1",
+            "originalStartTime": null,
+            "targetCalendarId": null,
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "fieldClocks": null,
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        }
+      ],
+      "expected": {
+        "title": "Lunch with Deniz",
+        "startAt": "2026-09-24T10:00:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "isAllDay": false,
+        "clock": {
+          "phone": 1,
+          "desktop": 1
+        },
+        "fieldClocks": {
+          "title": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "description": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "location": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "startAt": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "endAt": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "timezone": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "isAllDay": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "recurrenceRule": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "recurrenceExceptions": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "attendees": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "reminders": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "visibility": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "colorId": {
+            "phone": 1,
+            "desktop": 1
+          },
+          "conferenceData": {
+            "phone": 1,
+            "desktop": 1
+          }
+        },
+        "description": "Bring slides",
+        "location": null,
+        "endAt": "2026-09-24T11:00:00.000Z",
+        "recurrenceRule": null,
+        "recurrenceExceptions": null,
+        "attendees": null,
+        "reminders": null,
+        "visibility": null,
+        "colorId": null,
+        "conferenceData": null,
+        "archivedAt": null,
+        "targetCalendarId": null,
+        "parentEventId": "p-1",
+        "originalStartTime": null
+      }
+    },
+    {
+      "name": "an event tombstone deletes it",
+      "id": "evt-1",
+      "type": "calendar_event",
+      "steps": [
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "fieldClocks": null,
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          }
+        },
+        {
+          "type": "calendar_event",
+          "payload": {
+            "id": "evt-1",
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-09-24T10:00:00.000Z",
+            "endAt": "2026-09-24T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 2
+            },
+            "fieldClocks": null,
+            "syncedAt": null,
+            "createdAt": "2026-09-20T08:00:00.000Z",
+            "modifiedAt": "2026-09-20T08:00:00.000Z"
+          },
+          "deleted": true
+        }
+      ],
+      "expected": null
+    }
+  ],
+  "projection": {
+    "timezone": "America/New_York",
+    "zone": {
+      "identifier": "America/New_York",
+      "baseOffsetMs": -18000000,
+      "transitions": [
+        {
+          "atMs": 1615705200000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1636264800000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1647154800000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1667714400000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1678604400000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1699164000000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1710054000000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1730613600000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1741503600000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1762063200000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1772953200000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1793512800000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1805007600000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1825567200000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1836457200000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1857016800000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1867906800000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1888466400000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1899356400000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1919916000000,
+          "offsetMs": -18000000
+        }
+      ]
+    },
+    "rows": [
+      {
+        "type": "calendar_source",
+        "id": "src-work",
+        "payload": {
+          "id": "src-work",
+          "provider": "google",
+          "kind": "calendar",
+          "accountId": "acct-1",
+          "remoteId": "work@group.calendar.google.com",
+          "title": "Work",
+          "timezone": "Europe/Istanbul",
+          "color": "#9fc6e7",
+          "isPrimary": false,
+          "isSelected": true,
+          "isMemryManaged": false,
+          "syncCursor": "CPj1",
+          "syncStatus": "ok",
+          "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+          "lastError": null,
+          "metadata": {
+            "accessRole": "owner"
+          },
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "syncedAt": null,
+          "createdAt": "2026-09-01T08:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_source",
+        "id": "src-hidden",
+        "payload": {
+          "id": "src-work",
+          "provider": "google",
+          "kind": "calendar",
+          "accountId": "acct-1",
+          "remoteId": "hidden@group.calendar.google.com",
+          "title": "Hidden",
+          "timezone": "Europe/Istanbul",
+          "color": "#123abc",
+          "isPrimary": false,
+          "isSelected": false,
+          "isMemryManaged": false,
+          "syncCursor": "CPj1",
+          "syncStatus": "ok",
+          "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+          "lastError": null,
+          "metadata": {
+            "accessRole": "owner"
+          },
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "syncedAt": null,
+          "createdAt": "2026-09-01T08:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_source",
+        "id": "src-feed",
+        "payload": {
+          "id": "src-work",
+          "provider": "ics",
+          "kind": "calendar",
+          "accountId": "acct-1",
+          "remoteId": "https://example.com/feed.ics",
+          "title": "Holidays",
+          "timezone": "Europe/Istanbul",
+          "color": null,
+          "isPrimary": false,
+          "isSelected": true,
+          "isMemryManaged": false,
+          "syncCursor": "CPj1",
+          "syncStatus": "ok",
+          "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+          "lastError": null,
+          "metadata": {
+            "accessRole": "owner"
+          },
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "syncedAt": null,
+          "createdAt": "2026-09-01T08:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_source",
+        "id": "src-acct",
+        "payload": {
+          "id": "src-work",
+          "provider": "google",
+          "kind": "account",
+          "accountId": "acct-1",
+          "remoteId": "acct-1",
+          "title": "kaan@example.com",
+          "timezone": "Europe/Istanbul",
+          "color": "#9fc6e7",
+          "isPrimary": false,
+          "isSelected": true,
+          "isMemryManaged": false,
+          "syncCursor": "CPj1",
+          "syncStatus": "ok",
+          "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+          "lastError": null,
+          "metadata": {
+            "accessRole": "owner"
+          },
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "syncedAt": null,
+          "createdAt": "2026-09-01T08:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_event",
+        "id": "evtA",
+        "payload": {
+          "id": "evt-1",
+          "title": "Standup",
+          "description": null,
+          "location": null,
+          "startAt": "2026-11-02T14:00:00.000Z",
+          "endAt": "2026-11-02T14:15:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": null,
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "work@group.calendar.google.com",
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "fieldClocks": null,
+          "syncedAt": null,
+          "createdAt": "2026-09-20T08:00:00.000Z",
+          "modifiedAt": "2026-09-20T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_event",
+        "id": "evtb",
+        "payload": {
+          "id": "evt-1",
+          "title": "Tomato colored",
+          "description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "location": null,
+          "startAt": "2026-11-02T14:00:00.000Z",
+          "endAt": null,
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": "11",
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": null,
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "fieldClocks": null,
+          "syncedAt": null,
+          "createdAt": "2026-09-20T08:00:00.000Z",
+          "modifiedAt": "2026-09-20T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_event",
+        "id": "evt-span",
+        "payload": {
+          "id": "evt-1",
+          "title": "Offsite",
+          "description": null,
+          "location": null,
+          "startAt": "2026-10-30T04:00:00.000Z",
+          "endAt": "2026-11-03T05:00:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": true,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": null,
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "work@group.calendar.google.com",
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "fieldClocks": null,
+          "syncedAt": null,
+          "createdAt": "2026-09-20T08:00:00.000Z",
+          "modifiedAt": "2026-09-20T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_event",
+        "id": "evt-archived",
+        "payload": {
+          "id": "evt-1",
+          "title": "Archived",
+          "description": null,
+          "location": null,
+          "startAt": "2026-11-02T15:00:00.000Z",
+          "endAt": "2026-09-24T11:00:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": null,
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "work@group.calendar.google.com",
+          "archivedAt": "2026-10-01T00:00:00.000Z",
+          "clock": {
+            "d": 1
+          },
+          "fieldClocks": null,
+          "syncedAt": null,
+          "createdAt": "2026-09-20T08:00:00.000Z",
+          "modifiedAt": "2026-09-20T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_event",
+        "id": "evt-outside",
+        "payload": {
+          "id": "evt-1",
+          "title": "Next month",
+          "description": null,
+          "location": null,
+          "startAt": "2026-12-02T15:00:00.000Z",
+          "endAt": "2026-12-02T16:00:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": null,
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "work@group.calendar.google.com",
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "fieldClocks": null,
+          "syncedAt": null,
+          "createdAt": "2026-09-20T08:00:00.000Z",
+          "modifiedAt": "2026-09-20T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_binding",
+        "id": "bind-old",
+        "payload": {
+          "sourceType": "event",
+          "sourceId": "evtA",
+          "provider": "google",
+          "remoteCalendarId": "work@group.calendar.google.com",
+          "remoteEventId": "g-old",
+          "ownershipMode": "provider_managed",
+          "writebackMode": "time_and_text",
+          "remoteVersion": "\"etag-1\"",
+          "lastLocalSnapshot": null,
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-09-01T00:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_binding",
+        "id": "bind-new",
+        "payload": {
+          "sourceType": "event",
+          "sourceId": "evtA",
+          "provider": "caldav",
+          "remoteCalendarId": "work@group.calendar.google.com",
+          "remoteEventId": "g-new",
+          "ownershipMode": "provider_managed",
+          "writebackMode": "time_and_text",
+          "remoteVersion": "\"etag-1\"",
+          "lastLocalSnapshot": null,
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-09-05T00:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_external_event",
+        "id": "ext-work",
+        "payload": {
+          "sourceId": "src-work",
+          "remoteEventId": "g-1",
+          "remoteEtag": "\"etag-1\"",
+          "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+          "title": "Design review",
+          "description": "Agenda",
+          "location": "Room 4",
+          "startAt": "2026-11-03T15:00:00.000Z",
+          "endAt": "2026-11-03T16:00:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "status": "confirmed",
+          "recurrenceRule": null,
+          "attendees": [
+            {
+              "email": "deniz@example.com",
+              "responseStatus": "accepted"
+            }
+          ],
+          "reminders": {
+            "useDefault": true
+          },
+          "visibility": null,
+          "colorId": null,
+          "conferenceData": {
+            "entryPoints": [
+              {
+                "uri": "https://meet.google.com/abc"
+              }
+            ]
+          },
+          "rawPayload": null,
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-09-24T08:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_external_event",
+        "id": "ext-hidden",
+        "payload": {
+          "sourceId": "src-hidden",
+          "remoteEventId": "g-1",
+          "remoteEtag": "\"etag-1\"",
+          "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+          "title": "Hidden meeting",
+          "description": "Agenda",
+          "location": "Room 4",
+          "startAt": "2026-11-03T15:00:00.000Z",
+          "endAt": "2026-11-03T15:30:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "status": "confirmed",
+          "recurrenceRule": null,
+          "attendees": [
+            {
+              "email": "deniz@example.com",
+              "responseStatus": "accepted"
+            }
+          ],
+          "reminders": {
+            "useDefault": true
+          },
+          "visibility": null,
+          "colorId": "9",
+          "conferenceData": {
+            "entryPoints": [
+              {
+                "uri": "https://meet.google.com/abc"
+              }
+            ]
+          },
+          "rawPayload": null,
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-09-24T08:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_external_event",
+        "id": "ext-feed",
+        "payload": {
+          "sourceId": "src-feed",
+          "remoteEventId": "g-1",
+          "remoteEtag": "\"etag-1\"",
+          "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+          "title": "Election day",
+          "description": "Agenda",
+          "location": "Room 4",
+          "startAt": "2026-11-03T00:00:00.000Z",
+          "endAt": "2026-11-04T00:00:00.000Z",
+          "timezone": null,
+          "isAllDay": true,
+          "status": "confirmed",
+          "recurrenceRule": null,
+          "attendees": [
+            {
+              "email": "deniz@example.com",
+              "responseStatus": "accepted"
+            }
+          ],
+          "reminders": {
+            "useDefault": true
+          },
+          "visibility": null,
+          "colorId": null,
+          "conferenceData": {
+            "entryPoints": [
+              {
+                "uri": "https://meet.google.com/abc"
+              }
+            ]
+          },
+          "rawPayload": null,
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-09-24T08:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "calendar_external_event",
+        "id": "ext-orphan",
+        "payload": {
+          "sourceId": "src-missing",
+          "remoteEventId": "g-1",
+          "remoteEtag": "\"etag-1\"",
+          "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+          "title": "Orphan",
+          "description": "Agenda",
+          "location": "Room 4",
+          "startAt": "2026-09-24T07:00:00.000Z",
+          "endAt": "2026-09-24T08:30:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "status": "confirmed",
+          "recurrenceRule": null,
+          "attendees": [
+            {
+              "email": "deniz@example.com",
+              "responseStatus": "accepted"
+            }
+          ],
+          "reminders": {
+            "useDefault": true
+          },
+          "visibility": null,
+          "colorId": "9",
+          "conferenceData": {
+            "entryPoints": [
+              {
+                "uri": "https://meet.google.com/abc"
+              }
+            ]
+          },
+          "rawPayload": null,
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-09-24T08:00:00.000Z",
+          "modifiedAt": "2026-09-24T08:00:00.000Z"
+        }
+      },
+      {
+        "type": "task",
+        "id": "task-timed",
+        "payload": {
+          "title": "Send invoice",
+          "projectId": "inbox",
+          "priority": 0,
+          "position": 1,
+          "dueDate": "2026-11-01",
+          "dueTime": "01:30",
+          "clock": {
+            "d": 1
+          }
+        }
+      },
+      {
+        "type": "task",
+        "id": "task-allday",
+        "payload": {
+          "title": "Pay rent",
+          "description": "Online",
+          "projectId": "inbox",
+          "priority": 0,
+          "position": 2,
+          "dueDate": "2026-11-02",
+          "dueTime": null,
+          "clock": {
+            "d": 1
+          }
+        }
+      },
+      {
+        "type": "task",
+        "id": "task-done",
+        "payload": {
+          "title": "Done task",
+          "projectId": "inbox",
+          "priority": 0,
+          "position": 3,
+          "dueDate": "2026-11-02",
+          "completedAt": "2026-11-01T10:00:00.000Z",
+          "clock": {
+            "d": 1
+          }
+        }
+      },
+      {
+        "type": "reminder",
+        "id": "rem-pending",
+        "payload": {
+          "targetType": "task",
+          "targetId": "task-allday",
+          "remindAt": "2026-11-02T13:30:00.000Z",
+          "title": "  ",
+          "note": null,
+          "highlightText": "Pay it",
+          "status": "pending",
+          "clock": {
+            "d": 1
+          }
+        }
+      },
+      {
+        "type": "reminder",
+        "id": "rem-snoozed",
+        "payload": {
+          "targetType": "journal",
+          "targetId": "2026-11-02",
+          "remindAt": "2026-11-02T09:00:00.000Z",
+          "title": "Stretch",
+          "status": "snoozed",
+          "snoozedUntil": "2026-11-02T09:45:30.000Z",
+          "clock": {
+            "d": 1
+          }
+        }
+      },
+      {
+        "type": "reminder",
+        "id": "rem-dismissed",
+        "payload": {
+          "targetType": "task",
+          "targetId": "task-allday",
+          "remindAt": "2026-11-02T10:00:00.000Z",
+          "title": "Old",
+          "status": "dismissed",
+          "clock": {
+            "d": 1
+          }
+        }
+      },
+      {
+        "type": "reminder",
+        "id": "rem-note-date",
+        "payload": {
+          "targetType": "note_date",
+          "targetId": "note-plan",
+          "remindAt": "2026-11-04T14:00:00.000Z",
+          "anchorId": "blk-7",
+          "note": "Ship date",
+          "status": "triggered",
+          "clock": {
+            "d": 1
+          }
+        }
+      },
+      {
+        "type": "inbox",
+        "id": "inbox-snoozed",
+        "payload": {
+          "title": "Read later",
+          "content": "Article",
+          "type": "link",
+          "snoozedUntil": "2026-11-05T14:00:00.000Z",
+          "filedAt": null,
+          "archivedAt": null,
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-10-01T00:00:00.000Z"
+        }
+      },
+      {
+        "type": "inbox",
+        "id": "inbox-filed",
+        "payload": {
+          "title": "Filed",
+          "type": "note",
+          "snoozedUntil": "2026-11-05T14:00:00.000Z",
+          "filedAt": "2026-11-01T00:00:00.000Z",
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-10-01T00:00:00.000Z"
+        }
+      },
+      {
+        "type": "note",
+        "id": "note-plan",
+        "payload": {
+          "title": "Launch plan",
+          "fileType": "markdown",
+          "properties": {
+            "deadline": "2026-11-03T05:00:00.000Z",
+            "due": "2026-11-06",
+            "other": "2026-11-03"
+          },
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-11-03T12:00:00.000Z",
+          "modifiedAt": "2026-11-03T12:00:00.000Z"
+        }
+      },
+      {
+        "type": "note",
+        "id": "note-created",
+        "payload": {
+          "title": "Meeting notes",
+          "fileType": "markdown",
+          "clock": {
+            "d": 1
+          },
+          "createdAt": "2026-11-04T02:00:00.000Z",
+          "modifiedAt": "2026-11-04T02:00:00.000Z"
+        }
+      }
+    ],
+    "queries": [
+      {
+        "name": "the DST week, selected sources, no notes",
+        "startAt": "2026-11-01T04:00:00.000Z",
+        "endAt": "2026-11-08T05:00:00.000Z",
+        "includeUnselectedSources": false,
+        "enabledPropertyNames": [],
+        "showNotesByCreated": false,
+        "expected": [
+          {
+            "projectionId": "event:evt-span",
+            "sourceType": "event",
+            "sourceId": "evt-span",
+            "title": "Offsite",
+            "descriptionPreview": null,
+            "startAt": "2026-10-30T04:00:00.000Z",
+            "endAt": "2026-11-03T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          },
+          {
+            "projectionId": "task:task-timed",
+            "sourceType": "task",
+            "sourceId": "task-timed",
+            "title": "Send invoice",
+            "descriptionPreview": null,
+            "startAt": "2026-11-01T05:30:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "task",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Tasks",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "task:task-allday",
+            "sourceType": "task",
+            "sourceId": "task-allday",
+            "title": "Pay rent",
+            "descriptionPreview": "Online",
+            "startAt": "2026-11-02T05:00:00.000Z",
+            "endAt": "2026-11-03T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "America/New_York",
+            "visualType": "task",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Tasks",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "reminder:rem-snoozed",
+            "sourceType": "reminder",
+            "sourceId": "rem-snoozed",
+            "title": "Stretch",
+            "descriptionPreview": null,
+            "startAt": "2026-11-02T09:45:30.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "reminder",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Reminders",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": 46
+          },
+          {
+            "projectionId": "reminder:rem-pending",
+            "sourceType": "reminder",
+            "sourceId": "rem-pending",
+            "title": "Reminder",
+            "descriptionPreview": "Pay it",
+            "startAt": "2026-11-02T13:30:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "reminder",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Reminders",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "event:evtA",
+            "sourceType": "event",
+            "sourceId": "evtA",
+            "title": "Standup",
+            "descriptionPreview": null,
+            "startAt": "2026-11-02T14:00:00.000Z",
+            "endAt": "2026-11-02T14:15:00.000Z",
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": {
+              "provider": "caldav",
+              "remoteCalendarId": "work@group.calendar.google.com",
+              "remoteEventId": "g-new",
+              "ownershipMode": "provider_managed",
+              "writebackMode": "time_and_text"
+            },
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          },
+          {
+            "projectionId": "event:evtb",
+            "sourceType": "event",
+            "sourceId": "evtb",
+            "title": "Tomato colored",
+            "descriptionPreview": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...",
+            "startAt": "2026-11-02T14:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": "tomato",
+            "displayColor": "#d50000"
+          },
+          {
+            "projectionId": "external_event:ext-feed",
+            "sourceType": "external_event",
+            "sourceId": "ext-feed",
+            "title": "Election day",
+            "descriptionPreview": "Agenda",
+            "startAt": "2026-11-03T00:00:00.000Z",
+            "endAt": "2026-11-04T00:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "Europe/Istanbul",
+            "visualType": "external_event",
+            "editability": {
+              "canMove": false,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": false
+            },
+            "source": {
+              "provider": "ics",
+              "calendarSourceId": "src-feed",
+              "title": "Holidays",
+              "color": null,
+              "kind": "calendar",
+              "isMemryManaged": false
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": null
+          },
+          {
+            "projectionId": "external_event:ext-work",
+            "sourceType": "external_event",
+            "sourceId": "ext-work",
+            "title": "Design review",
+            "descriptionPreview": "Agenda",
+            "startAt": "2026-11-03T15:00:00.000Z",
+            "endAt": "2026-11-03T16:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "external_event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": "google",
+              "calendarSourceId": "src-work",
+              "title": "Work",
+              "color": "#4285f4",
+              "kind": "calendar",
+              "isMemryManaged": false
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          },
+          {
+            "projectionId": "note_date:rem-note-date",
+            "sourceType": "note_date",
+            "sourceId": "rem-note-date",
+            "title": "Launch plan",
+            "descriptionPreview": "Ship date",
+            "startAt": "2026-11-04T14:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "note_date",
+            "editability": {
+              "canMove": false,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": false
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Notes",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "noteId": "note-plan",
+            "anchorId": "blk-7",
+            "isTriggered": true
+          },
+          {
+            "projectionId": "inbox_snooze:inbox-snoozed",
+            "sourceType": "inbox_snooze",
+            "sourceId": "inbox-snoozed",
+            "title": "Read later",
+            "descriptionPreview": "Article",
+            "startAt": "2026-11-05T14:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "snooze",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Inbox",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          }
+        ]
+      },
+      {
+        "name": "the DST week with unselected sources, date properties and created notes",
+        "startAt": "2026-11-01T04:00:00.000Z",
+        "endAt": "2026-11-08T05:00:00.000Z",
+        "includeUnselectedSources": true,
+        "enabledPropertyNames": [
+          "deadline",
+          "due"
+        ],
+        "showNotesByCreated": true,
+        "expected": [
+          {
+            "projectionId": "event:evt-span",
+            "sourceType": "event",
+            "sourceId": "evt-span",
+            "title": "Offsite",
+            "descriptionPreview": null,
+            "startAt": "2026-10-30T04:00:00.000Z",
+            "endAt": "2026-11-03T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          },
+          {
+            "projectionId": "task:task-timed",
+            "sourceType": "task",
+            "sourceId": "task-timed",
+            "title": "Send invoice",
+            "descriptionPreview": null,
+            "startAt": "2026-11-01T05:30:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "task",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Tasks",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "task:task-allday",
+            "sourceType": "task",
+            "sourceId": "task-allday",
+            "title": "Pay rent",
+            "descriptionPreview": "Online",
+            "startAt": "2026-11-02T05:00:00.000Z",
+            "endAt": "2026-11-03T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "America/New_York",
+            "visualType": "task",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Tasks",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "reminder:rem-snoozed",
+            "sourceType": "reminder",
+            "sourceId": "rem-snoozed",
+            "title": "Stretch",
+            "descriptionPreview": null,
+            "startAt": "2026-11-02T09:45:30.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "reminder",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Reminders",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": 46
+          },
+          {
+            "projectionId": "reminder:rem-pending",
+            "sourceType": "reminder",
+            "sourceId": "rem-pending",
+            "title": "Reminder",
+            "descriptionPreview": "Pay it",
+            "startAt": "2026-11-02T13:30:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "reminder",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Reminders",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "event:evtA",
+            "sourceType": "event",
+            "sourceId": "evtA",
+            "title": "Standup",
+            "descriptionPreview": null,
+            "startAt": "2026-11-02T14:00:00.000Z",
+            "endAt": "2026-11-02T14:15:00.000Z",
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": {
+              "provider": "caldav",
+              "remoteCalendarId": "work@group.calendar.google.com",
+              "remoteEventId": "g-new",
+              "ownershipMode": "provider_managed",
+              "writebackMode": "time_and_text"
+            },
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          },
+          {
+            "projectionId": "event:evtb",
+            "sourceType": "event",
+            "sourceId": "evtb",
+            "title": "Tomato colored",
+            "descriptionPreview": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...",
+            "startAt": "2026-11-02T14:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": "tomato",
+            "displayColor": "#d50000"
+          },
+          {
+            "projectionId": "external_event:ext-feed",
+            "sourceType": "external_event",
+            "sourceId": "ext-feed",
+            "title": "Election day",
+            "descriptionPreview": "Agenda",
+            "startAt": "2026-11-03T00:00:00.000Z",
+            "endAt": "2026-11-04T00:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "Europe/Istanbul",
+            "visualType": "external_event",
+            "editability": {
+              "canMove": false,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": false
+            },
+            "source": {
+              "provider": "ics",
+              "calendarSourceId": "src-feed",
+              "title": "Holidays",
+              "color": null,
+              "kind": "calendar",
+              "isMemryManaged": false
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": null
+          },
+          {
+            "projectionId": "note-created:note-created",
+            "sourceType": "note",
+            "sourceId": "note-created",
+            "title": "Meeting notes",
+            "descriptionPreview": null,
+            "startAt": "2026-11-03T05:00:00.000Z",
+            "endAt": "2026-11-04T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "America/New_York",
+            "visualType": "note",
+            "editability": {
+              "canMove": false,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": false
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Notes",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "note:note-plan:deadline",
+            "sourceType": "note",
+            "sourceId": "note-plan",
+            "title": "Launch plan",
+            "descriptionPreview": "deadline",
+            "startAt": "2026-11-03T05:00:00.000Z",
+            "endAt": "2026-11-04T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "America/New_York",
+            "visualType": "note",
+            "editability": {
+              "canMove": false,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": false
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Notes",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "external_event:ext-hidden",
+            "sourceType": "external_event",
+            "sourceId": "ext-hidden",
+            "title": "Hidden meeting",
+            "descriptionPreview": "Agenda",
+            "startAt": "2026-11-03T15:00:00.000Z",
+            "endAt": "2026-11-03T15:30:00.000Z",
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "external_event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": "google",
+              "calendarSourceId": "src-hidden",
+              "title": "Hidden",
+              "color": "#123abc",
+              "kind": "calendar",
+              "isMemryManaged": false
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": "blueberry",
+            "displayColor": "#3f51b5"
+          },
+          {
+            "projectionId": "external_event:ext-work",
+            "sourceType": "external_event",
+            "sourceId": "ext-work",
+            "title": "Design review",
+            "descriptionPreview": "Agenda",
+            "startAt": "2026-11-03T15:00:00.000Z",
+            "endAt": "2026-11-03T16:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "external_event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": "google",
+              "calendarSourceId": "src-work",
+              "title": "Work",
+              "color": "#4285f4",
+              "kind": "calendar",
+              "isMemryManaged": false
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          },
+          {
+            "projectionId": "note_date:rem-note-date",
+            "sourceType": "note_date",
+            "sourceId": "rem-note-date",
+            "title": "Launch plan",
+            "descriptionPreview": "Ship date",
+            "startAt": "2026-11-04T14:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "note_date",
+            "editability": {
+              "canMove": false,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": false
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Notes",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "noteId": "note-plan",
+            "anchorId": "blk-7",
+            "isTriggered": true
+          },
+          {
+            "projectionId": "inbox_snooze:inbox-snoozed",
+            "sourceType": "inbox_snooze",
+            "sourceId": "inbox-snoozed",
+            "title": "Read later",
+            "descriptionPreview": "Article",
+            "startAt": "2026-11-05T14:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "snooze",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Inbox",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "note:note-plan:due",
+            "sourceType": "note",
+            "sourceId": "note-plan",
+            "title": "Launch plan",
+            "descriptionPreview": "due",
+            "startAt": "2026-11-06T05:00:00.000Z",
+            "endAt": "2026-11-07T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "America/New_York",
+            "visualType": "note",
+            "editability": {
+              "canMove": false,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": false
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Notes",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          }
+        ]
+      },
+      {
+        "name": "one day, Monday Nov 2",
+        "startAt": "2026-11-02T05:00:00.000Z",
+        "endAt": "2026-11-03T05:00:00.000Z",
+        "includeUnselectedSources": false,
+        "enabledPropertyNames": [
+          "deadline"
+        ],
+        "showNotesByCreated": true,
+        "expected": [
+          {
+            "projectionId": "event:evt-span",
+            "sourceType": "event",
+            "sourceId": "evt-span",
+            "title": "Offsite",
+            "descriptionPreview": null,
+            "startAt": "2026-10-30T04:00:00.000Z",
+            "endAt": "2026-11-03T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          },
+          {
+            "projectionId": "task:task-allday",
+            "sourceType": "task",
+            "sourceId": "task-allday",
+            "title": "Pay rent",
+            "descriptionPreview": "Online",
+            "startAt": "2026-11-02T05:00:00.000Z",
+            "endAt": "2026-11-03T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "America/New_York",
+            "visualType": "task",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Tasks",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "reminder:rem-snoozed",
+            "sourceType": "reminder",
+            "sourceId": "rem-snoozed",
+            "title": "Stretch",
+            "descriptionPreview": null,
+            "startAt": "2026-11-02T09:45:30.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "reminder",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Reminders",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": 46
+          },
+          {
+            "projectionId": "reminder:rem-pending",
+            "sourceType": "reminder",
+            "sourceId": "rem-pending",
+            "title": "Reminder",
+            "descriptionPreview": "Pay it",
+            "startAt": "2026-11-02T13:30:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "visualType": "reminder",
+            "editability": {
+              "canMove": true,
+              "canResize": false,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote Reminders",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null
+          },
+          {
+            "projectionId": "event:evtA",
+            "sourceType": "event",
+            "sourceId": "evtA",
+            "title": "Standup",
+            "descriptionPreview": null,
+            "startAt": "2026-11-02T14:00:00.000Z",
+            "endAt": "2026-11-02T14:15:00.000Z",
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": {
+              "provider": "caldav",
+              "remoteCalendarId": "work@group.calendar.google.com",
+              "remoteEventId": "g-new",
+              "ownershipMode": "provider_managed",
+              "writebackMode": "time_and_text"
+            },
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          },
+          {
+            "projectionId": "event:evtb",
+            "sourceType": "event",
+            "sourceId": "evtb",
+            "title": "Tomato colored",
+            "descriptionPreview": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...",
+            "startAt": "2026-11-02T14:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": "tomato",
+            "displayColor": "#d50000"
+          },
+          {
+            "projectionId": "external_event:ext-feed",
+            "sourceType": "external_event",
+            "sourceId": "ext-feed",
+            "title": "Election day",
+            "descriptionPreview": "Agenda",
+            "startAt": "2026-11-03T00:00:00.000Z",
+            "endAt": "2026-11-04T00:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "Europe/Istanbul",
+            "visualType": "external_event",
+            "editability": {
+              "canMove": false,
+              "canResize": false,
+              "canEditText": false,
+              "canDelete": false
+            },
+            "source": {
+              "provider": "ics",
+              "calendarSourceId": "src-feed",
+              "title": "Holidays",
+              "color": null,
+              "kind": "calendar",
+              "isMemryManaged": false
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": null
+          }
+        ]
+      },
+      {
+        "name": "an inverted range yields no tasks",
+        "startAt": "2026-11-03T05:00:00.000Z",
+        "endAt": "2026-11-02T05:00:00.000Z",
+        "includeUnselectedSources": false,
+        "enabledPropertyNames": [],
+        "showNotesByCreated": false,
+        "expected": [
+          {
+            "projectionId": "event:evt-span",
+            "sourceType": "event",
+            "sourceId": "evt-span",
+            "title": "Offsite",
+            "descriptionPreview": null,
+            "startAt": "2026-10-30T04:00:00.000Z",
+            "endAt": "2026-11-03T05:00:00.000Z",
+            "isAllDay": true,
+            "timezone": "Europe/Istanbul",
+            "visualType": "event",
+            "editability": {
+              "canMove": true,
+              "canResize": true,
+              "canEditText": true,
+              "canDelete": true
+            },
+            "source": {
+              "provider": null,
+              "calendarSourceId": null,
+              "title": "memrynote",
+              "color": null,
+              "kind": null,
+              "isMemryManaged": true
+            },
+            "binding": null,
+            "snoozeOffsetMinutes": null,
+            "color": null,
+            "displayColor": "#4285f4"
+          }
+        ]
+      }
+    ],
+    "searches": [
+      {
+        "query": "STAND",
+        "nowMs": 1793620800000,
+        "window": {
+          "name": "search window",
+          "startAt": "2024-01-01T05:00:00.000Z",
+          "endAt": "2029-01-01T05:00:00.000Z",
+          "includeUnselectedSources": true,
+          "enabledPropertyNames": [],
+          "showNotesByCreated": false
+        },
+        "expected": [
+          "event:evtA"
+        ]
+      },
+      {
+        "query": "pay",
+        "nowMs": 1793620800000,
+        "window": {
+          "name": "search window",
+          "startAt": "2024-01-01T05:00:00.000Z",
+          "endAt": "2029-01-01T05:00:00.000Z",
+          "includeUnselectedSources": true,
+          "enabledPropertyNames": [],
+          "showNotesByCreated": false
+        },
+        "expected": [
+          "reminder:rem-pending",
+          "task:task-allday"
+        ]
+      },
+      {
+        "query": "   ",
+        "nowMs": 1793620800000,
+        "window": {
+          "name": "search window",
+          "startAt": "2024-01-01T05:00:00.000Z",
+          "endAt": "2029-01-01T05:00:00.000Z",
+          "includeUnselectedSources": true,
+          "enabledPropertyNames": [],
+          "showNotesByCreated": false
+        },
+        "expected": []
+      }
+    ]
+  },
+  "writes": {
+    "device": "phone-device",
+    "now": "2026-11-02T12:00:00.000Z",
+    "create": {
+      "input": {
+        "title": "[agent] Lunch",
+        "startAt": "2026-11-03T17:00:00.000Z",
+        "endAt": "2026-11-03T18:00:00.000Z",
+        "timezone": "America/New_York",
+        "isAllDay": false,
+        "targetCalendarId": "work@group.calendar.google.com",
+        "color": "sage"
+      },
+      "expected": {
+        "id": "$event",
+        "title": "[agent] Lunch",
+        "description": null,
+        "location": null,
+        "startAt": "2026-11-03T17:00:00.000Z",
+        "endAt": "2026-11-03T18:00:00.000Z",
+        "timezone": "America/New_York",
+        "isAllDay": false,
+        "recurrenceRule": null,
+        "recurrenceExceptions": null,
+        "attendees": null,
+        "reminders": null,
+        "visibility": null,
+        "colorId": "2",
+        "conferenceData": null,
+        "parentEventId": null,
+        "originalStartTime": null,
+        "targetCalendarId": "work@group.calendar.google.com",
+        "archivedAt": null,
+        "clock": {
+          "phone-device": 1
+        },
+        "fieldClocks": {
+          "title": {
+            "phone-device": 1
+          },
+          "description": {
+            "phone-device": 1
+          },
+          "location": {
+            "phone-device": 1
+          },
+          "startAt": {
+            "phone-device": 1
+          },
+          "endAt": {
+            "phone-device": 1
+          },
+          "timezone": {
+            "phone-device": 1
+          },
+          "isAllDay": {
+            "phone-device": 1
+          },
+          "recurrenceRule": {
+            "phone-device": 1
+          },
+          "recurrenceExceptions": {
+            "phone-device": 1
+          },
+          "attendees": {
+            "phone-device": 1
+          },
+          "reminders": {
+            "phone-device": 1
+          },
+          "visibility": {
+            "phone-device": 1
+          },
+          "colorId": {
+            "phone-device": 1
+          },
+          "conferenceData": {
+            "phone-device": 1
+          }
+        },
+        "syncedAt": null,
+        "createdAt": "2026-11-02T12:00:00.000Z",
+        "modifiedAt": "2026-11-02T12:00:00.000Z"
+      }
+    },
+    "updates": [
+      {
+        "name": "move keeps the colour clock",
+        "input": {
+          "startAt": "2026-11-03T18:00:00.000Z",
+          "endAt": "2026-11-03T19:00:00.000Z",
+          "color": "sage"
+        },
+        "expected": {
+          "id": "$event",
+          "title": "[agent] Lunch",
+          "description": null,
+          "location": null,
+          "startAt": "2026-11-03T18:00:00.000Z",
+          "endAt": "2026-11-03T19:00:00.000Z",
+          "timezone": "America/New_York",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": "2",
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "work@group.calendar.google.com",
+          "archivedAt": null,
+          "clock": {
+            "phone-device": 2
+          },
+          "fieldClocks": {
+            "title": {
+              "phone-device": 1
+            },
+            "description": {
+              "phone-device": 1
+            },
+            "location": {
+              "phone-device": 1
+            },
+            "startAt": {
+              "phone-device": 2
+            },
+            "endAt": {
+              "phone-device": 2
+            },
+            "timezone": {
+              "phone-device": 1
+            },
+            "isAllDay": {
+              "phone-device": 1
+            },
+            "recurrenceRule": {
+              "phone-device": 1
+            },
+            "recurrenceExceptions": {
+              "phone-device": 1
+            },
+            "attendees": {
+              "phone-device": 1
+            },
+            "reminders": {
+              "phone-device": 1
+            },
+            "visibility": {
+              "phone-device": 1
+            },
+            "colorId": {
+              "phone-device": 1
+            },
+            "conferenceData": {
+              "phone-device": 1
+            }
+          },
+          "syncedAt": null,
+          "createdAt": "2026-11-02T12:00:00.000Z",
+          "modifiedAt": "2026-11-02T12:00:00.000Z"
+        }
+      },
+      {
+        "name": "recolour and clear the end",
+        "input": {
+          "color": "tomato",
+          "endAt": null,
+          "title": "[agent] Late lunch"
+        },
+        "expected": {
+          "id": "$event",
+          "title": "[agent] Late lunch",
+          "description": null,
+          "location": null,
+          "startAt": "2026-11-03T17:00:00.000Z",
+          "endAt": null,
+          "timezone": "America/New_York",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": "11",
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "work@group.calendar.google.com",
+          "archivedAt": null,
+          "clock": {
+            "phone-device": 2
+          },
+          "fieldClocks": {
+            "title": {
+              "phone-device": 2
+            },
+            "description": {
+              "phone-device": 1
+            },
+            "location": {
+              "phone-device": 1
+            },
+            "startAt": {
+              "phone-device": 1
+            },
+            "endAt": {
+              "phone-device": 2
+            },
+            "timezone": {
+              "phone-device": 1
+            },
+            "isAllDay": {
+              "phone-device": 1
+            },
+            "recurrenceRule": {
+              "phone-device": 1
+            },
+            "recurrenceExceptions": {
+              "phone-device": 1
+            },
+            "attendees": {
+              "phone-device": 1
+            },
+            "reminders": {
+              "phone-device": 1
+            },
+            "visibility": {
+              "phone-device": 1
+            },
+            "colorId": {
+              "phone-device": 2
+            },
+            "conferenceData": {
+              "phone-device": 1
+            }
+          },
+          "syncedAt": null,
+          "createdAt": "2026-11-02T12:00:00.000Z",
+          "modifiedAt": "2026-11-02T12:00:00.000Z"
+        }
+      },
+      {
+        "name": "retarget ticks no field clock",
+        "input": {
+          "targetCalendarId": "other@group.calendar.google.com"
+        },
+        "expected": {
+          "id": "$event",
+          "title": "[agent] Lunch",
+          "description": null,
+          "location": null,
+          "startAt": "2026-11-03T17:00:00.000Z",
+          "endAt": "2026-11-03T18:00:00.000Z",
+          "timezone": "America/New_York",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": "2",
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "other@group.calendar.google.com",
+          "archivedAt": null,
+          "clock": {
+            "phone-device": 2
+          },
+          "fieldClocks": {
+            "title": {
+              "phone-device": 1
+            },
+            "description": {
+              "phone-device": 1
+            },
+            "location": {
+              "phone-device": 1
+            },
+            "startAt": {
+              "phone-device": 1
+            },
+            "endAt": {
+              "phone-device": 1
+            },
+            "timezone": {
+              "phone-device": 1
+            },
+            "isAllDay": {
+              "phone-device": 1
+            },
+            "recurrenceRule": {
+              "phone-device": 1
+            },
+            "recurrenceExceptions": {
+              "phone-device": 1
+            },
+            "attendees": {
+              "phone-device": 1
+            },
+            "reminders": {
+              "phone-device": 1
+            },
+            "visibility": {
+              "phone-device": 1
+            },
+            "colorId": {
+              "phone-device": 1
+            },
+            "conferenceData": {
+              "phone-device": 1
+            }
+          },
+          "syncedAt": null,
+          "createdAt": "2026-11-02T12:00:00.000Z",
+          "modifiedAt": "2026-11-02T12:00:00.000Z"
+        }
+      },
+      {
+        "name": "clearing the colour writes null",
+        "input": {
+          "color": null,
+          "location": "Cafe"
+        },
+        "expected": {
+          "id": "$event",
+          "title": "[agent] Lunch",
+          "description": null,
+          "location": "Cafe",
+          "startAt": "2026-11-03T17:00:00.000Z",
+          "endAt": "2026-11-03T18:00:00.000Z",
+          "timezone": "America/New_York",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": null,
+          "reminders": null,
+          "visibility": null,
+          "colorId": null,
+          "conferenceData": null,
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "work@group.calendar.google.com",
+          "archivedAt": null,
+          "clock": {
+            "phone-device": 2
+          },
+          "fieldClocks": {
+            "title": {
+              "phone-device": 1
+            },
+            "description": {
+              "phone-device": 1
+            },
+            "location": {
+              "phone-device": 2
+            },
+            "startAt": {
+              "phone-device": 1
+            },
+            "endAt": {
+              "phone-device": 1
+            },
+            "timezone": {
+              "phone-device": 1
+            },
+            "isAllDay": {
+              "phone-device": 1
+            },
+            "recurrenceRule": {
+              "phone-device": 1
+            },
+            "recurrenceExceptions": {
+              "phone-device": 1
+            },
+            "attendees": {
+              "phone-device": 1
+            },
+            "reminders": {
+              "phone-device": 1
+            },
+            "visibility": {
+              "phone-device": 1
+            },
+            "colorId": {
+              "phone-device": 2
+            },
+            "conferenceData": {
+              "phone-device": 1
+            }
+          },
+          "syncedAt": null,
+          "createdAt": "2026-11-02T12:00:00.000Z",
+          "modifiedAt": "2026-11-02T12:00:00.000Z"
+        }
+      }
+    ],
+    "promote": {
+      "source": {
+        "id": "src-work",
+        "provider": "google",
+        "kind": "calendar",
+        "accountId": "acct-1",
+        "remoteId": "work@group.calendar.google.com",
+        "title": "Work",
+        "timezone": "Europe/Istanbul",
+        "color": "#9fc6e7",
+        "isPrimary": false,
+        "isSelected": true,
+        "isMemryManaged": false,
+        "syncCursor": "CPj1",
+        "syncStatus": "ok",
+        "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+        "lastError": null,
+        "metadata": {
+          "accessRole": "owner"
+        },
+        "archivedAt": null,
+        "clock": {
+          "desktop": 1
+        },
+        "syncedAt": null,
+        "createdAt": "2026-09-01T08:00:00.000Z",
+        "modifiedAt": "2026-09-24T08:00:00.000Z"
+      },
+      "mirror": {
+        "sourceId": "src-work",
+        "remoteEventId": "g-1",
+        "remoteEtag": "\"etag-1\"",
+        "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+        "title": "Design review",
+        "description": "Agenda",
+        "location": "Room 4",
+        "startAt": "2026-09-24T07:00:00.000Z",
+        "endAt": "2026-09-24T08:30:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "isAllDay": false,
+        "status": "confirmed",
+        "recurrenceRule": null,
+        "attendees": [
+          {
+            "email": "deniz@example.com",
+            "responseStatus": "accepted"
+          }
+        ],
+        "reminders": {
+          "useDefault": true
+        },
+        "visibility": null,
+        "colorId": "9",
+        "conferenceData": {
+          "entryPoints": [
+            {
+              "uri": "https://meet.google.com/abc"
+            }
+          ]
+        },
+        "rawPayload": null,
+        "archivedAt": null,
+        "clock": {
+          "desktop": 2
+        },
+        "createdAt": "2026-09-24T08:00:00.000Z",
+        "modifiedAt": "2026-09-24T08:00:00.000Z",
+        "id": "ext-1"
+      },
+      "expected": {
+        "event": {
+          "id": "$event",
+          "title": "Design review",
+          "description": "Agenda",
+          "location": "Room 4",
+          "startAt": "2026-09-24T07:00:00.000Z",
+          "endAt": "2026-09-24T08:30:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "recurrenceRule": null,
+          "recurrenceExceptions": null,
+          "attendees": [
+            {
+              "email": "deniz@example.com",
+              "responseStatus": "accepted"
+            }
+          ],
+          "reminders": {
+            "useDefault": true
+          },
+          "visibility": null,
+          "colorId": "9",
+          "conferenceData": {
+            "entryPoints": [
+              {
+                "uri": "https://meet.google.com/abc"
+              }
+            ]
+          },
+          "parentEventId": null,
+          "originalStartTime": null,
+          "targetCalendarId": "work@group.calendar.google.com",
+          "archivedAt": null,
+          "clock": {
+            "desktop": 2,
+            "phone-device": 1
+          },
+          "fieldClocks": {
+            "title": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "description": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "location": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "startAt": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "endAt": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "timezone": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "isAllDay": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "recurrenceRule": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "recurrenceExceptions": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "attendees": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "reminders": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "visibility": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "colorId": {
+              "desktop": 2,
+              "phone-device": 1
+            },
+            "conferenceData": {
+              "desktop": 2,
+              "phone-device": 1
+            }
+          },
+          "syncedAt": null,
+          "createdAt": "2026-11-02T12:00:00.000Z",
+          "modifiedAt": "2026-11-02T12:00:00.000Z"
+        },
+        "binding": {
+          "id": "$binding",
+          "sourceType": "event",
+          "sourceId": "$event",
+          "provider": "google",
+          "remoteCalendarId": "work@group.calendar.google.com",
+          "remoteEventId": "g-1",
+          "ownershipMode": "provider_managed",
+          "writebackMode": "time_and_text",
+          "remoteVersion": "\"etag-1\"",
+          "lastLocalSnapshot": null,
+          "archivedAt": null,
+          "clock": {
+            "desktop": 2,
+            "phone-device": 1
+          },
+          "syncedAt": null,
+          "createdAt": "2026-11-02T12:00:00.000Z",
+          "modifiedAt": "2026-11-02T12:00:00.000Z"
+        },
+        "mirror": {
+          "sourceId": "src-work",
+          "remoteEventId": "g-1",
+          "remoteEtag": "\"etag-1\"",
+          "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+          "title": "Design review",
+          "description": "Agenda",
+          "location": "Room 4",
+          "startAt": "2026-09-24T07:00:00.000Z",
+          "endAt": "2026-09-24T08:30:00.000Z",
+          "timezone": "Europe/Istanbul",
+          "isAllDay": false,
+          "status": "confirmed",
+          "recurrenceRule": null,
+          "attendees": [
+            {
+              "email": "deniz@example.com",
+              "responseStatus": "accepted"
+            }
+          ],
+          "reminders": {
+            "useDefault": true
+          },
+          "visibility": null,
+          "colorId": "9",
+          "conferenceData": {
+            "entryPoints": [
+              {
+                "uri": "https://meet.google.com/abc"
+              }
+            ]
+          },
+          "rawPayload": null,
+          "archivedAt": "2026-11-02T12:00:00.000Z",
+          "clock": {
+            "desktop": 2,
+            "phone-device": 1
+          },
+          "createdAt": "2026-09-24T08:00:00.000Z",
+          "modifiedAt": "2026-11-02T12:00:00.000Z",
+          "id": "ext-1"
+        }
+      },
+      "readOnlySource": {
+        "id": "src-work",
+        "provider": "ics",
+        "kind": "calendar",
+        "accountId": "acct-1",
+        "remoteId": "work@group.calendar.google.com",
+        "title": "Work",
+        "timezone": "Europe/Istanbul",
+        "color": "#9fc6e7",
+        "isPrimary": false,
+        "isSelected": true,
+        "isMemryManaged": false,
+        "syncCursor": "CPj1",
+        "syncStatus": "ok",
+        "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+        "lastError": null,
+        "metadata": {
+          "accessRole": "owner"
+        },
+        "archivedAt": null,
+        "clock": {
+          "desktop": 1
+        },
+        "syncedAt": null,
+        "createdAt": "2026-09-01T08:00:00.000Z",
+        "modifiedAt": "2026-09-24T08:00:00.000Z"
+      }
+    },
+    "selection": {
+      "source": {
+        "id": "src-sel",
+        "provider": "google",
+        "kind": "calendar",
+        "accountId": "acct-1",
+        "remoteId": "selection@group.calendar.google.com",
+        "title": "Work",
+        "timezone": "Europe/Istanbul",
+        "color": "#9fc6e7",
+        "isPrimary": false,
+        "isSelected": true,
+        "isMemryManaged": false,
+        "syncCursor": "CPj1",
+        "syncStatus": "ok",
+        "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+        "lastError": null,
+        "metadata": {
+          "accessRole": "owner"
+        },
+        "archivedAt": null,
+        "clock": {
+          "desktop": 1
+        },
+        "syncedAt": null,
+        "createdAt": "2026-09-01T08:00:00.000Z",
+        "modifiedAt": "2026-09-24T08:00:00.000Z"
+      },
+      "mirror": {
+        "sourceId": "src-work",
+        "remoteEventId": "g-1",
+        "remoteEtag": "\"etag-1\"",
+        "remoteUpdatedAt": "2026-09-24T08:00:00.000Z",
+        "title": "Design review",
+        "description": "Agenda",
+        "location": "Room 4",
+        "startAt": "2026-09-24T07:00:00.000Z",
+        "endAt": "2026-09-24T08:30:00.000Z",
+        "timezone": "Europe/Istanbul",
+        "isAllDay": false,
+        "status": "confirmed",
+        "recurrenceRule": null,
+        "attendees": [
+          {
+            "email": "deniz@example.com",
+            "responseStatus": "accepted"
+          }
+        ],
+        "reminders": {
+          "useDefault": true
+        },
+        "visibility": null,
+        "colorId": "9",
+        "conferenceData": {
+          "entryPoints": [
+            {
+              "uri": "https://meet.google.com/abc"
+            }
+          ]
+        },
+        "rawPayload": null,
+        "archivedAt": null,
+        "clock": {
+          "desktop": 2
+        },
+        "createdAt": "2026-09-24T08:00:00.000Z",
+        "modifiedAt": "2026-09-24T08:00:00.000Z",
+        "id": "ext-1"
+      },
+      "binding": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "provider": "google",
+        "remoteCalendarId": "work@group.calendar.google.com",
+        "remoteEventId": "g-1",
+        "ownershipMode": "provider_managed",
+        "writebackMode": "time_and_text",
+        "remoteVersion": "\"etag-1\"",
+        "lastLocalSnapshot": null,
+        "archivedAt": null,
+        "clock": {
+          "desktop": 1
+        },
+        "createdAt": "2026-09-01T00:00:00.000Z",
+        "modifiedAt": "2026-09-24T08:00:00.000Z"
+      },
+      "expected": {
+        "source": {
+          "id": "src-sel",
+          "provider": "google",
+          "kind": "calendar",
+          "accountId": "acct-1",
+          "remoteId": "selection@group.calendar.google.com",
+          "title": "Work",
+          "timezone": "Europe/Istanbul",
+          "color": "#9fc6e7",
+          "isPrimary": false,
+          "isSelected": false,
+          "isMemryManaged": false,
+          "syncCursor": "CPj1",
+          "syncStatus": "ok",
+          "lastSyncedAt": "2026-09-24T08:00:00.000Z",
+          "lastError": null,
+          "metadata": {
+            "accessRole": "owner"
+          },
+          "archivedAt": null,
+          "clock": {
+            "desktop": 1,
+            "phone-device": 1
+          },
+          "syncedAt": null,
+          "createdAt": "2026-09-01T08:00:00.000Z",
+          "modifiedAt": "2026-11-02T12:00:00.000Z"
+        },
+        "mirrorDeleted": true,
+        "bindingDeleted": true
+      }
+    }
+  }
+}

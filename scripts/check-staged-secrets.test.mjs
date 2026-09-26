@@ -172,6 +172,21 @@ describe('check-staged-secrets Rust declarations', () => {
     assert.deepEqual(rustRules('    TokenClaims::parse(&jwt(json!({ \"sub\": \"u\" }))),'), [])
   })
 
+  it('lets Swift name a secret through an expression, not a literal', () => {
+    const swiftRules = (text) =>
+      scanTextForSecrets('apps/ios/Memry/Features/Calendar/Providers/Client.swift', text).map(
+        (f) => f.rule
+      )
+    assert.deepEqual(
+      swiftRules('            token = text.trimmingCharacters(in: .whitespaces)'),
+      []
+    )
+    assert.deepEqual(swiftRules('            accessToken: access, refreshToken: refresh,'), [])
+    assert.deepEqual(swiftRules('    password: "hunter2secretvalue",'), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
   it('still flags a Rust field whose value is a bare quoted literal', () => {
     // The assignment pattern eats the opening quote, so this arrives looking
     // like an identifier. A type rule that accepted a bare lowercase word

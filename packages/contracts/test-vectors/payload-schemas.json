@@ -21,10 +21,14 @@
       "reminder",
       "settings",
       "filter",
-      "inbox"
+      "inbox",
+      "calendar_source",
+      "calendar_event",
+      "calendar_external_event",
+      "calendar_binding"
     ],
     "obligation": "a payload schema is a READER over a preserved string, never the storage shape (FR-033)",
-    "caseCount": 60
+    "caseCount": 76
   },
   "groups": [
     {
@@ -1749,6 +1753,584 @@
           "name": "inbox: verbatim round trip of the unknown-field instance",
           "storedPayloadJson": "{\"title\":\"How Linear builds product\",\"content\":\"Small teams, short cycles.\",\"type\":\"link\",\"metadata\":{\"url\":\"https://example.com/agent/1\",\"fetchStatus\":\"complete\",\"siteName\":\"Linear\"},\"filedAt\":null,\"filedTo\":null,\"filedAction\":null,\"snoozedUntil\":\"2026-04-17T09:00:00.000Z\",\"snoozeReason\":null,\"archivedAt\":null,\"sourceUrl\":\"https://example.com/agent/1\",\"sourceTitle\":null,\"captureSource\":\"inline\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"transcription\":\"Pick up the cable before Friday.\"}",
           "expectedPushedPayloadJson": "{\"title\":\"How Linear builds product\",\"content\":\"Small teams, short cycles.\",\"type\":\"link\",\"metadata\":{\"url\":\"https://example.com/agent/1\",\"fetchStatus\":\"complete\",\"siteName\":\"Linear\"},\"filedAt\":null,\"filedTo\":null,\"filedAction\":null,\"snoozedUntil\":\"2026-04-17T09:00:00.000Z\",\"snoozeReason\":null,\"archivedAt\":null,\"sourceUrl\":\"https://example.com/agent/1\",\"sourceTitle\":null,\"captureSource\":\"inline\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"transcription\":\"Pick up the cable before Friday.\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "calendar_source",
+      "cases": [
+        {
+          "name": "calendar_source: valid, every modelled field populated",
+          "payload": {
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-04-16T00:00:00.000Z",
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-04-16T00:00:00.000Z",
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "calendar_source: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "title": "",
+            "timezone": null,
+            "color": null,
+            "metadata": null,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "title": "",
+            "timezone": null,
+            "color": null,
+            "metadata": null,
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "calendar_source: an unknown field a newer client wrote",
+          "payload": {
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-04-16T00:00:00.000Z",
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z",
+            "lastError": "unreachable"
+          },
+          "expectedParsed": {
+            "provider": "google",
+            "kind": "calendar",
+            "accountId": "acct-1",
+            "remoteId": "work@group.calendar.google.com",
+            "title": "Work",
+            "timezone": "Europe/Istanbul",
+            "color": "#9fc6e7",
+            "isPrimary": false,
+            "isSelected": true,
+            "isMemryManaged": false,
+            "syncCursor": "CPj1",
+            "syncStatus": "ok",
+            "lastSyncedAt": "2026-04-16T00:00:00.000Z",
+            "metadata": {
+              "accessRole": "owner"
+            },
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "lastError"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "calendar_source: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"provider\":\"google\",\"kind\":\"calendar\",\"accountId\":\"acct-1\",\"remoteId\":\"work@group.calendar.google.com\",\"title\":\"Work\",\"timezone\":\"Europe/Istanbul\",\"color\":\"#9fc6e7\",\"isPrimary\":false,\"isSelected\":true,\"isMemryManaged\":false,\"syncCursor\":\"CPj1\",\"syncStatus\":\"ok\",\"lastSyncedAt\":\"2026-04-16T00:00:00.000Z\",\"metadata\":{\"accessRole\":\"owner\"},\"archivedAt\":null,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"lastError\":\"unreachable\"}",
+          "expectedPushedPayloadJson": "{\"provider\":\"google\",\"kind\":\"calendar\",\"accountId\":\"acct-1\",\"remoteId\":\"work@group.calendar.google.com\",\"title\":\"Work\",\"timezone\":\"Europe/Istanbul\",\"color\":\"#9fc6e7\",\"isPrimary\":false,\"isSelected\":true,\"isMemryManaged\":false,\"syncCursor\":\"CPj1\",\"syncStatus\":\"ok\",\"lastSyncedAt\":\"2026-04-16T00:00:00.000Z\",\"metadata\":{\"accessRole\":\"owner\"},\"archivedAt\":null,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"lastError\":\"unreachable\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "calendar_event",
+      "cases": [
+        {
+          "name": "calendar_event: valid, every modelled field populated",
+          "payload": {
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-16T10:00:00.000Z",
+            "endAt": "2026-04-16T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": "11",
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "device-a": 1
+              }
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-16T10:00:00.000Z",
+            "endAt": "2026-04-16T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": "11",
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "device-a": 1
+              }
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "calendar_event: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "title": "",
+            "endAt": null,
+            "fieldClocks": null,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "title": "",
+            "endAt": null,
+            "clock": {},
+            "fieldClocks": null
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "calendar_event: an unknown field a newer client wrote",
+          "payload": {
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-16T10:00:00.000Z",
+            "endAt": "2026-04-16T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": "11",
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "device-a": 1
+              }
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z",
+            "syncedAt": "2026-04-16T00:00:01.000Z"
+          },
+          "expectedParsed": {
+            "title": "Lunch with Deniz",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-16T10:00:00.000Z",
+            "endAt": "2026-04-16T11:00:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "recurrenceRule": null,
+            "recurrenceExceptions": null,
+            "attendees": null,
+            "reminders": null,
+            "visibility": null,
+            "colorId": "11",
+            "conferenceData": null,
+            "parentEventId": null,
+            "originalStartTime": null,
+            "targetCalendarId": "work@group.calendar.google.com",
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "device-a": 1
+              }
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "syncedAt"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "calendar_event: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"title\":\"Lunch with Deniz\",\"description\":null,\"location\":null,\"startAt\":\"2026-04-16T10:00:00.000Z\",\"endAt\":\"2026-04-16T11:00:00.000Z\",\"timezone\":\"Europe/Istanbul\",\"isAllDay\":false,\"recurrenceRule\":null,\"recurrenceExceptions\":null,\"attendees\":null,\"reminders\":null,\"visibility\":null,\"colorId\":\"11\",\"conferenceData\":null,\"parentEventId\":null,\"originalStartTime\":null,\"targetCalendarId\":\"work@group.calendar.google.com\",\"archivedAt\":null,\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "expectedPushedPayloadJson": "{\"title\":\"Lunch with Deniz\",\"description\":null,\"location\":null,\"startAt\":\"2026-04-16T10:00:00.000Z\",\"endAt\":\"2026-04-16T11:00:00.000Z\",\"timezone\":\"Europe/Istanbul\",\"isAllDay\":false,\"recurrenceRule\":null,\"recurrenceExceptions\":null,\"attendees\":null,\"reminders\":null,\"visibility\":null,\"colorId\":\"11\",\"conferenceData\":null,\"parentEventId\":null,\"originalStartTime\":null,\"targetCalendarId\":\"work@group.calendar.google.com\",\"archivedAt\":null,\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1}},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "calendar_external_event",
+      "cases": [
+        {
+          "name": "calendar_external_event: valid, every modelled field populated",
+          "payload": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-04-16T00:00:00.000Z",
+            "title": "Design review",
+            "description": "Agenda",
+            "location": "Room 4",
+            "startAt": "2026-04-16T07:00:00.000Z",
+            "endAt": "2026-04-16T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "attendees": [
+              {
+                "email": "deniz@example.com",
+                "responseStatus": "accepted"
+              }
+            ],
+            "reminders": {
+              "useDefault": true
+            },
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-04-16T00:00:00.000Z",
+            "title": "Design review",
+            "description": "Agenda",
+            "location": "Room 4",
+            "startAt": "2026-04-16T07:00:00.000Z",
+            "endAt": "2026-04-16T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "attendees": [
+              {
+                "email": "deniz@example.com",
+                "responseStatus": "accepted"
+              }
+            ],
+            "reminders": {
+              "useDefault": true
+            },
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "calendar_external_event: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "title": "",
+            "endAt": null,
+            "attendees": null,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "title": "",
+            "endAt": null,
+            "attendees": null,
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "calendar_external_event: an unknown field a newer client wrote",
+          "payload": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-04-16T00:00:00.000Z",
+            "title": "Design review",
+            "description": "Agenda",
+            "location": "Room 4",
+            "startAt": "2026-04-16T07:00:00.000Z",
+            "endAt": "2026-04-16T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "attendees": [
+              {
+                "email": "deniz@example.com",
+                "responseStatus": "accepted"
+              }
+            ],
+            "reminders": {
+              "useDefault": true
+            },
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z",
+            "syncedAt": "2026-04-16T00:00:01.000Z"
+          },
+          "expectedParsed": {
+            "sourceId": "src-work",
+            "remoteEventId": "g-1",
+            "remoteEtag": "\"etag-1\"",
+            "remoteUpdatedAt": "2026-04-16T00:00:00.000Z",
+            "title": "Design review",
+            "description": "Agenda",
+            "location": "Room 4",
+            "startAt": "2026-04-16T07:00:00.000Z",
+            "endAt": "2026-04-16T08:30:00.000Z",
+            "timezone": "Europe/Istanbul",
+            "isAllDay": false,
+            "status": "confirmed",
+            "recurrenceRule": null,
+            "attendees": [
+              {
+                "email": "deniz@example.com",
+                "responseStatus": "accepted"
+              }
+            ],
+            "reminders": {
+              "useDefault": true
+            },
+            "visibility": null,
+            "colorId": null,
+            "conferenceData": null,
+            "rawPayload": null,
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "syncedAt"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "calendar_external_event: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"sourceId\":\"src-work\",\"remoteEventId\":\"g-1\",\"remoteEtag\":\"\\\"etag-1\\\"\",\"remoteUpdatedAt\":\"2026-04-16T00:00:00.000Z\",\"title\":\"Design review\",\"description\":\"Agenda\",\"location\":\"Room 4\",\"startAt\":\"2026-04-16T07:00:00.000Z\",\"endAt\":\"2026-04-16T08:30:00.000Z\",\"timezone\":\"Europe/Istanbul\",\"isAllDay\":false,\"status\":\"confirmed\",\"recurrenceRule\":null,\"attendees\":[{\"email\":\"deniz@example.com\",\"responseStatus\":\"accepted\"}],\"reminders\":{\"useDefault\":true},\"visibility\":null,\"colorId\":null,\"conferenceData\":null,\"rawPayload\":null,\"archivedAt\":null,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "expectedPushedPayloadJson": "{\"sourceId\":\"src-work\",\"remoteEventId\":\"g-1\",\"remoteEtag\":\"\\\"etag-1\\\"\",\"remoteUpdatedAt\":\"2026-04-16T00:00:00.000Z\",\"title\":\"Design review\",\"description\":\"Agenda\",\"location\":\"Room 4\",\"startAt\":\"2026-04-16T07:00:00.000Z\",\"endAt\":\"2026-04-16T08:30:00.000Z\",\"timezone\":\"Europe/Istanbul\",\"isAllDay\":false,\"status\":\"confirmed\",\"recurrenceRule\":null,\"attendees\":[{\"email\":\"deniz@example.com\",\"responseStatus\":\"accepted\"}],\"reminders\":{\"useDefault\":true},\"visibility\":null,\"colorId\":null,\"conferenceData\":null,\"rawPayload\":null,\"archivedAt\":null,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "calendar_binding",
+      "cases": [
+        {
+          "name": "calendar_binding: valid, every modelled field populated",
+          "payload": {
+            "sourceType": "event",
+            "sourceId": "evt-1",
+            "provider": "google",
+            "remoteCalendarId": "work@group.calendar.google.com",
+            "remoteEventId": "g-1",
+            "ownershipMode": "provider_managed",
+            "writebackMode": "time_and_text",
+            "remoteVersion": "\"etag-1\"",
+            "lastLocalSnapshot": null,
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "sourceType": "event",
+            "sourceId": "evt-1",
+            "provider": "google",
+            "remoteCalendarId": "work@group.calendar.google.com",
+            "remoteEventId": "g-1",
+            "ownershipMode": "provider_managed",
+            "writebackMode": "time_and_text",
+            "remoteVersion": "\"etag-1\"",
+            "lastLocalSnapshot": null,
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "calendar_binding: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "sourceId": "",
+            "remoteVersion": null,
+            "lastLocalSnapshot": null,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "sourceId": "",
+            "remoteVersion": null,
+            "lastLocalSnapshot": null,
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "calendar_binding: an unknown field a newer client wrote",
+          "payload": {
+            "sourceType": "event",
+            "sourceId": "evt-1",
+            "provider": "google",
+            "remoteCalendarId": "work@group.calendar.google.com",
+            "remoteEventId": "g-1",
+            "ownershipMode": "provider_managed",
+            "writebackMode": "time_and_text",
+            "remoteVersion": "\"etag-1\"",
+            "lastLocalSnapshot": null,
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z",
+            "syncedAt": "2026-04-16T00:00:01.000Z"
+          },
+          "expectedParsed": {
+            "sourceType": "event",
+            "sourceId": "evt-1",
+            "provider": "google",
+            "remoteCalendarId": "work@group.calendar.google.com",
+            "remoteEventId": "g-1",
+            "ownershipMode": "provider_managed",
+            "writebackMode": "time_and_text",
+            "remoteVersion": "\"etag-1\"",
+            "lastLocalSnapshot": null,
+            "archivedAt": null,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "syncedAt"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "calendar_binding: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"sourceType\":\"event\",\"sourceId\":\"evt-1\",\"provider\":\"google\",\"remoteCalendarId\":\"work@group.calendar.google.com\",\"remoteEventId\":\"g-1\",\"ownershipMode\":\"provider_managed\",\"writebackMode\":\"time_and_text\",\"remoteVersion\":\"\\\"etag-1\\\"\",\"lastLocalSnapshot\":null,\"archivedAt\":null,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "expectedPushedPayloadJson": "{\"sourceType\":\"event\",\"sourceId\":\"evt-1\",\"provider\":\"google\",\"remoteCalendarId\":\"work@group.calendar.google.com\",\"remoteEventId\":\"g-1\",\"ownershipMode\":\"provider_managed\",\"writebackMode\":\"time_and_text\",\"remoteVersion\":\"\\\"etag-1\\\"\",\"lastLocalSnapshot\":null,\"archivedAt\":null,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

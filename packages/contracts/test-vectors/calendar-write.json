@@ -1,0 +1,305 @@
+{
+  "description": "What desktop writes: CalDAV objects (new, patched, one occurrence excluded), a push's recurrence lines, and which app versions the writer-compat notice lists.",
+  "now": "2026-09-26T08:00:00.000Z",
+  "zones": [
+    {
+      "identifier": "Europe/Istanbul",
+      "baseOffsetMs": 10800000,
+      "transitions": []
+    },
+    {
+      "identifier": "America/New_York",
+      "baseOffsetMs": -18000000,
+      "transitions": [
+        {
+          "atMs": 1741503600000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1762063200000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1772953200000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1793512800000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1805007600000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1825567200000,
+          "offsetMs": -18000000
+        }
+      ]
+    }
+  ],
+  "newObjects": [
+    {
+      "name": "timed in a zone, weekly with an alert and a colour",
+      "uid": "memry-a",
+      "event": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "description": "Line one\nLine two",
+        "location": "Kadıköy",
+        "recurrence": [
+          "RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=4"
+        ],
+        "title": "[agent] Planning; review, sync",
+        "startAt": "2026-10-05T07:00:00.000Z",
+        "endAt": "2026-10-05T08:30:00.000Z",
+        "isAllDay": false,
+        "timezone": "Europe/Istanbul",
+        "reminders": {
+          "useDefault": false,
+          "overrides": [
+            {
+              "method": "popup",
+              "minutes": 15
+            }
+          ]
+        },
+        "colorId": "11"
+      },
+      "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//memrynote//Calendar//EN\r\nBEGIN:VTIMEZONE\r\nTZID:Europe/Istanbul\r\nBEGIN:STANDARD\r\nDTSTART:20250101T000000\r\nTZOFFSETFROM:+0300\r\nTZOFFSETTO:+0300\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:memry-a\r\nCREATED:20260926T080000Z\r\nSEQUENCE:0\r\nX-MEMRY-SOURCE-ID:evt-1\r\nX-MEMRY-SOURCE-TYPE:event\r\nSUMMARY:[agent] Planning\\; review\\, sync\r\nDESCRIPTION:Line one\\nLine two\r\nLOCATION:Kadıköy\r\nDTSTART;TZID=Europe/Istanbul:20261005T100000\r\nDTEND;TZID=Europe/Istanbul:20261005T113000\r\nRRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=4\r\nCOLOR:tomato\r\nDTSTAMP:20260926T080000Z\r\nLAST-MODIFIED:20260926T080000Z\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nTRIGGER:-PT15M\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    },
+    {
+      "name": "timed in UTC",
+      "uid": "memry-b",
+      "event": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "description": null,
+        "location": null,
+        "recurrence": null,
+        "title": "UTC call",
+        "startAt": "2026-10-06T15:00:00.000Z",
+        "endAt": "2026-10-06T15:30:00.000Z",
+        "isAllDay": false,
+        "timezone": "UTC"
+      },
+      "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//memrynote//Calendar//EN\r\nBEGIN:VEVENT\r\nUID:memry-b\r\nCREATED:20260926T080000Z\r\nSEQUENCE:0\r\nX-MEMRY-SOURCE-ID:evt-1\r\nX-MEMRY-SOURCE-TYPE:event\r\nSUMMARY:UTC call\r\nDTSTART:20261006T150000Z\r\nDTEND:20261006T153000Z\r\nDTSTAMP:20260926T080000Z\r\nLAST-MODIFIED:20260926T080000Z\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    },
+    {
+      "name": "timed in New York across the DST change",
+      "uid": "memry-c",
+      "event": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "description": null,
+        "location": null,
+        "recurrence": [
+          "RRULE:FREQ=DAILY;COUNT=3"
+        ],
+        "title": "NY standup",
+        "startAt": "2026-11-02T14:00:00.000Z",
+        "endAt": "2026-11-02T14:15:00.000Z",
+        "isAllDay": false,
+        "timezone": "America/New_York"
+      },
+      "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//memrynote//Calendar//EN\r\nBEGIN:VTIMEZONE\r\nTZID:America/New_York\r\nBEGIN:STANDARD\r\nDTSTART:20250101T000000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20250309T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20251102T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20260308T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20261101T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20270314T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20271107T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20280312T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20281105T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20290311T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20291104T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20300310T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20301103T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20310309T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20311102T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20320314T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20321107T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20330313T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20331106T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20340312T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20341105T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20350311T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20351104T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:20360309T020000\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20361102T020000\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:memry-c\r\nCREATED:20260926T080000Z\r\nSEQUENCE:0\r\nX-MEMRY-SOURCE-ID:evt-1\r\nX-MEMRY-SOURCE-TYPE:event\r\nSUMMARY:NY standup\r\nDTSTART;TZID=America/New_York:20261102T090000\r\nDTEND;TZID=America/New_York:20261102T091500\r\nRRULE:FREQ=DAILY;COUNT=3\r\nDTSTAMP:20260926T080000Z\r\nLAST-MODIFIED:20260926T080000Z\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    }
+  ],
+  "patches": [
+    {
+      "name": "whole series renamed and moved",
+      "raw": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VEVENT\r\nUID:series-1\r\nDTSTAMP:20260901T000000Z\r\nDTSTART:20260928T070000Z\r\nDTEND:20260928T073000Z\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Weekly\r\nLOCATION:Server room\r\nX-SERVER-THING:keep\r\nSEQUENCE:2\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "recurrenceId": null,
+      "event": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "description": null,
+        "location": null,
+        "recurrence": null,
+        "title": "Weekly (moved)",
+        "startAt": "2026-09-28T08:00:00.000Z",
+        "endAt": "2026-09-28T08:30:00.000Z",
+        "isAllDay": false,
+        "timezone": "UTC"
+      },
+      "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VEVENT\r\nUID:series-1\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Weekly (moved)\r\nX-SERVER-THING:keep\r\nSEQUENCE:3\r\nDTSTART:20260928T080000Z\r\nDTEND:20260928T083000Z\r\nDTSTAMP:20260926T080000Z\r\nLAST-MODIFIED:20260926T080000Z\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    },
+    {
+      "name": "one occurrence of a UTC series gets an override",
+      "raw": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VEVENT\r\nUID:series-1\r\nDTSTAMP:20260901T000000Z\r\nDTSTART:20260928T070000Z\r\nDTEND:20260928T073000Z\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Weekly\r\nLOCATION:Server room\r\nX-SERVER-THING:keep\r\nSEQUENCE:2\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "recurrenceId": "2026-10-05T07:00:00.000Z",
+      "event": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "description": null,
+        "location": null,
+        "recurrence": null,
+        "title": "Weekly (just this one)",
+        "startAt": "2026-10-05T09:00:00.000Z",
+        "endAt": "2026-10-05T09:30:00.000Z",
+        "isAllDay": false,
+        "timezone": "UTC"
+      },
+      "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VEVENT\r\nUID:series-1\r\nDTSTAMP:20260901T000000Z\r\nDTSTART:20260928T070000Z\r\nDTEND:20260928T073000Z\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Weekly\r\nLOCATION:Server room\r\nX-SERVER-THING:keep\r\nSEQUENCE:2\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:series-1\r\nSUMMARY:Weekly (just this one)\r\nX-SERVER-THING:keep\r\nSEQUENCE:3\r\nRECURRENCE-ID:20261005T070000Z\r\nDTSTART:20261005T090000Z\r\nDTEND:20261005T093000Z\r\nDTSTAMP:20260926T080000Z\r\nLAST-MODIFIED:20260926T080000Z\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    },
+    {
+      "name": "one occurrence of a zoned series keeps the series zone",
+      "raw": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VTIMEZONE\r\nTZID:Europe/Istanbul\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+0300\r\nTZOFFSETTO:+0300\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:zoned-1\r\nDTSTAMP:20260901T000000Z\r\nDTSTART;TZID=Europe/Istanbul:20260928T100000\r\nDTEND;TZID=Europe/Istanbul:20260928T103000\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Zoned weekly\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "recurrenceId": "2026-10-05T07:00:00.000Z",
+      "event": {
+        "sourceType": "event",
+        "sourceId": "evt-1",
+        "description": null,
+        "location": null,
+        "recurrence": null,
+        "title": "Zoned (moved)",
+        "startAt": "2026-10-05T08:00:00.000Z",
+        "endAt": "2026-10-05T08:30:00.000Z",
+        "isAllDay": false,
+        "timezone": "Europe/Istanbul"
+      },
+      "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VTIMEZONE\r\nTZID:Europe/Istanbul\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+0300\r\nTZOFFSETTO:+0300\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:zoned-1\r\nDTSTAMP:20260901T000000Z\r\nDTSTART;TZID=Europe/Istanbul:20260928T100000\r\nDTEND;TZID=Europe/Istanbul:20260928T103000\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Zoned weekly\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:zoned-1\r\nSUMMARY:Zoned (moved)\r\nRECURRENCE-ID;TZID=Europe/Istanbul:20261005T100000\r\nDTSTART;TZID=Europe/Istanbul:20261005T110000\r\nDTEND;TZID=Europe/Istanbul:20261005T113000\r\nSEQUENCE:1\r\nDTSTAMP:20260926T080000Z\r\nLAST-MODIFIED:20260926T080000Z\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    }
+  ],
+  "exclusions": [
+    {
+      "name": "UTC series",
+      "raw": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VEVENT\r\nUID:series-1\r\nDTSTAMP:20260901T000000Z\r\nDTSTART:20260928T070000Z\r\nDTEND:20260928T073000Z\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Weekly\r\nLOCATION:Server room\r\nX-SERVER-THING:keep\r\nSEQUENCE:2\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "recurrenceId": "2026-10-12T07:00:00.000Z",
+      "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VEVENT\r\nUID:series-1\r\nDTSTAMP:20260926T080000Z\r\nDTSTART:20260928T070000Z\r\nDTEND:20260928T073000Z\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Weekly\r\nLOCATION:Server room\r\nX-SERVER-THING:keep\r\nSEQUENCE:3\r\nEXDATE:20261012T070000Z\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    },
+    {
+      "name": "zoned series",
+      "raw": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VTIMEZONE\r\nTZID:Europe/Istanbul\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+0300\r\nTZOFFSETTO:+0300\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:zoned-1\r\nDTSTAMP:20260901T000000Z\r\nDTSTART;TZID=Europe/Istanbul:20260928T100000\r\nDTEND;TZID=Europe/Istanbul:20260928T103000\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Zoned weekly\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "recurrenceId": "2026-10-05T07:00:00.000Z",
+      "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//agent//test//EN\r\nBEGIN:VTIMEZONE\r\nTZID:Europe/Istanbul\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+0300\r\nTZOFFSETTO:+0300\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:zoned-1\r\nDTSTAMP:20260926T080000Z\r\nDTSTART;TZID=Europe/Istanbul:20260928T100000\r\nDTEND;TZID=Europe/Istanbul:20260928T103000\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nSUMMARY:Zoned weekly\r\nEXDATE;TZID=Europe/Istanbul:20261005T100000\r\nSEQUENCE:1\r\nEND:VEVENT\r\nEND:VCALENDAR"
+    }
+  ],
+  "recurrences": [
+    {
+      "name": "rule only",
+      "rule": {
+        "rrule": "FREQ=WEEKLY;BYDAY=TU"
+      },
+      "exceptions": null,
+      "timezone": "Europe/Istanbul",
+      "expected": [
+        "RRULE:FREQ=WEEKLY;BYDAY=TU"
+      ]
+    },
+    {
+      "name": "rule and exceptions in a zone",
+      "rule": {
+        "rrule": "FREQ=DAILY"
+      },
+      "exceptions": [
+        "2026-10-06T07:00:00.000Z",
+        "2026-10-08T07:00:00.000Z"
+      ],
+      "timezone": "Europe/Istanbul",
+      "expected": [
+        "RRULE:FREQ=DAILY",
+        "EXDATE;TZID=Europe/Istanbul:20261006T100000",
+        "EXDATE;TZID=Europe/Istanbul:20261008T100000"
+      ]
+    },
+    {
+      "name": "exceptions in UTC",
+      "rule": {
+        "rrule": "FREQ=DAILY"
+      },
+      "exceptions": [
+        "2026-10-06T07:00:00.000Z"
+      ],
+      "timezone": "UTC",
+      "expected": [
+        "RRULE:FREQ=DAILY",
+        "EXDATE:20261006T070000Z"
+      ]
+    },
+    {
+      "name": "exceptions across New York DST",
+      "rule": {
+        "rrule": "FREQ=DAILY"
+      },
+      "exceptions": [
+        "2026-10-31T13:00:00.000Z",
+        "2026-11-02T14:00:00.000Z"
+      ],
+      "timezone": "America/New_York",
+      "expected": [
+        "RRULE:FREQ=DAILY",
+        "EXDATE;TZID=America/New_York:20261031T090000",
+        "EXDATE;TZID=America/New_York:20261102T090000"
+      ]
+    },
+    {
+      "name": "nothing",
+      "rule": null,
+      "exceptions": null,
+      "timezone": "UTC",
+      "expected": null
+    }
+  ],
+  "writerCompat": {
+    "minimum": "2026.925.0",
+    "versions": [
+      {
+        "version": "2026.925.0",
+        "below": false
+      },
+      {
+        "version": "2026.925.1",
+        "below": false
+      },
+      {
+        "version": "2026.924.9",
+        "below": true
+      },
+      {
+        "version": "2026.1001.0",
+        "below": false
+      },
+      {
+        "version": "2025.1231.3",
+        "below": true
+      },
+      {
+        "version": "2027",
+        "below": false
+      },
+      {
+        "version": "2026.925",
+        "below": false
+      },
+      {
+        "version": "0.1.0",
+        "below": true
+      },
+      {
+        "version": "2026.925.0-beta",
+        "below": true
+      },
+      {
+        "version": "garbage",
+        "below": true
+      },
+      {
+        "version": "",
+        "below": true
+      },
+      {
+        "version": "2026..0",
+        "below": true
+      },
+      {
+        "version": "2026.925.0.7",
+        "below": false
+      },
+      {
+        "version": "2026.925.0.x",
+        "below": false
+      }
+    ]
+  }
+}

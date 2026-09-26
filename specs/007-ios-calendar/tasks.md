@@ -162,22 +162,27 @@ pnpm lint && pnpm typecheck
 
 ## Phase 0: plan and facts
 
-- [ ] CL000 Read goal.md, root + iOS `AGENTS.md`, `DESIGN.md`, `PRODUCT.md`,
+- [x] CL000 Read goal.md, root + iOS `AGENTS.md`, `DESIGN.md`, `PRODUCT.md`,
       spec 004 §0–§1/§5/§6, spec 005 goal + tasks, artboards 00 and 00b in
       full, `get_tree_summary` + screenshot of 01–31, the desktop files in
       goal "Read first" §6, `Tokens.swift`. Create the worktree.
-- [ ] CL001 Payload facts → §5: the four schemas from
+      Evidence: all 33 artboards of `p-5-0` exported through `paper_export` (00, 00b read in full; 01–31 read against each build as their phase lands); goal, AGENTS, DESIGN, PRODUCT, specs 004/005, desktop sources read in Phase 0.
+- [x] CL001 Payload facts → §5: the four schemas from
       `packages/contracts/src/sync-payloads.ts` (every field, optionality,
       enums, `fieldClocks`, deletes), their DB shapes (`calendar-*.ts`,
       migrations 0024–0028), apply order (chapter 05 table: source 0,
       event / external 2, binding 3), and what desktop does on unknown fields.
-- [ ] CL002 Projection facts → §5: from `main/calendar/projection.ts` and
+      Evidence: §5 F1 (read `sync-payloads.ts:371-470`, the four handlers, db-schema).
+
+- [x] CL002 Projection facts → §5: from `main/calendar/projection.ts` and
       friends, the exact rules per visual type (event, external_event, task,
       reminder, snooze, note, note_date), `editability` (canMove, canResize,
       canDelete), `displayColor`, `isTriggered`, all-day UTC-midnight with
       exclusive end, range bounds per view, `includeUnselectedSources`, and
       how `showNotesOnCalendar` and source selection filter.
-- [ ] CL003 Write-path facts → §5: what desktop writes for create / update /
+      Evidence: §5 F2 (read `projection.ts` in full, `capabilities.ts`, `calendar-colors.ts`).
+
+- [x] CL003 Write-path facts → §5: what desktop writes for create / update /
       delete / move / project link / promote (`promote-external-event.ts`) /
       source selection / default target / push toggle / AI consent / week
       start / show notes, and which of these are synced records vs
@@ -189,44 +194,54 @@ pnpm lint && pnpm typecheck
       410 reset, CalDAV / ICS limits and error kinds, write routing and
       writer-compat, push channels / webhooks reachable by iOS, and the
       core-vs-Swift split per module.
-- [ ] CL004 Platform facts → §5: EventKit full-access entitlement and
+      Evidence: §5 F3 + F3b, §6 CL003 entries (routing, OAuth, push relay, ICS limits, split).
+
+- [x] CL004 Platform facts → §5: EventKit full-access entitlement and
       `NSCalendarsFullAccessUsageDescription`; how Tasks / Inbox / Notes
       expose "open detail", "When sheet", "focus inbox item", "open note at
       anchor" for reuse; existing deep-link router.
+      Evidence: §5 F4 (`SettingsNavigation.swift:29`, `TasksRootView.swift:54`, `Info.plist`).
 
 ## Phase 1: core (Rust, UniFFI, vectors)
 
-- [ ] CL010 Move the four types from `UNSUBSCRIBED_RECORD_ITEM_TYPES` to the
+- [x] CL010 Move the four types from `UNSUBSCRIBED_RECORD_ITEM_TYPES` to the
       subscribed set; storage tables and projectors for sources, events,
       external events, bindings; apply order; unknown-field round trip.
       Tests: apply / re-apply / delete / out-of-order binding.
-- [ ] CL011 Field-level merge for `calendar_event` matching
+      Evidence: `cargo test -p memry-core --test domain_calendar_sync` 9/9 (apply, null-keeps, orphan external waits for its source, binding before event, skip, merge, seeded field clocks, unknown keys, tombstones); migration 0005 (0006 after the merge with main); 19 subscribed types.
+- [x] CL011 Field-level merge for `calendar_event` matching
       `field-merge-calendar.ts` (syncable fields, field clocks, tie-break).
       Vectors generated from desktop, checked in core.
-- [ ] CL012 Projection API: `calendar_range(start, end, include_unselected)`
+      Evidence: `calendar.json` `apply` (17 sequences restated from the four desktop handlers with the real `mergeFields`) — `cargo test --test calendar_vectors every_apply_sequence_ends_on_desktops_row` green; `vectors:check passed (20 classes)`.
+- [x] CL012 Projection API: `calendar_range(start, end, include_unselected)`
       returning projection items for all seven visual types with
       editability, colors, source, binding; plus `calendar_sources()`,
       `calendar_event(id)`, `calendar_external_event(id)` (attendees,
       conference, reminders, recurrence, location), `calendar_search(query,
-    range)`. Vectors from desktop projection for a fixed fixture (tasks,
+range)`. Vectors from desktop projection for a fixed fixture (tasks,
       reminders, snoozes, notes, spans, time zones, DST).
-- [ ] CL013 Write API: create / update / delete event, move (start, end),
+      Evidence: `Calendar.range/search/sources/event/external_event/linked_projects`; `calendar.json` `projection` (4 queries over every row type in America/New_York across the Nov DST change, 3 searches) — `every_range_query_answers_desktops_projection`, `search_ranks_as_desktop_does` green.
+- [x] CL013 Write API: create / update / delete event, move (start, end),
       link / unlink project (`calendar_event` item type in project links),
       promote external event (event + binding exactly as desktop), set
       source selection, set default target, provider settings,
       calendar settings (week start, show notes). Each write emits the same
       record shape desktop emits (vector per write).
-- [ ] CL014 Timeline model in core or Swift (decide in §6 by where desktop's
+      Evidence: `Calendar.create_event/update_event/delete_event/promote/set_source_selected/set_setting`; `calendar.json` `writes` (create, 4 updates, promote + idempotent repeat + read-only refusal, deselect purge) — `every_write_emits_desktops_record` green. Project link/unlink reuses `Tasks.link_to_project(item_type: calendar_event)` (already pinned).
+- [x] CL014 Timeline model in core or Swift (decide in §6 by where desktop's
       `timeline-model.ts` logic is cheapest to pin): windows per zoom, group
       by project / status / priority / none, order by start / due / title,
       show toggles, shape per task (span, due, start, undated, overdue).
       Vectors or unit tests from desktop.
-- [ ] CL015 UniFFI surface, `build-xcframework.sh --release`, Swift seam
+      Evidence: §6 CL014: Swift port (`TimelineModel.swift`, `+Groups.swift`); `xcodebuild test -testPlan Unit -only-testing:MemryTests/CalendarTimelineTests` 8/8 green (windows, steps, shapes, placement, edits, grouping, undated/overdue, subtask nesting restated from `timeline-model.test.ts`).
+- [x] CL015 UniFFI surface, `build-xcframework.sh --release`, Swift seam
       (`Core/`) with async wrappers and change notifications so open views
       refresh on sync. Conformance plan cases for every new call.
-- [ ] CL016 Protocol docs: chapter 13 gains the four payload schemas;
+      Evidence: `VaultCalendar` UniFFI object (renamed from `Calendar`, §6) + records; `build-xcframework.sh --release` EXIT 0; Swift seam `CalendarStore` (async over `CoreExecutor`, window cache, refresh after its own writes, after the vault's Tasks sync pass and on foreground); Conformance plan `CalendarConformanceTests` 4/4, run total 35 tests / 10 suites green.
+- [x] CL016 Protocol docs: chapter 13 gains the four payload schemas;
       chapter 05 subscribed list and counts updated.
-- [ ] CL018 Two-way calendar settings (D3a): extend the `calendar` group in
+      Evidence: `docs/protocol/13-payload-schemas.md` §13.1 (nineteen) + §13.7.16–§13.7.19, §13.9 table; `05-record-sync.md` counts; `00` count; `06` §6.8 table; prettier clean; `vectors:check passed (20 classes)`.
+- [x] CL018 Two-way calendar settings (D3a): extend the `calendar` group in
       `settings-sync.ts` with `showNotesOnCalendar` and per-provider groups;
       desktop reads / writes them through settings sync instead of the
       device-local store (seed from local value when the synced one is
@@ -234,103 +249,137 @@ pnpm lint && pnpm typecheck
       upload does not clobber new keys; seed-once; per-key conflict.
       Evidence also: change each setting on desktop → visible on iOS, and the
       reverse.
-- [ ] CL019 Protocol chapter 13 settings section updated for D3a.
-- [ ] CL017 Phase commit (after CL018–CL019).
+      Evidence: `settings-sync.ts` calendar group (+`catchall`); `main/settings/settings-store.ts` write listener + `main/calendar/calendar-settings-sync.ts` (mirror, apply, seed-once, runtime hook in `sync/runtime.ts`, apply in `settings-handler.ts`); core `settings_merge.rs` keeps a value under an equal clock. Tests: `calendar-settings-sync.test.ts` 6/6 (old-schema upload, seed-once, per-key, no echo), `crates/memry-core/tests/calendar_settings_sync.rs` 3/3; desktop main project 956 passed; `pnpm lint` + `pnpm typecheck` EXIT 0. Cross-device check split to CL018a.
+- [x] CL019 Protocol chapter 13 settings section updated for D3a.
+      Evidence: §13.7.13 gains the `calendar` group, its leaves and the D7 equal-clock rule.
+- [x] CL018a Cross-device evidence for D3a: change each calendar setting on
+      desktop → visible on iOS, and the reverse (needs the desktop peer, done
+      with CL060).
+      Evidence: desktop peer `dev:staging` from this branch (device `iosparity`, re-linked by OTP + recovery phrase; its registration had been revoked), switched to the phone's vault `87614a10…` (it had opened another vault of the account). On first pull it merged the phone's `google.promoteConfirmDismissed`, `caldav/ics.agentReadEventsConsent`. Phone → desktop: week start Sunday on the phone (CL18a-phone-sets-sunday.png) → desktop `getCalendarSettings().weekStartDay = sunday`, month grid Sun-first (CL18a-desktop-sees-phone-sunday.png). Desktop → phone: `setCalendarSettings({ weekStartDay: monday, showNotesOnCalendar: true })` → phone settings Monday + show notes on (CL18a-phone-sees-desktop-change.png); `caldav.pushEventsToProvider` false on desktop → phone payload false. All three set back from desktop and read back on the phone after a foreground pass.
+- [x] CL017 Phase commit (after CL018–CL019).
+      Evidence: 8603d4d93 feat(ios) core, the feat(desktop) D3a commit after it, and the docs(docs) commit carrying chapters 00/05/06/13 and this file.
 
 ## Phase 2: primitives and shell
 
-- [ ] CL020 `Tokens.Calendar`: 6 type hues (rail, surface, meta ink) light +
+- [x] CL020 `Tokens.Calendar`: 6 type hues (rail, surface, meta ink) light +
       dark, dashed date-reminder style, 11 event colors, now-line, today
       fill; AA contrast checked.
-- [ ] CL021 Primitives: item chip (inline + block layout, rail, checkbox for
+      Evidence: `Tokens+Calendar.swift` (six hues rail/surface/meta light+dark, dashed `note_date`, 11 event colours, now line, today fill); `CalendarTokenTests.every_meta_ink_clears_AA_on_its_surface_in_both_styles` green (Unit, 17/17 calendar tests).
+- [x] CL021 Primitives: item chip (inline + block layout, rail, checkbox for
       tasks, ended / triggered fade, selected state, custom color), week
       strip day cell (dot row, today fill), all-day strip, time gutter +
       hour grid, now-line, overlap-lane layout (port of `overlap-layout.ts`,
       unit-tested), span-bar layout per week row (unit-tested).
-- [ ] CL022 Entry point: More › Calendar row, More tab selected state,
+      Evidence: `CalendarChip` (inline/block/compact, rail, task checkbox, ended fade, selected, custom colour), `CalendarWeekStrip`, `CalendarAllDayStrip`, `CalendarTimeGrid` (gutter, hairlines, now line); `CalendarLayoutTests.overlapping_items_share_a_cluster_of_lanes` + `spans_clip_to_the_week_and_stack_rows` green; CL01-day.png, CL03-week.png.
+- [x] CL022 Entry point: More › Calendar row, More tab selected state,
       deep-link route `memry://calendar?date=&event=`.
-- [ ] CL023 Calendar screen shell: large month title + `toolbarTitleMenu`
+      Evidence: More › Calendar row (`more.calendar`), More tab stays selected (every CL0x screenshot); `xcrun simctl openurl … memry://calendar?date=2026-09-25` opened Day on Fri Sep 25 in the open vault (driver run); `a_calendar_link_reads_its_day_and_event` green.
+- [x] CL023 Calendar screen shell: large month title + `toolbarTitleMenu`
       (02), glass capsule (search, filter), floating "+", view state
       persisted per device (view, anchor date, filters, timeline settings),
       paging model, loading and error states (`ErrorMapping`).
       Evidence: CL02-title-menu.png.
+      Evidence: CL02-title-menu.png (views, Today with date, Go to date, Calendar settings); glass capsule + floating + on every screen; view + anchor survive relaunch (reopened on the deep-linked Sep 25), `view_state_decodes_an_older_shape` green; failures go through `ErrorMapping.userFacing` in `CalendarStore.report`.
 
 ## Phase 3: views
 
-- [ ] CL030 **01 Day**: week strip paging in step with the day pager, dots,
+- [x] CL030 **01 Day**: week strip paging in step with the day pager, dots,
       all-day strip, grid scrolled to now on today, chips per CL021, pull to
       refresh. Evidence: CL01-day.png.
-- [ ] CL031 **03 Week**: 7 columns, span row, today column tint, swipe by
+      Evidence: CL01-day.png; driver: swipe on the grid moves one day (Oct 1 → Oct 2), swipe on the week strip moves a week (Sep 26 → Oct 3), vertical scroll works over the grid, today opens an hour above the now line, all-day strip pinned (three rows, then scrolls); `.refreshable` → `store.sync()`.
+- [x] CL031 **03 Week**: 7 columns, span row, today column tint, swipe by
       week, `weekStartDay`. Evidence: CL03-week.png.
-- [ ] CL032 **04 Month**: grid, dots, multi-day bars, "N more", tap day →
+      Evidence: CL03-week.png: seven columns, span row (three rows then scrolls, §6), today column tint, compact chips; swipe pages by week (`DragGesture` on the grid); columns follow `store.weekStartsOn`.
+- [x] CL032 **04 Month**: grid, dots, multi-day bars, "N more", tap day →
       list below, double tap → Day, long press + drag → CL040 all-day.
       Evidence: CL04-month.png.
-- [ ] CL033 **05 Year** + **06 day peek**: tap day → medium sheet, row →
+      Evidence: CL04-month.png (grid, dots, "+N", multi-day bars, weekends and other months dimmed, selected-day list); driver: double tap Sep 24 → Day Sep 24; long press Sep 15 + drag to Sep 17 → composer "Tue, Sep 15 – Sep 17" all-day.
+- [x] CL033 **05 Year** + **06 day peek**: tap day → medium sheet, row →
       item sheet, Open day → Day, tap month name → Month.
       Evidence: CL05-year.png, CL06-peek.png.
-- [ ] CL034 **07 Timeline**: zoom segmented, pinned title column, grouped
+      Evidence: CL05-year.png (three columns, tint month names, today, dots), CL06-peek.png; driver: tap Aug name → Month Aug; peek row "Coffee with M." → Day Sep 26 + its event sheet.
+- [x] CL034 **07 Timeline**: zoom segmented, pinned title column, grouped
       rows, bars / due diamonds / overdue / undated hint, today line, hold +
       drag bar and ends, tap undated day to date it, Undo.
       Evidence: CL07-timeline.png.
-- [ ] CL035 **08 Display** and **09 bar actions**: every action of
+      Evidence: CL07-timeline.png, CL07-timeline-drag.png; driver on `[agent] Timeline task` / `[agent] Undated task` (project `[agent] Calendar project`): zoom segmented, pinned title column, grouped rows with dot + count, bars / diamonds / overdue red, today line; tap selects, drag moved Oct 4 → Sep 30 with "Reschedule …" + Undo; Clear dates → undated row, a tap on its day dated it; Undo restored Sep 30 → Oct 7. `CalendarTimelineTests` 8/8.
+- [x] CL035 **08 Display** and **09 bar actions**: every action of
       `timeline-action-panel` (open, open in Tasks, set start, set due, week
       earlier / later, clear dates, complete / uncomplete, change project).
       Evidence: CL08-display.png, CL09-actions.png.
-- [ ] CL036 **10 Filter sheet**: sources switches, 7 type chips, per-provider
+      Evidence: CL08-display.png (Group by / Order by with current value, Show toggles), CL09-actions.png (preview card, 1 week earlier / later / Complete, Open task, Open in Tasks, Set start / due with dates, Change project, Clear dates); driver: 1 week later Sep 30 → Oct 7, 1 week earlier + Undo, Complete hid the row (completed off) + Undo brought it back, Clear dates.
+- [x] CL036 **10 Filter sheet**: sources switches, 7 type chips, per-provider
       calendar list, tick a not-syncing calendar subscribes it (CL013),
       refresh, Manage accounts → 27. Evidence: CL10-filter.png.
-- [ ] CL037 **11 Search**: results grouped, tap → Day on date + item sheet.
+      Evidence: CL10-filter.png (sources switches, seven type chips filled when on, per-provider list, refresh, Manage accounts); subscribe-on-tick logic `source_selection_ticks_subscribe_and_unticks_only_hide` green + `set_source_selected` write vector. The account has no provider calendars yet; the list with real rows is re-shot at CL061.
+- [x] CL037 **11 Search**: results grouped, tap → Day on date + item sheet.
       Evidence: CL11-search.png.
-- [ ] CL038 Phase commit.
+      Evidence: CL11-search.png (field focused, keyboard up, grouped This week / Later / Earlier, detail line per Paper 11); driver: tap "Coffee with M." → Day Sep 26 + event sheet.
+- [x] CL038 Phase commit.
+      Evidence: phase commit after CL034/CL035 (see git log).
 
 ## Phase 4: create and edit
 
-- [ ] CL040 **12 Quick create**: long press + drag on Day / Week grid with
+- [x] CL040 **12 Quick create**: long press + drag on Day / Week grid with
       15-min snap, handles, haptic per snap; Month range → all-day; composer
       above keyboard (title, time chip, calendar chip, More… → 13); save
       error keeps composer. Evidence: CL12-quick-create.png.
-- [ ] CL041 **13 New event sheet**: title, all-day toggle (desktop date
+      Evidence: CL12-quick-create.png: long press + drag on Day grid → composer above the keyboard with "Thu 14:15 – 15:15", calendar chip, More…; send created `[agent] Quick create test` (pushed, `calendar sync pass pushed [count=1]`); Month long press + drag → all-day composer (CL032). Hold uses `CalendarHoldDrag` (15-min snap, `.sensoryFeedback(.selection)` per snap). A failed create sets the inline error and keeps the composer (`send()` path, desktop parity).
+- [x] CL041 **13 New event sheet**: title, all-day toggle (desktop date
       conversion), starts / ends with duration, calendar picker grouped by
       provider with default, project, color (default + 11), notes / URL;
       project link after create, link failure keeps event + toast.
       Evidence: CL13-new-event.png.
-- [ ] CL042 **14 Event sheet**: edit + pills + "+", … menu, Join, read-only
+      Evidence: CL13-new-event.png: + opens 9–10 on the anchor day, title focused; Paper 13 layout (title on the sheet, All-day, Starts, Ends with duration, Calendar picker with default, Project, 12 swatches, notes, footer); saved `[agent] Plus event` with project `[agent] Calendar project` → the event sheet shows the project pill (link after create through `relink`, failure → toast).
+- [x] CL042 **14 Event sheet**: edit + pills + "+", … menu, Join, read-only
       attendees / reminders / visibility. Evidence: CL14-event.png.
-- [ ] CL043 **15 Event menu** + **22 Delete** + **23 Add to project**:
+      Evidence: CL14-event.png: centred "• Event", title edits in place (saved a rename through `updateEvent`), "Sat, Sep 26 · 09:00 – 10:00 · 1h", pills (calendar, project, colour Tomato after the editor set it), + opens the full sheet; Join row reads `conferenceData` (name + host, filled Join); attendees / reminders / visibility read-only sections.
+- [x] CL043 **15 Event menu** + **22 Delete** + **23 Add to project**:
       memrynote events only; Google-bound wording. Evidence: CL15-menu.png,
       CL22-delete.png, CL23-project.png.
-- [ ] CL044 **16 Move / resize**: hold + drag, edge handles, snap label,
+      Evidence: CL15-menu.png (Open, Add to project, Delete event), CL22-delete.png (desktop wording, destructive Delete), CL23-project.png (search, dots, current project first and ticked, Remove from …); the sheet … menu holds the same two actions.
+- [x] CL044 **16 Move / resize**: hold + drag, edge handles, snap label,
       events and timed tasks only, Undo toast restores both.
       Evidence: CL16-move.png.
-- [ ] CL045 **18 Promote**: routing (ask / skip rule with AI access), writes
+      Evidence: CL16-move.png: hold + drag moved `[agent] Plus event` 09:00 → 10:00 ("Moved to 10:00" + Undo); bottom handle resized 11:00 → 11:30 ("Now 10:00 – 11:30"), a second resize to 12:00 undone back to 11:30; timed tasks move through `setDue` with "Task rescheduled" + Undo; imported / read-only chips get no hold gesture (`canDrag`).
+- [x] CL045 **18 Promote**: routing (ask / skip rule with AI access), writes
       per CL013, opens 14 on the linked copy. Evidence: CL18-promote.png.
-- [ ] CL046 Phase commit.
+      Evidence: CL18-promote.png (Paper 18 alert on a pulled CalDAV occurrence, agent notice while CalDAV AI access is off, Don't ask again) → CL18-promote-linked.png (14 on the linked copy, binding `href::2026-09-28T07:00:00.000Z`); with Don't ask again set the alert still shows while AI consent is off (desktop's rule), and after turning CalDAV "Let AI read" on the Oct 12 occurrence opened straight into its copy (CL18-promote-skip.png). Both settings are on the CL094 restore list.
+- [x] CL046 Phase commit.
+      Evidence: 0284a1d67 feat(ios) create/edit/move/resize; CL045 lands with the Phase 6 commit.
 
 ## Phase 5: other items and cross-feature
 
-- [ ] CL050 **17 Task sheet**: status toggle + Undo, breadcrumb, pills,
+- [x] CL050 **17 Task sheet**: status toggle + Undo, breadcrumb, pills,
       description, subtasks toggle, Move row (Later / Tomorrow / Next week
       from `snooze-options`), … (Source note, Pick date & time → Tasks When
       sheet, Remove due date), Open task → Tasks detail; chip checkbox
       completes in place. Evidence: CL17-task.png.
-- [ ] CL051 **19 Read-only sheet**: subscribed, read-only CalDAV and This
+      Evidence: CL17-task.png (breadcrumb, … and close on one line, status circle + title, date from the task itself, coloured pills, description, subtasks disclosure with counter, Move chips from `snooze-options` — Later only for timed tasks — Complete + Open task); driver on `[agent] Undated task`: Complete → Done pill + Reopen, circle reopened it, Tomorrow moved it off Sep 29; `[agent] Timeline task` › Open task → its Tasks detail. … holds Source note, Pick date & time (Tasks detail with the When sheet), Remove due date.
+- [x] CL051 **19 Read-only sheet**: subscribed, read-only CalDAV and This
       iPhone events; recurrence text (`describeRecurrence`), alerts,
       conference + phone PIN, location, attendees (6, show more), links in
       text, details-load error line. Evidence: CL19-readonly.png.
-- [ ] CL052 **20 Note sheet**: note vs date reminder, Open note at anchor.
+      Evidence: CL19-readonly.png (subscribed `[agent] Holidays`), CL19-readonly-iphone.png (This iPhone), CL19-readonly-rich.png (This iPhone subscription `[agent] Rich`: "Repeats every week on Tue", Zoom + Join + `zoom.us/j/…`, "Join by phone" line, location, 8 attendees organizer first with Show more, links in the notes tappable). EventKit details now follow `eventkit-details.ts` (`CalendarEventKitDetails`); `CalendarEventDetailsTests` 4/4 cover alerts (iOS drops VALARMs from subscribed calendars), the rule text, the call and the phone PIN. A failed `externalEvent` read shows the details-load line.
+- [x] CL052 **20 Note sheet**: note vs date reminder, Open note at anchor.
       Evidence: CL20-note.png.
-- [ ] CL053 **21 Snooze sheet**: Open in Inbox (focused), Unsnooze,
+      Evidence: CL20-note.png (Paper 20: kind line with close, title, "Mon, Sep 14", Open note, footnote); with Show notes on (then switched back off) Month showed pink note days, the Sep 14 row opened the sheet, Open note opened "Lisbon Food Map". Date reminders use the same sheet with the dashed kind mark.
+- [x] CL053 **21 Snooze sheet**: Open in Inbox (focused), Unsnooze,
       Reschedule via Inbox snooze menu. Evidence: CL21-snooze.png.
-- [ ] CL054 Deep links: Agent Chat style `date + event` opens Day + sheet;
+      Evidence: CL21-snooze.png (Paper 21: "Snoozed inbox item · back at 12:17", preview, Open in Inbox / Unsnooze now / Reschedule card, footnote); Open in Inbox opened the item's Inbox detail. Reschedule is the Inbox snooze menu (`InboxSnoozeMenuItems`) and its date sheet.
+- [x] CL054 Deep links: Agent Chat style `date + event` opens Day + sheet;
       project hub "Calendar event" row opens the event.
-- [ ] CL055 Phase commit.
+      Evidence: `xcrun simctl openurl memry://calendar?date=2026-09-03&event=<id>` from the Notes tab → Day Sep 3 with the `[agent] Quick create test` sheet; project hub "Linked" row now names the event and opens it on its day (CL54-hub-link.png); a bare event id resolves the day from the record.
+- [x] CL055 Phase commit.
+      Evidence: 61b240f91 (task, note, snooze sheets) and e6782e1f1 (read-only sheets); the rich details land with the Phase 6 commit.
 
 ## Phase 6: provider runtime, accounts and settings (D3 / D4)
 
-- [ ] CL070 Shared provider logic in core per CL003 split: write routing,
+- [x] CL070 Shared provider logic in core per CL003 split: write routing,
       Google and iCal field mapping, recurrence expansion, ICS parsing,
       sync-state model. Vectors from desktop (`google/mappers`, `ical/**`,
       `provider/write-routing`, `writer-compat`).
+      Evidence: core `domain/calendar_items/{ical/**, ics*, providers/**}` (routing, Google body / remote mapping, CalDAV objects, bindings, push queue, source cursor + status); `calendar-ical.json` (desktop `parseIcsFeed`, URL + CalDAV ids) and new `calendar-write.json` (desktop `eventToICalendar` / `patchICalendar` whole + occurrence / `excludeOccurrence`, `mapCalendarEventToGoogleInput` recurrence, `isAppVersionBelow`); `tests/calendar_ical_vectors.rs`, `tests/calendar_write_vectors.rs` 3/3 (a tampered vector fails), `CalendarWriteConformanceTests` 1/1, `vectors:check` 22 classes, cargo 1147 green. Write routing is restated in `calendar_provider_push.rs` (desktop's `resolveWriteRoute` reads its DB and cannot load in the vector script); Google's `toGoogleEventPayload` / `mapRemoteEvent` are private to `client.ts` and are restated in core unit tests.
 - [ ] CL071 Google on iOS: `ASWebAuthenticationSession` + PKCE with the iOS
       client, Keychain storage, multiple accounts, reconnect-required state,
       incremental pull with cursor reset, push through routing, revoke on
@@ -339,76 +388,574 @@ pnpm lint && pnpm typecheck
       reuse it with the `calendar` scope added incrementally. If that client's
       Cloud project lacks the Calendar API or the consent screen lacks the
       scope: §7 blocker for Kaan, continue CL072–CL074.
-- [ ] CL072 Provider-auth transfer: linking a new device carries Google
+      Partial (open, §7): sign-in (`ASWebAuthenticationSession`, PKCE, calendar scope), Keychain tokens, refresh, reconnect-required, 410 cursor reset, push through routing and revoke on disconnect are built; Google accepts the iOS client with the calendar scope (CL71-google-signin.png). Import, push and revoke need Kaan's Google login.
+- [x] CL072 Provider-auth transfer: linking a new device carries Google
       accounts to / from iOS the way desktop does, or each device signs in;
       per CL003. Test with the desktop peer.
-- [ ] CL073 Subscribed (ICS / webcal) on iOS: add, http warning, fetch with
+      Evidence: each device signs in (§5 F3b, §6): a desktop refresh token is bound to the desktop client. Linking tolerates desktop's block: `a_provider_auth_block_from_desktop_is_left_unread` (routes.rs) completes a link whose `complete` carries `encryptedProviderAuth…`; an iOS initiator sends none, which desktop treats as absent (`ApproveLinkingRequestSchema` optional fields). Settings reads "Connected on another device · sign in here" for the desktop's Google account on this phone (CL27-settings.png). No new link was made against the live account (it would register a device on Kaan's account).
+- [x] CL073 Subscribed (ICS / webcal) on iOS: add, http warning, fetch with
       desktop limits and errors, hourly refresh, rename / color / remove.
-- [ ] CL074 CalDAV on iOS: presets, app password in Keychain, discovery,
+      Evidence: CL29.png; `[agent] Holidays` added from a webcal link, renamed and recoloured (Sage), http link warned, errors from `calendar-ical.json` codes; core `feed_*` + `CalendarFeedFetcher` (30 s, 20 MB, 5 redirects), refresh due on load / foreground / background pass; `tests/calendar_feeds.rs`, `CalendarIcalConformanceTests`.
+- [x] CL074 CalDAV on iOS: presets, app password in Keychain, discovery,
       pull / push with etags, writer-compat acknowledgement; verified
       against local Radicale.
+      Evidence: Radicale 3 on `https://127.0.0.1:5232` (self-signed CA in the simulator's root store): preset Radicale / Baïkal, writer-compat notice listing the account's older desktops + acknowledgement, discovery of `[agent] Work`, password in Keychain `com.memry.calendar-providers` (CL30-caldav-connected.png). Pull mirrored the weekly series; promote bound one occurrence; a phone edit PUT an override (RECURRENCE-ID) with If-Match; a server edit flowed back into the event without an echo push; a phone delete wrote EXDATE and kept the series; a new event PUT `memry-….ics` (CL30-caldav-pushed.png). Radicale's log shows one PUT per phone change. `calendar_provider_push.rs` 5/5.
 - [ ] CL075 Background and foreground scheduling (`BGAppRefreshTask`,
       foreground, Sync now, realtime nudge if CL003 found one); no double
       push when desktop and iOS both hold the same account (test: edit one
       event on iOS with both online, exactly one remote write).
+      Partial (open, §7): foreground pass on opening and on each return (the phone pulled desktop's restored settings on foregrounding, CL018a); pull to refresh / Sync now force provider pulls; Radicale logged one PUT per phone edit and no echo push after a server edit (CL074). The iOS shell opens no realtime socket, so the Google nudge cannot reach it (§6). `BGAppRefreshTask` is registered and scheduled, but `submit` is unavailable on the Simulator; the background wake needs a device.
 
-- [ ] CL060 **27 Calendar settings**: account rows with status, default
+- [x] CL060 **27 Calendar settings**: account rows with status, default
       calendar (one provider holds it), week start, show notes; all two-way
       per D3a, device-local rows labelled as such; account rows show this
       device's connection state.
       Evidence: CL27-settings.png.
+      Evidence: CL27-settings.png (Paper 27: large title, account rows with a status line — Google "Connected on another device · sign in here" in amber, CalDAV "Connected · 1 account" in green, "1 link · read-only", This iPhone "On" —, default calendar in ink, Sunday / Monday segmented, show notes, Paper's footers, "Date properties on this iPhone" as the device-local section). Week start / show notes / default write through the D3a keys (CL017).
 - [ ] CL061 **28 Google**: accounts with status, imported calendars with
       sync status and Retry, push toggle, AI toggle; Add account, Reconnect,
       Sync now, Disconnect (CL071). Evidence: CL28-google.png.
-- [ ] CL062 **29 Subscribed** and **30 CalDAV**: lists, statuses, errors,
+      Partial (open, §7): CL28-google.png (Paper 28: account with "Sign in on this iPhone" + Reconnect, imported calendars with status, push and AI toggles, Add account, Disconnect). Retry, Sync now and Disconnect against a live account need the Google login.
+- [x] CL062 **29 Subscribed** and **30 CalDAV**: lists, statuses, errors,
       rename / color / refresh / remove, presets, writer-compat notice and
       acknowledgement; Subscribe and Connect run on iOS (CL073, CL074).
       Evidence: CL29.png, CL30.png.
+      Evidence: CL29.png; CL30-caldav-connected.png (Paper 30: Service / Server / Username / App password, preset footnote, the amber notice with its acknowledgement, Connect, the account with its calendar switch and "Updated … ago", Disconnect, After connecting: push, AI, Sync now · every 15 min).
 - [ ] CL063 **24 Connect**, **25 Default calendar**, **26 AI consent**:
       prompt only while not connected, default picker after connect,
       consent once per provider (stored where desktop stores it).
       Evidence: CL24.png, CL25.png, CL26.png.
-- [ ] CL064 **31 This iPhone**: EventKit permission states (not asked,
+      Partial (open, §7): CL24-connect.png (pill only while Google is connected elsewhere and this phone holds no token; Not now hides it), CL26-consent.png (asked once per provider, stored in `calendar.<provider>.agentReadEventsConsent`). 25 opens after a first connect and needs the Google login.
+- [x] CL064 **31 This iPhone**: EventKit permission states (not asked,
       denied → Open Settings / Check again, restricted, write-only, allowed),
       per-calendar switches, duplicate guard, events shown as read-only
       (19), never synced. Evidence: CL31-a/b/c.png.
-- [ ] CL065 Phase commit.
+      Evidence: CL31-a.png (not asked), CL31-b.png (denied: Open Settings / Check again), CL31-c.png (allowed, per-calendar switches; a calendar already connected in memrynote starts off); EventKit items open the read-only sheet (CL19-readonly-iphone.png, CL19-readonly-rich.png) and live only in memory (never written to the vault).
+- [x] CL065 Phase commit.
+      Evidence: a61d6c127 feat(ios) Google, CalDAV and calendar onboarding; Phase 7 fixes land in the final commit.
 
 ## Phase 7: verification and wrap-up
 
-- [ ] CL090 Accessibility: AX5 (lists reflow, Week / Month list fallback at
+- [x] CL090 Accessibility: AX5 (lists reflow, Week / Month list fallback at
       AX3+), forced RTL, Reduce Motion / Transparency, VoiceOver tree dumps
       for Day, event sheet, composer; grid actions without drag.
-- [ ] CL091 Dark mode: light + dark screenshots of 01, 04, 07, 13, 14, 27.
-- [ ] CL092 Performance: 200 items / week, paging without refetch, 60 fps
+      Evidence: CL90-ax5-{day,week,month,sheet,composer}.png (AX5: Week and Month read as agenda lists, Week's list now scrolls and refreshes, week strip and gutter labels scale down instead of wrapping, all-day rows grow with `@ScaledMetric`); CL90-rtl-{day,week,month,timeline}.png (`-AppleTextDirection YES -NSForceRightToLeftWritingDirection YES`: gutter trailing, days right to left, span bars and the timeline axis mirrored); CL90-vo-{day,event-sheet,composer}.txt (accessibility trees: every chip a button with a spoken label, strip days "Monday, September 28", named actions). Grid actions without drag: chips carry "Move 15 minutes later/earlier", timeline bars "1 week earlier/later", empty hour columns "New event at 9 AM / 12 PM / 3 PM", tasks "Complete …" (`accessibilityActions`). Reduce Motion: the calendar animates only through `calmAnimation` and system scroll; Reduce Transparency: surfaces use `blockSurface` (both from spec 005). A `.dynamicTypeSize(...)` cap on the grid chrome was tried first and crashed SwiftUI (`EXC_BAD_ACCESS` copying a DragGesture during body update); replaced by per-label scaling.
+- [x] CL091 Dark mode: light + dark screenshots of 01, 04, 07, 13, 14, 27.
+      Evidence: CL91-{01-day,04-month,07-timeline,13-new-event,14-event,27-settings}-{light,dark}.png: dark canvas, hue surfaces at their dark values, ink icons, amber / green status lines readable; no light-only fills.
+- [x] CL092 Performance: 200 items / week, paging without refetch, 60 fps
       trace; numbers in §5.
-- [ ] CL093 Tests: Unit (layout, projection seam, copy, state), UI
+      Evidence: §5 F5 (core 1.06 / 0.31 ms, Swift layout 11.9 ms after a 17× fix, paging 2 reads for 4 moves). The Instruments trace is left open for Kaan (§8).
+- [x] CL093 Tests: Unit (layout, projection seam, copy, state), UI
       (`CalendarUITests` for lanes A–J of 00b), Conformance for every core
       call; all green.
-- [ ] CL094 Delete every `[agent] ` / `Agent Test …` item on iOS and desktop;
+      Evidence: Unit 816 tests / 119 suites green (calendar: timeline, layout incl. the 200-item week, tokens, read-only details, fast instant reader). Conformance 38 / 12 suites green (calendar.json, calendar-ical.json, calendar-write.json). UI: new `CalendarUITests` 10/10 (one per lane A–J), Tasks 6/6, Settings 4/4, Inbox 2/2, Editor 1/1 with `TEST_RUNNER_MEMRY_UI_VAULT`; Journal 4/6, the two failures need spec 006's Wednesday → "Agent Test Journal" template, which this vault does not hold (§7). cargo 1148, clippy, fmt, `vectors:check` 22 classes, desktop calendar/settings vitest 1044, `pnpm lint`, `pnpm typecheck`, line ceilings, architecture all green. Found by the plans and fixed: the Features "last one on" guard counted Calendar (it lives under More, not in the tab bar); three spec 004–006 UI tests assumed one vault named "MemryNote", a project row above the fold, and Status board columns.
+- [x] CL094 Delete every `[agent] ` / `Agent Test …` item on iOS and desktop;
       confirm none remain.
-- [ ] CL095 Final report (§8), last phase commit.
+      Evidence: through the desktop peer's IPC: 12 events, 13 tasks, 8 projects, 2 tags; through the phone: 11 more UI-test tasks (bulk delete), the "Agent Test Redesign" project, tags `test` / `agentuicf341`, the 2099-08-07 journal line (cleared), CalDAV `[agent] Work` disconnected (password removed from the Keychain), `[agent] Holidays` removed, This iPhone off, the simulator Calendar's `[agent] Phone event` deleted and `[agent] Rich` unsubscribed; Radicale and the feed server stopped. Phone vault query afterwards: 0 `[agent]` events, tasks, external events; 0 agent projects; 0 CalDAV sources / bindings; outbox empty. Settings put back: week start Monday, show notes off, CalDAV push on, `promoteConfirmDismissed` false; the CalDAV / ICS AI consent ended at `false` (§6). Left, not this run's: a filed `[agent]` inbox item from Sep 25.
+- [x] CL095 Final report (§8), last phase commit.
+      Evidence: §8 written; the final commit carries Phase 7.
 
 ---
 
 ## 5. Verified facts (filled by CL001–CL004, CL092)
 
-_empty_
+<!-- fact — file:line -->
+
+### F1 Payloads (CL001)
+
+- **`calendar_event`** (`packages/contracts/src/sync-payloads.ts:371`): every key optional:
+  `title, description|null, location|null, startAt, endAt|null, timezone, isAllDay,
+recurrenceRule(obj)|null, recurrenceExceptions(string[])|null, attendees(obj[])|null,
+reminders(obj)|null, visibility(default|public|private|confidential)|null, colorId|null,
+conferenceData(obj)|null, parentEventId|null, originalStartTime|null,
+targetCalendarId|null, archivedAt|null, clock, fieldClocks|null, createdAt, modifiedAt`.
+  Desktop's push is its whole row (`calendar-event-handler.ts:224` `buildPushPayload`; queue
+  payload = `serialize: (local) => local`, `calendar-event-sync.ts:73`), so local columns
+  (`syncedAt`) also ride along. Field-merged over 14 fields
+  (`field-merge-calendar.ts:4` `CALENDAR_EVENT_SYNCABLE_FIELDS`: title … conferenceData;
+  **not** `targetCalendarId/parentEventId/originalStartTime/archivedAt`).
+- **`calendar_source`** (`:410`): `provider, kind(account|calendar), accountId|null, remoteId,
+title, timezone|null, color|null, isPrimary, isSelected, isMemryManaged, syncCursor|null,
+syncStatus(idle|ok|error|pending), lastSyncedAt|null, metadata(obj)|null, archivedAt|null,
+clock, createdAt, modifiedAt`. Push = whole row incl. `lastError`, `syncedAt`
+  (`calendar-source-sync.ts:76`). Document clock only.
+- **`calendar_binding`** (`:431`): `sourceType(event|task|reminder|inbox_snooze), sourceId,
+provider, remoteCalendarId, remoteEventId, ownershipMode(memry_managed|provider_managed),
+writebackMode(schedule_only|time_and_text|broad), remoteVersion|null,
+lastLocalSnapshot(obj)|null, archivedAt|null, clock, createdAt, modifiedAt`.
+- **`calendar_external_event`** (`:447`): `sourceId, remoteEventId, remoteEtag|null,
+remoteUpdatedAt|null, title, description|null, location|null, startAt, endAt|null,
+timezone|null, isAllDay, status(confirmed|tentative|cancelled), recurrenceRule|null,
+attendees|null, reminders|null, visibility|null, colorId|null, conferenceData|null,
+rawPayload(obj)|null, archivedAt|null, clock, createdAt, modifiedAt`.
+- **DB shapes** (`packages/db-schema/src/schema/calendar-*.ts`, desktop migrations
+  `0024_google_calendar_foundation` … `0028_calendar_source_last_error`): same columns in
+  snake_case plus local `synced_at`, `calendar_sources.last_error` (0028), `field_clocks`
+  on `calendar_events` (0026), rich fields (0027), `target_calendar_id` (0025).
+  `calendar_external_events.source_id` is NOT NULL FK → `calendar_sources` ON DELETE cascade.
+- **Apply rules on desktop** (the iOS core copies them, CL010/CL011):
+  - source / binding / external (`packages/sync-client/src/item-handlers/calendar-*-handler.ts`):
+    document gate (skip when local dominates; concurrent → apply remote under merged clock);
+    overlay with `data.x ?? existing.x` for every key (**a `null` keeps the local value**),
+    except external `attendees, reminders, visibility, colorId, conferenceData` which use
+    presence (explicit `null` clears). Insert defaults: source `provider 'google', kind
+'calendar', remoteId = id, title 'Untitled calendar', syncStatus 'idle'`; binding
+    `sourceType 'event', sourceId = id, provider 'google', remoteCalendarId 'primary',
+remoteEventId = id, ownership 'memry_managed', writeback 'broad'`; external
+    `title 'Untitled imported event', status 'confirmed', remoteEventId = id`.
+  - external event whose `sourceId` has not landed throws `MissingSyncParentError` → parked
+    and retried (`calendar-external-event-handler.ts:48`). A create with no `sourceId` is the
+    same error with an empty id.
+  - event (`calendar-event-handler.ts:26`): skip / field merge (a remote key that is
+    `undefined` is replaced by the local value before `mergeFields`; routing keys
+    `targetCalendarId, parentEventId, originalStartTime` by presence; `archivedAt` by `??`) /
+    wholesale overlay (`??` for title…recurrenceExceptions, presence for attendees, reminders,
+    visibility, colorId, targetCalendarId, parentEventId, originalStartTime, conferenceData).
+    Missing `fieldClocks` on either side are seeded from the document clock
+    (`initAllFieldClocks`). Insert defaults `title 'Untitled event', startAt now, timezone 'UTC'`.
+  - deletes: document-clock tombstone gate, then row delete (every type).
+  - unknown keys: zod strips them on desktop (object schemas); the iOS core keeps the verbatim
+    payload (§13.2 rule 3), so unknown keys round-trip on iOS.
+- **Device-local rows** (`calendar-api.ts:298` `DEVICE_LOCAL_CALENDAR_PROVIDERS`):
+  `apple-eventkit` sources never sync; ICS (`ics`) and EventKit **external events** never
+  sync (each device fetches the feed itself; the ICS `calendar_source` row does sync).
+  So iOS must fetch ICS feeds itself to show subscribed events (CL073).
+- **Apply order** (chapter 05): source 0, event / external 2, binding 3.
+
+### F2 Projection (CL002, `apps/desktop/src/main/calendar/projection.ts`)
+
+- Range input `startAt/endAt` ISO, `includeUnselectedSources` (default false),
+  `includeExternal`, `externalProviders` (`calendar-api.ts:92`). Items sorted by `startAt`
+  string then `projectionId` (`:131`).
+- **event** (`:139`): `archived_at IS NULL AND startAt < end AND coalesce(endAt,startAt) >= start`
+  (ISO string compare). id `event:<id>`, editability all true, source `memrynote`
+  (provider null, isMemryManaged true), binding = live binding `sourceType 'event'`.
+  Colour: `colorId` → event colour → hex; else the colour of the Google calendar named by
+  binding.remoteCalendarId ?? targetCalendarId (google, kind calendar, not archived,
+  `calendarDisplayHex(color)`).
+- **task** (`:229`): `dueDate` in local day range `[localDate(start), localDate(end-1ms)]`,
+  not completed, not archived; order dueDate, dueTime, position. `isAllDay = !dueTime`;
+  `startAt = local(dueDate, dueTime ?? 00:00)` as UTC ISO; `endAt` = next local midnight for
+  all-day else null. canMove true, canResize false, canEditText true, canDelete true. Source
+  `memrynote Tasks`.
+- **reminder** (`:285`): `targetType != 'note_date'` and (pending with remindAt in [start,end))
+  or (snoozed with snoozedUntil in [start,end)). startAt = snoozedUntil when snoozed;
+  `snoozeOffsetMinutes = round((snoozedUntil-remindAt)/60000)`; title `title.trim() || 'Reminder'`;
+  preview `note ?? highlightText`. canResize false, others true. Source `memrynote Reminders`.
+- **note_date** (`:350`): reminders `targetType 'note_date'`, every status (non-snoozed by
+  remindAt, snoozed by snoozedUntil); title = note title or `Untitled`; `noteId`, `anchorId`,
+  `isTriggered = status in (triggered, dismissed)`; read-only. Source `memrynote Notes`.
+- **snooze** (`:431`): inbox items `snoozedUntil in [start,end)`, not filed, not archived;
+  visualType `snooze`, sourceType `inbox_snooze`; canMove true, canResize false,
+  canEditText false, canDelete true. Source `memrynote Inbox`.
+- **external_event** (`:474`): join source; neither archived; overlap rule as events;
+  `isSelected = 1` unless `includeUnselectedSources`; optional provider filter. Editable
+  (promotable) iff provider `supportsWrite` (google, caldav); ics / apple-eventkit / unknown
+  read-only (`provider/capabilities.ts`). timezone `event.tz ?? source.tz ?? local`. Colour
+  `colorId` else `calendarDisplayHex(source.color)`.
+- **note (date property)** (`:552`): `note_properties` rows with `type 'date'` and name in the
+  calendar-enabled set, value in [start,end) (string compare), local day of the value
+  (bare `YYYY-MM-DD` taken as is); all-day on that day; id `note:<noteId>:<name>`,
+  preview = property name. The enabled set is `PropertyDefinitionsService.listCalendarEnabledNames()`
+  = the vault's `.memry/properties.md` `showOnCalendar` flags; **not synced**:
+  `PropertyDefinitionSyncPayloadSchema` (`sync-payloads.ts:328`) has no such key and a synced
+  row reads `showOnCalendar: false` (`vault/property-definitions.ts:443`).
+- **note by created date** (`:609`), only when `showNotesOnCalendar`: markdown notes with no
+  journal date, `createdAt in [start,end)`, all-day on local creation day, id
+  `note-created:<id>`; dropped when a property chip of the same note lands on that day.
+- Source selection filters external events only; `showNotesOnCalendar` gates created-date
+  notes only. Renderer: views request their visible window (`calendar-view-state.ts`).
+- Colours: `packages/contracts/src/calendar-colors.ts` (24 calendar colours, 11 event
+  colours with Google ids `lavender 1, sage 2, grape 3, flamingo 4, banana 5, tangerine 6,
+peacock 7, graphite 8, blueberry 9, basil 10, tomato 11`; legacy API hex → current hex).
+
+### F3 Writes (CL003, part 1: records)
+
+- **create event** (`ipc/calendar-handlers.ts:176`): nanoid, row with `colorId` from colour
+  name, `createdAt = modifiedAt = now`; enqueue create → clock `{dev:1}`, **every** field clock
+  ticked (`calendar-event-sync.ts:55`). Push = whole row.
+- **update event** (`:230`): only present keys; colour only when it differs; changed fields
+  (minus `modifiedAt`, `targetCalendarId`) tick their field clocks; document clock ticks.
+- **delete event** (`:318`): row deleted, tombstone payload = snapshot with ticked clock.
+- **promote** (`promote-external-event.ts`): refuses read-only providers; idempotent via
+  binding (provider, remoteCalendarId, remoteEventId) → archive mirror and return. Else new
+  event (copy of mirror fields, `targetCalendarId = source.remoteId`, `timezone ?? 'UTC'`,
+  `recurrenceExceptions null`, clock = copy of mirror clock), new binding
+  (`provider_managed`, `time_and_text`, remoteVersion = etag, clock = mirror clock), mirror
+  `archivedAt = now`; enqueue create event, create binding, update external.
+- **source selection** (`calendar-handlers.ts:382`): only `kind 'calendar'`; upsert with
+  `isSelected`, tick clock, enqueue; provider `onSelectionChanged` (unselect purges mirrors,
+  select triggers a pull). So selection travels on the `calendar_source` record.
+- **settings**: `weekStartDay`, `showNotesOnCalendar`, `dayCellClickBehavior` live in the
+  device-local `calendar` group (`settings-handlers.ts:1286` `writeGroupSettings`), provider
+  groups `calendar.google` (`defaultTargetCalendarId, onboardingCompleted,
+promoteConfirmDismissed, pushEventsToGoogle, agentReadEventsConsent`) and
+  `calendar.<provider>` (`agentReadEventsConsent`, writable + `pushEventsToProvider`) too.
+  **None of them reaches settings sync today**: `SyncedSettingsSchema.calendar` has only
+  `weekStartDay` (`settings-sync.ts:45`) and nothing calls `syncSettingsFieldUpdate` for it;
+  the settings handler propagates no calendar group (`settings-handler.ts`). Desktop's
+  settings field clocks are written under device id `'local'` (`local-mutations.ts:911`).
+  Settings merge is per dotted path (`settings-sync.ts:78`): equal clocks with an absent
+  remote value keep the local value, so an old device that strips a key cannot clear it.
+
+### F3b Provider runtime (CL003, part 2)
+
+- **Capabilities** (`provider/capabilities.ts`): google write+push(relay)+multi-account,
+  mirror synced, `sync-token`, oauth2; caldav write, no push, multi-account, mirror synced,
+  `sync-collection`, basic auth, poll 15 min; ics read-only, mirror **device**, source
+  synced, conditional GET; apple-eventkit read-only, source+mirror device, darwin only;
+  unknown provider = read-only, device mirror.
+- **Write routing** (`provider/write-routing.ts`): live binding of any provider (oldest by
+  `createdAt`, then id) > event `targetCalendarId` looked up across sources (google wins a
+  collision; unknown id = google) > default write target (`calendar.defaultWriteTarget`
+  local setting `{provider, remoteCalendarId}`, non-google only while its source is live and
+  selected; else `calendar.google.defaultTargetCalendarId`) > `legacy_google` (managed
+  memrynote calendar).
+- **Google OAuth** (`google/oauth.ts`): desktop client `GOOGLE_CALENDAR_CLIENT_ID` (Cloud
+  project `244914619370`, same project as the iOS sign-in client in `Info.plist`
+  `MemryGoogleClientID`), loopback redirect, PKCE, token URL
+  `https://oauth2.googleapis.com/token`, revoke `
+https://oauth2.googleapis.com/revoke`. A refresh token is bound to the client that
+  minted it, so a desktop token is not refreshable with the iOS client id (and needs the
+  desktop secret). `provider-auth-transfer.ts` carries `{provider:'google', accountId,
+refreshToken}` encrypted inside device linking; iOS cannot use those tokens → each
+  device signs in itself (§6).
+- **Google push**: desktop registers a Google watch channel through the sync server
+  (`sync-server/src/routes/calendar-channels.ts`); Google's webhook hits
+  `routes/webhooks.ts:120`, which broadcasts `calendar_changes_available` on the user's
+  realtime socket. Any device with the socket sees the nudge.
+- **ICS** (`ics/ics-fetch.ts`, `ics-subscriptions.ts`): 30 s timeout, 20 MB cap, ≤ 5
+  redirects (301/302/303/307/308, http(s) only), window 90 days back / 365 ahead, refresh
+  default 1 h (15 min..24 h), runner tick 5 min; error codes `invalid_url, unreachable,
+timeout, not_found, unauthorized, http_error, too_large, not_a_calendar,
+too_many_redirects, unsupported_redirect` stored in `calendar_sources.last_error`.
+- **Writer compat** (`provider/writer-compat.ts`): before connecting a provider whose
+  writes older builds would not route, desktop lists linked devices older than the routing
+  release and shows a notice that must be acknowledged.
+
+### F4 Platform (CL004)
+
+- No calendar code on iOS; the only surface is `ProjectHubSections.swift` naming a linked
+  event. EventKit needs `NSCalendarsFullAccessUsageDescription` in `Info.plist` and
+  `EKEventStore.requestFullAccessToEvents()`; no entitlement is required for EventKit.
+- **More tab** = `MoreTabView` (`Features/Settings/SettingsNavigation.swift:29`), one
+  `NavigationStack` on `TasksRouter.settingsPath`; it already hosts `NoteRoute` pages, so
+  the calendar pushes inside it and More stays selected.
+- Cross-tab hooks: `TasksRouter.openTask(id)` (`TasksRootView.swift:54`) selects Tasks
+  with the detail; `InboxRouter.openItem(id, in:)` (`InboxScope.swift:26`);
+  `NoteRoute(id:)` (`NoteReadParts.swift:14`, no anchor field); the Tasks When sheet is
+  `TaskWhenSheet` over a `TasksStore`.
+- **No `memry://` scheme and no `onOpenURL` exist**; `Info.plist` registers only the
+  Google reversed-client-id scheme. CL022 adds the router.
+
+### F5 Performance (CL092)
+
+- Core range, one week holding 200 events (`tests/calendar_week_load.rs`): median
+  1.06 ms debug, 0.31 ms release, 5 runs.
+- Swift layout, the same week (lanes per day + span rows,
+  `a_week_of_200_items_lays_out_inside_a_frame`): 11.9 ms cold on the
+  simulator, under a 16.7 ms frame. Before this pass it took ~200 ms: every
+  `covers` / `spanStart` parsed ISO strings through `ISO8601DateFormatter`.
+  Now the core's `…Z` shape is read by arithmetic and each item's span days
+  are remembered (keyed by start, end, all-day, zone).
+- Paging: Week forward twice then back twice on the simulator read the core
+  twice (log `a calendar window was read`); the two weeks back came from the
+  window cache (12 windows, LRU). A sync pass or write refreshes cached windows.
+- A 60 fps Instruments trace was not recorded: the agent has no Instruments
+  session on this host. Open for Kaan (Time Profiler / Hitches on Week with
+  the seeded week).
 
 ## 6. Decisions log (agent-made choices during the run)
 
-_empty_
+<!-- date — id — choice — why -->
+
+- 2026-09-26 — CL000 — The spec commit step was a no-op: `origin/main` already carries
+  `specs/007-ios-calendar/{goal,tasks}.md` byte-identical (4afcdf28b). Copied `.env*`,
+  `apps/sync-server/.dev.vars`, `.specify/feature.json` from the main checkout;
+  `apps/ios/buildServer.json` was not kept (it points at the main checkout's project).
+- 2026-09-26 — CL000 — No subagents: the request does not authorize delegation.
+- 2026-09-26 — CL002 — Calendar-enabled date properties are not synced on desktop (F2), so
+  iOS keeps its own device-local set and passes it to the projection, the same parameter
+  desktop's `getCalendarRangeProjection` takes. Default empty, as on a fresh desktop vault.
+- 2026-09-26 — CL002 — Local-time conversions (task due dates, all-day ends, note days)
+  run in the core from a `CalendarZone` **record** the shell builds from `TimeZone.current`
+  (base offset + DST transitions over the window), not a foreign trait: `seams/mod.rs`
+  closes the seam list. JavaScript's gap/overlap rules are rebuilt in `zone.rs`. Vectors are
+  generated under `TZ=America/New_York` and carry the same table.
+- 2026-09-26 — CL010 — An external event that lands before its source is stored and
+  simply not shown (the projection inner-joins the source) instead of desktop's park +
+  orphan repair; when the source lands it shows. Desktop refuses a payload whose
+  non-nullable key is `null` (zod); the core keeps the local value for that key and applies
+  the rest (substitute, never refuse). ICS mirror events live in the device-local
+  `calendar_local_events` table (never in `sync_items`), as desktop keeps them per device.
+- 2026-09-26 — CL017 — `scripts/check-staged-secrets.mjs` read staged files with the default
+  1 MB `maxBuffer`; the generated Swift bindings passed 1 MB and failed the pre-commit hook
+  (`ENOBUFS`). Raised to 64 MB in the core commit (tooling, no behaviour change). Desktop D3a
+  went in as its own `feat(desktop)` commit so it reviews apart from the core.
+- 2026-09-26 — CL014 — The timeline model lives in Swift, not the core: it is pure view
+  math over the task list `TasksStore` already holds (`timeline-model.ts` is renderer
+  code), so a Swift port with unit tests restating desktop's is the cheaper pin.
+- 2026-09-26 — CL015 — The UniFFI object is `VaultCalendar`: a generated `Calendar` class
+  shadowed `Foundation.Calendar` across the app (`'Calendar' is ambiguous`).
+- 2026-09-26 — CL018 — Desktop mirrors calendar groups through one settings-store write
+  listener (every writer: settings IPC, onboarding, write routing) instead of touching each
+  call site; remote applies write the raw table, so they never echo. A cleared default
+  target is an absent row locally and `null` on the wire. The core's settings merge now keeps
+  a local value when the remote omits it under an equal field clock (an old build stripped
+  the key; a real removal ticks the clock) — desktop's `mergeRemote` already did.
+- 2026-09-26 — CL012 — Two projection details the phone cannot copy byte for byte:
+  desktop picks an item's binding by SQLite insert order (`new Map(rows)` keeps the last);
+  the phone orders by `createdAt` so the newest wins (same answer when rows arrived in
+  order). `localeCompare` for the tie-break sort is approximated (punctuation < digits <
+  letters, case second).
+- 2026-09-26 — CL003 — Google on iOS signs in itself with the iOS client (same Cloud
+  project); desktop refresh tokens from `provider-auth-transfer` are not importable (client
+  bound). Linking still works for every record; the account shows "Sign in on this
+  iPhone" until the user connects it here.
+- 2026-09-26 — CL003 — Core vs Swift split (goal D3 rule): **core** holds everything two
+  devices must agree on — record apply / merge, projection, record writes (create, update,
+  move, delete, promote, project link, source selection), write routing, Google
+  event ↔ record mapping, iCalendar parsing + recurrence expansion for ICS / CalDAV
+  mirrors, the mirror upsert / archive rules and the sync-state columns. **Swift** holds
+  transport and platform: URLSession requests (Google REST, CalDAV WebDAV, ICS GET),
+  `ASWebAuthenticationSession` + PKCE, Keychain, `BGAppRefreshTask`, EventKit. The core
+  exposes pure functions over request/response bodies so it never opens a socket
+  (Constitution I: no Rust networking on device).
+- 2026-09-26 — CL003 — D3a set: synced under `calendar.*` — `weekStartDay` (exists),
+  `showNotesOnCalendar`, `defaultWriteTarget`, `google.{defaultTargetCalendarId,
+onboardingCompleted, promoteConfirmDismissed, pushEventsToGoogle, agentReadEventsConsent}`,
+  `<provider>.{agentReadEventsConsent, pushEventsToProvider}`. Device-local:
+  `dayCellClickBehavior` / `calendarPageClickOverride` (desktop sidebar day panel, desktop
+  only per artboard 00), EventKit enablement + its per-calendar switches, provider secrets,
+  sync cursors (cursors live on the synced source row already, desktop behaviour).
+- 2026-09-26 — CL030 — SwiftUI `LongPressGesture.sequenced(before: DragGesture)` on scroll
+  content stopped the Day / Week grids from scrolling or paging at all (driver drag: no
+  movement; with the gesture off the grid scrolled). Replaced by `CalendarHoldDrag`, a
+  `UIGestureRecognizerRepresentable` long press that fails on early movement (leaving the pan
+  to the scroll view) and keeps tracking after it lands. Used for empty-time create, chip
+  move and Month range; the grid sets `scrollDisabled` while a hold is live.
+- 2026-09-26 — CL030 — The day pager re-centred a three-page window on every settle, which
+  shifted pages under a finishing scroll and skipped days (Sep 26 → Oct 1 on one swipe). It
+  now pages over ±60 days around a base that only moves near its edge or on a jump.
+- 2026-09-26 — CL031 — Desktop grows the all-day row to fit every item. On a phone five
+  all-day tasks pushed the hours off screen, so Day and Week show three rows and scroll the
+  rest inside the strip. Week chips narrower than 20 pt show the rail only (words broke
+  letter by letter).
+- 2026-09-26 — CL033 — Year follows Paper 05: three months a row (two at accessibility
+  sizes), every month name in tint ink, subtitle "Year · tap a day to peek, a month to open".
+- 2026-09-26 — CL034 — Desktop day widths (48 / 26 / 8 px) are for a wide window; the phone
+  canvas is about 260 pt beside the title column. iOS uses 20 / 7 / 2.5 pt so the three zooms
+  show about two weeks / six weeks / four months, one tick row as Paper 07 draws it (days;
+  week starts with "Oct 5" at a month change; month names). Header: "Timeline" with "By
+  project · N tasks · M events".
+- 2026-09-26 — CL034 — `VaultCalendarScope` built its store before the vault's tasks store
+  existed and never rebuilt, so Timeline had no tasks. The scope now rebuilds once the tasks
+  store arrives.
+- 2026-09-26 — CL036 — Paper 10's footer says "Filters apply to this view only"; filters here
+  are device state shared by every view, so the footer reads "Filters apply on this iPhone
+  only". Title "Calendars"; refresh on the left, filled check closes.
+- 2026-09-26 — CL035 — Bar menu per Paper 09: labelled control group (1 week earlier / 1 week
+  later / Complete), plain rows, set start / due carry the current date as a subtitle, the
+  lifted preview card (project, title, bar, dates · N days).
+
+- 2026-09-26 — CL044 — A movable chip cannot carry the system context menu and a hold + drag at
+  once (both claim the long press). Movable chips (memrynote events, timed tasks) show the
+  same actions in a confirmation dialog when the hold ends without movement; every other chip
+  keeps the system context menu (Paper 15's preview card). Resize handles show on chips of 45
+  minutes or more; shorter ones only move. Toasts follow Paper 16: "Moved to 10:00", resize
+  "Now 10:00 – 11:30".
+- 2026-09-26 — CL045 — Promote needs an imported Google event; the account has none until
+  Google connects on this phone (CL071). Deferred to Phase 6.
+- 2026-09-26 — CL042 — The event sheet edits the title in place and saves it with the
+  checkmark; every other field opens the full sheet (13) from its pill or +, as Paper 14's "+
+  reveals the rest" reads. Sheet close buttons draw an ink glyph (00 rule 6).
+
+- 2026-09-26 — CL050 — All-day tasks carry local midnights (`local_instant`), so the sheets'
+  date line read them in UTC and named the day before (sheet "Fri, Sep 25", strip Sat 26).
+  Sheets now read the same day keys the grid places items by. The task sheet reads its date
+  from the task, so a Move shows the new day at once.
+- 2026-09-26 — CL054 — The project hub's linked calendar events had no action and no title.
+  The row now opens the event in the calendar on its day, and names it through the calendar
+  store (events are not related items in the Tasks core).
+- 2026-09-26 — CL051 — The read-only sheet needs an imported, subscribed, CalDAV or This
+  iPhone event; the account has none until Phase 6 connects one. Deferred there. Done in
+  Phase 6: EventKit events carry attendees, alerts, rule and call like desktop's
+  `eventkit-details.ts`; the call row prints the link without scheme or query and a separate
+  "Join by phone" row (number, PIN from `tel:…;PIN`), as `calendar-subscribed-event-popover`.
+- 2026-09-26 — CL045 — Verified on a CalDAV occurrence instead of Google (no Google account on
+  this phone). The alert copy names Google for every provider, as desktop's does.
+- 2026-09-26 — CL074 — Connecting CalDAV archived its own account row: the "calendars the
+  server no longer lists" query did not filter `kind = 'calendar'`. Fixed; the test asserts both
+  rows stay live.
+- 2026-09-26 — CL074 — One occurrence of a CalDAV series (`href::recurrenceId`, what promote
+  binds) now writes like desktop `caldav-write.ts`: an edit PUTs an override VEVENT
+  (RECURRENCE-ID in the series' value type), a delete adds an EXDATE and drops the override, the
+  PUT goes to the object URL. The object to patch comes from the binding snapshot, then any
+  mirror row of the object (`storedObjectFor`); with neither the plan says `fetch` and the
+  shell GETs it and plans again. An existing object is written with `If-Match: <etag or *>`.
+- 2026-09-26 — CL074 — Pulls follow `applyBoundCaldavObject`: each binding on an object writes
+  back its own instance (our own ETag skipped), only the unbound rest of a series mirrors, an
+  occurrence the series stopped producing inside the window deletes its item, a removed href
+  deletes (event) or unschedules (task) bound items. Google bound events cancelled remotely now
+  follow the same `applyProviderDelete`. Bound reminders and inbox snoozes are not written back
+  on the phone; desktop keeps doing it.
+- 2026-09-26 — CL075 — Pull to refresh and the filter sheet's refresh pull Google and CalDAV
+  past the 15-minute throttle (desktop's Sync now); automatic passes keep it.
+- 2026-09-26 — CL051 — The event sheet's … menu draws its icons in ink (00 rule 6).
+- 2026-09-26 — CL018a — Seen on the way, not changed (pre-existing, every synced setting):
+  desktop ticks settings field clocks under the device id `local` (`updateField(…, 'local')`
+  in `sync-core-handlers.ts`, and the D3a mirror follows it), so two desktops editing the
+  same key read as one writer; the phone ticks under its own id, and the merge resolves
+  phone vs desktop correctly. A desktop whose registration was revoked pushed its queued
+  settings item once after re-linking ("frozen payload"); clients keep keys a remote blob
+  lacks, so nothing was lost.
+- 2026-09-26 — CL018a — Side effect, to undo at CL094: opening the phone's vault on the desktop
+  peer (`vault.downloadRemote`) named the local folder `memrynote-3`, and desktop's vault
+  directory refresh pushed that folder name as the account vault's name (was "MemryNote").
+  Before it was restored, another client on this shared account renamed that vault
+  "MemryNote-S1"; the agent does not override another client's rename. The peer was stopped
+  and its local name set to "MemryNote-S1", so it can no longer push `memrynote-3`.
+- 2026-09-26 — PR — Merged `origin/main` (53 commits). Main shipped data migration 5
+  (`tombstone_clocks`), so the calendar migrations moved to 6 (`calendar`), 7
+  (`calendar_source_states`), 8 (`calendar_push_queue`); an install at main's 5 runs all
+  three. A simulator that ran this branch before the merge sits at `user_version` 7 without
+  `tombstone_clocks`: delete its vault data (dev only, never shipped). Main's #2399 keeps the
+  local value for any absent settings winner, which covers this branch's equal-clock rule, so
+  `settings_merge.rs` takes main's. Main's #2287 gave settings clocks the real device id; the
+  D3a mirror now calls `updateField(path, value)` and skips the seed until a device exists.
+  Main's #2294 routes settings events through the pull page's `emit`; the calendar apply
+  takes it too. The layout timing test asserts 100 ms under the parallel Unit plan (~10 ms
+  alone).
+- 2026-09-26 — CL094 — Restoring `calendar.caldav/ics.agentReadEventsConsent` to unset made
+  the phone ask Paper 26 again while those calendars still existed (by design: unset means
+  not asked). It was answered "Don't allow" to reach Disconnect, so both end at `false`
+  instead of absent; the agent reads neither as consent.
+- 2026-09-26 — CL094 — D3a flaw found and fixed (`fix(desktop)` scope): on a device with no
+  stored row, saving one field writes the whole group and the mirror treated every default as
+  a change, pushing e.g. `google.onboardingCompleted: false` over another device's `true`. The
+  mirror now compares against the defaults readers see; the seed follows. It had already
+  pushed the google defaults once into this vault's settings (from the peer, 17:3x).
+- 2026-09-26 — CL092 — Timing under the full Unit plan: best of five warm passes, since
+  816 parallel tests starve a single cold pass (0.77 s once); cold 15.5 ms, warm 10.6 ms.
+- 2026-09-26 — CL063 — Paper 24's "Connect Google" pill shows only while a Google account is
+  connected (a synced row) and this iPhone holds none of its tokens, which is what "Finish
+  connecting" says; a vault that never used Google is not prompted. "Not now" hides it on this
+  device (`connectPromptDismissed` in the device-local view state, older states decode false).
+- 2026-09-26 — CL063 — Paper 26 is the system alert (Allow / Don't allow, footnote in the
+  message), asked once per provider whose calendars the vault shows while its
+  `calendar.<provider>.agentReadEventsConsent` is unset, as `use-agent-access-consent.ts`.
+  This iPhone's EventKit is not asked: its events never leave the phone, so the agent cannot
+  read them. Paper 25 opens after a first connect only while `calendar.google.onboardingCompleted`
+  is not true; Use and Skip both set it, as desktop's dialog.
+- 2026-09-26 — CL070 — `mapCalendarEventToGoogleInput` writes EXDATEs in the event's zone.
+  The phone used the device's offset for any zone; it now takes the zone from the tables the
+  shell passes (the same set for plan, push_done and write-back, so snapshots stay equal) and
+  writes a UTC EXDATE for a zone it was not given (same instant). The Google pull takes the
+  zone tables too (`googleApplyPull(zones:)`).
+- 2026-09-26 — CL074 — The CalDAV writer-compat check read `2026.925.0.x` as below the floor;
+  desktop's `isAppVersionBelow` looks at three parts only and reads an empty part as 0. Swift
+  now follows it (vector `calendar-write.json` `writerCompat`).
+- 2026-09-26 — CL075 — The iOS shell opens no realtime socket (the core's `RealtimeClient`
+  is unused), so Google's `calendar_changes_available` nudge cannot reach the phone. The phone
+  polls: a pass when the calendar opens and on each return to the foreground (provider pulls
+  throttled to 15 minutes), pull to refresh and Sync now force them, and
+  `com.memry.app.sync.refresh` (already in Info.plist, registered by nothing before) runs the
+  pass when iOS wakes the app. Only local writes queue a push, so a device that pulled a change
+  never pushes it again (one PUT per phone edit in Radicale's log).
+- 2026-09-26 — CL060 — Changing week start or show notes in settings now re-reads the store's
+  cached settings and windows; before, the grid kept the old request until relaunch.
 
 ## 7. Blockers
 
-_empty_
+- 2026-09-26 — CL071, CL061, CL063 (25) — Google on this phone stops at Google's sign-in page:
+  the iOS client with the `calendar` scope is accepted (no `invalid_client` / `invalid_scope`,
+  CL71-google-signin.png), and finishing needs Kaan's Google login, which the agent does not
+  enter. Open for Kaan: sign in from Settings › Calendar › Google Calendar › Reconnect (or the
+  calendar's "Connect Google" pill), then check import, push, Retry, Disconnect / revoke and
+  the default picker (Paper 25), which opens after the first connect. Retried once this phase.
+- 2026-09-26 — CL075 — `BGTaskScheduler.submit` is unavailable on the Simulator (logged
+  `calendar.bg.schedule`), so the background wake cannot run here. The wake runs the same pass
+  verified in the foreground (records, pushes, due pulls, due feeds). Open for a device run:
+  background the app, wait for iOS to wake it, check the calendar sync log line.
+
+- 2026-09-26 — CL093 — Two spec 006 Journal UI tests need a Wednesday → "Agent Test Journal"
+  template in the opened vault; this vault has none, and seeding one would change a real
+  journal setting. Open for Kaan: run them in the vault that holds that template.
+- 2026-09-26 — CL093 — The shared staging account changes under the run: other clients (a
+  desktop from the main checkout, device `A`) hold local copies of the phone's vault and push
+  their folder names, so its account name moved MemryNote → memrynote-3 (this run's peer, see
+  §6) → MemryNote-S1 → memrynote-s1-2 → memrynote-3. UI runs take the current name in
+  `TEST_RUNNER_MEMRY_UI_VAULT`. The peer no longer holds the vault. Kaan: pick the name.
+- 2026-09-26 — CL093 — The Unit plan's sign-out tests wipe the keychain: the simulator is
+  signed out after the final run. Sign in again (§0.4) before driving it.
 
 ## 8. Final report
 
+Branch `feat/ios-calendar` (worktree `.worktrees/ios-calendar`), not pushed. Commits:
+8603d4d93 core record types · cf8bc6b01 desktop D3a · ed8f02de9 protocol docs · 08b9fecba
+screens · 0284a1d67 create/edit/move · 61b240f91 task/note/snooze sheets · ec2f2c01d iCal +
+feeds in core · e6782e1f1 subscribed, This iPhone, read-only · a61d6c127 Google, CalDAV,
+onboarding · the final commit (Phase 7: AX / perf fixes, CalendarUITests, the D3a mirror fix,
+cleanup record).
+
 ### What shipped
+
+- **Core (Rust):** the four calendar record types subscribed, projected (migrations
+  0005–0007) and merged like desktop; `VaultCalendar` range / search / writes / promote /
+  settings; the iCalendar reader (RRULE, RDATE, EXDATE, overrides, VTIMEZONE) and subscribed
+  feeds; provider write routing, the push queue fed by the outbox, Google event bodies and
+  pulls, CalDAV connect / pull / write-back with per-occurrence overrides and EXDATE, bound
+  items following remote deletes. Vectors from desktop's own code: `calendar.json`,
+  `calendar-ical.json`, `calendar-write.json`.
+- **iOS:** More › Calendar with Day, Week, Month, Year, Timeline (Paper 01–09), filter,
+  search, quick create and the full editor, move / resize with Undo, every item sheet (14,
+  17–23), deep links, settings and the four provider screens (27–31), connect pill and AI
+  consent (24, 26), EventKit as device-only read-only calendars, Keychain-only provider
+  credentials, foreground / pull-to-refresh / background sync passes. AX5 list fallbacks,
+  RTL, dark mode verified.
+- **Desktop (D3a, backward compatible):** week start, show notes, default write target and
+  the per-provider push / AI / onboarding keys sync both ways through settings sync; older
+  desktops keep keys they do not know (equal-clock rule). Fixed in Phase 7: a first write on
+  a device with no stored row no longer pushes the group's defaults.
 
 ### Provider parity (Google, CalDAV, ICS, This iPhone)
 
+| Provider                  | Read                                     | Write / push                                                        | Verified here                                                           |
+| ------------------------- | ---------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Google                    | pull with sync token, 410 reset          | create / update / delete through routing, write-back                | client + scope accepted by Google; import / push need Kaan's login (§7) |
+| CalDAV                    | sync-collection or ctag + time-range     | PUT with If-Match, occurrence overrides, EXDATE deletes, write-back | Radicale end to end (CL074)                                             |
+| Subscribed (ICS / webcal) | fetch (30 s, 20 MB, 5 redirects), hourly | read-only                                                           | Google US holidays feed (CL073)                                         |
+| This iPhone (EventKit)    | device-only, never synced                | read-only                                                           | simulator calendars + a rich subscription (CL064, CL051)                |
+
+Provider auth is per device (a desktop refresh token is bound to the desktop client);
+linking tolerates desktop's provider-auth block (CL072).
+
 ### Evidence index
 
+`apps/ios/SpikeEvidence/calendar/`: `CL01`–`CL31` per artboard, `CL18a-*` cross-device
+settings, `CL54-hub-link`, `CL71-google-signin`, `CL90-ax5-*` / `CL90-rtl-*` /
+`CL90-vo-*.txt`, `CL91-*-{light,dark}`. Numbers in §5 F5. Tests: `crates/memry-core/tests/
+calendar_*.rs`, `MemryTests/Calendar*Tests.swift`, `MemryConformanceTests/Calendar*`,
+`MemryUITests/CalendarUITests.swift`.
+
 ### Left open
+
+- **Google live** (CL061, CL063 artboard 25, CL071): sign in once from Settings › Calendar ›
+  Google Calendar on the simulator, then check import, push, Retry, Disconnect / revoke and
+  the default picker.
+- **Background wake** (CL075): needs a device; the Simulator refuses `BGTaskScheduler`. The
+  realtime nudge needs the iOS shell to open the realtime socket (not in this spec).
+- **60 fps trace** (CL092): Instruments on Week with a seeded week.
+- **Vault name** on the shared account (§6, §7): renamed by several clients; pick one.
+- **Settings already pushed** before the D3a fix: this vault's synced `calendar.google`
+  holds the defaults the peer pushed (`onboardingCompleted: false`, …). A desktop on this
+  vault may show Google onboarding once.
+- **Local leftovers (not account data):** the simulator trusts the Radicale test CA; the
+  phone also downloaded vault `9e24776b…` once; the peer's copy of the phone vault is in
+  `/tmp/memrynote-3-peer-copy`; the `iosparity` desktop profile remains. The simulator is
+  signed out after the Unit plan.
+- Docs impact was not run (no push); run `pnpm docs:impact --base origin/main --strict`
+  before the PR.
+
+Reminder for Kaan: AI (Claude) wrote this change under your direction; you are responsible
+for everything submitted. See CONTRIBUTING.md.

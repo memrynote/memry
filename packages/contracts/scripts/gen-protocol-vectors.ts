@@ -42,6 +42,9 @@ import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
 import { buildMarkdownSeed } from './vectors/markdown-seed'
 import { buildAttachmentManifest } from './vectors/attachment-manifest'
 import { buildBlockEdit } from './vectors/block-edit'
+import { buildCalendar } from './vectors/calendar'
+import { buildCalendarIcal } from './vectors/calendar-ical'
+import { buildCalendarWrite } from './vectors/calendar-write'
 import { buildInbox } from './vectors/inbox'
 import { buildDeleteAttestation } from './vectors/delete-attestation'
 import { buildNoteBlocks } from './vectors/note-blocks'
@@ -94,6 +97,15 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'journal', files: [{ path: 'journal.json', build: buildJournal }] },
   { name: 'markdown-seed', files: [{ path: 'markdown-seed.json', build: buildMarkdownSeed }] },
   { name: 'inbox', files: [{ path: 'inbox.json', build: buildInbox }] },
+  { name: 'calendar', files: [{ path: 'calendar.json', build: buildCalendar }] },
+  {
+    name: 'calendar-ical',
+    files: [{ path: 'calendar-ical.json', build: buildCalendarIcal }]
+  },
+  {
+    name: 'calendar-write',
+    files: [{ path: 'calendar-write.json', build: buildCalendarWrite }]
+  },
   {
     name: 'attachment-manifest',
     files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]

@@ -30,6 +30,8 @@ struct MoreTabView: View {
     let context: SettingsContext?
     let browse: VaultBrowseViewModel?
     @Environment(TasksRouter.self) private var router
+    @Environment(\.calendarStore) private var calendarStore
+    @State private var local = LocalSettings.shared
 
     var body: some View {
         @Bindable var router = router
@@ -41,6 +43,14 @@ struct MoreTabView: View {
                     }
                     .accessibilityIdentifier("more.settings")
                 }
+                if local.isOn(.calendar) {
+                    Section {
+                        NavigationLink(value: CalendarRoute.calendar) {
+                            SettingsRowLabel(title: CalendarCopy.title, symbol: "calendar")
+                        }
+                        .accessibilityIdentifier("more.calendar")
+                    }
+                }
             }
             .settingsList()
             .navigationTitle(SettingsCopy.moreTitle)
@@ -50,6 +60,9 @@ struct MoreTabView: View {
                 } else {
                     ProgressView(SettingsCopy.loading)
                 }
+            }
+            .navigationDestination(for: CalendarRoute.self) { route in
+                CalendarDestination(route: route, store: calendarStore, browse: browse, account: context?.account)
             }
             .navigationDestination(for: NoteRoute.self) { route in
                 if let browse {

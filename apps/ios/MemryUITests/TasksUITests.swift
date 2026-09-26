@@ -155,6 +155,14 @@ final class TasksUITests: XCTestCase {
         search(run)
         XCTAssertTrue(row(containing: "\(run) kanban").waitForExistence(timeout: 10))
         moreMenu("tasks.more.board")
+        // Columns are saved page state; a previous session may have left
+        // them on Priority or Due date.
+        if !app.descendants(matching: .any)["tasks.kanban.column.in_progress"].waitForExistence(timeout: 3) {
+            moreMenu("tasks.kanban.columnMode")
+            let status = app.buttons["Status"].firstMatch
+            XCTAssertTrue(status.waitForExistence(timeout: 5))
+            status.tap()
+        }
         let card = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'tasks.kanban.card.' AND label CONTAINS %@", run))
             .firstMatch
@@ -212,14 +220,26 @@ final class TasksUITests: XCTestCase {
         let existing = app.buttons.matching(NSPredicate(
             format: "identifier BEGINSWITH 'tasks.projects.row.' AND label BEGINSWITH %@", Self.project
         )).firstMatch
-        if !existing.waitForExistence(timeout: 3) {
+        // The list is lazy: a project below the fold is not in the tree
+        // until it scrolls into view, and missing it would add another.
+        var scrolls = 0
+        while !existing.waitForExistence(timeout: 1), scrolls < 8 {
+            app.swipeUp()
+            scrolls += 1
+        }
+        if !existing.exists {
             newProject.tap()
             let name = app.textFields["tasks.projectEditor.name"].firstMatch
             XCTAssertTrue(name.waitForExistence(timeout: 5))
             name.tap()
             name.typeText(Self.project)
             app.buttons["tasks.projectEditor.save"].firstMatch.tap()
-            XCTAssertTrue(existing.waitForExistence(timeout: 10), "the test project was not created")
+            var found = existing.waitForExistence(timeout: 5)
+            for _ in 0 ..< 8 where !found {
+                app.swipeUp()
+                found = existing.waitForExistence(timeout: 1)
+            }
+            XCTAssertTrue(found, "the test project was not created")
         }
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["tasks.filterButton"].firstMatch.waitForExistence(timeout: 10))

@@ -11015,6 +11015,12 @@ public func FfiConverterTypeTransport_lower(_ value: Transport) -> UInt64 {
 public protocol VaultProtocol: AnyObject, Sendable {
     
     /**
+     * Every calendar read and write over this vault (spec 007). Needs the
+     * keychain for the same reason [`Vault::tasks`] does.
+     */
+    func calendar(store: SecureStore) throws  -> VaultCalendar
+    
+    /**
      * The id this vault was opened under, so a handle passed around the shell
      * says which vault it is rather than relying on the caller to remember.
      */
@@ -11176,6 +11182,20 @@ public static func `open`(vaultId: String, directory: String)throws  -> Vault  {
 }
     
 
+    
+    /**
+     * Every calendar read and write over this vault (spec 007). Needs the
+     * keychain for the same reason [`Vault::tasks`] does.
+     */
+open func calendar(store: SecureStore)throws  -> VaultCalendar  {
+    return try  FfiConverterTypeVaultCalendar_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_calendar(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
+    )
+})
+}
     
     /**
      * The id this vault was opened under, so a handle passed around the shell
@@ -11363,6 +11383,776 @@ public func FfiConverterTypeVault_lift(_ handle: UInt64) throws -> Vault {
 #endif
 public func FfiConverterTypeVault_lower(_ value: Vault) -> UInt64 {
     return FfiConverterTypeVault.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Named `VaultCalendar`, not `Calendar`: the generated Swift type would
+ * shadow `Foundation.Calendar` across the whole app.
+ */
+public protocol VaultCalendarProtocol: AnyObject, Sendable {
+    
+    /**
+     * `CREATE_EVENT`. Returns the new event.
+     */
+    func createEvent(draft: CalendarEventDraft) throws  -> CalendarEventRecord
+    
+    /**
+     * `DELETE_EVENT`.
+     */
+    func deleteEvent(id: String) throws 
+    
+    /**
+     * `GET_EVENT`, with its live binding.
+     */
+    func event(id: String) throws  -> CalendarEventRecord?
+    
+    /**
+     * `GET_EXTERNAL_EVENT` (read-only card details).
+     */
+    func externalEvent(id: String) throws  -> CalendarExternalEventRecord?
+    
+    /**
+     * Projects linking this event.
+     */
+    func linkedProjects(eventId: String) throws  -> [CalendarLinkedProject]
+    
+    /**
+     * `PROMOTE_EXTERNAL_EVENT`: the id of the editable memrynote copy.
+     */
+    func promote(externalEventId: String) throws  -> String
+    
+    /**
+     * `GET_RANGE`: every item overlapping `[start_at, end_at)`, sorted.
+     */
+    func range(request: CalendarRangeRequest, zone: CalendarZone) throws  -> [CalendarItem]
+    
+    /**
+     * `CalendarSearch`: the range (unselected sources included) filtered by
+     * title or preview, nearest to `now_ms` first, at most 20.
+     */
+    func search(query: String, request: CalendarRangeRequest, zone: CalendarZone, nowMs: Int64) throws  -> [CalendarItem]
+    
+    /**
+     * Writes one synced calendar setting (D3a), its own field clock ticked.
+     */
+    func setSetting(path: String, valueJson: String) throws 
+    
+    /**
+     * `UPDATE_SOURCE_SELECTION`.
+     */
+    func setSourceSelected(sourceId: String, selected: Bool) throws 
+    
+    /**
+     * A synced calendar setting (D3a) as JSON text, or `nil` when no device
+     * has set it. `path` must start with `calendar.`.
+     */
+    func setting(path: String) throws  -> String?
+    
+    /**
+     * `LIST_SOURCES`: live accounts and calendars, accounts first.
+     */
+    func sources() throws  -> [CalendarSourceRecord]
+    
+    /**
+     * `UPDATE_EVENT` (also move and resize).
+     */
+    func updateEvent(id: String, changes: CalendarEventChanges) throws  -> CalendarEventRecord
+    
+    /**
+     * A CalDAV pull applied: changed objects, removed hrefs, whether the
+     * listing was the whole window, the next cursor (`sync-token:…` /
+     * `ctag:…`).
+     */
+    func caldavApplyPull(sourceId: String, calendarUrl: String, objects: [CalendarCaldavObject], removed: [String], full: Bool, cursor: String?, zones: CalendarFeedZones) throws  -> UInt32
+    
+    /**
+     * `connectCaldavAccount` after discovery. Returns the account id.
+     */
+    func caldavConnect(input: CalendarCaldavConnect) throws  -> String
+    
+    func caldavDisconnect(accountId: String) throws 
+    
+    /**
+     * One `events.list` answer (every page) applied. `events_json` is the
+     * array of Google event resources.
+     */
+    func googleApplyPull(sourceId: String, calendarId: String, eventsJson: String, nextCursor: String?, zones: CalendarFeedZones) throws  -> UInt32
+    
+    /**
+     * A Google account connected on this device: its synced rows.
+     */
+    func googleConnect(email: String, name: String?, primary: CalendarGoogleCalendar, calendars: [CalendarGoogleCalendar], deviceZoneId: String) throws 
+    
+    func googleDisconnect(email: String) throws 
+    
+    /**
+     * A source's pull failed; the synced row says so (`recordSyncError`).
+     */
+    func providerSourceError(sourceId: String, error: String) throws 
+    
+    /**
+     * A delete landed (or the remote was already gone).
+     */
+    func pushDeleted(sourceType: String, sourceId: String, bindingId: String) throws 
+    
+    /**
+     * A push landed: the binding records the remote (`body` is what was
+     * sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+     */
+    func pushDone(sourceType: String, sourceId: String, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones) throws 
+    
+    /**
+     * A push failed; the item stays queued with the reason.
+     */
+    func pushFailed(sourceType: String, sourceId: String, error: String) throws 
+    
+    /**
+     * What to send for one queued item. `held` lists the providers whose
+     * accounts this device holds (`google`, `caldav`); `zones` are the IANA
+     * zones the shell resolved (the device's first); `base` is the CalDAV
+     * object a `fetch` plan asked for.
+     */
+    func pushPlan(sourceType: String, sourceId: String, held: [String], zones: CalendarFeedZones, base: CalendarCaldavObject?) throws  -> CalendarPushPlan
+    
+    /**
+     * The items this device changed and has not written out yet.
+     */
+    func pushQueue() throws  -> [CalendarPushItem]
+    
+    /**
+     * Nothing to write for the item.
+     */
+    func pushSkip(sourceType: String, sourceId: String) throws 
+    
+    /**
+     * A failed fetch: `unreachable`, `timeout`, `not_found`, … (desktop's
+     * `IcsFeedErrorCode`). The mirror stays as it was.
+     */
+    func feedRecordError(sourceId: String, code: String) throws 
+    
+    /**
+     * A 200 for a refresh: the mirror follows the feed. A body that does
+     * not parse is recorded as `not_a_calendar` and returned as that error.
+     */
+    func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones) throws  -> UInt32
+    
+    /**
+     * A 304.
+     */
+    func feedRecordNotModified(sourceId: String) throws 
+    
+    /**
+     * Every live subscription's state on this device.
+     */
+    func feedStates() throws  -> [CalendarFeedState]
+    
+    /**
+     * `subscribeIcsCalendar` after the shell fetched `url` (normalised):
+     * parses first, so a link that is not a calendar saves nothing, then
+     * writes the synced source and this device's mirror. Returns the id.
+     */
+    func feedSubscribe(url: String, title: String?, feed: CalendarFetchedFeed, zones: CalendarFeedZones) throws  -> String
+    
+    /**
+     * `unsubscribeIcsCalendar`.
+     */
+    func feedUnsubscribe(sourceId: String) throws 
+    
+    /**
+     * `updateIcsCalendar`: a synced rename or recolour (a colour name).
+     */
+    func feedUpdate(sourceId: String, title: String?, color: String?) throws 
+    
+    /**
+     * The feeds due for a fetch (all live ones with `force`); removed or
+     * hidden ones lose this device's mirror on the way.
+     */
+    func feedsDue(force: Bool) throws  -> [CalendarFeedDue]
+    
+}
+/**
+ * Named `VaultCalendar`, not `Calendar`: the generated Swift type would
+ * shadow `Foundation.Calendar` across the whole app.
+ */
+open class VaultCalendar: VaultCalendarProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_vaultcalendar(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_vaultcalendar(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * `CREATE_EVENT`. Returns the new event.
+     */
+open func createEvent(draft: CalendarEventDraft)throws  -> CalendarEventRecord  {
+    return try  FfiConverterTypeCalendarEventRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_create_event(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCalendarEventDraft_lower(draft),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `DELETE_EVENT`.
+     */
+open func deleteEvent(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_delete_event(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `GET_EVENT`, with its live binding.
+     */
+open func event(id: String)throws  -> CalendarEventRecord?  {
+    return try  FfiConverterOptionTypeCalendarEventRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_event(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `GET_EXTERNAL_EVENT` (read-only card details).
+     */
+open func externalEvent(id: String)throws  -> CalendarExternalEventRecord?  {
+    return try  FfiConverterOptionTypeCalendarExternalEventRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_external_event(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Projects linking this event.
+     */
+open func linkedProjects(eventId: String)throws  -> [CalendarLinkedProject]  {
+    return try  FfiConverterSequenceTypeCalendarLinkedProject.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_linked_projects(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(eventId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `PROMOTE_EXTERNAL_EVENT`: the id of the editable memrynote copy.
+     */
+open func promote(externalEventId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_promote(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(externalEventId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `GET_RANGE`: every item overlapping `[start_at, end_at)`, sorted.
+     */
+open func range(request: CalendarRangeRequest, zone: CalendarZone)throws  -> [CalendarItem]  {
+    return try  FfiConverterSequenceTypeCalendarItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_range(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCalendarRangeRequest_lower(request),
+        FfiConverterTypeCalendarZone_lower(zone),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `CalendarSearch`: the range (unselected sources included) filtered by
+     * title or preview, nearest to `now_ms` first, at most 20.
+     */
+open func search(query: String, request: CalendarRangeRequest, zone: CalendarZone, nowMs: Int64)throws  -> [CalendarItem]  {
+    return try  FfiConverterSequenceTypeCalendarItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_search(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(query),
+        FfiConverterTypeCalendarRangeRequest_lower(request),
+        FfiConverterTypeCalendarZone_lower(zone),
+        FfiConverterInt64.lower(nowMs),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Writes one synced calendar setting (D3a), its own field clock ticked.
+     */
+open func setSetting(path: String, valueJson: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_set_setting(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterString.lower(valueJson),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `UPDATE_SOURCE_SELECTION`.
+     */
+open func setSourceSelected(sourceId: String, selected: Bool)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_set_source_selected(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterBool.lower(selected),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A synced calendar setting (D3a) as JSON text, or `nil` when no device
+     * has set it. `path` must start with `calendar.`.
+     */
+open func setting(path: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_setting(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `LIST_SOURCES`: live accounts and calendars, accounts first.
+     */
+open func sources()throws  -> [CalendarSourceRecord]  {
+    return try  FfiConverterSequenceTypeCalendarSourceRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_sources(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `UPDATE_EVENT` (also move and resize).
+     */
+open func updateEvent(id: String, changes: CalendarEventChanges)throws  -> CalendarEventRecord  {
+    return try  FfiConverterTypeCalendarEventRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_update_event(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterTypeCalendarEventChanges_lower(changes),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A CalDAV pull applied: changed objects, removed hrefs, whether the
+     * listing was the whole window, the next cursor (`sync-token:…` /
+     * `ctag:…`).
+     */
+open func caldavApplyPull(sourceId: String, calendarUrl: String, objects: [CalendarCaldavObject], removed: [String], full: Bool, cursor: String?, zones: CalendarFeedZones)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_caldav_apply_pull(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(calendarUrl),
+        FfiConverterSequenceTypeCalendarCaldavObject.lower(objects),
+        FfiConverterSequenceString.lower(removed),
+        FfiConverterBool.lower(full),
+        FfiConverterOptionString.lower(cursor),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `connectCaldavAccount` after discovery. Returns the account id.
+     */
+open func caldavConnect(input: CalendarCaldavConnect)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_caldav_connect(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCalendarCaldavConnect_lower(input),uniffiCallStatus
+    )
+})
+}
+    
+open func caldavDisconnect(accountId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_caldav_disconnect(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(accountId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * One `events.list` answer (every page) applied. `events_json` is the
+     * array of Google event resources.
+     */
+open func googleApplyPull(sourceId: String, calendarId: String, eventsJson: String, nextCursor: String?, zones: CalendarFeedZones)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_google_apply_pull(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(calendarId),
+        FfiConverterString.lower(eventsJson),
+        FfiConverterOptionString.lower(nextCursor),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A Google account connected on this device: its synced rows.
+     */
+open func googleConnect(email: String, name: String?, primary: CalendarGoogleCalendar, calendars: [CalendarGoogleCalendar], deviceZoneId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_google_connect(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(email),
+        FfiConverterOptionString.lower(name),
+        FfiConverterTypeCalendarGoogleCalendar_lower(primary),
+        FfiConverterSequenceTypeCalendarGoogleCalendar.lower(calendars),
+        FfiConverterString.lower(deviceZoneId),uniffiCallStatus
+    )
+}
+}
+    
+open func googleDisconnect(email: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_google_disconnect(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(email),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A source's pull failed; the synced row says so (`recordSyncError`).
+     */
+open func providerSourceError(sourceId: String, error: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_provider_source_error(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(error),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A delete landed (or the remote was already gone).
+     */
+open func pushDeleted(sourceType: String, sourceId: String, bindingId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_deleted(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(bindingId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A push landed: the binding records the remote (`body` is what was
+     * sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+     */
+open func pushDone(sourceType: String, sourceId: String, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_done(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(provider),
+        FfiConverterString.lower(calendarId),
+        FfiConverterString.lower(remoteEventId),
+        FfiConverterOptionString.lower(etag),
+        FfiConverterOptionString.lower(body),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A push failed; the item stays queued with the reason.
+     */
+open func pushFailed(sourceType: String, sourceId: String, error: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_failed(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(error),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * What to send for one queued item. `held` lists the providers whose
+     * accounts this device holds (`google`, `caldav`); `zones` are the IANA
+     * zones the shell resolved (the device's first); `base` is the CalDAV
+     * object a `fetch` plan asked for.
+     */
+open func pushPlan(sourceType: String, sourceId: String, held: [String], zones: CalendarFeedZones, base: CalendarCaldavObject?)throws  -> CalendarPushPlan  {
+    return try  FfiConverterTypeCalendarPushPlan_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_plan(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),
+        FfiConverterSequenceString.lower(held),
+        FfiConverterTypeCalendarFeedZones_lower(zones),
+        FfiConverterOptionTypeCalendarCaldavObject.lower(base),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The items this device changed and has not written out yet.
+     */
+open func pushQueue()throws  -> [CalendarPushItem]  {
+    return try  FfiConverterSequenceTypeCalendarPushItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_queue(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Nothing to write for the item.
+     */
+open func pushSkip(sourceType: String, sourceId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_skip(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A failed fetch: `unreachable`, `timeout`, `not_found`, … (desktop's
+     * `IcsFeedErrorCode`). The mirror stays as it was.
+     */
+open func feedRecordError(sourceId: String, code: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_record_error(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(code),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A 200 for a refresh: the mirror follows the feed. A body that does
+     * not parse is recorded as `not_a_calendar` and returned as that error.
+     */
+open func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_record_fetch(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterTypeCalendarFetchedFeed_lower(feed),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A 304.
+     */
+open func feedRecordNotModified(sourceId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_record_not_modified(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Every live subscription's state on this device.
+     */
+open func feedStates()throws  -> [CalendarFeedState]  {
+    return try  FfiConverterSequenceTypeCalendarFeedState.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_states(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `subscribeIcsCalendar` after the shell fetched `url` (normalised):
+     * parses first, so a link that is not a calendar saves nothing, then
+     * writes the synced source and this device's mirror. Returns the id.
+     */
+open func feedSubscribe(url: String, title: String?, feed: CalendarFetchedFeed, zones: CalendarFeedZones)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_subscribe(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(url),
+        FfiConverterOptionString.lower(title),
+        FfiConverterTypeCalendarFetchedFeed_lower(feed),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `unsubscribeIcsCalendar`.
+     */
+open func feedUnsubscribe(sourceId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_unsubscribe(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `updateIcsCalendar`: a synced rename or recolour (a colour name).
+     */
+open func feedUpdate(sourceId: String, title: String?, color: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_update(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterOptionString.lower(title),
+        FfiConverterOptionString.lower(color),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The feeds due for a fetch (all live ones with `force`); removed or
+     * hidden ones lose this device's mirror on the way.
+     */
+open func feedsDue(force: Bool)throws  -> [CalendarFeedDue]  {
+    return try  FfiConverterSequenceTypeCalendarFeedDue.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feeds_due(
+            self.uniffiCloneHandle(),
+        FfiConverterBool.lower(force),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVaultCalendar: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = VaultCalendar
+
+    public static func lift(_ handle: UInt64) throws -> VaultCalendar {
+        return VaultCalendar(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: VaultCalendar) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VaultCalendar {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: VaultCalendar, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVaultCalendar_lift(_ handle: UInt64) throws -> VaultCalendar {
+    return try FfiConverterTypeVaultCalendar.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVaultCalendar_lower(_ value: VaultCalendar) -> UInt64 {
+    return FfiConverterTypeVaultCalendar.lower(value)
 }
 
 
@@ -13104,6 +13894,1928 @@ public func FfiConverterTypeCachedAttachment_lift(_ buf: RustBuffer) throws -> C
 #endif
 public func FfiConverterTypeCachedAttachment_lower(_ value: CachedAttachment) -> RustBuffer {
     return FfiConverterTypeCachedAttachment.lower(value)
+}
+
+
+/**
+ * A calendar discovery found.
+ */
+public struct CalendarCaldavCalendar: Equatable, Hashable {
+    public var url: String
+    public var displayName: String
+    public var color: String?
+    public var timezone: String?
+    public var supportsSyncCollection: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(url: String, displayName: String, color: String?, timezone: String?, supportsSyncCollection: Bool) {
+        self.url = url
+        self.displayName = displayName
+        self.color = color
+        self.timezone = timezone
+        self.supportsSyncCollection = supportsSyncCollection
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarCaldavCalendar: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarCaldavCalendar: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarCaldavCalendar {
+        return
+            try CalendarCaldavCalendar(
+                url: FfiConverterString.read(from: &buf), 
+                displayName: FfiConverterString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                timezone: FfiConverterOptionString.read(from: &buf), 
+                supportsSyncCollection: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarCaldavCalendar, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.timezone, into: &buf)
+        FfiConverterBool.write(value.supportsSyncCollection, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavCalendar_lift(_ buf: RustBuffer) throws -> CalendarCaldavCalendar {
+    return try FfiConverterTypeCalendarCaldavCalendar.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavCalendar_lower(_ value: CalendarCaldavCalendar) -> RustBuffer {
+    return FfiConverterTypeCalendarCaldavCalendar.lower(value)
+}
+
+
+/**
+ * `connectCaldavAccount`'s input after discovery.
+ */
+public struct CalendarCaldavConnect: Equatable, Hashable {
+    public var serverUrl: String
+    public var username: String
+    public var principalUrl: String
+    public var homeUrl: String
+    public var preset: String?
+    public var calendars: [CalendarCaldavCalendar]
+    public var selected: [String]?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(serverUrl: String, username: String, principalUrl: String, homeUrl: String, preset: String?, calendars: [CalendarCaldavCalendar], selected: [String]?) {
+        self.serverUrl = serverUrl
+        self.username = username
+        self.principalUrl = principalUrl
+        self.homeUrl = homeUrl
+        self.preset = preset
+        self.calendars = calendars
+        self.selected = selected
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarCaldavConnect: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarCaldavConnect: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarCaldavConnect {
+        return
+            try CalendarCaldavConnect(
+                serverUrl: FfiConverterString.read(from: &buf), 
+                username: FfiConverterString.read(from: &buf), 
+                principalUrl: FfiConverterString.read(from: &buf), 
+                homeUrl: FfiConverterString.read(from: &buf), 
+                preset: FfiConverterOptionString.read(from: &buf), 
+                calendars: FfiConverterSequenceTypeCalendarCaldavCalendar.read(from: &buf), 
+                selected: FfiConverterOptionSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarCaldavConnect, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.serverUrl, into: &buf)
+        FfiConverterString.write(value.username, into: &buf)
+        FfiConverterString.write(value.principalUrl, into: &buf)
+        FfiConverterString.write(value.homeUrl, into: &buf)
+        FfiConverterOptionString.write(value.preset, into: &buf)
+        FfiConverterSequenceTypeCalendarCaldavCalendar.write(value.calendars, into: &buf)
+        FfiConverterOptionSequenceString.write(value.selected, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavConnect_lift(_ buf: RustBuffer) throws -> CalendarCaldavConnect {
+    return try FfiConverterTypeCalendarCaldavConnect.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavConnect_lower(_ value: CalendarCaldavConnect) -> RustBuffer {
+    return FfiConverterTypeCalendarCaldavConnect.lower(value)
+}
+
+
+/**
+ * A CalDAV object as the server answered it.
+ */
+public struct CalendarCaldavObject: Equatable, Hashable {
+    public var href: String
+    public var etag: String?
+    public var data: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(href: String, etag: String?, data: String) {
+        self.href = href
+        self.etag = etag
+        self.data = data
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarCaldavObject: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarCaldavObject: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarCaldavObject {
+        return
+            try CalendarCaldavObject(
+                href: FfiConverterString.read(from: &buf), 
+                etag: FfiConverterOptionString.read(from: &buf), 
+                data: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarCaldavObject, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+        FfiConverterString.write(value.data, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavObject_lift(_ buf: RustBuffer) throws -> CalendarCaldavObject {
+    return try FfiConverterTypeCalendarCaldavObject.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavObject_lower(_ value: CalendarCaldavObject) -> RustBuffer {
+    return FfiConverterTypeCalendarCaldavObject.lower(value)
+}
+
+
+/**
+ * `CalendarProjectionEditability`.
+ */
+public struct CalendarEditability: Equatable, Hashable {
+    public var canMove: Bool
+    public var canResize: Bool
+    public var canEditText: Bool
+    public var canDelete: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(canMove: Bool, canResize: Bool, canEditText: Bool, canDelete: Bool) {
+        self.canMove = canMove
+        self.canResize = canResize
+        self.canEditText = canEditText
+        self.canDelete = canDelete
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarEditability: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarEditability: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarEditability {
+        return
+            try CalendarEditability(
+                canMove: FfiConverterBool.read(from: &buf), 
+                canResize: FfiConverterBool.read(from: &buf), 
+                canEditText: FfiConverterBool.read(from: &buf), 
+                canDelete: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarEditability, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.canMove, into: &buf)
+        FfiConverterBool.write(value.canResize, into: &buf)
+        FfiConverterBool.write(value.canEditText, into: &buf)
+        FfiConverterBool.write(value.canDelete, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarEditability_lift(_ buf: RustBuffer) throws -> CalendarEditability {
+    return try FfiConverterTypeCalendarEditability.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarEditability_lower(_ value: CalendarEditability) -> RustBuffer {
+    return FfiConverterTypeCalendarEditability.lower(value)
+}
+
+
+/**
+ * `UpdateCalendarEventSchema`.
+ */
+public struct CalendarEventChanges: Equatable, Hashable {
+    public var title: String?
+    public var description: CalendarTextChange
+    public var location: CalendarTextChange
+    public var startAt: String?
+    public var endAt: CalendarTextChange
+    public var timezone: String?
+    public var isAllDay: Bool?
+    public var targetCalendarId: CalendarTextChange
+    public var color: CalendarTextChange
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(title: String?, description: CalendarTextChange, location: CalendarTextChange, startAt: String?, endAt: CalendarTextChange, timezone: String?, isAllDay: Bool?, targetCalendarId: CalendarTextChange, color: CalendarTextChange) {
+        self.title = title
+        self.description = description
+        self.location = location
+        self.startAt = startAt
+        self.endAt = endAt
+        self.timezone = timezone
+        self.isAllDay = isAllDay
+        self.targetCalendarId = targetCalendarId
+        self.color = color
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarEventChanges: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarEventChanges: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarEventChanges {
+        return
+            try CalendarEventChanges(
+                title: FfiConverterOptionString.read(from: &buf), 
+                description: FfiConverterTypeCalendarTextChange.read(from: &buf), 
+                location: FfiConverterTypeCalendarTextChange.read(from: &buf), 
+                startAt: FfiConverterOptionString.read(from: &buf), 
+                endAt: FfiConverterTypeCalendarTextChange.read(from: &buf), 
+                timezone: FfiConverterOptionString.read(from: &buf), 
+                isAllDay: FfiConverterOptionBool.read(from: &buf), 
+                targetCalendarId: FfiConverterTypeCalendarTextChange.read(from: &buf), 
+                color: FfiConverterTypeCalendarTextChange.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarEventChanges, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterTypeCalendarTextChange.write(value.description, into: &buf)
+        FfiConverterTypeCalendarTextChange.write(value.location, into: &buf)
+        FfiConverterOptionString.write(value.startAt, into: &buf)
+        FfiConverterTypeCalendarTextChange.write(value.endAt, into: &buf)
+        FfiConverterOptionString.write(value.timezone, into: &buf)
+        FfiConverterOptionBool.write(value.isAllDay, into: &buf)
+        FfiConverterTypeCalendarTextChange.write(value.targetCalendarId, into: &buf)
+        FfiConverterTypeCalendarTextChange.write(value.color, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarEventChanges_lift(_ buf: RustBuffer) throws -> CalendarEventChanges {
+    return try FfiConverterTypeCalendarEventChanges.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarEventChanges_lower(_ value: CalendarEventChanges) -> RustBuffer {
+    return FfiConverterTypeCalendarEventChanges.lower(value)
+}
+
+
+/**
+ * `CreateCalendarEventSchema`.
+ */
+public struct CalendarEventDraft: Equatable, Hashable {
+    public var title: String
+    public var description: String?
+    public var location: String?
+    public var startAt: String
+    public var endAt: String?
+    public var timezone: String
+    public var isAllDay: Bool
+    public var targetCalendarId: String?
+    public var color: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(title: String, description: String?, location: String?, startAt: String, endAt: String?, timezone: String, isAllDay: Bool, targetCalendarId: String?, color: String?) {
+        self.title = title
+        self.description = description
+        self.location = location
+        self.startAt = startAt
+        self.endAt = endAt
+        self.timezone = timezone
+        self.isAllDay = isAllDay
+        self.targetCalendarId = targetCalendarId
+        self.color = color
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarEventDraft: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarEventDraft: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarEventDraft {
+        return
+            try CalendarEventDraft(
+                title: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                location: FfiConverterOptionString.read(from: &buf), 
+                startAt: FfiConverterString.read(from: &buf), 
+                endAt: FfiConverterOptionString.read(from: &buf), 
+                timezone: FfiConverterString.read(from: &buf), 
+                isAllDay: FfiConverterBool.read(from: &buf), 
+                targetCalendarId: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarEventDraft, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.location, into: &buf)
+        FfiConverterString.write(value.startAt, into: &buf)
+        FfiConverterOptionString.write(value.endAt, into: &buf)
+        FfiConverterString.write(value.timezone, into: &buf)
+        FfiConverterBool.write(value.isAllDay, into: &buf)
+        FfiConverterOptionString.write(value.targetCalendarId, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarEventDraft_lift(_ buf: RustBuffer) throws -> CalendarEventDraft {
+    return try FfiConverterTypeCalendarEventDraft.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarEventDraft_lower(_ value: CalendarEventDraft) -> RustBuffer {
+    return FfiConverterTypeCalendarEventDraft.lower(value)
+}
+
+
+/**
+ * `CalendarEventRecord`, with JSON text for the rich fields.
+ */
+public struct CalendarEventRecord: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    public var description: String?
+    public var location: String?
+    public var startAt: String
+    public var endAt: String?
+    public var timezone: String
+    public var isAllDay: Bool
+    public var recurrenceRuleJson: String?
+    public var attendeesJson: String?
+    public var remindersJson: String?
+    public var visibility: String?
+    public var colorId: String?
+    /**
+     * The event colour name for `color_id`.
+     */
+    public var color: String?
+    public var conferenceDataJson: String?
+    public var targetCalendarId: String?
+    public var binding: CalendarItemBinding?
+    public var createdAt: Int64?
+    public var modifiedAt: Int64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, description: String?, location: String?, startAt: String, endAt: String?, timezone: String, isAllDay: Bool, recurrenceRuleJson: String?, attendeesJson: String?, remindersJson: String?, visibility: String?, colorId: String?, 
+        /**
+         * The event colour name for `color_id`.
+         */color: String?, conferenceDataJson: String?, targetCalendarId: String?, binding: CalendarItemBinding?, createdAt: Int64?, modifiedAt: Int64?) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.location = location
+        self.startAt = startAt
+        self.endAt = endAt
+        self.timezone = timezone
+        self.isAllDay = isAllDay
+        self.recurrenceRuleJson = recurrenceRuleJson
+        self.attendeesJson = attendeesJson
+        self.remindersJson = remindersJson
+        self.visibility = visibility
+        self.colorId = colorId
+        self.color = color
+        self.conferenceDataJson = conferenceDataJson
+        self.targetCalendarId = targetCalendarId
+        self.binding = binding
+        self.createdAt = createdAt
+        self.modifiedAt = modifiedAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarEventRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarEventRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarEventRecord {
+        return
+            try CalendarEventRecord(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                location: FfiConverterOptionString.read(from: &buf), 
+                startAt: FfiConverterString.read(from: &buf), 
+                endAt: FfiConverterOptionString.read(from: &buf), 
+                timezone: FfiConverterString.read(from: &buf), 
+                isAllDay: FfiConverterBool.read(from: &buf), 
+                recurrenceRuleJson: FfiConverterOptionString.read(from: &buf), 
+                attendeesJson: FfiConverterOptionString.read(from: &buf), 
+                remindersJson: FfiConverterOptionString.read(from: &buf), 
+                visibility: FfiConverterOptionString.read(from: &buf), 
+                colorId: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                conferenceDataJson: FfiConverterOptionString.read(from: &buf), 
+                targetCalendarId: FfiConverterOptionString.read(from: &buf), 
+                binding: FfiConverterOptionTypeCalendarItemBinding.read(from: &buf), 
+                createdAt: FfiConverterOptionInt64.read(from: &buf), 
+                modifiedAt: FfiConverterOptionInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarEventRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.location, into: &buf)
+        FfiConverterString.write(value.startAt, into: &buf)
+        FfiConverterOptionString.write(value.endAt, into: &buf)
+        FfiConverterString.write(value.timezone, into: &buf)
+        FfiConverterBool.write(value.isAllDay, into: &buf)
+        FfiConverterOptionString.write(value.recurrenceRuleJson, into: &buf)
+        FfiConverterOptionString.write(value.attendeesJson, into: &buf)
+        FfiConverterOptionString.write(value.remindersJson, into: &buf)
+        FfiConverterOptionString.write(value.visibility, into: &buf)
+        FfiConverterOptionString.write(value.colorId, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.conferenceDataJson, into: &buf)
+        FfiConverterOptionString.write(value.targetCalendarId, into: &buf)
+        FfiConverterOptionTypeCalendarItemBinding.write(value.binding, into: &buf)
+        FfiConverterOptionInt64.write(value.createdAt, into: &buf)
+        FfiConverterOptionInt64.write(value.modifiedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarEventRecord_lift(_ buf: RustBuffer) throws -> CalendarEventRecord {
+    return try FfiConverterTypeCalendarEventRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarEventRecord_lower(_ value: CalendarEventRecord) -> RustBuffer {
+    return FfiConverterTypeCalendarEventRecord.lower(value)
+}
+
+
+/**
+ * `CalendarExternalEventDetails`.
+ */
+public struct CalendarExternalEventRecord: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    public var description: String?
+    public var location: String?
+    public var startAt: String
+    public var endAt: String?
+    public var timezone: String?
+    public var isAllDay: Bool
+    public var status: String
+    public var recurrenceRuleJson: String?
+    public var attendeesJson: String?
+    public var remindersJson: String?
+    public var conferenceDataJson: String?
+    public var sourceId: String?
+    public var sourceProvider: String?
+    public var sourceTitle: String?
+    public var sourceColor: String?
+    /**
+     * `metadata.sourceTitle` (the account's name).
+     */
+    public var accountTitle: String?
+    /**
+     * Whether promotion can make it editable.
+     */
+    public var isPromotable: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, description: String?, location: String?, startAt: String, endAt: String?, timezone: String?, isAllDay: Bool, status: String, recurrenceRuleJson: String?, attendeesJson: String?, remindersJson: String?, conferenceDataJson: String?, sourceId: String?, sourceProvider: String?, sourceTitle: String?, sourceColor: String?, 
+        /**
+         * `metadata.sourceTitle` (the account's name).
+         */accountTitle: String?, 
+        /**
+         * Whether promotion can make it editable.
+         */isPromotable: Bool) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.location = location
+        self.startAt = startAt
+        self.endAt = endAt
+        self.timezone = timezone
+        self.isAllDay = isAllDay
+        self.status = status
+        self.recurrenceRuleJson = recurrenceRuleJson
+        self.attendeesJson = attendeesJson
+        self.remindersJson = remindersJson
+        self.conferenceDataJson = conferenceDataJson
+        self.sourceId = sourceId
+        self.sourceProvider = sourceProvider
+        self.sourceTitle = sourceTitle
+        self.sourceColor = sourceColor
+        self.accountTitle = accountTitle
+        self.isPromotable = isPromotable
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarExternalEventRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarExternalEventRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarExternalEventRecord {
+        return
+            try CalendarExternalEventRecord(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                location: FfiConverterOptionString.read(from: &buf), 
+                startAt: FfiConverterString.read(from: &buf), 
+                endAt: FfiConverterOptionString.read(from: &buf), 
+                timezone: FfiConverterOptionString.read(from: &buf), 
+                isAllDay: FfiConverterBool.read(from: &buf), 
+                status: FfiConverterString.read(from: &buf), 
+                recurrenceRuleJson: FfiConverterOptionString.read(from: &buf), 
+                attendeesJson: FfiConverterOptionString.read(from: &buf), 
+                remindersJson: FfiConverterOptionString.read(from: &buf), 
+                conferenceDataJson: FfiConverterOptionString.read(from: &buf), 
+                sourceId: FfiConverterOptionString.read(from: &buf), 
+                sourceProvider: FfiConverterOptionString.read(from: &buf), 
+                sourceTitle: FfiConverterOptionString.read(from: &buf), 
+                sourceColor: FfiConverterOptionString.read(from: &buf), 
+                accountTitle: FfiConverterOptionString.read(from: &buf), 
+                isPromotable: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarExternalEventRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.location, into: &buf)
+        FfiConverterString.write(value.startAt, into: &buf)
+        FfiConverterOptionString.write(value.endAt, into: &buf)
+        FfiConverterOptionString.write(value.timezone, into: &buf)
+        FfiConverterBool.write(value.isAllDay, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.recurrenceRuleJson, into: &buf)
+        FfiConverterOptionString.write(value.attendeesJson, into: &buf)
+        FfiConverterOptionString.write(value.remindersJson, into: &buf)
+        FfiConverterOptionString.write(value.conferenceDataJson, into: &buf)
+        FfiConverterOptionString.write(value.sourceId, into: &buf)
+        FfiConverterOptionString.write(value.sourceProvider, into: &buf)
+        FfiConverterOptionString.write(value.sourceTitle, into: &buf)
+        FfiConverterOptionString.write(value.sourceColor, into: &buf)
+        FfiConverterOptionString.write(value.accountTitle, into: &buf)
+        FfiConverterBool.write(value.isPromotable, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarExternalEventRecord_lift(_ buf: RustBuffer) throws -> CalendarExternalEventRecord {
+    return try FfiConverterTypeCalendarExternalEventRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarExternalEventRecord_lower(_ value: CalendarExternalEventRecord) -> RustBuffer {
+    return FfiConverterTypeCalendarExternalEventRecord.lower(value)
+}
+
+
+/**
+ * A feed to fetch, with the validators of this device's last response.
+ */
+public struct CalendarFeedDue: Equatable, Hashable {
+    public var sourceId: String
+    public var url: String
+    public var etag: String?
+    public var lastModified: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceId: String, url: String, etag: String?, lastModified: String?) {
+        self.sourceId = sourceId
+        self.url = url
+        self.etag = etag
+        self.lastModified = lastModified
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarFeedDue: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarFeedDue: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarFeedDue {
+        return
+            try CalendarFeedDue(
+                sourceId: FfiConverterString.read(from: &buf), 
+                url: FfiConverterString.read(from: &buf), 
+                etag: FfiConverterOptionString.read(from: &buf), 
+                lastModified: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarFeedDue, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+        FfiConverterOptionString.write(value.lastModified, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedDue_lift(_ buf: RustBuffer) throws -> CalendarFeedDue {
+    return try FfiConverterTypeCalendarFeedDue.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedDue_lower(_ value: CalendarFeedDue) -> RustBuffer {
+    return FfiConverterTypeCalendarFeedDue.lower(value)
+}
+
+
+/**
+ * One subscribed feed as this device sees it.
+ */
+public struct CalendarFeedState: Equatable, Hashable {
+    public var sourceId: String
+    /**
+     * `idle` | `ok` | `error`.
+     */
+    public var syncStatus: String
+    public var lastSyncedAt: String?
+    /**
+     * An `IcsFeedErrorCode`.
+     */
+    public var lastError: String?
+    public var nextRefreshMs: Int64?
+    public var eventCount: Int64
+    public var firstStartAt: String?
+    public var lastStartAt: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceId: String, 
+        /**
+         * `idle` | `ok` | `error`.
+         */syncStatus: String, lastSyncedAt: String?, 
+        /**
+         * An `IcsFeedErrorCode`.
+         */lastError: String?, nextRefreshMs: Int64?, eventCount: Int64, firstStartAt: String?, lastStartAt: String?) {
+        self.sourceId = sourceId
+        self.syncStatus = syncStatus
+        self.lastSyncedAt = lastSyncedAt
+        self.lastError = lastError
+        self.nextRefreshMs = nextRefreshMs
+        self.eventCount = eventCount
+        self.firstStartAt = firstStartAt
+        self.lastStartAt = lastStartAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarFeedState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarFeedState: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarFeedState {
+        return
+            try CalendarFeedState(
+                sourceId: FfiConverterString.read(from: &buf), 
+                syncStatus: FfiConverterString.read(from: &buf), 
+                lastSyncedAt: FfiConverterOptionString.read(from: &buf), 
+                lastError: FfiConverterOptionString.read(from: &buf), 
+                nextRefreshMs: FfiConverterOptionInt64.read(from: &buf), 
+                eventCount: FfiConverterInt64.read(from: &buf), 
+                firstStartAt: FfiConverterOptionString.read(from: &buf), 
+                lastStartAt: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarFeedState, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterString.write(value.syncStatus, into: &buf)
+        FfiConverterOptionString.write(value.lastSyncedAt, into: &buf)
+        FfiConverterOptionString.write(value.lastError, into: &buf)
+        FfiConverterOptionInt64.write(value.nextRefreshMs, into: &buf)
+        FfiConverterInt64.write(value.eventCount, into: &buf)
+        FfiConverterOptionString.write(value.firstStartAt, into: &buf)
+        FfiConverterOptionString.write(value.lastStartAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedState_lift(_ buf: RustBuffer) throws -> CalendarFeedState {
+    return try FfiConverterTypeCalendarFeedState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedState_lower(_ value: CalendarFeedState) -> RustBuffer {
+    return FfiConverterTypeCalendarFeedState.lower(value)
+}
+
+
+/**
+ * The zones a feed names that the shell resolved, and the device's own.
+ */
+public struct CalendarFeedZones: Equatable, Hashable {
+    public var named: [CalendarZone]
+    public var local: CalendarZone
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(named: [CalendarZone], local: CalendarZone) {
+        self.named = named
+        self.local = local
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarFeedZones: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarFeedZones: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarFeedZones {
+        return
+            try CalendarFeedZones(
+                named: FfiConverterSequenceTypeCalendarZone.read(from: &buf), 
+                local: FfiConverterTypeCalendarZone.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarFeedZones, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeCalendarZone.write(value.named, into: &buf)
+        FfiConverterTypeCalendarZone.write(value.local, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedZones_lift(_ buf: RustBuffer) throws -> CalendarFeedZones {
+    return try FfiConverterTypeCalendarFeedZones.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedZones_lower(_ value: CalendarFeedZones) -> RustBuffer {
+    return FfiConverterTypeCalendarFeedZones.lower(value)
+}
+
+
+/**
+ * A 200 response.
+ */
+public struct CalendarFetchedFeed: Equatable, Hashable {
+    public var text: String
+    public var etag: String?
+    public var lastModified: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, etag: String?, lastModified: String?) {
+        self.text = text
+        self.etag = etag
+        self.lastModified = lastModified
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarFetchedFeed: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarFetchedFeed: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarFetchedFeed {
+        return
+            try CalendarFetchedFeed(
+                text: FfiConverterString.read(from: &buf), 
+                etag: FfiConverterOptionString.read(from: &buf), 
+                lastModified: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarFetchedFeed, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+        FfiConverterOptionString.write(value.lastModified, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFetchedFeed_lift(_ buf: RustBuffer) throws -> CalendarFetchedFeed {
+    return try FfiConverterTypeCalendarFetchedFeed.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFetchedFeed_lower(_ value: CalendarFetchedFeed) -> RustBuffer {
+    return FfiConverterTypeCalendarFetchedFeed.lower(value)
+}
+
+
+/**
+ * A Google calendar from `calendarList`.
+ */
+public struct CalendarGoogleCalendar: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    public var timezone: String?
+    public var color: String?
+    public var isPrimary: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, timezone: String?, color: String?, isPrimary: Bool) {
+        self.id = id
+        self.title = title
+        self.timezone = timezone
+        self.color = color
+        self.isPrimary = isPrimary
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarGoogleCalendar: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarGoogleCalendar: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarGoogleCalendar {
+        return
+            try CalendarGoogleCalendar(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                timezone: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                isPrimary: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarGoogleCalendar, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.timezone, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterBool.write(value.isPrimary, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarGoogleCalendar_lift(_ buf: RustBuffer) throws -> CalendarGoogleCalendar {
+    return try FfiConverterTypeCalendarGoogleCalendar.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarGoogleCalendar_lower(_ value: CalendarGoogleCalendar) -> RustBuffer {
+    return FfiConverterTypeCalendarGoogleCalendar.lower(value)
+}
+
+
+/**
+ * `CalendarProjectionItem`.
+ */
+public struct CalendarItem: Equatable, Hashable {
+    public var projectionId: String
+    /**
+     * `event | task | reminder | inbox_snooze | external_event | note | note_date`.
+     */
+    public var sourceType: String
+    public var sourceId: String
+    public var title: String
+    public var descriptionPreview: String?
+    public var startAt: String
+    public var endAt: String?
+    public var isAllDay: Bool
+    public var timezone: String
+    /**
+     * `event | external_event | task | reminder | snooze | note | note_date`.
+     */
+    public var visualType: String
+    public var editability: CalendarEditability
+    public var source: CalendarItemSource
+    public var binding: CalendarItemBinding?
+    public var snoozeOffsetMinutes: Int64?
+    public var color: String?
+    public var displayColor: String?
+    public var noteId: String?
+    public var anchorId: String?
+    public var isTriggered: Bool?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(projectionId: String, 
+        /**
+         * `event | task | reminder | inbox_snooze | external_event | note | note_date`.
+         */sourceType: String, sourceId: String, title: String, descriptionPreview: String?, startAt: String, endAt: String?, isAllDay: Bool, timezone: String, 
+        /**
+         * `event | external_event | task | reminder | snooze | note | note_date`.
+         */visualType: String, editability: CalendarEditability, source: CalendarItemSource, binding: CalendarItemBinding?, snoozeOffsetMinutes: Int64?, color: String?, displayColor: String?, noteId: String?, anchorId: String?, isTriggered: Bool?) {
+        self.projectionId = projectionId
+        self.sourceType = sourceType
+        self.sourceId = sourceId
+        self.title = title
+        self.descriptionPreview = descriptionPreview
+        self.startAt = startAt
+        self.endAt = endAt
+        self.isAllDay = isAllDay
+        self.timezone = timezone
+        self.visualType = visualType
+        self.editability = editability
+        self.source = source
+        self.binding = binding
+        self.snoozeOffsetMinutes = snoozeOffsetMinutes
+        self.color = color
+        self.displayColor = displayColor
+        self.noteId = noteId
+        self.anchorId = anchorId
+        self.isTriggered = isTriggered
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarItem {
+        return
+            try CalendarItem(
+                projectionId: FfiConverterString.read(from: &buf), 
+                sourceType: FfiConverterString.read(from: &buf), 
+                sourceId: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                descriptionPreview: FfiConverterOptionString.read(from: &buf), 
+                startAt: FfiConverterString.read(from: &buf), 
+                endAt: FfiConverterOptionString.read(from: &buf), 
+                isAllDay: FfiConverterBool.read(from: &buf), 
+                timezone: FfiConverterString.read(from: &buf), 
+                visualType: FfiConverterString.read(from: &buf), 
+                editability: FfiConverterTypeCalendarEditability.read(from: &buf), 
+                source: FfiConverterTypeCalendarItemSource.read(from: &buf), 
+                binding: FfiConverterOptionTypeCalendarItemBinding.read(from: &buf), 
+                snoozeOffsetMinutes: FfiConverterOptionInt64.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                displayColor: FfiConverterOptionString.read(from: &buf), 
+                noteId: FfiConverterOptionString.read(from: &buf), 
+                anchorId: FfiConverterOptionString.read(from: &buf), 
+                isTriggered: FfiConverterOptionBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.projectionId, into: &buf)
+        FfiConverterString.write(value.sourceType, into: &buf)
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.descriptionPreview, into: &buf)
+        FfiConverterString.write(value.startAt, into: &buf)
+        FfiConverterOptionString.write(value.endAt, into: &buf)
+        FfiConverterBool.write(value.isAllDay, into: &buf)
+        FfiConverterString.write(value.timezone, into: &buf)
+        FfiConverterString.write(value.visualType, into: &buf)
+        FfiConverterTypeCalendarEditability.write(value.editability, into: &buf)
+        FfiConverterTypeCalendarItemSource.write(value.source, into: &buf)
+        FfiConverterOptionTypeCalendarItemBinding.write(value.binding, into: &buf)
+        FfiConverterOptionInt64.write(value.snoozeOffsetMinutes, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.displayColor, into: &buf)
+        FfiConverterOptionString.write(value.noteId, into: &buf)
+        FfiConverterOptionString.write(value.anchorId, into: &buf)
+        FfiConverterOptionBool.write(value.isTriggered, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarItem_lift(_ buf: RustBuffer) throws -> CalendarItem {
+    return try FfiConverterTypeCalendarItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarItem_lower(_ value: CalendarItem) -> RustBuffer {
+    return FfiConverterTypeCalendarItem.lower(value)
+}
+
+
+/**
+ * `CalendarProjectionBinding`.
+ */
+public struct CalendarItemBinding: Equatable, Hashable {
+    public var provider: String
+    public var remoteCalendarId: String
+    public var remoteEventId: String
+    public var ownershipMode: String
+    public var writebackMode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(provider: String, remoteCalendarId: String, remoteEventId: String, ownershipMode: String, writebackMode: String) {
+        self.provider = provider
+        self.remoteCalendarId = remoteCalendarId
+        self.remoteEventId = remoteEventId
+        self.ownershipMode = ownershipMode
+        self.writebackMode = writebackMode
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarItemBinding: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarItemBinding: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarItemBinding {
+        return
+            try CalendarItemBinding(
+                provider: FfiConverterString.read(from: &buf), 
+                remoteCalendarId: FfiConverterString.read(from: &buf), 
+                remoteEventId: FfiConverterString.read(from: &buf), 
+                ownershipMode: FfiConverterString.read(from: &buf), 
+                writebackMode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarItemBinding, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.provider, into: &buf)
+        FfiConverterString.write(value.remoteCalendarId, into: &buf)
+        FfiConverterString.write(value.remoteEventId, into: &buf)
+        FfiConverterString.write(value.ownershipMode, into: &buf)
+        FfiConverterString.write(value.writebackMode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarItemBinding_lift(_ buf: RustBuffer) throws -> CalendarItemBinding {
+    return try FfiConverterTypeCalendarItemBinding.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarItemBinding_lower(_ value: CalendarItemBinding) -> RustBuffer {
+    return FfiConverterTypeCalendarItemBinding.lower(value)
+}
+
+
+/**
+ * `CalendarProjectionSourceMeta`.
+ */
+public struct CalendarItemSource: Equatable, Hashable {
+    public var provider: String?
+    public var calendarSourceId: String?
+    public var title: String
+    public var color: String?
+    public var kind: String?
+    public var isMemryManaged: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(provider: String?, calendarSourceId: String?, title: String, color: String?, kind: String?, isMemryManaged: Bool) {
+        self.provider = provider
+        self.calendarSourceId = calendarSourceId
+        self.title = title
+        self.color = color
+        self.kind = kind
+        self.isMemryManaged = isMemryManaged
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarItemSource: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarItemSource: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarItemSource {
+        return
+            try CalendarItemSource(
+                provider: FfiConverterOptionString.read(from: &buf), 
+                calendarSourceId: FfiConverterOptionString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                kind: FfiConverterOptionString.read(from: &buf), 
+                isMemryManaged: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarItemSource, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.provider, into: &buf)
+        FfiConverterOptionString.write(value.calendarSourceId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.kind, into: &buf)
+        FfiConverterBool.write(value.isMemryManaged, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarItemSource_lift(_ buf: RustBuffer) throws -> CalendarItemSource {
+    return try FfiConverterTypeCalendarItemSource.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarItemSource_lower(_ value: CalendarItemSource) -> RustBuffer {
+    return FfiConverterTypeCalendarItemSource.lower(value)
+}
+
+
+/**
+ * A project linking an event (`tasksService.listForItem('calendar_event')`).
+ */
+public struct CalendarLinkedProject: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var color: String?
+    public var isArchived: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, color: String?, isArchived: Bool) {
+        self.id = id
+        self.name = name
+        self.color = color
+        self.isArchived = isArchived
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarLinkedProject: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarLinkedProject: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarLinkedProject {
+        return
+            try CalendarLinkedProject(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                isArchived: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarLinkedProject, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterBool.write(value.isArchived, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarLinkedProject_lift(_ buf: RustBuffer) throws -> CalendarLinkedProject {
+    return try FfiConverterTypeCalendarLinkedProject.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarLinkedProject_lower(_ value: CalendarLinkedProject) -> RustBuffer {
+    return FfiConverterTypeCalendarLinkedProject.lower(value)
+}
+
+
+/**
+ * One item waiting to be written out.
+ */
+public struct CalendarPushItem: Equatable, Hashable {
+    public var sourceType: String
+    public var sourceId: String
+    public var attempts: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceType: String, sourceId: String, attempts: Int64) {
+        self.sourceType = sourceType
+        self.sourceId = sourceId
+        self.attempts = attempts
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarPushItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarPushItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarPushItem {
+        return
+            try CalendarPushItem(
+                sourceType: FfiConverterString.read(from: &buf), 
+                sourceId: FfiConverterString.read(from: &buf), 
+                attempts: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarPushItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceType, into: &buf)
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterInt64.write(value.attempts, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarPushItem_lift(_ buf: RustBuffer) throws -> CalendarPushItem {
+    return try FfiConverterTypeCalendarPushItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarPushItem_lower(_ value: CalendarPushItem) -> RustBuffer {
+    return FfiConverterTypeCalendarPushItem.lower(value)
+}
+
+
+/**
+ * What to send for one item.
+ */
+public struct CalendarPushPlan: Equatable, Hashable {
+    /**
+     * `none` (nothing to write; the item leaves the queue), `wait` (another
+     * provider or an account this device does not hold: stays queued),
+     * `upsert`, `delete`, `exclude` (CalDAV: PUT `body`, which drops one
+     * occurrence of a series, then retire the binding) or `fetch` (CalDAV:
+     * GET `href` and plan again with it as `base`).
+     */
+    public var action: String
+    public var provider: String
+    /**
+     * Google calendar id or CalDAV collection URL.
+     */
+    public var calendarId: String
+    /**
+     * The remote event (Google id, or CalDAV object URL with
+     * `::recurrenceId` for one occurrence); `nil` for a new Google event.
+     */
+    public var remoteEventId: String?
+    /**
+     * CalDAV: the object URL to PUT, DELETE or GET.
+     */
+    public var href: String?
+    public var ifMatch: String?
+    /**
+     * Google: the event resource as JSON. CalDAV: the iCalendar object.
+     */
+    public var body: String?
+    /**
+     * The binding a delete retires.
+     */
+    public var bindingId: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `none` (nothing to write; the item leaves the queue), `wait` (another
+         * provider or an account this device does not hold: stays queued),
+         * `upsert`, `delete`, `exclude` (CalDAV: PUT `body`, which drops one
+         * occurrence of a series, then retire the binding) or `fetch` (CalDAV:
+         * GET `href` and plan again with it as `base`).
+         */action: String, provider: String, 
+        /**
+         * Google calendar id or CalDAV collection URL.
+         */calendarId: String, 
+        /**
+         * The remote event (Google id, or CalDAV object URL with
+         * `::recurrenceId` for one occurrence); `nil` for a new Google event.
+         */remoteEventId: String?, 
+        /**
+         * CalDAV: the object URL to PUT, DELETE or GET.
+         */href: String?, ifMatch: String?, 
+        /**
+         * Google: the event resource as JSON. CalDAV: the iCalendar object.
+         */body: String?, 
+        /**
+         * The binding a delete retires.
+         */bindingId: String?) {
+        self.action = action
+        self.provider = provider
+        self.calendarId = calendarId
+        self.remoteEventId = remoteEventId
+        self.href = href
+        self.ifMatch = ifMatch
+        self.body = body
+        self.bindingId = bindingId
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarPushPlan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarPushPlan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarPushPlan {
+        return
+            try CalendarPushPlan(
+                action: FfiConverterString.read(from: &buf), 
+                provider: FfiConverterString.read(from: &buf), 
+                calendarId: FfiConverterString.read(from: &buf), 
+                remoteEventId: FfiConverterOptionString.read(from: &buf), 
+                href: FfiConverterOptionString.read(from: &buf), 
+                ifMatch: FfiConverterOptionString.read(from: &buf), 
+                body: FfiConverterOptionString.read(from: &buf), 
+                bindingId: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarPushPlan, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.action, into: &buf)
+        FfiConverterString.write(value.provider, into: &buf)
+        FfiConverterString.write(value.calendarId, into: &buf)
+        FfiConverterOptionString.write(value.remoteEventId, into: &buf)
+        FfiConverterOptionString.write(value.href, into: &buf)
+        FfiConverterOptionString.write(value.ifMatch, into: &buf)
+        FfiConverterOptionString.write(value.body, into: &buf)
+        FfiConverterOptionString.write(value.bindingId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarPushPlan_lift(_ buf: RustBuffer) throws -> CalendarPushPlan {
+    return try FfiConverterTypeCalendarPushPlan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarPushPlan_lower(_ value: CalendarPushPlan) -> RustBuffer {
+    return FfiConverterTypeCalendarPushPlan.lower(value)
+}
+
+
+/**
+ * A range request (`GetCalendarRangeInput` + desktop's side inputs).
+ */
+public struct CalendarRangeRequest: Equatable, Hashable {
+    public var startAt: String
+    public var endAt: String
+    public var includeUnselectedSources: Bool
+    public var enabledPropertyNames: [String]
+    public var showNotesByCreated: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(startAt: String, endAt: String, includeUnselectedSources: Bool, enabledPropertyNames: [String], showNotesByCreated: Bool) {
+        self.startAt = startAt
+        self.endAt = endAt
+        self.includeUnselectedSources = includeUnselectedSources
+        self.enabledPropertyNames = enabledPropertyNames
+        self.showNotesByCreated = showNotesByCreated
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarRangeRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarRangeRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarRangeRequest {
+        return
+            try CalendarRangeRequest(
+                startAt: FfiConverterString.read(from: &buf), 
+                endAt: FfiConverterString.read(from: &buf), 
+                includeUnselectedSources: FfiConverterBool.read(from: &buf), 
+                enabledPropertyNames: FfiConverterSequenceString.read(from: &buf), 
+                showNotesByCreated: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarRangeRequest, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.startAt, into: &buf)
+        FfiConverterString.write(value.endAt, into: &buf)
+        FfiConverterBool.write(value.includeUnselectedSources, into: &buf)
+        FfiConverterSequenceString.write(value.enabledPropertyNames, into: &buf)
+        FfiConverterBool.write(value.showNotesByCreated, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarRangeRequest_lift(_ buf: RustBuffer) throws -> CalendarRangeRequest {
+    return try FfiConverterTypeCalendarRangeRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarRangeRequest_lower(_ value: CalendarRangeRequest) -> RustBuffer {
+    return FfiConverterTypeCalendarRangeRequest.lower(value)
+}
+
+
+/**
+ * `CalendarSourceRecord`.
+ */
+public struct CalendarSourceRecord: Equatable, Hashable {
+    public var id: String
+    public var provider: String
+    public var kind: String
+    public var accountId: String?
+    public var remoteId: String
+    public var title: String
+    public var timezone: String?
+    /**
+     * `calendarDisplayHex(color)`.
+     */
+    public var color: String?
+    public var isPrimary: Bool
+    public var isSelected: Bool
+    public var isMemryManaged: Bool
+    public var syncStatus: String
+    public var lastSyncedAt: String?
+    public var lastError: String?
+    /**
+     * JSON text of `metadata`.
+     */
+    public var metadataJson: String?
+    public var archivedAt: String?
+    /**
+     * Where the provider's pull continues (`sync-token:…`, `ctag:…`, a
+     * Google sync token); on the synced row, as desktop keeps it.
+     */
+    public var syncCursor: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, provider: String, kind: String, accountId: String?, remoteId: String, title: String, timezone: String?, 
+        /**
+         * `calendarDisplayHex(color)`.
+         */color: String?, isPrimary: Bool, isSelected: Bool, isMemryManaged: Bool, syncStatus: String, lastSyncedAt: String?, lastError: String?, 
+        /**
+         * JSON text of `metadata`.
+         */metadataJson: String?, archivedAt: String?, 
+        /**
+         * Where the provider's pull continues (`sync-token:…`, `ctag:…`, a
+         * Google sync token); on the synced row, as desktop keeps it.
+         */syncCursor: String?) {
+        self.id = id
+        self.provider = provider
+        self.kind = kind
+        self.accountId = accountId
+        self.remoteId = remoteId
+        self.title = title
+        self.timezone = timezone
+        self.color = color
+        self.isPrimary = isPrimary
+        self.isSelected = isSelected
+        self.isMemryManaged = isMemryManaged
+        self.syncStatus = syncStatus
+        self.lastSyncedAt = lastSyncedAt
+        self.lastError = lastError
+        self.metadataJson = metadataJson
+        self.archivedAt = archivedAt
+        self.syncCursor = syncCursor
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarSourceRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarSourceRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarSourceRecord {
+        return
+            try CalendarSourceRecord(
+                id: FfiConverterString.read(from: &buf), 
+                provider: FfiConverterString.read(from: &buf), 
+                kind: FfiConverterString.read(from: &buf), 
+                accountId: FfiConverterOptionString.read(from: &buf), 
+                remoteId: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                timezone: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                isPrimary: FfiConverterBool.read(from: &buf), 
+                isSelected: FfiConverterBool.read(from: &buf), 
+                isMemryManaged: FfiConverterBool.read(from: &buf), 
+                syncStatus: FfiConverterString.read(from: &buf), 
+                lastSyncedAt: FfiConverterOptionString.read(from: &buf), 
+                lastError: FfiConverterOptionString.read(from: &buf), 
+                metadataJson: FfiConverterOptionString.read(from: &buf), 
+                archivedAt: FfiConverterOptionString.read(from: &buf), 
+                syncCursor: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarSourceRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.provider, into: &buf)
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterOptionString.write(value.accountId, into: &buf)
+        FfiConverterString.write(value.remoteId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.timezone, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterBool.write(value.isPrimary, into: &buf)
+        FfiConverterBool.write(value.isSelected, into: &buf)
+        FfiConverterBool.write(value.isMemryManaged, into: &buf)
+        FfiConverterString.write(value.syncStatus, into: &buf)
+        FfiConverterOptionString.write(value.lastSyncedAt, into: &buf)
+        FfiConverterOptionString.write(value.lastError, into: &buf)
+        FfiConverterOptionString.write(value.metadataJson, into: &buf)
+        FfiConverterOptionString.write(value.archivedAt, into: &buf)
+        FfiConverterOptionString.write(value.syncCursor, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarSourceRecord_lift(_ buf: RustBuffer) throws -> CalendarSourceRecord {
+    return try FfiConverterTypeCalendarSourceRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarSourceRecord_lower(_ value: CalendarSourceRecord) -> RustBuffer {
+    return FfiConverterTypeCalendarSourceRecord.lower(value)
+}
+
+
+/**
+ * The local zone over a range, as the shell's `TimeZone` reports it: the
+ * offset in force before the first transition, then each transition. A
+ * record, not a foreign trait, so the seam list stays closed (§6 CL002).
+ */
+public struct CalendarZone: Equatable, Hashable {
+    /**
+     * IANA name (`Intl…timeZone`), stamped on native items.
+     */
+    public var identifier: String
+    /**
+     * Offset east of UTC, milliseconds, before `transitions[0]`.
+     */
+    public var baseOffsetMs: Int64
+    public var transitions: [CalendarZoneTransition]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * IANA name (`Intl…timeZone`), stamped on native items.
+         */identifier: String, 
+        /**
+         * Offset east of UTC, milliseconds, before `transitions[0]`.
+         */baseOffsetMs: Int64, transitions: [CalendarZoneTransition]) {
+        self.identifier = identifier
+        self.baseOffsetMs = baseOffsetMs
+        self.transitions = transitions
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarZone: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarZone: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarZone {
+        return
+            try CalendarZone(
+                identifier: FfiConverterString.read(from: &buf), 
+                baseOffsetMs: FfiConverterInt64.read(from: &buf), 
+                transitions: FfiConverterSequenceTypeCalendarZoneTransition.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarZone, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.identifier, into: &buf)
+        FfiConverterInt64.write(value.baseOffsetMs, into: &buf)
+        FfiConverterSequenceTypeCalendarZoneTransition.write(value.transitions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarZone_lift(_ buf: RustBuffer) throws -> CalendarZone {
+    return try FfiConverterTypeCalendarZone.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarZone_lower(_ value: CalendarZone) -> RustBuffer {
+    return FfiConverterTypeCalendarZone.lower(value)
+}
+
+
+public struct CalendarZoneTransition: Equatable, Hashable {
+    public var atMs: Int64
+    public var offsetMs: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(atMs: Int64, offsetMs: Int64) {
+        self.atMs = atMs
+        self.offsetMs = offsetMs
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarZoneTransition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarZoneTransition: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarZoneTransition {
+        return
+            try CalendarZoneTransition(
+                atMs: FfiConverterInt64.read(from: &buf), 
+                offsetMs: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarZoneTransition, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.atMs, into: &buf)
+        FfiConverterInt64.write(value.offsetMs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarZoneTransition_lift(_ buf: RustBuffer) throws -> CalendarZoneTransition {
+    return try FfiConverterTypeCalendarZoneTransition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarZoneTransition_lower(_ value: CalendarZoneTransition) -> RustBuffer {
+    return FfiConverterTypeCalendarZoneTransition.lower(value)
 }
 
 
@@ -22422,6 +25134,85 @@ public func FfiConverterTypeBlockEdit_lower(_ value: BlockEdit) -> RustBuffer {
 
 
 /**
+ * One optional-and-clearable text key of a patch.
+ */
+
+public enum CalendarTextChange: Equatable, Hashable {
+    
+    case keep
+    case set(value: String
+    )
+    case clear
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CalendarTextChange: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarTextChange: FfiConverterRustBuffer {
+    typealias SwiftType = CalendarTextChange
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarTextChange {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .keep
+        
+        case 2: return .set(value: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .clear
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CalendarTextChange, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .keep:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .set(value):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(value, into: &buf)
+            
+        
+        case .clear:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarTextChange_lift(_ buf: RustBuffer) throws -> CalendarTextChange {
+    return try FfiConverterTypeCalendarTextChange.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarTextChange_lower(_ value: CalendarTextChange) -> RustBuffer {
+    return FfiConverterTypeCalendarTextChange.lower(value)
+}
+
+
+
+/**
  * Failures of the `CodeCapture` seam (chapter 03).
  */
 public 
@@ -25573,6 +28364,30 @@ fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionBool: FfiConverterRustBuffer {
+    typealias SwiftType = Bool?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterBool.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterBool.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -25637,6 +28452,102 @@ fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustB
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeSyncProgressListener.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeCalendarCaldavObject: FfiConverterRustBuffer {
+    typealias SwiftType = CalendarCaldavObject?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCalendarCaldavObject.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCalendarCaldavObject.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeCalendarEventRecord: FfiConverterRustBuffer {
+    typealias SwiftType = CalendarEventRecord?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCalendarEventRecord.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCalendarEventRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeCalendarExternalEventRecord: FfiConverterRustBuffer {
+    typealias SwiftType = CalendarExternalEventRecord?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCalendarExternalEventRecord.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCalendarExternalEventRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeCalendarItemBinding: FfiConverterRustBuffer {
+    typealias SwiftType = CalendarItemBinding?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCalendarItemBinding.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCalendarItemBinding.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -25981,6 +28892,30 @@ fileprivate struct FfiConverterOptionSequenceInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionSequenceTypeBlock: FfiConverterRustBuffer {
     typealias SwiftType = [Block]?
 
@@ -26296,6 +29231,281 @@ fileprivate struct FfiConverterSequenceTypeCachedAttachment: FfiConverterRustBuf
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeCachedAttachment.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarCaldavCalendar: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarCaldavCalendar]
+
+    public static func write(_ value: [CalendarCaldavCalendar], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarCaldavCalendar.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarCaldavCalendar] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarCaldavCalendar]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarCaldavCalendar.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarCaldavObject: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarCaldavObject]
+
+    public static func write(_ value: [CalendarCaldavObject], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarCaldavObject.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarCaldavObject] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarCaldavObject]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarCaldavObject.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarFeedDue: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarFeedDue]
+
+    public static func write(_ value: [CalendarFeedDue], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarFeedDue.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarFeedDue] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarFeedDue]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarFeedDue.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarFeedState: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarFeedState]
+
+    public static func write(_ value: [CalendarFeedState], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarFeedState.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarFeedState] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarFeedState]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarFeedState.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarGoogleCalendar: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarGoogleCalendar]
+
+    public static func write(_ value: [CalendarGoogleCalendar], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarGoogleCalendar.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarGoogleCalendar] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarGoogleCalendar]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarGoogleCalendar.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarItem: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarItem]
+
+    public static func write(_ value: [CalendarItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarLinkedProject: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarLinkedProject]
+
+    public static func write(_ value: [CalendarLinkedProject], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarLinkedProject.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarLinkedProject] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarLinkedProject]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarLinkedProject.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarPushItem: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarPushItem]
+
+    public static func write(_ value: [CalendarPushItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarPushItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarPushItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarPushItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarPushItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarSourceRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarSourceRecord]
+
+    public static func write(_ value: [CalendarSourceRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarSourceRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarSourceRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarSourceRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarSourceRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarZone: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarZone]
+
+    public static func write(_ value: [CalendarZone], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarZone.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarZone] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarZone]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarZone.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarZoneTransition: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarZoneTransition]
+
+    public static func write(_ value: [CalendarZoneTransition], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarZoneTransition.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarZoneTransition] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarZoneTransition]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarZoneTransition.read(from: &buf))
         }
         return seq
     }
@@ -27640,6 +30850,75 @@ public func uniffiForeignFutureHandleCountMemryCore() -> Int {
     UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.count
 }
 /**
+ * Runs every section of `calendar.json` and answers in its shape.
+ */
+public func calendarConformance(vectorJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_conformance(
+        FfiConverterString.lower(vectorJson),uniffiCallStatus
+    )
+})
+}
+/**
+ * Runs every case of `calendar-ical.json` and answers `{ cases: [{ name,
+ * actual | error }] }`.
+ */
+public func calendarIcalConformance(vectorJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_ical_conformance(
+        FfiConverterString.lower(vectorJson),uniffiCallStatus
+    )
+})
+}
+/**
+ * `caldavAccountId`: the keychain key for the account's password.
+ */
+public func calendarCaldavAccountId(serverUrl: String, username: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_caldav_account_id(
+        FfiConverterString.lower(serverUrl),
+        FfiConverterString.lower(username),uniffiCallStatus
+    )
+})
+}
+/**
+ * `normalizeCaldavServerUrl`.
+ */
+public func calendarCaldavNormalizeServer(input: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_caldav_normalize_server(
+        FfiConverterString.lower(input),uniffiCallStatus
+    )
+})
+}
+/**
+ * `normalizeIcsUrl`; `None` for anything that is not an http(s) link.
+ */
+public func calendarFeedNormalizeUrl(input: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_feed_normalize_url(
+        FfiConverterString.lower(input),uniffiCallStatus
+    )
+})
+}
+/**
+ * Every TZID (and `X-WR-TIMEZONE`) the text names, for the shell to resolve
+ * into [`CalendarFeedZones`].
+ */
+public func calendarFeedZoneIds(text: String) -> [String]  {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_feed_zone_ids(
+        FfiConverterString.lower(text),uniffiCallStatus
+    )
+})
+}
+/**
  * One document's body as blocks, from a raw update.
  *
  * The same walk `Notes.blocks` runs, on the same code path, without a vault.
@@ -28063,6 +31342,24 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_memry_core_checksum_func_calendar_conformance() != 35209) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_calendar_ical_conformance() != 10852) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_calendar_caldav_account_id() != 44618) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_calendar_caldav_normalize_server() != 45368) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_calendar_feed_normalize_url() != 22981) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_calendar_feed_zone_ids() != 8389) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_blocks_from_update() != 25013) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -28223,6 +31520,108 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_device_approver() != 31031) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_create_event() != 11228) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_delete_event() != 1150) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_event() != 17117) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_external_event() != 37427) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_linked_projects() != 43906) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_promote() != 23791) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_range() != 54546) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_search() != 5769) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_set_setting() != 42815) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_set_source_selected() != 1326) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_setting() != 22167) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_sources() != 29604) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_update_event() != 54205) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_apply_pull() != 4511) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_connect() != 9130) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_disconnect() != 6684) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_google_apply_pull() != 23030) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_google_connect() != 53715) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_google_disconnect() != 31087) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_provider_source_error() != 3930) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_deleted() != 35928) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_done() != 60085) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_failed() != 26185) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_plan() != 63758) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_queue() != 41893) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_skip() != 56002) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_error() != 19564) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 28465) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_not_modified() != 41963) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_states() != 64955) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_subscribe() != 27741) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_unsubscribe() != 33065) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_update() != 32036) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feeds_due() != 47367) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {
@@ -28928,6 +32327,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_undo() != 32165) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_calendar() != 13188) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {

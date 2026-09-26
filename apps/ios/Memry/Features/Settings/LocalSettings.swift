@@ -32,7 +32,7 @@ enum ImageFiling: String, CaseIterable, Identifiable, Sendable {
 
 /// A module that can be turned off (Features, 14).
 enum AppFeature: String, CaseIterable, Identifiable, Sendable {
-    case home, inbox, journal, tasks
+    case home, inbox, journal, tasks, calendar
     var id: String { rawValue }
 }
 
@@ -43,7 +43,7 @@ enum SettingsFeatureGates {
     /// does something. Home has no tab since the Inbox replaced it.
     static func isShipped(_ feature: AppFeature) -> Bool {
         switch feature {
-        case .inbox, .tasks, .journal: true
+        case .inbox, .tasks, .journal, .calendar: true
         case .home: false
         }
     }
@@ -108,10 +108,12 @@ final class LocalSettings {
         AppFeature.allCases.filter { SettingsFeatureGates.isShipped($0) && isOn($0) }
     }
 
-    /// - Returns: `false` when the change was refused (the last feature on).
+    /// - Returns: `false` when the change was refused (the last tab on).
+    /// Calendar sits under More, not in the tab bar, so it never keeps a tab
+    /// alive and does not count here (spec 007 CL022).
     @discardableResult
     func set(_ feature: AppFeature, on: Bool) -> Bool {
-        if !on, shippedOn == [feature] { return false }
+        if !on, feature != .calendar, shippedOn.filter({ $0 != .calendar }) == [feature] { return false }
         if on { enabledFeatures.insert(feature) } else { enabledFeatures.remove(feature) }
         defaults.set(on, forKey: Key.feature(feature))
         return true

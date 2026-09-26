@@ -16,6 +16,10 @@ import type { ZodType } from 'zod'
 
 import { SettingsSyncPayloadSchema } from '../../src/settings-sync'
 import {
+  CalendarBindingSyncPayloadSchema,
+  CalendarEventSyncPayloadSchema,
+  CalendarExternalEventSyncPayloadSchema,
+  CalendarSourceSyncPayloadSchema,
   CustomIconSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
@@ -365,6 +369,126 @@ const SPECS: TypeSpec[] = [
     boundary: { title: '', content: null, metadata: null, clock: {} },
     unknownKey: 'transcription',
     unknownValue: 'Pick up the cable before Friday.'
+  },
+  {
+    // Calendar sources, subscribed since spec 007 CL010 (chapter 05 apply
+    // order 0). Desktop pushes its whole `calendar_sources` row, so its local
+    // `lastError` / `syncedAt` columns are the unknown keys a real payload
+    // carries.
+    type: 'calendar_source',
+    schema: CalendarSourceSyncPayloadSchema,
+    valid: {
+      provider: 'google',
+      kind: 'calendar',
+      accountId: 'acct-1',
+      remoteId: 'work@group.calendar.google.com',
+      title: 'Work',
+      timezone: 'Europe/Istanbul',
+      color: '#9fc6e7',
+      isPrimary: false,
+      isSelected: true,
+      isMemryManaged: false,
+      syncCursor: 'CPj1',
+      syncStatus: 'ok',
+      lastSyncedAt: '2026-04-16T00:00:00.000Z',
+      metadata: { accessRole: 'owner' },
+      archivedAt: null,
+      clock: CLOCK,
+      createdAt: '2026-04-16T00:00:00.000Z',
+      modifiedAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { title: '', timezone: null, color: null, metadata: null, clock: {} },
+    unknownKey: 'lastError',
+    unknownValue: 'unreachable'
+  },
+  {
+    // Memrynote events (spec 007 CL010). Field-merged: `fieldClocks` rides on
+    // the wire (chapter 06 §6.7).
+    type: 'calendar_event',
+    schema: CalendarEventSyncPayloadSchema,
+    valid: {
+      title: 'Lunch with Deniz',
+      description: null,
+      location: null,
+      startAt: '2026-04-16T10:00:00.000Z',
+      endAt: '2026-04-16T11:00:00.000Z',
+      timezone: 'Europe/Istanbul',
+      isAllDay: false,
+      recurrenceRule: null,
+      recurrenceExceptions: null,
+      attendees: null,
+      reminders: null,
+      visibility: null,
+      colorId: '11',
+      conferenceData: null,
+      parentEventId: null,
+      originalStartTime: null,
+      targetCalendarId: 'work@group.calendar.google.com',
+      archivedAt: null,
+      clock: CLOCK,
+      fieldClocks: { title: CLOCK },
+      createdAt: '2026-04-16T00:00:00.000Z',
+      modifiedAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { title: '', endAt: null, fieldClocks: null, clock: {} },
+    unknownKey: 'syncedAt',
+    unknownValue: '2026-04-16T00:00:01.000Z'
+  },
+  {
+    // Imported provider events (spec 007 CL010), apply order 2 after sources.
+    type: 'calendar_external_event',
+    schema: CalendarExternalEventSyncPayloadSchema,
+    valid: {
+      sourceId: 'src-work',
+      remoteEventId: 'g-1',
+      remoteEtag: '"etag-1"',
+      remoteUpdatedAt: '2026-04-16T00:00:00.000Z',
+      title: 'Design review',
+      description: 'Agenda',
+      location: 'Room 4',
+      startAt: '2026-04-16T07:00:00.000Z',
+      endAt: '2026-04-16T08:30:00.000Z',
+      timezone: 'Europe/Istanbul',
+      isAllDay: false,
+      status: 'confirmed',
+      recurrenceRule: null,
+      attendees: [{ email: 'deniz@example.com', responseStatus: 'accepted' }],
+      reminders: { useDefault: true },
+      visibility: null,
+      colorId: null,
+      conferenceData: null,
+      rawPayload: null,
+      archivedAt: null,
+      clock: CLOCK,
+      createdAt: '2026-04-16T00:00:00.000Z',
+      modifiedAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { title: '', endAt: null, attendees: null, clock: {} },
+    unknownKey: 'syncedAt',
+    unknownValue: '2026-04-16T00:00:01.000Z'
+  },
+  {
+    // Provider bindings (spec 007 CL010), apply order 3 after the item.
+    type: 'calendar_binding',
+    schema: CalendarBindingSyncPayloadSchema,
+    valid: {
+      sourceType: 'event',
+      sourceId: 'evt-1',
+      provider: 'google',
+      remoteCalendarId: 'work@group.calendar.google.com',
+      remoteEventId: 'g-1',
+      ownershipMode: 'provider_managed',
+      writebackMode: 'time_and_text',
+      remoteVersion: '"etag-1"',
+      lastLocalSnapshot: null,
+      archivedAt: null,
+      clock: CLOCK,
+      createdAt: '2026-04-16T00:00:00.000Z',
+      modifiedAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { sourceId: '', remoteVersion: null, lastLocalSnapshot: null, clock: {} },
+    unknownKey: 'syncedAt',
+    unknownValue: '2026-04-16T00:00:01.000Z'
   }
 ]
 

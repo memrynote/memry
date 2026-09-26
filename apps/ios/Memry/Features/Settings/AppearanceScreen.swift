@@ -178,6 +178,7 @@ struct FeaturesScreen: View {
         case .inbox: SettingsCopy.inbox
         case .journal: SettingsCopy.journal
         case .tasks: SettingsCopy.tasks
+        case .calendar: CalendarCopy.title
         }
     }
 

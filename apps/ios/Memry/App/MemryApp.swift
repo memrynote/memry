@@ -10,6 +10,11 @@ struct MemryApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // `memry://calendar?...` (spec 007 CL022). Held until the vault
+                // shell exists, which may be after sign-in or unlock.
+                .onOpenURL { url in
+                    if let link = CalendarLink(url: url) { CalendarLinks.shared.request(link) }
+                }
         }
     }
 }
@@ -22,6 +27,7 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
+        CalendarBackgroundRefresh.register()
         return true
     }
 }

@@ -1,0 +1,315 @@
+Attributes: Application, 0x10268b340, pid: 95041, label: 'Memry'
+Element subtree:
+ →Application, 0x10268b340, pid: 95041, label: 'Memry'
+    Window (Main), 0x10268bc00, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x10268be80, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x10268bd40, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x10268b700, {{-402.0, -874.0}, {1206.0, 2622.0}}
+          Other, 0x10268bac0, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x10268b980, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x10268b840, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x10268b0c0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x10268af80, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x10268ae40, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x10268b200, {{0.0, 0.0}, {402.0, 874.0}}
+                        Other, 0x10268b5c0, {{0.0, 0.0}, {402.0, 874.0}}
+                          Other, 0x10268b480, {{0.0, 0.0}, {402.0, 874.0}}
+                            NavigationBar, 0x1114a0000, {{0.0, 62.0}, {402.0, 54.0}}, identifier: '_TtGC7SwiftUI29PresentationHosting'
+                              Button, 0x1114a0dc0, {{16.0, 62.0}, {44.0, 44.0}}, identifier: 'BackButton', label: 'More'
+                              Other, 0x1114a0f00, {{272.3, 66.0}, {46.0, 36.0}}, identifier: 'calendar.search', label: 'Search calendar'
+                                Other, 0x1114a0780, {{272.3, 66.0}, {46.0, 36.0}}
+                                  Button, 0x1114a08c0, {{272.3, 66.0}, {46.0, 36.0}}, identifier: 'calendar.search', label: 'Search calendar'
+                              Other, 0x1114a0b40, {{334.3, 66.0}, {47.7, 36.0}}, identifier: 'calendar.filter', label: 'Filter calendars'
+                                Other, 0x1114a0a00, {{334.3, 66.0}, {47.7, 36.0}}
+                                  Button, 0x1114a0c80, {{334.3, 66.0}, {47.7, 36.0}}, identifier: 'calendar.filter', label: 'Filter calendars'
+                            Other, 0x1114a12c0, {{0.0, 0.0}, {402.0, 874.0}}
+                              Other, 0x1114a2bc0, {{0.0, 0.0}, {402.0, 874.0}}
+                                Other, 0x1114a2580, {{0.0, 0.0}, {402.0, 874.0}}
+                                  Other, 0x1114a2800, {{0.0, 0.0}, {402.0, 874.0}}
+                                    Other, 0x1114a2300, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'calendar.screen'
+                                      Button, 0x1114a2440, {{21.0, 396.3}, {36.0, 97.0}}, identifier: 'calendar.strip.2026-09-28', label: 'Monday, September 28', Selected
+                                        StaticText, 0x1114a0280, {{21.7, 396.3}, {34.7, 48.0}}, label: 'M'
+                                        StaticText, 0x1114a26c0, {{21.0, 449.2}, {36.0, 34.3}}, label: '28'
+                                        Other, 0x1114a2940, {{33.0, 488.3}, {12.0, 5.0}}
+                                      Button, 0x1114a0500, {{75.0, 396.3}, {36.0, 97.0}}, identifier: 'calendar.strip.2026-09-29', label: 'Tuesday, September 29'
+                                        StaticText, 0x1114a03c0, {{80.8, 396.3}, {24.3, 48.0}}, label: 'T'
+                                        StaticText, 0x1114a3340, {{75.0, 448.5}, {36.0, 35.7}}, label: '29'
+                                        Other, 0x1114a3840, {{83.7, 488.3}, {19.0, 5.0}}
+                                      Button, 0x1114a3ac0, {{127.7, 396.3}, {38.7, 97.0}}, identifier: 'calendar.strip.2026-09-30', label: 'Wednesday, September 30'
+                                        StaticText, 0x1114a3980, {{127.7, 396.3}, {38.7, 48.0}}, label: 'W'
+                                        StaticText, 0x1114a3480, {{129.0, 448.8}, {36.0, 35.0}}, label: '30'
+                                        Other, 0x1114a3700, {{137.7, 488.3}, {19.0, 5.0}}
+                                      Button, 0x1114a1f40, {{183.0, 396.3}, {36.0, 97.0}}, identifier: 'calendar.strip.2026-10-01', label: 'Thursday, October 1'
+                                        StaticText, 0x1114a1680, {{188.8, 396.3}, {24.3, 48.0}}, label: 'T'
+                                        StaticText, 0x1114a1b80, {{194.2, 448.5}, {13.7, 35.7}}, label: '1'
+                                        Other, 0x1114a1e00, {{198.7, 488.3}, {5.0, 5.0}}
+                                      Button, 0x1114a2080, {{237.0, 396.3}, {36.0, 97.0}}, identifier: 'calendar.strip.2026-10-02', label: 'Friday, October 2'
+                                        StaticText, 0x1114a1180, {{244.0, 396.3}, {22.0, 48.0}}, label: 'F'
+                                        StaticText, 0x1114a2a80, {{246.3, 448.5}, {17.3, 35.7}}, label: '2'
+                                        Other, 0x1114a2d00, {{252.7, 488.3}, {5.0, 5.0}}
+                                      Button, 0x1114a3c00, {{291.0, 396.3}, {36.0, 97.0}}, identifier: 'calendar.strip.2026-10-03', label: 'Saturday, October 3'
+                                        StaticText, 0x1114a2f80, {{296.3, 396.3}, {25.3, 48.0}}, label: 'S'
+                                        StaticText, 0x1114a3e80, {{300.0, 448.5}, {18.0, 35.7}}, label: '3'
+                                        Other, 0x1114a2e40, {{306.7, 488.3}, {5.0, 5.0}}
+                                      Button, 0x1114a21c0, {{345.0, 396.3}, {36.0, 97.0}}, identifier: 'calendar.strip.2026-10-04', label: 'Sunday, October 4'
+                                        StaticText, 0x1114a3d40, {{350.3, 396.3}, {25.3, 48.0}}, label: 'S'
+                                        StaticText, 0x1114a30c0, {{353.7, 448.5}, {18.7, 35.7}}, label: '4'
+                                        Other, 0x1114a0140, {{360.7, 488.3}, {5.0, 5.0}}
+                                      ScrollView, 0x1114a35c0, {{0.0, 502.0}, {402.0, 372.0}}
+                                        Other, 0x1114a1a40, {{-24120.0, 502.0}, {48642.0, 289.0}}
+                                          Other, 0x1114a1cc0, {{-402.0, 510.0}, {1206.0, 364.0}}
+                                            Other, 0x1114a1400, {{-402.0, 510.0}, {402.0, 364.0}}, identifier: 'calendar.day.2026-09-27'
+                                              StaticText, 0x1114a1900, {{-399.3, 513.0}, {45.3, 19.3}}, label: 'all-day'
+                                              ScrollView, 0x1116e3340, {{-346.0, 510.0}, {334.0, 141.7}}
+                                                Other, 0x1116e3480, {{-346.0, 510.0}, {334.0, 141.7}}
+                                                  Button, 0x1116e35c0, {{-346.0, 510.0}, {334.0, 69.3}}, label: 'Event, Istanbul weekend, All day, memrynote'
+                                                    StaticText, 0x1116e3700, {{-346.0, 510.0}, {334.0, 69.3}}, label: 'Istanbul weekend · Day 2 of 3'
+                                                  Button, 0x1116e3980, {{-346.0, 582.3}, {334.0, 69.3}}, label: 'Task, [agent] Undated task, All day, memrynote Tasks'
+                                                    Button, 0x1116e3ac0, {{-336.0, 606.0}, {22.0, 22.0}}, label: 'Complete [agent] Undated task'
+                                                    StaticText, 0x1116e3c00, {{-308.0, 590.7}, {266.3, 52.7}}, label: '[agent] Undated task'
+                                              ScrollView, 0x1116e3d40, {{-402.0, 659.7}, {402.0, 214.3}}
+                                                Other, 0x1116e3e80, {{-402.0, -1005.7}, {402.0, 5060.0}}
+                                                  Other, 0x1116e3840, {{-346.0, -993.7}, {334.0, 4960.0}}, label: '2026-09-27'
+                                                  Button, 0x1116e08c0, {{-345.0, 3341.3}, {330.0, 319.0}}, label: 'Event, CMU 15-445: Query Optimization (replay), 21:00 – 22:30 · 1h 30m, memrynote'
+                                                    StaticText, 0x1116e2800, {{-335.0, 3350.3}, {280.7, 208.7}}, label: 'CMU 15-445: Query Optimization (replay)'
+                                                    StaticText, 0x1116e2940, {{-335.0, 3560.0}, {310.0, 48.0}}, label: '21:00 – 22:30 · 1h 30m'
+                                                    Other, 0x1116e2a80, {{-345.0, 3341.3}, {330.0, 14.0}}
+                                                    Other, 0x1116e30c0, {{-345.0, 3646.3}, {330.0, 14.0}}
+                                            Other, 0x1116e2bc0, {{0.0, 510.0}, {402.0, 364.0}}, identifier: 'calendar.day.2026-09-28'
+                                              StaticText, 0x1116e2d00, {{2.7, 513.0}, {45.3, 19.3}}, label: 'all-day'
+                                              ScrollView, 0x1116e2e40, {{56.0, 510.0}, {334.0, 214.0}}
+                                                Other, 0x1116e0a00, {{56.0, 510.0}, {334.0, 214.0}}
+                                                  Button, 0x1116e0b40, {{56.0, 510.0}, {334.0, 69.3}}, label: 'Event, Istanbul weekend, All day, memrynote'
+                                                    StaticText, 0x1116e0c80, {{56.0, 510.0}, {334.0, 69.3}}, label: 'Istanbul weekend · Day 3 of 3'
+                                                  Button, 0x1116e1cc0, {{56.0, 582.3}, {334.0, 69.3}}, label: 'Task, Decide on pricing, All day, memrynote Tasks'
+                                                    Button, 0x1116e1e00, {{66.0, 606.0}, {22.0, 22.0}}, label: 'Complete Decide on pricing'
+                                                    StaticText, 0x1116e1a40, {{94.0, 590.7}, {287.7, 52.7}}, label: 'Decide on pricing'
+                                                  Button, 0x1116e1b80, {{56.0, 654.7}, {334.0, 69.3}}, label: 'Task, Zone 2 cardio (30 min), All day, memrynote Tasks'
+                                                    Button, 0x1116e17c0, {{66.0, 678.3}, {22.0, 22.0}}, label: 'Complete Zone 2 cardio (30 min)'
+                                                    StaticText, 0x1116e1900, {{94.0, 663.0}, {273.3, 52.7}}, label: 'Zone 2 cardio (30 min)'
+                                              ScrollView, 0x1116e1540, {{0.0, 732.0}, {402.0, 142.0}}
+                                                Other, 0x1116e0140, {{0.0, -933.3}, {402.0, 5060.0}}
+                                                  Other, 0x1116e0500, {{56.0, -921.3}, {334.0, 4960.0}}, label: '2026-09-28'
+                                                  Button, 0x1116e0280, {{57.0, 933.7}, {330.0, 215.7}}, label: 'Event, [agent] CalDAV new x, 09:00 – 10:00 · 1h, memrynote'
+                                                    StaticText, 0x1116e0000, {{67.0, 942.7}, {312.0, 104.7}}, label: '[agent] CalDAV new x'
+                                                    StaticText, 0x1116e03c0, {{67.0, 1048.3}, {289.3, 48.0}}, label: '09:00 – 10:00 · 1h'
+                                                    Other, 0x1116e1180, {{57.0, 933.7}, {330.0, 14.0}}
+                                                    Other, 0x1116e0780, {{57.0, 1135.3}, {330.0, 14.0}}
+                                            Other, 0x1116e0640, {{402.0, 510.0}, {402.0, 364.0}}, identifier: 'calendar.day.2026-09-29'
+                                              StaticText, 0x1116e0dc0, {{404.7, 513.0}, {45.3, 19.3}}, label: 'all-day'
+                                              ScrollView, 0x1116e1680, {{458.0, 510.0}, {334.0, 141.7}}
+                                                Other, 0x1116e1040, {{458.0, 510.0}, {334.0, 141.7}}
+                                                  Button, 0x1116e1400, {{458.0, 510.0}, {334.0, 69.3}}, label: 'Task, Calendar timeline (Gantt) view, All day, memrynote Tasks'
+                                                    Button, 0x1116e12c0, {{468.0, 533.7}, {22.0, 22.0}}, label: 'Complete Calendar timeline (Gantt) view'
+                                                    StaticText, 0x1116e2080, {{496.0, 518.3}, {280.7, 52.7}}, label: 'Calendar timeline (Gantt) view'
+                                                  Button, 0x1116e2440, {{458.0, 582.3}, {334.0, 69.3}}, label: 'Event, Movie — Dune Part Two, 22:15 – 01:00 · 2h 45m, memrynote'
+                                                    StaticText, 0x1116e1f40, {{468.0, 590.7}, {195.3, 52.7}}, label: 'Movie — Dune Part Two · Day 1 of 2'
+                                                    StaticText, 0x1116e0f00, {{687.0, 593.0}, {97.0, 48.0}}, label: '22:15'
+                                              ScrollView, 0x1116e21c0, {{402.0, 659.7}, {402.0, 214.3}}
+                                                Other, 0x1116e2580, {{402.0, -1005.7}, {402.0, 5060.0}}
+                                                  Other, 0x1116e2300, {{458.0, -993.7}, {334.0, 4960.0}}, label: '2026-09-29'
+                                                  Button, 0x1116e26c0, {{459.0, 1896.0}, {330.0, 109.7}}, label: 'Imported event, [agent] Rich phone event, 14:00 – 14:30 · 30m, [agent] Rich'
+                                                    StaticText, 0x1116e2f80, {{469.0, 1900.0}, {306.3, 52.7}}, label: '[agent] Rich phone event'
+                                                    StaticText, 0x111cf0000, {{469.0, 1953.7}, {281.7, 48.0}}, label: '14:00 – 14:30 · 30m'
+                                        Other, 0x111cf0140, {{0.0, 502.0}, {402.0, 372.0}}
+                                          Other, 0x111cf0280, {{0.0, 726.2}, {402.0, 147.8}}
+                                        Other, 0x111cf03c0, {{0.0, 502.0}, {402.0, 372.0}}
+                                      Button, 0x111cf0500, {{20.0, 120.0}, {266.7, 141.7}}, identifier: 'calendar.titleMenu', label: 'September'
+                                        Button, 0x111cf0640, {{20.0, 120.0}, {266.7, 141.7}}
+                                          StaticText, 0x111cf0780, {{20.0, 120.0}, {266.7, 141.7}}, label: 'September'
+                                          Image, 0x111cf08c0, {{233.3, 145.3}, {46.7, 27.3}}, identifier: 'chevron.down', label: 'Go Down'
+                                      StaticText, 0x111cf0a00, {{20.0, 263.7}, {300.0, 116.7}}, identifier: 'calendar.subtitle', label: 'Day · Monday, Sep 28'
+                                      Button, 0x111cf0b40, {{291.3, 701.0}, {74.0, 74.0}}, identifier: 'calendar.add', label: 'Create event'
+                            Other, 0x111cf0c80, {{0.0, 0.0}, {402.0, 874.0}}
+                              Other, 0x111cf0dc0, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x111cf0f00, {{0.0, 791.0}, {402.0, 83.0}}
+                  Other, 0x111cf1040, {{0.0, 0.0}, {402.0, 874.0}}
+                    TabBar, 0x111cf1180, {{0.0, 791.0}, {402.0, 83.0}}, label: 'Tab Bar'
+                      Other, 0x111cf12c0, {{21.0, 791.0}, {360.0, 62.0}}
+                        Other, 0x111cf1400, {{21.0, 791.0}, {77.0, 54.0}}
+                        Other, 0x111cf1540, {{21.0, 791.0}, {360.0, 62.0}}
+                          Button, 0x111cf1680, {{25.0, 795.0}, {77.0, 54.0}}, identifier: 'doc.text', label: 'Notes'
+                            Image, 0x111cf17c0, {{51.0, 800.7}, {25.3, 28.7}}, identifier: 'text.document.fill', label: 'text.document.fill'
+                          Button, 0x111cf1900, {{93.8, 795.0}, {77.0, 54.0}}, identifier: 'tray', label: 'Inbox'
+                            Image, 0x111cf1a40, {{115.8, 803.0}, {33.0, 23.7}}, identifier: 'tray.fill', label: 'inbox'
+                          Button, 0x111cf1b80, {{162.5, 795.0}, {77.0, 54.0}}, identifier: 'checkmark.circle', label: 'Tasks'
+                            Image, 0x111cf1cc0, {{187.5, 801.3}, {27.3, 27.3}}, identifier: 'checkmark.circle.fill', label: 'selected'
+                          Button, 0x111cf1e00, {{231.2, 795.0}, {77.0, 54.0}}, identifier: 'book', label: 'Journal'
+                            Image, 0x111cf1f40, {{253.2, 802.3}, {32.3, 25.0}}, identifier: 'book.fill', label: 'bookmark'
+                          Button, 0x111cf2080, {{300.0, 795.0}, {77.0, 54.0}}, identifier: 'ellipsis', label: 'More', Selected
+                            Image, 0x111cf21c0, {{326.0, 810.7}, {25.0, 8.7}}, identifier: 'ellipsis', label: 'More'
+                        Other, 0x111cf2300, {{300.0, 795.0}, {77.0, 54.0}}
+                          Other, 0x111cf2440, {{300.0, 795.0}, {77.0, 54.0}}
+                            Other, 0x111cf2580, {{300.0, 795.0}, {77.0, 54.0}}
+                            Other, 0x111cf26c0, {{300.0, 795.0}, {77.0, 54.0}}
+                              Other, 0x111cf2800, {{300.0, 795.0}, {77.0, 54.0}}
+                                Other, 0x111cf2940, {{300.0, 795.0}, {77.0, 54.0}}
+                                  Other, 0x111cf2a80, {{300.0, 795.0}, {77.0, 54.0}}
+                                Other, 0x111cf2bc0, {{300.0, 795.0}, {77.0, 54.0}}
+                              Other, 0x111cf2d00, {{300.0, 795.0}, {77.0, 54.0}}
+                  Other, 0x111cf2e40, {{0.0, 791.0}, {402.0, 83.0}}
+                    Other, 0x111cf2f80, {{0.0, 791.0}, {402.0, 83.0}}
+                      Other, 0x111cf30c0, {{0.0, 791.0}, {402.0, 83.0}}
+                        Other, 0x111cf3200, {{0.0, 791.0}, {402.0, 83.0}}
+                          Other, 0x111cf3340, {{0.0, 791.0}, {402.0, 83.0}}
+                            Other, 0x111cf3480, {{0.0, 791.0}, {402.0, 83.0}}
+      Other, 0x111cf35c0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x111cf3700, {{-402.0, -874.0}, {1206.0, 2622.0}}
+        Other, 0x111cf3840, {{0.0, 62.0}, {402.0, 812.0}}
+          Other, 0x111cf3980, {{0.0, 62.0}, {402.0, 812.0}}
+            Other, 0x111cf3ac0, {{0.0, 62.0}, {402.0, 812.0}}
+              Other, 0x111cf3c00, {{0.0, 62.0}, {402.0, 812.0}}
+                Other, 0x111cf3d40, {{0.0, 62.0}, {402.0, 812.0}}
+                  Other, 0x111cf3e80, {{0.0, 62.0}, {402.0, 812.0}}
+                    NavigationBar, 0x111cf4000, {{0.0, 78.0}, {402.0, 54.0}}, identifier: 'New event'
+                      Other, 0x111cf4140, {{20.0, 82.0}, {36.0, 36.0}}, identifier: 'xmark', label: 'Cancel'
+                        Other, 0x111cf4280, {{20.0, 82.0}, {36.0, 36.0}}
+                          Button, 0x111cf43c0, {{22.0, 82.0}, {32.0, 36.0}}, identifier: 'xmark', label: 'Cancel'
+                      StaticText, 0x111cf4500, {{150.3, 87.3}, {101.0, 25.3}}, label: 'New event'
+                      Other, 0x111cf4640, {{346.0, 82.0}, {36.0, 36.0}}, identifier: 'calendar.editor.save', label: 'Save'
+                        Other, 0x111cf4780, {{346.0, 82.0}, {36.0, 36.0}}
+                          Button, 0x111cf48c0, {{347.0, 82.0}, {34.0, 36.0}}, identifier: 'calendar.editor.save', label: 'Save', Selected, Disabled
+                    Other, 0x111cf4a00, {{0.0, 62.0}, {402.0, 812.0}}
+                      Other, 0x111cf4b40, {{0.0, 62.0}, {402.0, 812.0}}
+                        Other, 0x111cf4c80, {{0.0, 62.0}, {402.0, 812.0}}
+                          Other, 0x111cf4dc0, {{0.0, 62.0}, {402.0, 812.0}}
+                            CollectionView, 0x111cf4f00, {{0.0, 62.0}, {402.0, 812.0}}
+                              Other, 0x111cf5040, {{-16.0, -1492.0}, {434.0, 1726.0}}
+                              Other, 0x111cf5180, {{0.0, 62.0}, {402.0, 812.0}}
+                              Other, 0x111cf52c0, {{0.0, 62.0}, {402.0, 812.0}}
+                              Cell, 0x111cf5400, {{16.0, 167.0}, {370.0, 67.0}}
+                                Other, 0x111cf5540, {{16.0, 167.0}, {370.0, 67.0}}
+                                  Other, 0x111cf5680, {{16.0, 167.0}, {370.0, 67.0}}
+                                    Other, 0x111cf57c0, {{16.0, 167.0}, {370.0, 67.0}}
+                                Other, 0x111cf5900, {{16.0, 167.0}, {370.0, 67.0}}
+                                  Other, 0x111cf5a40, {{16.0, 167.0}, {370.0, 67.0}}
+                                    Other, 0x111cf5b80, {{16.0, 167.0}, {370.0, 67.0}}
+                                      TextField, 0x111cf5cc0, {{32.0, 167.0}, {338.0, 67.0}}, identifier: 'calendar.editor.title', placeholderValue: 'New Event', Keyboard Focused
+                                        Other, 0x111cf5e00, {{32.0, 167.0}, {0.0, 0.0}}, identifier: '_UITextSelectionRangeAdjustmentContainerView'
+                                          Other, 0x111cf5f40, {{32.0, 167.0}, {0.0, 0.0}}, identifier: 'com.apple.text.grabber.leading'
+                                            Other, 0x111cf6080, {{24.8, 153.5}, {16.5, 16.5}}
+                                            Other, 0x111cf61c0, {{32.0, 167.0}, {2.0, 0.0}}
+                                          Other, 0x111cf6300, {{32.0, 167.0}, {0.0, 0.0}}, identifier: 'com.apple.text.grabber.leading'
+                                            Other, 0x111cf6440, {{24.8, 153.5}, {16.5, 16.5}}
+                                            Other, 0x111cf6580, {{32.0, 167.0}, {2.0, 0.0}}
+                                        Other, 0x111cf66c0, {{42.0, 201.0}, {318.0, 30.0}}, label: 'Horizontal scroll bar, 1 page', value: %0
+                                          Other, 0x111cf6800, {{45.0, 228.0}, {312.0, 3.0}}
+                              Other, 0x111cf6940, {{-16.0, 246.0}, {434.0, 524.0}}
+                              Cell, 0x111cf6a80, {{16.0, 246.0}, {370.0, 93.3}}
+                                Other, 0x111cf6bc0, {{16.0, 246.0}, {370.0, 93.3}}
+                                  Other, 0x111cf6d00, {{16.0, 246.0}, {370.0, 93.3}}
+                                Other, 0x111cf6e40, {{16.0, 246.0}, {370.0, 93.3}}
+                                  Other, 0x111cf6f80, {{16.0, 246.0}, {370.0, 93.3}}
+                                    Other, 0x111cf70c0, {{16.0, 246.0}, {370.0, 93.3}}
+                                      Switch, 0x111cf7200, {{16.0, 246.0}, {370.0, 93.3}}, identifier: 'calendar.editor.allDay', label: 'All day', value: 0
+                                        StaticText, 0x111cf7340, {{32.0, 261.0}, {150.3, 63.3}}, label: 'All day'
+                                        Switch, 0x111cf7480, {{309.0, 278.7}, {63.0, 28.0}}, value: 0
+                              Cell, 0x111cf75c0, {{16.0, 339.3}, {370.0, 256.0}}
+                                Other, 0x111cf7700, {{16.0, 339.3}, {370.0, 256.0}}
+                                  Other, 0x111cf7840, {{16.0, 339.3}, {370.0, 256.0}}
+                                Other, 0x111cf7980, {{16.0, 339.3}, {370.0, 256.0}}
+                                  Other, 0x111cf7ac0, {{16.0, 339.3}, {370.0, 256.0}}
+                                    Other, 0x111cf7c00, {{16.0, 339.3}, {370.0, 256.0}}
+                                      StaticText, 0x111cf7d40, {{32.0, 354.3}, {133.7, 63.3}}, label: 'Starts'
+                                      DatePicker, 0x111cf7e80, {{32.0, 421.7}, {323.0, 158.7}}
+                                        Button, 0x111cf8000, {{32.0, 421.7}, {323.0, 158.7}}, label: 'Date and Time Picker', value: 09:00, 28 Sep 2026
+                                          Button, 0x111cf8140, {{32.0, 421.7}, {323.0, 77.3}}, label: '28 Sep 2026'
+                                          Button, 0x111cf8280, {{189.7, 503.0}, {165.3, 77.3}}, label: '09:00'
+                              Other, 0x111cf83c0, {{32.0, 338.3}, {338.0, 1.0}}
+                              Cell, 0x111cf8500, {{16.0, 595.3}, {370.0, 174.7}}
+                                Other, 0x111cf8640, {{16.0, 595.3}, {370.0, 174.7}}
+                                  Other, 0x111cf8780, {{16.0, 595.3}, {370.0, 174.7}}
+                                Other, 0x111cf88c0, {{16.0, 595.3}, {370.0, 174.7}}
+                                  Other, 0x111cf8a00, {{16.0, 595.3}, {370.0, 174.7}}
+                                    Other, 0x111cf8b40, {{16.0, 595.3}, {370.0, 174.7}}
+                                      StaticText, 0x111cf8c80, {{32.0, 610.3}, {112.7, 63.3}}, label: 'Ends'
+                                      StaticText, 0x111cf8dc0, {{152.7, 615.7}, {44.0, 52.7}}, label: '1h'
+                                      DatePicker, 0x111cf8f00, {{32.0, 677.7}, {165.3, 77.3}}
+                                        Button, 0x111cf9040, {{32.0, 677.7}, {165.3, 77.3}}, label: 'Time Picker', value: 10:00
+                              Other, 0x111cf9180, {{32.0, 594.3}, {338.0, 1.0}}
+                              Other, 0x111cf92c0, {{-16.0, 782.0}, {434.0, 292.7}}
+                              Cell, 0x111cf9400, {{16.0, 782.0}, {370.0, 174.7}}
+                                Other, 0x111cf9540, {{16.0, 782.0}, {370.0, 174.7}}
+                                  Other, 0x111cf9680, {{16.0, 782.0}, {370.0, 174.7}}
+                                Other, 0x111cf97c0, {{16.0, 782.0}, {370.0, 174.7}}
+                                  Other, 0x111cf9900, {{16.0, 782.0}, {370.0, 174.7}}
+                                    Other, 0x111cf9a40, {{16.0, 782.0}, {370.0, 174.7}}
+                                      StaticText, 0x111cf9b80, {{32.0, 797.0}, {203.7, 63.3}}, label: 'Calendar'
+                                      Button, 0x111cf9cc0, {{32.0, 797.0}, {338.0, 144.7}}, identifier: 'calendar.editor.calendar', label: 'Calendar, Default (memrynote)'
+                                        StaticText, 0x111cf9e00, {{44.0, 871.3}, {284.0, 63.3}}, label: 'Default (memrynote)'
+                              Other, 0x111cf9f40, {{369.0, 132.0}, {30.0, 680.0}}, label: 'Vertical scroll bar, 2 pages', value: %0
+                                Other, 0x111cfa080, {{396.0, 816.0}, {3.0, 7.0}}
+                              Other, 0x111cfa1c0, {{369.0, 132.0}, {30.0, 680.0}}, label: 'Vertical scroll bar, 2 pages', value: %0
+                                Other, 0x111cfa300, {{396.0, 816.0}, {3.0, 7.0}}
+                    Other, 0x111cfa440, {{0.0, 62.0}, {402.0, 812.0}}
+                      Other, 0x111cfa580, {{0.0, 62.0}, {402.0, 812.0}}
+    Window, 0x111cfa6c0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x111cfa800, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x111cfa940, {{0.0, 0.0}, {402.0, 874.0}}
+    Window, 0x111cfaa80, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x111cfabc0, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x111cfad00, {{0.0, 874.0}, {402.0, 311.0}}
+          Other, 0x111cfae40, {{0.0, 874.0}, {402.0, 78.0}}, identifier: 'SystemInputAssistantView'
+            Other, 0x111cfaf80, {{0.0, 874.0}, {402.0, 78.0}}
+              Other, 0x111cfb0c0, {{0.0, 874.0}, {402.0, 44.0}}, identifier: 'CenterPageView'
+                Other, 0x111cfb200, {{0.0, 274.0}, {402.0, 1244.0}}
+                  ScrollView, 0x111cfb340, {{0.0, 874.0}, {402.0, 44.0}}
+                Other, 0x111cfb480, {{0.0, 874.0}, {402.0, 44.0}}
+                  Other, 0x111cfb5c0, {{0.0, 874.0}, {402.0, 44.0}}, label: 'Typing Predictions'
+                    Other, 0x111cfb700, {{0.0, 874.0}, {402.0, 44.0}}
+                      Other, 0x111cfb840, {{0.0, 874.0}, {402.0, 44.0}}
+                        Other, 0x111cfb980, {{0.0, 874.0}, {134.0, 44.0}}, label: 'I'
+                        Other, 0x111cfbac0, {{134.0, 874.0}, {134.0, 44.0}}, label: 'The'
+                        Other, 0x111cfbc00, {{268.0, 874.0}, {134.0, 44.0}}, label: 'I’m'
+          Other, 0x111cfbd40, {{0.0, 874.0}, {402.0, 311.0}}
+            Other, 0x111cfbe80, {{0.0, 874.0}, {402.0, 311.0}}
+              Other, 0x111d10000, {{0.0, 874.0}, {402.0, 311.0}}
+          Other, 0x111d10140, {{0.0, 952.0}, {402.0, 233.0}}
+            Keyboard, 0x111d10280, {{0.0, 952.0}, {402.0, 233.0}}
+              Other, 0x111d103c0, {{0.0, 952.0}, {402.0, 233.0}}
+                Other, 0x111d10500, {{0.0, 952.0}, {402.0, 233.0}}, identifier: 'UIKeyboardLayoutStar Preview'
+                  Key, 0x111d10640, {{0.0, 952.0}, {0.0, 0.0}}, label: 'Padding-Left'
+                  Key, 0x111d10780, {{4.7, 959.0}, {39.3, 54.0}}, label: 'Q'
+                  Key, 0x111d108c0, {{44.0, 959.0}, {39.7, 54.0}}, label: 'W'
+                  Key, 0x111d10a00, {{83.7, 959.0}, {39.3, 54.0}}, label: 'E'
+                  Key, 0x111d10b40, {{123.0, 959.0}, {39.7, 54.0}}, label: 'R'
+                  Key, 0x111d10c80, {{162.7, 959.0}, {39.3, 54.0}}, label: 'T'
+                  Key, 0x111d10dc0, {{202.0, 959.0}, {39.7, 54.0}}, label: 'Y'
+                  Key, 0x111d10f00, {{241.7, 959.0}, {39.3, 54.0}}, label: 'U'
+                  Key, 0x111d11040, {{281.0, 959.0}, {39.7, 54.0}}, label: 'I'
+                  Key, 0x111d11180, {{320.7, 959.0}, {39.3, 54.0}}, label: 'O'
+                  Key, 0x111d112c0, {{360.0, 959.0}, {39.7, 54.0}}, label: 'P'
+                  Key, 0x111d11400, {{0.0, 952.0}, {0.0, 0.0}}, label: 'Padding-Right'
+                  Key, 0x111d11540, {{0.0, 952.0}, {0.0, 0.0}}, label: 'Padding-Left'
+                  Key, 0x111d11680, {{24.3, 1013.0}, {39.3, 54.0}}, label: 'A'
+                  Key, 0x111d117c0, {{63.7, 1013.0}, {39.7, 54.0}}, label: 'S'
+                  Key, 0x111d11900, {{103.3, 1013.0}, {39.3, 54.0}}, label: 'D'
+                  Key, 0x111d11a40, {{142.7, 1013.0}, {39.7, 54.0}}, label: 'F'
+                  Key, 0x111d11b80, {{182.3, 1013.0}, {39.3, 54.0}}, label: 'G'
+                  Key, 0x111d11cc0, {{221.7, 1013.0}, {39.7, 54.0}}, label: 'H'
+                  Key, 0x111d11e00, {{261.3, 1013.0}, {39.3, 54.0}}, label: 'J'
+                  Key, 0x111d11f40, {{300.7, 1013.0}, {39.7, 54.0}}, label: 'K'
+                  Key, 0x111d12080, {{340.3, 1013.0}, {39.3, 54.0}}, label: 'L'
+                  Key, 0x111d121c0, {{0.0, 952.0}, {0.0, 0.0}}, label: 'Padding-Right'
+                  Button, 0x111d12300, {{4.7, 1067.0}, {51.3, 54.0}}, identifier: 'shift', label: 'shift', Selected
+                  Key, 0x111d12440, {{0.0, 952.0}, {0.0, 0.0}}, label: 'Padding-Left'
+                  Key, 0x111d12580, {{63.7, 1067.0}, {39.7, 54.0}}, label: 'Z'
+                  Key, 0x111d126c0, {{103.3, 1067.0}, {39.3, 54.0}}, label: 'X'
+                  Key, 0x111d12800, {{142.7, 1067.0}, {39.7, 54.0}}, label: 'C'
+                  Key, 0x111d12940, {{182.3, 1067.0}, {39.3, 54.0}}, label: 'V'
+                  Key, 0x111d12a80, {{221.7, 1067.0}, {39.7, 54.0}}, label: 'B'
+                  Key, 0x111d12bc0, {{261.3, 1067.0}, {39.3, 54.0}}, label: 'N'
+                  Key, 0x111d12d00, {{300.7, 1067.0}, {39.7, 54.0}}, label: 'M'
+                  Key, 0x111d12e40, {{0.0, 952.0}, {0.0, 0.0}}, label: 'Padding-Right'
+                  Key, 0x111d12f80, {{348.0, 1067.0}, {51.7, 54.0}}, identifier: 'delete', label: 'delete'
+                  Key, 0x111d130c0, {{4.7, 1121.0}, {49.3, 54.0}}, identifier: 'more', label: 'numbers'
+                  Button, 0x111d13200, {{54.0, 1121.0}, {49.3, 54.0}}, identifier: 'emoji', label: 'Emoji'
+                  Key, 0x111d13340, {{103.3, 1121.0}, {197.3, 54.0}}, identifier: 'space', label: ' '
+                  Button, 0x111d13480, {{300.7, 1121.0}, {99.0, 54.0}}, identifier: 'Return', label: 'return'
+Path to element:
+ →Application, 0x10268b340, pid: 95041, label: 'Memry'
+Query chain:
+ →Find: Target Application 'com.memry.app'
+  Output: {
+    Application, 0x111d135c0, pid: 95041, label: 'Memry'
+  }

@@ -120,7 +120,10 @@ final class JournalUITests: XCTestCase {
     private func openJournal(today: String) throws {
         app.launchArguments = ["-MEMRY_JOURNAL_TODAY", today]
         app.launch()
-        let vault = app.staticTexts["MemryNote"]
+        // The shared staging account can hold several vaults with one name;
+        // `TEST_RUNNER_MEMRY_UI_VAULT` picks the one this run uses.
+        let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
+        let vault = app.staticTexts[name].firstMatch
         let journalTab = app.buttons["Journal"].firstMatch
         let signIn = app.staticTexts["Sign in to Memry"]
         let deadline = Date().addingTimeInterval(60)

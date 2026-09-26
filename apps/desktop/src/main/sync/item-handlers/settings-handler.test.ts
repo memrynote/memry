@@ -290,6 +290,42 @@ describe('settingsHandler.applyUpsert', () => {
     ).toEqual([])
   })
 
+  it('#given a merged calendar group #then writes the local groups and announces them through ctx.emit', () => {
+    const heldEmit = vi.fn()
+    mockGetSettings.mockReturnValue({
+      calendar: { weekStartDay: 'sunday', caldav: { pushEventsToProvider: false } }
+    })
+    mockSend.mockClear()
+
+    settingsHandler.applyUpsert(
+      { ...ctx, emit: heldEmit },
+      'synced_settings',
+      { settings: {}, fieldClocks: {} },
+      clock
+    )
+
+    const db = asClientDb(testDb.db)
+    expect(JSON.parse(getSetting(db, 'calendar') ?? '{}')).toEqual({ weekStartDay: 'sunday' })
+    expect(JSON.parse(getSetting(db, 'calendar.caldav') ?? '{}')).toEqual({
+      pushEventsToProvider: false
+    })
+    const keys = heldEmit.mock.calls.map(([, data]) => (data as { key?: string }).key)
+    expect(keys).toEqual(expect.arrayContaining(['calendar', 'calendar.caldav']))
+    // Merged values are applied, never pushed back out.
+    expect(mockUpdateField).not.toHaveBeenCalled()
+  })
+
+  it('#given the calendar groups cannot be written #then swallows it and still applies', () => {
+    mockGetSettings.mockReturnValue({ calendar: { weekStartDay: 'sunday' } })
+    vi.mocked(getDatabase).mockImplementationOnce(() => {
+      throw new Error('db closed')
+    })
+
+    expect(
+      settingsHandler.applyUpsert(ctx, 'synced_settings', { settings: {}, fieldClocks: {} }, clock)
+    ).toBe('applied')
+  })
+
   it('#given no vault path #then skips config.json write but still merges', () => {
     mockGetCurrentVaultPath.mockReturnValue(null)
 

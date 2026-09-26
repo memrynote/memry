@@ -28,6 +28,7 @@ import {
   SIDEBAR_SHOW_FILES_SETTINGS_KEY
 } from '../../settings/sidebar-tree-view-store'
 import { createLogger } from '../../lib/logger'
+import { applyMergedCalendarSettings } from '../../calendar/calendar-settings-sync'
 import { applyTraySetting } from '../../tray'
 import type {
   SyncItemHandler,
@@ -128,6 +129,16 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
       }
     } catch (err) {
       log.warn('Failed to propagate merged inbox settings:', err)
+    }
+  }
+
+  // Calendar groups (spec 007 D3a) live in the local data DB like inbox, so
+  // they persist regardless of the vault path.
+  if (merged.calendar) {
+    try {
+      applyMergedCalendarSettings(getDatabase(), merged.calendar, emit)
+    } catch (err) {
+      log.warn('Failed to propagate merged calendar settings:', err)
     }
   }
 
