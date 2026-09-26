@@ -8,7 +8,7 @@ import {
 } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../logging'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -164,7 +164,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
       )
       .all()
     for (const item of items) {
-      const nextClock = increment({}, deviceId)
+      const nextClock = nextLocalClock(db, 'calendar_source', item.id, null, deviceId, 'create')
       db.update(calendarSources)
         .set({ clock: nextClock })
         .where(eq(calendarSources.id, item.id))

@@ -27,6 +27,26 @@ inputs produce the **same winner and the same conflict set**, with no appeal to
 special treatment**: it is an ordinary key in `increment`, `merge` and `compare`.
 It is special only in the merge tie-break (§6.3) and in rebinding (§6.6).
 
+### 6.1.1 The clock a re-create ticks from (#2409)
+
+**Normative** (`packages/sync-core/src/record-sync.ts`, `recreateBaseClock`;
+`crates/memry-core/src/sync/clock.rs`, `recreate_base`). Given the local clock
+`local` (absent reads as empty), the id's known tombstone clock `T` (absent when
+the client never saw a delete of the id) and the write's operation:
+
+- `T` absent: the base is `local`, unchanged.
+- a `create`, or any write whose `local` is empty: the base is `merge(local, T)`.
+- otherwise (an `update` of a clocked row): the base is `local`, unchanged.
+
+The written clock is `increment(base, device)`. `T` keeps every key it carries,
+`_offline` included (§6.1): dropping one could leave the tombstone dominating the
+re-create. Chapter 05 §5.8 states when a client applies it.
+
+**The shared vectors are `recreate-clock.json`**
+(`packages/contracts/test-vectors/`), generated from `recreateBaseClock` and
+asserted by `packages/contracts/src/__tests__/recreate-clock.test.ts` and
+`crates/memry-core/tests/recreate_clock_vectors.rs`.
+
 ## 6.2 `clockTotal`
 
 **Normative.** `clockTotal(clock)` is the plain sum of **every** tick in the

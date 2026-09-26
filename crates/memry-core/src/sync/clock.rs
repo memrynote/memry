@@ -52,6 +52,26 @@ pub fn merge(a: &VectorClock, b: &VectorClock) -> VectorClock {
     merged
 }
 
+/// The clock a local write ticks from, given the id's last known tombstone
+/// clock (#2409, chapter 05 §5.8).
+///
+/// Only a write that (re)creates the row — a create, or a first write to a
+/// clockless row — absorbs the tombstone, so the re-create happens strictly
+/// after the delete. A clocked row that survived a delete never absorbs it:
+/// that would turn a concurrent edit into one that dominates the delete. With
+/// no tombstone the result is `current`, unchanged. The TypeScript twin is
+/// `recreateBaseClock`; `recreate-clock.json` pins both.
+pub fn recreate_base(
+    current: &VectorClock,
+    tombstone: Option<&VectorClock>,
+    is_create: bool,
+) -> VectorClock {
+    match tombstone {
+        Some(tombstone) if is_create || current.is_empty() => merge(current, tombstone),
+        _ => current.clone(),
+    }
+}
+
 /// How two clocks relate (§6.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClockOrder {

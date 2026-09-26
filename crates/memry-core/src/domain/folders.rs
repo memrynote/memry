@@ -34,7 +34,8 @@ use crate::api::errors::StorageError;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
-use super::notes::{self, failed, insert_local, iso, next_clock, object, stamp, tombstone_local};
+use super::notes::{self, failed, iso, object, stamp, tombstone_local};
+use super::recreate::write_over_tombstone;
 use serde_json::json;
 
 /// The `(type, _)` half of every key this module writes.
@@ -79,11 +80,11 @@ pub fn create(
             let at = iso(now_ms)?;
             let payload = object(json!({
                 "icon": icon,
-                "clock": next_clock(&Default::default(), device_id)?,
                 "createdAt": at,
                 "modifiedAt": at,
             }));
-            insert_local(tx, ITEM_TYPE, &path, payload, now_ms)
+            // A path deleted before is created over its tombstone (#2409).
+            write_over_tombstone(tx, ITEM_TYPE, &path, payload, device_id, now_ms)
         },
     )
 }
@@ -232,10 +233,10 @@ fn move_config(
 ) -> Result<(), StorageError> {
     let parsed = notes::require_payload(tx, ITEM_TYPE, from)?;
     let mut payload = parsed.object().clone();
-    payload.insert("clock".to_owned(), next_clock(parsed.object(), device_id)?);
     payload.insert("modifiedAt".to_owned(), json!(iso(now_ms)?));
 
-    insert_local(tx, ITEM_TYPE, to, payload, now_ms)?;
+    // The target carries the source's clock, ticked past any tombstone at `to` (#2409).
+    write_over_tombstone(tx, ITEM_TYPE, to, payload, device_id, now_ms)?;
     outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, to), now_ms)?;
     tombstone_local(tx, ITEM_TYPE, from, device_id, now_ms)?;
     outbox::enqueue(tx, &outbox::Change::delete(ITEM_TYPE, from), now_ms)?;

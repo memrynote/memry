@@ -428,6 +428,13 @@
       "when": 1787658819433,
       "tag": "0060_crdt_body_debts",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "6",
+      "when": 1787831559433,
+      "tag": "0061_sync_tombstone_clocks",
+      "breakpoints": true
     }
   ]
 }

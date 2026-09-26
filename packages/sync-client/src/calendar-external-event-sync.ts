@@ -6,6 +6,7 @@ import { DEVICE_LOCAL_CALENDAR_PROVIDERS } from '@memry/contracts/calendar-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { nextLocalClock } from './tombstone-clocks'
 
 function sourceIdOf(row: { sourceId?: unknown } | null | undefined): string | null {
   return typeof row?.sourceId === 'string' ? row.sourceId : null
@@ -73,9 +74,15 @@ export class CalendarExternalEventSyncService {
           .from(calendarExternalEvents)
           .where(eq(calendarExternalEvents.id, id))
           .get() as Record<string, unknown> | undefined,
-      applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
-        const nextClock = incrementClock(existingClock, deviceId)
+      applyLocalChange: ({ itemId, local, deviceId, operation }) => {
+        const nextClock = nextLocalClock(
+          deps.db,
+          'calendar_external_event',
+          itemId,
+          local.clock as VectorClock | null,
+          deviceId,
+          operation
+        )
 
         deps.db
           .update(calendarExternalEvents)

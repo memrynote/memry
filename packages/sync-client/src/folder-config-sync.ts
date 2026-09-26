@@ -4,7 +4,7 @@ import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-
+import { nextLocalClock } from './tombstone-clocks'
 
 interface FolderConfigSyncDeps {
   queue: SyncQueueManager
@@ -37,11 +37,16 @@ export class FolderConfigSyncService {
       getDeviceId: deps.getDeviceId,
       load: (path) =>
         deps.db.select().from(folderConfigs).where(eq(folderConfigs.path, path)).get() as
-          | Record<string, unknown>
-          | undefined,
-      applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
-        const newClock = incrementClock(existingClock, deviceId)
+          Record<string, unknown> | undefined,
+      applyLocalChange: ({ itemId, local, deviceId, operation }) => {
+        const newClock = nextLocalClock(
+          deps.db,
+          'folder_config',
+          itemId,
+          local.clock as VectorClock | null,
+          deviceId,
+          operation
+        )
 
         deps.db
           .update(folderConfigs)

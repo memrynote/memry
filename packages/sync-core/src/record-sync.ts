@@ -218,6 +218,29 @@ export function withIncrementedClock(payload: string, deviceId: string): string 
   }
 }
 
+/**
+ * The clock a local write ticks from, given the id's last known tombstone
+ * clock (#2409, protocol 05 §5.8). Only a write that (re)creates the row, a
+ * `create` or a first write to a clockless row, absorbs the tombstone, so the
+ * re-create happens strictly after the delete. A clocked row that survived a
+ * delete never absorbs it: that would turn a concurrent edit into one that
+ * dominates the delete. With no tombstone the result is `current`, unchanged.
+ */
+export function recreateBaseClock(
+  current: VectorClock | null | undefined,
+  tombstone: VectorClock | null | undefined,
+  operation: 'create' | 'update'
+): VectorClock {
+  const base = current ?? {}
+  const clockless = Object.keys(base).length === 0
+  if (!tombstone || (operation !== 'create' && !clockless)) return base
+  const merged: VectorClock = { ...base }
+  for (const [device, tick] of Object.entries(tombstone)) {
+    merged[device] = Math.max(merged[device] ?? 0, tick)
+  }
+  return merged
+}
+
 export function incrementClock(
   existingClock: VectorClock | null | undefined,
   deviceId: string

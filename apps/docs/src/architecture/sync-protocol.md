@@ -232,6 +232,11 @@ The exception is a re-create of an item whose id comes from what the user sees (
 tag or property name, a folder path, a bookmark target, a provider calendar or event) or from a file
 the user can restore (a note's frontmatter id, restored from a backup or the trash): a `create` over
 its marker is accepted, so re-creating or restoring it reaches the other devices.
+Every device remembers the clock of each delete it makes or applies for such an id (desktop:
+`sync_tombstone_clocks`), and a re-create is minted with that clock merged in and ticked, so it
+happens strictly after the delete: the server accepts it inside retention too, a stale copy from a
+device that missed the delete is refused or merged rather than applied over it, and the device's
+own late tombstone does not delete it.
 
 Only a client that declares `purged_tombstones` in `X-Memry-Sync-Types` sees a marker on the read
 side; for every other client (older desktops, iOS) it is invisible, as the old hard delete was. The
