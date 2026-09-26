@@ -5,7 +5,8 @@ import { useHomeSeedGate } from './use-home-seed-gate'
 const ctx = vi.hoisted(() => ({
   authStatus: 'authenticated' as string,
   syncStatus: 'idle' as string,
-  lastSyncAt: null as number | null
+  lastSyncAt: null as number | null,
+  initialSyncProgress: null as { phase: string; current: number; total: number } | null
 }))
 
 vi.mock('@/contexts/auth-context', () => ({
@@ -13,13 +14,20 @@ vi.mock('@/contexts/auth-context', () => ({
 }))
 
 vi.mock('@/contexts/sync-context', () => ({
-  useSync: () => ({ state: { status: ctx.syncStatus, lastSyncAt: ctx.lastSyncAt } })
+  useSync: () => ({
+    state: {
+      status: ctx.syncStatus,
+      lastSyncAt: ctx.lastSyncAt,
+      initialSyncProgress: ctx.initialSyncProgress
+    }
+  })
 }))
 
 beforeEach(() => {
   ctx.authStatus = 'authenticated'
   ctx.syncStatus = 'idle'
   ctx.lastSyncAt = null
+  ctx.initialSyncProgress = null
 })
 
 afterEach(() => {
@@ -57,6 +65,43 @@ describe('useHomeSeedGate', () => {
       vi.advanceTimersByTime(10_000)
     })
 
+    expect(result.current).toBe(true)
+  })
+
+  // A fresh device's first pull can run past the grace period: on staging it
+  // applied 43 packs before the page carrying the account's boards.
+  it('keeps the gate closed past the grace period while the first sync is still transferring', () => {
+    vi.useFakeTimers()
+    ctx.initialSyncProgress = { phase: 'packs', current: 12, total: 43 }
+    const { result, rerender } = renderHook(() => useHomeSeedGate())
+
+    act(() => {
+      vi.advanceTimersByTime(10_000)
+    })
+    expect(result.current).toBe(false)
+
+    ctx.initialSyncProgress = { phase: 'notes', current: 200, total: 400 }
+    ctx.syncStatus = 'syncing'
+    rerender()
+    expect(result.current).toBe(false)
+
+    ctx.initialSyncProgress = null
+    ctx.syncStatus = 'offline'
+    rerender()
+    expect(result.current).toBe(true)
+  })
+
+  it('does not read an unresolved auth check as "no account"', () => {
+    ctx.authStatus = 'checking'
+    const { result, rerender } = renderHook(() => useHomeSeedGate())
+    expect(result.current).toBe(false)
+
+    ctx.authStatus = 'idle'
+    rerender()
+    expect(result.current).toBe(false)
+
+    ctx.authStatus = 'unauthenticated'
+    rerender()
     expect(result.current).toBe(true)
   })
 })

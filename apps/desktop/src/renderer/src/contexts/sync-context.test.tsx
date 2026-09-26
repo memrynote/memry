@@ -255,6 +255,7 @@ beforeEach(async () => {
 
 import { useAuth } from './auth-context'
 import { onOpenSettingsRequested } from '@/lib/settings-navigation'
+import { useHomeSeedGate } from '@/hooks/use-home-seed-gate'
 import {
   SyncProvider,
   useSync,
@@ -911,6 +912,54 @@ describe('SyncProvider', () => {
         current: 12,
         total: 200
       })
+    })
+  })
+
+  // Staging, 2026-09-26: the pre-pull push of the fresh vault's inbox project
+  // opened the gate and Home seeded a fifth board before the first pull.
+  describe('#given a fresh device that has not completed a pull #when Home asks whether to seed', () => {
+    const mountGate = async () => {
+      const rendered = renderHook(
+        () => ({ lastSyncAt: useSync().state.lastSyncAt, seedAllowed: useHomeSeedGate() }),
+        { wrapper }
+      )
+      await vi.waitFor(() => expect(itemSyncedListeners.length).toBeGreaterThan(0))
+      return rendered
+    }
+
+    it('#then a push-only item-synced event keeps the gate closed', async () => {
+      const { result } = await mountGate()
+
+      act(() => {
+        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
+        for (const cb of syncStatusListeners) cb({ status: 'idle', pendingCount: 0 })
+      })
+
+      expect(result.current).toEqual({ lastSyncAt: null, seedAllowed: false })
+    })
+
+    it('#then items applied mid-pull keep it closed until the pull completes', async () => {
+      const { result } = await mountGate()
+
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 0 })
+        for (const cb of itemSyncedListeners) cb({ operation: 'pull' })
+      })
+      expect(result.current).toEqual({ lastSyncAt: null, seedAllowed: false })
+
+      act(() => {
+        for (const cb of syncStatusListeners) {
+          cb({ status: 'idle', lastSyncAt: 1_790_432_499_000, pendingCount: 0 })
+        }
+      })
+      expect(result.current).toEqual({ lastSyncAt: 1_790_432_499_000, seedAllowed: true })
+
+      vi.spyOn(Date, 'now').mockReturnValue(1_790_432_510_000)
+      act(() => {
+        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
+      })
+      vi.mocked(Date.now).mockRestore()
+      expect(result.current).toEqual({ lastSyncAt: 1_790_432_510_000, seedAllowed: true })
     })
   })
 })
