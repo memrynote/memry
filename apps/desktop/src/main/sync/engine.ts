@@ -685,7 +685,10 @@ export class SyncEngine extends SyncEventEmitter {
     if (!token) return 'unknown'
 
     try {
-      await getFromServer('/sync/changes?limit=1', token)
+      // Read-only, and behind the same auth that refuses a revoked device. A
+      // /sync/changes page moves the server's device cursor, which spends a
+      // fresh device's bootstrap-session eligibility (#1837).
+      await getFromServer('/sync/status', token)
       return 'active'
     } catch (err) {
       const errorInfo = classifyError(err)
