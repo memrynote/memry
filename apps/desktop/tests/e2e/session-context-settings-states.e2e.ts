@@ -194,10 +194,10 @@ test.describe('Session, context menu, settings, shortcuts, and state E2E', () =>
 
     await openSettingsSection(page, 'ai')
     await expect(page.getByRole('heading', { name: 'AI Assistant' })).toBeVisible()
-    await expect(page.getByText('Inline AI Editing')).toBeVisible()
+    await expect(page.getByText('Inline editing')).toBeVisible()
 
     await openSettingsSection(page, 'templates')
-    await expect(page.getByRole('heading', { name: 'Templates' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Templates', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'New Template' })).toBeVisible()
 
     await openSettingsSection(page, 'shortcuts')

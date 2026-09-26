@@ -831,6 +831,12 @@ export class CrdtProvider {
     log.debug('Doc closed', { noteId })
   }
 
+  /**
+   * Close a doc this code opened for itself, unless a window has bound to it
+   * since. Paths that open a doc only to read or push it must close through
+   * here, never `close(noteId)`: an editor that opened the note in between
+   * would lose its doc, and every edit after it (#2448).
+   */
   async closeIfInactive(noteId: string): Promise<boolean> {
     const entry = this.docs.get(noteId)
     if (!entry || entry.closing || entry.windowIds.size > 0) return false
@@ -1185,7 +1191,7 @@ export class CrdtProvider {
       const base = await this.readPushBase(noteId)
       const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(doc))
       if (state.length <= 4) {
-        if (!wasOpen) await this.close(noteId)
+        if (!wasOpen) await this.closeIfInactive(noteId)
         return null
       }
 
@@ -1215,7 +1221,7 @@ export class CrdtProvider {
               live.pendingSnapshotBytes += clearedPending
             }
           }
-          if (!wasOpen) await this.close(noteId)
+          if (!wasOpen) await this.closeIfInactive(noteId)
         }
       }
     } catch (err) {
@@ -1225,7 +1231,7 @@ export class CrdtProvider {
         live.accumulatedBytes += clearedAccumulated
         live.pendingSnapshotBytes += clearedPending
       }
-      if (!wasOpen) await this.close(noteId)
+      if (!wasOpen) await this.closeIfInactive(noteId)
       return null
     }
   }
@@ -1242,7 +1248,7 @@ export class CrdtProvider {
       const state = Y.encodeStateAsUpdate(await this.open(noteId))
       return state.length <= 4 ? null : state
     } finally {
-      if (!wasOpen) await this.close(noteId)
+      if (!wasOpen) await this.closeIfInactive(noteId)
     }
   }
 
@@ -1558,7 +1564,7 @@ export class CrdtProvider {
         }
 
         await this.initForNote(entry.id, { title: entry.title, date: entry.date }, entry.tags)
-        await this.close(entry.id)
+        await this.closeIfInactive(entry.id)
         seeded++
       }
 

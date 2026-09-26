@@ -3073,6 +3073,65 @@ describe('CrdtProvider batched snapshot pushes', () => {
     expect([...results.values()].every(Boolean)).toBe(true)
   })
 
+  // #2448: the batch opened a doc nobody held, an editor bound to it while the
+  // request was in flight, and the batch's settle then closed it without asking
+  // whether anyone held it. Every keystroke after that reached main with no doc
+  // to apply to (`applyIpcUpdate` returns on a missing entry) and was lost.
+  it('keeps a doc an editor bound to while its batch was in flight', async () => {
+    // #given a batch push holding its request open
+    let release: () => void = () => {}
+    pushBatch.mockImplementationOnce(async (entries: Array<{ noteId: string }>) => {
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+      return new Map(entries.map((e) => [e.noteId, true]))
+    })
+    const pushing = provider.pushSnapshotsForNotes(['note-1'])
+    await vi.waitFor(() => expect(pushBatch).toHaveBeenCalledTimes(1))
+
+    // #when an editor opens the same note before the request returns
+    await provider.open('note-1', 7, { skipSeed: true })
+    release()
+    await pushing
+
+    // #then the doc is still there, and the editor's edit is applied and stored
+    expect(provider.getDoc('note-1')).toBeDefined()
+    const stored = mocks.persistenceInstances[0].storeUpdate.mock.calls.length
+    provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed after the push'), 7)
+    expect(mocks.persistenceInstances[0].storeUpdate.mock.calls.length).toBe(stored + 1)
+  })
+
+  // #2448: a prepare that fails after opening the doc closes it the same way.
+  it('keeps a doc an editor bound to when preparing its snapshot fails', async () => {
+    // #given a prepare that opened the doc itself, and whose base read then
+    // fails once an editor has bound to the note
+    const watermark = provider as unknown as {
+      getSnapshotWatermark: (noteId: string) => Promise<unknown>
+    }
+    vi.spyOn(watermark, 'getSnapshotWatermark').mockImplementationOnce(async () => {
+      await provider.open('note-1', 7, { skipSeed: true })
+      throw new Error('store closed')
+    })
+
+    // #when
+    await provider.pushSnapshotsForNotes(['note-1'])
+
+    // #then the failed prepare leaves the editor's doc open
+    expect(provider.getDoc('note-1')).toBeDefined()
+  })
+
+  // #2448: the same for the other provider paths that open a doc for their own
+  // use and close it afterwards.
+  it('keeps a doc an editor bound to while its state was being read', async () => {
+    // #given a read of the note's state that has opened the doc
+    const reading = provider.readSyncableState('note-1')
+    await provider.open('note-1', 7, { skipSeed: true })
+    await reading
+
+    // #then the editor's doc survives the read's close
+    expect(provider.getDoc('note-1')).toBeDefined()
+  })
+
   it('prepares a repeated id once, because the endpoint rejects a duplicated note', async () => {
     // #given the same note named twice. Preparing it twice would also zero its
     // counters twice and lose the debt the second restore had nothing to put
