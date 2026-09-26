@@ -143,6 +143,25 @@ export function isNoteKnownDeleted(db: DrizzleDb, noteId: string): boolean {
   return tombstone !== null && (!row.clock || compare(row.clock, tombstone) !== 'after')
 }
 
+const heldBackNoteIds = new Set<string>()
+
+/**
+ * The unclocked seed skips a note or journal row this device knows is deleted.
+ * Such a row is a leftover the delete never removed (a pack write-back before
+ * #2462), not a re-create: seeding it would mint a clock past the tombstone
+ * and the server would take it as one, putting the deleted note back on every
+ * device. The row and its file stay; a user edit pushes it through
+ * `nextLocalClock` as a real re-create. Logged once per id per process.
+ */
+export function seedSkipsDeletedNote(db: DrizzleDb, noteId: string): boolean {
+  if (!isNoteKnownDeleted(db, noteId)) return false
+  if (!heldBackNoteIds.has(noteId)) {
+    heldBackNoteIds.add(noteId)
+    log.warn('Not seeding an unclocked note this device saw deleted', { noteId })
+  }
+  return true
+}
+
 const LIVE_LOCAL_ROW: Record<RecreatableItemType, (db: DrizzleDb, itemId: string) => boolean> = {
   note: liveNote,
   journal: liveNote,

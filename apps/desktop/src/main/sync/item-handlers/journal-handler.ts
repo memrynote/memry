@@ -24,6 +24,7 @@ import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
+import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('JournalHandler')
@@ -205,6 +206,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       .from(noteMetadata)
       .where(and(isNull(noteMetadata.clock), isNotNull(noteMetadata.journalDate)))
       .all()
+      .filter((item) => !seedSkipsDeletedNote(db, item.id))
 
     for (const item of items) {
       const clock = nextLocalClock(db, 'journal', item.id, null, deviceId, 'create')
