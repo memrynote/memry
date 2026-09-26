@@ -67,7 +67,10 @@ const crdtProvider = vi.hoisted(() => {
 
 vi.mock('drizzle-orm', () => ({
   eq: vi.fn((left, right) => ({ left, right })),
-  ne: vi.fn((left, right) => ({ ne: [left, right] }))
+  ne: vi.fn((left, right) => ({ ne: [left, right] })),
+  and: vi.fn((...conditions) => ({ and: conditions })),
+  like: vi.fn((left, right) => ({ like: [left, right] })),
+  notLike: vi.fn((left, right) => ({ notLike: [left, right] }))
 }))
 
 vi.mock('@memry/sync-client/queue', () => ({ NOTE_BODY_QUEUE_TYPE: 'note_body' }))
