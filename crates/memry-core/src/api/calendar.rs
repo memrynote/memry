@@ -58,7 +58,7 @@ impl VaultCalendar {
         })
     }
 
-    fn write<T, F>(&self, f: F) -> Result<T, StorageError>
+    pub(crate) fn write<T, F>(&self, f: F) -> Result<T, StorageError>
     where
         F: FnOnce(&rusqlite::Connection, &str, i64) -> Result<T, StorageError> + Send + 'static,
         T: Send + 'static,

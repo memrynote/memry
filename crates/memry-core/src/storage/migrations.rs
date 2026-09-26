@@ -63,6 +63,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "calendar",
         sql: include_str!("migrations/data/0005_calendar.sql"),
     },
+    Migration {
+        version: 6,
+        name: "calendar_source_states",
+        sql: include_str!("migrations/data/0006_calendar_source_states.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -184,7 +189,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 5);
+        assert_eq!(version, 6);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -207,6 +212,7 @@ mod tests {
             "calendar_events",
             "calendar_external_events",
             "calendar_local_events",
+            "calendar_source_states",
             "calendar_sources",
             "folders",
             "inbox_item_tags",
@@ -289,7 +295,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 5);
+        assert_eq!(version, 6);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {

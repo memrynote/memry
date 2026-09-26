@@ -26,6 +26,9 @@ pub fn is_calendar_type(item_type: &str) -> bool {
 }
 
 pub mod colors;
+pub mod ical;
+pub mod ics;
+mod ics_url;
 pub mod projection;
 pub mod projection_sources;
 pub mod reads;

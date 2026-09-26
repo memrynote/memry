@@ -1,0 +1,733 @@
+{
+  "description": "What desktop's `parseIcsFeed` answers for each feed and window, the process in `deviceZone`. `zones` are the IANA zones the phone resolves.",
+  "deviceZone": {
+    "identifier": "Europe/Istanbul",
+    "baseOffsetMs": 10800000,
+    "transitions": []
+  },
+  "zones": [
+    {
+      "identifier": "America/New_York",
+      "baseOffsetMs": -18000000,
+      "transitions": [
+        {
+          "atMs": 1552201200000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1572760800000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1583650800000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1604210400000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1615705200000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1636264800000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1647154800000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1667714400000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1678604400000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1699164000000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1710054000000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1730613600000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1741503600000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1762063200000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1772953200000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1793512800000,
+          "offsetMs": -18000000
+        },
+        {
+          "atMs": 1805007600000,
+          "offsetMs": -14400000
+        },
+        {
+          "atMs": 1825567200000,
+          "offsetMs": -18000000
+        }
+      ]
+    },
+    {
+      "identifier": "America/Los_Angeles",
+      "baseOffsetMs": -28800000,
+      "transitions": [
+        {
+          "atMs": 1552212000000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1572771600000,
+          "offsetMs": -28800000
+        },
+        {
+          "atMs": 1583661600000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1604221200000,
+          "offsetMs": -28800000
+        },
+        {
+          "atMs": 1615716000000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1636275600000,
+          "offsetMs": -28800000
+        },
+        {
+          "atMs": 1647165600000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1667725200000,
+          "offsetMs": -28800000
+        },
+        {
+          "atMs": 1678615200000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1699174800000,
+          "offsetMs": -28800000
+        },
+        {
+          "atMs": 1710064800000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1730624400000,
+          "offsetMs": -28800000
+        },
+        {
+          "atMs": 1741514400000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1762074000000,
+          "offsetMs": -28800000
+        },
+        {
+          "atMs": 1772964000000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1793523600000,
+          "offsetMs": -28800000
+        },
+        {
+          "atMs": 1805018400000,
+          "offsetMs": -25200000
+        },
+        {
+          "atMs": 1825578000000,
+          "offsetMs": -28800000
+        }
+      ]
+    },
+    {
+      "identifier": "Asia/Tokyo",
+      "baseOffsetMs": 32400000,
+      "transitions": []
+    }
+  ],
+  "urls": [
+    {
+      "input": "webcal://Example.com/cal.ics",
+      "normalized": "https://example.com/cal.ics",
+      "sourceId": "ics-calendar:fdb59bf669ff702c218f396c9c8926f2"
+    },
+    {
+      "input": "webcals://calendar.example.org/feeds/abc.ics?token=XyZ",
+      "normalized": "https://calendar.example.org/feeds/abc.ics?token=XyZ",
+      "sourceId": "ics-calendar:a9af702ab9a9207911b61a31099b22de"
+    },
+    {
+      "input": " HTTPS://Example.com:443 ",
+      "normalized": "https://example.com/",
+      "sourceId": "ics-calendar:0f115db062b7c0dd030b16878c99dea5"
+    },
+    {
+      "input": "http://example.com:8080/a?b=c#frag",
+      "normalized": "http://example.com:8080/a?b=c",
+      "sourceId": "ics-calendar:aff89f7307b546cc670682a4c905ce42"
+    },
+    {
+      "input": "https://user:pw@Example.com/private.ics",
+      "normalized": "https://user:pw@example.com/private.ics",
+      "sourceId": "ics-calendar:f2e339f2d943f5425efa713af125a2e9"
+    },
+    {
+      "input": "https://example.com/path with space.ics",
+      "normalized": "https://example.com/path%20with%20space.ics",
+      "sourceId": "ics-calendar:c90002475bb38eddb5e4ef8cfd5d386d"
+    },
+    {
+      "input": "ftp://example.com/x",
+      "normalized": null,
+      "sourceId": null
+    },
+    {
+      "input": "not a url",
+      "normalized": null,
+      "sourceId": null
+    },
+    {
+      "input": "https://",
+      "normalized": null,
+      "sourceId": null
+    }
+  ],
+  "cases": [
+    {
+      "name": "singles in every zone form",
+      "text": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//memry//vectors//EN\r\nX-WR-CALNAME:Vectors\r\nREFRESH-INTERVAL;VALUE=DURATION:PT4H\r\nBEGIN:VTIMEZONE\r\nTZID:America/New_York\r\nBEGIN:DAYLIGHT\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nDTSTART:19700308T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nDTSTART:19701101T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VTIMEZONE\r\nTZID:W. Europe Standard Time\r\nBEGIN:STANDARD\r\nDTSTART:16010101T030000\r\nTZOFFSETFROM:+0200\r\nTZOFFSETTO:+0100\r\nRRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:16010101T020000\r\nTZOFFSETFROM:+0100\r\nTZOFFSETTO:+0200\r\nRRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3\r\nEND:DAYLIGHT\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:utc\r\nDTSTAMP:20260101T000000Z\r\nSUMMARY:UTC call\r\nDTSTART:20260310T150000Z\r\nDTEND:20260310T153000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:ny\r\nLAST-MODIFIED:20260102T101500Z\r\nSUMMARY:NY lunch\r\nDTSTART;TZID=America/New_York:20260310T120000\r\nDTEND;TZID=America/New_York:20260310T130000\r\nLOCATION:Midtown\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:win\r\nSUMMARY:Berlin standup\r\nDTSTART;TZID=W. Europe Standard Time:20260701T091500\r\nDURATION:PT15M\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:iana-undefined\r\nSUMMARY:Tokyo sync\r\nDTSTART;TZID=Asia/Tokyo:20260415T090000\r\nDTEND;TZID=Asia/Tokyo:20260415T100000\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:unknown-tzid\r\nSUMMARY:Mystery zone\r\nDTSTART;TZID=Nowhere/Special:20260501T080000\r\nDTEND;TZID=Nowhere/Special:20260501T090000\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:floating\r\nSUMMARY:Floating\r\nDTSTART:20260601T070000\r\nDTEND:20260601T073000\r\nSTATUS:TENTATIVE\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:allday\r\nSUMMARY:Offsite\\, day one\r\nDTSTART;VALUE=DATE:20260320\r\nDTEND;VALUE=DATE:20260323\r\nDESCRIPTION:Line one\\nLine two\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:allday-single\r\nSUMMARY:Holiday\r\nDTSTART;VALUE=DATE:20260501\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:cancelled\r\nSUMMARY:Gone\r\nDTSTART:20260402T100000Z\r\nSTATUS:CANCELLED\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nSUMMARY:No uid here\r\nDTSTART:20260403T100000Z\r\nDTEND:20260403T110000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:folded\r\nSUMMARY:A very long summary that the producer\r\n  folded across lines\r\nDTSTART:20260404T100000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:outside\r\nSUMMARY:Next year\r\nDTSTART:20270404T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "window": {
+        "startAt": "2026-01-01T00:00:00.000Z",
+        "endAt": "2026-12-31T00:00:00.000Z"
+      },
+      "expected": {
+        "name": "Vectors",
+        "timezone": null,
+        "refreshIntervalMs": 14400000,
+        "events": [
+          {
+            "remoteEventId": "utc",
+            "title": "UTC call",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-10T15:00:00.000Z",
+            "endAt": "2026-03-10T15:30:00.000Z",
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": "2026-01-01T00:00:00.000Z"
+          },
+          {
+            "remoteEventId": "ny",
+            "title": "NY lunch",
+            "description": null,
+            "location": "Midtown",
+            "startAt": "2026-03-10T16:00:00.000Z",
+            "endAt": "2026-03-10T17:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": "2026-01-02T10:15:00.000Z"
+          },
+          {
+            "remoteEventId": "win",
+            "title": "Berlin standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-07-01T07:15:00.000Z",
+            "endAt": "2026-07-01T07:30:00.000Z",
+            "isAllDay": false,
+            "timezone": "W. Europe Standard Time",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "iana-undefined",
+            "title": "Tokyo sync",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-15T00:00:00.000Z",
+            "endAt": "2026-04-15T01:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "Asia/Tokyo",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "unknown-tzid",
+            "title": "Mystery zone",
+            "description": null,
+            "location": null,
+            "startAt": "2026-05-01T05:00:00.000Z",
+            "endAt": "2026-05-01T06:00:00.000Z",
+            "isAllDay": false,
+            "timezone": null,
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "floating",
+            "title": "Floating",
+            "description": null,
+            "location": null,
+            "startAt": "2026-06-01T04:00:00.000Z",
+            "endAt": "2026-06-01T04:30:00.000Z",
+            "isAllDay": false,
+            "timezone": null,
+            "status": "tentative",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "allday",
+            "title": "Offsite, day one",
+            "description": "Line one\nLine two",
+            "location": null,
+            "startAt": "2026-03-20T00:00:00.000Z",
+            "endAt": "2026-03-23T00:00:00.000Z",
+            "isAllDay": true,
+            "timezone": null,
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "allday-single",
+            "title": "Holiday",
+            "description": null,
+            "location": null,
+            "startAt": "2026-05-01T00:00:00.000Z",
+            "endAt": "2026-05-02T00:00:00.000Z",
+            "isAllDay": true,
+            "timezone": null,
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "no-uid:19b189e4e61d6bec",
+            "title": "No uid here",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-03T10:00:00.000Z",
+            "endAt": "2026-04-03T11:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "folded",
+            "title": "A very long summary that the producer folded across lines",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-04T10:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "floating reads in the calendar zone",
+      "text": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//memry//vectors//EN\r\nX-WR-TIMEZONE:America/Los_Angeles\r\nX-PUBLISHED-TTL:PT1H\r\nBEGIN:VEVENT\r\nUID:float-cal\r\nSUMMARY:Floating in LA\r\nDTSTART:20260310T090000\r\nDTEND:20260310T100000\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:weekly-float\r\nSUMMARY:Gym\r\nDTSTART:20260302T180000\r\nDTEND:20260302T190000\r\nRRULE:FREQ=WEEKLY;BYDAY=MO,TH;COUNT=6\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "window": {
+        "startAt": "2026-01-01T00:00:00.000Z",
+        "endAt": "2026-12-31T00:00:00.000Z"
+      },
+      "expected": {
+        "name": null,
+        "timezone": "America/Los_Angeles",
+        "refreshIntervalMs": 3600000,
+        "events": [
+          {
+            "remoteEventId": "float-cal",
+            "title": "Floating in LA",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-10T16:00:00.000Z",
+            "endAt": "2026-03-10T17:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/Los_Angeles",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly-float::2026-03-03T02:00:00.000Z",
+            "title": "Gym",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-03T02:00:00.000Z",
+            "endAt": "2026-03-03T03:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/Los_Angeles",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly-float::2026-03-06T02:00:00.000Z",
+            "title": "Gym",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-06T02:00:00.000Z",
+            "endAt": "2026-03-06T03:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/Los_Angeles",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly-float::2026-03-10T01:00:00.000Z",
+            "title": "Gym",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-10T01:00:00.000Z",
+            "endAt": "2026-03-10T02:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/Los_Angeles",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly-float::2026-03-13T01:00:00.000Z",
+            "title": "Gym",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-13T01:00:00.000Z",
+            "endAt": "2026-03-13T02:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/Los_Angeles",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly-float::2026-03-17T01:00:00.000Z",
+            "title": "Gym",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-17T01:00:00.000Z",
+            "endAt": "2026-03-17T02:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/Los_Angeles",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly-float::2026-03-20T01:00:00.000Z",
+            "title": "Gym",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-20T01:00:00.000Z",
+            "endAt": "2026-03-20T02:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/Los_Angeles",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "series across DST with overrides and exdates",
+      "text": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//memry//vectors//EN\r\nBEGIN:VTIMEZONE\r\nTZID:America/New_York\r\nBEGIN:DAYLIGHT\r\nTZOFFSETFROM:-0500\r\nTZOFFSETTO:-0400\r\nDTSTART:19700308T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nTZOFFSETFROM:-0400\r\nTZOFFSETTO:-0500\r\nDTSTART:19701101T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU\r\nEND:STANDARD\r\nEND:VTIMEZONE\r\nBEGIN:VEVENT\r\nUID:weekly\r\nSUMMARY:Standup\r\nDTSTART;TZID=America/New_York:20260105T093000\r\nDTEND;TZID=America/New_York:20260105T094500\r\nRRULE:FREQ=WEEKLY;BYDAY=MO,WE\r\nEXDATE;TZID=America/New_York:20260304T093000\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:weekly\r\nRECURRENCE-ID;TZID=America/New_York:20260309T093000\r\nSUMMARY:Standup (moved)\r\nDTSTART;TZID=America/New_York:20260309T110000\r\nDTEND;TZID=America/New_York:20260309T113000\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:weekly\r\nRECURRENCE-ID;TZID=America/New_York:20260311T093000\r\nSUMMARY:Standup\r\nSTATUS:CANCELLED\r\nDTSTART;TZID=America/New_York:20260311T093000\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:weekly\r\nRECURRENCE-ID;TZID=America/New_York:20260622T093000\r\nSUMMARY:Standup (pulled forward)\r\nDTSTART;TZID=America/New_York:20260325T150000\r\nDTEND;TZID=America/New_York:20260325T151500\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:monthly\r\nSUMMARY:Review\r\nDTSTART:20260113T160000Z\r\nDURATION:PT1H\r\nRRULE:FREQ=MONTHLY;BYDAY=2TU;UNTIL=20260331T235959Z\r\nRDATE:20260320T160000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:yearly-allday\r\nSUMMARY:Anniversary\r\nDTSTART;VALUE=DATE:20200301\r\nRRULE:FREQ=YEARLY\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:daily-count\r\nSUMMARY:Pills\r\nDTSTART:20260226T080000Z\r\nRRULE:FREQ=DAILY;INTERVAL=2;COUNT=4\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:last-friday\r\nSUMMARY:Payday\r\nDTSTART;VALUE=DATE:20260130\r\nRRULE:FREQ=MONTHLY;BYDAY=-1FR\r\nEXDATE;VALUE=DATE:20260327\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:orphan\r\nRECURRENCE-ID:20260305T120000Z\r\nSUMMARY:Orphan override\r\nDTSTART:20260305T130000Z\r\nDTEND:20260305T140000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+      "window": {
+        "startAt": "2026-02-20T00:00:00.000Z",
+        "endAt": "2026-04-10T00:00:00.000Z"
+      },
+      "expected": {
+        "name": null,
+        "timezone": null,
+        "refreshIntervalMs": null,
+        "events": [
+          {
+            "remoteEventId": "weekly::2026-02-23T14:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-02-23T14:30:00.000Z",
+            "endAt": "2026-02-23T14:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-02-25T14:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-02-25T14:30:00.000Z",
+            "endAt": "2026-02-25T14:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-03-02T14:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-02T14:30:00.000Z",
+            "endAt": "2026-03-02T14:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-03-09T13:30:00.000Z",
+            "title": "Standup (moved)",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-09T15:00:00.000Z",
+            "endAt": "2026-03-09T15:30:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-03-16T13:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-16T13:30:00.000Z",
+            "endAt": "2026-03-16T13:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-03-18T13:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-18T13:30:00.000Z",
+            "endAt": "2026-03-18T13:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-03-23T13:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-23T13:30:00.000Z",
+            "endAt": "2026-03-23T13:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-03-25T13:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-25T13:30:00.000Z",
+            "endAt": "2026-03-25T13:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-03-30T13:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-30T13:30:00.000Z",
+            "endAt": "2026-03-30T13:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-04-01T13:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-01T13:30:00.000Z",
+            "endAt": "2026-04-01T13:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-04-06T13:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-06T13:30:00.000Z",
+            "endAt": "2026-04-06T13:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-04-08T13:30:00.000Z",
+            "title": "Standup",
+            "description": null,
+            "location": null,
+            "startAt": "2026-04-08T13:30:00.000Z",
+            "endAt": "2026-04-08T13:45:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "weekly::2026-06-22T13:30:00.000Z",
+            "title": "Standup (pulled forward)",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-25T19:00:00.000Z",
+            "endAt": "2026-03-25T19:15:00.000Z",
+            "isAllDay": false,
+            "timezone": "America/New_York",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "monthly::2026-03-10T16:00:00.000Z",
+            "title": "Review",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-10T16:00:00.000Z",
+            "endAt": "2026-03-10T17:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "monthly::2026-03-20T16:00:00.000Z",
+            "title": "Review",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-20T16:00:00.000Z",
+            "endAt": "2026-03-20T17:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "yearly-allday::2026-03-01T00:00:00.000Z",
+            "title": "Anniversary",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-01T00:00:00.000Z",
+            "endAt": "2026-03-02T00:00:00.000Z",
+            "isAllDay": true,
+            "timezone": null,
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "daily-count::2026-02-26T08:00:00.000Z",
+            "title": "Pills",
+            "description": null,
+            "location": null,
+            "startAt": "2026-02-26T08:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "daily-count::2026-02-28T08:00:00.000Z",
+            "title": "Pills",
+            "description": null,
+            "location": null,
+            "startAt": "2026-02-28T08:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "daily-count::2026-03-02T08:00:00.000Z",
+            "title": "Pills",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-02T08:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "daily-count::2026-03-04T08:00:00.000Z",
+            "title": "Pills",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-04T08:00:00.000Z",
+            "endAt": null,
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "last-friday::2026-02-27T00:00:00.000Z",
+            "title": "Payday",
+            "description": null,
+            "location": null,
+            "startAt": "2026-02-27T00:00:00.000Z",
+            "endAt": "2026-02-28T00:00:00.000Z",
+            "isAllDay": true,
+            "timezone": null,
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          },
+          {
+            "remoteEventId": "orphan::2026-03-05T12:00:00.000Z",
+            "title": "Orphan override",
+            "description": null,
+            "location": null,
+            "startAt": "2026-03-05T13:00:00.000Z",
+            "endAt": "2026-03-05T14:00:00.000Z",
+            "isAllDay": false,
+            "timezone": "UTC",
+            "status": "confirmed",
+            "remoteUpdatedAt": null
+          }
+        ]
+      }
+    }
+  ]
+}

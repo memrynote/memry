@@ -11463,6 +11463,51 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
      */
     func updateEvent(id: String, changes: CalendarEventChanges) throws  -> CalendarEventRecord
     
+    /**
+     * A failed fetch: `unreachable`, `timeout`, `not_found`, … (desktop's
+     * `IcsFeedErrorCode`). The mirror stays as it was.
+     */
+    func feedRecordError(sourceId: String, code: String) throws 
+    
+    /**
+     * A 200 for a refresh: the mirror follows the feed. A body that does
+     * not parse is recorded as `not_a_calendar` and returned as that error.
+     */
+    func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones) throws  -> UInt32
+    
+    /**
+     * A 304.
+     */
+    func feedRecordNotModified(sourceId: String) throws 
+    
+    /**
+     * Every live subscription's state on this device.
+     */
+    func feedStates() throws  -> [CalendarFeedState]
+    
+    /**
+     * `subscribeIcsCalendar` after the shell fetched `url` (normalised):
+     * parses first, so a link that is not a calendar saves nothing, then
+     * writes the synced source and this device's mirror. Returns the id.
+     */
+    func feedSubscribe(url: String, title: String?, feed: CalendarFetchedFeed, zones: CalendarFeedZones) throws  -> String
+    
+    /**
+     * `unsubscribeIcsCalendar`.
+     */
+    func feedUnsubscribe(sourceId: String) throws 
+    
+    /**
+     * `updateIcsCalendar`: a synced rename or recolour (a colour name).
+     */
+    func feedUpdate(sourceId: String, title: String?, color: String?) throws 
+    
+    /**
+     * The feeds due for a fetch (all live ones with `force`); removed or
+     * hidden ones lose this device's mirror on the way.
+     */
+    func feedsDue(force: Bool) throws  -> [CalendarFeedDue]
+    
 }
 /**
  * Named `VaultCalendar`, not `Calendar`: the generated Swift type would
@@ -11691,6 +11736,118 @@ open func updateEvent(id: String, changes: CalendarEventChanges)throws  -> Calen
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),
         FfiConverterTypeCalendarEventChanges_lower(changes),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A failed fetch: `unreachable`, `timeout`, `not_found`, … (desktop's
+     * `IcsFeedErrorCode`). The mirror stays as it was.
+     */
+open func feedRecordError(sourceId: String, code: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_record_error(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(code),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A 200 for a refresh: the mirror follows the feed. A body that does
+     * not parse is recorded as `not_a_calendar` and returned as that error.
+     */
+open func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_record_fetch(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterTypeCalendarFetchedFeed_lower(feed),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A 304.
+     */
+open func feedRecordNotModified(sourceId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_record_not_modified(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Every live subscription's state on this device.
+     */
+open func feedStates()throws  -> [CalendarFeedState]  {
+    return try  FfiConverterSequenceTypeCalendarFeedState.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_states(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `subscribeIcsCalendar` after the shell fetched `url` (normalised):
+     * parses first, so a link that is not a calendar saves nothing, then
+     * writes the synced source and this device's mirror. Returns the id.
+     */
+open func feedSubscribe(url: String, title: String?, feed: CalendarFetchedFeed, zones: CalendarFeedZones)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_subscribe(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(url),
+        FfiConverterOptionString.lower(title),
+        FfiConverterTypeCalendarFetchedFeed_lower(feed),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `unsubscribeIcsCalendar`.
+     */
+open func feedUnsubscribe(sourceId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_unsubscribe(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `updateIcsCalendar`: a synced rename or recolour (a colour name).
+     */
+open func feedUpdate(sourceId: String, title: String?, color: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feed_update(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterOptionString.lower(title),
+        FfiConverterOptionString.lower(color),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The feeds due for a fetch (all live ones with `force`); removed or
+     * hidden ones lose this device's mirror on the way.
+     */
+open func feedsDue(force: Bool)throws  -> [CalendarFeedDue]  {
+    return try  FfiConverterSequenceTypeCalendarFeedDue.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_feeds_due(
+            self.uniffiCloneHandle(),
+        FfiConverterBool.lower(force),uniffiCallStatus
     )
 })
 }
@@ -13982,6 +14139,282 @@ public func FfiConverterTypeCalendarExternalEventRecord_lift(_ buf: RustBuffer) 
 #endif
 public func FfiConverterTypeCalendarExternalEventRecord_lower(_ value: CalendarExternalEventRecord) -> RustBuffer {
     return FfiConverterTypeCalendarExternalEventRecord.lower(value)
+}
+
+
+/**
+ * A feed to fetch, with the validators of this device's last response.
+ */
+public struct CalendarFeedDue: Equatable, Hashable {
+    public var sourceId: String
+    public var url: String
+    public var etag: String?
+    public var lastModified: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceId: String, url: String, etag: String?, lastModified: String?) {
+        self.sourceId = sourceId
+        self.url = url
+        self.etag = etag
+        self.lastModified = lastModified
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarFeedDue: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarFeedDue: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarFeedDue {
+        return
+            try CalendarFeedDue(
+                sourceId: FfiConverterString.read(from: &buf), 
+                url: FfiConverterString.read(from: &buf), 
+                etag: FfiConverterOptionString.read(from: &buf), 
+                lastModified: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarFeedDue, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+        FfiConverterOptionString.write(value.lastModified, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedDue_lift(_ buf: RustBuffer) throws -> CalendarFeedDue {
+    return try FfiConverterTypeCalendarFeedDue.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedDue_lower(_ value: CalendarFeedDue) -> RustBuffer {
+    return FfiConverterTypeCalendarFeedDue.lower(value)
+}
+
+
+/**
+ * One subscribed feed as this device sees it.
+ */
+public struct CalendarFeedState: Equatable, Hashable {
+    public var sourceId: String
+    /**
+     * `idle` | `ok` | `error`.
+     */
+    public var syncStatus: String
+    public var lastSyncedAt: String?
+    /**
+     * An `IcsFeedErrorCode`.
+     */
+    public var lastError: String?
+    public var nextRefreshMs: Int64?
+    public var eventCount: Int64
+    public var firstStartAt: String?
+    public var lastStartAt: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceId: String, 
+        /**
+         * `idle` | `ok` | `error`.
+         */syncStatus: String, lastSyncedAt: String?, 
+        /**
+         * An `IcsFeedErrorCode`.
+         */lastError: String?, nextRefreshMs: Int64?, eventCount: Int64, firstStartAt: String?, lastStartAt: String?) {
+        self.sourceId = sourceId
+        self.syncStatus = syncStatus
+        self.lastSyncedAt = lastSyncedAt
+        self.lastError = lastError
+        self.nextRefreshMs = nextRefreshMs
+        self.eventCount = eventCount
+        self.firstStartAt = firstStartAt
+        self.lastStartAt = lastStartAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarFeedState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarFeedState: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarFeedState {
+        return
+            try CalendarFeedState(
+                sourceId: FfiConverterString.read(from: &buf), 
+                syncStatus: FfiConverterString.read(from: &buf), 
+                lastSyncedAt: FfiConverterOptionString.read(from: &buf), 
+                lastError: FfiConverterOptionString.read(from: &buf), 
+                nextRefreshMs: FfiConverterOptionInt64.read(from: &buf), 
+                eventCount: FfiConverterInt64.read(from: &buf), 
+                firstStartAt: FfiConverterOptionString.read(from: &buf), 
+                lastStartAt: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarFeedState, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterString.write(value.syncStatus, into: &buf)
+        FfiConverterOptionString.write(value.lastSyncedAt, into: &buf)
+        FfiConverterOptionString.write(value.lastError, into: &buf)
+        FfiConverterOptionInt64.write(value.nextRefreshMs, into: &buf)
+        FfiConverterInt64.write(value.eventCount, into: &buf)
+        FfiConverterOptionString.write(value.firstStartAt, into: &buf)
+        FfiConverterOptionString.write(value.lastStartAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedState_lift(_ buf: RustBuffer) throws -> CalendarFeedState {
+    return try FfiConverterTypeCalendarFeedState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedState_lower(_ value: CalendarFeedState) -> RustBuffer {
+    return FfiConverterTypeCalendarFeedState.lower(value)
+}
+
+
+/**
+ * The zones a feed names that the shell resolved, and the device's own.
+ */
+public struct CalendarFeedZones: Equatable, Hashable {
+    public var named: [CalendarZone]
+    public var local: CalendarZone
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(named: [CalendarZone], local: CalendarZone) {
+        self.named = named
+        self.local = local
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarFeedZones: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarFeedZones: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarFeedZones {
+        return
+            try CalendarFeedZones(
+                named: FfiConverterSequenceTypeCalendarZone.read(from: &buf), 
+                local: FfiConverterTypeCalendarZone.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarFeedZones, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeCalendarZone.write(value.named, into: &buf)
+        FfiConverterTypeCalendarZone.write(value.local, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedZones_lift(_ buf: RustBuffer) throws -> CalendarFeedZones {
+    return try FfiConverterTypeCalendarFeedZones.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFeedZones_lower(_ value: CalendarFeedZones) -> RustBuffer {
+    return FfiConverterTypeCalendarFeedZones.lower(value)
+}
+
+
+/**
+ * A 200 response.
+ */
+public struct CalendarFetchedFeed: Equatable, Hashable {
+    public var text: String
+    public var etag: String?
+    public var lastModified: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, etag: String?, lastModified: String?) {
+        self.text = text
+        self.etag = etag
+        self.lastModified = lastModified
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarFetchedFeed: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarFetchedFeed: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarFetchedFeed {
+        return
+            try CalendarFetchedFeed(
+                text: FfiConverterString.read(from: &buf), 
+                etag: FfiConverterOptionString.read(from: &buf), 
+                lastModified: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarFetchedFeed, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+        FfiConverterOptionString.write(value.lastModified, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFetchedFeed_lift(_ buf: RustBuffer) throws -> CalendarFetchedFeed {
+    return try FfiConverterTypeCalendarFetchedFeed.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarFetchedFeed_lower(_ value: CalendarFetchedFeed) -> RustBuffer {
+    return FfiConverterTypeCalendarFetchedFeed.lower(value)
 }
 
 
@@ -28024,6 +28457,56 @@ fileprivate struct FfiConverterSequenceTypeCachedAttachment: FfiConverterRustBuf
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeCalendarFeedDue: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarFeedDue]
+
+    public static func write(_ value: [CalendarFeedDue], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarFeedDue.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarFeedDue] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarFeedDue]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarFeedDue.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarFeedState: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarFeedState]
+
+    public static func write(_ value: [CalendarFeedState], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarFeedState.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarFeedState] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarFeedState]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarFeedState.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCalendarItem: FfiConverterRustBuffer {
     typealias SwiftType = [CalendarItem]
 
@@ -28091,6 +28574,31 @@ fileprivate struct FfiConverterSequenceTypeCalendarSourceRecord: FfiConverterRus
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeCalendarSourceRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarZone: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarZone]
+
+    public static func write(_ value: [CalendarZone], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarZone.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarZone] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarZone]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarZone.read(from: &buf))
         }
         return seq
     }
@@ -29471,6 +29979,41 @@ public func calendarConformance(vectorJson: String) -> String  {
 })
 }
 /**
+ * Runs every case of `calendar-ical.json` and answers `{ cases: [{ name,
+ * actual | error }] }`.
+ */
+public func calendarIcalConformance(vectorJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_ical_conformance(
+        FfiConverterString.lower(vectorJson),uniffiCallStatus
+    )
+})
+}
+/**
+ * `normalizeIcsUrl`; `None` for anything that is not an http(s) link.
+ */
+public func calendarFeedNormalizeUrl(input: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_feed_normalize_url(
+        FfiConverterString.lower(input),uniffiCallStatus
+    )
+})
+}
+/**
+ * Every TZID (and `X-WR-TIMEZONE`) the text names, for the shell to resolve
+ * into [`CalendarFeedZones`].
+ */
+public func calendarFeedZoneIds(text: String) -> [String]  {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_feed_zone_ids(
+        FfiConverterString.lower(text),uniffiCallStatus
+    )
+})
+}
+/**
  * One document's body as blocks, from a raw update.
  *
  * The same walk `Notes.blocks` runs, on the same code path, without a vault.
@@ -29897,6 +30440,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_calendar_conformance() != 35209) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_func_calendar_ical_conformance() != 10852) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_calendar_feed_normalize_url() != 22981) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_calendar_feed_zone_ids() != 8389) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_blocks_from_update() != 25013) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -30096,6 +30648,30 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_update_event() != 54205) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_error() != 19564) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 28465) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_not_modified() != 41963) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_states() != 64955) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_subscribe() != 27741) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_unsubscribe() != 33065) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_update() != 32036) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feeds_due() != 47367) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {

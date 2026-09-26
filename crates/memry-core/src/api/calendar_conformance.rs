@@ -189,7 +189,7 @@ fn apply_case(case: &Value) -> Result<Value, StorageError> {
     })
 }
 
-fn zone(value: &Value) -> CalendarZone {
+pub(crate) fn zone(value: &Value) -> CalendarZone {
     CalendarZone {
         identifier: value["identifier"].as_str().unwrap_or("UTC").to_owned(),
         base_offset_ms: value["baseOffsetMs"].as_i64().unwrap_or(0),
