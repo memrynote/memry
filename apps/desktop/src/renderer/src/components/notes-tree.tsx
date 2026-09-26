@@ -380,6 +380,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     if (!data.noteMap.has(target)) return
 
     virtualTreeActionsRef.current?.revealNote(target)
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-derived-state -- selection follows a reveal request once its note reaches the tree, not the tree data itself
     handleRevealComplete(target)
   }, [data.tree, data.noteMap, handleRevealComplete])
 

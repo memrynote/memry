@@ -655,6 +655,7 @@ export const CanvasCardLayer = ({
 
     wrapper.addEventListener('dragover', onDragOver, { capture: true })
     wrapper.addEventListener('drop', onDrop, { capture: true })
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent -- attaches DOM listeners; state is read from refs at event time
     wrapper.addEventListener('dblclick', onDblClick, { capture: true })
     wrapper.addEventListener('pointerdown', onPointerDownAway, { capture: true })
     // Non-passive: consuming the gesture requires preventDefault().

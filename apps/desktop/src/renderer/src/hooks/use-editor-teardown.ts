@@ -72,6 +72,7 @@ export function useEditorTeardown(
   useEffect(
     () =>
       registerVaultLeaveFlush(async () => {
+        // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- latest-callback ref read at flush time, not a DOM ref from a parent
         await beforeDestroyRef.current?.()
       }),
     []

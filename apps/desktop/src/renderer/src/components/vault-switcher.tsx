@@ -103,6 +103,7 @@ export function VaultSwitcher({ renderTrigger }: VaultSwitcherProps = {}) {
   // Runs for every close — Escape, an outside click, or picking a vault — because
   // the picker's own state can close it without going through `onOpenChange`.
   useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- see above
     if (open) return
 
     if (collapseSidebarOnCloseRef.current) {

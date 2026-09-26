@@ -47,7 +47,7 @@ export function ToolbarMoreMenu({ isPinned, onPinnedChange }: ToolbarMoreMenuPro
   const { t } = useT('notes')
   const Components = useComponentsContext()
   const dict = useDictionary()
-  const editor = useBlockNoteEditor() as BlockNoteEditor
+  const editor = useBlockNoteEditor()
   const state = useEditorState({
     editor,
     selector: ({ editor }) => {

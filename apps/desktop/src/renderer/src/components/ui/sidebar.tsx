@@ -137,7 +137,11 @@ function SidebarProvider({
   )
   const [isResizing, setIsResizing] = React.useState(false)
 
+  // Width and the resizing flag are both settable through context by any
+  // consumer, so persisting on the settled value is the one place that sees
+  // every path.
   React.useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- see above
     if (!isResizing) persistSidebarWidth()
   }, [sidebarWidth, isResizing])
 

@@ -692,6 +692,8 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
   }, [activePath, kept])
 
   // Evicted vaults drop their cache, and whatever their hidden tree parked.
+  // Releases external resources held in refs; nothing flows to a parent.
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     for (const [path, client] of clientsRef.current) {
       if (kept.includes(path)) continue
@@ -704,6 +706,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
       lifecyclesRef.current.delete(path)
     }
   }, [kept])
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   useEffect(() => {
     const lifecycles = lifecyclesRef.current
