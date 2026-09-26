@@ -215,6 +215,50 @@
       "sourceId": null
     }
   ],
+  "caldav": [
+    {
+      "server": "caldav.fastmail.com",
+      "username": "Agent@Example.com",
+      "serverUrl": "https://caldav.fastmail.com/",
+      "accountId": "caldav-8c84fce6792a87e033a4cbd8",
+      "calendarSourceId": "caldav-calendar:7ce917b30ac4908e09d50ac360e7f7f0"
+    },
+    {
+      "server": "https://DAV.example.org/remote.php/dav?x=1#y",
+      "username": " agent ",
+      "serverUrl": "https://dav.example.org/remote.php/dav/",
+      "accountId": "caldav-abf710b3d547c59279c90b6e",
+      "calendarSourceId": "caldav-calendar:3508bbf3a5a80b94922e5c48ac6bc489"
+    },
+    {
+      "server": "https://localhost:5232/agent",
+      "username": "agent",
+      "serverUrl": "https://localhost:5232/agent/",
+      "accountId": "caldav-2c0a9dde4bcef62f3225fab2",
+      "calendarSourceId": "caldav-calendar:46ac8fa5a7cfa5035ab9f35f69de6c97"
+    },
+    {
+      "server": "http://192.168.1.10:8080/dav/",
+      "username": "kaan",
+      "serverUrl": "http://192.168.1.10:8080/dav/",
+      "accountId": "caldav-2cf7c9fbbc4ab089859d2509",
+      "calendarSourceId": "caldav-calendar:3a1465e125df02ba8e7373148c7230d4"
+    },
+    {
+      "server": "  ",
+      "username": "x",
+      "serverUrl": null,
+      "accountId": null,
+      "calendarSourceId": null
+    },
+    {
+      "server": "ftp://example.com",
+      "username": "x",
+      "serverUrl": null,
+      "accountId": null,
+      "calendarSourceId": null
+    }
+  ],
   "cases": [
     {
       "name": "singles in every zone form",

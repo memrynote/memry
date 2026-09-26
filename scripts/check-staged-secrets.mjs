@@ -16,6 +16,10 @@ const sourceCodePathPattern = /\.[cm]?[jt]sx?$/i
 
 const rustPathPattern = /\.rs$/i
 
+// Swift names values the same way Rust does: a value that opened no quote
+// and starts with an identifier is an expression, never a literal.
+const swiftPathPattern = /\.swift$/i
+
 const testPathPattern = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
 
 const markdownPathPattern = /\.md$/i
@@ -374,7 +378,7 @@ export function scanTextForSecrets(filePath, text) {
     // opening quote already eaten by the pattern above and therefore has
     // `openingQuote` set.
     if (
-      rustPathPattern.test(filePath) &&
+      (rustPathPattern.test(filePath) || swiftPathPattern.test(filePath)) &&
       openingQuote === '' &&
       !/["'`]/.test(value) &&
       /^[&*]*\s*[A-Za-z_]/.test(value.trim())

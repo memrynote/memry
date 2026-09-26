@@ -52,20 +52,31 @@ enum CalendarEventMetadata {
         ((object(json) as? [String: Any])?["conferenceSolution"] as? [String: Any])?["name"] as? String
     }
 
-    /// A phone entry point and its PIN, when the call has one.
-    static func phone(_ json: String?) -> (uri: URL, label: String, pin: String?)? {
+    /// `phoneEntry`: `tel:+1-204-555-0100;714957213#` as number and PIN.
+    static func phone(_ json: String?) -> (uri: URL, number: String, pin: String?)? {
         let points = (object(json) as? [String: Any])?["entryPoints"] as? [[String: Any]] ?? []
         guard let entry = points.first(where: { $0["entryPointType"] as? String == "phone" }),
-              let uri = (entry["uri"] as? String).flatMap(URL.init(string:)) else { return nil }
-        return (uri, entry["label"] as? String ?? uri.absoluteString, entry["pin"] as? String)
+              let raw = entry["uri"] as? String, let uri = URL(string: raw) else { return nil }
+        let parts = raw.replacingOccurrences(of: "^tel:", with: "", options: [.regularExpression, .caseInsensitive])
+            .split(separator: ";", maxSplits: 1).map(String.init)
+        guard let number = parts.first, !number.isEmpty else { return nil }
+        return (uri, number, parts.count > 1 ? parts[1] : entry["pin"] as? String)
     }
 
-    /// `describeRecurrence` over the stored rule (`{ rrule: ["RRULE:…"] }` or
-    /// `{ freq, interval, byDay }`).
+    /// The join link as desktop prints it: no scheme, no query.
+    static func joinLabel(_ url: URL) -> String {
+        url.absoluteString
+            .replacingOccurrences(of: "^https://", with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\?.*$"#, with: "", options: .regularExpression)
+    }
+
+    /// `describeRecurrence` over the stored rule (`{ rrule: ["RRULE:…"] }`,
+    /// EventKit's `{ rrule: "FREQ=…" }`, or `{ freq, interval, byDay }`).
     static func recurrence(_ json: String?) -> String? {
         guard let raw = object(json) as? [String: Any] else { return nil }
         var parts: [String: String] = [:]
-        if let rules = raw["rrule"] as? [String] ?? raw["recurrence"] as? [String],
+        let single = (raw["rrule"] as? String).map { [$0] }
+        if let rules = raw["rrule"] as? [String] ?? single ?? raw["recurrence"] as? [String],
            let line = rules.first(where: { $0.uppercased().hasPrefix("RRULE:") }) ?? rules.first {
             for pair in line.replacingOccurrences(of: "RRULE:", with: "").split(separator: ";") {
                 let kv = pair.split(separator: "=", maxSplits: 1)
@@ -234,8 +245,8 @@ struct CalendarReadOnlySheet: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(CalendarEventMetadata.conferenceName(record.conferenceDataJson) ?? CalendarCopy.videoCall)
-                        let phone = CalendarEventMetadata.phone(record.conferenceDataJson)
-                        Text([join.host(), phone?.pin.map { "PIN \($0)" }].compactMap { $0 }.joined(separator: " · "))
+                        Text(CalendarEventMetadata.joinLabel(join))
+                            .lineLimit(1)
                             .font(Tokens.Typography.caption.font)
                             .foregroundStyle(Tokens.Text.secondary.color)
                     }
@@ -247,11 +258,15 @@ struct CalendarReadOnlySheet: View {
                         .accessibilityIdentifier("calendar.readonly.join")
                 }
             }
-        } else if let phone = CalendarEventMetadata.phone(record.conferenceDataJson) {
+        }
+        if let phone = CalendarEventMetadata.phone(record.conferenceDataJson) {
             row("phone") {
                 Button { openURL(phone.uri) } label: {
-                    Text(phone.pin.map { "\(phone.label) · PIN \($0)" } ?? phone.label)
+                    let number = Text(phone.pin.map { "\(phone.number) · PIN \($0)" } ?? phone.number)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                    Text("\(CalendarCopy.joinByPhone) \(number)").foregroundStyle(Tokens.Text.secondary.color)
                 }
+                .accessibilityIdentifier("calendar.readonly.phone")
             }
         }
         if let location = record.location, !location.isEmpty {

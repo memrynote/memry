@@ -53,4 +53,5 @@ fn links_normalise_and_hash_as_desktop_does() {
     let out: Value =
         serde_json::from_str(&calendar_ical_conformance(text)).expect("seam answers JSON");
     assert_eq!(out["urls"], file["urls"]);
+    assert_eq!(out["caldav"], file["caldav"]);
 }

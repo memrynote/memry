@@ -341,9 +341,11 @@ range)`. Vectors from desktop projection for a fixed fixture (tasks,
       events and timed tasks only, Undo toast restores both.
       Evidence: CL16-move.png.
       Evidence: CL16-move.png: hold + drag moved `[agent] Plus event` 09:00 → 10:00 ("Moved to 10:00" + Undo); bottom handle resized 11:00 → 11:30 ("Now 10:00 – 11:30"), a second resize to 12:00 undone back to 11:30; timed tasks move through `setDue` with "Task rescheduled" + Undo; imported / read-only chips get no hold gesture (`canDrag`).
-- [ ] CL045 **18 Promote**: routing (ask / skip rule with AI access), writes
+- [x] CL045 **18 Promote**: routing (ask / skip rule with AI access), writes
       per CL013, opens 14 on the linked copy. Evidence: CL18-promote.png.
-- [ ] CL046 Phase commit.
+      Evidence: CL18-promote.png (Paper 18 alert on a pulled CalDAV occurrence, agent notice while CalDAV AI access is off, Don't ask again) → CL18-promote-linked.png (14 on the linked copy, binding `href::2026-09-28T07:00:00.000Z`); with Don't ask again set the alert still shows while AI consent is off (desktop's rule), and after turning CalDAV "Let AI read" on the Oct 12 occurrence opened straight into its copy (CL18-promote-skip.png). Both settings are on the CL094 restore list.
+- [x] CL046 Phase commit.
+      Evidence: 0284a1d67 feat(ios) create/edit/move/resize; CL045 lands with the Phase 6 commit.
 
 ## Phase 5: other items and cross-feature
 
@@ -357,6 +359,7 @@ range)`. Vectors from desktop projection for a fixed fixture (tasks,
       iPhone events; recurrence text (`describeRecurrence`), alerts,
       conference + phone PIN, location, attendees (6, show more), links in
       text, details-load error line. Evidence: CL19-readonly.png.
+      Evidence: CL19-readonly.png (subscribed `[agent] Holidays`), CL19-readonly-iphone.png (This iPhone), CL19-readonly-rich.png (This iPhone subscription `[agent] Rich`: "Repeats every week on Tue", Zoom + Join + `zoom.us/j/…`, "Join by phone" line, location, 8 attendees organizer first with Show more, links in the notes tappable). EventKit details now follow `eventkit-details.ts` (`CalendarEventKitDetails`); `CalendarEventDetailsTests` 4/4 cover alerts (iOS drops VALARMs from subscribed calendars), the rule text, the call and the phone PIN. A failed `externalEvent` read shows the details-load line.
 - [x] CL052 **20 Note sheet**: note vs date reminder, Open note at anchor.
       Evidence: CL20-note.png.
       Evidence: CL20-note.png (Paper 20: kind line with close, title, "Mon, Sep 14", Open note, footnote); with Show notes on (then switched back off) Month showed pink note days, the Sep 14 row opened the sheet, Open note opened "Lisbon Food Map". Date reminders use the same sheet with the dashed kind mark.
@@ -366,14 +369,16 @@ range)`. Vectors from desktop projection for a fixed fixture (tasks,
 - [x] CL054 Deep links: Agent Chat style `date + event` opens Day + sheet;
       project hub "Calendar event" row opens the event.
       Evidence: `xcrun simctl openurl memry://calendar?date=2026-09-03&event=<id>` from the Notes tab → Day Sep 3 with the `[agent] Quick create test` sheet; project hub "Linked" row now names the event and opens it on its day (CL54-hub-link.png); a bare event id resolves the day from the record.
-- [ ] CL055 Phase commit.
+- [x] CL055 Phase commit.
+      Evidence: 61b240f91 (task, note, snooze sheets) and e6782e1f1 (read-only sheets); the rich details land with the Phase 6 commit.
 
 ## Phase 6: provider runtime, accounts and settings (D3 / D4)
 
-- [ ] CL070 Shared provider logic in core per CL003 split: write routing,
+- [x] CL070 Shared provider logic in core per CL003 split: write routing,
       Google and iCal field mapping, recurrence expansion, ICS parsing,
       sync-state model. Vectors from desktop (`google/mappers`, `ical/**`,
       `provider/write-routing`, `writer-compat`).
+      Evidence: core `domain/calendar_items/{ical/**, ics*, providers/**}` (routing, Google body / remote mapping, CalDAV objects, bindings, push queue, source cursor + status); `calendar-ical.json` (desktop `parseIcsFeed`, URL + CalDAV ids) and new `calendar-write.json` (desktop `eventToICalendar` / `patchICalendar` whole + occurrence / `excludeOccurrence`, `mapCalendarEventToGoogleInput` recurrence, `isAppVersionBelow`); `tests/calendar_ical_vectors.rs`, `tests/calendar_write_vectors.rs` 3/3 (a tampered vector fails), `CalendarWriteConformanceTests` 1/1, `vectors:check` 22 classes, cargo 1147 green. Write routing is restated in `calendar_provider_push.rs` (desktop's `resolveWriteRoute` reads its DB and cannot load in the vector script); Google's `toGoogleEventPayload` / `mapRemoteEvent` are private to `client.ts` and are restated in core unit tests.
 - [ ] CL071 Google on iOS: `ASWebAuthenticationSession` + PKCE with the iOS
       client, Keychain storage, multiple accounts, reconnect-required state,
       incremental pull with cursor reset, push through routing, revoke on
@@ -382,39 +387,45 @@ range)`. Vectors from desktop projection for a fixed fixture (tasks,
       reuse it with the `calendar` scope added incrementally. If that client's
       Cloud project lacks the Calendar API or the consent screen lacks the
       scope: §7 blocker for Kaan, continue CL072–CL074.
-- [ ] CL072 Provider-auth transfer: linking a new device carries Google
+- [x] CL072 Provider-auth transfer: linking a new device carries Google
       accounts to / from iOS the way desktop does, or each device signs in;
       per CL003. Test with the desktop peer.
-- [ ] CL073 Subscribed (ICS / webcal) on iOS: add, http warning, fetch with
+      Evidence: each device signs in (§5 F3b, §6): a desktop refresh token is bound to the desktop client. Linking tolerates desktop's block: `a_provider_auth_block_from_desktop_is_left_unread` (routes.rs) completes a link whose `complete` carries `encryptedProviderAuth…`; an iOS initiator sends none, which desktop treats as absent (`ApproveLinkingRequestSchema` optional fields). Settings reads "Connected on another device · sign in here" for the desktop's Google account on this phone (CL27-settings.png). No new link was made against the live account (it would register a device on Kaan's account).
+- [x] CL073 Subscribed (ICS / webcal) on iOS: add, http warning, fetch with
       desktop limits and errors, hourly refresh, rename / color / remove.
-- [ ] CL074 CalDAV on iOS: presets, app password in Keychain, discovery,
+      Evidence: CL29.png; `[agent] Holidays` added from a webcal link, renamed and recoloured (Sage), http link warned, errors from `calendar-ical.json` codes; core `feed_*` + `CalendarFeedFetcher` (30 s, 20 MB, 5 redirects), refresh due on load / foreground / background pass; `tests/calendar_feeds.rs`, `CalendarIcalConformanceTests`.
+- [x] CL074 CalDAV on iOS: presets, app password in Keychain, discovery,
       pull / push with etags, writer-compat acknowledgement; verified
       against local Radicale.
+      Evidence: Radicale 3 on `https://127.0.0.1:5232` (self-signed CA in the simulator's root store): preset Radicale / Baïkal, writer-compat notice listing the account's older desktops + acknowledgement, discovery of `[agent] Work`, password in Keychain `com.memry.calendar-providers` (CL30-caldav-connected.png). Pull mirrored the weekly series; promote bound one occurrence; a phone edit PUT an override (RECURRENCE-ID) with If-Match; a server edit flowed back into the event without an echo push; a phone delete wrote EXDATE and kept the series; a new event PUT `memry-….ics` (CL30-caldav-pushed.png). Radicale's log shows one PUT per phone change. `calendar_provider_push.rs` 5/5.
 - [ ] CL075 Background and foreground scheduling (`BGAppRefreshTask`,
       foreground, Sync now, realtime nudge if CL003 found one); no double
       push when desktop and iOS both hold the same account (test: edit one
       event on iOS with both online, exactly one remote write).
 
-- [ ] CL060 **27 Calendar settings**: account rows with status, default
+- [x] CL060 **27 Calendar settings**: account rows with status, default
       calendar (one provider holds it), week start, show notes; all two-way
       per D3a, device-local rows labelled as such; account rows show this
       device's connection state.
       Evidence: CL27-settings.png.
+      Evidence: CL27-settings.png (Paper 27: large title, account rows with a status line — Google "Connected on another device · sign in here" in amber, CalDAV "Connected · 1 account" in green, "1 link · read-only", This iPhone "On" —, default calendar in ink, Sunday / Monday segmented, show notes, Paper's footers, "Date properties on this iPhone" as the device-local section). Week start / show notes / default write through the D3a keys (CL017).
 - [ ] CL061 **28 Google**: accounts with status, imported calendars with
       sync status and Retry, push toggle, AI toggle; Add account, Reconnect,
       Sync now, Disconnect (CL071). Evidence: CL28-google.png.
-- [ ] CL062 **29 Subscribed** and **30 CalDAV**: lists, statuses, errors,
+- [x] CL062 **29 Subscribed** and **30 CalDAV**: lists, statuses, errors,
       rename / color / refresh / remove, presets, writer-compat notice and
       acknowledgement; Subscribe and Connect run on iOS (CL073, CL074).
       Evidence: CL29.png, CL30.png.
+      Evidence: CL29.png; CL30-caldav-connected.png (Paper 30: Service / Server / Username / App password, preset footnote, the amber notice with its acknowledgement, Connect, the account with its calendar switch and "Updated … ago", Disconnect, After connecting: push, AI, Sync now · every 15 min).
 - [ ] CL063 **24 Connect**, **25 Default calendar**, **26 AI consent**:
       prompt only while not connected, default picker after connect,
       consent once per provider (stored where desktop stores it).
       Evidence: CL24.png, CL25.png, CL26.png.
-- [ ] CL064 **31 This iPhone**: EventKit permission states (not asked,
+- [x] CL064 **31 This iPhone**: EventKit permission states (not asked,
       denied → Open Settings / Check again, restricted, write-only, allowed),
       per-calendar switches, duplicate guard, events shown as read-only
       (19), never synced. Evidence: CL31-a/b/c.png.
+      Evidence: CL31-a.png (not asked), CL31-b.png (denied: Open Settings / Check again), CL31-c.png (allowed, per-calendar switches; a calendar already connected in memrynote starts off); EventKit items open the read-only sheet (CL19-readonly-iphone.png, CL19-readonly-rich.png) and live only in memory (never written to the vault).
 - [ ] CL065 Phase commit.
 
 ## Phase 7: verification and wrap-up
@@ -738,13 +749,70 @@ onboardingCompleted, promoteConfirmDismissed, pushEventsToGoogle, agentReadEvent
   The row now opens the event in the calendar on its day, and names it through the calendar
   store (events are not related items in the Tasks core).
 - 2026-09-26 — CL051 — The read-only sheet needs an imported, subscribed, CalDAV or This
-  iPhone event; the account has none until Phase 6 connects one. Deferred there.
+  iPhone event; the account has none until Phase 6 connects one. Deferred there. Done in
+  Phase 6: EventKit events carry attendees, alerts, rule and call like desktop's
+  `eventkit-details.ts`; the call row prints the link without scheme or query and a separate
+  "Join by phone" row (number, PIN from `tel:…;PIN`), as `calendar-subscribed-event-popover`.
+- 2026-09-26 — CL045 — Verified on a CalDAV occurrence instead of Google (no Google account on
+  this phone). The alert copy names Google for every provider, as desktop's does.
+- 2026-09-26 — CL074 — Connecting CalDAV archived its own account row: the "calendars the
+  server no longer lists" query did not filter `kind = 'calendar'`. Fixed; the test asserts both
+  rows stay live.
+- 2026-09-26 — CL074 — One occurrence of a CalDAV series (`href::recurrenceId`, what promote
+  binds) now writes like desktop `caldav-write.ts`: an edit PUTs an override VEVENT
+  (RECURRENCE-ID in the series' value type), a delete adds an EXDATE and drops the override, the
+  PUT goes to the object URL. The object to patch comes from the binding snapshot, then any
+  mirror row of the object (`storedObjectFor`); with neither the plan says `fetch` and the
+  shell GETs it and plans again. An existing object is written with `If-Match: <etag or *>`.
+- 2026-09-26 — CL074 — Pulls follow `applyBoundCaldavObject`: each binding on an object writes
+  back its own instance (our own ETag skipped), only the unbound rest of a series mirrors, an
+  occurrence the series stopped producing inside the window deletes its item, a removed href
+  deletes (event) or unschedules (task) bound items. Google bound events cancelled remotely now
+  follow the same `applyProviderDelete`. Bound reminders and inbox snoozes are not written back
+  on the phone; desktop keeps doing it.
+- 2026-09-26 — CL075 — Pull to refresh and the filter sheet's refresh pull Google and CalDAV
+  past the 15-minute throttle (desktop's Sync now); automatic passes keep it.
+- 2026-09-26 — CL051 — The event sheet's … menu draws its icons in ink (00 rule 6).
+- 2026-09-26 — CL063 — Paper 24's "Connect Google" pill shows only while a Google account is
+  connected (a synced row) and this iPhone holds none of its tokens, which is what "Finish
+  connecting" says; a vault that never used Google is not prompted. "Not now" hides it on this
+  device (`connectPromptDismissed` in the device-local view state, older states decode false).
+- 2026-09-26 — CL063 — Paper 26 is the system alert (Allow / Don't allow, footnote in the
+  message), asked once per provider whose calendars the vault shows while its
+  `calendar.<provider>.agentReadEventsConsent` is unset, as `use-agent-access-consent.ts`.
+  This iPhone's EventKit is not asked: its events never leave the phone, so the agent cannot
+  read them. Paper 25 opens after a first connect only while `calendar.google.onboardingCompleted`
+  is not true; Use and Skip both set it, as desktop's dialog.
+- 2026-09-26 — CL070 — `mapCalendarEventToGoogleInput` writes EXDATEs in the event's zone.
+  The phone used the device's offset for any zone; it now takes the zone from the tables the
+  shell passes (the same set for plan, push_done and write-back, so snapshots stay equal) and
+  writes a UTC EXDATE for a zone it was not given (same instant). The Google pull takes the
+  zone tables too (`googleApplyPull(zones:)`).
+- 2026-09-26 — CL074 — The CalDAV writer-compat check read `2026.925.0.x` as below the floor;
+  desktop's `isAppVersionBelow` looks at three parts only and reads an empty part as 0. Swift
+  now follows it (vector `calendar-write.json` `writerCompat`).
+- 2026-09-26 — CL075 — The iOS shell opens no realtime socket (the core's `RealtimeClient`
+  is unused), so Google's `calendar_changes_available` nudge cannot reach the phone. The phone
+  polls: a pass when the calendar opens and on each return to the foreground (provider pulls
+  throttled to 15 minutes), pull to refresh and Sync now force them, and
+  `com.memry.app.sync.refresh` (already in Info.plist, registered by nothing before) runs the
+  pass when iOS wakes the app. Only local writes queue a push, so a device that pulled a change
+  never pushes it again (one PUT per phone edit in Radicale's log).
 - 2026-09-26 — CL060 — Changing week start or show notes in settings now re-reads the store's
   cached settings and windows; before, the grid kept the old request until relaunch.
 
 ## 7. Blockers
 
-_empty_
+- 2026-09-26 — CL071, CL061, CL063 (25) — Google on this phone stops at Google's sign-in page:
+  the iOS client with the `calendar` scope is accepted (no `invalid_client` / `invalid_scope`,
+  CL71-google-signin.png), and finishing needs Kaan's Google login, which the agent does not
+  enter. Open for Kaan: sign in from Settings › Calendar › Google Calendar › Reconnect (or the
+  calendar's "Connect Google" pill), then check import, push, Retry, Disconnect / revoke and
+  the default picker (Paper 25), which opens after the first connect. Retried once this phase.
+- 2026-09-26 — CL075 — `BGTaskScheduler.submit` is unavailable on the Simulator (logged
+  `calendar.bg.schedule`), so the background wake cannot run here. The wake runs the same pass
+  verified in the foreground (records, pushes, due pulls, due feeds). Open for a device run:
+  background the app, wait for iOS to wake it, check the calendar sync log line.
 
 ## 8. Final report
 

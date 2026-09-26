@@ -5,6 +5,7 @@ pub mod auth;
 pub mod calendar;
 pub mod calendar_conformance;
 pub mod calendar_ical_conformance;
+pub mod calendar_provider_sync;
 pub mod calendar_providers;
 pub mod calendar_records;
 pub mod conformance;

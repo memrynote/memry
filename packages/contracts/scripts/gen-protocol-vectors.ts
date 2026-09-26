@@ -44,6 +44,7 @@ import { buildAttachmentManifest } from './vectors/attachment-manifest'
 import { buildBlockEdit } from './vectors/block-edit'
 import { buildCalendar } from './vectors/calendar'
 import { buildCalendarIcal } from './vectors/calendar-ical'
+import { buildCalendarWrite } from './vectors/calendar-write'
 import { buildInbox } from './vectors/inbox'
 import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
@@ -95,6 +96,10 @@ const CLASSES: readonly VectorClass[] = [
   {
     name: 'calendar-ical',
     files: [{ path: 'calendar-ical.json', build: buildCalendarIcal }]
+  },
+  {
+    name: 'calendar-write',
+    files: [{ path: 'calendar-write.json', build: buildCalendarWrite }]
   },
   {
     name: 'attachment-manifest',

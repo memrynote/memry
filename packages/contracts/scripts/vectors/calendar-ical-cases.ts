@@ -130,3 +130,13 @@ export const ICAL_URLS = [
   'not a url',
   'https://'
 ]
+
+/** Server addresses and users as people type them (`caldav-accounts.ts`). */
+export const CALDAV_INPUTS = [
+  { server: 'caldav.fastmail.com', username: 'Agent@Example.com' },
+  { server: 'https://DAV.example.org/remote.php/dav?x=1#y', username: ' agent ' },
+  { server: 'https://localhost:5232/agent', username: 'agent' },
+  { server: 'http://192.168.1.10:8080/dav/', username: 'kaan' },
+  { server: '  ', username: 'x' },
+  { server: 'ftp://example.com', username: 'x' }
+]

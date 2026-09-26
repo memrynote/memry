@@ -20,13 +20,14 @@ struct CalendarSettingsScreen: View {
             Section(CalendarCopy.accounts) {
                 ForEach(CalendarProvider.all) { provider in
                     NavigationLink(value: CalendarRoute.provider(provider.id)) {
-                        HStack {
-                            Label(provider.title, systemImage: provider.symbol)
-                            Spacer()
-                            Text(status(provider))
+                        let line = status(provider)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(provider.title)
+                            Text(line.text)
                                 .font(Tokens.Typography.caption.font)
-                                .foregroundStyle(Tokens.Text.secondary.color)
+                                .foregroundStyle(line.color)
                         }
+                        .accessibilityElement(children: .combine)
                     }
                     .accessibilityIdentifier("calendar.settings.provider.\(provider.id)")
                 }
@@ -38,15 +39,23 @@ struct CalendarSettingsScreen: View {
                         Text("\(source.title) · \(CalendarProvider.named(source.provider).title)").tag(Optional(source.id))
                     }
                 }
+                .tint(Tokens.Text.secondary.color)
                 .onChange(of: defaultTarget) { _, id in Task { await saveDefault(id) } }
                 .accessibilityIdentifier("calendar.settings.default")
             } footer: {
                 Text(CalendarCopy.defaultCalendarFooter)
             }
             Section {
-                Picker(CalendarCopy.weekStartsOn, selection: $weekStart) {
-                    Text(CalendarCopy.sunday).tag("sunday")
-                    Text(CalendarCopy.monday).tag("monday")
+                HStack {
+                    Text(CalendarCopy.weekStartsOn)
+                    Spacer()
+                    Picker(CalendarCopy.weekStartsOn, selection: $weekStart) {
+                        Text(CalendarCopy.sunday).tag("sunday")
+                        Text(CalendarCopy.monday).tag("monday")
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
                 }
                 .onChange(of: weekStart) { _, value in Task { await save("calendar.weekStartDay", "\"\(value)\"") } }
                 .accessibilityIdentifier("calendar.settings.weekStart")
@@ -72,7 +81,7 @@ struct CalendarSettingsScreen: View {
             }
         }
         .navigationTitle(CalendarCopy.calendarSettings)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .task { await load() }
     }
 
@@ -82,12 +91,31 @@ struct CalendarSettingsScreen: View {
 
     private var datePropertyNames: [String] { dateProperties }
 
-    private func status(_ provider: CalendarProvider) -> String {
-        let sources = store.sources.filter { $0.provider == provider.id }
-        if provider.id == "apple-eventkit" { return CalendarEventKitStore.shared.statusText }
-        guard !sources.isEmpty else { return CalendarCopy.notConnected }
-        let calendars = sources.filter { $0.kind == "calendar" && $0.isSelected }.count
-        return CalendarCopy.calendarsCount(calendars)
+    /// Paper 27's status line: this device's connection state per service.
+    private func status(_ provider: CalendarProvider) -> (text: String, color: Color) {
+        let secondary = Tokens.Text.secondary.color
+        let live = store.sources.filter { $0.provider == provider.id && $0.archivedAt == nil }
+        switch provider.id {
+        case "apple-eventkit":
+            let kit = CalendarEventKitStore.shared
+            return kit.access == .notDetermined ? (CalendarCopy.notAllowedYet, secondary) : (kit.statusText, secondary)
+        case "ics":
+            let links = live.filter { $0.kind == "calendar" }.count
+            return (links == 0 ? CalendarCopy.subscribedHint : CalendarCopy.linksReadOnly(links), secondary)
+        default:
+            let accounts = live.filter { $0.kind == "account" }
+            guard !accounts.isEmpty else {
+                return (provider.id == "caldav" ? CalendarCopy.caldavHint : CalendarCopy.notConnected, secondary)
+            }
+            // Credentials stay on each device: a row another device connected
+            // reads as not signed in here.
+            let held = accounts.filter { account in
+                guard let id = account.accountId else { return false }
+                return provider.id == "caldav" ? store.holdsCaldav(id) : store.holdsGoogle(id)
+            }
+            guard !held.isEmpty else { return (CalendarCopy.signInHere, Tokens.Calendar.amber.meta.color) }
+            return (CalendarCopy.connectedAccounts(held.count), Tokens.Calendar.green.meta.color)
+        }
     }
 
     private func load() async {
@@ -177,14 +205,19 @@ extension CalendarStore {
 extension CalendarCopy {
     static let accounts = "Accounts"
     static let defaultCalendar = "Default calendar"
-    static let defaultCalendarFooter = "New events, and tasks and reminders you schedule, go here unless you pick another calendar."
+    static let defaultCalendarFooter = "Where new events, tasks, reminders and snoozes go when you don't pick a calendar. One service holds the default."
     static let weekStartsOn = "Week starts on"
     static let sunday = "Sunday"
     static let monday = "Monday"
     static let showNotesOnCalendar = "Show notes on calendar"
-    static let showNotesFooter = "Every note appears as an all-day item on the day it was created. Syncs with your other devices."
+    static let showNotesFooter = "Shows every note as an all-day item on the day it was created."
     static let dateProperties = "Date properties on this iPhone"
     static let datePropertiesFooter = "Notes with these date properties appear on that day. This choice stays on this iPhone, as on your computer."
     static let notConnected = "Not connected"
-    static func calendarsCount(_ count: Int) -> String { count == 1 ? "1 calendar" : "\(count) calendars" }
+    static let notAllowedYet = "Not allowed yet"
+    static let signInHere = "Connected on another device · sign in here"
+    static let caldavHint = "Fastmail · iCloud, Nextcloud and more"
+    static let subscribedHint = "Add a webcal or .ics link"
+    static func linksReadOnly(_ count: Int) -> String { count == 1 ? "1 link · read-only" : "\(count) links · read-only" }
+    static func connectedAccounts(_ count: Int) -> String { count == 1 ? "Connected · 1 account" : "Connected · \(count) accounts" }
 }

@@ -47,6 +47,8 @@ final class CalendarStore {
     var toast: CalendarToast?
     private(set) var failure: UserFacingError?
     private(set) var isSyncing = false
+    /// When this device last pulled Google and CalDAV calendars.
+    var providerPullAt: Date?
     /// Bumped when an item sheet should open (search, deep link, create).
     var focus: CalendarFocus?
 
@@ -267,12 +269,13 @@ final class CalendarStore {
         syncTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
-            await self?.sync()
+            await self?.sync(forceProviders: false)
         }
     }
 
-    /// Pull then push now (pull to refresh, the filter sheet's refresh).
-    func sync() async {
+    /// Pull then push now. Pull to refresh and the filter sheet's refresh
+    /// also pull Google and CalDAV past their 15-minute throttle.
+    func sync(forceProviders: Bool = true) async {
         guard let filler, !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
@@ -280,6 +283,12 @@ final class CalendarStore {
             let pass = try await filler.syncNow()
             Log.sync.info("calendar sync pass pulled", .count(Int(pass.pulled)))
             Log.sync.info("calendar sync pass pushed", .count(Int(pass.pushed)))
+            // Google and CalDAV (CL070-CL075): this device's pushes and the
+            // pulls, then one more pass for the bindings and mirror rows they
+            // wrote.
+            await refreshSources()
+            await syncProviders(force: forceProviders)
+            _ = try await filler.syncNow()
         } catch {
             report(error)
         }

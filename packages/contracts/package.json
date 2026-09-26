@@ -94,6 +94,7 @@
     "./test-vectors/inbox.json": "./test-vectors/inbox.json",
     "./test-vectors/calendar.json": "./test-vectors/calendar.json",
     "./test-vectors/calendar-ical.json": "./test-vectors/calendar-ical.json",
+    "./test-vectors/calendar-write.json": "./test-vectors/calendar-write.json",
     "./test-vectors/journal.json": "./test-vectors/journal.json",
     "./test-vectors/markdown-seed.json": "./test-vectors/markdown-seed.json",
     "./test-vectors/markdown-roundtrip/cases.json": "./test-vectors/markdown-roundtrip/cases.json",

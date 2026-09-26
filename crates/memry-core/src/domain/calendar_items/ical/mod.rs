@@ -9,6 +9,7 @@
 //! neither side knows falls back to floating time, which reads in the
 //! object's `X-WR-TIMEZONE` when that is a known zone, else on the device.
 
+pub mod occurrence;
 pub mod parse;
 pub mod rrule;
 mod rrule_days;

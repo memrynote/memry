@@ -62,7 +62,7 @@ struct MoreTabView: View {
                 }
             }
             .navigationDestination(for: CalendarRoute.self) { route in
-                CalendarDestination(route: route, store: calendarStore, browse: browse)
+                CalendarDestination(route: route, store: calendarStore, browse: browse, account: context?.account)
             }
             .navigationDestination(for: NoteRoute.self) { route in
                 if let browse {

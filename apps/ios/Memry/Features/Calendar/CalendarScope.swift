@@ -29,6 +29,7 @@ struct VaultCalendarScope<Content: View>: View {
     let tasks: TasksStore?
     @ViewBuilder let content: () -> Content
     @State private var store: CalendarStore?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         content()
@@ -40,6 +41,10 @@ struct VaultCalendarScope<Content: View>: View {
             .onChange(of: tasks?.isSyncing ?? false) { was, now in
                 if was, !now, let store, store.hasLoaded { Task { await store.load() } }
             }
+            // CL075: iOS may wake the app to sync while it is away.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background, store != nil { CalendarBackgroundRefresh.shared.schedule() }
+            }
     }
 
     private func make() {
@@ -49,6 +54,7 @@ struct VaultCalendarScope<Content: View>: View {
         do {
             let calendar = try vault.calendar(store: secureStore)
             store = CalendarStore(core: calendar, vaultId: vault.id(), filler: filler, tasks: tasks)
+            CalendarBackgroundRefresh.shared.store = store
         } catch {
             Log.core.error("the calendar could not be opened", .code(ErrorMapping.userFacing(error).code))
         }

@@ -9,11 +9,14 @@ import UIKit
 struct CalendarProviderScreen: View {
     @Bindable var store: CalendarStore
     let provider: String
+    var account: AccountModel?
 
     var body: some View {
         switch provider {
         case "apple-eventkit": CalendarEventKitScreen(store: store)
         case "ics": CalendarFeedsScreen(store: store)
+        case "caldav": CalendarCaldavScreen(store: store, account: account)
+        case "google": CalendarGoogleScreen(store: store)
         default: CalendarSyncedProviderScreen(store: store, provider: provider)
         }
     }

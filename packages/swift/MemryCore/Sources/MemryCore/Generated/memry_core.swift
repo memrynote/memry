@@ -11464,6 +11464,72 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     func updateEvent(id: String, changes: CalendarEventChanges) throws  -> CalendarEventRecord
     
     /**
+     * A CalDAV pull applied: changed objects, removed hrefs, whether the
+     * listing was the whole window, the next cursor (`sync-token:…` /
+     * `ctag:…`).
+     */
+    func caldavApplyPull(sourceId: String, calendarUrl: String, objects: [CalendarCaldavObject], removed: [String], full: Bool, cursor: String?, zones: CalendarFeedZones) throws  -> UInt32
+    
+    /**
+     * `connectCaldavAccount` after discovery. Returns the account id.
+     */
+    func caldavConnect(input: CalendarCaldavConnect) throws  -> String
+    
+    func caldavDisconnect(accountId: String) throws 
+    
+    /**
+     * One `events.list` answer (every page) applied. `events_json` is the
+     * array of Google event resources.
+     */
+    func googleApplyPull(sourceId: String, calendarId: String, eventsJson: String, nextCursor: String?, zones: CalendarFeedZones) throws  -> UInt32
+    
+    /**
+     * A Google account connected on this device: its synced rows.
+     */
+    func googleConnect(email: String, name: String?, primary: CalendarGoogleCalendar, calendars: [CalendarGoogleCalendar], deviceZoneId: String) throws 
+    
+    func googleDisconnect(email: String) throws 
+    
+    /**
+     * A source's pull failed; the synced row says so (`recordSyncError`).
+     */
+    func providerSourceError(sourceId: String, error: String) throws 
+    
+    /**
+     * A delete landed (or the remote was already gone).
+     */
+    func pushDeleted(sourceType: String, sourceId: String, bindingId: String) throws 
+    
+    /**
+     * A push landed: the binding records the remote (`body` is what was
+     * sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+     */
+    func pushDone(sourceType: String, sourceId: String, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones) throws 
+    
+    /**
+     * A push failed; the item stays queued with the reason.
+     */
+    func pushFailed(sourceType: String, sourceId: String, error: String) throws 
+    
+    /**
+     * What to send for one queued item. `held` lists the providers whose
+     * accounts this device holds (`google`, `caldav`); `zones` are the IANA
+     * zones the shell resolved (the device's first); `base` is the CalDAV
+     * object a `fetch` plan asked for.
+     */
+    func pushPlan(sourceType: String, sourceId: String, held: [String], zones: CalendarFeedZones, base: CalendarCaldavObject?) throws  -> CalendarPushPlan
+    
+    /**
+     * The items this device changed and has not written out yet.
+     */
+    func pushQueue() throws  -> [CalendarPushItem]
+    
+    /**
+     * Nothing to write for the item.
+     */
+    func pushSkip(sourceType: String, sourceId: String) throws 
+    
+    /**
      * A failed fetch: `unreachable`, `timeout`, `not_found`, … (desktop's
      * `IcsFeedErrorCode`). The mirror stays as it was.
      */
@@ -11738,6 +11804,198 @@ open func updateEvent(id: String, changes: CalendarEventChanges)throws  -> Calen
         FfiConverterTypeCalendarEventChanges_lower(changes),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * A CalDAV pull applied: changed objects, removed hrefs, whether the
+     * listing was the whole window, the next cursor (`sync-token:…` /
+     * `ctag:…`).
+     */
+open func caldavApplyPull(sourceId: String, calendarUrl: String, objects: [CalendarCaldavObject], removed: [String], full: Bool, cursor: String?, zones: CalendarFeedZones)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_caldav_apply_pull(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(calendarUrl),
+        FfiConverterSequenceTypeCalendarCaldavObject.lower(objects),
+        FfiConverterSequenceString.lower(removed),
+        FfiConverterBool.lower(full),
+        FfiConverterOptionString.lower(cursor),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `connectCaldavAccount` after discovery. Returns the account id.
+     */
+open func caldavConnect(input: CalendarCaldavConnect)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_caldav_connect(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCalendarCaldavConnect_lower(input),uniffiCallStatus
+    )
+})
+}
+    
+open func caldavDisconnect(accountId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_caldav_disconnect(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(accountId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * One `events.list` answer (every page) applied. `events_json` is the
+     * array of Google event resources.
+     */
+open func googleApplyPull(sourceId: String, calendarId: String, eventsJson: String, nextCursor: String?, zones: CalendarFeedZones)throws  -> UInt32  {
+    return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_google_apply_pull(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(calendarId),
+        FfiConverterString.lower(eventsJson),
+        FfiConverterOptionString.lower(nextCursor),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A Google account connected on this device: its synced rows.
+     */
+open func googleConnect(email: String, name: String?, primary: CalendarGoogleCalendar, calendars: [CalendarGoogleCalendar], deviceZoneId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_google_connect(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(email),
+        FfiConverterOptionString.lower(name),
+        FfiConverterTypeCalendarGoogleCalendar_lower(primary),
+        FfiConverterSequenceTypeCalendarGoogleCalendar.lower(calendars),
+        FfiConverterString.lower(deviceZoneId),uniffiCallStatus
+    )
+}
+}
+    
+open func googleDisconnect(email: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_google_disconnect(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(email),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A source's pull failed; the synced row says so (`recordSyncError`).
+     */
+open func providerSourceError(sourceId: String, error: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_provider_source_error(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(error),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A delete landed (or the remote was already gone).
+     */
+open func pushDeleted(sourceType: String, sourceId: String, bindingId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_deleted(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(bindingId),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A push landed: the binding records the remote (`body` is what was
+     * sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+     */
+open func pushDone(sourceType: String, sourceId: String, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_done(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(provider),
+        FfiConverterString.lower(calendarId),
+        FfiConverterString.lower(remoteEventId),
+        FfiConverterOptionString.lower(etag),
+        FfiConverterOptionString.lower(body),
+        FfiConverterTypeCalendarFeedZones_lower(zones),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * A push failed; the item stays queued with the reason.
+     */
+open func pushFailed(sourceType: String, sourceId: String, error: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_failed(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(error),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * What to send for one queued item. `held` lists the providers whose
+     * accounts this device holds (`google`, `caldav`); `zones` are the IANA
+     * zones the shell resolved (the device's first); `base` is the CalDAV
+     * object a `fetch` plan asked for.
+     */
+open func pushPlan(sourceType: String, sourceId: String, held: [String], zones: CalendarFeedZones, base: CalendarCaldavObject?)throws  -> CalendarPushPlan  {
+    return try  FfiConverterTypeCalendarPushPlan_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_plan(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),
+        FfiConverterSequenceString.lower(held),
+        FfiConverterTypeCalendarFeedZones_lower(zones),
+        FfiConverterOptionTypeCalendarCaldavObject.lower(base),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The items this device changed and has not written out yet.
+     */
+open func pushQueue()throws  -> [CalendarPushItem]  {
+    return try  FfiConverterSequenceTypeCalendarPushItem.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_queue(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Nothing to write for the item.
+     */
+open func pushSkip(sourceType: String, sourceId: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_push_skip(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceType),
+        FfiConverterString.lower(sourceId),uniffiCallStatus
+    )
+}
 }
     
     /**
@@ -13640,6 +13898,213 @@ public func FfiConverterTypeCachedAttachment_lower(_ value: CachedAttachment) ->
 
 
 /**
+ * A calendar discovery found.
+ */
+public struct CalendarCaldavCalendar: Equatable, Hashable {
+    public var url: String
+    public var displayName: String
+    public var color: String?
+    public var timezone: String?
+    public var supportsSyncCollection: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(url: String, displayName: String, color: String?, timezone: String?, supportsSyncCollection: Bool) {
+        self.url = url
+        self.displayName = displayName
+        self.color = color
+        self.timezone = timezone
+        self.supportsSyncCollection = supportsSyncCollection
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarCaldavCalendar: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarCaldavCalendar: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarCaldavCalendar {
+        return
+            try CalendarCaldavCalendar(
+                url: FfiConverterString.read(from: &buf), 
+                displayName: FfiConverterString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                timezone: FfiConverterOptionString.read(from: &buf), 
+                supportsSyncCollection: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarCaldavCalendar, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterOptionString.write(value.timezone, into: &buf)
+        FfiConverterBool.write(value.supportsSyncCollection, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavCalendar_lift(_ buf: RustBuffer) throws -> CalendarCaldavCalendar {
+    return try FfiConverterTypeCalendarCaldavCalendar.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavCalendar_lower(_ value: CalendarCaldavCalendar) -> RustBuffer {
+    return FfiConverterTypeCalendarCaldavCalendar.lower(value)
+}
+
+
+/**
+ * `connectCaldavAccount`'s input after discovery.
+ */
+public struct CalendarCaldavConnect: Equatable, Hashable {
+    public var serverUrl: String
+    public var username: String
+    public var principalUrl: String
+    public var homeUrl: String
+    public var preset: String?
+    public var calendars: [CalendarCaldavCalendar]
+    public var selected: [String]?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(serverUrl: String, username: String, principalUrl: String, homeUrl: String, preset: String?, calendars: [CalendarCaldavCalendar], selected: [String]?) {
+        self.serverUrl = serverUrl
+        self.username = username
+        self.principalUrl = principalUrl
+        self.homeUrl = homeUrl
+        self.preset = preset
+        self.calendars = calendars
+        self.selected = selected
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarCaldavConnect: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarCaldavConnect: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarCaldavConnect {
+        return
+            try CalendarCaldavConnect(
+                serverUrl: FfiConverterString.read(from: &buf), 
+                username: FfiConverterString.read(from: &buf), 
+                principalUrl: FfiConverterString.read(from: &buf), 
+                homeUrl: FfiConverterString.read(from: &buf), 
+                preset: FfiConverterOptionString.read(from: &buf), 
+                calendars: FfiConverterSequenceTypeCalendarCaldavCalendar.read(from: &buf), 
+                selected: FfiConverterOptionSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarCaldavConnect, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.serverUrl, into: &buf)
+        FfiConverterString.write(value.username, into: &buf)
+        FfiConverterString.write(value.principalUrl, into: &buf)
+        FfiConverterString.write(value.homeUrl, into: &buf)
+        FfiConverterOptionString.write(value.preset, into: &buf)
+        FfiConverterSequenceTypeCalendarCaldavCalendar.write(value.calendars, into: &buf)
+        FfiConverterOptionSequenceString.write(value.selected, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavConnect_lift(_ buf: RustBuffer) throws -> CalendarCaldavConnect {
+    return try FfiConverterTypeCalendarCaldavConnect.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavConnect_lower(_ value: CalendarCaldavConnect) -> RustBuffer {
+    return FfiConverterTypeCalendarCaldavConnect.lower(value)
+}
+
+
+/**
+ * A CalDAV object as the server answered it.
+ */
+public struct CalendarCaldavObject: Equatable, Hashable {
+    public var href: String
+    public var etag: String?
+    public var data: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(href: String, etag: String?, data: String) {
+        self.href = href
+        self.etag = etag
+        self.data = data
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarCaldavObject: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarCaldavObject: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarCaldavObject {
+        return
+            try CalendarCaldavObject(
+                href: FfiConverterString.read(from: &buf), 
+                etag: FfiConverterOptionString.read(from: &buf), 
+                data: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarCaldavObject, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+        FfiConverterString.write(value.data, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavObject_lift(_ buf: RustBuffer) throws -> CalendarCaldavObject {
+    return try FfiConverterTypeCalendarCaldavObject.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavObject_lower(_ value: CalendarCaldavObject) -> RustBuffer {
+    return FfiConverterTypeCalendarCaldavObject.lower(value)
+}
+
+
+/**
  * `CalendarProjectionEditability`.
  */
 public struct CalendarEditability: Equatable, Hashable {
@@ -14419,6 +14884,75 @@ public func FfiConverterTypeCalendarFetchedFeed_lower(_ value: CalendarFetchedFe
 
 
 /**
+ * A Google calendar from `calendarList`.
+ */
+public struct CalendarGoogleCalendar: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    public var timezone: String?
+    public var color: String?
+    public var isPrimary: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, timezone: String?, color: String?, isPrimary: Bool) {
+        self.id = id
+        self.title = title
+        self.timezone = timezone
+        self.color = color
+        self.isPrimary = isPrimary
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarGoogleCalendar: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarGoogleCalendar: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarGoogleCalendar {
+        return
+            try CalendarGoogleCalendar(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                timezone: FfiConverterOptionString.read(from: &buf), 
+                color: FfiConverterOptionString.read(from: &buf), 
+                isPrimary: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarGoogleCalendar, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.timezone, into: &buf)
+        FfiConverterOptionString.write(value.color, into: &buf)
+        FfiConverterBool.write(value.isPrimary, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarGoogleCalendar_lift(_ buf: RustBuffer) throws -> CalendarGoogleCalendar {
+    return try FfiConverterTypeCalendarGoogleCalendar.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarGoogleCalendar_lower(_ value: CalendarGoogleCalendar) -> RustBuffer {
+    return FfiConverterTypeCalendarGoogleCalendar.lower(value)
+}
+
+
+/**
  * `CalendarProjectionItem`.
  */
 public struct CalendarItem: Equatable, Hashable {
@@ -14763,6 +15297,194 @@ public func FfiConverterTypeCalendarLinkedProject_lower(_ value: CalendarLinkedP
 
 
 /**
+ * One item waiting to be written out.
+ */
+public struct CalendarPushItem: Equatable, Hashable {
+    public var sourceType: String
+    public var sourceId: String
+    public var attempts: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceType: String, sourceId: String, attempts: Int64) {
+        self.sourceType = sourceType
+        self.sourceId = sourceId
+        self.attempts = attempts
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarPushItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarPushItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarPushItem {
+        return
+            try CalendarPushItem(
+                sourceType: FfiConverterString.read(from: &buf), 
+                sourceId: FfiConverterString.read(from: &buf), 
+                attempts: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarPushItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceType, into: &buf)
+        FfiConverterString.write(value.sourceId, into: &buf)
+        FfiConverterInt64.write(value.attempts, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarPushItem_lift(_ buf: RustBuffer) throws -> CalendarPushItem {
+    return try FfiConverterTypeCalendarPushItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarPushItem_lower(_ value: CalendarPushItem) -> RustBuffer {
+    return FfiConverterTypeCalendarPushItem.lower(value)
+}
+
+
+/**
+ * What to send for one item.
+ */
+public struct CalendarPushPlan: Equatable, Hashable {
+    /**
+     * `none` (nothing to write; the item leaves the queue), `wait` (another
+     * provider or an account this device does not hold: stays queued),
+     * `upsert`, `delete`, `exclude` (CalDAV: PUT `body`, which drops one
+     * occurrence of a series, then retire the binding) or `fetch` (CalDAV:
+     * GET `href` and plan again with it as `base`).
+     */
+    public var action: String
+    public var provider: String
+    /**
+     * Google calendar id or CalDAV collection URL.
+     */
+    public var calendarId: String
+    /**
+     * The remote event (Google id, or CalDAV object URL with
+     * `::recurrenceId` for one occurrence); `nil` for a new Google event.
+     */
+    public var remoteEventId: String?
+    /**
+     * CalDAV: the object URL to PUT, DELETE or GET.
+     */
+    public var href: String?
+    public var ifMatch: String?
+    /**
+     * Google: the event resource as JSON. CalDAV: the iCalendar object.
+     */
+    public var body: String?
+    /**
+     * The binding a delete retires.
+     */
+    public var bindingId: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `none` (nothing to write; the item leaves the queue), `wait` (another
+         * provider or an account this device does not hold: stays queued),
+         * `upsert`, `delete`, `exclude` (CalDAV: PUT `body`, which drops one
+         * occurrence of a series, then retire the binding) or `fetch` (CalDAV:
+         * GET `href` and plan again with it as `base`).
+         */action: String, provider: String, 
+        /**
+         * Google calendar id or CalDAV collection URL.
+         */calendarId: String, 
+        /**
+         * The remote event (Google id, or CalDAV object URL with
+         * `::recurrenceId` for one occurrence); `nil` for a new Google event.
+         */remoteEventId: String?, 
+        /**
+         * CalDAV: the object URL to PUT, DELETE or GET.
+         */href: String?, ifMatch: String?, 
+        /**
+         * Google: the event resource as JSON. CalDAV: the iCalendar object.
+         */body: String?, 
+        /**
+         * The binding a delete retires.
+         */bindingId: String?) {
+        self.action = action
+        self.provider = provider
+        self.calendarId = calendarId
+        self.remoteEventId = remoteEventId
+        self.href = href
+        self.ifMatch = ifMatch
+        self.body = body
+        self.bindingId = bindingId
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarPushPlan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarPushPlan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarPushPlan {
+        return
+            try CalendarPushPlan(
+                action: FfiConverterString.read(from: &buf), 
+                provider: FfiConverterString.read(from: &buf), 
+                calendarId: FfiConverterString.read(from: &buf), 
+                remoteEventId: FfiConverterOptionString.read(from: &buf), 
+                href: FfiConverterOptionString.read(from: &buf), 
+                ifMatch: FfiConverterOptionString.read(from: &buf), 
+                body: FfiConverterOptionString.read(from: &buf), 
+                bindingId: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarPushPlan, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.action, into: &buf)
+        FfiConverterString.write(value.provider, into: &buf)
+        FfiConverterString.write(value.calendarId, into: &buf)
+        FfiConverterOptionString.write(value.remoteEventId, into: &buf)
+        FfiConverterOptionString.write(value.href, into: &buf)
+        FfiConverterOptionString.write(value.ifMatch, into: &buf)
+        FfiConverterOptionString.write(value.body, into: &buf)
+        FfiConverterOptionString.write(value.bindingId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarPushPlan_lift(_ buf: RustBuffer) throws -> CalendarPushPlan {
+    return try FfiConverterTypeCalendarPushPlan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarPushPlan_lower(_ value: CalendarPushPlan) -> RustBuffer {
+    return FfiConverterTypeCalendarPushPlan.lower(value)
+}
+
+
+/**
  * A range request (`GetCalendarRangeInput` + desktop's side inputs).
  */
 public struct CalendarRangeRequest: Equatable, Hashable {
@@ -14857,6 +15579,11 @@ public struct CalendarSourceRecord: Equatable, Hashable {
      */
     public var metadataJson: String?
     public var archivedAt: String?
+    /**
+     * Where the provider's pull continues (`sync-token:…`, `ctag:…`, a
+     * Google sync token); on the synced row, as desktop keeps it.
+     */
+    public var syncCursor: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -14866,7 +15593,11 @@ public struct CalendarSourceRecord: Equatable, Hashable {
          */color: String?, isPrimary: Bool, isSelected: Bool, isMemryManaged: Bool, syncStatus: String, lastSyncedAt: String?, lastError: String?, 
         /**
          * JSON text of `metadata`.
-         */metadataJson: String?, archivedAt: String?) {
+         */metadataJson: String?, archivedAt: String?, 
+        /**
+         * Where the provider's pull continues (`sync-token:…`, `ctag:…`, a
+         * Google sync token); on the synced row, as desktop keeps it.
+         */syncCursor: String?) {
         self.id = id
         self.provider = provider
         self.kind = kind
@@ -14883,6 +15614,7 @@ public struct CalendarSourceRecord: Equatable, Hashable {
         self.lastError = lastError
         self.metadataJson = metadataJson
         self.archivedAt = archivedAt
+        self.syncCursor = syncCursor
     }
 
     
@@ -14916,7 +15648,8 @@ public struct FfiConverterTypeCalendarSourceRecord: FfiConverterRustBuffer {
                 lastSyncedAt: FfiConverterOptionString.read(from: &buf), 
                 lastError: FfiConverterOptionString.read(from: &buf), 
                 metadataJson: FfiConverterOptionString.read(from: &buf), 
-                archivedAt: FfiConverterOptionString.read(from: &buf)
+                archivedAt: FfiConverterOptionString.read(from: &buf), 
+                syncCursor: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -14937,6 +15670,7 @@ public struct FfiConverterTypeCalendarSourceRecord: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.lastError, into: &buf)
         FfiConverterOptionString.write(value.metadataJson, into: &buf)
         FfiConverterOptionString.write(value.archivedAt, into: &buf)
+        FfiConverterOptionString.write(value.syncCursor, into: &buf)
     }
 }
 
@@ -27726,6 +28460,30 @@ fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustB
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeCalendarCaldavObject: FfiConverterRustBuffer {
+    typealias SwiftType = CalendarCaldavObject?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCalendarCaldavObject.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCalendarCaldavObject.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeCalendarEventRecord: FfiConverterRustBuffer {
     typealias SwiftType = CalendarEventRecord?
 
@@ -28134,6 +28892,30 @@ fileprivate struct FfiConverterOptionSequenceInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionSequenceTypeBlock: FfiConverterRustBuffer {
     typealias SwiftType = [Block]?
 
@@ -28457,6 +29239,56 @@ fileprivate struct FfiConverterSequenceTypeCachedAttachment: FfiConverterRustBuf
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeCalendarCaldavCalendar: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarCaldavCalendar]
+
+    public static func write(_ value: [CalendarCaldavCalendar], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarCaldavCalendar.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarCaldavCalendar] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarCaldavCalendar]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarCaldavCalendar.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarCaldavObject: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarCaldavObject]
+
+    public static func write(_ value: [CalendarCaldavObject], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarCaldavObject.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarCaldavObject] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarCaldavObject]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarCaldavObject.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCalendarFeedDue: FfiConverterRustBuffer {
     typealias SwiftType = [CalendarFeedDue]
 
@@ -28507,6 +29339,31 @@ fileprivate struct FfiConverterSequenceTypeCalendarFeedState: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeCalendarGoogleCalendar: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarGoogleCalendar]
+
+    public static func write(_ value: [CalendarGoogleCalendar], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarGoogleCalendar.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarGoogleCalendar] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarGoogleCalendar]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarGoogleCalendar.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCalendarItem: FfiConverterRustBuffer {
     typealias SwiftType = [CalendarItem]
 
@@ -28549,6 +29406,31 @@ fileprivate struct FfiConverterSequenceTypeCalendarLinkedProject: FfiConverterRu
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeCalendarLinkedProject.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCalendarPushItem: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarPushItem]
+
+    public static func write(_ value: [CalendarPushItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarPushItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarPushItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarPushItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarPushItem.read(from: &buf))
         }
         return seq
     }
@@ -29991,6 +30873,29 @@ public func calendarIcalConformance(vectorJson: String) -> String  {
 })
 }
 /**
+ * `caldavAccountId`: the keychain key for the account's password.
+ */
+public func calendarCaldavAccountId(serverUrl: String, username: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_caldav_account_id(
+        FfiConverterString.lower(serverUrl),
+        FfiConverterString.lower(username),uniffiCallStatus
+    )
+})
+}
+/**
+ * `normalizeCaldavServerUrl`.
+ */
+public func calendarCaldavNormalizeServer(input: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_calendar_caldav_normalize_server(
+        FfiConverterString.lower(input),uniffiCallStatus
+    )
+})
+}
+/**
  * `normalizeIcsUrl`; `None` for anything that is not an http(s) link.
  */
 public func calendarFeedNormalizeUrl(input: String) -> String?  {
@@ -30443,6 +31348,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_calendar_ical_conformance() != 10852) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_func_calendar_caldav_account_id() != 44618) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_calendar_caldav_normalize_server() != 45368) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_calendar_feed_normalize_url() != 22981) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -30648,6 +31559,45 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_update_event() != 54205) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_apply_pull() != 4511) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_connect() != 9130) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_disconnect() != 6684) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_google_apply_pull() != 23030) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_google_connect() != 53715) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_google_disconnect() != 31087) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_provider_source_error() != 3930) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_deleted() != 35928) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_done() != 60085) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_failed() != 26185) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_plan() != 63758) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_queue() != 41893) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_skip() != 56002) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_error() != 19564) {

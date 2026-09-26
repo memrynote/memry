@@ -162,6 +162,8 @@ struct CalendarEventSheet: View {
                     } label: {
                         Image(systemName: "ellipsis").foregroundStyle(Tokens.Text.primary.color)
                     }
+                    // Menu icons in ink, not the app tint (Paper 00 rule 6).
+                    .tint(Tokens.Text.primary.color)
                     .accessibilityLabel(CalendarCopy.moreActions)
                     .accessibilityIdentifier("calendar.sheet.more")
                     SheetConfirmButton(label: CalendarCopy.save, isEnabled: record != nil && !saving) {

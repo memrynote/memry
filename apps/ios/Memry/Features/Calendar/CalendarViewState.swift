@@ -59,6 +59,9 @@ struct CalendarViewState: Codable, Equatable, Sendable {
     /// Calendar-enabled date properties (§6 CL002: device-local, as desktop's
     /// `.memry/properties.md` is per vault file and not synced).
     var calendarProperties: [String] = []
+    /// Paper 24's "Not now": the Connect Google pill stays hidden on this
+    /// device (device-local, like the rest of this state).
+    var connectPromptDismissed = false
 
     init() {}
 
@@ -73,6 +76,7 @@ struct CalendarViewState: Codable, Equatable, Sendable {
         visualTypes = types.map { $0.compactMap(CalendarVisualType.init(rawValue:)) } ?? CalendarVisualType.allCases
         timeline = (try? values.decodeIfPresent(TimelineSettings.self, forKey: .timeline)) ?? TimelineSettings()
         calendarProperties = (try? values.decodeIfPresent([String].self, forKey: .calendarProperties)) ?? []
+        connectPromptDismissed = (try? values.decodeIfPresent(Bool.self, forKey: .connectPromptDismissed)) ?? false
     }
 
     // MARK: Persistence

@@ -235,6 +235,26 @@ mod tests {
         assert_eq!(link.vault_transfer, None);
     }
 
+    /// Spec 007 CL072: a desktop initiator also sends its Google refresh
+    /// tokens (`encryptedProviderAuth`). They are bound to the desktop's OAuth
+    /// client, so the phone leaves the block unread and signs in itself; the
+    /// link still completes.
+    #[test]
+    fn a_provider_auth_block_from_desktop_is_left_unread() {
+        let link = read_approved(&json!({
+            "success": true,
+            "encryptedMasterKey": "Y3Q=",
+            "encryptedKeyNonce": "bm9uY2U=",
+            "keyConfirm": "dGFn",
+            "encryptedProviderAuth": "cGE=",
+            "encryptedProviderAuthNonce": "bm9uY2U=",
+            "providerAuthConfirm": "dGFn",
+            "providerAuthVersion": 1,
+        }))
+        .expect("approved");
+        assert_eq!(link.master_key.encrypted_master_key_b64, "Y3Q=");
+    }
+
     #[test]
     fn a_success_with_no_master_key_is_malformed_and_not_an_empty_link() {
         assert!(matches!(

@@ -174,6 +174,9 @@ pub struct CalendarSourceRecord {
     /// JSON text of `metadata`.
     pub metadata_json: Option<String>,
     pub archived_at: Option<String>,
+    /// Where the provider's pull continues (`sync-token:…`, `ctag:…`, a
+    /// Google sync token); on the synced row, as desktop keeps it.
+    pub sync_cursor: Option<String>,
 }
 
 /// `CalendarEventRecord`, with JSON text for the rich fields.

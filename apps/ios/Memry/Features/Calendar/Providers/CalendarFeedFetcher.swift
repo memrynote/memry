@@ -23,31 +23,22 @@ struct CalendarFeedFetcher: Sendable {
     /// device's last response.
     func fetch(_ url: String, etag: String?, lastModified: String?) async -> CalendarFeedFetch {
         guard var current = URL(string: url) else { return .failed("invalid_url") }
-        let delegate = RedirectRefusal()
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = Self.timeout
-        configuration.timeoutIntervalForResource = Self.timeout
-        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
-        defer { session.finishTasksAndInvalidate() }
         for _ in 0 ... Self.maxRedirects {
             var request = URLRequest(url: current, timeoutInterval: Self.timeout)
             request.setValue("text/calendar, text/plain;q=0.9, */*;q=0.1", forHTTPHeaderField: "Accept")
             if let etag { request.setValue(etag, forHTTPHeaderField: "If-None-Match") }
             if let lastModified { request.setValue(lastModified, forHTTPHeaderField: "If-Modified-Since") }
-            let data: Data
-            let response: URLResponse
+            let response: CalendarProviderHTTP.Response
             do {
-                (data, response) = try await session.data(for: request)
-            } catch let error as URLError where error.code == .timedOut {
+                response = try await CalendarProviderHTTP.send(request, timeout: Self.timeout)
+            } catch CalendarProviderHTTP.Failure.timeout {
                 return .failed("timeout")
             } catch {
                 return .failed("unreachable")
             }
-            guard let http = response as? HTTPURLResponse else { return .failed("unreachable") }
-            switch http.statusCode {
+            switch response.status {
             case 301, 302, 303, 307, 308:
-                guard let location = http.value(forHTTPHeaderField: "Location"),
+                guard let location = response.header("Location"),
                       let next = URL(string: location, relativeTo: current)?.absoluteURL
                 else { return .failed("http_error") }
                 guard next.scheme == "https" || next.scheme == "http" else { return .failed("unsupported_redirect") }
@@ -60,15 +51,11 @@ struct CalendarFeedFetcher: Sendable {
             case 404, 410:
                 return .failed("not_found")
             case 200 ..< 300:
-                if data.count > Self.maxBytes { return .failed("too_large") }
-                guard let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
+                if response.body.count > Self.maxBytes { return .failed("too_large") }
+                guard let text = String(data: response.body, encoding: .utf8) ?? String(data: response.body, encoding: .isoLatin1) else {
                     return .failed("not_a_calendar")
                 }
-                return .body(CalendarFetchedFeed(
-                    text: text,
-                    etag: http.value(forHTTPHeaderField: "ETag"),
-                    lastModified: http.value(forHTTPHeaderField: "Last-Modified")
-                ))
+                return .body(CalendarFetchedFeed(text: text, etag: response.header("ETag"), lastModified: response.header("Last-Modified")))
             default:
                 return .failed("http_error")
             }
@@ -89,17 +76,5 @@ struct CalendarFeedFetcher: Sendable {
             return table
         }
         return CalendarFeedZones(named: named, local: CalendarDates.zone(from: from, to: to))
-    }
-}
-
-/// Redirects are followed by hand, so each hop is counted and checked.
-private final class RedirectRefusal: NSObject, URLSessionTaskDelegate, Sendable {
-    func urlSession(
-        _ session: URLSession,
-        task: URLSessionTask,
-        willPerformHTTPRedirection response: HTTPURLResponse,
-        newRequest request: URLRequest
-    ) async -> URLRequest? {
-        nil
     }
 }

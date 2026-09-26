@@ -14,7 +14,14 @@
 // A namespace import: desktop's sources are CommonJS to Node, and the ESM
 // loader cannot see their named exports statically.
 import * as icsFeed from '../../../../apps/desktop/src/main/calendar/ics/ics-feed.ts'
-import { ICAL_CASES, ICAL_DEVICE_ZONE, ICAL_KNOWN_ZONES, ICAL_URLS } from './calendar-ical-cases.ts'
+import { createHash } from 'node:crypto'
+import {
+  CALDAV_INPUTS,
+  ICAL_CASES,
+  ICAL_DEVICE_ZONE,
+  ICAL_KNOWN_ZONES,
+  ICAL_URLS
+} from './calendar-ical-cases.ts'
 
 type Row = Record<string, unknown>
 type IcsFeedModule = typeof icsFeed
@@ -47,7 +54,7 @@ function offsetIn(zone: string, ms: number): number {
 }
 
 /** `{ identifier, baseOffsetMs, transitions }` over [from, to), found hourly. */
-function zoneTable(zone: string, fromMs: number, toMs: number): Row {
+export function zoneTable(zone: string, fromMs: number, toMs: number): Row {
   const transitions: Array<{ atMs: number; offsetMs: number }> = []
   let previous = offsetIn(zone, fromMs)
   for (let t = fromMs; t < toMs; t += 3_600_000) {
@@ -64,6 +71,38 @@ function zoneTable(zone: string, fromMs: number, toMs: number): Row {
     previous = next
   }
   return { identifier: zone, baseOffsetMs: offsetIn(zone, fromMs), transitions }
+}
+
+// `caldav/caldav-accounts.ts` restated line for line (the module pulls in
+// desktop's settings store through a path alias and cannot load here).
+function normalizeCaldavServerUrl(input: string): string | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  let url: URL
+  try {
+    url = new URL(withScheme)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  if (!url.hostname) return null
+  url.hash = ''
+  url.search = ''
+  if (!url.pathname.endsWith('/')) url.pathname = `${url.pathname}/`
+  return url.href
+}
+
+function caldavAccountId(serverUrl: string, username: string): string {
+  const digest = createHash('sha256')
+    .update(`${serverUrl}\n${username.trim().toLowerCase()}`)
+    .digest('hex')
+    .slice(0, 24)
+  return `caldav-${digest}`
+}
+
+function caldavCalendarSourceId(collectionUrl: string): string {
+  return `caldav-calendar:${createHash('sha256').update(collectionUrl).digest('hex').slice(0, 32)}`
 }
 
 function withZone<T>(tz: string, run: () => T): T {
@@ -93,6 +132,16 @@ export function buildCalendarIcal(): Record<string, unknown> {
         input,
         normalized,
         sourceId: normalized ? feedModule.icsSourceIdForUrl(normalized) : null
+      }
+    }),
+    caldav: CALDAV_INPUTS.map(({ server, username }) => {
+      const serverUrl = normalizeCaldavServerUrl(server)
+      return {
+        server,
+        username,
+        serverUrl,
+        accountId: serverUrl ? caldavAccountId(serverUrl, username) : null,
+        calendarSourceId: serverUrl ? caldavCalendarSourceId(`${serverUrl}calendars/work/`) : null
       }
     }),
     cases: ICAL_CASES.map((c) => {

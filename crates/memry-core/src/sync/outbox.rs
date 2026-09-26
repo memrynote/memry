@@ -248,6 +248,8 @@ pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<i64, Sto
         Change::CrdtUpdate { update, .. } => Some(update),
     };
 
+    super::calendar_push::queue(tx, change, now_ms)?;
+
     tx.execute(
         "INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",

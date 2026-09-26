@@ -142,13 +142,10 @@ final class CalendarEventKitStore {
             id: id, title: event.title ?? "", description: event.notes, location: event.location,
             startAt: CalendarDates.iso(event.startDate), endAt: CalendarDates.iso(event.endDate),
             timezone: event.timeZone?.identifier, isAllDay: event.isAllDay, status: "confirmed",
-            recurrenceRuleJson: event.recurrenceRules?.first.map { "{\"rrule\":[\"RRULE:\($0.description.components(separatedBy: "RRULE ").last ?? "")\"]}" },
-            attendeesJson: nil,
-            remindersJson: event.alarms.map { alarms in
-                let minutes = alarms.map { Int(-$0.relativeOffset / 60) }
-                return "{\"useDefault\":false,\"overrides\":[\(minutes.map { "{\"minutes\":\($0)}" }.joined(separator: ","))]}"
-            },
-            conferenceDataJson: event.url.map { "{\"entryPoints\":[{\"entryPointType\":\"video\",\"uri\":\"\($0.absoluteString)\"}]}" },
+            recurrenceRuleJson: CalendarEventKitDetails.recurrence(event),
+            attendeesJson: CalendarEventKitDetails.attendees(event),
+            remindersJson: CalendarEventKitDetails.reminders(event),
+            conferenceDataJson: CalendarEventKitDetails.conference(event),
             sourceId: nil, sourceProvider: "apple-eventkit", sourceTitle: event.calendar.title,
             sourceColor: event.calendar.cgColor.flatMap(Self.hex), accountTitle: event.calendar.source.title,
             isPromotable: false

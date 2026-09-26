@@ -10,13 +10,14 @@ struct CalendarDestination: View {
     let route: CalendarRoute
     let store: CalendarStore?
     let browse: VaultBrowseViewModel?
+    var account: AccountModel?
 
     var body: some View {
         if let store {
             switch route {
             case .calendar: CalendarScreen(store: store, browse: browse)
             case .settings: CalendarSettingsScreen(store: store)
-            case let .provider(provider): CalendarProviderScreen(store: store, provider: provider)
+            case let .provider(provider): CalendarProviderScreen(store: store, provider: provider, account: account)
             }
         } else {
             ProgressView(CalendarCopy.loading)
@@ -58,6 +59,8 @@ struct CalendarScreen: View {
     @State var deleting: CalendarItem?
     @State var promoting: CalendarItem?
     @State private var links = CalendarLinks.shared
+    @State private var connectingGoogle = false
+    @State private var pickingDefault = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -90,10 +93,19 @@ struct CalendarScreen: View {
             Text(CalendarCopy.deleteMessage(item))
         }
         .calendarPromoteAlert(store: store, item: $promoting) { eventId in open(eventId: eventId) }
+        .modifier(CalendarConsentPrompt(store: store))
+        .sheet(isPresented: $connectingGoogle) {
+            CalendarConnectSheet(store: store, notNow: { store.state.connectPromptDismissed = true }) {
+                Task { if await store.googleOnboardingPending() { pickingDefault = true } }
+            }
+        }
+        .sheet(isPresented: $pickingDefault) { CalendarDefaultPickerSheet(store: store) }
         .task { await start() }
         .task(id: loadKey) { await store.ensure(currentWindow) }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await store.load() } }
+            // CL075: back in front, re-read and run a sync pass (provider
+            // pulls stay throttled to 15 minutes).
+            if phase == .active { Task { await store.load(); store.scheduleSync() } }
         }
         .onChange(of: links.pending, initial: true) {
             if let link = links.take() { apply(link) }
@@ -125,6 +137,12 @@ struct CalendarScreen: View {
             menuHint: CalendarCopy.titleMenuHint,
             identifier: "calendar"
         ) { titleMenu }
+        .safeAreaInset(edge: .bottom, spacing: Tokens.Space.small) {
+            if store.googleNeedsSignInHere, !store.state.connectPromptDismissed {
+                CalendarConnectPill { connectingGoogle = true }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
         .padding(.horizontal, Tokens.Space.inset + Tokens.Space.tight)
         .padding(.top, Tokens.Space.tight)
         .padding(.bottom, Tokens.Space.small)
@@ -164,6 +182,7 @@ struct CalendarScreen: View {
     private func start() async {
         if !store.hasLoaded { await store.load() }
         await store.ensure(currentWindow)
+        store.scheduleSync()
     }
 
     private var menuBinding: Binding<Bool> {

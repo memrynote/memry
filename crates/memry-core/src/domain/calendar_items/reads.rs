@@ -23,7 +23,7 @@ pub fn sources(conn: &Connection) -> Result<Vec<CalendarSourceRecord>, StorageEr
             "SELECT c.id, c.provider, c.kind, c.account_id, c.remote_id, c.title, c.timezone,
                     c.color, c.is_primary, c.is_selected, c.is_memry_managed, c.sync_status,
                     c.last_synced_at, json_extract(s.payload, '$.lastError'), c.metadata,
-                    c.archived_at
+                    c.archived_at, c.sync_cursor
                FROM calendar_sources c
                LEFT JOIN sync_items s ON s.item_type = 'calendar_source' AND s.item_id = c.id
               WHERE c.deleted_at IS NULL AND c.archived_at IS NULL",
@@ -48,6 +48,7 @@ pub fn sources(conn: &Connection) -> Result<Vec<CalendarSourceRecord>, StorageEr
                 last_error: row.get(13)?,
                 metadata_json: row.get(14)?,
                 archived_at: row.get(15)?,
+                sync_cursor: row.get(16)?,
             })
         })
         .map_err(failed)?

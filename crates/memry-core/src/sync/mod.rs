@@ -30,6 +30,7 @@
 pub mod apply;
 pub mod body_pull;
 pub mod bootstrap;
+mod calendar_push;
 pub mod clock;
 pub mod crdt_wire;
 pub mod engine;

@@ -59,6 +59,100 @@ impl Component {
     }
 }
 
+impl Property {
+    /// `NAME;PARAM=value:value`, folded at 75 octets (RFC 5545 §3.1).
+    pub fn to_line(&self) -> String {
+        let mut line = self.name.clone();
+        for (key, value) in &self.params {
+            let quoted = value.contains([';', ':', ',']);
+            line.push(';');
+            line.push_str(key);
+            line.push('=');
+            if quoted {
+                line.push('"');
+                line.push_str(value);
+                line.push('"');
+            } else {
+                line.push_str(value);
+            }
+        }
+        line.push(':');
+        line.push_str(&self.value);
+        fold(&line)
+    }
+
+    /// A property from one unfolded content line.
+    pub fn from_line(line: &str) -> Option<Self> {
+        parse_line(line)
+    }
+}
+
+fn fold(line: &str) -> String {
+    let mut out = String::with_capacity(line.len() + line.len() / 70 * 3);
+    let mut width = 0;
+    for ch in line.chars() {
+        let len = ch.len_utf8();
+        if width + len > 75 {
+            out.push_str("\r\n ");
+            width = 1;
+        }
+        out.push(ch);
+        width += len;
+    }
+    out
+}
+
+impl Component {
+    /// The component as iCalendar text, CRLF line endings.
+    pub fn to_text(&self) -> String {
+        let mut out = format!("BEGIN:{}\r\n", self.name);
+        for property in &self.properties {
+            out.push_str(&property.to_line());
+            out.push_str("\r\n");
+        }
+        for child in &self.children {
+            out.push_str(&child.to_text());
+        }
+        out.push_str(&format!("END:{}\r\n", self.name));
+        out
+    }
+
+    /// Drops every property named `name`.
+    pub fn remove(&mut self, name: &str) {
+        self.properties.retain(|p| p.name != name);
+    }
+
+    /// Replaces every `names` property with `lines` (content lines).
+    pub fn set_lines(&mut self, names: &[&str], lines: &[String]) {
+        self.properties
+            .retain(|p| !names.contains(&p.name.as_str()));
+        self.properties
+            .extend(lines.iter().filter_map(|line| parse_line(line)));
+    }
+
+    /// Sets (or, for `None` / empty, removes) a TEXT property.
+    pub fn set_text(&mut self, name: &str, value: Option<&str>) {
+        self.remove(name);
+        if let Some(value) = value.filter(|v| !v.is_empty()) {
+            self.properties.push(Property {
+                name: name.to_owned(),
+                params: Vec::new(),
+                value: escape_text(value),
+            });
+        }
+    }
+}
+
+/// TEXT escaping (§3.3.11).
+pub fn escape_text(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace(';', "\\;")
+        .replace(',', "\\,")
+        .replace("\r\n", "\\n")
+        .replace('\n', "\\n")
+}
+
 /// The text is not an iCalendar object at all.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NotACalendar;

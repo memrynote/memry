@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use super::calendar_conformance::zone;
 use crate::domain::calendar_items::ical::{IcalWindow, IcalZones, parse_feed};
 use crate::domain::calendar_items::ics::{normalize_url, source_id};
+use crate::domain::calendar_items::providers::caldav;
 use crate::storage::repositories::instants::to_epoch_ms;
 
 fn window(value: &Value) -> Option<IcalWindow> {
@@ -81,5 +82,22 @@ pub fn calendar_ical_conformance(vector_json: String) -> String {
             })
         })
         .collect();
-    json!({ "cases": cases, "urls": urls }).to_string()
+    let caldav: Vec<Value> = file["caldav"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|case| {
+            let server_url = caldav::normalize_server_url(case["server"].as_str().unwrap_or(""));
+            let username = case["username"].as_str().unwrap_or("");
+            json!({
+                "server": case["server"],
+                "username": case["username"],
+                "serverUrl": server_url,
+                "accountId": server_url.as_deref().map(|url| caldav::account_id(url, username)),
+                "calendarSourceId": server_url.as_deref().map(|url| caldav::calendar_source_id(&format!("{url}calendars/work/"))),
+            })
+        })
+        .collect();
+    json!({ "cases": cases, "urls": urls, "caldav": caldav }).to_string()
 }
