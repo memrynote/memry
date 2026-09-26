@@ -1557,8 +1557,11 @@ Any `GET /sync/changes` page that delivers an item therefore spends eligibility,
 that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
 used to read `/sync/changes?limit=1`, so every fresh desktop device got the 409 on its first full
 sync. It now reads `GET /sync/status`, which sits behind the same `authMiddleware` revocation check
-and only reads `device_sync_state`. Desktop builds that still send the old probe keep losing the
-session; that costs them elevated limits, not data.
+and writes nothing. It is not a single-row read: `getSyncStatus` also counts the vault's
+`sync_items` rows above the device cursor, which for a fresh device is the whole vault, served by
+`idx_sync_user_cursor`. A client that sends identification headers also costs one `getClientPolicy`
+read. Desktop builds that still send the old probe keep losing the session; that costs them
+elevated limits, not data.
 
 | Constant                                 | Value      | Why                                                 |
 | ---------------------------------------- | ---------- | --------------------------------------------------- |
