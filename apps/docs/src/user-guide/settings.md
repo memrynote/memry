@@ -2,14 +2,21 @@
 
 Every panel in the memrynote settings modal, in one searchable page. Open with <kbd>Cmd</kbd>+<kbd>,</kbd> or from the sidebar menu.
 
-Settings are organized into six groups:
+The sidebar lists **Account** on its own, then three groups:
 
-- **Account** — identity, sync, billing, devices, and security
-- **Application** — app-wide behavior and personal taste (General, Appearance, Keyboard Shortcuts, Command Line)
-- **Editing** — the writing surface (Editor, Templates)
-- **Modules** — feature toggles and per-module settings (Features, Journal, Tasks, Inbox, Calendar)
-- **Services** — AI (AI Assistant)
-- **Data** — what's on disk and metadata (Vault, Tags, Properties, Import)
+- **Workspace** — General, Appearance, Editor (with Templates below it), Shortcuts
+- **Features** — Modules (on/off toggles; Journal, Tasks, Inbox and Calendar open as sub-pages with a back link, and <kbd>Esc</kbd> steps back), AI & Agents (Models, Agents, and Connect tabs, including Command Line)
+- **Data** — Tags & Properties, Vault & Data, Import
+
+### Searching settings
+
+The search field at the top of the sidebar finds a setting by name, section, or description. While a query is typed the sidebar shows the matches, each with its location (for example _General › Language & region_). The first match opens immediately, scrolls into view, and is highlighted in the accent color.
+
+- <kbd>↑</kbd> / <kbd>↓</kbd> move to another match and highlight it
+- <kbd>Enter</kbd> focuses the highlighted setting's control
+- <kbd>Esc</kbd> clears the search; a second <kbd>Esc</kbd> closes Settings
+
+Matching ignores case and punctuation, so `up-date` finds **Updates**.
 
 <!-- screenshot: settings modal with sidebar of sections -->
 
