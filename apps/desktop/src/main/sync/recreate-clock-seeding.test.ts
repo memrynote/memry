@@ -457,7 +457,7 @@ describe('re-create clock seeding (#2409)', () => {
     expect(compare(queuedClock(type, 'create'), tombstone)).toBe('after')
   })
 
-  it.each(TYPES)(
+  it.each(TYPES.filter((type) => type !== 'note' && type !== 'journal'))(
     '%s: with the runtime down, the start-up seed of a clockless re-create ticks past the delete',
     (type) => {
       const fixture = FIXTURES[type]
@@ -471,6 +471,41 @@ describe('re-create clock seeding (#2409)', () => {
       expect(compare(queuedClock(type, 'create'), { [DEVICE]: 3 })).toBe('after')
     }
   )
+
+  describe('a clockless note or journal row whose id has a recorded tombstone', () => {
+    const CONTENT_TYPES = ['note', 'journal'] as const
+    const tombstone = { [DEVICE]: 1, [PEER]: 3 }
+
+    const leaveGhostRow = (type: (typeof CONTENT_TYPES)[number]): void => {
+      FIXTURES[type].insert(db, { [DEVICE]: 1 })
+      applyRemoteDelete(type, tombstone)
+      FIXTURES[type].insert(db, null)
+    }
+
+    const rowClock = (type: (typeof CONTENT_TYPES)[number]): VectorClock | null | undefined =>
+      db.select().from(noteMetadata).where(eq(noteMetadata.id, FIXTURES[type].id)).get()?.clock
+
+    it.each(CONTENT_TYPES)('%s: the start-up seed leaves it unpushed and in place', (type) => {
+      leaveGhostRow(type)
+
+      runInitialSeed({ db, queue, deviceId: DEVICE, adapters: [getRemoteSyncAdapter(type)!] })
+
+      expect(db.select().from(syncQueue).all()).toEqual([])
+      expect(rowClock(type)).toBeNull()
+    })
+
+    it.each(CONTENT_TYPES)('%s: a user edit re-creates it past the tombstone', (type) => {
+      leaveGhostRow(type)
+      runInitialSeed({ db, queue, deviceId: DEVICE, adapters: [getRemoteSyncAdapter(type)!] })
+      startService(type)
+
+      enqueueLocalSyncUpdate(type, FIXTURES[type].id, ...FIXTURES[type].extra)
+
+      expect(queuedClock(type, 'update')).toEqual({ [DEVICE]: 2, [PEER]: 3 })
+      expect(compare(queuedClock(type, 'update'), tombstone)).toBe('after')
+      expect(rowClock(type)).toEqual({ [DEVICE]: 2, [PEER]: 3 })
+    })
+  })
 
   it('property_definition: an update over a clockless row is seeded', () => {
     const fixture = FIXTURES.property_definition
