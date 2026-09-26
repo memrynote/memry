@@ -5,9 +5,11 @@ import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { getSetting, setSetting as writeRaw } from '../database/queries/settings'
 import { deleteSetting, setSetting, setSettingWriteListener } from '../settings/settings-store'
+import { getSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import {
   applyMergedCalendarSettings,
   changedCalendarFields,
+  initSettingsSync,
   seedCalendarSyncedSettings,
   mirrorCalendarSettingWrite
 } from './calendar-settings-sync'
@@ -34,6 +36,30 @@ describe('calendar settings sync (spec 007 D3a)', () => {
 
   afterEach(() => {
     setSettingWriteListener(null)
+    resetSettingsSyncManager()
+  })
+
+  it('the runtime hook seeds local values and mirrors later writes', () => {
+    writeRaw(db, 'calendar', JSON.stringify({ weekStartDay: 'sunday' }))
+    const enqueue = vi.fn()
+    const sync = initSettingsSync({
+      db: db as unknown as DrizzleDb,
+      queue: { enqueue } as unknown as SyncQueueManager,
+      getDeviceId: () => 'desktop-a'
+    })
+    expect(getSettingsSyncManager()).toBe(sync)
+    expect(sync.getSettings().calendar).toEqual({ weekStartDay: 'sunday' })
+    setSetting(
+      db,
+      'calendar',
+      JSON.stringify({ weekStartDay: 'sunday', showNotesOnCalendar: true })
+    )
+    expect(sync.getSettings().calendar?.showNotesOnCalendar).toBe(true)
+    // After a reset the listener finds no manager and writes nothing.
+    resetSettingsSyncManager()
+    const calls = enqueue.mock.calls.length
+    setSetting(db, 'calendar', JSON.stringify({ weekStartDay: 'monday' }))
+    expect(enqueue.mock.calls.length).toBe(calls)
   })
 
   it('mirrors only the synced leaves a local write changed', () => {
