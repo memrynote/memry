@@ -123,6 +123,13 @@ export const SYNC_STATE_KEYS = {
    */
   PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor',
   /**
+   * `'1'` while pack-seeded docs still owe a settle against their records
+   * (`pack-seeded-docs.ts`). Lets every full sync skip the marker scan unless
+   * a pack run left markers behind. Written before the first marker, cleared
+   * after the last one.
+   */
+  PACK_SEED_SETTLE_PENDING: 'packSeedSettlePending',
+  /**
    * The one-time re-pull from cursor 0 that heals installs an older build left
    * with a skipped cursor range (#2382). The manifest diff heals missing items
    * only, never stale ones.

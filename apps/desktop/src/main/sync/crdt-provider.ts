@@ -851,12 +851,19 @@ export class CrdtProvider {
    * server state before the note had a row: that apply's write-back found
    * no row and wrote nothing, and merging the same state again fires no
    * update, so nothing else would ever write this body.
+   *
+   * `false`, and nothing written, when the doc holds no state: serializing it
+   * would put an empty body over the file the record wrote.
    */
-  async materialize(noteId: string): Promise<void> {
+  async materialize(noteId: string): Promise<boolean> {
     const wasOpen = this.docs.has(noteId)
     const doc = await this.open(noteId, undefined, { skipSeed: true })
     try {
+      // An empty doc's state vector is the single varint 0; two bytes is the
+      // threshold the pack applier and the CRDT pull use too.
+      if (Y.encodeStateVector(doc).length <= 2) return false
       await writebackNow(noteId, doc)
+      return true
     } finally {
       if (!wasOpen) await this.closeIfInactive(noteId)
     }

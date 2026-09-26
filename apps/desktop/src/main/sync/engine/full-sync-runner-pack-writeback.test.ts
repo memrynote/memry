@@ -6,7 +6,9 @@ import * as Y from 'yjs'
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { eq } from 'drizzle-orm'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
+import { syncState } from '@memry/db-schema/schema/sync-state'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { encryptCrdtUpdate } from '../crdt-encrypt'
 import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
@@ -260,6 +262,8 @@ interface Device {
   db: TestDatabaseResult
   docs: Map<string, Y.Doc>
   watermarks: Map<string, { appliedSequence: number; snapshotRevision?: string }>
+  /** Notes the settle owed a whole-body walk. */
+  owed: string[]
   provider: {
     materialize: (noteId: string) => Promise<boolean>
     applyRemoteUpdate: (noteId: string, update: Uint8Array) => boolean
@@ -322,11 +326,13 @@ function makeDevice(options: { materializeFails?: (noteId: string) => boolean } 
     // `CrdtProvider.materialize`: open the doc, write it back now.
     materialize: async (noteId: string) => {
       if (options.materializeFails?.(noteId)) throw new Error('process killed mid-settle')
-      await writebackNow(noteId, docFor(noteId))
+      const doc = docFor(noteId)
+      if (Y.encodeStateVector(doc).length <= 2) return false
+      await writebackNow(noteId, doc)
       return true
     }
   }
-  const device = { db, docs, watermarks, provider }
+  const device = { db, docs, watermarks, owed: [] as string[], provider }
   devices.push(device)
   return device
 }
@@ -379,9 +385,21 @@ async function runSync(
   const runner = new FullSyncRunner(
     ctx,
     {
-      getStateValue: (key: string) =>
-        key === SYNC_STATE_KEYS.LAST_CURSOR && !options.fresh ? '500' : undefined,
-      setStateValue: vi.fn(),
+      // The device's own sync_state, so what one run writes the next one reads.
+      getStateValue: (key: string) => {
+        if (key === SYNC_STATE_KEYS.LAST_CURSOR) return options.fresh ? undefined : '500'
+        return device.db.db.select().from(syncState).where(eq(syncState.key, key)).get()?.value
+      },
+      setStateValue: (key: string, value: string) => {
+        device.db.db
+          .insert(syncState)
+          .values({ key, value, updatedAt: new Date() })
+          .onConflictDoUpdate({ target: syncState.key, set: { value } })
+          .run()
+      },
+      deleteStateValue: (key: string) => {
+        device.db.db.delete(syncState).where(eq(syncState.key, key)).run()
+      },
       isPaused: () => false,
       recordHistory: vi.fn(),
       updateLastSyncAt: vi.fn()
@@ -392,7 +410,10 @@ async function runSync(
       drainPendingPulls: () => [],
       pendingPullCount: 0,
       nextDeferredPullAt: () => null,
-      oweWholeBody: vi.fn(() => true)
+      oweWholeBody: (noteId: string) => {
+        device.owed.push(noteId)
+        return true
+      }
     } as unknown as CrdtSyncCoordinator,
     { pull: options.pull, push: async () => {}, scheduleSync: vi.fn() } satisfies FullSyncActions
   )
@@ -600,6 +621,30 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
 
       expect(kept).toEqual({ docs: [live.id], watermarks: [live.id] })
       expect(readVault(mocks.vaultRoot)).toEqual({ 'Plans.md': 'Live note body' })
+    })
+
+    it('never writes a doc that lost its packed state, and owes it a whole-body walk', async () => {
+      const device = makeDevice()
+
+      await runSync(device, {
+        fresh: true,
+        packed: [live],
+        pull: async () => {
+          await flushPendingWritebacks()
+          applyRecord(
+            { op: 'upsert', type: 'note', id: live.id, title: 'Plans', content: 'Record body' },
+            device.docs
+          )
+          // The store answers with nothing for the doc on reopen.
+          device.docs.delete(live.id)
+          return true
+        }
+      })
+
+      expect({ files: readVault(mocks.vaultRoot), owed: device.owed }).toEqual({
+        files: { 'Plans.md': 'Record body' },
+        owed: [live.id]
+      })
     })
   })
 })
