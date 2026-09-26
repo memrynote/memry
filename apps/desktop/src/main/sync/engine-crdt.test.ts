@@ -8,6 +8,13 @@ import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
 describe('SyncEngine', () => {
   const { getDb } = setupTestDb()
+  // A per-note pull merges only into a note this device has a row for.
+  const seedNoteRow = (id: string): void => {
+    getDb()
+      .db.insert(noteMetadata)
+      .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+      .run()
+  }
 
   describe('#given engine with crdtProvider and CREATE note queued #when push called', () => {
     it('#then pushes CRDT snapshot BEFORE posting sync items to server', async () => {
@@ -383,6 +390,7 @@ describe('SyncEngine', () => {
     })
 
     it('#then the engine reports the note as holding unverified server state', async () => {
+      seedNoteRow('note-1')
       const deps = createMockDeps(getDb(), {
         crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider'],
         // The production trigger, unmocked from here down: a revoked peer is
@@ -409,6 +417,7 @@ describe('SyncEngine', () => {
     })
 
     it('#then a `crdt_updated` broadcast marks the note before its pull runs', async () => {
+      seedNoteRow('note-ws')
       const deps = createMockDeps(getDb(), {
         crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider']
       })
@@ -586,6 +595,7 @@ describe('SyncEngine', () => {
     // #2297: a debt a previous engine left routes the note around the prune
     // from the next start on, and a clean pull clears it.
     it('#then a debt left by the previous engine flags the note after a restart until a pull settles it', async () => {
+      seedNoteRow('note-ws')
       const provider = crdtProviderStub()
       const deps = createMockDeps(getDb(), {
         crdtProvider: provider as unknown as SyncEngineDeps['crdtProvider'],
@@ -688,6 +698,7 @@ describe('SyncEngine', () => {
       }) as unknown as SyncEngineDeps['crdtProvider']
 
     it('#then a single-note pull skips an unresolved-signer update without misaligning the good ones', async () => {
+      seedNoteRow('note-1')
       const applyRemoteUpdate = vi.fn()
       const deps = createMockDeps(getDb(), {
         crdtProvider: crdtProviderStub(applyRemoteUpdate),
@@ -785,6 +796,7 @@ describe('SyncEngine', () => {
     })
 
     it('#then a transport-level worker reject falls back to byte-identical main-thread decrypt', async () => {
+      seedNoteRow('note-1')
       const decryptSpy = vi
         .spyOn(await import('./crdt-encrypt'), 'decryptCrdtUpdate')
         .mockReturnValue(new Uint8Array([7]))

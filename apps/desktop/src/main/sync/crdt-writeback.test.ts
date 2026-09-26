@@ -8,21 +8,15 @@ const mocks = vi.hoisted(() => ({
   trackMainError: vi.fn(),
   trackMainLog: vi.fn(),
   getNoteCacheById: vi.fn(),
-  getNoteCacheByPath: vi.fn(),
   getNoteMetadataById: vi.fn(),
   atomicWrite: vi.fn(),
   safeRead: vi.fn(),
-  fileExists: vi.fn(),
-  generateNotePath: vi.fn(),
-  generateUniquePath: vi.fn(),
   ensureDirectory: vi.fn(),
   deleteFile: vi.fn(),
   parseNote: vi.fn(),
   generateContentHash: vi.fn(),
   serializeNote: vi.fn(),
   serializeParsedNote: vi.fn(),
-  getDefaultNoteDir: vi.fn(),
-  toRelativePath: vi.fn(),
   toAbsolutePath: vi.fn(),
   maybeCreateSignificantSnapshot: vi.fn(),
   getJournalPath: vi.fn(),
@@ -88,9 +82,6 @@ vi.mock('@memry/shared/utc', () => ({
 vi.mock('../vault/file-ops', () => ({
   atomicWrite: (...args: unknown[]) => mocks.atomicWrite(...args),
   safeRead: (...args: unknown[]) => mocks.safeRead(...args),
-  fileExists: (...args: unknown[]) => mocks.fileExists(...args),
-  generateNotePath: (...args: unknown[]) => mocks.generateNotePath(...args),
-  generateUniquePath: (...args: unknown[]) => mocks.generateUniquePath(...args),
   ensureDirectory: (...args: unknown[]) => mocks.ensureDirectory(...args),
   deleteFile: (...args: unknown[]) => mocks.deleteFile(...args)
 }))
@@ -108,8 +99,6 @@ vi.mock('../vault/attachment-rename-reconcile', () => ({
 
 vi.mock('../vault/notes', () => ({
   getVaultRoot: (...args: unknown[]) => mocks.getVaultRoot(...args),
-  getDefaultNoteDir: (...args: unknown[]) => mocks.getDefaultNoteDir(...args),
-  toRelativePath: (...args: unknown[]) => mocks.toRelativePath(...args),
   toAbsolutePath: (...args: unknown[]) => mocks.toAbsolutePath(...args),
   maybeCreateSignificantSnapshot: (...args: unknown[]) =>
     mocks.maybeCreateSignificantSnapshot(...args)
@@ -134,8 +123,7 @@ vi.mock('../database/client', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args),
-  getNoteCacheByPath: (...args: unknown[]) => mocks.getNoteCacheByPath(...args)
+  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args)
 }))
 
 vi.mock('@memry/storage-data', () => ({
@@ -199,7 +187,6 @@ describe('crdt writeback', () => {
       title: 'Existing',
       contentHash: 'hash:---\ntitle: Existing\n---\nold markdown'
     })
-    mocks.getNoteCacheByPath.mockReturnValue(undefined)
     mocks.getNoteMetadataById.mockReturnValue(undefined)
     mocks.safeRead.mockResolvedValue('---\ntitle: Existing\n---\nold markdown')
     mocks.generateContentHash.mockImplementation((content: string) => `hash:${content}`)
@@ -218,12 +205,7 @@ describe('crdt writeback', () => {
       })
     )
     mocks.toAbsolutePath.mockImplementation((relative: string) => `/vault/${relative}`)
-    mocks.toRelativePath.mockImplementation((absolute: string) => absolute.replace('/vault/', ''))
-    mocks.getDefaultNoteDir.mockReturnValue('/vault/notes')
-    mocks.generateNotePath.mockReturnValue('/vault/notes/New.md')
-    mocks.generateUniquePath.mockImplementation((p: string) => Promise.resolve(p))
     mocks.getJournalPath.mockImplementation((date: string) => `/vault/journal/${date}.md`)
-    mocks.fileExists.mockResolvedValue(false)
     mocks.atomicWrite.mockResolvedValue(undefined)
     mocks.deleteFile.mockResolvedValue(undefined)
     mocks.ensureDirectory.mockResolvedValue(undefined)
@@ -553,7 +535,9 @@ describe('crdt writeback', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     // #then no second file, no CREATED event, and the applied title survives
-    expect(mocks.generateNotePath).not.toHaveBeenCalled()
+    expect(mocks.atomicWrite.mock.calls.map(([absolutePath]) => absolutePath)).toEqual([
+      '/vault/notes/Real Title.md'
+    ])
     expect(mocks.sent).not.toContainEqual(
       expect.objectContaining({ channel: NotesChannels.events.CREATED })
     )
@@ -568,35 +552,33 @@ describe('crdt writeback', () => {
     )
   })
 
-  it('creates a new markdown note when cache has no path for the synced id', async () => {
-    mocks.getNoteCacheById.mockReturnValue(undefined)
+  it('writes nothing for a note or journal this device has no row for', async () => {
+    // #given bodies that arrived before their records: a pack applied ahead
+    // of the first record pull, or a tombstone this device has not pulled
+    const existingRow = mocks.getNoteCacheById()
+    mocks.getNoteCacheById.mockImplementation((_db: unknown, id: string) =>
+      id === 'note-1' ? existingRow : undefined
+    )
 
     scheduleWriteback('note-new', makeDoc('New Note', ['tag-a']))
+    scheduleWriteback('j2026-01-02', makeDoc('Ignored', ['journal']))
+    scheduleWriteback('note-1', makeDoc('Existing'))
     await vi.advanceTimersByTimeAsync(500)
 
-    expect(mocks.generateNotePath).toHaveBeenCalledWith('/vault/notes', 'New Note')
-    expect(mocks.atomicWrite).toHaveBeenCalledWith(
-      '/vault/notes/New.md',
-      expect.stringContaining('updated markdown')
+    // #then only the note with a row is written, and nothing is announced as new
+    expect(mocks.atomicWrite.mock.calls.map(([absolutePath]) => absolutePath)).toEqual([
+      '/vault/notes/Existing.md'
+    ])
+    expect(mocks.syncNoteToCache.mock.calls.map(([, note]) => (note as { id: string }).id)).toEqual(
+      ['note-1']
     )
-    expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
-      { kind: 'index-db' },
-      expect.objectContaining({ id: 'note-new', path: 'notes/New.md' }),
-      { isNew: true }
-    )
-    expect(mocks.sent).toContainEqual({
-      channel: NotesChannels.events.CREATED,
-      payload: {
-        note: { id: 'note-new', path: 'notes/New.md', title: 'New Note' },
-        source: 'sync'
-      }
-    })
+    expect(mocks.sent.map((s) => s.channel)).toEqual([NotesChannels.events.UPDATED])
+    expect(hasPendingWriteback('note-new')).toBe(false)
   })
 
   it('writes nothing back for a note whose armed pass was cancelled', async () => {
-    // #given the user deletes a note inside the debounce window. The index row
-    // goes first, so a pass that still fired would find no cache row, take the
-    // new-note branch, and re-create the note it just deleted.
+    // #given the user deletes a note inside the debounce window. A pass that
+    // still fired could write back the file the delete just removed.
     scheduleWriteback('note-deleted', makeDoc('Deleted Note'))
     mocks.getNoteCacheById.mockReturnValue(undefined)
 
@@ -631,56 +613,6 @@ describe('crdt writeback', () => {
       '/vault/notes/Existing.md',
       expect.stringContaining('updated markdown')
     )
-  })
-
-  it('writes journal entries and emits a journal-created event for uncached journals', async () => {
-    mocks.getNoteCacheById.mockReturnValue(undefined)
-
-    scheduleWriteback('j2026-01-02', makeDoc('Ignored', ['journal']))
-    await vi.advanceTimersByTimeAsync(500)
-
-    expect(mocks.ensureDirectory).toHaveBeenCalledWith('/vault/journal')
-    expect(mocks.atomicWrite).toHaveBeenCalledWith(
-      '/vault/journal/2026-01-02.md',
-      expect.stringContaining('2026-01-02')
-    )
-    expect(mocks.sent).toContainEqual({
-      channel: JournalChannels.events.ENTRY_CREATED,
-      payload: { date: '2026-01-02', source: 'sync' }
-    })
-  })
-
-  it('writes a collision file when a synced journal date already belongs to another id', async () => {
-    mocks.getNoteCacheById.mockReturnValue(undefined)
-    mocks.fileExists.mockResolvedValue(true)
-    // Collision detection keys on the note_cache row at the journal path,
-    // not on a frontmatter id (files no longer carry one)
-    mocks.getNoteCacheByPath.mockReturnValue({
-      id: 'local-journal',
-      path: 'journal/2026-01-03.md',
-      title: '2026-01-03'
-    })
-
-    scheduleWriteback('j2026-01-03', makeDoc('Collision'))
-    await vi.advanceTimersByTimeAsync(500)
-
-    expect(mocks.getNoteCacheByPath).toHaveBeenCalledWith(
-      { kind: 'index-db' },
-      'journal/2026-01-03.md'
-    )
-    expect(mocks.atomicWrite).toHaveBeenCalledWith(
-      '/vault/journal/2026-01-03-j2026-01.md',
-      expect.stringContaining('updated markdown')
-    )
-    expect(mocks.sent).toContainEqual({
-      channel: 'sync:journal-conflict',
-      payload: {
-        date: '2026-01-03',
-        incomingId: 'j2026-01-03',
-        existingId: 'local-journal',
-        collisionPath: 'journal/2026-01-03-j2026-01.md'
-      }
-    })
   })
 
   it('deletes synced note files, purges CRDT docs, and emits note or journal deletion events', async () => {
@@ -1098,31 +1030,6 @@ describe('crdt writeback', () => {
     expect(mocks.sent).toContainEqual({
       channel: NotesChannels.events.UPDATED,
       payload: { id: 'note-1', changes: { content: 'updated markdown' }, source: 'sync' }
-    })
-  })
-
-  it('degrades an inbound body that creates a new note, without seeding it', async () => {
-    // #given a note this device has never seen, arriving over sync from a peer
-    // running a build with no large-file class
-    mocks.getNoteCacheById.mockReturnValue(undefined)
-    mocks.yDocToMarkdown.mockResolvedValue(oversizedBody)
-
-    // #when
-    scheduleWriteback('note-2', makeDoc('Server log'))
-    await vi.advanceTimersByTimeAsync(500)
-
-    // #then the file is created, so nothing the peer sent is lost...
-    expect(mocks.atomicWrite).toHaveBeenCalledWith(
-      '/vault/notes/New.md',
-      expect.stringContaining('worker payload 0')
-    )
-
-    // ...and the row appears, but flagged large-file class so the renderer
-    // opens the read-only viewer instead of seeding an editor from it
-    const created = mocks.sent.find((s) => s.channel === NotesChannels.events.CREATED)
-    expect(created?.payload).toMatchObject({
-      note: { id: 'note-2', sizeClass: 'large-file', contentOmitted: true },
-      source: 'sync'
     })
   })
 })

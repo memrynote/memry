@@ -1240,6 +1240,13 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
   /** `false` = this note's server state was NOT fully merged; see `applyCrdtIncrementals`. */
   async pullCrdtForNote(noteId: string): Promise<boolean> {
     log.debug('pullCrdtForNote entered', { noteId })
+    // Same rule as the group sibling and the feed: a body stored for an id
+    // with no row is never written to the vault, since the record's own walk
+    // then merges nothing new. The record pulls its whole body when it lands.
+    if (!this.hasNoteRow(noteId)) {
+      this.dropRowless([noteId])
+      return false
+    }
     // Owed on both misses, exactly as the group sibling does. This is the entry
     // point a `crdt_updated` broadcast uses, so returning silently here left a
     // note the server had just named unpulled, unflagged and unretried.
