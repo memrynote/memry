@@ -40,8 +40,9 @@ describe('SettingsSyncManager', () => {
 
   describe('#given empty settings #when updateField called', () => {
     it('#then stores the value and increments field clock', () => {
+      // #2287: keyed by the injected device id, not a caller-supplied literal
       // #when
-      manager.updateField('general.theme', 'dark', 'device-A')
+      manager.updateField('general.theme', 'dark')
 
       // #then
       const payload = manager.getPayload()
@@ -52,8 +53,8 @@ describe('SettingsSyncManager', () => {
 
   describe('#given existing field #when updateField called again', () => {
     it('#then updates value and increments clock tick', () => {
-      manager.updateField('general.theme', 'dark', 'device-A')
-      manager.updateField('general.theme', 'light', 'device-A')
+      manager.updateField('general.theme', 'dark')
+      manager.updateField('general.theme', 'light')
 
       const payload = manager.getPayload()
       expect(payload.settings).toEqual({ general: { theme: 'light' } })
@@ -63,7 +64,7 @@ describe('SettingsSyncManager', () => {
 
   describe('#given updateField called #when queue checked', () => {
     it('#then enqueues a settings sync item', () => {
-      manager.updateField('tasks.defaultPriority', 2, 'device-A')
+      manager.updateField('tasks.defaultPriority', 2)
 
       const [item] = queue.dequeue(1)
       expect(item.type).toBe('settings')
@@ -78,7 +79,7 @@ describe('SettingsSyncManager', () => {
   describe('#given remote is ahead #when mergeRemote called', () => {
     it('#then takes the remote values', () => {
       // #given — local has older clock
-      manager.updateField('general.theme', 'dark', 'device-A')
+      manager.updateField('general.theme', 'dark')
 
       // #when — remote clock is ahead
       const remote: SettingsSyncPayload = {
@@ -97,8 +98,8 @@ describe('SettingsSyncManager', () => {
   describe('#given local is ahead #when mergeRemote called', () => {
     it('#then keeps the local values', () => {
       // #given — local has higher clock
-      manager.updateField('general.theme', 'dark', 'device-A')
-      manager.updateField('general.theme', 'darker', 'device-A')
+      manager.updateField('general.theme', 'dark')
+      manager.updateField('general.theme', 'darker')
 
       // #when — remote is behind
       const remote: SettingsSyncPayload = {
@@ -116,7 +117,7 @@ describe('SettingsSyncManager', () => {
   describe('#given concurrent field edits on different fields #when mergeRemote called', () => {
     it('#then merges both fields correctly', () => {
       // #given — local edited theme, remote edited language
-      manager.updateField('general.theme', 'dark', 'device-A')
+      manager.updateField('general.theme', 'dark')
 
       const remote: SettingsSyncPayload = {
         settings: { general: { language: 'tr' } },
@@ -135,7 +136,7 @@ describe('SettingsSyncManager', () => {
   describe('#given concurrent edits on same field #when mergeRemote called', () => {
     it('#then uses last-write-wins (higher max tick wins)', () => {
       // #given — local: device-A:1, remote: device-B:2 (higher tick)
-      manager.updateField('general.theme', 'dark', 'device-A')
+      manager.updateField('general.theme', 'dark')
 
       const remote: SettingsSyncPayload = {
         settings: { general: { theme: 'light' } },
@@ -155,9 +156,9 @@ describe('SettingsSyncManager', () => {
   describe('#given concurrent edits where local tick is higher #when mergeRemote called', () => {
     it('#then keeps local value but merges clocks', () => {
       // #given — local: device-A:3, remote: device-B:1 (lower tick)
-      manager.updateField('general.theme', 'dark', 'device-A')
-      manager.updateField('general.theme', 'darker', 'device-A')
-      manager.updateField('general.theme', 'darkest', 'device-A')
+      manager.updateField('general.theme', 'dark')
+      manager.updateField('general.theme', 'darker')
+      manager.updateField('general.theme', 'darkest')
 
       const remote: SettingsSyncPayload = {
         settings: { general: { theme: 'light' } },
@@ -182,7 +183,7 @@ describe('SettingsSyncManager', () => {
 
   describe('#given settings stored #when getPayload called', () => {
     it('#then returns settings with field clocks', () => {
-      manager.updateField('sync.autoSync', true, 'device-A')
+      manager.updateField('sync.autoSync', true)
 
       const payload = manager.getPayload()
       expect(payload).toEqual({
@@ -195,9 +196,9 @@ describe('SettingsSyncManager', () => {
   describe('#given settings payload #when encrypted then decrypted', () => {
     it('#then round-trips with full data fidelity', () => {
       // #given
-      manager.updateField('general.theme', 'dark', 'device-A')
-      manager.updateField('tasks.defaultPriority', 2, 'device-A')
-      manager.updateField('sync.autoSync', true, 'device-A')
+      manager.updateField('general.theme', 'dark')
+      manager.updateField('tasks.defaultPriority', 2)
+      manager.updateField('sync.autoSync', true)
 
       const original = manager.getPayload()
       const contentBytes = new TextEncoder().encode(JSON.stringify(original))

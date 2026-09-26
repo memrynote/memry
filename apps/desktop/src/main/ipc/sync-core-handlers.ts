@@ -305,7 +305,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       const manager = getSettingsSyncManager()
       if (!manager) return { success: false, error: 'errors:sync.settingsNotInitialized' }
 
-      manager.updateField(input.fieldPath, input.value, 'local')
+      if (!manager.updateField(input.fieldPath, input.value)) {
+        return { success: false, error: 'errors:sync.settingsNotInitialized' }
+      }
       return { success: true }
     },
     'errors:sync.updateSyncedSettingFailed'

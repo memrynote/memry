@@ -908,5 +908,5 @@ export function bumpCanvasClockLocalOnly(canvasId: string): void {
 export function syncSettingsFieldUpdate(fieldPath: string, value: unknown): void {
   const manager = getSettingsSyncManager()
   if (!manager) return
-  manager.updateField(fieldPath, value, 'local')
+  manager.updateField(fieldPath, value)
 }
