@@ -1,7 +1,9 @@
 /**
  * A note applied before the project its frontmatter names finds nothing to
  * link to. When that project lands from sync the link has to appear then, not
- * on some later re-pull of the note, and without pushing the project back.
+ * on some later re-pull of the note. The project is pushed back only when its
+ * payload lacks a membership derived here: iOS reads membership from that
+ * payload alone.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -72,7 +74,7 @@ describe('projectHandler.applyUpsert — notes that named the project first', ()
     indexDb.close()
   })
 
-  it('links markdown notes whose frontmatter names the new project, and pushes nothing', () => {
+  it('links markdown notes whose frontmatter names the new project, and pushes the one its payload lacks', () => {
     seedNote('148lo0e3z34p', 'markdown', ['reading'])
     seedNote('uhk8j306lf5z', 'markdown', ['Other', 'Reading'])
     seedNote('unrelated001', 'markdown', ['Other'])
@@ -106,7 +108,42 @@ describe('projectHandler.applyUpsert — notes that named the project first', ()
       { projectId: 'F-lvikiJ', itemId: '148lo0e3z34p', pinned: 0 },
       { projectId: 'F-lvikiJ', itemId: 'uhk8j306lf5z', pinned: 1 }
     ])
-    expect(mockLocalMutation).not.toHaveBeenCalled()
+    expect(mockLocalMutation.mock.calls).toEqual([
+      ['project', 'enqueueUpdate', 'F-lvikiJ', [['links']]]
+    ])
     expect(dataDb.db.select().from(syncIntents).all()).toEqual([])
+  })
+
+  it('pushes nothing when the payload already carries every derived membership', () => {
+    seedNote('148lo0e3z34p', 'markdown', ['Reading'])
+    seedNote('uhk8j306lf5z', 'markdown', ['Reading'])
+
+    const result = projectHandler.applyUpsert(
+      ctx,
+      'F-carried',
+      {
+        name: 'Reading',
+        color: '#000',
+        position: 0,
+        links: ['148lo0e3z34p', 'uhk8j306lf5z'].map((itemId, position) => ({
+          id: `link-${itemId}`,
+          projectId: 'F-carried',
+          itemType: 'note',
+          itemId,
+          position,
+          pinned: 0
+        })),
+        createdAt: CREATED,
+        modifiedAt: CREATED
+      },
+      { 'device-64ae': 22 }
+    )
+
+    expect(result).toBe('applied')
+    expect(linkRows()).toEqual([
+      { projectId: 'F-carried', itemId: '148lo0e3z34p', pinned: 0 },
+      { projectId: 'F-carried', itemId: 'uhk8j306lf5z', pinned: 0 }
+    ])
+    expect(mockLocalMutation.mock.calls).toEqual([])
   })
 })
