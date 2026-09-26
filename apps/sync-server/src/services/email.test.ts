@@ -93,7 +93,7 @@ describe('email service', () => {
 
     it('captures Resend API failures when env is provided', async () => {
       const fetchMock = vi.fn(async (url: unknown) => {
-        if (String(url).includes('api.resend.com')) {
+        if (new URL(String(url)).hostname === 'api.resend.com') {
           return { ok: false, status: 401, text: async (): Promise<string> => 'invalid api key' }
         }
         return new Response('{}', { status: 200 })
@@ -125,7 +125,7 @@ describe('email service', () => {
 
     it('captures network failures when env is provided', async () => {
       const fetchMock = vi.fn(async (url: unknown) => {
-        if (String(url).includes('api.resend.com')) {
+        if (new URL(String(url)).hostname === 'api.resend.com') {
           throw new Error('network down')
         }
         return new Response('{}', { status: 200 })
