@@ -115,8 +115,10 @@ Selection leaves out the snapshot of a note id whose `note` and `journal` rows i
 all tombstones. Deleting a note keeps its `crdt_snapshots` row, and a fresh device applies packs
 before the pull that delivers the tombstone, so a packed body of a deleted note reaches the device
 as if it were live. A note id with any live `note` or `journal` row still packs, and so does one
-with no row yet, because a snapshot can land before its record. The filter only covers packs built
-after the delete. A pack built earlier is immutable and still carries the body.
+with no row yet, because a snapshot can land before its record. Dead rows stay in the scan and are
+skipped like oversized rows, so the watermark moves past a tail of them. If the filter ran in SQL,
+such a vault would scan nothing, stay first in the oldest-first backfill list, and spend each
+tick's budget. The filter only covers packs built after the delete. A pack built earlier is immutable and still carries the body.
 
 Rows larger than `MAX_PACKED_ITEM_BYTES` = 8 MB are excluded from packs permanently and stay on the
 item-granular tail. The largest legal record payload is roughly 7 MB of JSON text (a 5 MB decoded
