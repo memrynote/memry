@@ -4,6 +4,11 @@ import { syncState } from '@memry/db-schema/schema/sync-state'
 import { setupTestDb } from '@tests/utils/engine-mocks'
 import type { DataDb } from '../database'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
+import {
+  convertUnmergedDebtMirror,
+  listCrdtBodyDebts,
+  oweCrdtBodyDebts
+} from './engine/crdt-body-debts'
 import { NOTE_BODY_LEGACY_SWEEP_DONE, SYNC_STATE_KEYS } from './engine/sync-context'
 
 vi.mock('../lib/logger', () => {
@@ -58,6 +63,22 @@ describe('reconcileCrdtStoreEpoch (#2299)', () => {
     expect(state(db, SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBeUndefined()
     expect(state(db, SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toBe('1')
     expect(state(db, SYNC_STATE_KEYS.LAST_CURSOR)).toBe('500')
+  })
+
+  // #2297: the next engine start owes every note, even when this build's own
+  // mirror already read '1' within the same second.
+  it('turns the raised debt into a debt for every note at the next engine start', async () => {
+    const db = getDb().db as unknown as DataDb
+    seedSweptVault(db)
+    oweCrdtBodyDebts(db, ['note-9'], 'record')
+
+    await reconcileCrdtStoreEpoch(store(), db)
+
+    expect(convertUnmergedDebtMirror(db, () => ['note-1', 'note-9'])).toBe(2)
+    expect(listCrdtBodyDebts(db).map((d) => [d.noteId, d.reason])).toEqual([
+      ['note-1', 'legacy'],
+      ['note-9', 'record']
+    ])
   })
 
   it('leaves a marked store and its vault state alone on the next open', async () => {

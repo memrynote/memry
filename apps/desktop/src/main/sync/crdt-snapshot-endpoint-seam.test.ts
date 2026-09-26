@@ -17,7 +17,10 @@
  * asserted against which HTTP function the push actually called. Only the HTTP
  * layer and the process-level infrastructure are mocked.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { syncState } from '@memry/db-schema/schema/sync-state'
+import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -128,10 +131,8 @@ const runtimeMocks = vi.hoisted(() => {
     networkOnline: true,
     engineStartError: null as Error | null,
     workerStartError: null as Error | null,
-    db: null as any,
+    db: null as TestDatabaseResult | null,
     indexRows: [] as Array<{ id: string; title: string; date: string | null }>,
-    currentDevice: { id: 'device-1', signingPublicKey: null as string | null },
-    syncStateRows: [] as Array<{ value: string }>,
     getDatabase: vi.fn(),
     getIndexDatabase: vi.fn(),
     retrieveToken: vi.fn(),
@@ -232,7 +233,8 @@ vi.mock('../database', () => ({
 }))
 
 vi.mock('../database/client', () => ({
-  getIndexDatabase: runtimeMocks.getIndexDatabase
+  getIndexDatabase: runtimeMocks.getIndexDatabase,
+  isIndexDatabaseInitialized: () => false
 }))
 
 vi.mock('../crypto', () => ({
@@ -291,6 +293,11 @@ vi.mock('./engine', async () => {
     }
     async start(): Promise<void> {
       if (runtimeMocks.engineStartError) throw runtimeMocks.engineStartError
+      // The first thing the real start does (#2297): the debts a previous
+      // session left decide the endpoint from here on.
+      ;(
+        this as unknown as { fullSyncRunner: { loadCrdtBodyDebts(): void } }
+      ).fullSyncRunner.loadCrdtBodyDebts()
     }
     async stop(): Promise<void> {}
   }
@@ -471,41 +478,6 @@ vi.mock('./key-verification', () => ({
   isKeyMaterialActivityRecent: vi.fn().mockReturnValue(false)
 }))
 
-function createDb() {
-  const updateRun = vi.fn()
-  // `sync_state` rows, read through SyncStateManager.getStateValue (`.all()`)
-  // rather than the device lookup (`.get()`). The endpoint choice reads one of
-  // them — `crdtUnmergedDebt`, the record that a previous session ended holding
-  // notes it had not merged — so this is on the path, not scenery.
-  const stateInsertRun = vi.fn()
-  return {
-    updateRun,
-    stateInsertRun,
-    db: {
-      select: vi.fn(() => ({
-        from: vi.fn(() => ({
-          where: vi.fn(() => ({
-            get: vi.fn(() => runtimeMocks.currentDevice),
-            all: vi.fn(() => runtimeMocks.syncStateRows)
-          }))
-        }))
-      })),
-      insert: vi.fn(() => ({
-        values: vi.fn(() => ({
-          onConflictDoUpdate: vi.fn(() => ({ run: stateInsertRun }))
-        }))
-      })),
-      update: vi.fn(() => ({
-        set: vi.fn(() => ({
-          where: vi.fn(() => ({
-            run: updateRun
-          }))
-        }))
-      }))
-    }
-  }
-}
-
 function createIndexDb() {
   return {
     select: vi.fn(() => ({
@@ -523,6 +495,8 @@ async function loadRuntime() {
 }
 
 describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
+  afterEach(() => runtimeMocks.db?.close())
+
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
@@ -535,9 +509,8 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     runtimeMocks.engineStartError = null
     runtimeMocks.workerStartError = null
     runtimeMocks.indexRows = [{ id: 'note-1', title: 'Note 1', date: null }]
-    runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: null }
-    runtimeMocks.syncStateRows = []
-    runtimeMocks.db = createDb()
+    // A real data DB: the coordinator's debts are rows in it (#2297).
+    runtimeMocks.db = createTestDataDb()
     runtimeMocks.getDatabase.mockReturnValue(runtimeMocks.db.db)
     runtimeMocks.getIndexDatabase.mockReturnValue(createIndexDb())
     runtimeMocks.retrieveToken.mockResolvedValue('refresh-token')
@@ -676,12 +649,24 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   })
 
   it('routes every note away from the prune when the last session ended holding debt', async () => {
-    // #given the previous session quit with a note it had not merged. The set
-    // naming that note is per session and `clearCaches()` emptied it, and this
-    // launch is inside the sweep interval, so `shouldSweepAllCrdtNotes` queues
-    // nothing that would re-raise it. All that survives is the `sync_state`
-    // record that debt existed.
-    runtimeMocks.syncStateRows = [{ value: '1' }]
+    // #given an older build quit with a note it had not merged. It recorded
+    // only that debt existed (`crdtUnmergedDebt = '1'`), never which note, and
+    // this launch is inside the sweep interval, so `shouldSweepAllCrdtNotes`
+    // queues nothing that would re-raise it. The start converts that record
+    // into a debt for every note the data DB holds (#2297).
+    const db = runtimeMocks.db!.db
+    db.insert(syncState)
+      .values({ key: 'crdtUnmergedDebt', value: '1', updatedAt: new Date() })
+      .run()
+    db.insert(noteMetadata)
+      .values({
+        id: 'note-from-last-session',
+        path: 'n.md',
+        title: 'n',
+        createdAt: 'x',
+        modifiedAt: 'x'
+      })
+      .run()
     const { snapshotPush, stop } = await bootRuntime()
 
     // #when the user edits a note this session has never pulled, merged or even
@@ -705,7 +690,6 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   it('snapshots normally when the last session ended with nothing outstanding', async () => {
     // #given no carried-over debt — the ordinary case, and the one that keeps
     // the blanket from quietly costing every install its compaction point
-    runtimeMocks.syncStateRows = []
     const { snapshotPush, stop } = await bootRuntime()
 
     // #when

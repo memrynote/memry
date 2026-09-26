@@ -93,19 +93,22 @@ export const SYNC_STATE_KEYS = {
   LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt',
   LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt',
   /**
-   * `'1'` while some note's server state is known-unmerged, `'0'` once none is.
+   * Write-only mirror of the `crdt_body_debts` table (#2297): `'1'` while it
+   * has a row, `'0'` once it is empty. This build never routes on it; builds
+   * before the table read it as "some note is unmerged" and route every
+   * snapshot push around the prune, so a downgrade stays safe.
    *
-   * The set of *which* notes lives in `CrdtSyncCoordinator.unmergedRemoteNotes`
-   * and is per session — `clearCaches()` empties it at teardown — so a quit
-   * between a failed merge and the next launch used to leave the note looking
-   * merged and therefore safe to snapshot. Only the boolean is persisted; the
-   * ids are re-derived by the next vault-wide sweep, which flags every note it
-   * queues. See `FullSyncRunner.crdtUnmergedStateUnknown`.
-   *
-   * A missing row reads as `'0'`, which is what every install written before
-   * this key existed has and what a vault with nothing outstanding means.
+   * A `'1'` this build did not write (an older build after a downgrade, or a
+   * CRDT store that lost its sync marker) is converted once at engine start
+   * into a debt for every note; see `convertUnmergedDebtMirror`.
    */
   CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt',
+  /**
+   * `sync_state.updated_at` (epoch ms) of the last `CRDT_UNMERGED_DEBT` write
+   * this build made. A `'1'` whose row time differs, or with no marker, was
+   * written by someone else.
+   */
+  CRDT_BODY_DEBT_MIRROR_AT: 'crdtBodyDebtMirrorAt',
   /**
    * Highest pack cursor covered by an unbroken run of fully-applied bootstrap
    * packs (#1840), counting from the oldest pack upward.

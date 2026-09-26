@@ -16,16 +16,16 @@
  * and a data DB from another machine all read as a mismatch. On a mismatch the
  * store is treated as not holding what the data DB says was merged: the legacy
  * sweep key is deleted, which withholds every claim until a sweep has merged
- * the vault again, and the vault-wide unmerged debt is raised, which routes
- * every push around the prune until that sweep flags notes one by one. A new
- * epoch is then written to the data DB first and the store last, so a failed
+ * the vault again, and `crdtUnmergedDebt` is raised with its mirror marker
+ * deleted, which the next sync engine start converts into a whole-body debt
+ * for every note (#2297). A new epoch is then written to the data DB first and the store last, so a failed
  * write reads as a mismatch again on the next open.
  *
  * A store written by a build before this marker reads as unmarked, so every
  * existing install runs that sweep once after the upgrade.
  */
 import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import type { DataDb } from '../database'
 import { createLogger } from '../lib/logger'
@@ -54,7 +54,14 @@ export async function reconcileCrdtStoreEpoch(
   const epoch = randomUUID()
   const updatedAt = new Date()
   db.transaction((tx) => {
-    tx.delete(syncState).where(eq(syncState.key, SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).run()
+    tx.delete(syncState)
+      .where(
+        inArray(syncState.key, [
+          SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP,
+          SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT
+        ])
+      )
+      .run()
     for (const [key, value] of [
       [SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '1'],
       [SYNC_STATE_KEYS.CRDT_STORE_EPOCH, epoch]

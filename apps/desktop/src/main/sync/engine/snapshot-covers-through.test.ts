@@ -62,7 +62,8 @@ function fakeProvider() {
     }),
     closeIfInactive: vi.fn(async (noteId: string) => open.delete(noteId)),
     mergeRemoteUpdate: vi.fn(async () => true),
-    withholdClaimUntilPulled: vi.fn()
+    withholdClaimUntilPulled: vi.fn(),
+    recordWholeBodyMerged: vi.fn()
   }
 }
 
@@ -141,8 +142,7 @@ function engineWith(
   )
   engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '39')
   engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, NOTE_BODY_LEGACY_SWEEP_DONE)
-  // A session that started with no carried-over debt: the runner latches that
-  // answer on its first read, which a running session has long made.
+  // No debt left by an earlier session: nothing is flagged (#2297).
   expect(engine.hasUnmergedRemoteCrdtState('note-clean')).toBe(false)
   return engine
 }
@@ -289,8 +289,10 @@ describe('snapshot push coverage from the change feed (#2299)', () => {
     expect(crdtSync.drainPendingPulls()).toEqual(['note-clean'])
     // The owed pull merged and cleared the flag; the feed is still at 50.
     ;(
-      engine as unknown as { crdtSync: { clearUnmergedIfClean(id: string, s: boolean): void } }
-    ).crdtSync.clearUnmergedIfClean('note-clean', false)
+      engine as unknown as {
+        crdtSync: { settleMergedNotes(ids: string[], generation: number): void }
+      }
+    ).crdtSync.settleMergedNotes(['note-clean'], Number.MAX_SAFE_INTEGER)
     await push(...snapshot(engine, 'note-clean'))
     engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '61')
     await push(...snapshot(engine, 'note-clean'))
@@ -312,12 +314,12 @@ describe('snapshot push coverage from the change feed (#2299)', () => {
       engine as unknown as {
         crdtSync: {
           drainPendingPulls(): string[]
-          clearUnmergedIfClean(id: string, s: boolean): void
+          settleMergedNotes(ids: string[], generation: number): void
         }
       }
     ).crdtSync
     crdtSync.drainPendingPulls()
-    crdtSync.clearUnmergedIfClean('note-clean', false)
+    crdtSync.settleMergedNotes(['note-clean'], Number.MAX_SAFE_INTEGER)
     engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '70')
 
     expect(engine.snapshotCoverage('note-clean')).toEqual({ unmerged: true })
@@ -335,12 +337,12 @@ describe('snapshot push coverage from the change feed (#2299)', () => {
       engine as unknown as {
         crdtSync: {
           drainPendingPulls(): string[]
-          clearUnmergedIfClean(id: string, s: boolean): void
+          settleMergedNotes(ids: string[], generation: number): void
         }
       }
     ).crdtSync
     crdtSync.drainPendingPulls()
-    crdtSync.clearUnmergedIfClean('note-clean', false)
+    crdtSync.settleMergedNotes(['note-clean'], Number.MAX_SAFE_INTEGER)
 
     expect(engine.snapshotCoverage('note-clean', 'rev-a')).toEqual({ unmerged: true })
     expect(engine.snapshotCoverage('note-clean', undefined)).toEqual({ unmerged: true })
@@ -372,7 +374,7 @@ describe('snapshot push coverage from the change feed (#2299)', () => {
     const engine = engineWith(getDb)
     engine.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '150')
 
-    engine.oweCrdtPull('note-clean')
+    engine.oweCrdtPull('note-clean', 'local_only')
 
     expect(engine.snapshotCoverage('note-clean')).toEqual({ unmerged: true })
   })

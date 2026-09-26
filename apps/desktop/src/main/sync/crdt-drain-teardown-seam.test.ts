@@ -26,6 +26,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -143,8 +144,7 @@ const runtimeMocks = vi.hoisted(() => {
     /** Where the retired pending-note file lives; a fresh temp dir per test. */
     userDataDir: '',
     indexRows: [] as Array<{ id: string; title: string; date: string | null }>,
-    currentDevice: { id: 'device-1', signingPublicKey: null as string | null },
-    db: null as any,
+    db: null as TestDatabaseResult | null,
     getDatabase: vi.fn(),
     getIndexDatabase: vi.fn(),
     retrieveToken: vi.fn(),
@@ -442,24 +442,6 @@ vi.mock('./key-verification', () => ({
   isKeyMaterialActivityRecent: vi.fn().mockReturnValue(false)
 }))
 
-function createDb() {
-  return {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        // `all`: the sync_state reads behind the unmerged-debt write (#2299).
-        where: vi.fn(() => ({ get: vi.fn(() => runtimeMocks.currentDevice), all: vi.fn(() => []) }))
-      }))
-    })),
-    update: vi.fn(() => ({
-      set: vi.fn(() => ({ where: vi.fn(() => ({ run: vi.fn() })) }))
-    })),
-    // The unmerged-debt write a full-state note's owed pull raises (#2299).
-    insert: vi.fn(() => ({
-      values: vi.fn(() => ({ onConflictDoUpdate: vi.fn(() => ({ run: vi.fn() })) }))
-    }))
-  }
-}
-
 function createIndexDb() {
   return {
     select: vi.fn(() => ({
@@ -495,9 +477,9 @@ describe('full-state flush liveness, stopSyncRuntime to the note-body outbox', (
     runtimeMocks.SyncQueueManager.rows = []
     runtimeMocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-drain-seam-'))
     runtimeMocks.indexRows = [{ id: 'note-a', title: 'Note A', date: null }]
-    runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: null }
-    runtimeMocks.db = createDb()
-    runtimeMocks.getDatabase.mockReturnValue(runtimeMocks.db)
+    // A real data DB: a failed pull owes its note a durable debt row (#2297).
+    runtimeMocks.db = createTestDataDb()
+    runtimeMocks.getDatabase.mockReturnValue(runtimeMocks.db.db)
     runtimeMocks.getIndexDatabase.mockReturnValue(createIndexDb())
     runtimeMocks.retrieveToken.mockResolvedValue('refresh-token')
     runtimeMocks.storeGet.mockReturnValue({})
@@ -533,6 +515,7 @@ describe('full-state flush liveness, stopSyncRuntime to the note-body outbox', (
 
   afterEach(() => {
     fs.rmSync(runtimeMocks.userDataDir, { recursive: true, force: true })
+    runtimeMocks.db?.close()
   })
 
   /**

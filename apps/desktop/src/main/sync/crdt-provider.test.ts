@@ -773,7 +773,7 @@ describe('CrdtProvider', () => {
     expect(owe).not.toHaveBeenCalled()
     provider.setNoteLocalOnly('note-1', false)
 
-    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1')
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'local_only')
   })
 
   it('keeps the pending snapshot for retry when the snapshot push fails', async () => {
@@ -1423,7 +1423,25 @@ describe('CrdtProvider', () => {
 
     await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
 
-    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1')
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction')
+  })
+
+  // #2297 review B-H2, A-7: the watermark goes with the dropped updates, and
+  // with no sync runtime nothing is flagged; the full-state row or a sweep pays.
+  it('drops the watermark and owes nothing when a failed compaction has no sync runtime', async () => {
+    provider.setOweRemoteMerge(null)
+    const forget = vi.spyOn(provider, 'forgetSnapshotWatermark')
+    mocks.compactYDoc.mockReturnValue({ compacted: new Uint8Array([0, 0]), savedBytes: 120 })
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('buffered'))
+      throw new Error('CRDT_SNAPSHOT_NOT_COVERED')
+    })
+
+    await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
+
+    expect(forget).toHaveBeenCalledExactlyOnceWith('note-1')
   })
 
   it('owes the note a pull when an abandoned compaction has no live doc for its buffer', async () => {
@@ -1440,7 +1458,7 @@ describe('CrdtProvider', () => {
     await provider.compactDoc('note-1')
 
     expect(provider.getDoc('note-1')).toBeUndefined()
-    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1')
+    expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction')
   })
 
   it('owes nothing when a compaction replays its buffer onto the live doc', async () => {

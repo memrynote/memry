@@ -51,6 +51,17 @@ export interface PageNoteBodies {
   refused: string[]
   /** Notes whose entry was not fetched or not current (transport, budget, pruned): owed a whole-body pull. */
   owed: string[]
+  /**
+   * Lowest entry cursor of each note on the page, for its debt's
+   * `lowest_cursor` (#2297). `null` when an entry's cursor could not be read.
+   */
+  cursors?: Map<string, number | null>
+  /**
+   * Notes whose entries were skipped because their record is on the page, with
+   * the lowest such entry cursor. Owed in the page transaction, so a record
+   * that fails to apply still leaves its note owed and flagged (#2297 B-H1).
+   */
+  skippedForRecord?: Map<string, number | null>
   /** Every body failed to decrypt and the account key check says why; the cursor holds. */
   keyStop?: 'mismatch' | 'transition'
 }
@@ -117,7 +128,13 @@ export class NoteBodyFeed {
     }
     this.trackNegotiation(Array.isArray(changes.noteBodies))
     if (!Array.isArray(changes.noteBodies)) return null
-    const page: PageNoteBodies = { bodies: [], refused: [], owed: [] }
+    const page: PageNoteBodies = {
+      bodies: [],
+      refused: [],
+      owed: [],
+      cursors: new Map(),
+      skippedForRecord: new Map()
+    }
     const provider = this.deps.ctx.deps.crdtProvider
     if (!provider) return page
 
@@ -134,16 +151,41 @@ export class NoteBodyFeed {
       return false
     }
     const parsed: NoteBodyChange[] = []
+    const lowestInto = (
+      cursors: Map<string, number | null>,
+      noteId: string,
+      cursor: number | null
+    ): void => {
+      const held = cursors.get(noteId)
+      const lowest = held === null || cursor === null ? null : Math.min(held ?? cursor, cursor)
+      cursors.set(noteId, lowest)
+    }
+    const noteCursor = (noteId: string, cursor: number | null): void =>
+      lowestInto(page.cursors!, noteId, cursor)
     for (const raw of changes.noteBodies) {
       const result = NoteBodyChangeSchema.safeParse(raw)
+      const skippedId = result.success ? result.data.noteId : (raw as { noteId?: unknown })?.noteId
+      if (
+        typeof skippedId === 'string' &&
+        pageRecords.has(skippedId) &&
+        !provider.isNoteLocalOnly(skippedId)
+      ) {
+        lowestInto(page.skippedForRecord!, skippedId, result.success ? result.data.cursor : null)
+      }
       if (result.success) {
-        if (wanted(result.data.noteId)) parsed.push(result.data)
+        if (wanted(result.data.noteId)) {
+          parsed.push(result.data)
+          noteCursor(result.data.noteId, result.data.cursor)
+        }
         continue
       }
       const noteId = (raw as { noteId?: unknown } | null)?.noteId
       if (typeof noteId !== 'string' || noteId.length === 0) {
         log.error('Dropped a change-feed note body with no noteId')
-      } else if (wanted(noteId)) page.refused.push(noteId)
+      } else if (wanted(noteId)) {
+        page.refused.push(noteId)
+        noteCursor(noteId, null)
+      }
     }
     // Every snapshot GET returns the note's current snapshot, so one per note:
     // the newest entry, whose revision is the one the skip compares (A-M1).
@@ -184,13 +226,38 @@ export class NoteBodyFeed {
   }
 
   /**
+   * Inside a slice's transaction, after its records applied: owe the skipped
+   * bodies of the records this slice applied, and take them off the page's
+   * map, so the slice's own CRDT batch settles them (#2297 round 2 b-M2).
+   */
+  oweSkippedForRecords(
+    skipped: Map<string, number | null> | undefined,
+    applied: ReadonlyArray<{ id: string }>
+  ): void {
+    if (!skipped) return
+    const due = applied.map((item) => item.id).filter((noteId) => skipped.has(noteId))
+    for (const noteId of this.withRows(due)) {
+      this.deps.crdtSync().oweSkippedBody(noteId, skipped.get(noteId) ?? null)
+    }
+    for (const noteId of due) skipped.delete(noteId)
+  }
+
+  /**
    * Inside the last slice transaction, after its records applied and before
    * any cursor write. Only a note that still has a row is ledgered or owed: a
    * pull of a deleted one would let the write-back re-create it (A-H1, B-H1).
    */
   recordInPage(page: PageNoteBodies): void {
-    this.refuse(page.refused)
-    for (const noteId of this.withRows(page.owed)) this.deps.crdtSync().addPendingPull(noteId)
+    this.refuse(page, page.refused, 'feed_refused')
+    for (const noteId of this.withRows(page.owed)) {
+      this.deps.crdtSync().addPendingPull(noteId, 'feed_owed', page.cursors?.get(noteId) ?? null)
+    }
+    // What no slice applied a record for (filtered, quarantined, schema
+    // invalid, failed): no queued pull, and the note stays owed and flagged.
+    const skipped = page.skippedForRecord ?? new Map<string, number | null>()
+    for (const noteId of this.withRows([...skipped.keys()])) {
+      this.deps.crdtSync().oweSkippedBody(noteId, skipped.get(noteId) ?? null)
+    }
   }
 
   /**
@@ -217,7 +284,7 @@ export class NoteBodyFeed {
           {
             provider,
             isKnownNote: (id) => isKnownNote(this.deps.ctx.deps.db, id),
-            onMissingBase: (id) => this.deps.crdtSync().addPendingPull(id)
+            onMissingBase: (id) => this.deps.crdtSync().addPendingPull(id, 'missing_base')
           },
           noteId,
           bodies.map((body) => body.update)
@@ -239,7 +306,7 @@ export class NoteBodyFeed {
         failed.push(noteId)
       }
     }
-    this.refuse(failed)
+    this.refuse(page, failed, 'land_failed')
   }
 
   /**
@@ -258,14 +325,20 @@ export class NoteBodyFeed {
     return merged && !crdtSync.hasUnmergedRemoteState(noteId)
   }
 
-  private refuse(refused: string[]): void {
+  private refuse(
+    page: PageNoteBodies,
+    refused: string[],
+    reason: 'feed_refused' | 'land_failed'
+  ): void {
     const noteIds = this.withRows(refused)
     if (noteIds.length === 0) return
     this.deps.ledger.record(
       noteIds.map((id) => ({ id, type: NOTE_BODY_ITEM_TYPE })),
       'envelope'
     )
-    for (const noteId of noteIds) this.deps.crdtSync().addPendingPull(noteId)
+    for (const noteId of noteIds) {
+      this.deps.crdtSync().addPendingPull(noteId, reason, page.cursors?.get(noteId) ?? null)
+    }
   }
 
   private withRows(noteIds: string[]): string[] {

@@ -1,4 +1,6 @@
 import { app } from 'electron'
+import { sql } from 'drizzle-orm'
+import { RateLimitError } from '@memry/sync-client/http-errors'
 import { getSyncEngine, getSyncWebSocket, startSyncRuntime, stopSyncRuntime } from './runtime'
 import type { SyncEngine } from './engine'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
@@ -23,6 +25,15 @@ export interface SyncSocketStateForTests {
   connectionGeneration: number
   errors: string[]
   internals: Record<string, unknown>
+}
+
+/** One `crdt_body_debts` row, as the debt-restart lane reads it (#2297). */
+export interface CrdtBodyDebtForTests {
+  noteId: string
+  reason: string
+  generation: number
+  failures: number
+  lastFailedAt: number | null
 }
 
 export const syncStateTestHooks = {
@@ -133,6 +144,43 @@ export const syncStateTestHooks = {
     crdtSync.pullCrdtForNotes = async () => ({ snapshotGets: 0, batchPosts: 0 })
     crdtSync.applyCrdtBatch = async () => ({ snapshotGets: 0, batchPosts: 0 })
     crdtSync.applyCrdtIncrementals = async () => false
+  },
+
+  /**
+   * Answer every CRDT body pull that is not the change feed with a rate limit,
+   * through the coordinator's real failure path, so the notes it would pull
+   * stay owed (#2297 live lane). Until the runtime restarts.
+   */
+  async rateLimitCrdtBodyPullsForTests(): Promise<void> {
+    const engine = getSyncEngine()
+    if (!engine) {
+      throw new Error('Sync runtime is not initialized')
+    }
+    const crdtSync = engine['crdtSync'] as unknown as Record<string, unknown>
+    const rateLimited = async (): Promise<never> => {
+      throw new RateLimitError()
+    }
+    crdtSync.probeBatchChunk = rateLimited
+    crdtSync.applySnapshotBaseline = rateLimited
+  },
+
+  /**
+   * This device's durable CRDT body debts (#2297), or null on a build without
+   * the `crdt_body_debts` table, so a spec runs against either build.
+   */
+  async getCrdtBodyDebtsForTests(): Promise<CrdtBodyDebtForTests[] | null> {
+    const engine = getSyncEngine()
+    if (!engine) {
+      throw new Error('Sync runtime is not initialized')
+    }
+    try {
+      return engine['ctx'].deps.db.all<CrdtBodyDebtForTests>(
+        sql`SELECT note_id AS noteId, reason, generation, failures, last_failed_at AS lastFailedAt
+          FROM crdt_body_debts ORDER BY note_id`
+      )
+    } catch {
+      return null
+    }
   },
 
   /** One record pull, the path a `changes_available` wake takes, never a full sync. */

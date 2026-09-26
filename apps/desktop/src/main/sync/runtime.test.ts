@@ -1078,10 +1078,11 @@ describe('sync runtime', () => {
       baseRevision: 'rev-held'
     })
     const owe = runtimeMocks.crdtProvider.setOweRemoteMerge.mock.calls.at(-1)![0] as (
-      noteId: string
+      noteId: string,
+      reason: 'local_only' | 'compaction'
     ) => void
-    owe('note-2')
-    expect(engine.oweCrdtPull).toHaveBeenCalledWith('note-2')
+    owe('note-2', 'compaction')
+    expect(engine.oweCrdtPull).toHaveBeenCalledWith('note-2', 'compaction')
   })
 
   it('splits a CRDT batch too big for one request across several requests', async () => {

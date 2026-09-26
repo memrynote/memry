@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { SyncEngine, type SyncEngineDeps } from './engine'
-import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import { SYNC_STATE_KEYS } from './engine/sync-context'
+import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
 describe('SyncEngine', () => {
@@ -425,7 +426,84 @@ describe('SyncEngine', () => {
       // scheduler would otherwise push a snapshot and prune the very update the
       // broadcast announced — #1503 with the server itself as the witness.
       expect(engine.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
+      // #2297: and durably, so a crash before the pull keeps the note owed.
+      expect(getDb().sqlite.prepare('SELECT note_id, reason FROM crdt_body_debts').all()).toEqual([
+        { note_id: 'note-ws', reason: 'broadcast' }
+      ])
 
+      vi.restoreAllMocks()
+    })
+
+    // #2297 review A-6, B-L5: once the legacy sweep is done the feed re-serves
+    // the body after a crash, so the broadcast flag stays in memory.
+    it('#then a `crdt_updated` broadcast after the legacy sweep writes no durable debt', () => {
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws', cursor: 12 })
+
+      expect(engine.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
+      expect(getDb().sqlite.prepare('SELECT count(*) AS n FROM crdt_body_debts').get()).toEqual({
+        n: 0
+      })
+      vi.restoreAllMocks()
+    })
+
+    // #2297 round 2: a frame without a cursor is an old server's, which may not
+    // serve the body in the feed; it stays durable after the legacy sweep.
+    it('#then a `crdt_updated` broadcast without a cursor stays durable after the legacy sweep', () => {
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+      engine.setStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP, 'done')
+
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws' })
+
+      expect(engine.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
+      expect(getDb().sqlite.prepare('SELECT note_id, reason FROM crdt_body_debts').all()).toEqual([
+        { note_id: 'note-ws', reason: 'broadcast' }
+      ])
+      vi.restoreAllMocks()
+    })
+
+    // #2297: a debt a previous engine left routes the note around the prune
+    // from the next start on, and a clean pull clears it.
+    it('#then a debt left by the previous engine flags the note after a restart until a pull settles it', async () => {
+      const provider = crdtProviderStub()
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: provider as unknown as SyncEngineDeps['crdtProvider'],
+        network: createMockNetwork(false)
+      })
+      const first = new SyncEngine(deps)
+      ;(
+        first as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws' })
+      await first.stop({ skipFinalPush: true })
+
+      const second = new SyncEngine(deps)
+      expect(second.hasUnmergedRemoteCrdtState('note-ws')).toBe(false)
+      await second.start()
+      expect(second.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
+
+      vi.spyOn(await import('./http-client'), 'fetchCrdtSnapshot').mockResolvedValue(null)
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        updates: [],
+        hasMore: false
+      })
+      await expect(second.mergeRemoteCrdtForNote('note-ws')).resolves.toBe(true)
+
+      expect(second.hasUnmergedRemoteCrdtState('note-ws')).toBe(false)
+      expect(getDb().sqlite.prepare('SELECT count(*) AS n FROM crdt_body_debts').get()).toEqual({
+        n: 0
+      })
       vi.restoreAllMocks()
     })
 

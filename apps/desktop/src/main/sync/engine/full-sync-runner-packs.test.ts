@@ -166,7 +166,7 @@ const createHarness = (
       addPendingPull: vi.fn(),
       drainPendingPulls: vi.fn(() => []),
       pendingPullCount: 0,
-      hasUnmergedNotes: false
+      nextDeferredPullAt: vi.fn(() => null)
     } as unknown as CrdtSyncCoordinator,
     actions
   )
