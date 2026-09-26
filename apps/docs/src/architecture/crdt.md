@@ -433,6 +433,13 @@ during a vault switch may have dropped the entry in between. A doc opened withou
 would count as inactive while an editor was typing into it, and an update that arrives
 after its entry is gone is dropped rather than applied.
 
+The same rule governs the provider's own short-lived opens. The batched snapshot push, the
+full-state read and vault seeding each open a doc for themselves and close it when done,
+and they close it only if no window has attached in the meantime (`closeIfInactive`). An
+editor can open the same note while a push holds it; an unconditional close there left
+the editor typing into a doc main had destroyed, and every keystroke after it was dropped
+(#2448).
+
 Attribution is released on every path that ends a window's interest in a doc, so it never
 pins a doc for the rest of the session: the renderer's `crdt:close-doc` on unmount, a
 `closed` hook per window for ⌘W and renderer crashes, a broadcast-time backstop for any
