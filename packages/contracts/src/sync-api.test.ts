@@ -47,7 +47,11 @@ import {
   RECORD_CLOCK_REQUIRED_ITEM_TYPES,
   CRDT_SYNC_ITEM_TYPES,
   SYNC_OPERATIONS,
-  ENCRYPTABLE_ITEM_TYPES
+  ENCRYPTABLE_ITEM_TYPES,
+  FEED_ONLY_SYNC_TYPES,
+  NEGOTIABLE_SYNC_TYPES,
+  NoteBodyChangeSchema,
+  RecordPushItemIdentitySchema
 } from './sync-api'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
@@ -578,6 +582,72 @@ describe('RecordChangesResponseSchema', () => {
     expect(RecordChangesResponseSchema.safeParse({ ...page, inline: {} }).success).toBe(false)
   })
 
+  // #2295
+  it('keeps noteBodies optional: absent means the server does not serve bodies', () => {
+    const parsed = RecordChangesResponseSchema.parse({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 0
+    })
+    expect(parsed).not.toHaveProperty('noteBodies')
+  })
+
+  // #2295
+  it('accepts a page carrying update and snapshot body entries, each parsed on its own', () => {
+    const parsed = RecordChangesResponseSchema.parse({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 3,
+      noteBodies: [
+        {
+          op: 'update',
+          noteId: 'note-1',
+          cursor: 1,
+          sequenceNum: 1,
+          signerDeviceId: 'device-1',
+          createdAt: 1,
+          size: 3,
+          data: 'AQID'
+        },
+        {
+          op: 'update',
+          noteId: 'note-1',
+          cursor: 2,
+          sequenceNum: 2,
+          signerDeviceId: 'device-1',
+          createdAt: 1,
+          size: 70_000
+        },
+        {
+          op: 'snapshot',
+          noteId: 'note-1',
+          cursor: 3,
+          sequenceNum: 2,
+          revision: 'rev-1',
+          signerDeviceId: 'device-1',
+          createdAt: 1,
+          size: 10
+        }
+      ]
+    })
+
+    const entries = (parsed.noteBodies ?? []).map((entry) => NoteBodyChangeSchema.parse(entry))
+    expect(entries.map((entry) => entry.op)).toEqual(['update', 'update', 'snapshot'])
+    expect(entries[1]).not.toHaveProperty('data')
+  })
+
+  // #2295: like inline, one malformed body entry never fails the page.
+  it('keeps a page whose noteBodies holds a malformed entry', () => {
+    const page = { items: [], deleted: [], hasMore: false, nextCursor: 0 }
+    const parsed = RecordChangesResponseSchema.parse({ ...page, noteBodies: [{ op: 'delete' }] })
+
+    expect(parsed.noteBodies).toEqual([{ op: 'delete' }])
+    expect(NoteBodyChangeSchema.safeParse(parsed.noteBodies?.[0]).success).toBe(false)
+    expect(RecordChangesResponseSchema.safeParse({ ...page, noteBodies: {} }).success).toBe(false)
+  })
+
   // #2280
   it('rejects a fractional commit time', () => {
     expect(
@@ -804,6 +874,41 @@ describe('SignatureMetadataSchema', () => {
     if (!result.success) {
       expect(result.error.issues[0].path).toContain('algorithm')
     }
+  })
+})
+
+// #2295
+describe('note_body is a feed-only negotiable type', () => {
+  it('is negotiable but never a record type, so no envelope schema can name it', () => {
+    expect(FEED_ONLY_SYNC_TYPES).toEqual(['note_body'])
+    expect(NEGOTIABLE_SYNC_TYPES).toEqual([...RECORD_SYNC_ITEM_TYPES, 'note_body'])
+    // Both clients build X-Memry-Sync-Types from RECORD_SYNC_ITEM_TYPES
+    // (apps/desktop/src/main/sync/http-client.ts, packages/sync-client/src/pull/http.ts),
+    // so this also pins that no shipped client declares bodies before it can apply them.
+    expect(RECORD_SYNC_ITEM_TYPES).not.toContain('note_body')
+    expect(LEGACY_RECORD_SYNC_ITEM_TYPES).not.toContain('note_body')
+    expect(ENCRYPTABLE_ITEM_TYPES).not.toContain('note_body')
+  })
+
+  it('is refused by the push item and push identity schemas', () => {
+    expect(RecordPushItemSchema.safeParse(validPushItem({ type: 'note_body' })).success).toBe(false)
+    expect(
+      RecordPushItemIdentitySchema.safeParse({ id: 'note-1', type: 'note_body' }).success
+    ).toBe(false)
+  })
+
+  it('rejects a body entry with an unknown op', () => {
+    expect(
+      NoteBodyChangeSchema.safeParse({
+        op: 'delete',
+        noteId: 'note-1',
+        cursor: 1,
+        sequenceNum: 1,
+        signerDeviceId: 'device-1',
+        createdAt: 1,
+        size: 0
+      }).success
+    ).toBe(false)
   })
 })
 

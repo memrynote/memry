@@ -27,13 +27,6 @@ vi.mock('../services/sync', () => ({
     hasMore: false,
     nextCursor: 0
   }),
-  getInlineChanges: vi.fn().mockResolvedValue({
-    items: [],
-    deleted: [],
-    hasMore: false,
-    nextCursor: 0,
-    inline: []
-  }),
   processRecordPushBatch: vi.fn().mockResolvedValue({
     accepted: ['550e8400-e29b-41d4-a716-446655440000'],
     rejected: [],
@@ -144,7 +137,6 @@ import {
   getSyncStatus,
   getManifest,
   getChanges,
-  getInlineChanges,
   processRecordPushBatch,
   pullItems,
   getItem,
@@ -634,9 +626,10 @@ describe('sync routes', () => {
       await app.request('/sync/changes?cursor=5&limit=10', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10, 'vault-1', [
-        ...LEGACY_RECORD_SYNC_ITEM_TYPES
-      ])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 5, 10, 'vault-1', {
+        recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        noteBodies: false
+      })
     })
 
     it('should default cursor to 0 when omitted', async () => {
@@ -644,14 +637,21 @@ describe('sync routes', () => {
       await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
-        ...LEGACY_RECORD_SYNC_ITEM_TYPES
-      ])
-      expect(getInlineChanges).not.toHaveBeenCalled()
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        noteBodies: false
+      })
     })
 
     // #2292
     it('reads the inline page with R2 when asked with inline=1', async () => {
+      vi.mocked(getChanges).mockResolvedValueOnce({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 5,
+        inline: []
+      })
       const res = await app.request(
         '/sync/changes?cursor=5&limit=500&inline=1',
         { method: 'GET' },
@@ -660,16 +660,15 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(getInlineChanges).toHaveBeenCalledWith(
+      expect(getChanges).toHaveBeenCalledWith(
         env.DB,
-        env.STORAGE,
         'user-1',
         5,
         500,
         'vault-1',
-        [...LEGACY_RECORD_SYNC_ITEM_TYPES]
+        { recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES], noteBodies: false },
+        env.STORAGE
       )
-      expect(getChanges).not.toHaveBeenCalled()
       await expect(res.json()).resolves.toMatchObject({ inline: [] })
     })
 
@@ -685,7 +684,7 @@ describe('sync routes', () => {
       expect(res.status).toBe(400)
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
-      expect(getInlineChanges).not.toHaveBeenCalled()
+      expect(getChanges).not.toHaveBeenCalled()
     })
 
     it('should return 400 for non-numeric cursor', async () => {
@@ -2064,9 +2063,10 @@ describe('sync routes', () => {
       await app.request('/sync/changes', { method: 'GET' }, env, executionCtx)
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
-        ...LEGACY_RECORD_SYNC_ITEM_TYPES
-      ])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        noteBodies: false
+      })
     })
 
     it('narrows to the declared types when the header is sent', async () => {
@@ -2079,10 +2079,10 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', [
-        'note',
-        'task'
-      ])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: ['note', 'task'],
+        noteBodies: false
+      })
     })
 
     it('passes negotiated types to pullItems', async () => {
@@ -2118,7 +2118,42 @@ describe('sync routes', () => {
       )
 
       // #then
-      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', ['note'])
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: ['note'],
+        noteBodies: false
+      })
+    })
+
+    // #2295: note_body is served by /sync/changes only; pull and manifest get
+    // the record types alone.
+    it('keeps a declared note_body out of pull and manifest', async () => {
+      const headers = { 'X-Memry-Sync-Types': 'note,note_body' }
+
+      await app.request('/sync/changes', { method: 'GET', headers }, env, executionCtx)
+      await app.request(
+        '/sync/pull',
+        {
+          ...jsonPost('/sync/pull', { itemIds: [VALID_UUID] }),
+          headers: { 'Content-Type': 'application/json', ...headers }
+        },
+        env,
+        executionCtx
+      )
+      await app.request('/sync/manifest', { method: 'GET', headers }, env, executionCtx)
+
+      expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', {
+        recordTypes: ['note'],
+        noteBodies: true
+      })
+      expect(pullItems).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        [VALID_UUID],
+        'vault-1',
+        ['note']
+      )
+      expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', ['note'], undefined)
     })
   })
 })

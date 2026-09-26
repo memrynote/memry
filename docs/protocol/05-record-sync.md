@@ -4,7 +4,9 @@
 (chapter 00 §0.1).
 
 The record feed carries **metadata** for every syncable item. Note and journal
-**bodies** do not travel here; they travel as CRDT updates (chapter 07).
+**bodies** travel as CRDT updates (chapter 07). A client that declares
+`note_body` (§5.3) also receives body rows in `GET /sync/changes`, on the same
+cursor (§5.11.1, chapter 07 §7.17).
 
 ## 5.1 Routes
 
@@ -17,7 +19,7 @@ form** (chapter 00 §0.3.1).
 | ------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | GET                 | `/sync/status`                          | none; returns `SyncStatusSchema` including `clientPolicy` (`packages/contracts/src/sync-api.ts:473-478`)             |
 | GET                 | `/sync/manifest`                        | optional `limit` and `cursor`; **a cursor without a limit is a 400** (`apps/sync-server/src/routes/sync.ts:327-331`) |
-| GET                 | `/sync/changes`                         | optional `cursor`, optional `limit`, optional `inline=1` (§5.11.2) (`apps/sync-server/src/routes/sync.ts:350-398`)   |
+| GET                 | `/sync/changes`                         | optional `cursor`, optional `limit`, optional `inline=1` (§5.11.2) (`apps/sync-server/src/routes/sync.ts:344-397`)   |
 | POST                | `/sync/push`                            | `RecordPushRequestSchema`, 1 to 100 items                                                                            |
 | POST                | `/sync/pull`                            | `PullRequestSchema`, 1 to 100 item ids                                                                               |
 | GET                 | `/sync/items/:id`                       | one item                                                                                                             |
@@ -49,23 +51,38 @@ constants must match the right spelling.
 ## 5.3 Type negotiation
 
 **Normative.** Negotiation is a **header, not a query parameter**. Server
-resolution (`apps/sync-server/src/lib/sync-types.ts:34-45`):
+resolution (`apps/sync-server/src/lib/sync-types.ts:54-68`):
 
 | Header state                           | Resolved set                                                      |
 | -------------------------------------- | ----------------------------------------------------------------- |
-| **absent**                             | `LEGACY_RECORD_SYNC_ITEM_TYPES`, the frozen 15 (`:35`)            |
-| present, at least one entry recognised | the recognised entries, deduplicated, first-seen order (`:37-45`) |
+| **absent**                             | `LEGACY_RECORD_SYNC_ITEM_TYPES`, the frozen 15, no bodies (`:55`) |
+| present, at least one entry recognised | the recognised entries, deduplicated, first-seen order (`:57-68`) |
 | present, **nothing** recognised        | **the empty set**, serving zero rows                              |
 
-**"Recognised" means a member of the twenty-five record types**, being the
-fifteen this feature subscribes to plus the ten it does not, both enumerated
-in chapter 13 §13.1. `attachment` is in `SYNC_ITEM_TYPES` but is **not** a record
-type (§13.8) and is therefore not recognised in this header: declaring it is
-indistinguishable from declaring a typo. Anything outside those twenty-five is
-dropped from the resolved set, silently and individually — an unrecognised entry
-never fails the request and never invalidates the entries beside it. This only
-bites a client that declares something outside the fixed fifteen; a conforming
-client's header is recognised in full by construction.
+The server resolves the header into a subscription of two parts: the record
+types, and whether `note_body` was declared
+(`apps/sync-server/src/lib/sync-types.ts:20-24`).
+
+**`note_body` is the one feed-only type** (`FEED_ONLY_SYNC_TYPES`, chapter 00
+§0.7, #2295). Declaring it adds note and journal body rows to
+`GET /sync/changes` (§5.11.1) and nothing else: it is never a record type, so it
+never reaches the manifest, `POST /sync/pull`, bootstrap, or the record rows of
+`/sync/changes`. A header of only `note_body` is recognised and resolves to zero
+record types plus bodies. Declaring it does not replay body rows below the
+client's cursor, and body rows written before migration `0011` carry no cursor
+and are never in the feed (chapter 07 §7.17). No shipped client declares it
+yet: both TypeScript clients send `RECORD_SYNC_ITEM_TYPES`, which does not
+contain it.
+
+**Otherwise "recognised" means a member of the twenty-five record types**, being
+the fifteen this feature subscribes to plus the ten it does not, both
+enumerated in chapter 13 §13.1. `attachment` is in `SYNC_ITEM_TYPES` but is
+**not** a record type (§13.8) and is therefore not recognised in this header:
+declaring it is indistinguishable from declaring a typo. Anything outside those
+twenty-five is dropped from the resolved set, silently and individually — an
+unrecognised entry never fails the request and never invalidates the entries
+beside it. This only bites a client that declares something outside the fixed
+fifteen; a conforming client's header is recognised in full by construction.
 
 The empty-set rule is deliberate: falling back to legacy would hand a
 negotiating client 15 types it never asked for, which is the convergence loss
@@ -80,8 +97,9 @@ shipped TypeScript client declares all 25
 ### 5.3.1 The subset path — Q05.1
 
 **Normative.** The server serves **only** the resolved set. `getChanges` takes
-the resolved `syncTypes` (`apps/sync-server/src/routes/sync.ts:357`) and filters
-on it, so **a subscribed-out type is never served in `items`**.
+the resolved subscription (`apps/sync-server/src/routes/sync.ts:372-375`) and
+filters on it, so **a subscribed-out type is never served in `items`**, and
+body rows are served only when `note_body` was declared.
 
 A client that receives a type it did not declare MUST treat it as a corrupt item
 and record it, not apply it, and MUST NOT advance its cursor on that basis
@@ -108,6 +126,12 @@ parses `RecordPushEnvelopeSchema` — the same 1..100 bound with the items left
 unvalidated — and then runs `RecordPushItemSchema` on each item. Only the
 envelope can fail the request with a 400; a bad item costs one `rejected[]`
 entry with reason `SYNC_INVALID_ITEM` (§5.5) and the rest of the batch commits.
+
+A push item whose `type` is not a record type cannot be named in `rejected[]`:
+it is dropped unanswered while its neighbours commit, and the request is still
+a 200. **`note_body` takes exactly this path** (#2295): it is negotiable on the
+feed but never a push type, so it never reaches `sync_items`. The client marks
+an id that got no verdict as failed.
 
 A server that answers a bad item with a request-level 400 is **non-conforming**.
 That verdict names no item, so a client cannot learn which queued row to retire:
@@ -295,17 +319,18 @@ because that is what the code implements.
 
 ## 5.10 Server-side size and page limits
 
-**Normative** (`apps/sync-server/src/services/sync.ts:30-36`):
+**Normative** (`apps/sync-server/src/services/sync.ts:34-43`):
 
-| Constant                   | Value  | Line   |
-| -------------------------- | ------ | ------ |
-| `MAX_ENCRYPTED_DATA_BYTES` | 5 MiB  | `:30`  |
-| `DEFAULT_CHANGES_LIMIT`    | 100    | `:31`  |
-| `MAX_CHANGES_LIMIT`        | 500    | `:32`  |
-| `D1_MAX_BIND_PARAMS`       | 95     | `:35`  |
-| `MAX_MANIFEST_PAGE_LIMIT`  | 1000   | `:36`  |
-| `MAX_INLINE_CHANGES_LIMIT` | 100    | `:973` |
-| `INLINE_MAX_BLOB_BYTES`    | 64 KiB | `:975` |
+| Constant                      | Value  | Line   |
+| ----------------------------- | ------ | ------ |
+| `MAX_ENCRYPTED_DATA_BYTES`    | 5 MiB  | `:34`  |
+| `DEFAULT_CHANGES_LIMIT`       | 100    | `:35`  |
+| `MAX_CHANGES_LIMIT`           | 500    | `:36`  |
+| `MAX_NOTE_BODY_CHANGES_LIMIT` | 100    | `:39`  |
+| `D1_MAX_BIND_PARAMS`          | 95     | `:42`  |
+| `MAX_MANIFEST_PAGE_LIMIT`     | 1000   | `:43`  |
+| `MAX_INLINE_CHANGES_LIMIT`    | 100    | `:971` |
+| `INLINE_MAX_BLOB_BYTES`       | 64 KiB | `:973` |
 
 The last two apply only to `GET /sync/changes?inline=1` (§5.11.2).
 
@@ -315,10 +340,12 @@ The last two apply only to `GET /sync/changes?inline=1` (§5.11.2).
 ### 5.10.1 `limit` above the ceiling — Q05.4
 
 **Normative: clamped, never rejected.**
-`effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)`
-(`apps/sync-server/src/services/sync.ts:1068`), and the manifest clamps the same
-way against `MAX_MANIFEST_PAGE_LIMIT`
-(`apps/sync-server/src/services/sync.ts:919`).
+`effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)`,
+and to 100 when the request asked `inline=1` (`MAX_INLINE_CHANGES_LIMIT`,
+§5.11.2) or declared `note_body` (`MAX_NOTE_BODY_CHANGES_LIMIT`), because such
+a page carries payload bytes (`apps/sync-server/src/services/sync.ts:1116-1123`).
+The manifest clamps the same way against `MAX_MANIFEST_PAGE_LIMIT`
+(`apps/sync-server/src/services/sync.ts:909`).
 
 A `limit` that is **not a positive integer** is a different case and is rejected
 `400 VALIDATION_ERROR` (`apps/sync-server/src/routes/sync.ts:319-321`, `:353-355`);
@@ -367,6 +394,15 @@ after apply, a client MAY drop a realtime wake whose `cursor` is at or below its
 applied cursor (chapter 09 §9.11). The wake's cursor is only compared, never
 stored as the device cursor.
 
+**The same cursor covers note bodies** (#2295). A `noteBodies` entry's `cursor`
+is on the same per-user sequence as a record's `serverCursor` and follows the
+same rule: it orders the entry, it never advances the client cursor. A page is
+one consistent read of every source it covers, and every item, tombstone and
+body entry in it lies in `(cursor, nextCursor]`
+(`apps/sync-server/src/services/change-feed.ts:57-79`). A client that declared
+`note_body` MUST apply the page's bodies together with its records before
+storing `nextCursor`.
+
 ## 5.11.1 The response shapes
 
 **Normative.** The chapters describe these routes' _behaviour_ at length and
@@ -394,7 +430,7 @@ This table said epoch ms until #2280 needed a millisecond commit time and found
 the column could not supply one.
 
 **A `/sync/changes` ref adds two optional fields** (#2280,
-`RecordChangesItemRefSchema` in `packages/contracts/src/sync-api.ts:497`). The
+`RecordChangesItemRefSchema` in `packages/contracts/src/sync-api.ts:514`). The
 manifest ref does not carry them.
 
 | Field            | Type                                                           |
@@ -404,7 +440,7 @@ manifest ref does not carry them.
 
 Both are absent against a server that predates them. `committedAtMs` is also
 absent for a row last written before migration `0010`, which has no commit time
-and is not backfilled (`apps/sync-server/src/services/sync.ts:1128-1129`).
+and is not backfilled (`apps/sync-server/src/services/sync.ts:1077-1079`).
 `serverCursor` is a trace key, never a pull cursor (§5.11). A client that does
 not know the fields ignores them; one that does MUST treat either as optional.
 
@@ -429,14 +465,38 @@ The four ciphertext fields are identical in both spellings; only their nesting
 differs. A conforming reader accepts the nested form, and `record-envelope.json`
 pins the flat one because the vectors are written from the writer's side.
 
-**`GET /sync/changes`** → `{ items: <changes ref>[], deleted: string[], hasMore: boolean, nextCursor: integer, serverTimeMs?: integer, inline?: <read item>[] }`.
+**`GET /sync/changes`** → `{ items: <changes ref>[], deleted: string[], hasMore: boolean, nextCursor: integer, serverTimeMs?: integer, inline?: <read item>[], noteBodies?: <body entry>[] }`.
 
 The first four are **required**. `nextCursor` is an **integer, not a string** — a
 port that types it as string-or-number will serialise the wrong thing back.
 `deleted` stays a bare id array; the trace fields are on live refs only.
 
+`noteBodies` is present, possibly empty, **iff** the request declared
+`note_body` (§5.3); a client that did not declare it gets the response above
+without the key, byte for byte. Absent on a request that declared it means the
+server does not serve bodies in the feed. Entries are in cursor order
+(`packages/contracts/src/sync-api.ts:557`). The page schema types the array
+as `unknown[]`: a reader validates each entry with `NoteBodyChangeSchema` on its
+own, so one bad entry costs that entry, never the page (§5.14). A body entry
+is:
+
+| Field            | Type                                                                 |
+| ---------------- | -------------------------------------------------------------------- |
+| `op`             | `'update'` or `'snapshot'`; the set is frozen                        |
+| `noteId`         | string, the CRDT document id (a note or a journal, chapter 07 §7.1)  |
+| `cursor`         | positive integer, the row's `server_cursor`                          |
+| `sequenceNum`    | integer, the document's sequence number (chapter 07 §7.4)            |
+| `signerDeviceId` | string                                                               |
+| `createdAt`      | non-negative integer, epoch seconds                                  |
+| `size`           | non-negative integer, stored bytes                                   |
+| `data?`          | `update` only: base64 packed envelope, as in chapter 07 §7.11        |
+| `revision`       | `snapshot` only: the same token as `GET /sync/crdt/snapshot` returns |
+
+An `update` entry without `data` was too large to inline; a `snapshot` entry is
+always a ref. Chapter 07 §7.17 gives the fetch rules.
+
 `serverTimeMs` is the server's epoch-ms time when it answered the page
-(`apps/sync-server/src/routes/sync.ts:398`), optional because an older server
+(`apps/sync-server/src/routes/sync.ts:396`), optional because an older server
 does not send it. It exists so a client can estimate its clock offset from the
 request's round-trip midpoint for the latency trace. It is not an input to any
 sync decision; §5.16 skew detection keeps using the seconds `serverTime`.
@@ -477,12 +537,12 @@ middleware, so it takes no `X-Memry-Vault-Id`.
 
 **Normative.** `GET /sync/changes?inline=1` returns the page's payloads with
 its refs, so a device woken by one small change applies it after one request
-instead of two (`apps/sync-server/src/services/sync.ts:1086`).
+instead of two (`apps/sync-server/src/services/sync.ts:1096`).
 
 - **Opt-in.** Without the `inline` query the response has no `inline` key and
   is byte-for-byte the pre-inline response. `inline` is absent or `1`; any
   other value is `400 VALIDATION_ERROR`, never a silently ignored parameter
-  (`apps/sync-server/src/routes/sync.ts:372-375`). A server that predates the
+  (`apps/sync-server/src/routes/sync.ts:366-369`). A server that predates the
   query ignores it, and the reader sees a page with no `inline`.
 - **Page clamp.** An inline page holds at most `MAX_INLINE_CHANGES_LIMIT` (100)
   rows, whatever `limit` asked (clamped, never rejected, §5.10.1). A client
@@ -495,10 +555,10 @@ instead of two (`apps/sync-server/src/services/sync.ts:1086`).
   `INLINE_MAX_BLOB_BYTES` (64 KiB), so a response stays near 6.5 MB.
 - **Coverage is by id.** `POST /sync/pull` ids are untyped (§5.12.1), so the
   server puts an id in `inline` only when every row this page holds for that
-  id is in `inline` (`apps/sync-server/src/services/sync.ts:1009-1014`). A row
+  id is in `inline` (`apps/sync-server/src/services/sync.ts:981-986`). A row
   the server cannot read (missing blob, missing signer metadata, corrupt
   stored data) takes its whole id out of `inline`; the page still answers 200
-  (`apps/sync-server/src/services/sync.ts:1034-1054`).
+  (`apps/sync-server/src/services/sync.ts:1006-1026`).
 - **Reader.** The reader MUST pull, with `POST /sync/pull`, every page id
   (`items` ∪ `deleted`) that no `inline` element names, and only those
   (`apps/desktop/src/main/sync/engine/changes-page.ts:28`). It MUST NOT infer
@@ -515,6 +575,12 @@ instead of two (`apps/sync-server/src/services/sync.ts:1086`).
   "Sync now" and a first sync are full syncs and do not ask
   (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:292`). The Rust core
   does not ask yet (#2304).
+- **With `note_body`.** A request may both ask `inline=1` and declare
+  `note_body` (#2295, §5.3). The page is then one merged page of records and
+  body rows, clamped to 100 rows, and it carries both `inline` and
+  `noteBodies`. `inline` covers only record rows the page serves, read after
+  the page is closed, so it never names a row past `nextCursor`; `noteBodies`
+  is exactly what the same request without `inline` would return.
 
 ## 5.12 Tombstones
 

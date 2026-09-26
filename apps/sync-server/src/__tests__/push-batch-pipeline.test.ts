@@ -5,7 +5,13 @@ import { CRYPTO_VERSION } from '@memry/contracts/crypto'
 import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { ErrorCodes } from '../lib/errors'
-import { getSnapshot, getUpdates, storeSnapshot, storeUpdates } from '../services/crdt'
+import {
+  getSnapshot,
+  getUpdates,
+  storeSnapshot,
+  storeSnapshotBatch,
+  storeUpdates
+} from '../services/crdt'
 import { generateItemBlobKey } from '../services/blob'
 import {
   computeContentHash,
@@ -321,6 +327,69 @@ describe('cursor order equals commit order (#2282)', () => {
     )
     expect(fromX.maxCursor).toBe(cursorById.get('x3'))
     expect(fromY.maxCursor).toBe(cursorById.get('y1'))
+  })
+})
+
+// #2295: record rows and note-body rows share the one per-user cursor.
+describe('one cursor sequence across records and note bodies (#2295)', () => {
+  const allCursors = (): number[] =>
+    (
+      harness.raw
+        .prepare(
+          `SELECT server_cursor FROM sync_items WHERE user_id = ?
+           UNION ALL SELECT server_cursor FROM crdt_updates WHERE user_id = ?
+           UNION ALL SELECT server_cursor FROM crdt_snapshots WHERE user_id = ?`
+        )
+        .all(USER_ID, USER_ID, USER_ID) as Array<{ server_cursor: number | null }>
+    ).map((row) => row.server_cursor as number)
+
+  it('hands concurrent record, update and snapshot writes disjoint cursors in commit order', async () => {
+    const items = await Promise.all(
+      ['r1', 'r2', 'r3'].map((id) => buildItem({ id, clock: { [DEVICE_A]: 1 } }))
+    )
+
+    // Each committed batch's new cursors, in the order the batches commit.
+    const commits: number[][] = []
+    const observed = new Set<number>()
+    const recording = {
+      ...harness.db,
+      batch: async (statements: D1PreparedStatement[]) => {
+        const results = await harness.db.batch(statements)
+        const fresh = allCursors().filter((cursor) => cursor !== null && !observed.has(cursor))
+        fresh.forEach((cursor) => observed.add(cursor))
+        if (fresh.length > 0) commits.push(fresh.sort((a, b) => a - b))
+        return results
+      }
+    } as D1Database
+
+    const [records, sequences, snapshots] = await Promise.all([
+      processRecordPushBatch(recording, storage, USER_ID, DEVICE_A, items),
+      storeUpdates(recording, USER_ID, 'default', 'note-c', DEVICE_B, [
+        new Uint8Array([1]).buffer,
+        new Uint8Array([2]).buffer
+      ]),
+      storeSnapshotBatch(recording, storage, USER_ID, 'default', DEVICE_A, [
+        { noteId: 'note-s1', snapshotData: new Uint8Array([3]).buffer },
+        { noteId: 'note-s2', snapshotData: new Uint8Array([4]).buffer }
+      ])
+    ])
+
+    expect(records.accepted).toEqual(['r1', 'r2', 'r3'])
+    expect(sequences).toEqual([1, 2])
+    expect(snapshots.every((outcome) => outcome.accepted)).toBe(true)
+
+    const union = allCursors()
+    expect(union).toHaveLength(7)
+    expect(new Set(union).size).toBe(7)
+    expect(commits).toHaveLength(3)
+    const inCommitOrder = commits.flat()
+    expect(inCommitOrder).toEqual([...inCommitOrder].sort((a, b) => a - b))
+    expect(inCommitOrder).toEqual([1, 2, 3, 4, 5, 6, 7])
+
+    const sequence = harness.raw
+      .prepare('SELECT current_cursor FROM server_cursor_sequence WHERE user_id = ?')
+      .get(USER_ID) as { current_cursor: number }
+    expect(sequence.current_cursor).toBe(Math.max(...union))
   })
 })
 

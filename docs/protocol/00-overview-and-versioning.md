@@ -299,7 +299,7 @@ outside the retry budget.
 
 ## 0.7 Item type lists
 
-`packages/contracts/src/sync-api.ts` declares six item-type lists. **The counts
+`packages/contracts/src/sync-api.ts` declares eight item-type lists. **The counts
 below were recounted against the working tree**; the outline this chapter was
 planned from states 25 for `SYNC_ITEM_TYPES`, which is wrong.
 
@@ -310,10 +310,18 @@ planned from states 25 for `SYNC_ITEM_TYPES`, which is wrong.
 | `RECORD_CLOCK_REQUIRED_ITEM_TYPES` |      24 | `packages/contracts/src/sync-api.ts:64-89`   | `RECORD_SYNC_ITEM_TYPES` minus `settings`                       |
 | `CRDT_SYNC_ITEM_TYPES`             |       2 | `packages/contracts/src/sync-api.ts:101`     | `['note', 'journal']` — body types on the CRDT feed, chapter 07 |
 | `LEGACY_RECORD_SYNC_ITEM_TYPES`    |      15 | `packages/contracts/src/sync-api.ts:115-131` | frozen forever; what a header-less client is served             |
-| `ENCRYPTABLE_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:137-163` | `SYNC_ITEM_TYPES` minus `attachment`                            |
+| `ENCRYPTABLE_ITEM_TYPES`           |      25 | `packages/contracts/src/sync-api.ts:152-178` | `SYNC_ITEM_TYPES` minus `attachment`                            |
+| `FEED_ONLY_SYNC_TYPES`             |       1 | `packages/contracts/src/sync-api.ts:145`     | `['note_body']`, negotiable, never a record type (#2295)        |
+| `NEGOTIABLE_SYNC_TYPES`            |      26 | `packages/contracts/src/sync-api.ts:148`     | `RECORD_SYNC_ITEM_TYPES` plus `FEED_ONLY_SYNC_TYPES`            |
 
 `SYNC_OPERATIONS` is `['create', 'update', 'delete']`
-(`packages/contracts/src/sync-api.ts:135`).
+(`packages/contracts/src/sync-api.ts:150`).
+
+`NEGOTIABLE_SYNC_TYPES` is what the server recognises in `X-Memry-Sync-Types`
+(chapter 05 §5.3). A `FEED_ONLY_SYNC_TYPES` member is served only by
+`GET /sync/changes` and never travels as a record envelope, so it is in neither
+`RECORD_SYNC_ITEM_TYPES` nor `LEGACY_RECORD_SYNC_ITEM_TYPES`
+(`packages/contracts/src/sync-api.ts:135-148`).
 
 `LEGACY_RECORD_SYNC_ITEM_TYPES` is frozen and MUST NOT grow: it is what a
 pre-negotiation binary is served, and adding a type to it reaches a client whose
@@ -342,7 +350,7 @@ Four obligations bind every chapter.
    edit to this chapter — and a reviewer is then looking at the fact tables.
 
    ```
-   protocol-constants-sha256: 14bb026f1d764b283ffa2c078b760328cd8ac2ff4aae3dd1bd4269ba312c8848
+   protocol-constants-sha256: 14a15aa284287522b30f79b3aff1238f1cd5e3377efc1e4b37a28d7cbd55345d
    ```
 
    To update it: change the constant, run

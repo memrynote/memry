@@ -5,6 +5,11 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import type { AppContext, Bindings } from '../types'
+import {
+  NoteBodyChangeSchema,
+  RECORD_SYNC_ITEM_TYPES,
+  type RecordChangesResponse
+} from '@memry/contracts/sync-api'
 
 const USER_ID = 'user-legacy'
 const DEVICE_ID = 'device-legacy'
@@ -265,6 +270,138 @@ describe('legacy (header-less) clients', () => {
     const res = await request(app, '/sync/changes?cursor=0')
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toMatchObject({ hasMore: false })
+  })
+
+  // #2295: note bodies now carry a cursor, but only a client that declares
+  // note_body is served them. A header-less client and a client that declares
+  // record types only get the exact response shape they always did.
+  it('never sees note bodies in changes, with or without a record-only type header', async () => {
+    const app = buildApp()
+    await request(app, '/sync/crdt/updates', {
+      method: 'POST',
+      body: JSON.stringify({ noteId: 'note_feed', updates: [Buffer.from([1]).toString('base64')] })
+    })
+    await request(app, '/sync/push', {
+      method: 'POST',
+      body: JSON.stringify({ items: [await pushItem('task-feed')] })
+    })
+
+    const headerSets: Array<Record<string, string>> = [
+      {},
+      { 'X-Memry-Sync-Types': RECORD_SYNC_ITEM_TYPES.join(',') }
+    ]
+    for (const headers of headerSets) {
+      const res = await request(app, '/sync/changes?cursor=0', { headers })
+      const body = (await res.json()) as Record<string, unknown>
+      expect(Object.keys(body).sort()).toEqual([
+        'deleted',
+        'hasMore',
+        'items',
+        'nextCursor',
+        'serverTimeMs'
+      ])
+      expect(body).toMatchObject({
+        items: [{ id: 'task-feed', type: 'task', serverCursor: 2 }],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 2
+      })
+    }
+  })
+})
+
+describe('note_body subscribers (#2295)', () => {
+  const deviceCursor = () =>
+    (
+      harness.raw
+        .prepare('SELECT last_cursor_seen FROM device_sync_state WHERE device_id = ?')
+        .get(DEVICE_ID) as { last_cursor_seen: number } | undefined
+    )?.last_cursor_seen
+
+  it('get the body in cursor order beside the record, and a body-only page moves the device cursor', async () => {
+    const app = buildApp()
+    await request(app, '/sync/push', {
+      method: 'POST',
+      body: JSON.stringify({ items: [await pushItem('task-body')] })
+    })
+    await request(app, '/sync/crdt/updates', {
+      method: 'POST',
+      body: JSON.stringify({
+        noteId: 'note_body_1',
+        updates: [Buffer.from([7]).toString('base64')]
+      })
+    })
+
+    const res = await request(app, '/sync/changes?cursor=0', {
+      headers: { 'X-Memry-Sync-Types': 'task,note_body' }
+    })
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as RecordChangesResponse
+    expect(body.items.map((item) => [item.id, item.serverCursor])).toEqual([['task-body', 1]])
+    expect(
+      (body.noteBodies ?? [])
+        .map((entry) => NoteBodyChangeSchema.parse(entry))
+        .map((entry) => [entry.op, entry.noteId, entry.cursor])
+    ).toEqual([['update', 'note_body_1', 2]])
+    expect(body.nextCursor).toBe(2)
+
+    harness.raw.prepare('DELETE FROM device_sync_state').run()
+    const bodyOnly = await request(app, '/sync/changes?cursor=1', {
+      headers: { 'X-Memry-Sync-Types': 'note_body' }
+    })
+    expect(((await bodyOnly.json()) as RecordChangesResponse).items).toEqual([])
+    expect(deviceCursor()).toBe(2)
+  })
+
+  // #2295 + #2292: a note_body subscriber that also asks inline=1 gets both on
+  // one merged page, and nothing past the last row the page served.
+  it('get inline record items and note bodies on one page when they also ask inline=1', async () => {
+    const app = buildApp()
+    const headers = { 'X-Memry-Sync-Types': 'task,note_body' }
+    await request(app, '/sync/push', {
+      method: 'POST',
+      body: JSON.stringify({ items: [await pushItem('task-in-1')] })
+    })
+    await request(app, '/sync/crdt/updates', {
+      method: 'POST',
+      body: JSON.stringify({
+        noteId: 'note_inline',
+        updates: [Buffer.from([5]).toString('base64')]
+      })
+    })
+    await request(app, '/sync/push', {
+      method: 'POST',
+      body: JSON.stringify({ items: [await pushItem('task-in-2')] })
+    })
+
+    const first = await request(app, '/sync/changes?cursor=0&limit=2&inline=1', { headers })
+    expect(first.status).toBe(200)
+    const page = (await first.json()) as RecordChangesResponse
+    expect(page.items.map((item) => [item.id, item.serverCursor])).toEqual([['task-in-1', 1]])
+    expect(
+      (page.noteBodies ?? [])
+        .map((entry) => NoteBodyChangeSchema.parse(entry))
+        .map((entry) => [entry.op, entry.noteId, entry.cursor])
+    ).toEqual([['update', 'note_inline', 2]])
+    expect(page.nextCursor).toBe(2)
+    expect(page.hasMore).toBe(true)
+
+    // Byte-identical to /sync/pull, and never a row past nextCursor.
+    const pulled = await request(app, '/sync/pull', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ itemIds: ['task-in-1'] })
+    })
+    const pulledItems = ((await pulled.json()) as { items: unknown[] }).items
+    expect(page.inline).toEqual(pulledItems)
+
+    const rest = await request(app, '/sync/changes?cursor=2&inline=1', { headers })
+    const restPage = (await rest.json()) as RecordChangesResponse
+    expect(restPage.items.map((item) => item.id)).toEqual(['task-in-2'])
+    expect((restPage.inline as Array<{ id: string }>).map((item) => item.id)).toEqual(['task-in-2'])
+    expect(restPage.noteBodies).toEqual([])
+    expect(restPage.nextCursor).toBe(3)
+    expect(restPage.hasMore).toBe(false)
   })
 })
 

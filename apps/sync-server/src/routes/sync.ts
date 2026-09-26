@@ -9,7 +9,7 @@ import {
   RecordPushItemSchema
 } from '@memry/contracts/sync-api'
 import type { RecordPushItemInput } from '@memry/contracts/sync-api'
-import { safeBase64Decode } from '../lib/encoding'
+import { safeBase64Decode, safeBase64Encode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { clientGateMiddleware } from '../middleware/client-gate'
@@ -20,7 +20,6 @@ import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { syncTypesMiddleware } from '../middleware/sync-types'
 import {
   getChanges,
-  getInlineChanges,
   getItem,
   getManifest,
   getSyncStatus,
@@ -151,7 +150,6 @@ sync.use('*', paidSyncMiddleware)
 sync.use('*', syncTypesMiddleware)
 
 const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update
-const BASE64_CHUNK_SIZE = 8192
 
 const getRequestPath = (c: Context<AppContext>): string => new URL(c.req.url).pathname
 
@@ -186,16 +184,6 @@ function logQueryValidationFailure(
 ): never {
   logSyncValidationFailure({ transport, endpoint, issue })
   throw new AppError(ErrorCodes[code], issue, 400)
-}
-
-function safeBase64Encode(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
-  let result = ''
-  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
-    const chunk = bytes.subarray(i, i + BASE64_CHUNK_SIZE)
-    result += String.fromCharCode(...chunk)
-  }
-  return btoa(result)
 }
 
 function decodeCrdtPayload(base64: string, endpoint: string, tooLargeMessage: string): ArrayBuffer {
@@ -343,7 +331,13 @@ const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> =
     logQueryValidationFailure('record', endpoint, 'cursor requires limit')
   }
 
-  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!, page)
+  const manifest = await getManifest(
+    c.env.DB,
+    userId,
+    vaultId,
+    c.get('syncSubscription')!.recordTypes,
+    page
+  )
   return c.json(manifest)
 }
 
@@ -374,13 +368,17 @@ const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> =>
     logQueryValidationFailure('record', endpoint, 'Invalid inline value')
   }
 
-  const types = c.get('syncTypes')!
+  const subscription = c.get('syncSubscription')!
   const changes =
     inlineParam === '1'
-      ? await getInlineChanges(c.env.DB, c.env.STORAGE, userId, cursor, limit, vaultId, types)
-      : await getChanges(c.env.DB, userId, cursor, limit, vaultId, types)
+      ? await getChanges(c.env.DB, userId, cursor, limit, vaultId, subscription, c.env.STORAGE)
+      : await getChanges(c.env.DB, userId, cursor, limit, vaultId, subscription)
 
-  if (changes.items.length > 0 || changes.deleted.length > 0) {
+  if (
+    changes.items.length > 0 ||
+    changes.deleted.length > 0 ||
+    (changes.noteBodies?.length ?? 0) > 0
+  ) {
     await updateDeviceCursor(c.env.DB, deviceId, userId, changes.nextCursor, vaultId)
     await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
@@ -562,7 +560,7 @@ const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
     userId,
     parsed.itemIds,
     vaultId,
-    c.get('syncTypes')!
+    c.get('syncSubscription')!.recordTypes
   )
   logRecordQueryBatch({
     endpoint,

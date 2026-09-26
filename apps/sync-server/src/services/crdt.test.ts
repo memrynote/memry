@@ -138,13 +138,14 @@ function createD1Database(): D1Database {
             // statement N-1's row. Bindings are positional and this double
             // reads them by index, so the insert's own column list and the
             // subquery's offsets have to be kept in step with crdt.ts by hand.
-            // Attribution added two columns to the SELECT list, pushing the
-            // subquery's (user, vault, note) triple from 7-9 to 9-11.
+            // Attribution added two columns to the SELECT list, and the feed
+            // cursor (#2295) two binds after them, pushing the subquery's
+            // (user, vault, note) triple from 7-9 to 11-13.
             const nextSequence =
               sql.includes('crdt_snapshots') && sql.includes('UNION ALL')
-                ? getCombinedMax(params[9] as string, params[10] as string, params[11] as string) +
+                ? getCombinedMax(params[11] as string, params[12] as string, params[13] as string) +
                   1
-                : getUpdateMax(params[9] as string, params[10] as string, params[11] as string) + 1
+                : getUpdateMax(params[11] as string, params[12] as string, params[13] as string) + 1
 
             updates.push({
               id: params[0] as string,
@@ -179,6 +180,13 @@ function createD1Database(): D1Database {
               .slice(0, params[4] as number)
 
             return { results: rows as T[] }
+          }
+
+          // The snapshot upsert is sent through db.batch with its cursor
+          // reservation (#2295), which calls all() on every statement.
+          if (sql.startsWith('INSERT INTO crdt_snapshots')) {
+            await prepared.run()
+            return { results: [] as T[] }
           }
 
           if (sql.startsWith('SELECT id, note_id, sequence_num, revision')) {

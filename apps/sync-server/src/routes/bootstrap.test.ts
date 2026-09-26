@@ -35,7 +35,7 @@ const { syncTypes } = vi.hoisted(() => ({ syncTypes: { value: ['note', 'task'] a
 
 vi.mock('../middleware/sync-types', () => ({
   syncTypesMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
-    c.set('syncTypes', syncTypes.value)
+    c.set('syncSubscription', { recordTypes: syncTypes.value, noteBodies: false })
     await next()
   })
 }))

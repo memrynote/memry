@@ -2537,7 +2537,10 @@ describe('sync-type negotiation', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when
-    await getChanges(db as unknown as D1Database, 'user-1', 0, 10, 'vault-1', ['note', 'task'])
+    await getChanges(db as unknown as D1Database, 'user-1', 0, 10, 'vault-1', {
+      recordTypes: ['note', 'task'],
+      noteBodies: false
+    })
 
     // #then
     expect(db.prepare.mock.calls[0][0]).toContain('item_type IN (?, ?)')
@@ -2608,7 +2611,10 @@ describe('sync-type negotiation', () => {
       const db = createMockDb()
 
       // #when
-      const result = await getChanges(db as unknown as D1Database, 'user-1', 42, 10, 'vault-1', [])
+      const result = await getChanges(db as unknown as D1Database, 'user-1', 42, 10, 'vault-1', {
+        recordTypes: [],
+        noteBodies: false
+      })
 
       // #then
       expect(result).toEqual({ items: [], deleted: [], hasMore: false, nextCursor: 42 })

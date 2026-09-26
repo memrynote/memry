@@ -589,6 +589,20 @@ from 0 anyway and records `done` without a reset.
 The server fix has to be live before a desktop build runs the repair: a repair pull that races a
 peer push on an old Worker can skip the range again and still record `done`.
 
+### Note bodies on the same cursor
+
+`crdt_updates` and `crdt_snapshots` rows also take a `server_cursor` from the same per-user sequence,
+reserved in the batch that writes the row (migration `0011`). A snapshot takes a new cursor every time
+it is rewritten. Rows written before the migration keep `NULL` and never enter the feed.
+
+A client that adds `note_body` to `X-Memry-Sync-Types` gets a `noteBodies` array on every
+`/sync/changes` page: update and snapshot entries in cursor order, read in the same D1 batch as the
+record rows so one page never skips a row committed between two reads. An update up to 4 KiB carries
+its bytes inline; a larger one and every snapshot are refs the client fetches from the CRDT routes.
+A page that carries bodies is capped at 100 rows. `note_body` is not a record type: it never reaches
+the manifest, `/sync/pull`, bootstrap or `/sync/push`, and a client that does not declare it gets the
+same response as before. No shipped client declares it yet.
+
 ## End-to-End Latency Trace
 
 A record change crosses four hops: device A queues it and pushes it, the server commits it, the

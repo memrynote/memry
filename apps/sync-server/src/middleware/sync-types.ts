@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono'
 
-import { resolveSyncTypes, SYNC_TYPES_HEADER } from '../lib/sync-types'
+import { resolveSyncSubscription, SYNC_TYPES_HEADER } from '../lib/sync-types'
 import type { AppContext } from '../types'
 
 /**
@@ -10,6 +10,6 @@ import type { AppContext } from '../types'
  * handlers read the resolved value off the context.
  */
 export const syncTypesMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
-  c.set('syncTypes', resolveSyncTypes(c.req.header(SYNC_TYPES_HEADER)))
+  c.set('syncSubscription', resolveSyncSubscription(c.req.header(SYNC_TYPES_HEADER)))
   await next()
 }
