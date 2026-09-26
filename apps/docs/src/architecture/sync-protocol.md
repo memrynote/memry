@@ -222,6 +222,26 @@ pull. A handler that wrote its rows from an unawaited promise could land them af
 committed, or inside the next page's transaction, with no crash-journal record for its file. Synced
 journal entries were applied that way until #2284.
 
+### When a push starts
+
+A local mutation asks for a push, and the push goes out at once when the last requested push
+started more than 300 ms ago (`PUSH_DEBOUNCE_MS`). A request inside that window arms one timer for
+the rest of it, and every other request in the window rides on that timer, so continuous editing
+costs at most one `POST /sync/push` per 300 ms. That was a flat 2-second trailing timer, which made
+up most of the delay between an edit and its arrival on another device.
+
+A request that finds a sync cycle running does not arm a timer. It is held, and the push runs once
+when the cycle ends: after the scheduled cycle's promise settles, or, for a cycle started directly
+(the first full sync at startup, a manual sync, the final push on shutdown), when the engine
+releases its sync lock or the full sync returns. The old code re-armed the 2-second timer while the
+cycle ran, so a push raised during a long pull waited up to 2 seconds more after it. Nothing requested
+before or during `stop()` pushes after it.
+
+Note bodies follow the same rule per note with a 1-second window: the first update after a quiet
+second is flushed at once, updates inside the window go out in one trailing flush, and an update that
+lands while that note's push is in flight is flushed once when the push settles. The window stays at
+1 second because every CRDT push route shares one 300-per-minute `crdt_push` bucket per device.
+
 ### Push acknowledgements and in-flight mutations
 
 The push queue coalesces: a new mutation for an item that already has an unattempted row overwrites

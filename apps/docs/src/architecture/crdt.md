@@ -962,8 +962,8 @@ markdown back — no server involved at any step.
 Nothing about that reaches the push queue, and it does not need to be paused to
 stay quiet: teardown drops it. `CrdtProvider.destroy()` clears the queue
 reference and `resetCrdtProvider()` then replaces the instance outright, so
-`onDocUpdate` has nothing to enqueue into while there is no session. The 1s flush
-loop is stopped with the runtime that owned it, so a signed-out session never
+`onDocUpdate` has nothing to enqueue into while there is no session. The queue's
+flush timers stop with the runtime that owned it, so a signed-out session never
 retries a push and never reads the keychain for a token that is not there.
 
 ### Recording what the server is owed

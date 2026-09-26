@@ -435,6 +435,9 @@ export const crdtSweepChunkDelayMs = (cost: CrdtPullCost, elevationFactor = 1): 
  */
 export const PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE = 60
 
-export const PUSH_DEBOUNCE_MS = 2000
+// Minimum spacing between requested record pushes: one push per window, at most
+// ~200/min/device under continuous editing, inside the per-device `sync_push`
+// bucket (#2288). A request after a quiet window is sent at once (#2289).
+export const PUSH_DEBOUNCE_MS = 300
 
 export const yieldToEventLoop = (): Promise<void> => new Promise((r) => setImmediate(r))

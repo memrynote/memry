@@ -37,6 +37,9 @@ export class PushCoordinator {
   private stateManager: SyncStateManager
   private pushDebounceTimer: ReturnType<typeof setTimeout> | null = null
   private pendingPushRequested = false
+  private lastPushStartedAt = Number.NEGATIVE_INFINITY
+  private awaitedCycle: Promise<void> | null = null
+  private stopped = false
   /**
    * Batch size the server was last able to take, or null while the configured
    * size is still believed good.
@@ -465,30 +468,78 @@ export class PushCoordinator {
     }
   }
 
+  /**
+   * Leading edge with a trailing guard (#2289): a request more than
+   * PUSH_DEBOUNCE_MS after the last push started goes out now, anything closer
+   * arms one timer for the rest of the window. So at most one push per window.
+   *
+   * A request that finds a cycle running is held in `pendingPushRequested` and
+   * runs once when that cycle ends, never through a new timer: re-arming used to
+   * re-debounce every window until a long cycle finished.
+   */
   requestPush(): void {
-    if (this.stateManager.isPaused() || this.suppressPushDuringPull) return
+    if (this.stopped || this.stateManager.isPaused() || this.suppressPushDuringPull) return
     this.pendingPushRequested = true
     if (!this.ctx.deps.network.online) return
     if (this.pushDebounceTimer) return
 
+    const sinceLastPush = Date.now() - this.lastPushStartedAt
+    if (sinceLastPush > PUSH_DEBOUNCE_MS) {
+      this.firePendingPush()
+      return
+    }
     this.pushDebounceTimer = setTimeout(() => {
       this.pushDebounceTimer = null
-      if (this.stateManager.isPaused()) {
-        this.pendingPushRequested = false
-        return
-      }
-      if (this.ctx.syncing || this.ctx.fullSyncActive) {
-        this.requestPush()
-        return
-      }
-      if (this.pendingPushRequested) {
-        this.pendingPushRequested = false
-        this.ctx.scheduleSync(() => (this.ctx.doPush ?? (() => this.push()))())
-      }
-    }, PUSH_DEBOUNCE_MS)
+      this.firePendingPush()
+    }, PUSH_DEBOUNCE_MS - sinceLastPush)
   }
 
-  clearDebounce(): void {
+  /**
+   * The engine's signal that a cycle ended: the sync lock was released or a
+   * fullSync returned. Needed because a cycle started directly (start()'s first
+   * fullSync, a manual sync, stop()'s final push) has no `ctx.inFlightSync` to
+   * wait on. Idempotent: with nothing pending it does nothing.
+   *
+   * Deferred a microtask so the push never starts inside `releaseLock()` itself.
+   */
+  onSyncCycleEnded(): void {
+    if (!this.pendingPushRequested || this.pushDebounceTimer) return
+    queueMicrotask(() => {
+      if (!this.pushDebounceTimer) this.firePendingPush()
+    })
+  }
+
+  private firePendingPush(): void {
+    if (this.stopped || !this.pendingPushRequested) return
+    if (this.stateManager.isPaused()) {
+      this.pendingPushRequested = false
+      return
+    }
+    if (!this.ctx.deps.network.online) return
+    if (this.ctx.syncing || this.ctx.fullSyncActive) {
+      this.runAfterInFlightCycle()
+      return
+    }
+    this.pendingPushRequested = false
+    this.lastPushStartedAt = Date.now()
+    this.ctx.scheduleSync(() => (this.ctx.doPush ?? (() => this.push()))())
+  }
+
+  private runAfterInFlightCycle(): void {
+    const inFlight = this.ctx.inFlightSync
+    // No promise: a directly started cycle, which ends in onSyncCycleEnded().
+    if (!inFlight || inFlight === this.awaitedCycle) return
+    this.awaitedCycle = inFlight
+    const onSettled = (): void => {
+      if (this.awaitedCycle === inFlight) this.awaitedCycle = null
+      this.firePendingPush()
+    }
+    void inFlight.then(onSettled, onSettled)
+  }
+
+  /** Engine teardown: nothing requested before or during stop() may push after it. */
+  stop(): void {
+    this.stopped = true
     if (this.pushDebounceTimer) {
       clearTimeout(this.pushDebounceTimer)
       this.pushDebounceTimer = null
