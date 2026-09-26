@@ -1075,6 +1075,13 @@ bootstrap-session elevation) widen the effective ceiling without touching the co
 stays fail-closed: a missing binding or DO error blocks the request with a 500, exactly as a D1
 error did before.
 
+The record push bucket, `sync_push`, allows 300 requests per 60 seconds per **device**, the same
+ceiling and key as `crdt_push`. It used to be 60 per 60 seconds per account, so every device on the
+account shared one budget: three devices editing at once split 60 pushes a minute. A request
+without a deviceId falls back to the userId → IP key. `sync_push` gets no bootstrap elevation.
+`sync_changes` is still 60 per 60 seconds per account; it can move to a per-device key once
+wake-driven pulls are coalesced.
+
 The `rate_limits` table still exists: previously-deployed code writes it during a deploy window,
 and the OTP per-email limiter plus the telemetry exception budget still use it. It is dropped only
 after those two migrate.

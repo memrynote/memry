@@ -216,10 +216,15 @@ function decodeCrdtPayload(base64: string, endpoint: string, tooLargeMessage: st
   }
 }
 
+// Per device, like crdt_push: record pushes are device-local work, and a per-user
+// bucket made every device on an account share one 60/min budget (#2288).
+// Deviceless requests keep the userId/IP fallback. Not elevated: pushes keep
+// their abuse ceilings (BOOTSTRAP_ELEVATION_MULTIPLIERS is pull-only).
 const pushRateLimit = createRateLimiter({
   keyPrefix: 'sync_push',
-  maxRequests: 60,
-  windowSeconds: 60
+  maxRequests: 300,
+  windowSeconds: 60,
+  identifier: deviceIdentifier
 })
 
 const changesRateLimit = createRateLimiter({

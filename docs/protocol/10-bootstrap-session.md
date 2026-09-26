@@ -137,8 +137,8 @@ configured", not a client bug.
 | `crdt_batch_pull` | 30/min (`apps/sync-server/src/routes/sync.ts:616-617`)  | ×5 = 150/min  | device |
 | `blob_download`   | 600/min (`apps/sync-server/src/routes/blob.ts:94-95`)   | ×5 = 3000/min | device |
 
-**`sync_push` is not elevated** (`apps/sync-server/src/routes/sync.ts:213-214`,
-60/min): every elevated bucket is pull-only
+**`sync_push` is not elevated** (`apps/sync-server/src/routes/sync.ts:223-228`,
+300/min per device): every elevated bucket is pull-only
 (`apps/sync-server/src/services/bootstrap-session.ts:274`).
 
 Overrun is `429 RATE_LIMITED` with a `Retry-After` header
