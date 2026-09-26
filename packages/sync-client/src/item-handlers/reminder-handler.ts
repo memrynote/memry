@@ -1,4 +1,4 @@
-import { eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, ne, notInArray, or } from 'drizzle-orm'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { ReminderSyncPayloadSchema, type ReminderSyncPayload } from '@memry/contracts/sync-payloads'
 import { ReminderChannels } from '@memry/contracts/ipc-channels'
@@ -203,8 +203,28 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
     db.update(reminders).set({ syncedAt: utcNow() }).where(eq(reminders.id, itemId)).run()
   }
 
+  /**
+   * An anchored note_date row that is still pending (or only fired here) is
+   * reconciler output with no user intent in it: every device derives its own
+   * from the note body, and the desktop leaves one derived from a remote body
+   * unclocked on purpose. Pushing it as a create would only race the server's
+   * row for the same id and could reset a dismissal made on another device.
+   */
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
-    const items = db.select().from(reminders).where(isNull(reminders.clock)).all()
+    const items = db
+      .select()
+      .from(reminders)
+      .where(
+        and(
+          isNull(reminders.clock),
+          or(
+            ne(reminders.targetType, 'note_date'),
+            isNull(reminders.anchorId),
+            notInArray(reminders.status, ['pending', 'triggered'])
+          )
+        )
+      )
+      .all()
     for (const item of items) {
       const clock = increment({}, deviceId)
       db.update(reminders).set({ clock }).where(eq(reminders.id, item.id)).run()

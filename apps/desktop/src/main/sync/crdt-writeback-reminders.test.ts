@@ -114,9 +114,23 @@ describe('note_date reminders derived by the markdown write-back', () => {
   const reminderRow = () =>
     mocks.db!.db.select().from(reminders).where(eq(reminders.id, REMINDER_ID)).get()
 
+  it('stamps and pushes the reminder a local edit derives', async () => {
+    // #given the user adds the pill in this device's editor, and a remote
+    // update lands inside the same debounce window
+    const doc = new Y.Doc()
+    scheduleWriteback(NOTE_ID, doc, 'local')
+    scheduleWriteback(NOTE_ID, doc, 'remote')
+    await flushPendingWritebacks()
+
+    expect(reminderRow()).toMatchObject({ status: 'pending', clock: { [DEVICE]: 1 } })
+    expect(queue.dequeue(10).map((row) => [row.itemId, row.operation])).toEqual([
+      [REMINDER_ID, 'create']
+    ])
+  })
+
   it('derives a remote body reminder without a clock or a push, so a peer dismissal applies', async () => {
     // #given a remote body for a note with a reminding date pill
-    scheduleWriteback(NOTE_ID, new Y.Doc())
+    scheduleWriteback(NOTE_ID, new Y.Doc(), 'remote')
     await flushPendingWritebacks()
 
     // #then the row exists here, unstamped and not queued for the server

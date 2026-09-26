@@ -78,9 +78,18 @@ const WRITEBACK_MAX_COOLDOWN_MS = 5000
 
 const IGNORED_WRITE_TTL_MS = 5000
 
+/**
+ * Whose edit a pass writes: `local` for this device's editor, `remote` for
+ * state merged from the server. Only a local edit may put the reminders it
+ * derives on the sync queue; see `performWriteback`.
+ */
+export type WritebackSource = 'local' | 'remote'
+
 interface PendingWriteback {
   timer: ReturnType<typeof setTimeout>
   doc: Y.Doc
+  /** Any update since the last pass was a local edit. */
+  local: boolean
 }
 
 interface WritebackCost {
@@ -268,19 +277,20 @@ function resolveWritebackDoc(noteId: string, captured: Y.Doc): Y.Doc {
 }
 
 /** Runs a pass and records what it cost, which is what paces the next one. */
-async function runWriteback(noteId: string, doc: Y.Doc): Promise<void> {
+async function runWriteback(noteId: string, doc: Y.Doc, local: boolean): Promise<void> {
   const startedAt = Date.now()
   try {
-    await performWriteback(noteId, resolveWritebackDoc(noteId, doc))
+    await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local)
   } finally {
     const finishedAt = Date.now()
     lastWritebackCost.set(noteId, { finishedAt, durationMs: finishedAt - startedAt })
   }
 }
 
-export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
+export function scheduleWriteback(noteId: string, doc: Y.Doc, source: WritebackSource): void {
   const existing = pendingTimers.get(noteId)
   if (existing) clearTimeout(existing.timer)
+  const local = source === 'local' || existing?.local === true
   updateDebugState(noteId, {
     pending: true,
     scheduledCount: (debugState.get(noteId)?.scheduledCount ?? 0) + 1,
@@ -290,7 +300,7 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
   const timer = setTimeout(() => {
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
-    runWriteback(noteId, doc)
+    runWriteback(noteId, doc, local)
       .catch((err) => {
         updateDebugState(noteId, {
           pending: false,
@@ -309,7 +319,7 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
       })
   }, writebackDelayMs(noteId))
 
-  pendingTimers.set(noteId, { timer, doc })
+  pendingTimers.set(noteId, { timer, doc, local })
 }
 
 /**
@@ -342,7 +352,7 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
   }
   inFlightWritebacks.add(noteId)
   try {
-    await runWriteback(noteId, doc)
+    await runWriteback(noteId, doc, pending?.local === true)
   } finally {
     inFlightWritebacks.delete(noteId)
   }
@@ -395,8 +405,8 @@ export async function flushPendingWritebacks(): Promise<void> {
   pendingTimers.clear()
   for (const [, { timer }] of pending) clearTimeout(timer)
   await Promise.all(
-    pending.map(([noteId, { doc }]) =>
-      runWriteback(noteId, doc).catch((err) => {
+    pending.map(([noteId, { doc, local }]) =>
+      runWriteback(noteId, doc, local).catch((err) => {
         log.error('Write-back failed during shutdown flush', { noteId, error: err })
       })
     )
@@ -430,7 +440,7 @@ function resolveFromCanonicalMetadata(
   }
 }
 
-async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
+async function performWriteback(noteId: string, doc: Y.Doc, local: boolean): Promise<void> {
   // A doc with no note row is never turned into a note. Its record may not
   // have arrived yet, or it may be a tombstone this device has not pulled (a
   // packed body applied before the first record pull), and both look the
@@ -515,11 +525,17 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
     await writebackJournal(noteId, doc, markdown, cached, indexDb)
   } else {
     await writebackExisting(noteId, cached, doc, markdown, indexDb, isLargeFileBody)
+    // The reminders a body's date pills derive belong to every device that
+    // holds the body, and each derives its own. Only this device's edit may
+    // stamp and push them. A row derived from a remote body stays unclocked,
+    // so the server's row for the same id, carrying any dismissal or snooze
+    // made elsewhere, applies over it instead of merging as a conflict whose
+    // push-back would reset that state on the other devices.
     try {
       await syncNoteDateReminders(
         noteId,
         markdown,
-        createRemindersService(getDatabase(), reminderSyncHooks)
+        createRemindersService(getDatabase(), local ? reminderSyncHooks : undefined)
       )
     } catch (err) {
       log.warn('Failed to sync note_date reminders on write-back', { noteId, err })

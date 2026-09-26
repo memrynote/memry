@@ -1641,8 +1641,10 @@ export class CrdtProvider {
       recordNetworkUpdate(noteId)
     }
 
-    if (origin === ORIGIN_NETWORK || isIpcOrigin(origin)) {
-      scheduleWriteback(noteId, entry.doc)
+    if (origin === ORIGIN_NETWORK) {
+      scheduleWriteback(noteId, entry.doc, 'remote')
+    } else if (isIpcOrigin(origin)) {
+      scheduleWriteback(noteId, entry.doc, 'local')
     }
   }
 

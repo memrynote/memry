@@ -256,7 +256,7 @@ async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
     applyRemoteUpdate: (noteId: string, update: Uint8Array) => {
       const doc = docFor(noteId)
       Y.applyUpdate(doc, update, 'network')
-      scheduleWriteback(noteId, doc)
+      scheduleWriteback(noteId, doc, 'remote')
       return true
     },
     getStateVector: (noteId: string) => {
