@@ -255,6 +255,47 @@ describe('checkManifestIntegrity', () => {
 
       expect(getServerSpy).not.toHaveBeenCalled()
     })
+
+    it('#then reports the skip as no-token, eligible one window from now', async () => {
+      // #2310
+      vi.spyOn(Date, 'now').mockReturnValue(1_000_000_000_000)
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => null,
+        isOnline: () => true
+      })
+
+      expect(result.performed).toBe(false)
+      expect(result.skipped).toEqual({
+        reason: 'no-token',
+        nextEligibleAt: 1_000_000_000_000 + 30 * 60 * 1000
+      })
+    })
+  })
+
+  describe('#given the manifest fetch fails #when check runs', () => {
+    it('#then reports the skip as error', async () => {
+      // #2310. Imported after resetModules so withRetry sees the same class and
+      // throws the 4xx at once instead of backing off.
+      const { SyncServerError } = await import('@memry/sync-client/http-errors')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('bad request', 400)
+      )
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result.performed).toBe(false)
+      expect(result.skipped?.reason).toBe('error')
+    })
   })
 
   describe('#given rate limit not elapsed #when check runs twice', () => {
@@ -292,6 +333,28 @@ describe('checkManifestIntegrity', () => {
 
       // #then — no second network call
       expect(getServerSpy).not.toHaveBeenCalled()
+    })
+
+    it('#then the throttled result says so and when the next check is due', async () => {
+      // #2310: a throttled no-op must be distinguishable from a clean diff.
+      const getServerSpy = vi.spyOn(await import('./http-client'), 'getFromServer')
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      const lastCheckAt = Date.now() - 5 * 60 * 1000
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true,
+        lastCheckAt
+      })
+
+      expect(getServerSpy).not.toHaveBeenCalled()
+      expect(result.performed).toBe(false)
+      expect(result.skipped).toEqual({
+        reason: 'throttled',
+        nextEligibleAt: lastCheckAt + 30 * 60 * 1000
+      })
     })
   })
 

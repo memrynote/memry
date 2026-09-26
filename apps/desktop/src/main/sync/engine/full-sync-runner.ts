@@ -619,10 +619,20 @@ export class FullSyncRunner {
           String(manifestResult.checkedAt)
         )
       }
-      log.debug('fullSync: manifest check complete', {
-        rePullNeeded: manifestResult.rePullNeeded,
-        serverOnlyCount: manifestResult.serverOnlyCount
-      })
+      if (manifestResult.performed) {
+        log.debug('fullSync: manifest check complete', {
+          rePullNeeded: manifestResult.rePullNeeded,
+          serverOnlyCount: manifestResult.serverOnlyCount
+        })
+      } else {
+        // Never log serverOnlyCount here: its 0 reads as "verified clean" when
+        // no manifest was fetched (#2310).
+        const { skipped } = manifestResult
+        log.debug('fullSync: manifest check skipped', {
+          reason: skipped?.reason,
+          nextEligibleAt: skipped ? new Date(skipped.nextEligibleAt).toISOString() : undefined
+        })
+      }
 
       if (manifestResult.rePullNeeded) {
         forceCrdtSweep = true

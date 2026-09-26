@@ -60,23 +60,34 @@ export interface ManifestCheckResult {
   serverOnlyCount: number
   /** True only when a manifest was actually fetched and diffed. */
   performed: boolean
+  /** Set on every result with `performed: false`, so a caller can tell a
+   * no-op from a clean diff. `nextEligibleAt` holds for a caller that feeds
+   * `checkedAt` back as `lastCheckAt`. */
+  skipped?: { reason: ManifestCheckSkipReason; nextEligibleAt: number }
+}
+
+export type ManifestCheckSkipReason = 'throttled' | 'no-token' | 'error'
+
+function skippedResult(checkedAt: number, reason: ManifestCheckSkipReason): ManifestCheckResult {
+  return {
+    checkedAt,
+    rePullNeeded: false,
+    serverOnlyCount: 0,
+    performed: false,
+    skipped: { reason, nextEligibleAt: checkedAt + MIN_INTERVAL_MS }
+  }
 }
 
 export async function checkManifestIntegrity(
   deps: ManifestCheckDeps
 ): Promise<ManifestCheckResult> {
   const now = Date.now()
-  const noAction: ManifestCheckResult = {
-    checkedAt: deps.lastCheckAt ?? 0,
-    rePullNeeded: false,
-    serverOnlyCount: 0,
-    performed: false
+  if (now - (deps.lastCheckAt ?? 0) < MIN_INTERVAL_MS) {
+    return skippedResult(deps.lastCheckAt ?? 0, 'throttled')
   }
 
-  if (now - (deps.lastCheckAt ?? 0) < MIN_INTERVAL_MS) return noAction
-
   const token = await deps.getAccessToken()
-  if (!token) return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0, performed: false }
+  if (!token) return skippedResult(now, 'no-token')
 
   try {
     // The diff below needs the COMPLETE server inventory, so every page must
@@ -220,7 +231,7 @@ export async function checkManifestIntegrity(
     }
   } catch (err) {
     log.error('Manifest integrity check failed', err)
-    return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0, performed: false }
+    return skippedResult(now, 'error')
   }
 }
 
