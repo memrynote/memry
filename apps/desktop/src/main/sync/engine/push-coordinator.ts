@@ -22,6 +22,7 @@ import type { SyncStateManager } from './sync-state-manager'
 import {
   MAX_PUSH_ITERATIONS,
   MIN_PUSH_BATCH_SIZE,
+  PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES,
   YIELD_EVERY_N_ITEMS,
   CRDT_SNAPSHOT_CONCURRENCY,
   PUSH_DEBOUNCE_MS,
@@ -46,10 +47,12 @@ export class PushCoordinator {
    *
    * Kept on the instance, not per run: a vault big enough to be refused at 100
    * is refused at 100 on every cycle too, so re-discovering the ceiling each
-   * time would spend the same handful of doomed requests forever. It only ever
-   * shrinks, and a restart re-optimistically clears it.
+   * time would spend the same handful of doomed requests forever. It doubles
+   * back after PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES clean full-size pushes
+   * (#2293): one transient 5xx used to pin it low until restart.
    */
   private pushBatchCeiling: number | null = null
+  private cleanPushesAtCeiling = 0
   suppressPushDuringPull = false
 
   constructor(ctx: SyncContext, stateManager: SyncStateManager) {
@@ -237,6 +240,10 @@ export class PushCoordinator {
           }
 
           timer.startPhase('network')
+          // A batch that can still be split answers a 5xx by splitting, never by
+          // resending itself. One that cannot has no smaller shape to try, so
+          // only then does the retry ladder back off and resend it (#2293).
+          const splittable = pushItems.length > MIN_PUSH_BATCH_SIZE
           let response: RetryResult<PushResponse>
           try {
             response = await withRetry(
@@ -257,9 +264,7 @@ export class PushCoordinator {
               {
                 signal: abortSignal,
                 isOnline: () => this.ctx.deps.network.online,
-                // A 5xx here is answered by shrinking the batch below, not by
-                // sending the same one again — see retryOn5xx.
-                retryOn5xx: false
+                retryOn5xx: !splittable
               }
             )
           } catch (error) {
@@ -271,14 +276,12 @@ export class PushCoordinator {
             // act on and nothing gets marked. Halving is the only move that
             // makes progress; without it the whole run ends here and the same
             // rows come back next cycle forever (2026-08-27 → 09-01, one vault
-            // stuck at 2914 pending).
-            if (
-              error instanceof SyncServerError &&
-              error.statusCode >= 500 &&
-              batchSize > MIN_PUSH_BATCH_SIZE
-            ) {
-              batchSize = Math.max(MIN_PUSH_BATCH_SIZE, Math.floor(batchSize / 2))
+            // stuck at 2914 pending). Halved from the size SENT, so the next
+            // request is strictly smaller than the refused one.
+            if (error instanceof SyncServerError && error.statusCode >= 500 && splittable) {
+              batchSize = Math.max(MIN_PUSH_BATCH_SIZE, Math.floor(pushItems.length / 2))
               this.pushBatchCeiling = batchSize
+              this.cleanPushesAtCeiling = 0
               log.warn('Push: server refused the batch, halving it', {
                 statusCode: error.statusCode,
                 batchSize
@@ -298,6 +301,7 @@ export class PushCoordinator {
 
           lastServerTime = response.value.serverTime
           pushLag.record(dedupedItems, response.value, this.ctx.deps.queue)
+          if (pushItems.length >= batchSize) batchSize = this.raiseCeilingAfterCleanPush(batchSize)
           const acceptedSet = new Set(response.value.accepted)
           for (let pi = 0; pi < pushItems.length; pi++) {
             if (this.ctx.abortController?.signal.aborted) break
@@ -367,9 +371,12 @@ export class PushCoordinator {
                 break
               } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
                 log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
-                // Ends the run via `break`, never a throw — engine.push() records
-                // it as a success, so sync_error must be emitted here. Once per
-                // run: later iterations can hit the same quota wall.
+                // Only this item is refused (#2293): the rest of the response is
+                // still acked below, and the run keeps dequeuing because the
+                // server refuses only items that grow storage. A delete or a
+                // shrinking update commits, and blocking it would block the way
+                // out of the quota. Never a throw, so engine.push() records a
+                // success and sync_error must be emitted here, once per run.
                 if (!quotaEventSent) {
                   quotaEventSent = true
                   trackMainEvent('sync_error', {
@@ -390,7 +397,6 @@ export class PushCoordinator {
                 }
                 this.ctx.lastError = 'errors:sync.storageQuotaExceeded'
                 this.stateManager.setState('error')
-                break
               } else {
                 log.warn('Push: item rejected', {
                   queueId: queueId.slice(0, 8),
@@ -553,6 +559,19 @@ export class PushCoordinator {
       clearTimeout(this.pushDebounceTimer)
       this.pushDebounceTimer = null
     }
+  }
+
+  /** Returns the batch size for the next request after a clean full-size push. */
+  private raiseCeilingAfterCleanPush(batchSize: number): number {
+    if (this.pushBatchCeiling === null) return batchSize
+    this.cleanPushesAtCeiling++
+    if (this.cleanPushesAtCeiling < PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES) return batchSize
+    this.cleanPushesAtCeiling = 0
+    const configured = this.ctx.options.pushBatchSize
+    const raised = Math.min(configured, batchSize * 2)
+    this.pushBatchCeiling = raised >= configured ? null : raised
+    log.info('Push: batches land cleanly again, raising the batch size', { batchSize: raised })
+    return raised
   }
 
   private markItemSynced(itemId: string, type: SyncItemType): void {
