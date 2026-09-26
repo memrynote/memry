@@ -103,11 +103,11 @@ describe('note and journal rows that share an id', () => {
       .filter((f) => f.endsWith('.md'))
       .sort()
 
-  const seedLiveNote = () => {
+  const seedLiveNote = (id = ID) => {
     testDb.db
       .insert(noteMetadata)
       .values({
-        id: ID,
+        id,
         path: 'Untitled.md',
         title: 'Untitled',
         fileType: 'markdown',
@@ -156,7 +156,7 @@ describe('note and journal rows that share an id', () => {
       },
       files: ['Untitled.md']
     })
-    expect({ deleted, upserted }).toEqual({ deleted: 'skipped', upserted: 'skipped' })
+    expect({ deleted, upserted }).toEqual({ deleted: 'skipped', upserted: 'applied' })
     expect(purge).not.toHaveBeenCalled()
     expect(logger.warn).toHaveBeenCalledWith(
       'Skipping remote item whose id belongs to a local item of another type',
@@ -165,15 +165,17 @@ describe('note and journal rows that share an id', () => {
   })
 
   it('warns once per id and type across repeated pulls', () => {
-    seedLiveNote()
+    seedLiveNote('legacyagent0610')
 
-    journalHandler.applyDelete(ctx, ID, { 'device-c239': 1 })
-    journalHandler.applyDelete(ctx, ID, { 'device-c239': 1 })
+    journalHandler.applyDelete(ctx, 'legacyagent0610', { 'device-c239': 1 })
+    journalHandler.applyDelete(ctx, 'legacyagent0610', { 'device-c239': 1 })
 
-    const crossTypeWarnings = logger.warn.mock.calls.filter(([message]) =>
-      String(message).startsWith('Skipping remote item whose id belongs')
-    )
-    expect(crossTypeWarnings).toHaveLength(1)
+    expect(logger.warn.mock.calls).toEqual([
+      [
+        'Skipping remote item whose id belongs to a local item of another type',
+        { itemId: 'legacyagent0610', incomingType: 'journal', localType: 'note' }
+      ]
+    ])
   })
 
   it('a note tombstone leaves the live journal with the same id alone', () => {

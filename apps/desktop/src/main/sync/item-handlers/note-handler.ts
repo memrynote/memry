@@ -9,7 +9,9 @@ import {
   getMimeType,
   type FileType
 } from '@memry/shared/file-types'
-import { NotesChannels } from '@memry/contracts/ipc-channels'
+import { and, eq } from 'drizzle-orm'
+import { reminders } from '@memry/db-schema/schema/reminders'
+import { NotesChannels, ReminderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
@@ -67,6 +69,7 @@ import {
   seedUnclockedNotes
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { belongsToOtherType } from './note-row-type'
 
 const log = createLogger('NoteHandler')
 
@@ -171,6 +174,19 @@ function requestEmbeddedAttachmentDownloads(
   }
 }
 
+/**
+ * Frontmatter is the source of truth for a markdown note's project membership,
+ * so a synced note derives its `project_links` rows here. Everything else about
+ * the note applied; a failed reconcile must not turn the pull into a retry.
+ */
+function deriveRemoteProjectLinks(itemId: string, properties: Record<string, unknown>): void {
+  try {
+    reconcileNoteLinks(itemId, properties, 'remote')
+  } catch (err) {
+    log.error('Failed to reconcile project links for a synced note', { itemId, error: err })
+  }
+}
+
 class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
   readonly type = 'note' as const
   readonly schema = NoteSyncPayloadSchema
@@ -186,6 +202,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const now = utcNow()
 
     const existing = getNoteMetadataById(ctx.db, itemId)
+    if (existing && belongsToOtherType(itemId, 'note', existing)) return 'skipped'
 
     if (existing) {
       const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
@@ -500,24 +517,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
       requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences, data.modifiedAt)
 
-      // Frontmatter is the source of truth for a markdown note's project
-      // membership, and this branch just rewrote it. The create path derives the
-      // `project_links` rows from the `note.upserted` event `syncNoteToCache`
-      // publishes; this one publishes nothing, so it has to reconcile directly.
-      // Without this the note shows its project chip here while the project hub
-      // stays empty — and the next rename of that project skips the note, which
-      // unlinks it from the renamed project on every device.
+      // This branch publishes no `note.upserted`, so no projector derives the
+      // links it just rewrote. Without this the note shows its project chip
+      // while the project hub stays empty, and the next rename of that project
+      // skips the note, which unlinks it on every device.
       if (propertiesPresent && isMarkdownNote(ctx.db, itemId)) {
-        try {
-          reconcileNoteLinks(itemId, remoteProperties)
-        } catch (err) {
-          // Everything else about the note applied; a link reconcile failure
-          // must not turn the whole pull into a retry.
-          log.error('Failed to reconcile project links for synced note update', {
-            itemId,
-            error: err
-          })
-        }
+        deriveRemoteProjectLinks(itemId, remoteProperties)
       }
 
       // This branch rewrites frontmatter, title and path — never the note body.
@@ -635,6 +640,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       },
       { isNew: true }
     )
+    // Ahead of the flush: the links projector then finds the rows in place and
+    // commits no project intent for this remote note.
+    if (data.properties) deriveRemoteProjectLinks(itemId, data.properties)
     void flushProjectionEvents()
     updateNoteCache(indexDb, itemId, { clock: remoteClock, syncedAt: now })
     updateNoteMetadata(ctx.db, itemId, {
@@ -670,7 +678,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
     const existing = getNoteMetadataById(ctx.db, itemId)
-    if (!existing) return 'skipped'
+    if (!existing || belongsToOtherType(itemId, 'note', existing)) return 'skipped'
 
     if (clock && existing.clock) {
       const resolution = this.resolveDeleteClock(existing.clock, clock)
@@ -698,6 +706,15 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       .catch((err) => {
         log.error('Failed to purge the CRDT doc of a remotely deleted note', { itemId, error: err })
       })
+
+    // Deleted directly, with no sync hooks: the device that deleted the note
+    // owns these tombstones.
+    const clearedReminders = ctx.db
+      .delete(reminders)
+      .where(and(eq(reminders.targetType, 'note_date'), eq(reminders.targetId, itemId)))
+      .returning({ id: reminders.id })
+      .all()
+    for (const { id } of clearedReminders) ctx.emit(ReminderChannels.events.DELETED, { id })
 
     const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)

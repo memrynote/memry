@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterAll, afterEach } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import * as path from 'path'
@@ -92,9 +92,9 @@ vi.mock('../../projections', () => ({
   flushProjectionEvents: (...args: unknown[]) => mockFlushProjectionEvents(...args)
 }))
 
-// `ctx.db` here is a bare stub, so the frontmatter→project_links reconcile the
-// update path performs is stubbed out. Its real behaviour is covered against a
-// real data DB in note-handler.project-links.test.ts.
+// The frontmatter→project_links reconcile the sync paths perform is stubbed
+// out here. Its real behaviour is covered against a real data DB in
+// note-handler.project-links.test.ts.
 const mockReconcileNoteLinks = vi.fn()
 vi.mock('../../projections/projectors/note-project-links-projector', () => ({
   reconcileNoteLinks: (...args: unknown[]) => mockReconcileNoteLinks(...args)
@@ -184,15 +184,22 @@ import {
 
 describe('noteHandler.applyUpsert — path collision', () => {
   let ctx: ApplyContext
+  let testDb: TestDatabaseResult
   const takenRelPaths = new Set<string>()
 
   afterAll(() => {
     fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
   })
 
+  afterEach(() => {
+    testDb.close()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
-    ctx = makeCtx()
+    // A real data DB: a remote delete clears the note's reminders through it.
+    testDb = createTestDatabase()
+    ctx = makeCtx(testDb)
     takenRelPaths.clear()
     mockGetNoteMetadataById.mockReturnValue(undefined)
     mockGetPropertyDefinition.mockReturnValue(undefined)
