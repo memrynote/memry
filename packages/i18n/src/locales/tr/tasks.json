@@ -31,6 +31,8 @@
     "startDate": "Başlangıç tarihi",
     "changeStartDate": "Başlangıç: {date}. Değiştirmek için tıklayın.",
     "dueDate": "Son Tarih",
+    "startsOn": "Başlangıç {date}",
+    "dueOn": "Bitiş {date}",
     "project": "Proje",
     "repeat": "Tekrarla",
     "createAnother": "Başka bir tane oluştur",
@@ -78,7 +80,18 @@
   "quickAdd": {
     "label": "Hızlı ekleme görevi",
     "focusDescription": "Hızlı ekleme girişine odaklanın",
-    "placeholder": "Görev ekle…    !today  !!high  #project"
+    "placeholder": "Görev ekle…    !today  !!high  #project",
+    "presets": {
+      "menu": "Görev seçenekleri",
+      "dueDate": "Bitiş {date}. Bitiş tarihini değiştir",
+      "noDate": "Tarih yok",
+      "linkNote": "Not bağla",
+      "openDetails": "Tüm ayrıntıları aç",
+      "back": "Geri",
+      "remove": "{name} kaldır",
+      "noReminder": "Hatırlatıcı yok",
+      "addTags": "Etiket ekle…"
+    }
   },
   "drawer": {
     "close": "Görev ayrıntılarını kapat",

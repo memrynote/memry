@@ -29,6 +29,8 @@
     "status": "Stav",
     "priority": "Priorita",
     "dueDate": "Dátum splnenia",
+    "startsOn": "Začína {date}",
+    "dueOn": "Termín {date}",
     "project": "Projekt",
     "repeat": "Opakovať",
     "createAnother": "Vytvoriť ďalšiu",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Rýchlo pridať úlohu",
     "focusDescription": "Sústrediť sa na rýchle pridanie vstupu",
-    "placeholder": "Pridať úlohu…    !today  !!high  #project"
+    "placeholder": "Pridať úlohu…    !today  !!high  #project",
+    "presets": {
+      "menu": "Možnosti úlohy",
+      "dueDate": "Termín {date}. Zmeniť termín",
+      "noDate": "Bez dátumu",
+      "linkNote": "Prepojiť poznámku",
+      "openDetails": "Otvoriť všetky podrobnosti",
+      "back": "Späť",
+      "remove": "Odstrániť {name}",
+      "noReminder": "Bez pripomienky",
+      "addTags": "Pridať štítky…"
+    }
   },
   "drawer": {
     "close": "Zavrieť detaily úlohy",

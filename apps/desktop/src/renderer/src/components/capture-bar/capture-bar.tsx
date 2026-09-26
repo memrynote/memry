@@ -32,6 +32,16 @@ import {
 } from './capture-bar-tokens'
 import { useNoteSuggestions, useTagSuggestions } from './capture-bar-suggestions'
 import { ownsFocusShortcut, registerCaptureField } from './focus-shortcut-owner'
+import { CapturePresets, type PresetsPanel } from './capture-bar-presets'
+import {
+  CONFLICTING_TOKENS,
+  DEFAULT_PRESETS,
+  mergePresets,
+  stripTokens,
+  type TaskPresetField,
+  type TaskPresets
+} from './capture-presets'
+import type { QuickAddSpanKind } from '@/lib/quick-add-parser'
 import type { Priority, RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 
@@ -55,6 +65,17 @@ export interface CaptureBarParsed {
   tags: string[]
   /** Notes named by a `[[…]]` run that resolved to a real note. */
   linkedNoteIds: string[]
+  /**
+   * Set when the presets chip produced this. `dueDate` is then final: `null`
+   * means the user chose "no date", not "nothing typed".
+   */
+  fromPresets?: boolean
+  /** Presets only. `null` = the project's default to-do status. */
+  statusId?: string | null
+  /** Presets only. */
+  startDate?: Date | null
+  /** Presets only. Written after the task exists, since reminders are keyed by task id. */
+  reminderAt?: Date | null
 }
 
 /** How many notes the `[[` picker shows at once. */
@@ -86,6 +107,14 @@ export interface CaptureBarProps {
    * `every 2 weeks`. Everything but `[[` is finished by the inline ghost.
    */
   quickAdd?: { projects: Project[] }
+  /**
+   * Renders the presets chip (`[Today | v]`) while focused, so every task
+   * property can be set before Enter. Needs `quickAdd`.
+   */
+  presets?: {
+    /** The project the surface files into when none is picked or typed. */
+    defaultProjectId: string | null
+  }
   /** Renders the paperclip. */
   attachment?: {
     onAttach: () => void | Promise<void>
@@ -103,7 +132,7 @@ export interface CaptureBarProps {
     maxDuration?: number
   }
   /** Shows the ⌘↵ hint and opens a detail surface with the current text. */
-  onOpenDetail?: (text: string) => void
+  onOpenDetail?: (text: string, parsed?: CaptureBarParsed) => void
   /** Accessible name for the submit button, derived from the current value. */
   submitLabel?: (value: string) => string
   /** Extra controls rendered inside the box, before the submit button. */
@@ -142,6 +171,7 @@ export const CaptureBar = ({
   accentColor = CAPTURE_ACCENT_DEFAULT,
   icon = 'add',
   quickAdd,
+  presets,
   attachment,
   voice,
   onOpenDetail,
@@ -173,10 +203,41 @@ export const CaptureBar = ({
   // empty title — which the `tasks:create` contract rejects with a ZodError the
   // user can do nothing about (#1991). Gate the affordance on this, not on
   // `trimmed`.
-  const submittableTitle = useMemo(
-    () => (quickAdd ? parseQuickAdd(trimmed, quickAdd.projects).title.trim() : trimmed),
+  const parsedValue = useMemo(
+    () => (quickAdd ? parseQuickAdd(trimmed, quickAdd.projects) : null),
     [quickAdd, trimmed]
   )
+  const submittableTitle = parsedValue ? parsedValue.title.trim() : trimmed
+
+  // --------------------------------------------------------------------------
+  // Presets (Tasks only)
+  // --------------------------------------------------------------------------
+
+  const presetsEnabled = Boolean(presets && quickAdd)
+  const [presetState, setPresetState] = useState<TaskPresets>(DEFAULT_PRESETS)
+  // One variable for the whole chip: which surface is open, if any.
+  const [presetsPanel, setPresetsPanel] = useState<PresetsPanel | null>(null)
+
+  const mergedPresets = useMemo(
+    () => (presetsEnabled && parsedValue ? mergePresets(parsedValue, presetState) : null),
+    [presetsEnabled, parsedValue, presetState]
+  )
+
+  const presetProjectColor = useMemo(() => {
+    if (!mergedPresets?.projectId || !quickAdd) return null
+    return quickAdd.projects.find((p) => p.id === mergedPresets.projectId)?.color ?? null
+  }, [mergedPresets, quickAdd])
+  const accent = presetProjectColor ?? accentColor
+
+  // A pick in the menu came after anything typed, so the token that would
+  // contradict it leaves the text.
+  const changePresets = useCallback((patch: Partial<TaskPresets>): void => {
+    const kinds = (Object.keys(patch) as TaskPresetField[]).flatMap(
+      (field): QuickAddSpanKind[] => CONFLICTING_TOKENS[field] ?? []
+    )
+    if (kinds.length > 0) setValue((prev) => stripTokens(prev, kinds))
+    setPresetState((prev) => ({ ...prev, ...patch }))
+  }, [])
 
   // Registered for the lifetime of the bar, so `ownsFocusShortcut` can pick a
   // single winner when split view has more than one bar mounted.
@@ -348,39 +409,67 @@ export const CaptureBar = ({
   // Submit
   // --------------------------------------------------------------------------
 
+  // What the surface receives: the parsed text, laid over the presets when the
+  // chip is on.
+  const buildParsed = useCallback((): CaptureBarParsed | undefined => {
+    if (!parsedValue) return undefined
+    const linkedNoteIds = resolveNoteIds(parsedValue.noteTitles)
+    if (!mergedPresets) {
+      return {
+        dueDate: parsedValue.dueDate,
+        dueTime: parsedValue.dueTime,
+        priority: parsedValue.priority,
+        projectId: parsedValue.projectId,
+        repeat: parsedValue.repeat,
+        tags: parsedValue.tags,
+        linkedNoteIds
+      }
+    }
+    return { ...mergedPresets, linkedNoteIds, fromPresets: true }
+  }, [parsedValue, mergedPresets, resolveNoteIds])
+
   const submit = useCallback(async (): Promise<void> => {
     if (!submittableTitle || disabled) return
 
-    const result = quickAdd
-      ? await (async () => {
-          const parsed = parseQuickAdd(trimmed, quickAdd.projects)
-          return onSubmit(parsed.title, {
-            dueDate: parsed.dueDate,
-            dueTime: parsed.dueTime,
-            priority: parsed.priority,
-            projectId: parsed.projectId,
-            repeat: parsed.repeat,
-            tags: parsed.tags,
-            linkedNoteIds: resolveNoteIds(parsed.noteTitles)
-          })
-        })()
+    const result = parsedValue
+      ? await onSubmit(parsedValue.title, buildParsed())
       : await onSubmit(trimmed)
 
     // `false` means the surface wants the text left alone (duplicate, failure).
     if (result !== false) {
       setValue('')
+      // Presets describe one task; the next starts from the defaults again.
+      setPresetState(DEFAULT_PRESETS)
     }
     // Keep focus for rapid entry.
     fieldRef.current?.focus()
-  }, [submittableTitle, trimmed, disabled, quickAdd, onSubmit, resolveNoteIds])
+  }, [submittableTitle, trimmed, disabled, parsedValue, onSubmit, buildParsed])
 
   const openDetail = useCallback((): void => {
     if (!onOpenDetail) return
-    const text = quickAdd ? parseQuickAdd(trimmed, quickAdd.projects).title : trimmed
-    onOpenDetail(text)
+    setPresetsPanel(null)
+    const text = parsedValue ? parsedValue.title : trimmed
+    // Only the presets chip has anything to hand over beyond the title.
+    if (mergedPresets) onOpenDetail(text, buildParsed())
+    else onOpenDetail(text)
     setValue('')
+    setPresetState(DEFAULT_PRESETS)
     fieldRef.current?.blur()
-  }, [onOpenDetail, quickAdd, trimmed])
+  }, [onOpenDetail, parsedValue, trimmed, mergedPresets, buildParsed])
+
+  // `[[` at the end of the text opens the bar's own note picker.
+  const startNoteLink = useCallback((): void => {
+    setPresetsPanel(null)
+    setPickerDismissed(false)
+    setValue((prev) => `${prev && !/\s$/.test(prev) ? `${prev} ` : prev}[[`)
+    requestAnimationFrame(() => {
+      const field = fieldRef.current
+      if (!field) return
+      field.focus()
+      field.setSelectionRange(field.value.length, field.value.length)
+      syncCaret()
+    })
+  }, [syncCaret])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -420,6 +509,12 @@ export const CaptureBar = ({
         return
       }
 
+      if (presetsEnabled && e.altKey && e.key === 'ArrowDown') {
+        e.preventDefault()
+        setPresetsPanel('root')
+        return
+      }
+
       if (e.key === 'Enter' && !e.shiftKey) {
         if ((e.metaKey || e.ctrlKey) && onOpenDetail) {
           e.preventDefault()
@@ -434,10 +529,12 @@ export const CaptureBar = ({
       if (e.key === 'Escape') {
         e.preventDefault()
         setValue('')
+        setPresetState(DEFAULT_PRESETS)
         fieldRef.current?.blur()
       }
     },
     [
+      presetsEnabled,
       isPickerOpen,
       noteOptions,
       pickerIndex,
@@ -476,6 +573,8 @@ export const CaptureBar = ({
 
   const showTokens = Boolean(quickAdd) && (hasSpecialSyntax(value) || ghost !== null)
   const attachBusy = attachment?.busy ?? false
+  // An open presets panel holds focus outside the field; the bar still reads as active.
+  const isActive = isFocused || presetsPanel !== null
 
   const leadingIcon =
     icon === 'add' ? (
@@ -497,13 +596,13 @@ export const CaptureBar = ({
             'transition-[width,border-color,background-color] duration-300 ease-out',
             'motion-reduce:transition-none',
             isRecording ? 'w-[60%]' : 'w-full',
-            isFocused ? 'bg-muted/10' : 'border-border hover:border-text-tertiary'
+            isActive ? 'bg-muted/10' : 'border-border hover:border-text-tertiary'
           )}
-          style={isFocused ? { borderColor: withFocusAlpha(accentColor) } : undefined}
+          style={isActive ? { borderColor: withFocusAlpha(accent) } : undefined}
         >
           <div
             className="flex shrink-0 items-center transition-colors duration-150"
-            style={{ color: isFocused ? accentColor : undefined }}
+            style={{ color: isActive ? accent : undefined }}
           >
             {leadingIcon}
           </div>
@@ -563,8 +662,29 @@ export const CaptureBar = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-0.5">
-            {isFocused ? (
-              onOpenDetail ? (
+            {mergedPresets && (
+              <CapturePresets
+                presets={presetState}
+                merged={mergedPresets}
+                overriddenByText={{
+                  priority: parsedValue?.priority !== 'none',
+                  projectId: parsedValue?.projectId != null,
+                  repeat: parsedValue?.repeat != null
+                }}
+                projects={quickAdd?.projects ?? []}
+                defaultProjectId={presets?.defaultProjectId ?? null}
+                showDateChip={isActive}
+                panel={presetsPanel}
+                onPanelChange={setPresetsPanel}
+                onChange={changePresets}
+                onLinkNote={startNoteLink}
+                onOpenDetail={onOpenDetail ? openDetail : undefined}
+                onReturnFocus={() => fieldRef.current?.focus()}
+              />
+            )}
+            {isActive ? (
+              // The presets chip carries the "open details" action itself.
+              onOpenDetail && !mergedPresets ? (
                 <button
                   type="button"
                   tabIndex={-1}
@@ -647,7 +767,7 @@ export const CaptureBar = ({
                   ? 'text-muted-foreground/30'
                   : 'text-background dark:text-black'
               )}
-              style={submittableTitle && !disabled ? { backgroundColor: accentColor } : undefined}
+              style={submittableTitle && !disabled ? { backgroundColor: accent } : undefined}
             >
               {disabled ? (
                 <Loader2 className="size-3 animate-spin" aria-hidden="true" />

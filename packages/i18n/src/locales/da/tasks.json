@@ -29,6 +29,8 @@
     "status": "Status",
     "priority": "Prioritet",
     "dueDate": "Forfaldsdato",
+    "startsOn": "Starter {date}",
+    "dueOn": "Forfalder {date}",
     "project": "Projekt",
     "repeat": "Gentag",
     "createAnother": "Opret en anden",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Hurtig tilføjelsesopgave",
     "focusDescription": "Fokusér hurtigt tilføje input",
-    "placeholder": "Tilføj en opgave…    !today  !!high  #project"
+    "placeholder": "Tilføj en opgave…    !today  !!high  #project",
+    "presets": {
+      "menu": "Opgaveindstillinger",
+      "dueDate": "Forfalder {date}. Skift forfaldsdato",
+      "noDate": "Ingen dato",
+      "linkNote": "Link note",
+      "openDetails": "Åbn alle detaljer",
+      "back": "Tilbage",
+      "remove": "Fjern {name}",
+      "noReminder": "Ingen påmindelse",
+      "addTags": "Tilføj tags…"
+    }
   },
   "drawer": {
     "close": "Luk opgavedetaljer",

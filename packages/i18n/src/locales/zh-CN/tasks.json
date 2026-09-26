@@ -29,6 +29,8 @@
     "status": "状态",
     "priority": "优先级",
     "dueDate": "截止日期",
+    "startsOn": "{date} 开始",
+    "dueOn": "{date} 截止",
     "project": "项目",
     "repeat": "重复",
     "createAnother": "创建另一个",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "快速添加任务",
     "focusDescription": "聚焦快速添加输入",
-    "placeholder": "添加任务…    !today  !!high  #project"
+    "placeholder": "添加任务…    !today  !!high  #project",
+    "presets": {
+      "menu": "任务选项",
+      "dueDate": "截止 {date}。更改截止日期",
+      "noDate": "无日期",
+      "linkNote": "链接笔记",
+      "openDetails": "打开完整详情",
+      "back": "返回",
+      "remove": "移除 {name}",
+      "noReminder": "无提醒",
+      "addTags": "添加标签…"
+    }
   },
   "drawer": {
     "close": "关闭任务详情",

@@ -29,6 +29,8 @@
     "status": "Статус",
     "priority": "Приоритет",
     "dueDate": "Срок сдачи",
+    "startsOn": "Начало {date}",
+    "dueOn": "Срок {date}",
     "project": "Проект",
     "repeat": "Повторить",
     "createAnother": "Создать еще один",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Быстрое добавление задачи",
     "focusDescription": "Фокус быстрого добавления ввода",
-    "placeholder": "Добавить задачу…    !today  !!high  #project"
+    "placeholder": "Добавить задачу…    !today  !!high  #project",
+    "presets": {
+      "menu": "Параметры задачи",
+      "dueDate": "Срок {date}. Изменить срок",
+      "noDate": "Без даты",
+      "linkNote": "Связать заметку",
+      "openDetails": "Открыть все сведения",
+      "back": "Назад",
+      "remove": "Удалить {name}",
+      "noReminder": "Без напоминания",
+      "addTags": "Добавить теги…"
+    }
   },
   "drawer": {
     "close": "Закрыть детали задачи",

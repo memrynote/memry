@@ -29,6 +29,8 @@
     "status": "Statut",
     "priority": "Priorité",
     "dueDate": "Date d'échéance",
+    "startsOn": "Début {date}",
+    "dueOn": "Échéance {date}",
     "project": "Projet",
     "repeat": "Répéter",
     "createAnother": "Créer un autre",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Tâche d'ajout rapide",
     "focusDescription": "Concentrez-vous sur l'ajout rapide d'une entrée",
-    "placeholder": "Ajouter une tâche…    !today  !!high  #project"
+    "placeholder": "Ajouter une tâche…    !today  !!high  #project",
+    "presets": {
+      "menu": "Options de la tâche",
+      "dueDate": "Échéance {date}. Modifier l’échéance",
+      "noDate": "Aucune date",
+      "linkNote": "Lier une note",
+      "openDetails": "Ouvrir tous les détails",
+      "back": "Retour",
+      "remove": "Retirer {name}",
+      "noReminder": "Aucun rappel",
+      "addTags": "Ajouter des tags…"
+    }
   },
   "drawer": {
     "close": "Fermer les détails de la tâche",

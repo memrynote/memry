@@ -29,6 +29,8 @@
     "status": "Status",
     "priority": "Prioritas",
     "dueDate": "Tanggal Jatuh Tempo",
+    "startsOn": "Mulai {date}",
+    "dueOn": "Jatuh tempo {date}",
     "project": "Proyek",
     "repeat": "Ulangi",
     "createAnother": "Buat yang lain",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Tambahkan tugas dengan cepat",
     "focusDescription": "Fokus cepat tambahkan masukan",
-    "placeholder": "Tambahkan tugas…    !today  !!high  #project"
+    "placeholder": "Tambahkan tugas…    !today  !!high  #project",
+    "presets": {
+      "menu": "Opsi tugas",
+      "dueDate": "Jatuh tempo {date}. Ubah tanggal jatuh tempo",
+      "noDate": "Tanpa tanggal",
+      "linkNote": "Tautkan catatan",
+      "openDetails": "Buka semua detail",
+      "back": "Kembali",
+      "remove": "Hapus {name}",
+      "noReminder": "Tanpa pengingat",
+      "addTags": "Tambah tag…"
+    }
   },
   "drawer": {
     "close": "Tutup detail tugas",

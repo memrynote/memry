@@ -29,6 +29,8 @@
     "status": "Stan",
     "priority": "Priorytet",
     "dueDate": "Termin",
+    "startsOn": "Początek {date}",
+    "dueOn": "Termin {date}",
     "project": "Projekt",
     "repeat": "Powtórz",
     "createAnother": "Utwórz kolejny",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Szybkie dodawanie zadania",
     "focusDescription": "Skoncentruj się na szybkim dodawaniu danych wejściowych",
-    "placeholder": "Dodaj zadanie…    !today  !!high  #project"
+    "placeholder": "Dodaj zadanie…    !today  !!high  #project",
+    "presets": {
+      "menu": "Opcje zadania",
+      "dueDate": "Termin {date}. Zmień termin",
+      "noDate": "Brak daty",
+      "linkNote": "Połącz notatkę",
+      "openDetails": "Otwórz wszystkie szczegóły",
+      "back": "Wstecz",
+      "remove": "Usuń {name}",
+      "noReminder": "Brak przypomnienia",
+      "addTags": "Dodaj tagi…"
+    }
   },
   "drawer": {
     "close": "Zamknij szczegóły zadania",

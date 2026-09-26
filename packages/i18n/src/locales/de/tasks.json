@@ -29,6 +29,8 @@
     "status": "Status",
     "priority": "Priorität",
     "dueDate": "Fälligkeitsdatum",
+    "startsOn": "Beginnt {date}",
+    "dueOn": "Fällig {date}",
     "project": "Projekt",
     "repeat": "Wiederholen",
     "createAnother": "Erstellen Sie ein anderes",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Aufgabe schnell hinzufügen",
     "focusDescription": "Fokus, schnelle Eingabe hinzufügen",
-    "placeholder": "Aufgabe hinzufügen…    !today  !!high  #project"
+    "placeholder": "Aufgabe hinzufügen…    !today  !!high  #project",
+    "presets": {
+      "menu": "Aufgabenoptionen",
+      "dueDate": "Fällig {date}. Fälligkeitsdatum ändern",
+      "noDate": "Kein Datum",
+      "linkNote": "Notiz verknüpfen",
+      "openDetails": "Alle Details öffnen",
+      "back": "Zurück",
+      "remove": "{name} entfernen",
+      "noReminder": "Keine Erinnerung",
+      "addTags": "Tags hinzufügen…"
+    }
   },
   "drawer": {
     "close": "Aufgabendetails schließen",

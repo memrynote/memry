@@ -29,6 +29,8 @@
     "status": "סטטוס",
     "priority": "עדיפות",
     "dueDate": "תאריך יעד",
+    "startsOn": "מתחיל {date}",
+    "dueOn": "יעד {date}",
     "project": "פרויקט",
     "repeat": "חזור",
     "createAnother": "צור אחר",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "משימת הוספה מהירה",
     "focusDescription": "התמקד בקלט הוספה מהירה",
-    "placeholder": "הוסף משימה…    !today  !!high  #project"
+    "placeholder": "הוסף משימה…    !today  !!high  #project",
+    "presets": {
+      "menu": "אפשרויות משימה",
+      "dueDate": "יעד {date}. שינוי תאריך יעד",
+      "noDate": "ללא תאריך",
+      "linkNote": "קישור פתק",
+      "openDetails": "פתיחת כל הפרטים",
+      "back": "חזרה",
+      "remove": "הסרת {name}",
+      "noReminder": "ללא תזכורת",
+      "addTags": "הוספת תגיות…"
+    }
   },
   "drawer": {
     "close": "סגור את פרטי המשימה",

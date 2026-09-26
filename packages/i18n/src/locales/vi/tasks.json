@@ -29,6 +29,8 @@
     "status": "Trạng thái",
     "priority": "  \nƯu tiên  ",
     "dueDate": "Hạn chót",
+    "startsOn": "Bắt đầu {date}",
+    "dueOn": "Hạn {date}",
     "project": "  \nDự án  ",
     "repeat": "Lặp lại",
     "createAnother": "Tạo thêm",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Thêm nhiệm vụ nhanh",
     "focusDescription": "Tập trung vào ô thêm nhanh",
-    "placeholder": "Thêm công việc…    !today  !!high  #project"
+    "placeholder": "Thêm công việc…    !today  !!high  #project",
+    "presets": {
+      "menu": "Tùy chọn công việc",
+      "dueDate": "Hạn {date}. Đổi hạn",
+      "noDate": "Không có ngày",
+      "linkNote": "Liên kết ghi chú",
+      "openDetails": "Mở toàn bộ chi tiết",
+      "back": "Quay lại",
+      "remove": "Xóa {name}",
+      "noReminder": "Không nhắc nhở",
+      "addTags": "Thêm thẻ…"
+    }
   },
   "drawer": {
     "close": "Đóng chi tiết nhiệm vụ",

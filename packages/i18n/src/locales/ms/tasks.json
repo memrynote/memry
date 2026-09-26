@@ -29,6 +29,8 @@
     "status": "Status",
     "priority": "Keutamaan",
     "dueDate": "Tarikh Akhir",
+    "startsOn": "Bermula {date}",
+    "dueOn": "Tarikh akhir {date}",
     "project": "Projek",
     "repeat": "ulang",
     "createAnother": "Buat yang lain",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Tambah tugasan cepat",
     "focusDescription": "Fokus tambah input dengan cepat",
-    "placeholder": "Tambah tugasan…    !today  !!high  #project"
+    "placeholder": "Tambah tugasan…    !today  !!high  #project",
+    "presets": {
+      "menu": "Pilihan tugasan",
+      "dueDate": "Tamat {date}. Tukar tarikh tamat",
+      "noDate": "Tiada tarikh",
+      "linkNote": "Pautkan nota",
+      "openDetails": "Buka semua butiran",
+      "back": "Kembali",
+      "remove": "Buang {name}",
+      "noReminder": "Tiada peringatan",
+      "addTags": "Tambah tag…"
+    }
   },
   "drawer": {
     "close": "Tutup butiran tugas",

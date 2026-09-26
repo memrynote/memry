@@ -29,6 +29,8 @@
     "status": "สถานะ",
     "priority": "ลำดับความสำคัญ",
     "dueDate": "กำหนดวันครบกำหนด",
+    "startsOn": "เริ่ม {date}",
+    "dueOn": "ครบกำหนด {date}",
     "project": "โครงการ",
     "repeat": "ทำซ้ำ",
     "createAnother": "สร้างอีกอัน",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "เพิ่มงานอย่างรวดเร็ว",
     "focusDescription": "เน้นที่การป้อนงานอย่างรวดเร็ว",
-    "placeholder": "เพิ่มงาน…    !today  !!high  #project"
+    "placeholder": "เพิ่มงาน…    !today  !!high  #project",
+    "presets": {
+      "menu": "ตัวเลือกงาน",
+      "dueDate": "ครบกำหนด {date} เปลี่ยนวันครบกำหนด",
+      "noDate": "ไม่มีวันที่",
+      "linkNote": "ลิงก์โน้ต",
+      "openDetails": "เปิดรายละเอียดทั้งหมด",
+      "back": "ย้อนกลับ",
+      "remove": "ลบ {name}",
+      "noReminder": "ไม่มีการเตือน",
+      "addTags": "เพิ่มแท็ก…"
+    }
   },
   "drawer": {
     "close": "ปิดรายละเอียดงาน",

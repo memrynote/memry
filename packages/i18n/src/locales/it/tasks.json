@@ -29,6 +29,8 @@
     "status": "Stato",
     "priority": "Priorità",
     "dueDate": "Data di scadenza",
+    "startsOn": "Inizia {date}",
+    "dueOn": "Scade {date}",
     "project": "Progetto",
     "repeat": "Ripeti",
     "createAnother": "Creane un altro",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Attività di aggiunta rapida",
     "focusDescription": "Metti a fuoco l'aggiunta rapida di input",
-    "placeholder": "Aggiungi un'attività…    !today  !!high  #project"
+    "placeholder": "Aggiungi un'attività…    !today  !!high  #project",
+    "presets": {
+      "menu": "Opzioni attività",
+      "dueDate": "Scadenza {date}. Cambia scadenza",
+      "noDate": "Nessuna data",
+      "linkNote": "Collega nota",
+      "openDetails": "Apri tutti i dettagli",
+      "back": "Indietro",
+      "remove": "Rimuovi {name}",
+      "noReminder": "Nessun promemoria",
+      "addTags": "Aggiungi tag…"
+    }
   },
   "drawer": {
     "close": "Chiudi i dettagli dell'attività",

@@ -29,6 +29,8 @@
     "status": "상태",
     "priority": "우선순위",
     "dueDate": "마감일",
+    "startsOn": "시작 {date}",
+    "dueOn": "마감 {date}",
     "project": "프로젝트",
     "repeat": "반복",
     "createAnother": "다른 만들기",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "빠른 추가 작업",
     "focusDescription": "초점 빠른 추가 입력",
-    "placeholder": "작업 추가…    !today  !!high  #project"
+    "placeholder": "작업 추가…    !today  !!high  #project",
+    "presets": {
+      "menu": "작업 옵션",
+      "dueDate": "마감 {date}. 마감일 변경",
+      "noDate": "날짜 없음",
+      "linkNote": "노트 연결",
+      "openDetails": "전체 세부 정보 열기",
+      "back": "뒤로",
+      "remove": "{name} 제거",
+      "noReminder": "알림 없음",
+      "addTags": "태그 추가…"
+    }
   },
   "drawer": {
     "close": "작업 세부정보 닫기",

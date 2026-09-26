@@ -29,6 +29,8 @@
     "status": "Katayuan",
     "priority": "Priyoridad",
     "dueDate": "Takdang Petsa",
+    "startsOn": "Magsisimula {date}",
+    "dueOn": "Takdang petsa {date}",
     "project": "Proyekto",
     "repeat": "Ulitin",
     "createAnother": "Lumikha ng isa pa",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Mabilis na magdagdag ng gawain",
     "focusDescription": "Tumutok ng mabilis na magdagdag ng input",
-    "placeholder": "Magdagdag ng gawain…    !today  !!high  #project"
+    "placeholder": "Magdagdag ng gawain…    !today  !!high  #project",
+    "presets": {
+      "menu": "Mga opsyon ng gawain",
+      "dueDate": "Takdang {date}. Palitan ang takdang petsa",
+      "noDate": "Walang petsa",
+      "linkNote": "I-link ang tala",
+      "openDetails": "Buksan ang lahat ng detalye",
+      "back": "Bumalik",
+      "remove": "Alisin ang {name}",
+      "noReminder": "Walang paalala",
+      "addTags": "Magdagdag ng tag…"
+    }
   },
   "drawer": {
     "close": "Isara ang mga detalye ng gawain",

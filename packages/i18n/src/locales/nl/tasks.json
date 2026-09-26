@@ -29,6 +29,8 @@
     "status": "Status",
     "priority": "Prioriteit",
     "dueDate": "Vervaldatum",
+    "startsOn": "Begint {date}",
+    "dueOn": "Deadline {date}",
     "project": "Project",
     "repeat": "Herhaal",
     "createAnother": "Maak er nog een",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Snel taak toevoegen",
     "focusDescription": "Focus snel invoer toevoegen",
-    "placeholder": "Voeg een taak toe…    !today  !!high  #project"
+    "placeholder": "Voeg een taak toe…    !today  !!high  #project",
+    "presets": {
+      "menu": "Taakopties",
+      "dueDate": "Deadline {date}. Deadline wijzigen",
+      "noDate": "Geen datum",
+      "linkNote": "Notitie koppelen",
+      "openDetails": "Alle details openen",
+      "back": "Terug",
+      "remove": "{name} verwijderen",
+      "noReminder": "Geen herinnering",
+      "addTags": "Tags toevoegen…"
+    }
   },
   "drawer": {
     "close": "Sluit taakdetails",

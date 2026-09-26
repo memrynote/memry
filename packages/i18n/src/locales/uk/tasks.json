@@ -29,6 +29,8 @@
     "status": "Статус",
     "priority": "Пріоритет",
     "dueDate": "Термін виконання",
+    "startsOn": "Початок {date}",
+    "dueOn": "Термін {date}",
     "project": "Проєкт",
     "repeat": "Повторювати",
     "createAnother": "Створити інше",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Швидко додати завдання",
     "focusDescription": "Фокус на швидкий ввід завдання",
-    "placeholder": "Додати завдання…    !today  !!high  #project"
+    "placeholder": "Додати завдання…    !today  !!high  #project",
+    "presets": {
+      "menu": "Параметри завдання",
+      "dueDate": "Термін {date}. Змінити термін",
+      "noDate": "Без дати",
+      "linkNote": "Пов’язати нотатку",
+      "openDetails": "Відкрити всі деталі",
+      "back": "Назад",
+      "remove": "Вилучити {name}",
+      "noReminder": "Без нагадування",
+      "addTags": "Додати теги…"
+    }
   },
   "drawer": {
     "close": "Закрити деталі завдання",

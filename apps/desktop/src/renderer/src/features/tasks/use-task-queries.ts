@@ -338,7 +338,7 @@ export function useTaskWorkspaceMutations() {
   }, [queryClient])
 
   const addTask = useCallback(
-    async (task: UiTask) => {
+    async (task: UiTask): Promise<string | null> => {
       setTasks((prev) => [...prev, task])
 
       try {
@@ -361,9 +361,13 @@ export function useTaskWorkspaceMutations() {
         })
         reportEnvelopeFailure('task_create', result)
         invalidateWorkspace()
+        // The stored id, which is not the optimistic one: callers that attach
+        // records to the new task (reminders) need this one.
+        return result.success ? (result.task?.id ?? null) : null
       } catch (error) {
         log.error('Failed to create task:', error)
         trackRendererError('task_create', error)
+        return null
       }
     },
     [invalidateWorkspace, setTasks]

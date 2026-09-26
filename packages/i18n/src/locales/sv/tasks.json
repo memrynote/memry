@@ -29,6 +29,8 @@
     "status": "Status",
     "priority": "Prioritet",
     "dueDate": "Förfallodatum",
+    "startsOn": "Startar {date}",
+    "dueOn": "Förfaller {date}",
     "project": "Projekt",
     "repeat": "Upprepa",
     "createAnother": "Skapa en till",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "Snabb tilläggsuppgift",
     "focusDescription": "Fokusera snabb tilläggsinput",
-    "placeholder": "Lägg till en uppgift…    !today  !!high  #project"
+    "placeholder": "Lägg till en uppgift…    !today  !!high  #project",
+    "presets": {
+      "menu": "Uppgiftsalternativ",
+      "dueDate": "Förfaller {date}. Ändra förfallodatum",
+      "noDate": "Inget datum",
+      "linkNote": "Länka anteckning",
+      "openDetails": "Öppna alla detaljer",
+      "back": "Tillbaka",
+      "remove": "Ta bort {name}",
+      "noReminder": "Ingen påminnelse",
+      "addTags": "Lägg till taggar…"
+    }
   },
   "drawer": {
     "close": "Detaljer om slutuppgifter",

@@ -29,6 +29,8 @@
     "status": "狀態",
     "priority": "優先事項",
     "dueDate": "截止日期",
+    "startsOn": "{date} 開始",
+    "dueOn": "{date} 截止",
     "project": "專案",
     "repeat": "重複",
     "createAnother": "創建另一個",
@@ -76,7 +78,18 @@
   "quickAdd": {
     "label": "快速新增任務",
     "focusDescription": "聚焦快速新增輸入框",
-    "placeholder": "新增任務…    !today  !!high  #project"
+    "placeholder": "新增任務…    !today  !!high  #project",
+    "presets": {
+      "menu": "任務選項",
+      "dueDate": "截止 {date}。變更截止日期",
+      "noDate": "無日期",
+      "linkNote": "連結筆記",
+      "openDetails": "開啟完整詳細資料",
+      "back": "返回",
+      "remove": "移除 {name}",
+      "noReminder": "無提醒",
+      "addTags": "新增標籤…"
+    }
   },
   "drawer": {
     "close": "關閉任務詳情",
