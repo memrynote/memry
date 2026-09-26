@@ -100,6 +100,11 @@ export function isOutsideAllBlocks(target: Element): boolean {
  * text, so without the exclusion a drag on it started a marquee on top of the
  * resize: a selection box over the note, the editor blurred, and the image
  * left block-selected, where the next Backspace deletes it.
+ *
+ * Menus and listboxes (the drag-handle menu and its Turn into submenu, the
+ * toolbar's block type dropdown) portal into the editor's portal element,
+ * inside the marquee zone. A press on one must not clear the block selection:
+ * Turn into reads that selection when its item runs.
  */
 export function shouldStartMarquee(target: EventTarget | null): target is HTMLElement {
   if (!(target instanceof HTMLElement)) return false
@@ -107,7 +112,7 @@ export function shouldStartMarquee(target: EventTarget | null): target is HTMLEl
   if (target.closest('button, a, input, textarea, select, [role="button"]')) return false
   if (
     target.closest(
-      '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-resize-handle'
+      '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-resize-handle, .bn-menu-dropdown, [role="menu"], [role="listbox"]'
     )
   ) {
     return false

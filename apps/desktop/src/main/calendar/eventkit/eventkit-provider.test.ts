@@ -167,7 +167,12 @@ describe('macOS Calendar provider (#2374)', () => {
     for (const row of events()) expect(row.clock).toBeNull()
   }
 
+  const hostPlatform = process.platform
+
   beforeEach(() => {
+    // Provider status resolves the provider for process.platform, and it only
+    // exists on macOS. Pin it so these tests do not depend on the CI host.
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
     dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
     db = dataDb.db as unknown as DataDb
@@ -180,6 +185,7 @@ describe('macOS Calendar provider (#2374)', () => {
   })
 
   afterEach(async () => {
+    Object.defineProperty(process, 'platform', { value: hostPlatform })
     await releaseAppleCalendarBridge()
     vi.clearAllMocks()
     dataDb.close()

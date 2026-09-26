@@ -407,7 +407,10 @@ Hover the gutter on the left to reveal the block handle. Drag a block to:
 ## Block Menu
 
 Click the block handle in the left gutter to open the block menu. Everything in it
-applies to that one block, no matter what else is selected:
+applies to that one block, with one exception: if you drag-selected several blocks
+from the margin and open the menu from one of them, **Turn into** converts every
+selected text block at once. Tables, files, tasks and other blocks without text of
+their own keep their type.
 
 | Action                          | What it does                                                                                                                                                    |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -479,11 +482,11 @@ Memry does not pick a spellchecking language of its own. macOS detects the langu
 
 ## Toolbar
 
-The formatting toolbar can be sticky at the top or float above selections — choose in [Settings → Editor](/user-guide/settings#editor).
+The formatting toolbar can be sticky at the top or float above selections — choose in [Settings → Editor](/user-guide/settings#editor), or with **Pin toolbar to top** in the toolbar's **More** (`⋯`) menu. With the toolbar pinned, the block type and list buttons also apply to blocks you drag-selected from the margin.
 
-Both modes offer the same formatting controls: the block type (paragraph, heading, list) plus inline styles, alignment, colour, indent, and links. The block type control is hidden for blocks that have no alternative type, such as tasks, callouts, and files.
+Both modes show the same single row, in the same order: block type (paragraph, heading, list), then bold, italic, underline, strikethrough, inline code (`` `code` ``) and colour, then the list toggles, then link and link to note, then **Comment**. The block type control is hidden for blocks that have no alternative type, such as tasks, callouts, and files.
 
-The floating toolbar also carries **inline code** (`` `code` ``) next to bold, italic, underline and strikethrough, and ends with a full-width **Comment** button that opens a comment on the selection.
+Alignment and indent/outdent sit in the **More** (`⋯`) menu at the end of the row. Hovering a button shows its name and keyboard shortcut.
 
 Opening the context menu stands the floating toolbar down, so you get one menu rather than two. It returns on your next click or keystroke.
 

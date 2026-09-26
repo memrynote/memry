@@ -479,6 +479,7 @@ export interface SelectVaultResponse {
   success: boolean
   vault: VaultInfo | null
   error?: string
+  errorCode?: 'already-exists' | 'invalid-name'
 }
 
 export interface GetVaultsResponse {
@@ -498,7 +499,8 @@ export interface AccountVaultInfo {
 // Vault client API interface
 export interface VaultClientAPI {
   select(path?: string): Promise<SelectVaultResponse>
-  create(path: string, name: string): Promise<SelectVaultResponse>
+  create(parentPath: string, name: string): Promise<SelectVaultResponse>
+  getDefaultParent(): Promise<string>
   getAll(): Promise<GetVaultsResponse>
   getStatus(): Promise<VaultStatus>
   getConfig(): Promise<VaultConfig>

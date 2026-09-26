@@ -7,8 +7,11 @@
  * so `RemoveBlockItem` / `BlockColorsItem` keep their behaviour, their markdown
  * round-trip and their `data-test` hooks.
  *
- * Everything acts on the block whose handle was clicked — never on a wider
- * multi-block selection, because the handle itself names the target.
+ * Everything acts on the block whose handle was clicked, with one exception:
+ * Turn into, when that block is part of a marquee block selection, converts
+ * every text block in the selection (non-text blocks such as tables are
+ * skipped). Duplicate, Move to, Delete and Comment stay single-block, because
+ * the handle itself names the target.
  *
  * @module note/content-area/block-side-menu
  */
@@ -36,6 +39,7 @@ import { useT } from '@memry/i18n/renderer'
 import { isMac } from '@/lib/shortcut-registry'
 import { getEditorSelectionFromState, getProseMirrorState } from './review-formatting-toolbar'
 import type { TemplateAnchor } from './insert-template'
+import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
 import type { ReviewSelection } from './types'
 
 type AnyBlock = { id: string; type: string; props?: Record<string, unknown>; content?: unknown }
@@ -166,6 +170,17 @@ function MenuItem({
   )
 }
 
+/**
+ * Blocks a Turn into from `block`'s handle converts: the whole marquee
+ * selection when the block is in it, otherwise the block alone. Non-text
+ * blocks drop out, so a table in the selection stays a table.
+ */
+function turnIntoTargets(editor: any, block: AnyBlock): AnyBlock[] {
+  const selected = getMarqueeSelectedBlocks<AnyBlock>(editor)
+  if (!selected?.some((each) => each.id === block.id)) return [block]
+  return selected.filter((target) => !NON_TEXT_BLOCK_TYPES.has(target.type))
+}
+
 function TurnIntoItem() {
   const { t } = useT('notes')
   const Components = useComponentsContext()!
@@ -198,9 +213,17 @@ function TurnIntoItem() {
             key={target.key}
             className="bn-menu-item"
             onClick={() => {
+              const blocks = turnIntoTargets(editor, block)
               // `updateBlock` keeps `children`, so an indented sub-list survives
-              // the conversion instead of being silently dropped.
-              editor.updateBlock(block, { type: target.type, props: target.props ?? {} })
+              // the conversion instead of being silently dropped. One
+              // transaction, so one undo reverts the whole selection.
+              editor.transact(() => {
+                for (const each of blocks) {
+                  editor.updateBlock(each.id, { type: target.type, props: target.props ?? {} })
+                }
+              })
+              // Converted blocks change height; the highlight rects would be stale.
+              if (blocks.length > 1) getBlockSelection(editor)?.clear()
             }}
           >
             {t(`editor.blockMenu.turnIntoTypes.${target.key}`)}

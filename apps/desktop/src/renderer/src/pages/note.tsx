@@ -403,7 +403,7 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   // Editor settings (toolbar mode, width)
-  const { settings: editorSettings } = useEditorSettings()
+  const { settings: editorSettings, updateSettings: updateEditorSettings } = useEditorSettings()
 
   // Width follows the global setting (Normal / Full) unless this note has an
   // explicit per-note override in frontmatter (`fullWidth`), which wins.
@@ -445,9 +445,12 @@ export function NotePage({ noteId }: NotePageProps) {
       // mousedown and mouseup, so the item's click never fires (drag-handle
       // Colors/Delete silently did nothing). Mirror the marquee hook's
       // exclusion list, plus menu roles for nested submenus.
+      // `listbox` is the toolbar's block type dropdown: it portals into the
+      // editor's portal element, which sits inside this zone, so a press on an
+      // option used to land here, jump the caret to the end and drop the pick.
       if (
         target.closest(
-          '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-menu-dropdown, [role="menu"]'
+          '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-menu-dropdown, [role="menu"], [role="listbox"]'
         )
       )
         return
@@ -1941,6 +1944,9 @@ export function NotePage({ noteId }: NotePageProps) {
                 externalContentRevision={externalUpdateCount}
                 placeholder={t('editor.content.placeholder')}
                 stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                onStickyToolbarChange={(sticky) =>
+                  void updateEditorSettings({ toolbarMode: sticky ? 'sticky' : 'floating' })
+                }
                 spellCheck={editorSettings.spellCheck}
                 onContentChange={handleContentChange}
                 onMarkdownChange={handleMarkdownChange}

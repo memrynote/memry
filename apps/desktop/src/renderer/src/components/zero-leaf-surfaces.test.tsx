@@ -303,7 +303,7 @@ describe('zero-covered leaf surfaces', () => {
     consoleError.mockRestore()
   })
 
-  it('opens the incident report dialog from the tab error boundary CTA', () => {
+  it('opens the incident report dialog from the tab error boundary CTA', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const error = new Error('tab failed')
     const TabChild = () => {
@@ -316,7 +316,8 @@ describe('zero-covered leaf surfaces', () => {
       </TabErrorBoundary>
     )
 
-    fireEvent.click(screen.getByText('phaseF.componentsTabsTabErrorBoundary.sendReport'))
+    // The manual button shows once the auto-send decision settles to "not sent".
+    fireEvent.click(await screen.findByText('phaseF.componentsTabsTabErrorBoundary.sendReport'))
     expect(mocks.openIncidentReport).toHaveBeenCalledWith({
       source: 'tab_error_boundary',
       errorCode: 'Error',

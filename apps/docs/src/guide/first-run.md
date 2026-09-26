@@ -1,5 +1,5 @@
 ---
-description: What happens the first time you open memrynote — choosing a vault location, setting a passphrase, and saving the recovery phrase.
+description: What happens the first time you open memrynote — creating, opening, or downloading a vault, setting a passphrase, and saving the recovery phrase.
 ---
 
 # First Run & Vault Setup
@@ -16,21 +16,27 @@ A short overlay appears the very first time. It explains the local-first model: 
 
 Click **Get started**.
 
-## Choosing a Vault Location
+## Choosing a Vault
 
-The vault is a folder memrynote owns on disk. It holds your encrypted SQLite databases, attachments, and CRDT state.
+The vault is a folder of Markdown files on disk. memrynote keeps its databases, attachments, and CRDT state in a hidden `.memry` folder inside it.
 
-<!-- screenshot: vault picker dialog -->
+<!-- screenshot: vault picker -->
 
-You're asked where to put the vault. Defaults:
+The welcome screen offers three ways in:
 
-| Platform | Default path                                     |
-| -------- | ------------------------------------------------ |
-| macOS    | `~/Library/Application Support/MemryNote/Vault/` |
-| Windows  | `%APPDATA%/MemryNote/Vault/`                     |
-| Linux    | `~/.config/MemryNote/vault/`                     |
+| Option                       | Shortcut                  | What it does                                                                                                                                                           |
+| ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Create new vault**         | <kbd>⌘</kbd>+<kbd>N</kbd> | Enter a name and a location (default `~/Documents/Memry`). memrynote creates the folder `<location>/<name>` and opens it. An existing folder is never reused silently. |
+| **Open folder as vault**     | <kbd>⌘</kbd>+<kbd>O</kbd> | Pick a folder of Markdown files you already keep. Your files stay as they are.                                                                                         |
+| **Open from Memrynote Sync** | <kbd>⌘</kbd>+<kbd>L</kbd> | Sign in (or create an account), unlock with your recovery phrase or a linked device, then pick one vault from your account to download.                                |
 
-Pick a different path if you want to:
+On Windows and Linux the shortcuts use <kbd>Ctrl</kbd>.
+
+If **Create new vault** finds a folder with that name already at the location, it offers to open that folder as a vault instead.
+
+**Open from Memrynote Sync** lists your account's vaults by name. Choose one and where it should be downloaded; a vault that is already on this computer opens its local copy. The other vaults stay in your account and can be downloaded later from the vault switcher. A new account with no vaults continues to **Create new vault**.
+
+Pick a location of your own if you want to:
 
 - Sync the **vault** itself with iCloud / Dropbox (not recommended — sync conflicts with memrynote's own sync; use memrynote sync instead)
 - Place it on a specific drive

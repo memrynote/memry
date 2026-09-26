@@ -33,7 +33,7 @@ import {
   validateRecoveryPhrase
 } from '../crypto'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
-import { store } from '../store'
+import { getStoredDeviceId, store } from '../store'
 import {
   deleteFromServer,
   getFromServer,
@@ -503,14 +503,22 @@ export function registerAuthDeviceHandlers(): void {
   // --- Device Management Handlers ---
 
   ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
-    if (!isDatabaseInitialized()) {
+    // With no vault open (first-run onboarding) there is no local device table,
+    // but a device registered from the onboarding still has the install-wide
+    // identity. Report it from the server so the renderer sees the session.
+    const hasVaultDb = isDatabaseInitialized()
+    const storedDeviceId = hasVaultDb ? undefined : getStoredDeviceId()
+    if (!hasVaultDb && !storedDeviceId) {
       return { devices: [], email: undefined, needsRecoveryConfirmation: false }
     }
-    const db = getDatabase()
-    const rows = (await db.select().from(syncDevices)) as LocalDeviceRow[]
+    const rows = hasVaultDb
+      ? ((await getDatabase().select().from(syncDevices)) as LocalDeviceRow[])
+      : []
     const syncData = store.get('sync')
     const needsRecoveryConfirmation = syncData.recoveryPhraseConfirmed === false
-    const currentDeviceId = rows.find((device) => device.isCurrentDevice)?.id
+    const currentDeviceId = hasVaultDb
+      ? rows.find((device) => device.isCurrentDevice)?.id
+      : storedDeviceId
     const accessToken = await getValidAccessToken()
 
     if (accessToken) {

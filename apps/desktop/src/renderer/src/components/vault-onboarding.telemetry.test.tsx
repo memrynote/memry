@@ -68,15 +68,12 @@ describe('VaultOnboarding telemetry', () => {
     expect(startedCalls).toHaveLength(1)
   })
 
-  it('tracks onboarding_completed when selectVault succeeds (create/open picker)', async () => {
+  it('tracks onboarding_completed when selectVault succeeds (open folder)', async () => {
     render(<VaultOnboarding />)
-    // The PickerPanel renders two ActionRow buttons with aria-label = title key.
-    // Both call onPick → handlePick → selectVault.  Click the first one.
-    const [firstAction] = screen.getAllByRole('button', {
-      name: /phaseF\.componentsVaultOnboarding\./
-    })
+    // "Open folder as vault" goes straight to the native picker via selectVault.
+    const openFolder = screen.getByRole('button', { name: /flow\.openFolder/ })
     await act(async () => {
-      fireEvent.click(firstAction)
+      fireEvent.click(openFolder)
     })
     expect(trackTelemetry).toHaveBeenCalledWith('onboarding_completed', {
       surface: 'onboarding',
@@ -102,11 +99,8 @@ describe('VaultOnboarding telemetry', () => {
   it('does not track onboarding_completed when selectVault fails', async () => {
     mockSelectVault.mockResolvedValue({ success: false, vault: null, error: 'cancelled' })
     render(<VaultOnboarding />)
-    const [firstAction] = screen.getAllByRole('button', {
-      name: /phaseF\.componentsVaultOnboarding\./
-    })
     await act(async () => {
-      fireEvent.click(firstAction)
+      fireEvent.click(screen.getByRole('button', { name: /flow\.openFolder/ }))
     })
     const completedCalls = (trackTelemetry as ReturnType<typeof vi.fn>).mock.calls.filter(
       ([name]) => name === 'onboarding_completed'

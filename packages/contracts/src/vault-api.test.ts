@@ -44,12 +44,18 @@ describe('CreateVaultSchema', () => {
   })
 
   it('should reject empty path', () => {
-    // Note: empty string is still a string, schema doesn't have min length
+    // path is the parent folder the vault is created in; it cannot be empty
     const result = CreateVaultSchema.safeParse({
       path: '',
       name: 'My Vault'
     })
-    expect(result.success).toBe(true) // Schema allows empty path string
+    expect(result.success).toBe(false)
+  })
+
+  it('should trim the name and reject a whitespace-only name', () => {
+    const trimmed = CreateVaultSchema.safeParse({ path: '/parent', name: '  Notes  ' })
+    expect(trimmed.success && trimmed.data.name).toBe('Notes')
+    expect(CreateVaultSchema.safeParse({ path: '/parent', name: '   ' }).success).toBe(false)
   })
 
   it('should reject empty name', () => {

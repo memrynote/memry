@@ -835,8 +835,8 @@ describe('main index phase2 exports', () => {
     expect(applyGlobalCaptureShortcutMock).toHaveBeenCalled()
     expect(BrowserWindowMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        width: 760,
-        height: 560,
+        width: 900,
+        height: 720,
         show: false
       })
     )
@@ -1024,7 +1024,7 @@ describe('main index phase2 exports', () => {
     await flushReadyWork()
 
     const createdWindow = browserWindows[0]
-    createdWindow.getSize.mockReturnValue([760, 560])
+    createdWindow.getSize.mockReturnValue([900, 720])
 
     vaultStatusChangedListeners[0]?.({
       isOpen: true,
@@ -1067,7 +1067,7 @@ describe('main index phase2 exports', () => {
       error: null
     })
 
-    expect(createdWindow.setSize).toHaveBeenCalledWith(760, 560)
+    expect(createdWindow.setSize).toHaveBeenCalledWith(900, 720)
   })
 
   it('drops the launch-timeline vault-status listener when the vault fails to open', async () => {
@@ -1094,7 +1094,7 @@ describe('main index phase2 exports', () => {
       indexProgress: 0,
       error: null
     })
-    expect(createdWindow.setSize).toHaveBeenCalledWith(760, 560)
+    expect(createdWindow.setSize).toHaveBeenCalledWith(900, 720)
   })
 
   // The stale-vault-path case: a stored path whose folder is gone resolves

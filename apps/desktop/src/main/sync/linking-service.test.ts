@@ -16,6 +16,7 @@ const {
   mockDecryptGoogleProviderAuthTransfer,
   mockPersistImportedGoogleProviderAuth,
   mockGetDatabase,
+  mockIsDatabaseInitialized,
   mockCollectVaultTransfer,
   mockEncryptVaultTransfer,
   mockDecryptVaultTransfer,
@@ -40,6 +41,7 @@ const {
   mockDecryptGoogleProviderAuthTransfer: vi.fn(),
   mockPersistImportedGoogleProviderAuth: vi.fn(),
   mockGetDatabase: vi.fn(),
+  mockIsDatabaseInitialized: vi.fn(() => true),
   mockCollectVaultTransfer: vi.fn(),
   mockEncryptVaultTransfer: vi.fn(),
   mockDecryptVaultTransfer: vi.fn(),
@@ -89,7 +91,8 @@ vi.mock('./device-registration', () => ({
 }))
 
 vi.mock('../database/client', () => ({
-  getDatabase: mockGetDatabase
+  getDatabase: mockGetDatabase,
+  isDatabaseInitialized: mockIsDatabaseInitialized
 }))
 
 vi.mock('../calendar/google/provider-auth-transfer', () => ({
@@ -710,6 +713,7 @@ describe('linking-service multi-vault choice', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetDatabase.mockReturnValue({ tag: 'db' })
+    mockIsDatabaseInitialized.mockReturnValue(true)
     mockPersistKeysAndRegisterDevice.mockResolvedValue('device-1')
     mockSelectVault.mockResolvedValue({ success: true })
     mockPostToServer.mockImplementation(async (path: string) => {
@@ -766,6 +770,20 @@ describe('linking-service multi-vault choice', () => {
       { vaultUuid: 'v-b', itemCount: 4, createdAt: undefined }
     ])
     expect(mockPersistKeysAndRegisterDevice).not.toHaveBeenCalled()
+  })
+
+  // First-run onboarding links before any vault exists; its own account vault
+  // picker (with decrypted names) chooses what to download afterwards.
+  it('registers the device without a vault choice when no vault is open', async () => {
+    mockIsDatabaseInitialized.mockReturnValue(false)
+    await linkViaQr(qrData, 'setup-token')
+    const res = await completeLinkingQr('session-1')
+
+    expect(res).toEqual({ success: true })
+    await vi.waitFor(() => expect(mockPersistKeysAndRegisterDevice).toHaveBeenCalled())
+    expect(mockAdoptVaultLocally).not.toHaveBeenCalled()
+    expect(mockCreateDormantVault).not.toHaveBeenCalled()
+    expect(mockSelectVault).not.toHaveBeenCalled()
   })
 
   it('finalizeVaultChoice opens only the primary, then registers (non-primaries stay cloud-only)', async () => {

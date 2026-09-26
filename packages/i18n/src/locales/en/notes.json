@@ -169,6 +169,8 @@
     },
     "toolbar": {
       "linkToNote": "Link to note",
+      "more": "More",
+      "pinToTop": "Pin toolbar to top",
       "reminderSet": "Reminder set",
       "setReminder": "Set reminder",
       "removeBookmark": "Remove bookmark",

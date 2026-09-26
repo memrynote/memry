@@ -96,6 +96,7 @@ import { isMac } from '@/lib/shortcut-registry'
 import { serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
+import { registerBlockSelection } from './marquee-block-registry'
 import { MoveBlockDialog } from './move-block-dialog'
 import {
   AttachmentPickerDialog,
@@ -323,6 +324,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   placeholder,
   editable = true,
   stickyToolbar = false,
+  onStickyToolbarChange,
   spellCheck,
   onContentChange,
   onMarkdownChange,
@@ -1135,6 +1137,22 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     triggerContainerEl: triggerEl,
     enabled: editable
   })
+
+  // Retyping from the toolbar or the block menu reads this at click time, not
+  // at render: the selection changes under menus BlockNote built earlier.
+  const marqueeSelectionRef = useRef(marquee.selectedBlockIds)
+  useEffect(() => {
+    marqueeSelectionRef.current = marquee.selectedBlockIds
+  }, [marquee.selectedBlockIds])
+  const clearMarqueeSelection = marquee.clearSelection
+  useEffect(
+    () =>
+      registerBlockSelection(editor, {
+        getIds: () => Array.from(marqueeSelectionRef.current),
+        clear: clearMarqueeSelection
+      }),
+    [editor, clearMarqueeSelection]
+  )
 
   // The block becomes a `taskBlock` before the create call resolves, so every
   // path that fails to produce a row has to put the checkbox back. Otherwise it
@@ -2186,9 +2204,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               one has no list toggles, so the template editor used to be the odd
               one out with no visible way to turn selected lines into a list. */}
             {stickyToolbar ? (
-              <ReviewFormattingToolbar variant="sticky" onAddComment={review?.onAddComment} />
+              <ReviewFormattingToolbar
+                variant="sticky"
+                onAddComment={review?.onAddComment}
+                onStickyChange={onStickyToolbarChange}
+              />
             ) : (
-              <ReviewFormattingToolbarController onAddComment={review?.onAddComment} />
+              <ReviewFormattingToolbarController
+                onAddComment={review?.onAddComment}
+                onStickyChange={onStickyToolbarChange}
+              />
             )}
             {/* Memry's block menu: BlockNote's stock drag-handle menu carries
               only Delete + Colors. This one keeps both and adds Turn into,

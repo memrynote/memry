@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import { app } from 'electron'
 
 import { KEYCHAIN_ENTRIES, KEY_DERIVATION_CONTEXTS } from '@memry/contracts/crypto'
 import type { AccountVaultInfo, SelectVaultResponse } from '@memry/contracts/vault-api'
@@ -8,6 +7,7 @@ import type { AccountVaultInfo, SelectVaultResponse } from '@memry/contracts/vau
 import { retrieveKey, secureCleanup } from '../crypto'
 import { deriveKey } from '../crypto/keys'
 import { createLogger } from '../lib/logger'
+import { defaultVaultParentDir as defaultParentDir } from '../vault/default-parent'
 import {
   getAccountVaultsCache,
   getCurrentVaultPath,
@@ -101,12 +101,6 @@ export async function refreshVaultDirectory(opts?: { force?: boolean }): Promise
   } finally {
     secureCleanup(nameKey)
   }
-}
-
-function defaultParentDir(): string {
-  const current = getCurrentVaultPath()
-  if (current) return path.dirname(current)
-  return path.join(app.getPath('documents'), 'Memry')
 }
 
 function slugify(name: string): string {

@@ -904,7 +904,7 @@ describe('settings section coverage', () => {
     await waitFor(() =>
       expect(window.electron.ipcRenderer.invoke).toHaveBeenCalledWith('ai-inline:set-settings', {
         provider: 'anthropic',
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         baseUrl: ''
       })
     )

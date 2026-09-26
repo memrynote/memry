@@ -81,7 +81,7 @@ function TemplateEditorSurface({
   const queryClient = useQueryClient()
   const { deleteTemplate, duplicateTemplate } = useTemplates({ autoLoad: false })
   const { tags: allAvailableTags } = useNoteTagsQuery()
-  const { settings: editorSettings } = useNoteEditorSettings()
+  const { settings: editorSettings, setToolbarMode } = useNoteEditorSettings()
   const { closeTab, openTab, updateTabTitle, setTabModified, setTabEntity, registerCloseGuard } =
     useTabs()
   const activeTab = useActiveTab()
@@ -453,6 +453,7 @@ function TemplateEditorSurface({
             contentType="markdown"
             placeholder={t('templateEditor.content.placeholder')}
             stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+            onStickyToolbarChange={(sticky) => void setToolbarMode(sticky ? 'sticky' : 'floating')}
             onMarkdownChange={(markdown) => setFields({ content: markdown })}
             editable={!isBuiltIn}
             // A template is not a note: its checkboxes stay checkboxes until a

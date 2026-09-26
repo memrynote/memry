@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { HelpCircle, Loader2, MoreHorizontal, Plus } from '@/lib/icons'
+import { Download, FolderOpen, HelpCircle, MoreHorizontal, Plus } from '@/lib/icons'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useT } from '@memry/i18n/renderer'
 import { LOCALE_DISPLAY_NAMES, SUPPORTED_LOCALES } from '@memry/i18n/shared'
@@ -16,8 +16,21 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { trackTelemetry } from '@/lib/telemetry'
+import { isMac } from '@/lib/shortcut-registry'
+import { CreateVaultForm } from '@/components/onboarding/create-vault-form'
+import { SyncVaultPanel } from '@/components/onboarding/sync-vault-panel'
 
 type Translate = (key: string) => string
+
+type OnboardingView = 'home' | 'create' | 'sync'
+
+const trackCompleted = (): void => {
+  void trackTelemetry('onboarding_completed', {
+    surface: 'onboarding',
+    action: 'completed',
+    result: 'success'
+  })
+}
 
 function MemryMark({ className }: { className?: string }): React.JSX.Element {
   return (
@@ -42,6 +55,7 @@ export function VaultOnboarding(): React.JSX.Element {
   const { selectVault, switchVault, isLoading, error } = useVault()
   const { vaults, currentVault } = useVaultList()
   const [isChangingLocale, setIsChangingLocale] = useState(false)
+  const [view, setView] = useState<OnboardingView>('home')
 
   const recentVaults = vaults.slice(0, 8)
   const showSidebar = recentVaults.length > 0
@@ -51,27 +65,37 @@ export function VaultOnboarding(): React.JSX.Element {
     void trackTelemetry('onboarding_started', { surface: 'onboarding', action: 'started' })
   }, [])
 
-  const handlePick = async (): Promise<void> => {
-    const result = await selectVault()
-    if (result.success) {
-      void trackTelemetry('onboarding_completed', {
-        surface: 'onboarding',
-        action: 'completed',
-        result: 'success'
-      })
-    }
-  }
+  // Without a path this shows the native folder picker ("Open folder as vault");
+  // with one it adopts that folder (the create form's "open it instead").
+  const handleOpenFolder = useCallback(
+    async (path?: string): Promise<void> => {
+      const result = await selectVault(path)
+      if (result.success) trackCompleted()
+    },
+    [selectVault]
+  )
 
   const handleOpenRecent = async (path: string): Promise<void> => {
     const result = await switchVault(path)
-    if (result.success) {
-      void trackTelemetry('onboarding_completed', {
-        surface: 'onboarding',
-        action: 'completed',
-        result: 'success'
-      })
-    }
+    if (result.success) trackCompleted()
   }
+
+  // Home-view shortcuts mirror the hints shown on each action row.
+  useEffect(() => {
+    if (view !== 'home') return
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const mod = isMac ? event.metaKey : event.ctrlKey
+      if (!mod || event.shiftKey || event.altKey || isLoading) return
+      const key = event.key.toLowerCase()
+      if (key === 'n') setView('create')
+      else if (key === 'o') void handleOpenFolder()
+      else if (key === 'l') setView('sync')
+      else return
+      event.preventDefault()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [view, isLoading, handleOpenFolder])
 
   const handleLocaleChange = useCallback(
     async (locale: Locale): Promise<void> => {
@@ -101,20 +125,40 @@ export function VaultOnboarding(): React.JSX.Element {
             recentVaults={recentVaults}
             currentVault={currentVault ?? null}
             isLoading={isLoading}
-            onPick={() => void handlePick()}
+            onPick={() => setView('create')}
             onOpenRecent={(path) => void handleOpenRecent(path)}
           />
         )}
-        <PickerPanel
-          t={t}
-          isLoading={isLoading}
-          error={error}
-          onPick={() => void handlePick()}
-          onHelp={handleHelp}
-          activeLocale={activeLocale}
-          isChangingLocale={isChangingLocale}
-          onLocaleChange={(locale) => void handleLocaleChange(locale)}
-        />
+        {view === 'create' ? (
+          <main className="flex flex-col grow shrink basis-0 h-full bg-background">
+            <CreateVaultForm
+              onBack={() => setView('home')}
+              onCreated={trackCompleted}
+              onOpenExisting={(path) => void handleOpenFolder(path)}
+            />
+          </main>
+        ) : view === 'sync' ? (
+          <main className="flex flex-col grow shrink basis-0 h-full bg-background">
+            <SyncVaultPanel
+              onBack={() => setView('home')}
+              onOpened={trackCompleted}
+              onCreateVault={() => setView('create')}
+            />
+          </main>
+        ) : (
+          <PickerPanel
+            t={t}
+            isLoading={isLoading}
+            error={error}
+            onCreate={() => setView('create')}
+            onOpenFolder={() => void handleOpenFolder()}
+            onOpenFromSync={() => setView('sync')}
+            onHelp={handleHelp}
+            activeLocale={activeLocale}
+            isChangingLocale={isChangingLocale}
+            onLocaleChange={(locale) => void handleLocaleChange(locale)}
+          />
+        )}
       </div>
     </div>
   )
@@ -211,7 +255,9 @@ interface PickerPanelProps {
   t: Translate
   isLoading: boolean
   error: string | null
-  onPick: () => void
+  onCreate: () => void
+  onOpenFolder: () => void
+  onOpenFromSync: () => void
   onHelp: () => void
   activeLocale: Locale
   isChangingLocale: boolean
@@ -222,38 +268,51 @@ function PickerPanel({
   t,
   isLoading,
   error,
-  onPick,
+  onCreate,
+  onOpenFolder,
+  onOpenFromSync,
   onHelp,
   activeLocale,
   isChangingLocale,
   onLocaleChange
 }: PickerPanelProps): React.JSX.Element {
+  const mod = isMac ? '⌘' : 'Ctrl+'
   return (
     <main className="flex flex-col grow shrink basis-0 h-full bg-background">
-      <PickerHeader t={t} />
+      <div className="flex flex-col grow shrink basis-0 items-center justify-center px-8 gap-7">
+        <PickerHeader t={t} />
 
-      <div className="flex flex-col grow shrink basis-0 px-8">
-        <ActionRow
-          title={t('phaseF.componentsVaultOnboarding.createNewVault')}
-          description={t('phaseF.componentsVaultOnboarding.createNewVaultDesc')}
-          actionLabel={t('phaseF.componentsVaultOnboarding.create')}
-          loading={isLoading}
-          variant="primary"
-          onClick={onPick}
-        />
-        <ActionRow
-          title={t('phaseF.componentsVaultOnboarding.openExistingVault')}
-          description={t('phaseF.componentsVaultOnboarding.openExistingVaultDesc')}
-          actionLabel={t('phaseF.componentsVaultOnboarding.open')}
-          loading={isLoading}
-          variant="secondary"
-          onClick={onPick}
-        />
-        {error && (
-          <p role="alert" className="pt-3 text-xs leading-4 text-destructive">
-            {error}
-          </p>
-        )}
+        <div className="flex flex-col w-full max-w-[420px] gap-0.5">
+          <ActionRow
+            icon={<Plus />}
+            title={t('phaseF.componentsVaultOnboarding.createNewVault')}
+            description={t('phaseF.componentsVaultOnboarding.flow.createDesc')}
+            shortcut={`${mod}N`}
+            disabled={isLoading}
+            onClick={onCreate}
+          />
+          <ActionRow
+            icon={<FolderOpen />}
+            title={t('phaseF.componentsVaultOnboarding.flow.openFolder')}
+            description={t('phaseF.componentsVaultOnboarding.flow.openFolderDesc')}
+            shortcut={`${mod}O`}
+            disabled={isLoading}
+            onClick={onOpenFolder}
+          />
+          <ActionRow
+            icon={<Download />}
+            title={t('phaseF.componentsVaultOnboarding.flow.openFromSync')}
+            description={t('phaseF.componentsVaultOnboarding.flow.openFromSyncDesc')}
+            shortcut={`${mod}L`}
+            disabled={isLoading}
+            onClick={onOpenFromSync}
+          />
+          {error && (
+            <p role="alert" className="px-3 pt-3 text-xs leading-4 text-destructive">
+              {error}
+            </p>
+          )}
+        </div>
       </div>
 
       <PickerFooter
@@ -269,7 +328,7 @@ function PickerPanel({
 
 function PickerHeader({ t }: { t: Translate }): React.JSX.Element {
   return (
-    <div className="flex flex-col items-center pt-8 pb-5 gap-3 px-8">
+    <div className="flex flex-col items-center gap-3">
       <div className="flex items-center justify-center rounded-2xl shrink-0 size-14 bg-surface border border-border text-accent-orange">
         <MemryMark className="size-7" />
       </div>
@@ -277,8 +336,8 @@ function PickerHeader({ t }: { t: Translate }): React.JSX.Element {
         <h1 className="font-heading font-semibold text-text-bright text-2xl leading-7 tracking-[-0.01em]">
           {t('phaseF.componentsVaultOnboarding.brandName')}
         </h1>
-        <p className="text-text-tertiary text-xs leading-4 tracking-[0.02em]">
-          {t('phaseF.componentsVaultOnboarding.preRelease')}
+        <p className="text-text-tertiary text-[13px] leading-[18px]">
+          {t('phaseF.componentsVaultOnboarding.flow.tagline')}
         </p>
       </div>
     </div>
@@ -336,43 +395,43 @@ function PickerFooter({
 }
 
 interface ActionRowProps {
+  icon: React.ReactNode
   title: string
   description: string
-  actionLabel: string
-  loading: boolean
-  variant: 'primary' | 'secondary'
+  shortcut: string
+  disabled: boolean
   onClick: () => void
 }
 
 function ActionRow({
+  icon,
   title,
   description,
-  actionLabel,
-  loading,
-  variant,
+  shortcut,
+  disabled,
   onClick
 }: ActionRowProps): React.JSX.Element {
   return (
-    <div className="flex items-center py-3.5 gap-4 border-t border-border">
-      <div className="flex flex-col grow shrink basis-0 min-w-0 gap-1">
-        <p className="font-heading font-medium text-foreground text-sm leading-[18px]">{title}</p>
-        <p className="text-text-tertiary text-xs leading-4">{description}</p>
-      </div>
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={loading}
-        aria-label={title}
-        className={cn(
-          'flex items-center justify-center h-8 shrink-0 rounded-lg px-3.5 gap-1.5 text-[13px] leading-4 font-medium tracking-[0.005em] transition-colors disabled:opacity-60 disabled:cursor-not-allowed',
-          variant === 'primary'
-            ? 'bg-accent-orange text-white shadow-sm hover:brightness-105'
-            : 'bg-transparent text-foreground border border-border hover:bg-accent'
-        )}
-      >
-        {loading && <Loader2 className="size-3.5 animate-spin" />}
-        <span>{actionLabel}</span>
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={title}
+      aria-keyshortcuts={shortcut.replace('⌘', 'Meta+').replace('Ctrl+', 'Control+')}
+      className="group flex items-center w-full gap-3 rounded-lg px-3 py-2.5 text-start transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      <span className="flex items-center justify-center size-8 shrink-0 rounded-lg border border-border bg-surface text-text-tertiary group-hover:text-foreground transition-colors [&_svg]:size-4">
+        {icon}
+      </span>
+      <span className="flex flex-col grow shrink basis-0 min-w-0 gap-0.5">
+        <span className="font-heading font-medium text-foreground text-[13px] leading-4">
+          {title}
+        </span>
+        <span className="text-text-tertiary text-xs leading-4 truncate">{description}</span>
+      </span>
+      <kbd className="shrink-0 rounded-[5px] border border-border px-1.5 py-px font-sans text-[11px] leading-4 text-text-tertiary">
+        {shortcut}
+      </kbd>
+    </button>
   )
 }

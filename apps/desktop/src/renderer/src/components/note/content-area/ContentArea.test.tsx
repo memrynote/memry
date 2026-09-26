@@ -82,6 +82,10 @@ vi.mock('./attachment-picker-dialog', async (importOriginal) => ({
   )
 }))
 
+vi.mock('./toolbar-block-type-select', () => ({
+  ToolbarBlockTypeSelect: () => <button type="button">block type</button>
+}))
+
 vi.mock('@blocknote/react', () => ({
   useCreateBlockNote: vi.fn((options) => {
     contentAreaMocks.blockNoteOptions = options
@@ -96,10 +100,6 @@ vi.mock('@blocknote/react', () => ({
   BasicTextStyleButton: () => <button type="button">style</button>,
   ColorStyleButton: () => <button type="button">color</button>,
   CreateLinkButton: () => <button type="button">link</button>,
-  NestBlockButton: () => <button type="button">nest</button>,
-  TextAlignButton: () => <button type="button">align</button>,
-  UnnestBlockButton: () => <button type="button">unnest</button>,
-  getFormattingToolbarItems: vi.fn(() => null),
   useBlockNoteEditor: vi.fn(() => contentAreaMocks.editor),
   useComponentsContext: vi.fn(() => ({
     FormattingToolbar: {

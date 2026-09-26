@@ -38,7 +38,10 @@ export type AppEventChannel = (typeof AppChannels.events)[keyof typeof AppChanne
 export const VaultChannels = {
   invoke: {
     SELECT: 'vault:select',
+    /** Create `<parentPath>/<name>` as a new folder and open it as the vault */
     CREATE: 'vault:create',
+    /** Default parent folder offered by the create-vault form */
+    GET_DEFAULT_PARENT: 'vault:get-default-parent',
     GET_ALL: 'vault:get-all',
     GET_STATUS: 'vault:get-status',
     GET_CONFIG: 'vault:get-config',
