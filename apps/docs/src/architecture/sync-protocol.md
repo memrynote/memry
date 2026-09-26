@@ -643,6 +643,10 @@ row is what replicates. Two consequences worth knowing before touching either:
   such entry fails the parse for the whole file. The union skips a synced `relation` row, the
   writer skips one in the cache, and `reload()` drops and rewrites a `relation` entry an older
   build already wrote.
+- No device creates or pushes a `relation` definition row either. Note indexing does not save a
+  definition for a property whose value resolves to `relation`, and `seedUnclocked` skips an
+  unclocked `relation` row an older build or the CLI left in the data DB. Rows already on the
+  server stay there; receivers drop them on reload.
 
 `property_definition` is not in `LEGACY_RECORD_SYNC_ITEM_TYPES`; clients that predate it negotiate
 it away via `X-Memry-Sync-Types` and never see it.
