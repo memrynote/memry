@@ -2,12 +2,19 @@ import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryObserver } from '@tanstack/react-query'
+import type * as ReactQuery from '@tanstack/react-query'
 import App from './App'
+import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
+
+/** Every QueryClient VaultStack created, in creation order. */
+const { createdQueryClients } = vi.hoisted(() => ({
+  createdQueryClients: [] as ReactQuery.QueryClient[]
+}))
 
 /** Render tallies for the app tree, used to prove updater ticks do not fan out. */
 const treeRenders = { appSidebar: 0, splitView: 0, settingsModal: 0, taskDragOverlay: 0 }
 
-const queryClientClear = vi.fn()
 const openTab = vi.fn()
 // `useTabActions` is a separate subscription from `useTabs` (actions only, so
 // tab-state changes don't re-render the caller), so the mock has to publish it
@@ -60,9 +67,22 @@ let projects = [
 let settingsOpenListener: ((section?: string) => void) | undefined
 let newNoteShortcut: (() => void) | undefined
 
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ clear: queryClientClear })
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof ReactQuery>()
+  return {
+    ...actual,
+    useQueryClient: () => ({ clear: vi.fn() }),
+    // App keeps one real client per vault workspace (VaultStack); recorded so
+    // tests can drive each vault's cache directly.
+    QueryClient: class extends actual.QueryClient {
+      constructor(...args: ConstructorParameters<typeof actual.QueryClient>) {
+        super(...args)
+        createdQueryClients.push(this)
+      }
+    },
+    QueryClientProvider: ({ children }: { children: React.ReactNode }) => children
+  }
+})
 
 vi.mock('@/components/tabs/home-tab-title-sync', () => ({
   // Owns a react-query subscription; `@tanstack/react-query` is fully mocked
@@ -384,6 +404,8 @@ describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    createdQueryClients.length = 0
+    resetVaultSwitchState()
     vaultState = {
       status: { isOpen: true, path: '/vault/a' },
       isLoading: false
@@ -467,6 +489,76 @@ describe('App', () => {
     expect(trackTelemetry).not.toHaveBeenCalledWith('onboarding_completed', expect.anything())
   })
 
+  it('keeps a vault the user left mounted, and shows the same tree on the way back', () => {
+    const view = render(<App />)
+    const first = screen.getByTestId('sidebar-provider')
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/b' } }
+    view.rerender(<App />)
+    expect(screen.getAllByTestId('sidebar-provider')).toHaveLength(2)
+    expect(first).not.toBeVisible()
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/a' } }
+    view.rerender(<App />)
+    expect(screen.getAllByTestId('sidebar-provider')).toContain(first)
+    expect(first).toBeVisible()
+  })
+
+  it('does not keep rows the leaving vault fetches after a switch away began', async () => {
+    const view = render(<App />)
+    const [clientA] = createdQueryClients
+    const rowsKey = ['rows']
+
+    await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-a-rows' })
+    expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows')
+
+    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
+    // A refetch from the still-visible vault A workspace, answered by main
+    // after it moved to vault B.
+    await expect(
+      clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
+    ).resolves.toBe('vault-b-rows')
+    expect(clientA.getQueryData(rowsKey)).toBeUndefined()
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/b' } }
+    view.rerender(<App />)
+    act(() => endVaultSwitch(true))
+    const clientB = createdQueryClients[1]
+    expect(clientB).not.toBe(clientA)
+
+    // Still fenced once main reports vault B: A is hidden, not open.
+    await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
+    expect(clientA.getQueryData(rowsKey)).toBeUndefined()
+
+    // The open vault's own client caches normally.
+    await clientB.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
+    expect(clientB.getQueryData(rowsKey)).toBe('vault-b-rows')
+    expect(clientB.getQueryState(rowsKey)?.isInvalidated).toBe(false)
+  })
+
+  it('refetches what the cache fence emptied when a switch fails and the vault stays open', async () => {
+    render(<App />)
+    const [clientA] = createdQueryClients
+    const rowsKey = ['rows']
+    let answer = 'vault-a-rows'
+    const observer = new QueryObserver(clientA, {
+      queryKey: rowsKey,
+      queryFn: async () => answer
+    })
+    const unsubscribe = observer.subscribe(() => {})
+    await waitFor(() => expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows'))
+
+    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
+    answer = 'vault-b-rows'
+    await observer.refetch()
+    expect(clientA.getQueryData(rowsKey)).toBeUndefined()
+
+    answer = 'vault-a-rows'
+    act(() => endVaultSwitch(false))
+    await waitFor(() => expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows'))
+    unsubscribe()
+  })
+
   it('handles global search, shortcut dialog, settings section, and new note events', async () => {
     render(<App />)
 
@@ -517,6 +609,34 @@ describe('App', () => {
     )
     await waitFor(() => expect(revealed).toEqual(['note-1']))
     window.removeEventListener('reveal-in-sidebar', onReveal)
+  })
+
+  it('ignores new-note and search commands while a vault switch is pending', async () => {
+    let menuCommandListener: ((event: { command: string }) => void) | undefined
+    ;(window as Window & { api: { onMenuCommand?: unknown } }).api.onMenuCommand = vi.fn(
+      (callback: (event: { command: string }) => void) => {
+        menuCommandListener = callback
+        return vi.fn()
+      }
+    )
+    render(<App />)
+
+    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
+
+    newNoteShortcut?.()
+    act(() => menuCommandListener?.({ command: 'file.newNote' }))
+    act(() => menuCommandListener?.({ command: 'file.openQuickly' }))
+    fireEvent(window, new Event('memry:open-search'))
+    await Promise.resolve()
+
+    expect(createNote).not.toHaveBeenCalled()
+    expect(openTab).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'note' }))
+    expect(screen.getByTestId('command-palette')).toHaveTextContent('false')
+
+    // A failed switch leaves the vault open, and the commands work again.
+    act(() => endVaultSwitch(false))
+    newNoteShortcut?.()
+    await waitFor(() => expect(createNote).toHaveBeenCalledTimes(1))
   })
 
   it('keeps one updater subscription and does not re-render the tree per progress tick', async () => {

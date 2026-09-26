@@ -7,6 +7,13 @@ const log = createLogger('YjsIpcProvider')
 export interface YjsIpcProviderConfig {
   noteId: string
   doc: Y.Doc
+  /**
+   * Whether a stale binding may rebind right now. A doc kept alive for a vault
+   * workspace the user left sees every PROVIDER_READY main broadcasts, and the
+   * one after a switch belongs to the other vault: rebinding then would open
+   * this note in the wrong vault's CRDT store. Defaults to always.
+   */
+  canRebind?: () => boolean
 }
 
 export class YjsIpcProvider extends Observable<string> {
@@ -27,11 +34,21 @@ export class YjsIpcProvider extends Observable<string> {
   private stale = false
   /** Serialises rebinds so two ready events in a row cannot interleave handshakes. */
   private rebinding: Promise<void> | null = null
+  private readonly canRebind: () => boolean
 
   constructor(config: YjsIpcProviderConfig) {
     super()
     this.noteId = config.noteId
     this.doc = config.doc
+    this.canRebind = config.canRebind ?? (() => true)
+  }
+
+  /**
+   * Re-drive a rebind that `canRebind` held back, e.g. when the workspace that
+   * owns this doc is shown again. A no-op unless the binding is stale.
+   */
+  resumeRebind(): void {
+    this.scheduleRebind()
   }
 
   async connect(): Promise<void> {
@@ -49,6 +66,13 @@ export class YjsIpcProvider extends Observable<string> {
       this.noteId,
       (data: { noteId: string; update: Uint8Array; origin: string }) => {
         if (data.noteId !== this.noteId) return
+        // A stale binding no longer belongs to the provider now broadcasting.
+        // After a vault switch that provider serves the OTHER vault, and note
+        // ids repeat across vaults (journal ids are dates): applying its
+        // update would merge that vault's content into this doc, and the next
+        // rebind would push it into this vault's store. The rebind handshake
+        // brings whatever this binding missed.
+        if (this.stale) return
         Y.applyUpdate(this.doc, data.update, 'remote')
         log.debug('Applied remote update', { noteId: this.noteId, bytes: data.update.byteLength })
       }
@@ -144,7 +168,9 @@ export class YjsIpcProvider extends Observable<string> {
    * timer.
    */
   private scheduleRebind(): void {
-    if (this.destroyed || !this.stale) return
+    // Held back: `stale` stays set, so `resumeRebind` or the next ready event
+    // picks it up once rebinding is allowed.
+    if (this.destroyed || !this.stale || !this.canRebind()) return
     this.rebinding = (this.rebinding ?? Promise.resolve()).catch(() => {}).then(() => this.rebind())
   }
 
@@ -163,7 +189,8 @@ export class YjsIpcProvider extends Observable<string> {
    * mechanism — the next provider to come up re-drives it.
    */
   private async rebind(): Promise<void> {
-    if (this.destroyed || !this.stale) return
+    // Checked again: a queued rebind can start after the workspace was hidden.
+    if (this.destroyed || !this.stale || !this.canRebind()) return
     this.synced = false
     try {
       await this.openDoc()

@@ -256,6 +256,12 @@ vi.mock('./property-definitions', () => ({
   }
 }))
 
+vi.mock('./vault-preferences', () => ({
+  readPreferences: (path: string) => ({
+    accentColor: `#${path.length.toString(16).padStart(6, '0')}`
+  })
+}))
+
 vi.mock('./settings-cache', () => ({
   migrateSettingsToConfig: (...args: unknown[]) => mocks.migrateSettingsToConfig(...args)
 }))
@@ -305,9 +311,12 @@ import {
   getAllVaults,
   getConfig,
   getStatus,
+  isVaultSwitchInProgress,
+  onVaultStatusChanged,
   reindex,
   removeVault,
   selectVault,
+  switchVault,
   updateConfig
 } from './index'
 import { getJournalConfig } from './journal-config'
@@ -418,6 +427,89 @@ describe('vault lifecycle', () => {
   // engine.start() → the ENTIRE first fullSync — minutes of blocking on a
   // fresh device with a big vault (#1830). The runtime start is detached: the
   // vault is usable the moment the index is up, and sync fills it in behind.
+  it('marks the closed gap of a switch as in progress', async () => {
+    await selectVault({ path: '/vault/a' })
+    const seen: Array<{ isOpen: boolean; switching: boolean }> = []
+    const unsubscribe = onVaultStatusChanged((status) =>
+      seen.push({ isOpen: status.isOpen, switching: isVaultSwitchInProgress() })
+    )
+
+    const result = await switchVault('/vault/b')
+    unsubscribe()
+
+    expect(result.success).toBe(true)
+    expect(seen.some((entry) => !entry.isOpen)).toBe(true)
+    // Every closed status inside the switch is flagged, so the window keeps its size.
+    expect(seen.filter((entry) => !entry.isOpen).every((entry) => entry.switching)).toBe(true)
+    expect(seen.at(-1)?.isOpen).toBe(true)
+    expect(isVaultSwitchInProgress()).toBe(false)
+  })
+
+  it('refuses a second switch while one is in flight', async () => {
+    await selectVault({ path: '/vault/a' })
+    let releaseWatcher!: () => void
+    mocks.startWatcher.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (releaseWatcher = resolve))
+    )
+
+    const first = switchVault('/vault/b')
+    const second = await switchVault('/vault/c')
+
+    expect(second).toEqual({
+      success: false,
+      vault: null,
+      error: 'A vault switch is already in progress'
+    })
+    // The refused switch must not end the running one's in-progress window.
+    expect(isVaultSwitchInProgress()).toBe(true)
+
+    await vi.waitFor(() => expect(releaseWatcher).toBeTypeOf('function'))
+    releaseWatcher()
+    expect((await first).success).toBe(true)
+    expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/b' }))
+    expect(mocks.runMigrations).not.toHaveBeenCalledWith('/vault/c/data.db')
+    expect(isVaultSwitchInProgress()).toBe(false)
+  })
+
+  it('runs concurrent vault selections one after the other', async () => {
+    const events: string[] = []
+    mocks.runMigrations.mockImplementation((dbPath: string) => events.push(`open ${dbPath}`))
+    mocks.closeAllDatabases.mockImplementation(() => events.push('close'))
+    let releaseWatcher!: () => void
+    mocks.startWatcher.mockImplementationOnce(
+      () => new Promise<void>((resolve) => (releaseWatcher = resolve))
+    )
+
+    const first = selectVault({ path: '/vault/a' })
+    const second = selectVault({ path: '/vault/b' })
+    await vi.waitFor(() => expect(releaseWatcher).toBeTypeOf('function'))
+    // B waits for A to finish opening instead of opening over it.
+    expect(events).toEqual(['open /vault/a/data.db'])
+
+    releaseWatcher()
+    expect((await first).success).toBe(true)
+    expect((await second).success).toBe(true)
+    expect(events).toEqual(['open /vault/a/data.db', 'close', 'open /vault/b/data.db'])
+    expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/b' }))
+  })
+
+  it('re-emits the closed status once a failed switch settles', async () => {
+    await selectVault({ path: '/vault/a' })
+    mocks.startWatcher.mockRejectedValueOnce(new Error('watch failed'))
+    const seen: Array<{ isOpen: boolean; switching: boolean }> = []
+    const unsubscribe = onVaultStatusChanged((status) =>
+      seen.push({ isOpen: status.isOpen, switching: isVaultSwitchInProgress() })
+    )
+
+    const result = await switchVault('/vault/b')
+    unsubscribe()
+
+    expect(result.success).toBe(false)
+    expect(getStatus().isOpen).toBe(false)
+    // The last word is an unflagged closed status, so the window can fall back to the picker.
+    expect(seen.at(-1)).toEqual({ isOpen: false, switching: false })
+  })
+
   it('resolves vault open without waiting for the sync runtime start', async () => {
     // #given a sync runtime whose start (i.e. the first fullSync) never settles
     let releaseSyncStart!: () => void
@@ -957,7 +1049,9 @@ describe('vault lifecycle', () => {
         name: 'Here',
         isDefault: true,
         vaultUuid: 'uuid-here',
-        isMissing: false
+        isMissing: false,
+        // Read from the vault's own config.json.
+        accentColor: '#00000b'
       },
       {
         ...row,
@@ -965,7 +1059,9 @@ describe('vault lifecycle', () => {
         name: 'Unplugged',
         isDefault: false,
         vaultUuid: undefined,
-        isMissing: true
+        isMissing: true,
+        // An unreachable folder has no config.json to read.
+        accentColor: undefined
       }
     ])
     expect(mocks.vaults.map((v) => v.path)).toEqual(['/vault/here', '/vault/unplugged'])

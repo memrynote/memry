@@ -31,12 +31,17 @@ vi.mock('sonner', () => ({
   }
 }))
 
-vi.mock('@/lib/icons', () => ({ MessageCircle: () => <svg data-testid="icon-feedback" /> }))
-
-vi.mock('@/components/ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
-  TooltipContent: () => null,
-  TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
+// Render the help menu inline; items fire onSelect on click.
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div role="menu">{children}</div>,
+  DropdownMenuItem: ({ children, onSelect }: { children: ReactNode; onSelect?: () => void }) => (
+    <button type="button" role="menuitem" onClick={onSelect}>
+      {children}
+    </button>
+  ),
+  DropdownMenuSeparator: () => <hr />
 }))
 
 // Render dialog children inline so the form is always testable.
@@ -57,6 +62,22 @@ beforeEach(() => {
 })
 
 describe('SidebarFeedbackButton', () => {
+  it('opens the GitHub bug, feature and repo links from the help menu', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<SidebarFeedbackButton />)
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /reportBug/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /requestFeature/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /starOnGithub/ }))
+
+    expect(open.mock.calls.map((call) => call[0])).toEqual([
+      'https://github.com/memrynote/memry/issues/new?template=bug.yml',
+      'https://github.com/memrynote/memry/issues/new?template=feature.yml',
+      'https://github.com/memrynote/memry'
+    ])
+    open.mockRestore()
+  })
+
   it('disables Send until a message is entered', () => {
     render(<SidebarFeedbackButton />)
     expect(screen.getByRole('button', { name: 'feedbackSend' })).toBeDisabled()

@@ -1857,6 +1857,14 @@
         "switchVault": {
           "label": "Switch Vault",
           "description": "Open the vault switcher"
+        },
+        "nextVault": {
+          "label": "Next Vault",
+          "description": "Move to the next vault in the sidebar"
+        },
+        "prevVault": {
+          "label": "Previous Vault",
+          "description": "Move to the previous vault in the sidebar"
         }
       },
       "tabs": {

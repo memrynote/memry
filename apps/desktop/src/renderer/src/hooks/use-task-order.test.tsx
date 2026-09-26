@@ -1,7 +1,15 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useTaskOrder } from './use-task-order'
+import type { ReactNode } from 'react'
+import { clearTaskOrderForVault, taskOrderStorageKey, useTaskOrder } from './use-task-order'
+import { VaultScopeProvider } from '@/contexts/vault-scope'
 import type { Task } from '@/data/task-model'
+
+const inVault =
+  (vaultPath: string) =>
+  ({ children }: { children: ReactNode }) => (
+    <VaultScopeProvider vaultPath={vaultPath}>{children}</VaultScopeProvider>
+  )
 
 const task = (id: string): Task => ({ id, title: id }) as Task
 
@@ -90,5 +98,68 @@ describe('useTaskOrder', () => {
 
     expect(second.result.current.getOrder('today')).toEqual(['b', 'a'])
     expect(second.result.current.isManuallyOrdered).toBe(true)
+  })
+
+  it('keeps independent orders for two mounted vault scopes', () => {
+    const a = renderHook(() => useTaskOrder(), { wrapper: inVault('/vaults/a') })
+    const b = renderHook(() => useTaskOrder(), { wrapper: inVault('/vaults/b') })
+
+    act(() => a.result.current.setOrder('today', ['a1', 'a2']))
+    act(() => b.result.current.setOrder('today', ['b1', 'b2']))
+
+    expect(JSON.parse(localStorage.getItem('task-orders:/vaults/a')!).orders.today).toEqual([
+      'a1',
+      'a2'
+    ])
+    expect(JSON.parse(localStorage.getItem('task-orders:/vaults/b')!).orders.today).toEqual([
+      'b1',
+      'b2'
+    ])
+    expect(localStorage.getItem('task-orders')).toBeNull()
+
+    a.unmount()
+    b.unmount()
+
+    const reopenedA = renderHook(() => useTaskOrder(), { wrapper: inVault('/vaults/a') })
+    expect(reopenedA.result.current.getOrder('today')).toEqual(['a1', 'a2'])
+  })
+
+  it('falls back to the legacy unscoped key for a vault without its own entry', () => {
+    const legacy = JSON.stringify({ orders: { today: ['x', 'y'] } })
+    localStorage.setItem('task-orders', legacy)
+    localStorage.setItem('task-orders:/vaults/b', JSON.stringify({ orders: { today: ['b1'] } }))
+
+    const a = renderHook(() => useTaskOrder(), { wrapper: inVault('/vaults/a') })
+    const b = renderHook(() => useTaskOrder(), { wrapper: inVault('/vaults/b') })
+
+    expect(a.result.current.getOrder('today')).toEqual(['x', 'y'])
+    expect(a.result.current.isManuallyOrdered).toBe(true)
+    expect(b.result.current.getOrder('today')).toEqual(['b1'])
+
+    // Adopted into the vault's own key; legacy key untouched.
+    expect(JSON.parse(localStorage.getItem('task-orders:/vaults/a')!).orders.today).toEqual([
+      'x',
+      'y'
+    ])
+    act(() => a.result.current.setOrder('today', ['y', 'x']))
+    expect(localStorage.getItem('task-orders')).toBe(legacy)
+  })
+
+  it('uses the unscoped key outside a vault scope', () => {
+    const { result } = renderHook(() => useTaskOrder())
+    act(() => result.current.setOrder('today', ['a']))
+    expect(JSON.parse(localStorage.getItem('task-orders')!).orders.today).toEqual(['a'])
+  })
+
+  it('clears only the removed vault entry', () => {
+    localStorage.setItem('task-orders', '{"orders":{}}')
+    localStorage.setItem(taskOrderStorageKey('/vaults/a'), '{"orders":{}}')
+    localStorage.setItem(taskOrderStorageKey('/vaults/b'), '{"orders":{}}')
+
+    clearTaskOrderForVault('/vaults/a')
+
+    expect(localStorage.getItem('task-orders:/vaults/a')).toBeNull()
+    expect(localStorage.getItem('task-orders:/vaults/b')).not.toBeNull()
+    expect(localStorage.getItem('task-orders')).not.toBeNull()
   })
 })

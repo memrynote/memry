@@ -91,6 +91,7 @@ vi.mock('@/components/download-vault-dialog', () => ({
 }))
 
 import { VaultSwitcher } from './vault-switcher'
+import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
 import type { VaultInfo } from '../../../preload/index.d'
 
 const vault = (name: string, extra: Partial<VaultInfo> = {}): VaultInfo => ({
@@ -197,7 +198,10 @@ describe('VaultSwitcher missing vault folder', () => {
     expect(mocks.switchVault).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('Old'))
-    expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/Old')
+    expect(mocks.switchVault).toHaveBeenCalledWith(
+      '/vaults/Old',
+      expect.objectContaining({ name: 'Old' })
+    )
   })
 
   it('keeps a missing vault until the user forgets it', async () => {
@@ -227,5 +231,26 @@ describe('VaultSwitcher missing vault folder', () => {
 
     await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
     expect(mocks.switchVault).not.toHaveBeenCalled()
+  })
+})
+
+describe('VaultSwitcher during a vault switch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetVaultSwitchState()
+    serveVaults([ACTIVE, OLD])
+  })
+
+  it('does not start a second switch while one is pending', async () => {
+    render(<VaultSwitcher />)
+    const old = await screen.findByText('Old')
+
+    beginVaultSwitch({ path: '/vaults/Other', name: 'Other' }, null)
+    fireEvent.click(old)
+    expect(mocks.switchVault).not.toHaveBeenCalled()
+
+    endVaultSwitch(true)
+    fireEvent.click(old)
+    expect(mocks.switchVault).toHaveBeenCalledTimes(1)
   })
 })

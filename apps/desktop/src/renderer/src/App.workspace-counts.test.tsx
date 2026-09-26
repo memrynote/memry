@@ -115,7 +115,16 @@ const openSettings = vi.fn()
 const createNote = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ clear: vi.fn() })
+  useQueryClient: () => ({ clear: vi.fn() }),
+  // App keeps one client per vault workspace (VaultStack).
+  QueryClient: class {
+    clear = vi.fn()
+    cancelQueries = vi.fn()
+    invalidateQueries = vi.fn()
+    refetchQueries = vi.fn()
+    getQueryCache = () => ({ subscribe: () => () => {} })
+  },
+  QueryClientProvider: ({ children }: { children: React.ReactNode }) => children
 }))
 
 vi.mock('@/components/tabs/home-tab-title-sync', () => ({

@@ -823,7 +823,10 @@ describe('cold major renderer components', () => {
     const { rerender } = render(<VaultSwitcher />)
 
     fireEvent.click(screen.getByText('Side'))
-    expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/Side')
+    expect(mocks.switchVault).toHaveBeenCalledWith(
+      '/vaults/Side',
+      expect.objectContaining({ name: 'Side' })
+    )
 
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.openVault'))
     expect(mocks.selectVault).toHaveBeenCalled()

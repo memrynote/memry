@@ -22,16 +22,43 @@ import { isRichTextFocused } from '@/hooks/use-keyboard-shortcuts'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { useT } from '@memry/i18n/renderer'
 import { createLogger } from '@/lib/logger'
+import {
+  SIDEBAR_OPEN_STORAGE_KEY,
+  SIDEBAR_STORAGE_KEY,
+  SIDEBAR_WIDTH_DEFAULT_PX,
+  getSidebarWidth,
+  getStoredSidebarOpen,
+  persistSidebarWidth,
+  setLiveSidebarWidth,
+  subscribeSidebarLayout,
+  writeSidebarOpen
+} from './sidebar-layout-store'
 
 const SIDEBAR_WIDTH_MOBILE = '18rem'
 const SIDEBAR_WIDTH_ICON = '3rem'
-const SIDEBAR_WIDTH_DEFAULT_PX = 256
 const SIDEBAR_WIDTH_MIN_PX = 171
 const SIDEBAR_WIDTH_MAX_PX = 480
-const SIDEBAR_STORAGE_KEY = 'sidebar_width'
-const SIDEBAR_OPEN_STORAGE_KEY = 'sidebar_open'
 
 const log = createLogger('Sidebar')
+
+/**
+ * The sidebar geometry the provider will mount with, read without mounting it.
+ * The vault-switch screen draws the sidebar's footprint while no vault is open,
+ * so the shell does not jump when the next vault's provider mounts.
+ */
+export function readStoredSidebarLayout(): { open: boolean; width: number } {
+  try {
+    const open = localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY) !== 'false'
+    const stored = Number(localStorage.getItem(SIDEBAR_STORAGE_KEY))
+    const width =
+      Number.isFinite(stored) && stored > 0
+        ? Math.min(SIDEBAR_WIDTH_MAX_PX, Math.max(SIDEBAR_WIDTH_MIN_PX, stored))
+        : SIDEBAR_WIDTH_DEFAULT_PX
+    return { open, width }
+  } catch {
+    return { open: true, width: SIDEBAR_WIDTH_DEFAULT_PX }
+  }
+}
 
 type SidebarContextProps = {
   state: 'expanded' | 'collapsed'
@@ -74,51 +101,44 @@ function SidebarProvider({
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
-  const [_open, _setOpen] = React.useState(() => {
-    try {
-      const stored = localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY)
-      if (stored !== null) return stored === 'true'
-    } catch (error) {
-      log.error('Failed to read the sidebar open state', error)
-    }
-    return defaultOpen
-  })
+  const storedOpen = React.useSyncExternalStore(
+    subscribeSidebarLayout,
+    getStoredSidebarOpen,
+    () => null
+  )
+  const _open = storedOpen ?? defaultOpen
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === 'function' ? value(open) : value
       if (setOpenProp) {
         setOpenProp(openState)
+        try {
+          localStorage.setItem(SIDEBAR_OPEN_STORAGE_KEY, String(openState))
+        } catch (error) {
+          log.error('Failed to persist the sidebar open state', error)
+        }
       } else {
-        _setOpen(openState)
-      }
-      try {
-        localStorage.setItem(SIDEBAR_OPEN_STORAGE_KEY, String(openState))
-      } catch (error) {
-        log.error('Failed to persist the sidebar open state', error)
+        writeSidebarOpen(openState)
       }
     },
     [setOpenProp, open]
   )
 
-  const [sidebarWidth, setSidebarWidth] = React.useState<number>(() => {
-    try {
-      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-      return stored ? Number(stored) : SIDEBAR_WIDTH_DEFAULT_PX
-    } catch {
-      return SIDEBAR_WIDTH_DEFAULT_PX
-    }
-  })
+  const sidebarWidth = React.useSyncExternalStore(
+    subscribeSidebarLayout,
+    getSidebarWidth,
+    () => SIDEBAR_WIDTH_DEFAULT_PX
+  )
+  const setSidebarWidth = React.useCallback<React.Dispatch<React.SetStateAction<number>>>(
+    (action) =>
+      setLiveSidebarWidth(typeof action === 'function' ? action(getSidebarWidth()) : action),
+    []
+  )
   const [isResizing, setIsResizing] = React.useState(false)
 
   React.useEffect(() => {
-    if (isResizing) return () => {}
-    try {
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarWidth))
-    } catch {
-      /* localStorage unavailable */
-    }
-    return () => {}
+    if (!isResizing) persistSidebarWidth()
   }, [sidebarWidth, isResizing])
 
   const toggleSidebar = React.useCallback(() => {
@@ -170,6 +190,7 @@ function SidebarProvider({
       setOpenMobile,
       toggleSidebar,
       sidebarWidth,
+      setSidebarWidth,
       isResizing
     ]
   )

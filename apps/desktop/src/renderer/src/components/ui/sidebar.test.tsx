@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Activity } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
 import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
@@ -318,6 +319,29 @@ describe('SidebarProvider open-state persistence', () => {
       expect.stringContaining('sidebar open state'),
       expect.any(Error)
     )
+  })
+
+  it('shares one open state across providers, so a kept vault workspace comes back current', () => {
+    // Two vault workspaces: the second is kept mounted but hidden.
+    const view = (hideSecond: boolean) => (
+      <>
+        <SidebarProvider defaultOpen>
+          <SidebarStateProbe />
+        </SidebarProvider>
+        <Activity mode={hideSecond ? 'hidden' : 'visible'}>
+          <SidebarProvider defaultOpen>
+            <SidebarStateProbe />
+          </SidebarProvider>
+        </Activity>
+      </>
+    )
+    const { rerender } = render(view(true))
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+    rerender(view(false))
+
+    const states = screen.getAllByTestId('sidebar-state').map((el) => el.textContent)
+    expect(states).toEqual(['collapsed', 'collapsed'])
   })
 
   it('logs and keeps toggling when the write throws', () => {

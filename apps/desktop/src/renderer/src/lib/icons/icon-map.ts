@@ -281,7 +281,9 @@ import {
   Pdf01Icon,
   ArrowTurnBackwardIcon,
   ChartRelationshipIcon,
-  HierarchyIcon
+  HierarchyIcon,
+  Bug01Icon,
+  GithubIcon
 } from './hugeicons-subset'
 import { createIcon } from './create-icon'
 
@@ -527,6 +529,8 @@ export const Database = createIcon(DatabaseIcon)
 export const Server = createIcon(ServerStack01Icon)
 export const Cloud = createIcon(CloudIcon)
 export const CloudOff = createIcon(CloudOffIcon)
+export const Bug = createIcon(Bug01Icon)
+export const Github = createIcon(GithubIcon)
 export const CloudSavingDone = createIcon(CloudSavingDone01Icon)
 export const Wifi = createIcon(Wifi01Icon)
 export const Globe = createIcon(GlobeIcon)

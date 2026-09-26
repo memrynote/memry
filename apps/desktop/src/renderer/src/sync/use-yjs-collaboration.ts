@@ -4,6 +4,10 @@ import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { YjsIpcProvider } from './yjs-ipc-provider'
 import { createYjsDocRegistry, type DocEntryHandle } from './yjs-doc-registry'
 import { createLogger } from '@/lib/logger'
+import { useVaultScope } from '@/contexts/vault-scope'
+import { useVaultWorkspaceLifecycle } from '@/lib/vault-workspace-lifecycle'
+import { getVaultSwitchState } from '@/lib/vault-switch-state'
+import { getCachedVaultStatus } from '@/lib/vault-status-cache'
 
 const log = createLogger('useYjsCollaboration')
 
@@ -55,17 +59,35 @@ interface DocEntry extends DocEntryHandle {
   isRemoteUpdateRef: RefObject<boolean>
   getSnapshot: () => EntrySnapshot
   subscribe: (listener: () => void) => () => void
+  /** See `YjsIpcProviderConfig.canRebind`; set by the consumer that acquires the entry. */
+  setRebindGate: (gate: () => boolean) => void
+  resumeRebind: () => void
 }
 
 /**
- * ONE registry for the whole renderer window. The entry factory holds the exact
+ * Registry slot key for `noteId` in the vault workspace `scope`. The renderer
+ * keeps several vaults mounted and note ids are not unique across vaults
+ * (journal ids are the date, a copied vault folder keeps every id), so a slot
+ * keyed by the id alone handed one vault's live Y.Doc to another vault's
+ * editor, and its rebind pushed that content into the other vault's store.
+ * Outside a workspace (`scope` null) the key is the bare noteId, as before.
+ * Neither a vault path nor a note id contains NUL.
+ */
+function registrySlotKey(scope: string | null, noteId: string): string {
+  return scope === null ? noteId : `${scope}\0${noteId}`
+}
+
+/**
+ * ONE registry for the whole renderer window, with one slot per vault and note. The entry factory holds the exact
  * doc / provider / connect / teardown body the hook used to run inline, so a
  * single consumer (refCount === 1, the ~universal case) creates one doc,
  * connects once, and destroys once — behaviorally identical to the pre-registry
  * hook. Only a second consumer of the SAME note in the SAME window (R17) shares
  * the entry instead of building a diverging second Y.Doc.
  */
-const docRegistry = createYjsDocRegistry<DocEntry>((noteId, notifyChanged) => {
+const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
+  // The doc guid and every IPC call use the plain noteId; main keys by it.
+  const noteId = slotKey.slice(slotKey.indexOf('\0') + 1)
   const doc = new Y.Doc({ guid: noteId })
   const isRemoteUpdateRef: RefObject<boolean> = { current: false }
 
@@ -78,7 +100,8 @@ const docRegistry = createYjsDocRegistry<DocEntry>((noteId, notifyChanged) => {
     isRemoteUpdateRef.current = false
   })
 
-  const provider = new YjsIpcProvider({ noteId, doc })
+  let rebindGate: () => boolean = () => true
+  const provider = new YjsIpcProvider({ noteId, doc, canRebind: () => rebindGate() })
 
   const listeners = new Set<() => void>()
   let snapshot: EntrySnapshot = CONNECTING_SNAPSHOT
@@ -117,6 +140,10 @@ const docRegistry = createYjsDocRegistry<DocEntry>((noteId, notifyChanged) => {
         listeners.delete(listener)
       }
     },
+    setRebindGate: (gate) => {
+      rebindGate = gate
+    },
+    resumeRebind: () => provider.resumeRebind(),
     destroy: () => {
       destroyed = true
       provider.destroy()
@@ -155,6 +182,23 @@ export function useYjsCollaboration(
   // Defaults to true so a disabled/no-note mount and the sole consumer both own
   // their side effects (parity: task auto-conversion has never been gated).
   const [isSideEffectOwner, setIsSideEffectOwner] = useState(true)
+  const scope = useVaultScope()
+  const lifecycle = useVaultWorkspaceLifecycle()
+  /**
+   * A release parked while the workspace is hidden. VaultStack keeps a vault
+   * the user left mounted, and hiding runs this effect's cleanup: releasing
+   * there destroyed the Y.Doc, so coming back built a new one, held the editor
+   * behind the loading skeleton for a fresh handshake and rebuilt BlockNote.
+   * Parked, the same doc and the same ready snapshot are there on reveal.
+   */
+  const parkedRef = useRef<{
+    slotKey: string
+    entry: DocEntry
+    unpark: () => void
+  } | null>(null)
+  // The registry keeps the callback given at acquire, and a revealed consumer
+  // keeps its slot, so the callback reaches the live effect through a ref.
+  const ownerChangeRef = useRef<(isOwner: boolean) => void>(() => {})
 
   useEffect(() => {
     if (!noteId || !enabled) {
@@ -162,12 +206,43 @@ export function useYjsCollaboration(
       return
     }
 
+    // Main runs one vault at a time and resets its CRDT provider on every
+    // switch. A doc kept for a hidden or leaving workspace must wait until its
+    // own vault is the open one before it rebinds, or it would open this note
+    // in the other vault's store. Outside a workspace there is one vault only.
+    const mayRebind = (): boolean => {
+      if (scope === null) return true
+      if (lifecycle?.hidden) return false
+      const { pending } = getVaultSwitchState()
+      if (pending && pending.path !== scope) return false
+      const open = getCachedVaultStatus()
+      return open === null || open.path === scope
+    }
+
     let destroyed = false
-    const entry = docRegistry.acquire(noteId, consumerId, (isOwner) => {
+    ownerChangeRef.current = (isOwner) => {
       if (destroyed) return
       setIsSideEffectOwner(isOwner)
-    })
-    setIsSideEffectOwner(docRegistry.isSideEffectOwner(noteId, consumerId))
+    }
+    const onOwnerChange = (isOwner: boolean): void => ownerChangeRef.current(isOwner)
+    const slotKey = registrySlotKey(scope, noteId)
+    const parked = parkedRef.current
+    let entry: DocEntry
+    if (parked && parked.slotKey === slotKey) {
+      // Revealed: the consumer slot was never given up, so reuse it.
+      parked.unpark()
+      parkedRef.current = null
+      entry = parked.entry
+    } else {
+      if (parked) {
+        parked.unpark()
+        parkedRef.current = null
+        docRegistry.release(parked.slotKey, consumerId)
+      }
+      entry = docRegistry.acquire(slotKey, consumerId, onOwnerChange)
+    }
+    entry.setRebindGate(mayRebind)
+    setIsSideEffectOwner(docRegistry.isSideEffectOwner(slotKey, consumerId))
 
     const sync = (): void => {
       setActiveState({
@@ -180,13 +255,33 @@ export function useYjsCollaboration(
     // mounts after the doc is already connected sees isReady synchronously.
     sync()
     const unsubscribe = entry.subscribe(sync)
+    // Main may have come up for this vault while the workspace was hidden.
+    entry.resumeRebind()
 
     return () => {
       destroyed = true
       unsubscribe()
-      docRegistry.release(noteId, consumerId)
+      // Deferred a microtask so a setup that follows at once takes the slot
+      // back: StrictMode re-runs effects on mount and on every reveal, and a
+      // release in between destroyed the doc the reveal was meant to keep.
+      const held: NonNullable<typeof parkedRef.current> = { slotKey, entry, unpark: () => {} }
+      parkedRef.current = held
+      queueMicrotask(() => {
+        if (parkedRef.current !== held) return
+        if (lifecycle?.hidden) {
+          const release = (): void => {
+            if (parkedRef.current === held) parkedRef.current = null
+            docRegistry.release(slotKey, consumerId)
+          }
+          lifecycle.disposers.add(release)
+          held.unpark = () => lifecycle.disposers.delete(release)
+          return
+        }
+        parkedRef.current = null
+        docRegistry.release(slotKey, consumerId)
+      })
     }
-  }, [noteId, enabled, consumerId])
+  }, [noteId, enabled, consumerId, scope, lifecycle])
 
   // `isReady` is the entry's own "connect() has settled" flag, published once —
   // and connect() only resolves after performSyncHandshake has merged whatever
@@ -230,7 +325,7 @@ export function useYjsSideEffectOwner(noteId: string): boolean {
 }
 
 /**
- * Does this window hold a LIVE Yjs fragment for `noteId` right now?
+ * Does this window hold a LIVE Yjs fragment for `noteId` in vault `scope` right now?
  *
  * Three states, and the middle one is why this exists:
  *  - ready + fragment → the doc bound. Every editor on this note in this window
@@ -256,8 +351,8 @@ export function useYjsSideEffectOwner(noteId: string): boolean {
  * `peek` registers no consumer, so asking this does not make the note's sole
  * editor report non-owner — the hazard that blocked #1504 in #1495.
  */
-function hasLiveFragment(noteId: string): boolean {
-  const entry = docRegistry.peek(noteId)
+function hasLiveFragment(scope: string | null, noteId: string): boolean {
+  const entry = docRegistry.peek(registrySlotKey(scope, noteId))
   if (!entry) return false
   const { isReady, fragment } = entry.getSnapshot()
   return isReady && fragment !== null
@@ -277,6 +372,9 @@ const readRegistryVersion = (): number => docRegistry.version()
  * and must not rebuild that list every render.
  */
 export function useLiveFragmentQuery(): (noteId: string) => boolean {
+  // Only the caller's own vault counts: another kept vault's doc for the same
+  // id says nothing about the note this workspace renders.
+  const scope = useVaultScope()
   const version = useSyncExternalStore(observeRegistry, readRegistryVersion, readRegistryVersion)
   return useMemo(() => {
     // `version` is referenced (no-op) purely as this memo's cache key — the
@@ -284,6 +382,6 @@ export function useLiveFragmentQuery(): (noteId: string) => boolean {
     // closure per version, not the stable module function. Mirrors
     // `void claimFailedTick` in pages/canvas/canvas-card-overlay.tsx.
     void version
-    return (noteId: string) => hasLiveFragment(noteId)
-  }, [version])
+    return (noteId: string) => hasLiveFragment(scope, noteId)
+  }, [version, scope])
 }

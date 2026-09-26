@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { Activity, createElement, type ReactNode } from 'react'
 import type React from 'react'
 
 const { AIExtensionMock, DefaultChatTransportMock } = vi.hoisted(() => ({
@@ -148,6 +149,38 @@ describe('useBlockNoteSetup', () => {
     unmount()
 
     expect(editor.unregisterExtension).toHaveBeenCalledWith('ai')
+  })
+
+  it('never reports aiReady while hidden, and restores it on reveal', async () => {
+    const { editor } = createEditor()
+    let mode: 'visible' | 'hidden' = 'visible'
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(Activity, { mode, children })
+    // Recorded during render: renderHook's `result` is set from an effect, and
+    // a hidden tree runs none.
+    let rendered: boolean | null = null
+    const { rerender } = renderHook(
+      () => {
+        const setup = useBlockNoteSetup({ editor, aiPort: 4315, editorContainerRef })
+        rendered = setup.aiReady
+        return setup
+      },
+      { wrapper }
+    )
+    await waitFor(() => expect(rendered).toBe(true))
+
+    // A kept vault workspace is hidden: the cleanup unregisters the extension,
+    // and the next render inside it (e.g. a context change above) must not
+    // mount the AI menu.
+    mode = 'hidden'
+    rerender()
+    expect(editor.unregisterExtension).toHaveBeenCalledWith('ai')
+    rerender()
+    expect(rendered).toBe(false)
+
+    mode = 'visible'
+    rerender()
+    await waitFor(() => expect(rendered).toBe(true))
   })
 
   it('exposes and clears the active editor for e2e instrumentation', () => {

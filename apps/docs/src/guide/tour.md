@@ -133,11 +133,26 @@ unchanged until you pick something else.
 
 The **Notes** tree loads 10,000 notes at a time, most recently modified first. If your vault holds more than that, a footer row under the tree says how many older notes it is not showing and offers **Load more** to pull in the next batch. Notes past the ceiling are never hidden silently — and they stay reachable through search either way.
 
-At the bottom of the sidebar, a footer row holds three controls, left to right:
+At the bottom of the sidebar, one tray holds the footer controls:
 
 - **Sync status** — shows whether sync is connected; click it to open account settings (or to sign in when you're signed out).
-- **Vault name** — click to open the vault menu: switch between vaults, **Open vault** to add another, or **Sign in to sync**.
+- **Vault dots** — one dot per vault, the open one highlighted in its accent color. Click a dot to switch to that vault; open the vault menu from the tray to **Open vault** or **Sign in to sync**.
 - **Settings** (gear) — opens the settings modal, the same as <kbd>⌘</kbd>+<kbd>,</kbd>.
+
+### Switching vaults
+
+With more than one vault, the sidebar pages between them. Swipe sideways with two fingers on the
+trackpad over the sidebar list and the neighbouring vault's page follows your fingers in; let go
+past the middle to switch, or short of it to spring back. Clicking a vault dot and
+<kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on
+Windows and Linux) play the same move.
+
+Vaults you visited recently come back the way you left them, with the same tabs, scroll position
+and open note, so going back and forth is instant. The first visit to a vault in a session loads
+it from disk and shows a short loading state. If a switch takes more than a moment, the content
+area says which vault it is switching to, so the previous vault's notes are never mistaken for
+the new one's. Each vault stays fully separate: notes, journals, tasks and sync never cross between
+them, even when two vaults have an entry for the same day.
 
 ## Tabs
 

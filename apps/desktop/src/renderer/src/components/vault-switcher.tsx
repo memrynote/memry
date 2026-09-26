@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, type ReactElement } from 'react'
 import { Plus, Check, Loader2, X, Cloud, Trash2 } from '@/lib/icons'
 
 import { Picker, PICKER_ROW_SELECTOR } from '@/components/ui/picker'
@@ -29,10 +29,20 @@ import { useAuth } from '@/contexts/auth-context'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useVaultSwitcherOpenRequest } from '@/lib/vault-switcher-open'
+import { getVaultSwitchState } from '@/lib/vault-switch-state'
+import { resolveVaultAccent } from '@/components/sidebar/vault-title-row'
 import type { AccountVaultInfo, VaultInfo } from '../../../preload/index.d'
 import { useT } from '@memry/i18n/renderer'
 
-export function VaultSwitcher() {
+interface VaultSwitcherProps {
+  /**
+   * Replaces the default name button as the element that opens the vault list.
+   * The sidebar footer passes the indicator's active pill.
+   */
+  renderTrigger?: (state: { isLoading: boolean; name: string }) => ReactElement
+}
+
+export function VaultSwitcher({ renderTrigger }: VaultSwitcherProps = {}) {
   const { t: tPhaseF } = useT('common')
   const { isMobile, open: sidebarOpen, setOpen: setSidebarOpen, setOpenMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
@@ -72,7 +82,7 @@ export function VaultSwitcher() {
   // sidebar go through one code path.
   useVaultSwitcherOpenRequest(
     useCallback(() => {
-      if (open) return
+      if (open || getVaultSwitchState().pending) return
       const active = document.activeElement
       restoreFocusRef.current = active instanceof HTMLElement ? active : null
 
@@ -105,14 +115,18 @@ export function VaultSwitcher() {
     if (previous?.isConnected) previous.focus()
   }, [open, setSidebarOpen])
 
+  // The popover renders in a portal outside the inert workspace, so it stays
+  // clickable while a switch runs. Only one switch may be in flight.
   const handleSelectNewVault = useCallback(async () => {
+    if (getVaultSwitchState().pending) return
     await selectVault()
   }, [selectVault])
 
   const handleSwitchVault = useCallback(
-    async (path: string) => {
+    async (vault: VaultInfo) => {
+      if (getVaultSwitchState().pending) return
       setOpen(false)
-      await switchVault(path)
+      await switchVault(vault.path, { name: vault.name, accentColor: vault.accentColor })
     },
     [switchVault]
   )
@@ -174,7 +188,7 @@ export function VaultSwitcher() {
   }, [vaultToDelete, refreshAccountVaults, refreshVaults, tPhaseF])
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className={renderTrigger ? 'w-auto' : undefined}>
       <SidebarMenuItem>
         <Picker
           value={null}
@@ -188,31 +202,35 @@ export function VaultSwitcher() {
           }}
         >
           <Picker.Trigger asChild>
-            <SidebarMenuButton
-              size="default"
-              className="rounded-[5px] gap-2 h-6 px-2 hover:bg-sidebar-accent/50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-            >
-              <div className="flex aspect-square size-[16px] shrink-0 items-center justify-center rounded-[4px] bg-sidebar-terracotta text-white">
-                {isLoading ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  <span className="text-white font-bold text-[8px] leading-none">
-                    {currentVaultName.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <span className="truncate text-[12px] font-semibold text-sidebar-primary tracking-[-0.01em] leading-none group-data-[collapsible=icon]:hidden">
-                {currentVaultName}
-              </span>
-            </SidebarMenuButton>
+            {renderTrigger ? (
+              renderTrigger({ isLoading, name: currentVaultName })
+            ) : (
+              <SidebarMenuButton
+                size="default"
+                className="rounded-[5px] gap-2 h-6 px-2 hover:bg-sidebar-accent/50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+              >
+                <div className="flex aspect-square size-[16px] shrink-0 items-center justify-center rounded-[4px] bg-sidebar-terracotta text-white">
+                  {isLoading ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <span className="text-white font-bold text-[8px] leading-none">
+                      {currentVaultName.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <span className="truncate text-[12px] font-semibold text-sidebar-primary tracking-[-0.01em] leading-none group-data-[collapsible=icon]:hidden">
+                  {currentVaultName}
+                </span>
+              </SidebarMenuButton>
+            )}
           </Picker.Trigger>
           <Picker.Content
             width="auto"
             onOpenAutoFocus={handleOpenAutoFocus}
             onCloseAutoFocus={(e) => e.preventDefault()}
             className="min-w-56"
-            align="start"
-            side={isMobile ? 'bottom' : 'right'}
+            align={renderTrigger ? 'center' : 'start'}
+            side={isMobile ? 'bottom' : renderTrigger ? 'top' : 'right'}
             sideOffset={8}
           >
             <Picker.List>
@@ -224,7 +242,7 @@ export function VaultSwitcher() {
                     <button
                       key={vault.path}
                       type="button"
-                      onClick={() => !isActive && !isMissing && void handleSwitchVault(vault.path)}
+                      onClick={() => !isActive && !isMissing && void handleSwitchVault(vault)}
                       data-active-vault={isActive ? 'true' : undefined}
                       aria-disabled={isMissing || undefined}
                       className={cn(
@@ -244,6 +262,11 @@ export function VaultSwitcher() {
                           'size-3.5 shrink-0',
                           isActive ? 'text-sidebar-terracotta opacity-100' : 'opacity-0'
                         )}
+                      />
+                      <span
+                        aria-hidden="true"
+                        className={cn('size-2 shrink-0 rounded-full', isMissing && 'opacity-60')}
+                        style={{ backgroundColor: resolveVaultAccent(vault.accentColor) }}
                       />
                       <span
                         className={cn(

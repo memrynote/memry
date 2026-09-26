@@ -55,6 +55,25 @@ describe('useSwitchVaultShortcut', () => {
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
+  it('does not open the switcher while a vault switch is in flight', async () => {
+    const { hook } = await loadForPlatform('MacIntel')
+    // Same module instance the freshly loaded hook reads.
+    const switchState = await import('@/lib/vault-switch-state')
+    const onOpen = vi.fn()
+    renderHook(() => hook.useSwitchVaultShortcut(onOpen))
+
+    switchState.beginVaultSwitch({ path: '/b', name: 'B' }, null)
+    const notCancelled = press(window, { key: 'o', metaKey: true, shiftKey: true })
+
+    expect(onOpen).not.toHaveBeenCalled()
+    // Still swallowed, so the chord does not fall through to the editor.
+    expect(notCancelled).toBe(false)
+
+    switchState.endVaultSwitch(true)
+    press(window, { key: 'o', metaKey: true, shiftKey: true })
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
   it('ignores the unmodified O that the inbox uses', async () => {
     const { hook } = await loadForPlatform('MacIntel')
     const onOpen = vi.fn()

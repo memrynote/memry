@@ -75,6 +75,8 @@ import { createNoteProjectLinksProjector } from '../projections/projectors/note-
 import { PropertyDefinitionsService } from './property-definitions'
 import { getSetting, setSetting } from '../database/queries/settings'
 import { migrateSettingsToConfig } from './settings-cache'
+import { readPreferences } from './vault-preferences'
+import { createPhaseTimer } from '../lib/phase-timer'
 import {
   applyProjectFrontmatterBackfill,
   snapshotProjectFrontmatterBackfill
@@ -137,6 +139,16 @@ let agentMcpStarted = false
  */
 const AGENT_STARTUP_TEARDOWN_WAIT_MS = 1000
 let isShuttingDown = false
+/** See `isVaultSwitchInProgress`. */
+let switchInProgress = false
+/**
+ * Tail of the vault lifecycle queue. Main holds one vault at a time, so a
+ * select/close/remove that started while another was still closing or opening
+ * interleaved the two: e.g. switch B closes A, switch C closes nothing, opens C,
+ * then B opens over C's live databases. Each lifecycle operation runs only
+ * after the previous one settled.
+ */
+let vaultLifecycleTail: Promise<unknown> = Promise.resolve()
 const statusListeners = new Set<(status: VaultStatus) => void>()
 
 /**
@@ -146,6 +158,22 @@ const statusListeners = new Set<(status: VaultStatus) => void>()
  */
 export function beginVaultShutdown(): void {
   isShuttingDown = true
+}
+
+/**
+ * True while `switchVault` closes one vault and opens the next. The status in
+ * that gap reads `isOpen: false`, which is not "no vault": main-process
+ * listeners that react to a closed vault (the window shrinking to the picker)
+ * check this and wait for the switch to settle.
+ */
+export function isVaultSwitchInProgress(): boolean {
+  return switchInProgress
+}
+
+function runVaultLifecycleOperation<T>(operation: () => Promise<T>): Promise<T> {
+  const run = vaultLifecycleTail.then(operation, operation)
+  vaultLifecycleTail = run.catch(() => undefined)
+  return run
 }
 
 export function onVaultStatusChanged(listener: (status: VaultStatus) => void): () => void {
@@ -199,6 +227,7 @@ function validateVaultPath(vaultPath: string): void {
  * Convert stored vault info to VaultInfo interface
  */
 function toVaultInfo(stored: StoredVaultInfo): VaultInfo {
+  const isMissing = !isValidDirectory(stored.path)
   return {
     path: stored.path,
     name: stored.name,
@@ -207,7 +236,11 @@ function toVaultInfo(stored: StoredVaultInfo): VaultInfo {
     lastOpened: stored.lastOpened,
     isDefault: stored.isDefault,
     vaultUuid: stored.vaultUuid,
-    isMissing: !isValidDirectory(stored.path)
+    isMissing,
+    // Read from the vault's own config.json, so the sidebar can paint a vault it
+    // has not opened. `readPreferences` never throws and falls back to the
+    // default accent for vaults written before preferences moved to disk.
+    accentColor: isMissing ? undefined : readPreferences(stored.path).accentColor
   }
 }
 
@@ -518,6 +551,7 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
  * Open a vault: initialize structure, run migrations, start database, index notes
  */
 async function openVault(vaultPath: string): Promise<void> {
+  const timer = createPhaseTimer()
   // Start from disk, never from whatever the previously open vault left behind.
   invalidateVaultConfigCache()
 
@@ -532,9 +566,11 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Run data.db migrations (always needed)
   runMigrations(dataDbPath)
+  timer.mark('dataMigrations')
 
   // Initialize data database
   initDatabase(dataDbPath)
+  timer.mark('dataDbInit')
 
   // Take the verdict on data.db here, once, while it is still attributable.
   // Left unchecked, a malformed data.db is reported a dozen times over by
@@ -543,6 +579,7 @@ async function openVault(vaultPath: string): Promise<void> {
     logger.error('data.db failed its integrity check — reads against it will fail')
     trackMainError('vault', 'data_db_corrupt', new Error('data.db failed PRAGMA quick_check'))
   }
+  timer.mark('quickCheck')
 
   // The CRDT store is scoped to this vault's uuid, which lives in the data DB
   // just opened — main's bootstrap call runs before any vault exists and
@@ -588,9 +625,11 @@ async function openVault(vaultPath: string): Promise<void> {
   // reconcile any of them away. Only data.db is needed to read them; the write
   // half runs once the index cache is up (see below).
   snapshotProjectFrontmatterBackfill(dataDb)
+  timer.mark('dataSetup')
 
   // Check index database health before proceeding
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
+  timer.mark('indexHealth')
   if (indexHealth !== 'healthy') {
     logger.warn(`Index health check: ${indexHealth}`)
   }
@@ -623,6 +662,7 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Before the watcher and the background walk, which both record into it.
   openActivityLog(vaultPath)
+  timer.mark('projections')
 
   // The file walk must not block the open (#1832: measured ~72.5s per 1,000
   // notes, fully blocking first open). The awaited work below only guarantees
@@ -691,6 +731,7 @@ async function openVault(vaultPath: string): Promise<void> {
     trackMainError('vault', 'index_on_open', error)
     // Continue anyway - watcher will pick up files
   }
+  timer.mark('indexDb')
 
   // Start file watcher for external changes. Ahead of the background build:
   // ignoreInitial keeps startup quiet, and edits made while the build walks the
@@ -698,6 +739,7 @@ async function openVault(vaultPath: string): Promise<void> {
   // cache keyed by path (the walker skips paths already cached), so the three
   // can interleave without duplicating entries.
   await startWatcher(vaultPath)
+  timer.mark('watcher')
 
   // Mark the vault open BEFORE the sync runtime starts: the engine's first
   // fullSync on a freshly provisioned (downloaded or linked) vault writes
@@ -716,6 +758,8 @@ async function openVault(vaultPath: string): Promise<void> {
     path: vaultPath,
     error: null
   })
+  timer.mark('statusOpen')
+  logger.info('Vault open timing', timer.summary())
 
   // Kick the file walk after isOpen so its tail (backfill, reconcile) runs
   // against an open vault, exactly like the old post-open reconcile call did.
@@ -779,43 +823,9 @@ export async function selectVault(input: { path?: string }): Promise<SelectVault
       return { success: false, vault: null, error: 'No folder selected' }
     }
 
-    // Validate the path
-    validateVaultPath(vaultPath)
-
-    // Close current vault if open
-    if (currentStatus.isOpen) {
-      await closeVault()
-    }
-
-    // Open the vault
-    await openVault(vaultPath)
-
-    // Create vault info
-    const vaultInfo = createVaultInfo(vaultPath)
-
-    // Stamp the server vault uuid so the account vault directory can match
-    // this vault without opening its data.db (best-effort: re-stamps next open)
-    try {
-      const { getOrCreateVaultUuid } = await import('../agent/storage/vault-id')
-      const { getDatabase } = await import('../database/client')
-      vaultInfo.vaultUuid = getOrCreateVaultUuid(getDatabase())
-    } catch (err) {
-      // vault opened without a data db (or uuid minting failed) — the registry
-      // keeps any previously stored uuid (createVaultInfo carries it forward),
-      // but a first-time stamp failure leaves this vault unmatched in the
-      // account directory, so make it visible instead of swallowing it.
-      logger.warn('Vault uuid stamp failed; account-directory match may be stale', {
-        vaultPath,
-        error: err instanceof Error ? err.message : String(err)
-      })
-    }
-
-    // Store in electron-store
-    setCurrentVaultPath(vaultPath)
-    upsertVault(vaultInfo)
-    touchVault(vaultPath)
-
-    return { success: true, vault: vaultInfo }
+    // The folder picker stays outside the queue: a dialog left open must not
+    // hold up a close or quit.
+    return await runVaultLifecycleOperation(() => replaceOpenVault(vaultPath))
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to select vault'
     // The error envelope below is the only signal the IPC layer sees — the
@@ -824,6 +834,47 @@ export async function selectVault(input: { path?: string }): Promise<SelectVault
     updateStatus({ error: message })
     return { success: false, vault: null, error: message }
   }
+}
+
+/** Close the open vault and open `vaultPath`. Runs inside the lifecycle queue. */
+async function replaceOpenVault(vaultPath: string): Promise<SelectVaultResponse> {
+  // Validate the path
+  validateVaultPath(vaultPath)
+
+  // Close current vault if open
+  if (currentStatus.isOpen) {
+    await closeOpenVault()
+  }
+
+  // Open the vault
+  await openVault(vaultPath)
+
+  // Create vault info
+  const vaultInfo = createVaultInfo(vaultPath)
+
+  // Stamp the server vault uuid so the account vault directory can match
+  // this vault without opening its data.db (best-effort: re-stamps next open)
+  try {
+    const { getOrCreateVaultUuid } = await import('../agent/storage/vault-id')
+    const { getDatabase } = await import('../database/client')
+    vaultInfo.vaultUuid = getOrCreateVaultUuid(getDatabase())
+  } catch (err) {
+    // vault opened without a data db (or uuid minting failed) — the registry
+    // keeps any previously stored uuid (createVaultInfo carries it forward),
+    // but a first-time stamp failure leaves this vault unmatched in the
+    // account directory, so make it visible instead of swallowing it.
+    logger.warn('Vault uuid stamp failed; account-directory match may be stale', {
+      vaultPath,
+      error: err instanceof Error ? err.message : String(err)
+    })
+  }
+
+  // Store in electron-store
+  setCurrentVaultPath(vaultPath)
+  upsertVault(vaultInfo)
+  touchVault(vaultPath)
+
+  return { success: true, vault: vaultInfo }
 }
 
 /**
@@ -955,7 +1006,12 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
 /**
  * Close current vault
  */
-export async function closeVault(): Promise<void> {
+export function closeVault(): Promise<void> {
+  return runVaultLifecycleOperation(closeOpenVault)
+}
+
+/** Teardown behind `closeVault`, for callers already inside the lifecycle queue. */
+async function closeOpenVault(): Promise<void> {
   if (!currentStatus.isOpen) {
     return
   }
@@ -963,16 +1019,22 @@ export async function closeVault(): Promise<void> {
   // Stop the background index build first: it holds the index DB handle and
   // feeds the projection queue this teardown is about to drain and close. The
   // flag stops the walk within one file's work, so the await is short.
+  const timer = createPhaseTimer()
   await stopBackgroundIndexBuild()
+  timer.mark('indexBuild')
 
   await stopVaultAgentServices()
+  timer.mark('agent')
 
   // Stop file watcher
   await stopWatcher()
+  timer.mark('watcher')
 
   await stopProjectionRuntime({ drain: true })
+  timer.mark('projections')
 
   await stopSyncRuntime()
+  timer.mark('sync')
 
   // After everything that records into it has stopped.
   await closeActivityLog()
@@ -983,6 +1045,8 @@ export async function closeVault(): Promise<void> {
 
   // Close databases
   closeAllDatabases()
+  timer.mark('databases')
+  logger.info('Vault close timing', timer.summary())
 
   // Update status
   updateStatus({
@@ -1102,20 +1166,40 @@ export function getAllVaults(): GetVaultsResponse {
  * Switch to a different vault
  */
 export async function switchVault(vaultPath: string): Promise<SelectVaultResponse> {
-  return selectVault({ path: vaultPath })
+  // A second switch would end the first one's in-progress window early (the
+  // flag below is not a counter), so it is refused rather than queued.
+  if (switchInProgress) {
+    return { success: false, vault: null, error: 'A vault switch is already in progress' }
+  }
+  switchInProgress = true
+  const startedAt = performance.now()
+  try {
+    return await selectVault({ path: vaultPath })
+  } finally {
+    logger.info('Vault switch timing', {
+      totalMs: Math.round(performance.now() - startedAt),
+      isOpen: currentStatus.isOpen
+    })
+    switchInProgress = false
+    // A failed switch can leave no vault open. Listeners that skipped the
+    // closed status mid-switch get it again now that it is final.
+    if (!currentStatus.isOpen) emitStatusChanged()
+  }
 }
 
 /**
  * Remove a vault from known list (doesn't delete files)
  */
-export async function removeVault(vaultPath: string): Promise<void> {
-  // Close if it's the current vault
-  if (currentStatus.path === vaultPath) {
-    await closeVault()
-    setCurrentVaultPath(null)
-  }
+export function removeVault(vaultPath: string): Promise<void> {
+  return runVaultLifecycleOperation(async () => {
+    // Close if it's the current vault
+    if (currentStatus.path === vaultPath) {
+      await closeOpenVault()
+      setCurrentVaultPath(null)
+    }
 
-  removeVaultFromStore(vaultPath)
+    removeVaultFromStore(vaultPath)
+  })
 }
 
 /**

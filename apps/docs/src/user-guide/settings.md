@@ -168,6 +168,11 @@ Wherever the note lands, the sidebar opens that folder and scrolls the new note 
 **Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enum-like event
 metadata is sent — never note content, search text, tag names, or file paths.
 
+**Automatically Send Error Reports** controls what happens when an error screen appears. On by
+default: Memry sends a redacted diagnostic report (technical logs only, never note content) in the
+background. Turn it off to be asked each time instead — the error screen then shows a **Send
+diagnostic report** button that opens the consent dialog first.
+
 ---
 
 ## Send Feedback

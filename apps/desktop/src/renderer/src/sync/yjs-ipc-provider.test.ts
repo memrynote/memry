@@ -380,6 +380,65 @@ describe('YjsIpcProvider provider reset', () => {
     rebuiltDoc.destroy()
   })
 
+  it('ignores broadcasts for its note id while stale, so another vault cannot merge in', async () => {
+    // #given a doc parked for vault A; main switched to B, whose journal has the same id
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'j2026-09-26', doc })
+    await provider.connect()
+    broadcastProviderReset()
+
+    // #when B's provider broadcasts an update for that id
+    const other = new Y.Doc()
+    other.getMap('meta').set('title', 'Vault B journal')
+    broadcastStateChanged({
+      noteId: 'j2026-09-26',
+      update: Y.encodeStateAsUpdate(other),
+      origin: 'network'
+    })
+
+    // #then A's doc does not take it in
+    expect(doc.getMap('meta').get('title')).toBeUndefined()
+
+    provider.destroy()
+    doc.destroy()
+    other.destroy()
+  })
+
+  it('holds a rebind back while canRebind says no, and resumes it on request', async () => {
+    // #given a doc kept for a vault workspace the user left: main reset, and the
+    // ready that follows belongs to the other vault
+    let allowed = true
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'note-42', doc, canRebind: () => allowed })
+    await provider.connect()
+    broadcastProviderReset()
+    allowed = false
+    mockOpenDoc.mockClear()
+
+    // #when the other vault's provider comes up
+    broadcastProviderReady()
+    await flushMicrotasks()
+
+    // #then the note is not opened in that vault's store
+    expect(mockOpenDoc).not.toHaveBeenCalled()
+    expect(provider.isSynced).toBe(false)
+
+    // #and once its own vault is open again, the held rebind runs
+    allowed = true
+    provider.resumeRebind()
+    await vi.waitFor(() => expect(provider.isSynced).toBe(true))
+    expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-42' })
+
+    // #and a live binding does not re-handshake on a later resume
+    mockOpenDoc.mockClear()
+    provider.resumeRebind()
+    await flushMicrotasks()
+    expect(mockOpenDoc).not.toHaveBeenCalled()
+
+    provider.destroy()
+    doc.destroy()
+  })
+
   it('retries a failed rebind on the next ready rather than on a timer', async () => {
     vi.useFakeTimers()
     try {

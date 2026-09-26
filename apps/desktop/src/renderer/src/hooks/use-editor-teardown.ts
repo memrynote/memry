@@ -1,5 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
+import {
+  registerVaultLeaveFlush,
+  useVaultWorkspaceLifecycle
+} from '@/lib/vault-workspace-lifecycle'
 
 const log = createLogger('Hook:EditorTeardown')
 
@@ -38,6 +42,15 @@ interface TiptapHost {
  * not available" and the note, journal, task and canvas bodies all render
  * blank. React runs the double-invoke synchronously, so a microtask lands after
  * the second setup has had its chance to cancel.
+ *
+ * A vault workspace kept mounted by VaultStack is the same case stretched out:
+ * hiding it runs this cleanup, and showing it again runs the setup with the
+ * SAME editor, but arbitrarily later and with renders in between. So while
+ * the workspace is hidden the destroy is parked on its lifecycle, cancelled on
+ * reveal and run when the workspace is dropped. The parked destroy skips
+ * `beforeDestroy`: by then another vault is open and the save would land there.
+ * The switch flushes it before main closes the vault instead
+ * (`registerVaultLeaveFlush`).
  */
 export function useEditorTeardown(
   editor: unknown,
@@ -48,7 +61,21 @@ export function useEditorTeardown(
     beforeDestroyRef.current = beforeDestroy
   })
 
-  const pendingRef = useRef<{ editor: unknown; cancelled: boolean } | null>(null)
+  const lifecycle = useVaultWorkspaceLifecycle()
+  const pendingRef = useRef<{
+    editor: unknown
+    cancelled: boolean
+    /** Drops a destroy parked on a hidden workspace. */
+    release?: () => void
+  } | null>(null)
+
+  useEffect(
+    () =>
+      registerVaultLeaveFlush(async () => {
+        await beforeDestroyRef.current?.()
+      }),
+    []
+  )
 
   useEffect(() => {
     // Only a remount of the same editor is StrictMode's doing. A different
@@ -57,6 +84,7 @@ export function useEditorTeardown(
     const pending = pendingRef.current
     if (pending && pending.editor === editor) {
       pending.cancelled = true
+      pending.release?.()
       pendingRef.current = null
     }
 
@@ -74,11 +102,22 @@ export function useEditorTeardown(
         }
       }
 
-      const token = { editor, cancelled: false }
+      const token: NonNullable<typeof pendingRef.current> = { editor, cancelled: false }
       pendingRef.current = token
 
       queueMicrotask(() => {
         if (token.cancelled) return
+
+        if (lifecycle?.hidden) {
+          const parked = (): void => {
+            if (pendingRef.current === token) pendingRef.current = null
+            destroy()
+          }
+          lifecycle.disposers.add(parked)
+          token.release = () => lifecycle.disposers.delete(parked)
+          return
+        }
+
         if (pendingRef.current === token) pendingRef.current = null
 
         let flushed: void | Promise<void> = undefined
@@ -98,5 +137,5 @@ export function useEditorTeardown(
         destroy()
       })
     }
-  }, [editor])
+  }, [editor, lifecycle])
 }

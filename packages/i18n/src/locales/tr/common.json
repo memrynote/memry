@@ -933,5 +933,20 @@
     },
     "or": "veya",
     "then": "sonra"
+  },
+  "sidebarHelp": {
+    "label": "Yardım ve geri bildirim",
+    "reportBug": "Hata bildir",
+    "requestFeature": "Özellik iste",
+    "starOnGithub": "GitHub'da yıldızla",
+    "version": "MemryNote {version}",
+    "whatsNew": "Yenilikler"
+  },
+  "sidebarStar": {
+    "title": "MemryNote açık kaynak",
+    "body": "Açıkta geliştiriliyor. Bir yıldız, başkalarının onu bulmasına yardım eder.",
+    "star": "Yıldızla",
+    "later": "Şimdi değil",
+    "thanks": "Teşekkürler, çok şey ifade ediyor."
   }
 }

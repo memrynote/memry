@@ -9,6 +9,14 @@ import {
   createTestQueryClient,
   setupHookTestEnvironment
 } from '@tests/utils/hook-test-wrapper'
+import { VaultScopeProvider } from '@/contexts/vault-scope'
+import { flushAllPendingSaves } from '@/lib/save-registry'
+import { setCachedVaultStatus } from '@/lib/vault-status-cache'
+import {
+  VaultWorkspaceLifecycleContext,
+  createVaultWorkspaceLifecycle,
+  type VaultWorkspaceLifecycle
+} from '@/lib/vault-workspace-lifecycle'
 import { useJournalEntry } from './use-journal-entry'
 
 vi.mock('react-i18next', () => ({
@@ -18,9 +26,13 @@ vi.mock('react-i18next', () => ({
   })
 }))
 
+const { logWarn } = vi.hoisted(() => ({ logWarn: vi.fn() }))
+
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
-    error: vi.fn()
+    error: vi.fn(),
+    warn: logWarn,
+    info: vi.fn()
   })
 }))
 
@@ -274,5 +286,152 @@ describe('useJournalEntry dedicated hook', () => {
       external?.({ date: '2026-05-10', type: 'deleted' })
     })
     expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toBeNull()
+  })
+
+  describe('leaving the vault', () => {
+    const VAULT_A = '/vaults/a'
+    const VAULT_B = '/vaults/b'
+    let lifecycle: VaultWorkspaceLifecycle
+
+    const vaultWrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <VaultWorkspaceLifecycleContext.Provider value={lifecycle}>
+          <VaultScopeProvider vaultPath={VAULT_A}>{children}</VaultScopeProvider>
+        </VaultWorkspaceLifecycleContext.Provider>
+      </QueryClientProvider>
+    )
+
+    const openVault = (path: string): void =>
+      setCachedVaultStatus({
+        isOpen: true,
+        path,
+        isIndexing: false,
+        indexProgress: 0,
+        error: null
+      })
+
+    beforeEach(() => {
+      lifecycle = createVaultWorkspaceLifecycle()
+      openVault(VAULT_A)
+    })
+
+    // Hiding a workspace runs its cleanups after main has opened the next
+    // vault; a date-addressed save would overwrite that vault's entry.
+    it('does not save pending edits from a hidden workspace cleanup', async () => {
+      const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+      const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), {
+        wrapper: vaultWrapper
+      })
+      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+
+      act(() => {
+        result.current.updateContent('Typed in vault A')
+      })
+      updateEntry.mockClear()
+      openVault(VAULT_B)
+      lifecycle.hidden = true
+      unmount()
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync()
+      })
+
+      expect(updateEntry).not.toHaveBeenCalled()
+      expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('2026-05-10'))
+    })
+
+    it('does not save pending edits once another vault is open', async () => {
+      const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+      const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), {
+        wrapper: vaultWrapper
+      })
+      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+
+      act(() => {
+        result.current.updateContent('Typed in vault A')
+      })
+      updateEntry.mockClear()
+      openVault(VAULT_B)
+      unmount()
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync()
+      })
+
+      expect(updateEntry).not.toHaveBeenCalled()
+    })
+
+    it('still saves pending edits on unmount while its vault is open', async () => {
+      const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+      const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), {
+        wrapper: vaultWrapper
+      })
+      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+
+      act(() => {
+        result.current.updateContent('Closing the tab')
+      })
+      unmount()
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(updateEntry).toHaveBeenCalledWith({ date: '2026-05-10', content: 'Closing the tab' })
+    })
+
+    // The switch flushes the registry before main closes the vault. A save
+    // already in flight used to make that flush return early, leaving the
+    // edits typed during it unsaved.
+    it('pre-switch flush waits for an in-flight save and saves the remainder', async () => {
+      const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+      const { result } = renderHook(() => useJournalEntry('2026-05-10'), {
+        wrapper: vaultWrapper
+      })
+      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+
+      let finishFirstSave: () => void = () => {}
+      updateEntry.mockClear()
+      updateEntry.mockImplementationOnce(
+        (input: { date: string; content?: string }) =>
+          new Promise((resolve) => {
+            finishFirstSave = () =>
+              resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
+          })
+      )
+
+      act(() => {
+        result.current.updateContent('First')
+      })
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync()
+      })
+      expect(updateEntry).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        result.current.updateContent('First and second')
+      })
+
+      let flushed = false
+      let flush: Promise<void> = Promise.resolve()
+      act(() => {
+        flush = flushAllPendingSaves().then(() => {
+          flushed = true
+        })
+      })
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(flushed).toBe(false)
+
+      await act(async () => {
+        finishFirstSave()
+        await flush
+      })
+
+      expect(updateEntry).toHaveBeenCalledTimes(2)
+      expect(updateEntry).toHaveBeenLastCalledWith({
+        date: '2026-05-10',
+        content: 'First and second'
+      })
+      expect(result.current.isDirty).toBe(false)
+    })
   })
 })

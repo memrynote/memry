@@ -285,12 +285,14 @@ function TabPersistenceProbe({
 let sessionSnapshot: ReturnType<typeof useSessionRestore> | null = null
 function SessionRestoreProbe({
   storage,
-  autoRestore = true
+  autoRestore = true,
+  restoreFullSession
 }: {
   storage: TabStorage
   autoRestore?: boolean
+  restoreFullSession?: boolean
 }) {
-  sessionSnapshot = useSessionRestore({ storage, autoRestore })
+  sessionSnapshot = useSessionRestore({ storage, autoRestore, restoreFullSession })
   return null
 }
 
@@ -809,6 +811,17 @@ describe('tab persistence hooks', () => {
         })
       )
     )
+
+    // A vault entered by an in-app switch comes back whole: "restore session
+    // on start" governs launches, not switches.
+    mocks.dispatch.mockClear()
+    render(withQueryClient(<SessionRestoreProbe storage={storage} restoreFullSession />))
+    await waitFor(() =>
+      expect(mocks.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'RESTORE_SESSION' })
+      )
+    )
+    expect(mocks.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'OPEN_TAB' }))
 
     const failingStorage: TabStorage = {
       save: vi.fn(),

@@ -56,6 +56,18 @@ const getShortcutGroups = (t: TFunction<'common'>): ShortcutGroup[] => {
         { combos: [[mod, ',']], description: t('shortcuts.items.general.openSettings') },
         { combos: [[mod, shift, 'O']], description: t('shortcuts.items.general.switchVault') },
         {
+          combos: isMac
+            ? [
+                ['\u2303', mod, '\u2190'],
+                ['\u2303', mod, '\u2192']
+              ]
+            : [
+                [mod, alt, '\u2190'],
+                [mod, alt, '\u2192']
+              ],
+          description: t('shortcuts.items.general.adjacentVault')
+        },
+        {
           combos: [['?'], [mod, '/']],
           description: t('shortcuts.items.general.keyboardShortcuts')
         },

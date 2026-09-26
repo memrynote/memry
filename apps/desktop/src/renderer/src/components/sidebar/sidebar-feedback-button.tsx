@@ -1,11 +1,18 @@
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
-import { MessageCircle } from '@/lib/icons'
+import { ArrowUpRight, Bug, Lightbulb, MessageCircle, MessageSquare, Star } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { DockButton } from '@/components/sidebar/footer-dock'
 import {
   Dialog,
   DialogContent,
@@ -21,9 +28,22 @@ import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('Component:SidebarFeedbackButton')
 
+const REPO_URL = 'https://github.com/memrynote/memry'
+const BUG_URL = `${REPO_URL}/issues/new?template=bug.yml`
+const FEATURE_URL = `${REPO_URL}/issues/new?template=feature.yml`
+const RELEASES_URL = `${REPO_URL}/releases/latest`
+
+/** Routed to the OS browser by the main-process openExternal allowlist. */
+function openExternal(url: string): void {
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 /**
- * Ghost icon button in the sidebar footer (next to Settings) that opens a
- * lightweight feedback dialog. Message is required; email is optional and
+ * Help button in the sidebar footer dock. Opens a menu: in-app feedback, GitHub
+ * bug / feature issue templates, and the repo star link. The open-source ask
+ * lives here because the user opened the menu themselves.
+ *
+ * "Send feedback" opens a lightweight feedback dialog. Message is required; email is optional and
  * auto-filled (hidden) when the user is signed in. Submissions are emailed to
  * the team with the sender as Reply-To. See main `feedback-handlers.ts`.
  */
@@ -41,6 +61,7 @@ export function SidebarFeedbackButton() {
 
   const signedInEmail = authState.email
   const label = t('phaseF.componentsAppSidebar.feedbackButton')
+  const helpLabel = t('sidebarHelp.label')
 
   const handleSubmit = useCallback(async () => {
     const trimmed = message.trim()
@@ -75,23 +96,46 @@ export function SidebarFeedbackButton() {
 
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            data-tour="feedback"
-            onClick={() => setOpen(true)}
-            aria-label={label}
-            title={label}
-            className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
-          >
-            <MessageCircle className="size-4" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">
-          {label}
-        </TooltipContent>
-      </Tooltip>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <DockButton data-tour="feedback" aria-label={helpLabel} title={helpLabel}>
+            <MessageCircle aria-hidden="true" />
+          </DockButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" sideOffset={8} className="w-56">
+          <DropdownMenuItem onSelect={() => setOpen(true)}>
+            <MessageSquare aria-hidden="true" />
+            {label}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => openExternal(BUG_URL)}>
+            <Bug aria-hidden="true" />
+            <span className="flex-1">{t('sidebarHelp.reportBug')}</span>
+            <ArrowUpRight aria-hidden="true" className="text-text-tertiary" />
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => openExternal(FEATURE_URL)}>
+            <Lightbulb aria-hidden="true" />
+            <span className="flex-1">{t('sidebarHelp.requestFeature')}</span>
+            <ArrowUpRight aria-hidden="true" className="text-text-tertiary" />
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => openExternal(REPO_URL)}>
+            <Star aria-hidden="true" className="text-[var(--tint)]" />
+            <span className="flex-1">{t('sidebarHelp.starOnGithub')}</span>
+            <ArrowUpRight aria-hidden="true" className="text-text-tertiary" />
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <div className="flex items-center justify-between px-2 py-1 font-mono text-[10.5px] text-text-tertiary">
+            <span>{t('sidebarHelp.version', { version: appVersion })}</span>
+            <button
+              type="button"
+              onClick={() => openExternal(RELEASES_URL)}
+              className="rounded hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tint-ring)]"
+            >
+              {t('sidebarHelp.whatsNew')}
+            </button>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">

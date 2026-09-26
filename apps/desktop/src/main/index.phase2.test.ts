@@ -3,6 +3,7 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import type { VaultStatus } from '@memry/contracts/vault-api'
 
 const appOnMock = vi.fn()
+const isVaultSwitchInProgressMock = vi.fn(() => false)
 const whenReadyMock = vi.fn(() => new Promise<void>(() => {}))
 const requestSingleInstanceLockMock = vi.fn(() => true)
 const getPathMock = vi.fn((name: string) => `/mock/${name}`)
@@ -188,6 +189,7 @@ vi.mock('./vault', () => ({
   beginVaultShutdown: vi.fn(),
   closeVault: closeVaultMock,
   getStatus: getVaultStatusMock,
+  isVaultSwitchInProgress: isVaultSwitchInProgressMock,
   onVaultStatusChanged: onVaultStatusChangedMock
 }))
 
@@ -1068,6 +1070,29 @@ describe('main index phase2 exports', () => {
     })
 
     expect(createdWindow.setSize).toHaveBeenCalledWith(900, 720)
+  })
+
+  it('keeps the window size through the closed gap of a vault switch', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const createdWindow = browserWindows[0]
+    createdWindow.getSize.mockReturnValue([1550, 900])
+    isVaultSwitchInProgressMock.mockReturnValueOnce(true)
+
+    vaultStatusChangedListeners[0]?.({
+      isOpen: false,
+      path: null,
+      isIndexing: false,
+      indexProgress: 0,
+      error: null
+    })
+
+    // Shrinking to the picker here made the window jump on every switch.
+    expect(createdWindow.setSize).not.toHaveBeenCalled()
   })
 
   it('drops the launch-timeline vault-status listener when the vault fails to open', async () => {
