@@ -111,6 +111,13 @@ copied in, so 24 MB keeps peak at roughly 24 MB + ≤8 MB + baseline. `PACK_HARD
 remains as a documented guard so the target cannot be raised back into isolate-unsafe territory
 without confronting it.
 
+Selection leaves out the snapshot of a note id whose `note` and `journal` rows in `sync_items` are
+all tombstones. Deleting a note keeps its `crdt_snapshots` row, and a fresh device applies packs
+before the pull that delivers the tombstone, so a packed body of a deleted note reaches the device
+as if it were live. A note id with any live `note` or `journal` row still packs, and so does one
+with no row yet, because a snapshot can land before its record. The filter only covers packs built
+after the delete. A pack built earlier is immutable and still carries the body.
+
 Rows larger than `MAX_PACKED_ITEM_BYTES` = 8 MB are excluded from packs permanently and stay on the
 item-granular tail. The largest legal record payload is roughly 7 MB of JSON text (a 5 MB decoded
 payload inflated by base64 and the envelope) and snapshots cap at 5 MB, so this excludes anything
