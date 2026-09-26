@@ -565,6 +565,19 @@ describe('RecordChangesResponseSchema', () => {
     expect(parsed.serverTimeMs).toBe(1_700_000_000_456)
   })
 
+  // #2292: elements are validated per item by the reader, never as part of the page.
+  it('keeps an optional inline array without failing the page on a malformed element', () => {
+    const page = { items: [], deleted: [], hasMore: false, nextCursor: 0 }
+    const parsed = RecordChangesResponseSchema.parse({
+      ...page,
+      inline: [{ id: 'task-1' }, 'not an item']
+    })
+
+    expect(parsed.inline).toEqual([{ id: 'task-1' }, 'not an item'])
+    expect(RecordChangesResponseSchema.parse(page)).not.toHaveProperty('inline')
+    expect(RecordChangesResponseSchema.safeParse({ ...page, inline: {} }).success).toBe(false)
+  })
+
   // #2280
   it('rejects a fractional commit time', () => {
     expect(

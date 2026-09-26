@@ -17,7 +17,7 @@ form** (chapter 00 §0.3.1).
 | ------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | GET                 | `/sync/status`                          | none; returns `SyncStatusSchema` including `clientPolicy` (`packages/contracts/src/sync-api.ts:473-478`)             |
 | GET                 | `/sync/manifest`                        | optional `limit` and `cursor`; **a cursor without a limit is a 400** (`apps/sync-server/src/routes/sync.ts:327-331`) |
-| GET                 | `/sync/changes`                         | optional `cursor`, optional `limit` (`apps/sync-server/src/routes/sync.ts:344-357`)                                  |
+| GET                 | `/sync/changes`                         | optional `cursor`, optional `limit`, optional `inline=1` (§5.11.2) (`apps/sync-server/src/routes/sync.ts:350-398`)   |
 | POST                | `/sync/push`                            | `RecordPushRequestSchema`, 1 to 100 items                                                                            |
 | POST                | `/sync/pull`                            | `PullRequestSchema`, 1 to 100 item ids                                                                               |
 | GET                 | `/sync/items/:id`                       | one item                                                                                                             |
@@ -297,13 +297,17 @@ because that is what the code implements.
 
 **Normative** (`apps/sync-server/src/services/sync.ts:30-36`):
 
-| Constant                   | Value | Line  |
-| -------------------------- | ----- | ----- |
-| `MAX_ENCRYPTED_DATA_BYTES` | 5 MiB | `:30` |
-| `DEFAULT_CHANGES_LIMIT`    | 100   | `:31` |
-| `MAX_CHANGES_LIMIT`        | 500   | `:32` |
-| `D1_MAX_BIND_PARAMS`       | 95    | `:35` |
-| `MAX_MANIFEST_PAGE_LIMIT`  | 1000  | `:36` |
+| Constant                   | Value  | Line   |
+| -------------------------- | ------ | ------ |
+| `MAX_ENCRYPTED_DATA_BYTES` | 5 MiB  | `:30`  |
+| `DEFAULT_CHANGES_LIMIT`    | 100    | `:31`  |
+| `MAX_CHANGES_LIMIT`        | 500    | `:32`  |
+| `D1_MAX_BIND_PARAMS`       | 95     | `:35`  |
+| `MAX_MANIFEST_PAGE_LIMIT`  | 1000   | `:36`  |
+| `MAX_INLINE_CHANGES_LIMIT` | 100    | `:973` |
+| `INLINE_MAX_BLOB_BYTES`    | 64 KiB | `:975` |
+
+The last two apply only to `GET /sync/changes?inline=1` (§5.11.2).
 
 `POST /sync/pull` takes at most **100** ids
 (`packages/contracts/src/sync-api.ts:414-416`).
@@ -312,7 +316,7 @@ because that is what the code implements.
 
 **Normative: clamped, never rejected.**
 `effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)`
-(`apps/sync-server/src/services/sync.ts:984`), and the manifest clamps the same
+(`apps/sync-server/src/services/sync.ts:1068`), and the manifest clamps the same
 way against `MAX_MANIFEST_PAGE_LIMIT`
 (`apps/sync-server/src/services/sync.ts:919`).
 
@@ -356,7 +360,7 @@ per-type cursor: the feed is one ordered stream.
 latency trace (#2280); a client that advanced to it mid-page would claim the
 rest of the page as applied. Only the page's `nextCursor`, after the page is
 applied, moves the cursor
-(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:325`).
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:328`).
 
 Because cursors are assigned in commit order (§5.5) and the cursor moves only
 after apply, a client MAY drop a realtime wake whose `cursor` is at or below its
@@ -400,7 +404,7 @@ manifest ref does not carry them.
 
 Both are absent against a server that predates them. `committedAtMs` is also
 absent for a row last written before migration `0010`, which has no commit time
-and is not backfilled (`apps/sync-server/src/services/sync.ts:1015-1016`).
+and is not backfilled (`apps/sync-server/src/services/sync.ts:1128-1129`).
 `serverCursor` is a trace key, never a pull cursor (§5.11). A client that does
 not know the fields ignores them; one that does MUST treat either as optional.
 
@@ -425,17 +429,20 @@ The four ciphertext fields are identical in both spellings; only their nesting
 differs. A conforming reader accepts the nested form, and `record-envelope.json`
 pins the flat one because the vectors are written from the writer's side.
 
-**`GET /sync/changes`** → `{ items: <changes ref>[], deleted: string[], hasMore: boolean, nextCursor: integer, serverTimeMs?: integer }`.
+**`GET /sync/changes`** → `{ items: <changes ref>[], deleted: string[], hasMore: boolean, nextCursor: integer, serverTimeMs?: integer, inline?: <read item>[] }`.
 
 The first four are **required**. `nextCursor` is an **integer, not a string** — a
 port that types it as string-or-number will serialise the wrong thing back.
 `deleted` stays a bare id array; the trace fields are on live refs only.
 
 `serverTimeMs` is the server's epoch-ms time when it answered the page
-(`apps/sync-server/src/routes/sync.ts:381`), optional because an older server
+(`apps/sync-server/src/routes/sync.ts:398`), optional because an older server
 does not send it. It exists so a client can estimate its clock offset from the
 request's round-trip midpoint for the latency trace. It is not an input to any
 sync decision; §5.16 skew detection keeps using the seconds `serverTime`.
+
+`inline` is present only when the request asked with `inline=1` (§5.11.2). Each
+element is a `POST /sync/pull` read item.
 
 **`GET /sync/manifest`** → `{ items: <ref row>[], serverTime: integer, nextCursor?: integer }`.
 
@@ -466,6 +473,49 @@ names for a zero-row first page. The envelope is an object with a
 every account. This route is account-scoped and sits **above** the vault
 middleware, so it takes no `X-Memry-Vault-Id`.
 
+## 5.11.2 Inline payloads on `/sync/changes` (#2292)
+
+**Normative.** `GET /sync/changes?inline=1` returns the page's payloads with
+its refs, so a device woken by one small change applies it after one request
+instead of two (`apps/sync-server/src/services/sync.ts:1086`).
+
+- **Opt-in.** Without the `inline` query the response has no `inline` key and
+  is byte-for-byte the pre-inline response. `inline` is absent or `1`; any
+  other value is `400 VALIDATION_ERROR`, never a silently ignored parameter
+  (`apps/sync-server/src/routes/sync.ts:372-375`). A server that predates the
+  query ignores it, and the reader sees a page with no `inline`.
+- **Page clamp.** An inline page holds at most `MAX_INLINE_CHANGES_LIMIT` (100)
+  rows, whatever `limit` asked (clamped, never rejected, §5.10.1). A client
+  reads `hasMore` and `nextCursor` as for any page.
+- **What `inline` holds.** Each element is exactly what `POST /sync/pull`
+  returns for that row, byte for byte, tombstones included (with `deletedAt`).
+  `items`, `deleted`, `hasMore` and `nextCursor` keep their meaning: `inline`
+  never replaces the ref listing, and a reader that ignores it stays correct.
+- **Size.** A row is inlined only when its stored object is at most
+  `INLINE_MAX_BLOB_BYTES` (64 KiB), so a response stays near 6.5 MB.
+- **Coverage is by id.** `POST /sync/pull` ids are untyped (§5.12.1), so the
+  server puts an id in `inline` only when every row this page holds for that
+  id is in `inline` (`apps/sync-server/src/services/sync.ts:1009-1014`). A row
+  the server cannot read (missing blob, missing signer metadata, corrupt
+  stored data) takes its whole id out of `inline`; the page still answers 200
+  (`apps/sync-server/src/services/sync.ts:1034-1054`).
+- **Reader.** The reader MUST pull, with `POST /sync/pull`, every page id
+  (`items` ∪ `deleted`) that no `inline` element names, and only those
+  (`apps/desktop/src/main/sync/engine/changes-page.ts:28`). It MUST NOT infer
+  which ids were inlined from `size`. Inline and pulled items of a page are
+  applied as one page: the same per-item validation (§5.14), the same apply
+  order across both sources (§5.13), and `nextCursor` stored only after the
+  whole page applied (§5.11). A remainder `/sync/pull` that is not a pull
+  envelope refuses the page even when inline items exist (§5.14).
+- **When to ask.** A client SHOULD ask only on the first page of an
+  incremental pull, not during a first sync: an inline page carries a fifth of
+  the refs of a 500-ref page, so asking on every page moves backlog load onto
+  the `sync_changes` rate limit. Desktop asks on the first page of a pull
+  outside a full sync, which is the socket wake and the periodic pull; startup,
+  "Sync now" and a first sync are full syncs and do not ask
+  (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:292`). The Rust core
+  does not ask yet (#2304).
+
 ## 5.12 Tombstones
 
 **Normative.** `GET /sync/changes` returns
@@ -473,7 +523,8 @@ middleware, so it takes no `X-Memry-Vault-Id`.
 (`packages/contracts/src/sync-api.ts:450-455`).
 
 - The client **unions `deleted` ids into the `/sync/pull` request for the same
-  page** (`packages/sync-client/src/pull/engine.ts:350`), because tombstones
+  page**, minus the ids an `inline` element already delivered (§5.11.2)
+  (`packages/sync-client/src/pull/engine.ts:350`), because tombstones
   arrive as **full signed items** and a set `deletedAt` is the delete signal
   (`packages/sync-client/src/pull/engine.ts:27-28`).
 - **A present `deletedAt` overrides the declared `operation`**
