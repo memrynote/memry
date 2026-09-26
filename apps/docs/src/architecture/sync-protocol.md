@@ -176,6 +176,12 @@ manifest diff — keys on the `(type, id)` pair, never the bare id. A permanent 
 does not block its same-id sibling of another type, and a re-fetch that asks for one `(type, id)`
 pair ignores the sibling rows the server returns for the same id.
 
+The within-run apply dedup also compares cursors. For each `(type, id)` a pull run applied, it
+keeps the highest cursor at which a changes page listed it: the ref's `serverCursor`, or the page's
+`nextCursor` for a `deleted` id or a server that sends no ref cursor. A later page that lists the item
+above that cursor carries a newer version (an edit or delete committed during the run), and it goes
+through the normal clock-guarded apply. Only a listing at or below the recorded cursor is skipped.
+
 Retry semantics: the pull cursor only advances past pages that were actually applied. A page the
 client refused (all items failed crypto, or the key was mid-transition during sign-in/recovery) does
 not move the cursor, so a manual Retry lands on the same page instead of skipping it and reporting a

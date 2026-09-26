@@ -822,6 +822,39 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
     expect(localRow(db, 'task', 'task-1')).toBeUndefined()
   })
 
+  // #2429: the run applied task-1 on page 1; its purged tombstone is listed on page 2.
+  it('applies a purged tombstone for an item the same run applied on an earlier page', async () => {
+    const db = getDb()
+    seedRow(db, 'task', 'task-seed', { 'device-a': 1 })
+    const engine = syncedEngine(db)
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer')
+      .mockResolvedValueOnce({
+        items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 }],
+        deleted: [],
+        hasMore: true,
+        nextCursor: 5
+      })
+      .mockResolvedValueOnce({ items: [], deleted: ['task-1'], hasMore: false, nextCursor: 9 })
+    vi.spyOn(http, 'postToServer')
+      .mockResolvedValueOnce({ items: [signedItem('task-1')] })
+      .mockResolvedValueOnce({
+        items: [],
+        purgedTombstones: [purgedTombstone('task-1', 'task', TOMBSTONE_CLOCK)]
+      })
+    vi.spyOn(await import('../decrypt'), 'decryptItemFromPull').mockReturnValue({
+      content: new TextEncoder().encode(
+        JSON.stringify({ title: 'from B', projectId: 'proj-parent' })
+      ),
+      verified: true
+    })
+
+    await expect(engine.pull()).resolves.toBe(true)
+
+    expect(localRow(db, 'task', 'task-1')).toBeUndefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
+  })
+
   // #2408: a transient key-resolution failure is not a refusal. The page fails
   // and the cursor holds, so the same entry is verified on the next pull.
   it('holds the cursor and refuses nothing when /auth/devices fails', async () => {

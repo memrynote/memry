@@ -5,6 +5,7 @@ import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT, SYNC_STATE_KEYS } from './sync-context'
 import { ItemApplier } from '../apply-item'
+import { RunAppliedCursors } from './run-applied-cursors'
 import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
 import type { ManifestCheckResult } from '../manifest-check'
@@ -372,7 +373,7 @@ describe('#given a pull page ending in a CRDT batch #when the batch applies', ()
       startTime: Date.now(),
       pulledCount: 0,
       totalConflictsResolved: 0,
-      processedIds: new Set<string>(),
+      applied: new RunAppliedCursors(),
       crdtNoteIds: ['note-1'],
       accessJwt: 'jwt',
       vaultKey: new Uint8Array(32)
