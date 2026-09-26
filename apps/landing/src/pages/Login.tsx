@@ -42,21 +42,37 @@ function GoogleIcon() {
   )
 }
 
-/* Layered background: paper gradient wash + terracotta aura + sage whisper + oversized
-   brand glyph watermark. The global body grain adds the paper texture on top. */
-function LoginBackdrop() {
+/* Painted meadow + app window: the right half of the split. Both live in /public for the
+   same reason as the homepage hero (a bundled src/assets import 404s after prerender).
+   login-bg.webp was generated with: cwebp -q 78 -resize 1200 0 src/assets/hero-bg1.png */
+const SHOWCASE_BG = '/login/login-bg.webp'
+const SHOWCASE_SHOT = { src: '/screenshots/home_white.webp', width: 1432, height: 1022 } as const
+
+/* Decorative: the window is anchored to the top-start corner and deliberately overflows
+   the end and bottom edges, so it reads as the app sitting inside the landscape. */
+function LoginShowcase() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,var(--color-paper)_0%,var(--color-paper-alt)_55%,var(--color-paper-deep)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(60%_45%_at_50%_0%,rgb(255_103_26/0.14),transparent_70%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(45%_35%_at_8%_100%,rgb(91_127_106/0.12),transparent_70%)]" />
-      <svg
-        viewBox="0 0 680 547"
-        className="absolute -bottom-24 -end-24 w-[26rem] rotate-[-8deg] text-terracotta opacity-[0.04] sm:-bottom-28 sm:-end-28 sm:w-[40rem]"
-        fill="currentColor"
-      >
-        <path d="M652 345C667.464 345 680 357.536 680 373V519C680 534.464 667.464 547 652 547H28C12.536 547 3.70473e-07 534.464 0 519V373C1.99733e-06 357.536 12.536 345 28 345H652ZM510 0C603.169 0 678.727 75.3938 678.997 168.5H678.879L678.771 168.556L344.632 341.046C341.572 341.635 338.427 341.635 335.367 341.046L1.22949 168.556L1.12109 168.5H1.00293C1.27258 75.3938 76.8306 0 170 0C263.169 0 338.727 75.3938 338.997 168.5H341.003C341.273 75.3938 416.831 0 510 0Z" />
-      </svg>
+    <div
+      aria-hidden
+      className="relative hidden overflow-hidden rounded-[1.25rem] bg-tint-sky lg:block"
+    >
+      <img
+        src={SHOWCASE_BG}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        decoding="async"
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgb(122_168_214/0.18),transparent_45%)]" />
+      <div className="absolute start-[9%] top-[13%] w-[max(140%,52rem)] animate-fade-up">
+        <img
+          src={SHOWCASE_SHOT.src}
+          width={SHOWCASE_SHOT.width}
+          height={SHOWCASE_SHOT.height}
+          alt=""
+          decoding="async"
+          className="block h-auto w-full rounded-xl bg-paper shadow-[0_24px_60px_-12px_rgb(26_26_26/0.35)] ring-1 ring-ink/10"
+        />
+      </div>
     </div>
   )
 }
@@ -117,138 +133,138 @@ export function LoginPage() {
         <title>Sign in — memrynote</title>
         <meta name="robots" content="noindex" />
       </Helmet>
-      <div className="relative isolate flex min-h-dvh flex-col items-center justify-center px-4 py-16">
-        <LoginBackdrop />
-        <div className="w-full max-w-sm animate-fade-up">
-          <div className="relative rounded-3xl border border-border bg-card/80 px-8 pb-8 pt-14 shadow-elevated backdrop-blur-xl sm:px-10">
-            {/* Floating logo chip, half over the card's top edge — doubles as the way home */}
-            <div className="absolute inset-x-0 -top-7 flex justify-center">
-              <Link
-                to="/"
-                aria-label="memrynote home"
-                className="flex h-14 w-14 rotate-[-4deg] items-center justify-center rounded-2xl border border-border bg-card shadow-elevated transition-transform duration-300 hover:rotate-0 motion-reduce:rotate-0"
-              >
-                <img src="/favicon.svg" alt="" className="h-7 w-7" />
-              </Link>
+      <div className="flex min-h-dvh bg-paper-deep p-3 sm:p-5">
+        <div className="grid flex-1 gap-3 rounded-[1.75rem] border border-border bg-paper p-3 shadow-card lg:grid-cols-2">
+          <div className="flex flex-col px-5 py-6 sm:px-8">
+            <Link to="/" className="group flex w-fit items-center gap-2">
+              <img src="/favicon.svg" alt="" className="h-7 w-7" />
+              <span className="font-geist text-[17px] font-medium leading-none tracking-[-0.04em] text-ink transition-colors group-hover:text-terracotta">
+                memrynote
+              </span>
+            </Link>
+
+            <div className="flex flex-1 items-center justify-center py-12">
+              <div className="w-full max-w-sm animate-fade-up">
+                <h1 className="text-center font-editorial text-2xl font-medium tracking-[-0.02em]">
+                  {toCheckout ? 'Sign in to continue' : 'Sign in to memrynote'}
+                </h1>
+                <p className="mt-2 text-center text-sm text-muted text-balance">
+                  {toCheckout ? (
+                    'Log in first to choose your plan and check out.'
+                  ) : step === 'email' ? (
+                    'Welcome back. Pick up where you left off.'
+                  ) : (
+                    <>
+                      {/* data-ph-mask: keeps the entered email out of session replay */}
+                      We emailed a 6-digit code to <span data-ph-mask>{email}</span>.
+                    </>
+                  )}
+                </p>
+
+                <AnimatePresence>
+                  {error ? (
+                    <motion.p
+                      key="login-error"
+                      className="mt-4 text-center text-sm text-red-500"
+                      initial={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                      transition={{ duration: 0.18, ease: EASE }}
+                    >
+                      {error}
+                    </motion.p>
+                  ) : null}
+                </AnimatePresence>
+
+                <Button
+                  variant="outline"
+                  className="mt-8 inline-flex w-full items-center justify-center gap-2"
+                  onClick={() => continueWithGoogle(next)}
+                >
+                  <GoogleIcon />
+                  Continue with Google
+                </Button>
+
+                <div className="my-6 flex items-center gap-3 text-xs text-muted">
+                  <span className="h-px flex-1 bg-border" />
+                  or
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+
+                {/* Step swap slides forward: outgoing form exits left, incoming enters from
+                    the right. mode="wait" keeps them from overlapping; initial={false} skips
+                    the entrance on first mount, since the column already animates in via
+                    `.animate-fade-up`. */}
+                <AnimatePresence mode="wait" initial={false}>
+                  {step === 'email' ? (
+                    <motion.form
+                      key="email"
+                      className="space-y-3"
+                      initial={reduce ? { opacity: 0 } : { opacity: 0, x: 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
+                      transition={{ duration: 0.2, ease: EASE }}
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        void requestCode()
+                      }}
+                    >
+                      <Input
+                        type="email"
+                        autoComplete="email"
+                        placeholder="Enter your email address"
+                        aria-label="Email address"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                      <Button type="submit" className="w-full" disabled={busy || !email}>
+                        {busy ? 'Sending…' : 'Continue with email'}
+                      </Button>
+                    </motion.form>
+                  ) : (
+                    <motion.form
+                      key="code"
+                      className="space-y-3"
+                      initial={reduce ? { opacity: 0 } : { opacity: 0, x: 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
+                      transition={{ duration: 0.2, ease: EASE }}
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        void verifyCode()
+                      }}
+                    >
+                      <Input
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        placeholder="123456"
+                        aria-label="6-digit code"
+                        className="text-center font-mono-accent tracking-[0.4em]"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                      />
+                      <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
+                        {busy ? 'Verifying…' : 'Verify & sign in'}
+                      </Button>
+                      <button
+                        type="button"
+                        className="mx-auto block text-xs text-muted underline underline-offset-2 transition-colors hover:text-ink"
+                        onClick={() => {
+                          setStep('email')
+                          setCode('')
+                          setError(null)
+                        }}
+                      >
+                        Use a different email
+                      </button>
+                    </motion.form>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
-            <h1 className="text-center font-editorial text-2xl font-medium tracking-[-0.02em]">
-              {toCheckout ? 'Sign in to continue' : 'Welcome to memrynote'}
-            </h1>
-            <p className="mt-2 text-center text-sm text-muted text-balance">
-              {toCheckout ? (
-                'Log in first to choose your plan and check out.'
-              ) : step === 'email' ? (
-                'Sign in with your email to continue.'
-              ) : (
-                <>
-                  {/* data-ph-mask: keeps the entered email out of session replay */}
-                  We emailed a 6-digit code to <span data-ph-mask>{email}</span>.
-                </>
-              )}
-            </p>
-
-            <AnimatePresence>
-              {error ? (
-                <motion.p
-                  key="login-error"
-                  className="mt-4 text-center text-sm text-red-500"
-                  initial={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
-                  transition={{ duration: 0.18, ease: EASE }}
-                >
-                  {error}
-                </motion.p>
-              ) : null}
-            </AnimatePresence>
-
-            {/* Step swap slides forward: outgoing form exits left, incoming enters from the
-                right. mode="wait" keeps them from overlapping; initial={false} skips the entrance
-                on first mount, since the card already animates in via `.animate-fade-up`. */}
-            <AnimatePresence mode="wait" initial={false}>
-              {step === 'email' ? (
-                <motion.form
-                  key="email"
-                  className="mt-8 space-y-3"
-                  initial={reduce ? { opacity: 0 } : { opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
-                  transition={{ duration: 0.2, ease: EASE }}
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    void requestCode()
-                  }}
-                >
-                  <Input
-                    type="email"
-                    autoComplete="email"
-                    placeholder="Your email"
-                    aria-label="Email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                  <Button type="submit" className="w-full" disabled={busy || !email}>
-                    {busy ? 'Sending…' : 'Continue'}
-                  </Button>
-                </motion.form>
-              ) : (
-                <motion.form
-                  key="code"
-                  className="mt-8 space-y-3"
-                  initial={reduce ? { opacity: 0 } : { opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
-                  transition={{ duration: 0.2, ease: EASE }}
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    void verifyCode()
-                  }}
-                >
-                  <Input
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    placeholder="123456"
-                    aria-label="6-digit code"
-                    className="text-center font-mono-accent tracking-[0.4em]"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                  />
-                  <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
-                    {busy ? 'Verifying…' : 'Verify & sign in'}
-                  </Button>
-                  <button
-                    type="button"
-                    className="mx-auto block text-xs text-muted underline underline-offset-2 transition-colors hover:text-ink"
-                    onClick={() => {
-                      setStep('email')
-                      setCode('')
-                      setError(null)
-                    }}
-                  >
-                    Use a different email
-                  </button>
-                </motion.form>
-              )}
-            </AnimatePresence>
-
-            <div className="my-6 flex items-center gap-3 text-xs text-muted">
-              <span className="h-px flex-1 bg-border" />
-              or
-              <span className="h-px flex-1 bg-border" />
-            </div>
-
-            <Button
-              variant="outline"
-              className="inline-flex w-full items-center justify-center gap-2"
-              onClick={() => continueWithGoogle(next)}
-            >
-              <GoogleIcon />
-              Continue with Google
-            </Button>
-
-            <p className="mt-8 text-center text-xs leading-relaxed text-muted text-balance">
+            <p className="text-center text-xs leading-relaxed text-muted text-balance">
               By continuing, you agree to our{' '}
               <Link to="/terms" className="underline underline-offset-2 hover:text-ink">
                 Terms
@@ -260,6 +276,8 @@ export function LoginPage() {
               .
             </p>
           </div>
+
+          <LoginShowcase />
         </div>
       </div>
     </>
