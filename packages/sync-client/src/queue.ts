@@ -92,6 +92,8 @@ export class SyncQueueManager {
 
   private onItemEnqueued: (() => void) | null = null
 
+  private itemEnqueuedNotifyScheduled = false
+
   /** Seeded at the interval so the very first enqueue still probes. */
   private enqueuesSincePurgeCheck = AUTO_PURGE_CHECK_EVERY_N_ENQUEUES
 
@@ -152,8 +154,24 @@ export class SyncQueueManager {
       itemId: itemId.slice(0, 8),
       operation
     })
-    this.onItemEnqueued?.()
+    this.notifyItemEnqueued()
     return id
+  }
+
+  /**
+   * Deferred one microtask, coalesced per tick (#2301). `enqueue` may run inside
+   * a caller's transaction, and the push this wakes must not read a row that
+   * can still roll back. Every transaction on these connections is synchronous,
+   * so a microtask queued inside one only runs after its outermost COMMIT or
+   * ROLLBACK has returned. A rolled-back enqueue costs one empty push request.
+   */
+  private notifyItemEnqueued(): void {
+    if (!this.onItemEnqueued || this.itemEnqueuedNotifyScheduled) return
+    this.itemEnqueuedNotifyScheduled = true
+    queueMicrotask(() => {
+      this.itemEnqueuedNotifyScheduled = false
+      this.onItemEnqueued?.()
+    })
   }
 
   /**

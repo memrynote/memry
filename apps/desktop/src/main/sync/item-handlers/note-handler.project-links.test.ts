@@ -61,9 +61,12 @@ vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 
 vi.mock('@memry/domain-notes', () => ({ saveCanonicalPropertyDefinition: vi.fn() }))
 
-const mockSyncProjectUpdate = vi.fn()
-vi.mock('../../tasks/runtime-effects', () => ({
-  syncProjectUpdate: (...args: unknown[]) => mockSyncProjectUpdate(...args)
+// The link rows commit with a project sync intent (#2301); the intent drains
+// into the local sync adapter call recorded here.
+const mockLocalMutation = vi.fn()
+vi.mock('../local-mutations', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../local-mutations')>()),
+  callLocalMutation: (...args: unknown[]) => mockLocalMutation(...args)
 }))
 
 import { noteHandler } from './note-handler'
@@ -134,8 +137,8 @@ describe('noteHandler.applyUpsert — project links on a synced update', () => {
     expect(links).toHaveLength(1)
     expect(links[0]).toMatchObject({ projectId: 'p1', itemId: 'n1', itemType: 'note' })
     // Exactly once per applied note — a second reconcile would push the project again.
-    expect(mockSyncProjectUpdate).toHaveBeenCalledTimes(1)
-    expect(mockSyncProjectUpdate).toHaveBeenCalledWith('p1', ['links'])
+    expect(mockLocalMutation).toHaveBeenCalledTimes(1)
+    expect(mockLocalMutation).toHaveBeenCalledWith('project', 'enqueueUpdate', 'p1', [['links']])
   })
 
   it('drops the link when the update clears the project property', () => {
@@ -168,7 +171,7 @@ describe('noteHandler.applyUpsert — project links on a synced update', () => {
     )
 
     expect(dataDb.db.select().from(projectLinks).all()).toHaveLength(1)
-    expect(mockSyncProjectUpdate).not.toHaveBeenCalled()
+    expect(mockLocalMutation).not.toHaveBeenCalled()
   })
 
   it('does not reconcile links for a non-markdown note', () => {

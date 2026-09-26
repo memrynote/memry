@@ -5,6 +5,8 @@ import {
   type ItemRecoveryDeps
 } from './item-recovery'
 import { SchemaInvalidLedger } from './schema-invalid-ledger'
+import { PendingSyncIntentError } from '../pending-sync-intent-error'
+import { trackMainLog } from '../../telemetry/diagnostics'
 import type { CorruptItemTracker, RecoveredItem, RefetchResult } from './corrupt-item-tracker'
 import { CORRUPT_ITEM_COOLDOWN_MS, type SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
@@ -170,5 +172,24 @@ describe('retrySchemaInvalidItems', () => {
 
     expect(h.ledger.has('task', 'task-lost')).toBe(true)
     expect(h.ledger.quarantinedItems()[0].lastError).toContain('blob_missing')
+  })
+
+  // #2301 review r2 A-L3/B-2: an item whose local edit is still waiting on
+  // its sync intent is not corrupt and not dropped: it goes back to the
+  // ledger and is re-fetched at the next pull start.
+  it('routes an item with a pending sync intent back to the ledger, not to the corrupt tracker', async () => {
+    const h = harness(
+      { 'task-waiting': new PendingSyncIntentError('task', 'task-waiting') },
+      { recovered: [recovered('task-waiting')] }
+    )
+    h.ledger.record([{ id: 'task-waiting', type: 'task' }], 'pending_intent')
+    vi.mocked(trackMainLog).mockClear()
+
+    await retrySchemaInvalidItems(h.deps, 'token', new Uint8Array(32))
+
+    expect(h.tracker.markFailed).not.toHaveBeenCalled()
+    expect(trackMainLog).not.toHaveBeenCalled()
+    expect(h.ledger.has('task', 'task-waiting')).toBe(true)
+    expect(h.ledger.retryable()).toEqual([{ id: 'task-waiting', type: 'task' }])
   })
 })

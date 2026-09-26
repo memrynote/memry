@@ -7,6 +7,7 @@ import type { SyncContext } from './sync-context'
 import type { CorruptItemTracker } from './corrupt-item-tracker'
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 import { itemRefKey } from './sync-context'
+import { PendingSyncIntentError } from '../pending-sync-intent-error'
 
 const log = createLogger('OrphanRepair')
 
@@ -107,6 +108,9 @@ export async function repairOrphans(
         goneOnServer.add(itemRefKey(parent.type, parent.id))
       }
     } catch (err) {
+      // The parent waits on this device's own sync intent (#2301): the ledger
+      // re-fetches it after the next pull-start drain.
+      if (err instanceof PendingSyncIntentError) schemaInvalid.record([parent], 'pending_intent')
       log.warn('Failed to apply refetched FK parent', {
         itemId: parent.id,
         type: parent.type,
@@ -133,6 +137,10 @@ export async function repairOrphans(
         applyItem(orphan.item)
         repaired++
       } catch (err) {
+        if (err instanceof PendingSyncIntentError) {
+          schemaInvalid.record([orphan.item], 'pending_intent')
+          continue
+        }
         log.warn('Orphan still failed after its parent was restored', {
           itemId: orphan.item.id,
           type: orphan.item.type,

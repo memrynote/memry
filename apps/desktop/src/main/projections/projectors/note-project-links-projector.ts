@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { createLogger } from '../../lib/logger'
 import { trackMainError } from '../../telemetry/diagnostics'
-import { getDatabase } from '../../database'
+import { getDatabase, type DataDb } from '../../database'
 import {
   deleteProjectLink,
   insertProjectLink,
@@ -9,7 +9,7 @@ import {
   listProjectsByNames
 } from '../../database/queries/projects'
 import { readProjectNames } from '../../notes/project-property'
-import { syncProjectUpdate } from '../../tasks/runtime-effects'
+import { commitLocalChange } from '../../sync/sync-intents'
 import type { ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:NoteProjectLinks')
@@ -54,6 +54,24 @@ export function reconcileNoteLinks(noteId: string, properties: Record<string, un
     desired.add(projectId)
   }
 
+  // A project's links only sync because its own payload carries them, and a
+  // link write does not move `projects.modified_at`, so no sweep would find a
+  // lost one: the link rows and the project's sync intent commit together (#2301).
+  commitLocalChange(db, () => {
+    const touched = writeNoteLinks(db, noteId, desired)
+    return {
+      value: undefined,
+      intents: [...touched].map((projectId) => ({
+        type: 'project' as const,
+        itemId: projectId,
+        op: 'update' as const,
+        args: [['links']]
+      }))
+    }
+  })
+}
+
+function writeNoteLinks(db: DataDb, noteId: string, desired: ReadonlySet<string>): Set<string> {
   const existing = listNoteProjectLinkIds(db, noteId)
   const existingProjectIds = new Set(existing.map((row) => row.projectId))
   const touched = new Set<string>()
@@ -77,11 +95,7 @@ export function reconcileNoteLinks(noteId: string, properties: Record<string, un
     deleteProjectLink(db, row.projectId, row.itemType, noteId)
     touched.add(row.projectId)
   }
-
-  // A project's links only sync because its own payload carries them.
-  for (const projectId of touched) {
-    syncProjectUpdate(projectId, ['links'])
-  }
+  return touched
 }
 
 export function createNoteProjectLinksProjector(): ProjectionProjector {

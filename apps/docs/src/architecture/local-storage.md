@@ -246,6 +246,12 @@ pnpm db:studio      # open GUI
 
 > Migrations are hand-written from `0020` onward — see [Common Gotchas](/contribute/gotchas).
 
+Each data DB journal entry needs a `when` larger than every earlier entry's. Drizzle applies a
+migration only when its `when` is newer than the last one applied, so a stacked branch that is
+renumbered on rebase must also take a new, larger `when`; reusing the neighbour's value makes installs
+that already have the neighbour skip it silently. `migrate.test.ts` enforces the order (`0023` is the
+one shipped exception).
+
 ## Vault Markdown Files
 
 Notes are plain `.md` files in the vault, and the write path is built around byte preservation: no write happens without a semantic change.

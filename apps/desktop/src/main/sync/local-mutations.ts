@@ -52,7 +52,7 @@ import { getCalendarExternalEventSyncService } from '@memry/sync-client/calendar
 
 const log = createLogger('LocalSync')
 
-type LocalSyncType = Exclude<SyncItemType, 'attachment'>
+export type LocalSyncType = Exclude<SyncItemType, 'attachment'>
 
 /**
  * One tripwire per type per half hour.
@@ -145,8 +145,12 @@ function enqueueDeleteOrDefer(
 /**
  * `reportUndeliverable` keeps the #1579 telemetry where it was: a delete with
  * no payload is only a dropped mutation when there was no service to take it.
+ *
+ * Exported for `commitLocalChange`, which writes the tombstone in the same
+ * transaction as the row delete (#2301), so a failed queueing step cannot roll
+ * the resurrection guard back.
  */
-function recordDeleteTombstone(
+export function recordDeleteTombstone(
   type: LocalSyncType,
   itemId: string,
   snapshotPayload: string | undefined,
@@ -836,7 +840,12 @@ const localSyncRegistry = createSyncAdapterRegistry([
   }
 ])
 
-function callLocalMutation(
+/** Whether this build has a local sync adapter for `type`. */
+export function hasLocalSyncAdapter(type: string): type is LocalSyncType {
+  return localSyncRegistry.getLocal(type as LocalSyncType) !== undefined
+}
+
+export function callLocalMutation(
   type: LocalSyncType,
   method: 'enqueueCreate' | 'enqueueUpdate' | 'enqueueDelete',
   itemId: string,

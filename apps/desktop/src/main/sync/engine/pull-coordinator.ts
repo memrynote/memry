@@ -5,6 +5,7 @@ import type { RecordChangesResponse } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { beginPageApply, replayBulkApplyJournal } from '../bulk-apply'
+import { drainPendingSyncIntents } from '../sync-intents'
 import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { withRetry } from '@memry/sync-client/retry'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
@@ -16,7 +17,6 @@ import { isBinaryFileType } from '@memry/shared/file-types'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainEvent } from '../../telemetry/track'
-import { trackMainLog } from '../../telemetry/diagnostics'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { QuarantineManager } from './quarantine-manager'
@@ -28,6 +28,7 @@ import { sortByApplyOrder } from './apply-order'
 import {
   refetchCorruptItems,
   retrySchemaInvalidItems,
+  routeDeferredRetryFailure,
   type ItemRecoveryDeps
 } from './item-recovery'
 import { parsePullItems, purgedTombstoneApplyItems } from './pull-envelope'
@@ -154,6 +155,9 @@ export class PullCoordinator {
         // between a page's DB commit and its file writes) before any new page
         // can apply on top of them.
         replayBulkApplyJournal()
+        // Before any page: a local edit whose intent failed earlier gets its
+        // clock now, so remote rows compare against it (#2301).
+        drainPendingSyncIntents(this.ctx.deps.db, 'pull')
         await retrySchemaInvalidItems(
           this.recoveryDeps((item, op) =>
             this.stateManager.emitItemSynced(item.id, item.type, 'pull', op)
@@ -604,36 +608,7 @@ export class PullCoordinator {
         this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
       } catch (retryError) {
         failed++
-        if (retryError instanceof MissingSyncParentError) {
-          // Not a dead end: the parent may simply sit outside this run's cursor
-          // window, or be gone everywhere. repairOrphanedItems() tells them
-          // apart instead of dropping the item until some future remote update
-          // (which, for a cascade-deleted project, never comes) — #837.
-          this.orphanedItems.push({
-            item: dec,
-            parentType: retryError.parentType,
-            parentId: retryError.parentId
-          })
-          log.warn('Pull: deferred retry still missing FK parent — queued for repair', {
-            itemId: dec.id,
-            type: dec.type,
-            parentType: retryError.parentType,
-            parentId: retryError.parentId
-          })
-          continue
-        }
-        log.error('Pull: deferred retry failed — item skipped until next remote update', {
-          itemId: dec.id,
-          type: dec.type,
-          error: retryError instanceof Error ? retryError.message : String(retryError)
-        })
-        // For an item that never gets another server-side update this is
-        // permanent absence on this device — count the drop per type.
-        trackMainLog('error', {
-          scope: 'PullCoordinator',
-          action: 'pull_apply_dropped',
-          errorCode: dec.type
-        })
+        routeDeferredRetryFailure(dec, retryError, this.orphanedItems, this.schemaInvalid)
       }
     }
 

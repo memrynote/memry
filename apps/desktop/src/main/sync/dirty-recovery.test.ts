@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+
+vi.mock('../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
+
 import { eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
@@ -41,6 +44,8 @@ import {
   initTaskActivitySyncService,
   resetTaskActivitySyncService
 } from '@memry/sync-client/task-activity-sync'
+import { syncIntents } from '@memry/db-schema/schema/sync-intents'
+import { trackMainEvent } from '../telemetry/track'
 import { DIRTY_RECOVERY, recoverDirtyItems } from './dirty-recovery'
 
 const TEST_PROJECT = {
@@ -334,6 +339,137 @@ describe('dirty-recovery', () => {
     // #then
     expect(result.tasks).toBe(0)
     expect(result.projects).toBe(0)
+  })
+
+  // #2301: the instrument the P4.2 merge gate reads. Leftover intents are
+  // replayed before the sweep; a dirty row that then has a queue row is owed
+  // and on its way, one without is a local edit nothing would have pushed.
+  describe('residual rows telemetry (#2301)', () => {
+    function insertDirtyTask(id: string): void {
+      db.insert(tasks)
+        .values({
+          id,
+          projectId: 'proj-1',
+          title: id,
+          priority: 0,
+          position: 0,
+          syncedAt: '2026-01-01T00:00:00Z',
+          modifiedAt: '2026-01-02T00:00:00Z'
+        })
+        .run()
+    }
+
+    beforeEach(() => {
+      vi.mocked(trackMainEvent).mockClear()
+    })
+
+    it('reports per type the dirty rows that had no queue row and no intent', () => {
+      insertDirtyTask('task-orphan')
+      insertDirtyTask('task-queued')
+      insertDirtyTask('task-intent')
+      queue.enqueue({ type: 'task', itemId: 'task-queued', operation: 'update', payload: '{}' })
+      db.insert(syncIntents)
+        .values({ type: 'task', itemId: 'task-intent', op: 'update', createdAt: new Date() })
+        .run()
+
+      recoverDirtyItems(db)
+
+      // The leftover intent is replayed first, so its row is owed, not residual.
+      expect(db.select().from(syncIntents).all()).toEqual([])
+      expect(vi.mocked(trackMainEvent).mock.calls).toEqual([
+        [
+          'sync_run_completed',
+          {
+            surface: 'sync',
+            action: 'sync_intents_replayed',
+            result: 'success',
+            metrics: { itemCount: 1, resultCount: 1, retryCount: 0, value: 0 }
+          }
+        ],
+        [
+          'sync_run_completed',
+          {
+            surface: 'sync',
+            action: 'dirty_recovery_residual',
+            objectType: 'task',
+            result: 'success',
+            metrics: { itemCount: 1, resultCount: 2 }
+          }
+        ]
+      ])
+    })
+
+    // #2301 review B-1: a row whose intent failed to replay still carries the
+    // pre-edit clock. The sweep must leave it to the intent; re-pushing it at
+    // that clock is refused by the server as a replay and marks it synced.
+    it('does not queue a row at its stale clock when its intent failed to replay', () => {
+      db.insert(tasks)
+        .values({
+          id: 'task-1',
+          projectId: 'proj-1',
+          title: 'Edited',
+          priority: 0,
+          position: 0,
+          clock: { 'device-A': 3 },
+          syncedAt: '2026-01-01T00:00:00Z',
+          modifiedAt: '2026-01-02T00:00:00Z'
+        })
+        .run()
+      db.insert(syncIntents)
+        .values({
+          type: 'task',
+          itemId: 'task-1',
+          op: 'update',
+          args: '[["title"]]',
+          createdAt: new Date()
+        })
+        .run()
+      vi.spyOn(queue, 'enqueue').mockImplementationOnce(() => {
+        throw new Error('queue broke')
+      })
+
+      recoverDirtyItems(db)
+
+      expect(queue.getSize()).toBe(0)
+      expect(db.select().from(syncIntents).all()).toMatchObject([
+        { itemId: 'task-1', attempts: 1, lastError: 'queue broke' }
+      ])
+      vi.restoreAllMocks()
+    })
+
+    // #2301 review A-6/B-7: a replayed create is stamped once, not again by
+    // the sweep's never-synced arm.
+    it('stamps a replayed never-synced create once', () => {
+      db.insert(tasks)
+        .values({
+          id: 'task-new',
+          projectId: 'proj-1',
+          title: 'New',
+          priority: 0,
+          position: 0,
+          modifiedAt: '2026-01-02T00:00:00Z'
+        })
+        .run()
+      db.insert(syncIntents)
+        .values({ type: 'task', itemId: 'task-new', op: 'create', createdAt: new Date() })
+        .run()
+
+      recoverDirtyItems(db)
+
+      expect(db.select().from(tasks).where(eq(tasks.id, 'task-new')).get()?.clock).toEqual({
+        'device-A': 1
+      })
+      expect(queue.peek(10)).toMatchObject([{ itemId: 'task-new', operation: 'create' }])
+    })
+
+    it('reports nothing when every dirty row is already owed', () => {
+      insertDirtyTask('task-queued')
+      queue.enqueue({ type: 'task', itemId: 'task-queued', operation: 'update', payload: '{}' })
+
+      recoverDirtyItems(db)
+
+      expect(trackMainEvent).not.toHaveBeenCalled()
+    })
   })
 
   describe('notes', () => {

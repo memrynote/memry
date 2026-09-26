@@ -46,7 +46,8 @@ const mockRename = vi.fn()
 const mockCopyFile = vi.fn()
 const mockUnlink = vi.fn()
 const mockExistsSync = vi.fn()
-const mockSyncTaskCreate = vi.fn()
+const mockPublishTaskChanged = vi.fn()
+const mockCommitLocalChange = vi.fn()
 const mockTrackMainError = vi.fn()
 const mockInsertTask = vi.fn()
 const mockGetNextTaskPosition = vi.fn()
@@ -129,7 +130,17 @@ vi.mock('../lib/logger', () => ({
 }))
 
 vi.mock('../tasks/runtime-effects', () => ({
-  syncTaskCreate: (...args: unknown[]) => mockSyncTaskCreate(...args)
+  publishTaskChanged: (...args: unknown[]) => mockPublishTaskChanged(...args)
+}))
+
+// Records what the conversion commits with its task row; the journal itself
+// is covered by sync/sync-intents.test.ts.
+vi.mock('../sync/sync-intents', () => ({
+  commitLocalChange: (db: unknown, write: () => { value: unknown; intents: unknown[] }) => {
+    const change = write()
+    mockCommitLocalChange(db, change.intents)
+    return change.value
+  }
 }))
 
 vi.mock('../telemetry/diagnostics', () => ({
@@ -222,7 +233,8 @@ describe('Inbox Filing Operations', () => {
     mockCopyFile.mockReset().mockResolvedValue(undefined)
     mockUnlink.mockReset().mockResolvedValue(undefined)
     mockExistsSync.mockReset().mockReturnValue(false)
-    mockSyncTaskCreate.mockReset()
+    mockPublishTaskChanged.mockReset()
+    mockCommitLocalChange.mockReset()
     mockTrackMainError.mockReset()
     mockInsertTask.mockReset().mockImplementation((_db, input) => ({ ...input }))
     mockGetNextTaskPosition.mockReset().mockReturnValue(42)
@@ -1066,7 +1078,15 @@ describe('Inbox Filing Operations', () => {
         'tasks:created',
         expect.objectContaining({ task: expect.objectContaining({ title: 'Follow up' }) })
       )
-      expect(mockSyncTaskCreate).toHaveBeenCalledWith(result.taskId)
+      // #2301 review A-3/B-5: the task row and its sync intent commit
+      // together, before the filing bookkeeping.
+      expect(mockCommitLocalChange).toHaveBeenCalledWith(testDb.db, [
+        { type: 'task', itemId: result.taskId, op: 'create', args: [] }
+      ])
+      expect(mockInsertTask.mock.invocationCallOrder[0]).toBeLessThan(
+        mockCommitLocalChange.mock.invocationCallOrder[0]
+      )
+      expect(mockPublishTaskChanged).toHaveBeenCalledWith(result.taskId)
     })
 
     it('should fail task conversion when no inbox project exists', async () => {
@@ -1113,14 +1133,14 @@ describe('Inbox Filing Operations', () => {
       )
     })
 
-    it('still reports success when syncTaskCreate throws (task persisted locally)', async () => {
+    it('still reports success when the task projection update throws (task persisted locally)', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'task-sync-throws',
         type: 'note',
-        title: 'Sync enqueue fails'
+        title: 'Projection fails'
       })
-      const syncError = new Error('sync runtime down')
-      mockSyncTaskCreate.mockImplementationOnce(() => {
+      const syncError = new Error('projection queue down')
+      mockPublishTaskChanged.mockImplementationOnce(() => {
         throw syncError
       })
 
@@ -1133,7 +1153,7 @@ describe('Inbox Filing Operations', () => {
       expect(row?.filedTo).toBe(result.taskId)
       expect(mockTrackMainError).toHaveBeenCalledWith(
         'inbox',
-        'task_conversion_sync_enqueue',
+        'task_conversion_projection',
         syncError
       )
     })

@@ -2,14 +2,7 @@ import type { TasksDomainPublisher } from '@memry/domain-tasks'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
 
-import {
-  syncProjectCreate,
-  syncProjectDelete,
-  syncProjectUpdate,
-  syncTaskCreate,
-  syncTaskDelete,
-  syncTaskUpdate
-} from './runtime-effects'
+import { publishTaskChanged, publishTaskRemoved } from './runtime-effects'
 import { removeTaskLineFromSourceNote } from './remove-task-line-from-note'
 import { trackMainEvent } from '../telemetry/track'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -37,13 +30,17 @@ function emitTagsChanged(): void {
   emitTaskEvent('notes:tags-changed', {})
 }
 
+/**
+ * Runs after the domain's unit of work has committed. Sync for tasks and
+ * projects is not here: it commits with the row (tasks/sync-intents.ts, #2301).
+ */
 export function createTasksPublisher(): TasksDomainPublisher {
   return {
     taskCreated: ({ task }) => {
       emitTaskEvent(TasksChannels.events.CREATED, { task })
       if (task.tags && task.tags.length > 0) emitTagsChanged()
       recordTaskCreated(task)
-      syncTaskCreate(task.id)
+      publishTaskChanged(task.id)
       trackMainEvent('task_created', {
         surface: 'tasks',
         action: 'created',
@@ -55,7 +52,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
       emitTaskEvent(TasksChannels.events.UPDATED, { id, task, changes })
       if (changedFields.includes('tags')) emitTagsChanged()
       recordTaskUpdated({ id, task, changes, changedFields, previous })
-      syncTaskUpdate(id, changedFields)
+      publishTaskChanged(id)
       trackMainEvent('task_updated', {
         surface: 'tasks',
         action: 'updated',
@@ -66,7 +63,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
     },
     taskDeleted: async ({ id, snapshot }) => {
       recordTaskDeleted(id, snapshot)
-      syncTaskDelete(id, snapshot)
+      publishTaskRemoved(id)
       emitTaskEvent(TasksChannels.events.DELETED, { id })
       if (snapshot?.tags && snapshot.tags.length > 0) emitTagsChanged()
       trackMainEvent('task_deleted', {
@@ -80,7 +77,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
     taskCompleted: ({ id, task, previous }) => {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })
       recordTaskCompleted({ id, task, previous })
-      syncTaskUpdate(id, ['completedAt'])
+      publishTaskChanged(id)
       trackMainEvent('task_completed', {
         surface: 'tasks',
         action: 'completed',
@@ -91,17 +88,16 @@ export function createTasksPublisher(): TasksDomainPublisher {
     taskMoved: ({ id, task, changedFields, previous }) => {
       emitTaskEvent(TasksChannels.events.MOVED, { id, task })
       recordTaskMoved({ id, task, changedFields, previous })
-      syncTaskUpdate(id, changedFields)
+      publishTaskChanged(id)
     },
     // Deliberately no activity row: reorder only ever changes `position`, which
     // the activity writer filters out anyway, and a 200-task drag would call
     // this 200 times.
-    taskReordered: ({ id, changedFields }) => {
-      syncTaskUpdate(id, changedFields)
+    taskReordered: ({ id }) => {
+      publishTaskChanged(id)
     },
     projectCreated: ({ project }) => {
       emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project })
-      syncProjectCreate(project.id)
       trackMainEvent('project_created', {
         surface: 'tasks',
         action: 'created',
@@ -111,7 +107,6 @@ export function createTasksPublisher(): TasksDomainPublisher {
     },
     projectUpdated: ({ id, project, changedFields }) => {
       emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project })
-      syncProjectUpdate(id, changedFields)
       // The archive flow routes through projectUpdated with
       // changedFields ['archivedAt']; count it as its own lifecycle event.
       const archived = (changedFields ?? []).includes('archivedAt') && Boolean(project?.archivedAt)
@@ -123,8 +118,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
         dimensions: { changed_fields: changedFieldsDimension(changedFields) }
       })
     },
-    projectDeleted: ({ id, snapshot }) => {
-      syncProjectDelete(id, snapshot)
+    projectDeleted: ({ id }) => {
       emitTaskEvent(TasksChannels.events.PROJECT_DELETED, { id })
       trackMainEvent('project_deleted', {
         surface: 'tasks',
@@ -133,14 +127,8 @@ export function createTasksPublisher(): TasksDomainPublisher {
         result: 'success'
       })
     },
-    statusCreated: ({ status }) => {
-      syncProjectUpdate(status.projectId)
-    },
-    statusUpdated: ({ status }) => {
-      syncProjectUpdate(status.projectId)
-    },
-    statusDeleted: ({ projectId }) => {
-      syncProjectUpdate(projectId)
-    }
+    statusCreated: () => {},
+    statusUpdated: () => {},
+    statusDeleted: () => {}
   }
 }

@@ -870,7 +870,7 @@ describe('SyncEngine', () => {
   })
 
   describe('#given queue #when item enqueued with callback set', () => {
-    it('#then fires onItemEnqueued callback', () => {
+    it('#then fires onItemEnqueued callback', async () => {
       const deps = createMockDeps(getDb())
       const callback = vi.fn()
       deps.queue.setOnItemEnqueued(callback)
@@ -881,6 +881,8 @@ describe('SyncEngine', () => {
         operation: 'create',
         payload: '{}'
       })
+      // Deferred a microtask so it fires after the caller's commit (#2301).
+      await Promise.resolve()
 
       expect(callback).toHaveBeenCalledTimes(1)
     })

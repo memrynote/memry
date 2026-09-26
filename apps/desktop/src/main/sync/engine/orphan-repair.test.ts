@@ -5,6 +5,7 @@ import { CorruptItemTracker, type RefetchResult } from './corrupt-item-tracker'
 import type { QuarantineManager } from './quarantine-manager'
 import { postToServer } from '../http-client'
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
+import { PendingSyncIntentError } from '../pending-sync-intent-error'
 
 const fetchLocal = vi.fn()
 
@@ -135,6 +136,31 @@ describe('repairOrphans (#837)', () => {
     )
     expect(applyItem).toHaveBeenCalledTimes(1)
     expect(ctx.deps.queue.enqueue).not.toHaveBeenCalled()
+  })
+
+  // #2301 review r2 A-L3: a child that still waits on its local sync intent
+  // is deferred to the ledger, not reported as a failed repair.
+  it('routes a restored child with a pending sync intent to the ledger', async () => {
+    const ctx = makeCtx()
+    fetchLocal.mockReturnValue({ id: 'proj-gone' })
+    const orphan = makeOrphan()
+    const applyItem = vi.fn(() => {
+      throw new PendingSyncIntentError('task', 'task-1')
+    })
+    vi.mocked(ledger.record).mockClear()
+
+    const result = await repairOrphans({
+      orphans: [orphan],
+      ctx,
+      corruptTracker: makeTracker(),
+      schemaInvalid: ledger,
+      accessJwt: 'jwt',
+      vaultKey: VAULT_KEY,
+      applyItem
+    })
+
+    expect(result).toEqual({ repaired: 0, tombstoned: 0 })
+    expect(ledger.record).toHaveBeenCalledWith([orphan.item], 'pending_intent')
   })
 
   // The parent is gone locally AND the server does not return it, so the child
