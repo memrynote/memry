@@ -29,8 +29,9 @@ import {
 import { listCalendarExternalEventsBySource } from './calendar/repositories/calendar-external-events-repository'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { getMainI18n } from './lib/main-i18n'
-import { getOrInitializeLocalVaultKey, VAULT_KEY_VERIFIER_SETTING } from './crypto/vault-key-state'
-import { getOrCreateVaultUuid, resetVaultUuidCache } from './agent/storage/vault-id'
+import { getOrInitializeLocalVaultKey } from './crypto/vault-key-state'
+import { getOrCreateVaultUuid } from './agent/storage/vault-id'
+import { adoptVaultLocally } from './sync/vault-adoption'
 import { inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
 import { runReviewTick } from './inbox/review-scheduler'
 import { writeInboxReviewSettings } from './ipc/settings-handlers'
@@ -278,21 +279,10 @@ export function registerTestHooks(): void {
 
   globalThis.__memryTestHooks = {
     async bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }> {
-      // E2E fixtures open an empty local vault before sync credentials exist. Clear that
-      // test-only local key binding so the shared sync master key can bind this vault.
-      const db = getDatabase()
-      db.run(sql`DELETE FROM settings WHERE key = ${VAULT_KEY_VERIFIER_SETTING}`)
-      const now = Date.now()
-      db.run(
-        sql`INSERT INTO vault_metadata (id, vault_uuid, created_at, updated_at)
-            VALUES ('singleton', ${input.vaultId}, ${now}, ${now})
-            ON CONFLICT(id) DO UPDATE SET
-              vault_uuid = excluded.vault_uuid,
-              updated_at = excluded.updated_at`
-      )
-      // Same in-place rewrite adoptVaultLocally performs, so drop the
-      // handle-keyed vault-uuid cache for the same reason.
-      resetVaultUuidCache()
+      // E2E fixtures open a local vault before sync credentials exist, so this is
+      // the joiner's adoption: the production path, including the CRDT store
+      // rename breadcrumb (#2424), not a copy of it.
+      adoptVaultLocally(getDatabase(), input.vaultId)
 
       const deviceId = await persistKeysAndRegisterDevice(
         Buffer.from(input.masterKeyBase64, 'base64'),

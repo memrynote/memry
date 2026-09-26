@@ -29,8 +29,8 @@ function readVaultUuid(db: DataDb): string | undefined {
 
 /**
  * Adopt a shared vault identity on the local (joiner) device before device
- * registration. Mirrors the proven test-hook sequence (test-hooks.ts:255-266):
- * clear the stale local vault-key verifier so the shared master key can rebind,
+ * registration (the E2E hook `bootstrapSyncDevice` calls it too): clear the
+ * stale local vault-key verifier so the shared master key can rebind,
  * then upsert the adopted uuid into the vault_metadata singleton. After this,
  * getOrCreateVaultUuid() returns `vaultUuid`, so registration binds the device
  * to the initiator's vault and the first sync pulls that vault's items.

@@ -179,6 +179,14 @@ that changes twice before the store is next opened collapses onto the directory
 that was actually written, rather than pointing at a middle name no directory
 ever had.
 
+If the move itself fails (every rename retry and the copy fallback), the store
+opens **in place**, under the pre-adoption name, for that session, and the
+record stays pending so the next open retries the move. Opening the adopted path
+instead would let LevelDB create an empty store there, and from then on the
+"adopted uuid already has a store" edge would keep the history stranded. The
+legacy inherit is skipped in that session for the same reason: it would fill the
+adopted path the retried rename needs.
+
 The rename settles **before** the legacy inherit above. Both want to move a
 directory into this vault's name and only one can: the pre-adoption store is
 history this vault provably wrote, while the legacy store is history it can only

@@ -26,7 +26,7 @@ const getSyncEngineMock = vi.fn(() => ({
 }))
 const getOrInitializeLocalVaultKeyMock = vi.fn(async () => new Uint8Array([1]))
 const getOrCreateVaultUuidMock = vi.fn(() => 'vault-1')
-const resetVaultUuidCacheMock = vi.fn()
+const adoptVaultLocallyMock = vi.fn()
 const dbRunMock = vi.fn()
 const dbGetMock = vi.fn(() => ({ id: 'project-1' }))
 const insertRunMock = vi.fn()
@@ -104,8 +104,11 @@ vi.mock('./crypto/vault-key-state', () => ({
 }))
 
 vi.mock('./agent/storage/vault-id', () => ({
-  getOrCreateVaultUuid: getOrCreateVaultUuidMock,
-  resetVaultUuidCache: resetVaultUuidCacheMock
+  getOrCreateVaultUuid: getOrCreateVaultUuidMock
+}))
+
+vi.mock('./sync/vault-adoption', () => ({
+  adoptVaultLocally: adoptVaultLocallyMock
 }))
 
 vi.mock('./database', () => ({
@@ -234,6 +237,7 @@ describe('main test hooks', () => {
       hooks.bootstrapSyncDevice({
         email: 'user@example.com',
         setupToken: 'setup',
+        vaultId: 'account-vault',
         masterKeyBase64: Buffer.from('master-key').toString('base64'),
         signingSecretKeyBase64: Buffer.from('signing-key').toString('base64'),
         kdfSalt: 'salt',
@@ -247,11 +251,8 @@ describe('main test hooks', () => {
         recoveryPhraseConfirmed: true
       })
     )
-    expect(dbRunMock).toHaveBeenCalled()
-    // The hook rewrites vault_metadata on the already-open handle, so the
-    // handle-keyed vault-uuid cache has to be dropped or every later call site
-    // (registration, vault key, request header) keeps the pre-bootstrap id.
-    expect(resetVaultUuidCacheMock).toHaveBeenCalled()
+    // #2424: the production adoption, so the CRDT store rename is recorded too.
+    expect(adoptVaultLocallyMock).toHaveBeenCalledWith(expect.anything(), 'account-vault')
     expect(getOrInitializeLocalVaultKeyMock).toHaveBeenCalled()
     expect(startSyncRuntimeMock).toHaveBeenCalled()
 

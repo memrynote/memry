@@ -1,9 +1,12 @@
 import { app } from 'electron'
+import { existsSync, readdirSync } from 'fs'
+import path from 'path'
 import { sql } from 'drizzle-orm'
 import { RateLimitError } from '@memry/sync-client/http-errors'
 import { getSyncEngine, getSyncWebSocket, startSyncRuntime, stopSyncRuntime } from './runtime'
 import type { SyncEngine } from './engine'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
+import { resolveVaultCrdtStore } from './crdt-store-path'
 import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 
 export interface SyncWakeProbeCounts {
@@ -194,6 +197,14 @@ export const syncStateTestHooks = {
 
   async getSyncWakeProbeForTests(): Promise<SyncWakeProbeCounts> {
     return { wakes: wakeProbe.wakes, pulls: wakeProbe.pulls }
+  },
+
+  /** Every per-vault CRDT store directory on disk (#2424: an adopted vault keeps one). */
+  async listCrdtStoreDirsForTests(): Promise<string[]> {
+    const store = resolveVaultCrdtStore()
+    if (!store) return []
+    const root = path.dirname(store.storagePath)
+    return existsSync(root) ? readdirSync(root).sort() : []
   },
 
   /**
