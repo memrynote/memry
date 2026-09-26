@@ -67,6 +67,19 @@ describe('replaceNoteBodyInCrdt seed-parity (#1959)', () => {
     expect((await yDocToMarkdown(doc))?.trimEnd()).toBe(body)
   })
 
+  it('does not give a task the text of a hidden copy of its line', async () => {
+    const doc = await seed('- [ ] Dune {task:t1}')
+    getDoc.mockReturnValue(doc)
+
+    const body = '<!--\n- [ ] OLD COMMENT {task:t1}\n-->\n\n- [ ] **new** {task:t1}'
+    const ok = await replaceNoteBodyInCrdt('n1', body)
+    expect(ok).toBe(true)
+
+    const task = doc.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
+    expect(task).toContain('title="**new**"')
+    expect(task).not.toContain('title="OLD COMMENT"')
+  })
+
   it('strips CriticMarkup and refreshes the marks array on an external edit', async () => {
     const doc = await seed('Hello {++brave++} world.')
     expect(readCriticMarkupMarksFromYDoc(doc)).toHaveLength(1)

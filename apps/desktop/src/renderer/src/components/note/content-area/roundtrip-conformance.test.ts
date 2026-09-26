@@ -146,3 +146,14 @@ describe('round-trip fuzz, renderer pipeline', () => {
     )
   }
 })
+
+describe('task titles from the source, renderer pipeline', () => {
+  it('does not give a task the text of a hidden copy of its line', async () => {
+    const markdown = '<!--\n- [ ] OLD COMMENT {task:t1}\n-->\n\n- [ ] **new** {task:t1}'
+    const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
+    const titles = normalizeNoteBlocks(parsed as Block[], markdown)
+      .filter((block) => (block.type as string) === 'taskBlock')
+      .map((block) => (block.props as { title: string }).title)
+    expect(titles).toEqual(['**new**'])
+  })
+})
