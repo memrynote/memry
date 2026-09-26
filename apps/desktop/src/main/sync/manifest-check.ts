@@ -35,7 +35,7 @@ import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-re
 import { listDeclinedRefs, retainDeclinedRefs } from '@memry/sync-client/declined-refs'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
-import { clearPendingDelete, listPendingDeletes } from './pending-deletes'
+import { clearPendingDelete, isNoteKnownDeleted, listPendingDeletes } from './pending-deletes'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
@@ -179,6 +179,19 @@ export async function checkManifestIntegrity(
       const serverRef = serverItemMap.get(itemRefKey(local.type, local.id))
 
       if (!serverRef) {
+        // The manifest omits tombstoned ids, so a deleted note is "missing"
+        // here too, and a create for it would republish its body.
+        if (
+          (local.type === 'note' || local.type === 'journal') &&
+          isNoteKnownDeleted(deps.db, local.id)
+        ) {
+          log.info('Local note missing from server manifest is deleted here, skipping', {
+            id: local.id,
+            type: local.type
+          })
+          continue
+        }
+
         // Payloads are built here and only here: the diff above needs nothing
         // but (type, id), so a clean vault never materializes a single row.
         const payload = buildRefPayload(deps.db, local)
