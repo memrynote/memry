@@ -1043,6 +1043,50 @@ The renderer surfaces this as an in-account switcher section plus a download dia
 picks the destination folder. A name that fails to decrypt is shown as `null` rather than blocking the
 list.
 
+### Vault account binding
+
+Sign-out keeps every vault on disk. Before bindings, the next account to sign in on the machine
+synced those vaults into its own account, and sign-in with a non-empty vault open silently adopted
+the account's largest vault. Each vault now records the account it syncs with, and
+`startSyncRuntime` checks it before any sync service is built
+(`apps/desktop/src/main/sync/vault-account-binding.ts`).
+
+The binding is a `settings` row in the vault's data DB, `sync.account-binding.v1` =
+`{ userId, mode: 'sync' | 'local' }`, so it travels with the folder. Older app versions ignore the
+key. The store's vault entry mirrors it as `accountBinding` for vaults that are not open.
+
+The gate decides in this order, with `userId` taken from the session token's `sub`:
+
+1. Bound to this account: `sync` starts, `local` holds as `local-only`.
+2. Bound to another account for sync: holds as `foreign`.
+3. No local content (no files outside dot-directories, no tasks, no inbox items): binds and starts,
+   even offline.
+4. `GET /sync/vaults` fails: holds as `unknown`, stays sync-eligible, retries after 60 seconds.
+5. The account already lists the vault uuid: binds and starts. This is how vaults from older
+   versions bind without a prompt.
+6. A clock on a task, inbox item or note carries a device id other than this install's (or the
+   offline placeholder): holds as `foreign`. Every sign-in registers a new device id, so this is
+   history from another session.
+7. Otherwise: holds as `needs-decision` and the renderer asks once.
+
+The renderer reads the state with `sync:get-vault-binding`, listens on
+`sync:vault-binding-changed`, and answers with `sync:resolve-vault-binding`:
+
+| Choice  | Allowed from                   | Effect                                                           |
+| ------- | ------------------------------ | ---------------------------------------------------------------- |
+| `sync`  | `needs-decision`, `local-only` | Binds for sync; the vault registers as its own account vault     |
+| `merge` | `needs-decision` with a target | `adoptVaultLocally` onto the account's largest vault, then binds |
+| `local` | `needs-decision`               | Records `local`; not asked again for this account                |
+
+`foreign` accepts nothing: its items carry another account's clocks and would never be seeded, so
+syncing one needs a fresh identity and a full re-push. Binding also drops a current-device row and
+cursor left in the vault by a previous session, so `ensureDeviceRowForVault` cannot adopt a stale
+device id.
+
+Two related paths follow the binding. `adoptAccountVaultIfAbsent` at device registration only adopts
+an empty vault. `refreshVaultDirectory` only self-registers vaults whose store entry is bound to the
+signed-in account for sync, so another account's vaults never reach this account's directory.
+
 ## Endpoints
 
 | Path                                   | Direction | Purpose                                                                                       |

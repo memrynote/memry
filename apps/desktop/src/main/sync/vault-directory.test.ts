@@ -13,6 +13,10 @@ vi.mock('./token-manager', () => ({
   getValidAccessToken: vi.fn(async () => 'access-token')
 }))
 
+vi.mock('./vault-account-binding', () => ({
+  getSignedInUserId: vi.fn(async () => 'user-1')
+}))
+
 vi.mock('../crypto', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   retrieveKey: vi.fn(async () => new Uint8Array(32).fill(1))
@@ -146,7 +150,8 @@ describe('vault-directory', () => {
           taskCount: 0,
           lastOpened: '',
           isDefault: false,
-          vaultUuid: 'uuid-a'
+          vaultUuid: 'uuid-a',
+          accountBinding: { userId: 'user-1', mode: 'sync' }
         },
         // no uuid yet — must be skipped
         {
@@ -181,7 +186,8 @@ describe('vault-directory', () => {
           taskCount: 0,
           lastOpened: '',
           isDefault: false,
-          vaultUuid: 'uuid-a'
+          vaultUuid: 'uuid-a',
+          accountBinding: { userId: 'user-1', mode: 'sync' }
         }
       ])
 
@@ -192,6 +198,35 @@ describe('vault-directory', () => {
         expect.objectContaining({ vaultUuid: 'uuid-a' }),
         'access-token'
       )
+    })
+
+    it('never registers a vault that is not bound to this account for sync', async () => {
+      vi.mocked(getFromServer).mockResolvedValueOnce({ vaults: [] })
+      const base = { noteCount: 0, taskCount: 0, lastOpened: '', isDefault: false }
+      vi.mocked(getVaults).mockReturnValue([
+        // Left behind by another account's sign-out.
+        {
+          ...base,
+          path: '/v/theirs',
+          name: 'Theirs',
+          vaultUuid: 'uuid-theirs',
+          accountBinding: { userId: 'user-2', mode: 'sync' }
+        },
+        // This account chose to keep it local.
+        {
+          ...base,
+          path: '/v/local',
+          name: 'Local',
+          vaultUuid: 'uuid-local',
+          accountBinding: { userId: 'user-1', mode: 'local' }
+        },
+        // Written by an older version: registers once it binds on open.
+        { ...base, path: '/v/legacy', name: 'Legacy', vaultUuid: 'uuid-legacy' }
+      ])
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(postToServer).not.toHaveBeenCalled()
     })
 
     it('does not re-register when names match', async () => {

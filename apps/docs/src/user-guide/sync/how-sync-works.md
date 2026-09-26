@@ -174,6 +174,32 @@ device has been sitting untouched for a long time, returning to its window refre
 so coming back to a machine you left alone is enough to see the other one's changes. Restarting the app
 is never required to pick up tasks or completed tasks from another device.
 
+## Which Account a Vault Syncs With
+
+Every vault remembers the account it syncs with, inside its own folder. Signing out keeps your
+vaults on this computer, and they stay tied to your account. Nothing syncs them to someone else.
+
+When you sign in or open a vault, memrynote checks that link before syncing:
+
+| The open vault                          | What happens                                    |
+| --------------------------------------- | ----------------------------------------------- |
+| Already syncs with your account         | Syncs as usual                                  |
+| Empty                                   | Joins your account and syncs                    |
+| Has notes your account has not seen yet | Asks you once; nothing leaves the device before |
+| Was synced by a different account       | Stays on this computer; never syncs with yours  |
+| Could not be checked (offline)          | Waits and checks again when the account answers |
+
+When memrynote asks, you can:
+
+- **Add as a separate vault** — the vault joins your account next to the vaults you already have.
+  This uses a synced-vault slot on your plan.
+- **Merge into your account's vault** — only offered when your account already has a vault. The
+  notes on this computer are added to that vault.
+- **Keep on this device** — the vault is not synced and memrynote does not ask again. Choose
+  **Sync this vault** from the sync status popover to change your mind later.
+
+Press Escape to decide later; the question comes back the next time the vault opens.
+
 ## Deleting a Vault
 
 Remove a vault you no longer want from **Settings -> Vault** or the sidebar vault switcher.

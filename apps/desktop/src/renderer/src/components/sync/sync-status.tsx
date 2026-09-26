@@ -10,6 +10,8 @@ import { Separator } from '@/components/ui/separator'
 import { SidebarMenuButton } from '@/components/ui/sidebar'
 import { DockButton, type DockBadgeTone } from '@/components/sidebar/footer-dock'
 import { useT } from '@memry/i18n/renderer'
+import { useSyncOptional } from '@/contexts/sync-context'
+import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 
 const log = createLogger('SyncStatus')
 
@@ -27,6 +29,56 @@ function UnpaidSyncPanel({ onOpenSettings }: { onOpenSettings: () => void }): Re
       <Button size="sm" onClick={onOpenSettings} className="h-7 w-full text-xs">
         {t('account.billing.actions.unlockSync')}
       </Button>
+    </div>
+  )
+}
+
+type HeldBindingStatus = Extract<
+  VaultBindingState['status'],
+  'local-only' | 'foreign' | 'needs-decision'
+>
+
+function isHeldBinding(status: VaultBindingState['status']): status is HeldBindingStatus {
+  return status === 'local-only' || status === 'foreign' || status === 'needs-decision'
+}
+
+/**
+ * The open vault does not sync with this account, by the user's choice or
+ * because it is someone else's. Retry and Pause mean nothing here, so the
+ * popover explains why and offers the one action that applies.
+ */
+function VaultBindingPanel({ status }: { status: HeldBindingStatus }): React.JSX.Element {
+  const { t } = useT('settings')
+  const sync = useSyncOptional()
+
+  const message =
+    status === 'local-only'
+      ? t('vault.binding.status.localOnly')
+      : status === 'foreign'
+        ? t('vault.binding.status.foreign')
+        : t('vault.binding.status.needsDecision')
+
+  return (
+    <div className="space-y-2 px-3 py-2.5">
+      <p className="text-muted-foreground text-xs">{message}</p>
+      {status === 'local-only' && (
+        <Button
+          size="sm"
+          className="h-7 w-full text-xs"
+          onClick={() => void sync?.resolveVaultBinding('sync')}
+        >
+          {t('vault.binding.status.startSync')}
+        </Button>
+      )}
+      {status === 'needs-decision' && (
+        <Button
+          size="sm"
+          className="h-7 w-full text-xs"
+          onClick={() => sync?.openVaultBindingPrompt()}
+        >
+          {t('vault.binding.status.choose')}
+        </Button>
+      )}
     </div>
   )
 }
@@ -92,7 +144,11 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
   // No plan, no sync runtime — nothing here is retryable and nothing failed.
   // The popover sells the upgrade instead of showing a dead Retry (#2201).
   const isLocalOnly = status === 'local_only'
-  const glyph = dockGlyph(status, hasIssues)
+  const bindingStatus = useSyncOptional()?.vaultBinding.status ?? 'bound'
+  const heldBinding = isHeldBinding(bindingStatus) ? bindingStatus : null
+  const glyph = heldBinding
+    ? { Icon: CloudOff, badge: null, spin: false }
+    : dockGlyph(status, hasIssues)
 
   const handleSync = async (): Promise<void> => {
     try {
@@ -243,7 +299,9 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
 
         {/* Actions, or the upgrade path when there is no plan to act on */}
         <Separator />
-        {isLocalOnly ? (
+        {heldBinding ? (
+          <VaultBindingPanel status={heldBinding} />
+        ) : isLocalOnly ? (
           <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
         ) : (
           <div className="flex items-center gap-1 px-2 py-1.5">

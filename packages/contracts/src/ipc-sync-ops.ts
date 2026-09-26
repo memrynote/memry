@@ -17,7 +17,9 @@ export const SYNC_OP_CHANNELS = {
   GET_LARGE_NOTES: 'sync:get-large-notes',
   GET_QUARANTINED_ITEMS: 'sync:get-quarantined-items',
   CHECK_DEVICE_STATUS: 'sync:check-device-status',
-  EMERGENCY_WIPE: 'sync:emergency-wipe'
+  EMERGENCY_WIPE: 'sync:emergency-wipe',
+  GET_VAULT_BINDING: 'sync:get-vault-binding',
+  RESOLVE_VAULT_BINDING: 'sync:resolve-vault-binding'
 } as const
 
 // ============================================================================
@@ -63,6 +65,40 @@ export interface GetSyncStatusResult {
   error?: string
   errorCategory?: SyncErrorCategory
   offlineSince?: number
+}
+
+/**
+ * Whether the open vault syncs with the signed-in account.
+ * - `bound`: it does (or no gate applies: signed out, free plan, no vault).
+ * - `local-only`: this account chose to keep it on this device.
+ * - `foreign`: another account synced it; it never syncs with this one.
+ * - `needs-decision`: it has local content the account does not know yet;
+ *   sync waits for the user.
+ * - `unknown`: the account's vault list could not be fetched; retried.
+ */
+export type VaultBindingState =
+  | { status: 'bound' }
+  | { status: 'local-only' }
+  | { status: 'foreign' }
+  | { status: 'unknown' }
+  | {
+      status: 'needs-decision'
+      accountVaultCount: number
+      /** The account vault a merge would join; null when the account has none. */
+      mergeTarget: { vaultUuid: string; name: string | null } | null
+    }
+
+/**
+ * - `sync`: add this vault to the account as its own vault.
+ * - `merge`: join the account's existing vault (`mergeTarget`).
+ * - `local`: keep it on this device; do not ask again for this account.
+ */
+export type VaultBindingChoice = 'sync' | 'merge' | 'local'
+
+export interface ResolveVaultBindingResult {
+  success: boolean
+  state: VaultBindingState
+  error?: string
 }
 
 export interface TriggerSyncResult {
@@ -153,6 +189,10 @@ export interface LargeNotesResult {
 export const GetHistorySchema = z.object({
   limit: z.number().int().min(1).max(1000).optional(),
   offset: z.number().int().min(0).optional()
+})
+
+export const ResolveVaultBindingSchema = z.object({
+  choice: z.enum(['sync', 'merge', 'local'])
 })
 
 export const UpdateSyncedSettingSchema = z.object({

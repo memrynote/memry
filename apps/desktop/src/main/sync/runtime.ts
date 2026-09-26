@@ -126,6 +126,12 @@ import {
 } from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import {
+  applyOpenVaultBinding,
+  cancelBindingRetry,
+  resetVaultBindingState,
+  scheduleBindingRetry
+} from './vault-account-binding'
 import { store } from '../store'
 import { recordSyncStatusActivity } from './sync-activity'
 
@@ -377,6 +383,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       markSyncEligible()
 
       const db = getDatabase()
+
+      // Only sync a vault that belongs to this account (vault-account-binding.ts).
+      const binding = await applyOpenVaultBinding(db)
+      if (binding === 'unknown') {
+        // Stay eligible: probably this account's own pre-binding vault with
+        // the account unreachable, so deletes must still be recorded.
+        scheduleBindingRetry(startSyncRuntime)
+        return null
+      }
+      if (binding === 'held') return markSyncIneligible()
       let startupVaultKey: Uint8Array | null = null
       try {
         startupVaultKey = await getVerifiedVaultKey(db)
@@ -971,6 +987,7 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
     clearTimeout(deferredStartTimer)
     deferredStartTimer = null
   }
+  cancelBindingRetry()
 
   if (startPromise) {
     // Prompt cancel BEFORE awaiting the start: startPromise includes the
@@ -993,6 +1010,8 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
   // that would open a note on a provider with no persistence left.
   runtimeAbortController?.abort()
   runtimeAbortController = null
+  // After the in-flight start settled, so its hold cannot land after this.
+  resetVaultBindingState()
   if (seedPromise) {
     await seedPromise.catch(() => {})
     seedPromise = null
