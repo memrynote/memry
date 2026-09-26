@@ -400,11 +400,51 @@ pub(super) fn land_and_advance(
             body_debt::owe(&txn, &doc_id)?;
         }
         write_meta(&txn, META_NOTE_BODY_LEGACY_PULL, "done")?;
+    } else if !fetched.served && store::read_cursor(&txn, RECORD_CURSOR_SCOPE)?.as_deref() != cursor
+    {
+        rearm_legacy_pull(&txn)?;
     }
     // §5.11: last, after every body of the page landed or was owed.
     store::write_cursor(&txn, RECORD_CURSOR_SCOPE, cursor, now_ms)?;
     txn.commit().map_err(sqlite_failed)?;
     Ok(advanced)
+}
+
+/// #2299: a writer that moves the record cursor past body rows it never
+/// served (a page without `noteBodies`, the first sync's refs pass) leaves a
+/// cursor that no longer covers every body below it. Re-arming the legacy pull
+/// withholds `coversThrough` until a page that serves bodies owes every held
+/// document again.
+pub(super) fn rearm_legacy_pull(conn: &Connection) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![META_NOTE_BODY_LEGACY_PULL],
+    )
+    .map_err(sqlite_failed)?;
+    Ok(())
+}
+
+/// The `coversThrough` a snapshot push of `doc_id` may claim (chapter 07
+/// §7.7.1, #2299): the record cursor, once the legacy pull is `done`, for a
+/// document whose server body this device has read (a `crdt:` cursor or a
+/// server snapshot). Every body row at or below it then landed in the log, or
+/// its document is owed, and an owed document never pushes. A document the
+/// legacy pull never owed, because it held no body state then, claims
+/// nothing. `None` is the pre-#2299 push.
+pub fn covers_through(conn: &Connection, doc_id: &str) -> Result<Option<i64>, StorageError> {
+    if read_meta(conn, META_NOTE_BODY_LEGACY_PULL)?.as_deref() != Some("done") {
+        return Ok(None);
+    }
+    let read_server_body = store::read_cursor(conn, &crdt_cursor_scope(doc_id))?.is_some()
+        || update_log::snapshot(conn, Namespace::Server, doc_id)
+            .map_err(crdt_failed)?
+            .is_some();
+    if !read_server_body {
+        return Ok(None);
+    }
+    Ok(store::read_cursor(conn, RECORD_CURSOR_SCOPE)?
+        .and_then(|cursor| cursor.parse::<i64>().ok())
+        .filter(|cursor| *cursor > 0))
 }
 
 /// Every live document this device holds body state for: a body cursor, or a

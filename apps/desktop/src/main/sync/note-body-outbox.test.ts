@@ -7,6 +7,7 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-client/queue'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import {
+  NoteBodyFlushDeferredError,
   NoteBodyOutbox,
   importLegacyPendingCrdtNotes,
   type NoteBodyPushFn
@@ -225,6 +226,58 @@ describe('NoteBodyOutbox', () => {
     await flushPromises()
     expect(push).toHaveBeenCalledTimes(2)
     expect(queue.countNoteBodyRows()).toBe(0)
+  })
+
+  // #2299 review round 2: an oversized note on the update route (flagged, or
+  // refused) cannot push until its pull merges; it retried every second.
+  it('backs a deferred note off exponentially and flushes it at once after a success', async () => {
+    const { updates } = recordEdits(['a', 'b'])
+    push.mockRejectedValue(new NoteBodyFlushDeferredError('CRDT snapshot fallback failed'))
+    const outbox = createOutbox()
+    outbox.start()
+    outbox.enqueue('note-a', updates[0])
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(1999)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(1)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(2)
+
+    vi.advanceTimersByTime(3999)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(2)
+    vi.advanceTimersByTime(1)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(3)
+    expect(queue.countNoteBodyRows()).toBe(1)
+
+    push.mockReset()
+    push.mockResolvedValue(undefined)
+    vi.advanceTimersByTime(8000)
+    await flushPromises()
+    expect(queue.countNoteBodyRows()).toBe(0)
+    outbox.enqueue('note-a', updates[1])
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(2)
+  })
+
+  it('never backs off past a minute', async () => {
+    const { updates } = recordEdits(['a'])
+    push.mockRejectedValue(new NoteBodyFlushDeferredError('CRDT snapshot fallback failed'))
+    const outbox = createOutbox()
+    outbox.start()
+    outbox.enqueue('note-a', updates[0])
+    await flushPromises()
+    for (const waitMs of [2000, 4000, 8000, 16000, 32000, 60000, 60000]) {
+      const before = push.mock.calls.length
+      vi.advanceTimersByTime(waitMs)
+      await flushPromises()
+      expect(push.mock.calls.length).toBe(before + 1)
+    }
   })
 
   it('drops the rows of a non-retryable client rejection', async () => {

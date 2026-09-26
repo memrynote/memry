@@ -7,6 +7,8 @@ import {
   type NewNoteCache
 } from '@memry/db-schema/schema/notes-cache'
 import type { IndexDb } from '../../types'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
 // ============================================================================
 // Note Cache CRUD
@@ -322,6 +324,21 @@ export function getAllCrdtNoteIds(db: IndexDb): string[] {
     .orderBy(desc(noteCache.modifiedAt))
     .all()
     .map((r) => r.id)
+}
+
+/**
+ * Every syncable markdown note and journal the DATA db holds, recent first
+ * (#2299). The index cache can lack notes while it rebuilds; a vault sweep that
+ * licenses snapshot claims must not skip them.
+ */
+export function getAllSyncableNoteMetadataIds(db: DrizzleDb): string[] {
+  return db
+    .select({ id: noteMetadata.id })
+    .from(noteMetadata)
+    .where(and(eq(noteMetadata.fileType, 'markdown'), eq(noteMetadata.localOnly, false)))
+    .orderBy(desc(noteMetadata.modifiedAt))
+    .all()
+    .map((row) => row.id)
 }
 
 export function getNotesModifiedAfter(db: IndexDb, date: string): NoteCache[] {

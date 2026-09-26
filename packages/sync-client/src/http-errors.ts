@@ -7,7 +7,9 @@ export class SyncServerError extends Error {
   constructor(
     message: string,
     public readonly statusCode: number,
-    public readonly serverError?: string
+    public readonly serverError?: string,
+    /** The response's `error` object, e.g. a snapshot refusal's `blockingCursor` (#2299). */
+    public readonly details?: Record<string, unknown>
   ) {
     super(message)
     this.name = 'SyncServerError'

@@ -91,7 +91,8 @@ describe('CrdtSyncCoordinator', () => {
           closeIfInactive,
           applyRemoteUpdate,
           getStateVector,
-          seedFromMarkdownPublic
+          seedFromMarkdownPublic,
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -136,7 +137,8 @@ describe('CrdtSyncCoordinator', () => {
           closeIfInactive,
           applyRemoteUpdate: vi.fn(),
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-          seedFromMarkdownPublic: vi.fn()
+          seedFromMarkdownPublic: vi.fn(),
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -223,7 +225,8 @@ describe('CrdtSyncCoordinator', () => {
           closeIfInactive,
           applyRemoteUpdate,
           getStateVector,
-          seedFromMarkdownPublic: vi.fn()
+          seedFromMarkdownPublic: vi.fn(),
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -276,7 +279,8 @@ describe('CrdtSyncCoordinator', () => {
           closeIfInactive,
           applyRemoteUpdate: vi.fn(),
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-          seedFromMarkdownPublic: vi.fn()
+          seedFromMarkdownPublic: vi.fn(),
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -351,7 +355,8 @@ describe('CrdtSyncCoordinator', () => {
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate,
           getStateVector,
-          seedFromMarkdownPublic: vi.fn()
+          seedFromMarkdownPublic: vi.fn(),
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -413,7 +418,8 @@ describe('CrdtSyncCoordinator', () => {
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
-          seedFromMarkdownPublic: vi.fn()
+          seedFromMarkdownPublic: vi.fn(),
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -697,7 +703,8 @@ describe('CrdtSyncCoordinator', () => {
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
           getStateVector,
-          seedFromMarkdownPublic
+          seedFromMarkdownPublic,
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -754,7 +761,8 @@ describe('CrdtSyncCoordinator', () => {
           closeIfInactive: vi.fn().mockResolvedValue(true),
           applyRemoteUpdate: vi.fn(),
           getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
-          seedFromMarkdownPublic: vi.fn()
+          seedFromMarkdownPublic: vi.fn(),
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -1041,6 +1049,28 @@ describe('CrdtSyncCoordinator', () => {
     expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
   })
 
+  // #2299 review round 2 (A-6, B-M2): a seeded or new doc claims again only
+  // once a whole-body pull merged it.
+  it('tells the provider a note merged end to end, and not one whose pass failed', async () => {
+    const { ctx } = createBatchContext()
+    const provider = ctx.deps.crdtProvider as unknown as {
+      recordWholeBodyMerged: ReturnType<typeof vi.fn>
+    }
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    getFromServerMock.mockRejectedValueOnce(rateLimited())
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+    expect(provider.recordWholeBodyMerged).not.toHaveBeenCalled()
+
+    getFromServerMock.mockResolvedValue({ updates: [], hasMore: false })
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+    expect(provider.recordWholeBodyMerged).toHaveBeenCalledExactlyOnceWith('note-1')
+
+    postToServerMock.mockResolvedValue({ notes: { 'note-2': { updates: [], hasMore: false } } })
+    await coordinator.applyCrdtBatch(['note-2'], 'token-1', new Uint8Array([4]))
+    expect(provider.recordWholeBodyMerged).toHaveBeenLastCalledWith('note-2')
+  })
+
   it('does not clear the flag when a new pull is owed while the pass runs', async () => {
     // #given a pass that walks the note cleanly, but a `crdt_updated` broadcast
     // for the same note lands while its incrementals are in flight
@@ -1078,7 +1108,8 @@ describe('CrdtSyncCoordinator', () => {
           getStateVector: vi.fn((noteId: string) =>
             noteId === 'note-2' ? null : new Uint8Array([1, 2, 3, 4])
           ),
-          seedFromMarkdownPublic
+          seedFromMarkdownPublic,
+          recordWholeBodyMerged: vi.fn()
         }
       },
       abortController: new AbortController()
@@ -1167,7 +1198,8 @@ describe('CrdtSyncCoordinator.clearCaches', () => {
       closeIfInactive: vi.fn().mockResolvedValue(true),
       getDoc: vi.fn().mockReturnValue({}),
       getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-      seedFromMarkdownPublic: vi.fn()
+      seedFromMarkdownPublic: vi.fn(),
+      recordWholeBodyMerged: vi.fn()
     }
     const ctx = {
       deps: { crdtProvider },

@@ -26,6 +26,17 @@ const MAX_MERGED_UPDATE_BYTES = 256 * 1024
 const MAX_FLUSH_PAYLOAD_BYTES = 512 * 1024
 // Bounds the rows one flush reads (and the ids its ack deletes in one IN list).
 const MAX_ROWS_PER_FLUSH = 500
+// A deferred note waits 2 s, then twice as long after each deferral, up to a minute.
+const DEFERRED_BACKOFF_BASE_MS = 2000
+const DEFERRED_BACKOFF_MAX_MS = 60_000
+
+/**
+ * A flush that cannot succeed until something else changes (#2299): the
+ * oversized-update snapshot fallback while the note is on the size-capped
+ * update route (flagged unmerged, or refused) until its pull merges. The rows
+ * stay queued and the note backs off instead of re-encoding every second.
+ */
+export class NoteBodyFlushDeferredError extends Error {}
 
 export type NoteBodyPushFn = (noteId: string, updates: Uint8Array[]) => Promise<void>
 
@@ -68,6 +79,8 @@ export class NoteBodyOutbox {
    * inside the window burns the same budget (#2293).
    */
   private rateLimitedUntil = 0
+  /** Per note: consecutive deferrals and the time its next flush may start. */
+  private deferredFlushes = new Map<string, { deferrals: number; until: number }>()
   /**
    * One full-state flush at a time, as the retired pending-note replay ran:
    * each merges the server's state before its push, and an upgrade can import
@@ -156,11 +169,12 @@ export class NoteBodyOutbox {
 
     const now = Date.now()
     const sinceLastFlush = now - (this.lastFlushStartedAt.get(noteId) ?? Number.NEGATIVE_INFINITY)
-    if (sinceLastFlush > FLUSH_INTERVAL_MS && now >= this.rateLimitedUntil) {
+    const heldUntil = this.heldUntil(noteId)
+    if (sinceLastFlush > FLUSH_INTERVAL_MS && now >= heldUntil) {
       this.flushNote(noteId)
       return
     }
-    const waitMs = Math.max(FLUSH_INTERVAL_MS - sinceLastFlush, this.rateLimitedUntil - now, 0)
+    const waitMs = Math.max(FLUSH_INTERVAL_MS - sinceLastFlush, heldUntil - now, 0)
     this.flushTimers.set(
       noteId,
       setTimeout(() => {
@@ -170,9 +184,13 @@ export class NoteBodyOutbox {
     )
   }
 
+  private heldUntil(noteId: string): number {
+    return Math.max(this.rateLimitedUntil, this.deferredFlushes.get(noteId)?.until ?? 0)
+  }
+
   private flushNote(noteId: string): void {
     if (!this.running || this.paused) return
-    if (Date.now() < this.rateLimitedUntil) {
+    if (Date.now() < this.heldUntil(noteId)) {
       this.scheduleFlush(noteId)
       return
     }
@@ -186,7 +204,10 @@ export class NoteBodyOutbox {
     this.flushingNotes.add(noteId)
     this.lastFlushStartedAt.set(noteId, Date.now())
     this.sendFlush(noteId, flush)
-      .then(() => this.deps.queue.removeNoteBodyRows(flush.rowIds))
+      .then(() => {
+        this.deps.queue.removeNoteBodyRows(flush.rowIds)
+        this.deferredFlushes.delete(noteId)
+      })
       .catch((err) => this.onFlushFailed(noteId, flush.rowIds, err))
       .finally(() => {
         this.flushingNotes.delete(noteId)
@@ -233,6 +254,16 @@ export class NoteBodyOutbox {
   }
 
   private onFlushFailed(noteId: string, rowIds: string[], err: unknown): void {
+    if (err instanceof NoteBodyFlushDeferredError) {
+      const deferrals = (this.deferredFlushes.get(noteId)?.deferrals ?? 0) + 1
+      const backoffMs = Math.min(
+        DEFERRED_BACKOFF_MAX_MS,
+        DEFERRED_BACKOFF_BASE_MS * 2 ** Math.min(deferrals - 1, 16)
+      )
+      this.deferredFlushes.set(noteId, { deferrals, until: Date.now() + backoffMs })
+      log.warn('CRDT body flush deferred; backing the note off', { noteId, backoffMs })
+      return
+    }
     if (err instanceof RateLimitError) {
       this.rateLimitedUntil = Math.max(this.rateLimitedUntil, Date.now() + err.retryAfterMs)
       log.warn('429 received, holding CRDT body flushes until Retry-After', {

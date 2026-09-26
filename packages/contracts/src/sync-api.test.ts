@@ -54,7 +54,10 @@ import {
   FEED_ONLY_SYNC_TYPES,
   NEGOTIABLE_SYNC_TYPES,
   NoteBodyChangeSchema,
-  RecordPushItemIdentitySchema
+  RecordPushItemIdentitySchema,
+  CrdtSnapshotBaseRevisionSchema,
+  CrdtSnapshotCoversThroughSchema,
+  CRDT_SNAPSHOT_NOT_COVERED
 } from './sync-api'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
@@ -1107,5 +1110,32 @@ describe('PackListResponseSchema (#1839)', () => {
       PackListResponseSchema.safeParse({ packs: [{ ...validPack, byteSize: 0 }], serverTime: 1 })
         .success
     ).toBe(false)
+  })
+})
+
+// #2299: coversThrough is a feed cursor, never negative or fractional.
+describe('CrdtSnapshotCoversThroughSchema', () => {
+  it('accepts a non-negative integer cursor', () => {
+    expect(CrdtSnapshotCoversThroughSchema.safeParse(0).success).toBe(true)
+    expect(CrdtSnapshotCoversThroughSchema.safeParse(50).success).toBe(true)
+  })
+
+  it('rejects a negative, fractional or non-numeric cursor', () => {
+    expect(CrdtSnapshotCoversThroughSchema.safeParse(-1).success).toBe(false)
+    expect(CrdtSnapshotCoversThroughSchema.safeParse(1.5).success).toBe(false)
+    expect(CrdtSnapshotCoversThroughSchema.safeParse('50').success).toBe(false)
+  })
+
+  it('names the per-note refusal code', () => {
+    expect(CRDT_SNAPSHOT_NOT_COVERED).toBe('CRDT_SNAPSHOT_NOT_COVERED')
+  })
+})
+
+// #2299: baseRevision is an opaque revision token.
+describe('CrdtSnapshotBaseRevisionSchema', () => {
+  it('accepts a revision token and rejects an empty or non-string one', () => {
+    expect(CrdtSnapshotBaseRevisionSchema.safeParse('rev-1').success).toBe(true)
+    expect(CrdtSnapshotBaseRevisionSchema.safeParse('').success).toBe(false)
+    expect(CrdtSnapshotBaseRevisionSchema.safeParse(7).success).toBe(false)
   })
 })

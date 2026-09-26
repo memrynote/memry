@@ -32,11 +32,15 @@ vi.mock('./http-client', async (importOriginal) => {
 
 import { createCrdtSnapshotBatchPush, type CrdtSnapshotBatchDeps } from './crdt-snapshot-batch'
 import { SyncServerError } from './http-client'
-import type { SnapshotBatchEntry } from './crdt-provider'
+import type { SnapshotBatchEntry, SnapshotCoverage } from './crdt-provider'
 
-const entry = (noteId: string): SnapshotBatchEntry => ({
+const entry = (
+  noteId: string,
+  coverage: SnapshotCoverage = { unmerged: false }
+): SnapshotBatchEntry => ({
   noteId,
-  state: new Uint8Array([1, 2, 3])
+  state: new Uint8Array([1, 2, 3]),
+  coverage
 })
 
 const createDeps = (
@@ -224,6 +228,71 @@ describe('createCrdtSnapshotBatchPush', () => {
     const batched = pushCrdtSnapshotBatchMock.mock.calls[0][0] as Array<{ noteId: string }>
     expect(batched.map((s) => s.noteId)).toEqual(['note-a'])
     expect(results.get('note-unmerged')).toBe(true)
+  })
+
+  // #2299: each entry carries the cursor read at its own encode.
+  it("sends each note's coversThrough with its entry, and none for a note that claims nothing", async () => {
+    acceptAll()
+    const { deps } = createDeps()
+
+    await createCrdtSnapshotBatchPush(deps)([
+      entry('note-a', { unmerged: false, coversThrough: 50, baseRevision: 'rev-held' }),
+      entry('note-b')
+    ])
+
+    const batched = pushCrdtSnapshotBatchMock.mock.calls[0][0] as Array<{
+      noteId: string
+      coversThrough?: number
+    }>
+    expect(batched).toEqual([
+      expect.objectContaining({ noteId: 'note-a', coversThrough: 50, baseRevision: 'rev-held' }),
+      expect.objectContaining({
+        noteId: 'note-b',
+        coversThrough: undefined,
+        baseRevision: undefined
+      })
+    ])
+  })
+
+  // #2299: flagged at the encode is flagged, even if the flag cleared since.
+  it('routes a note that was unmerged at its encode around the batch', async () => {
+    acceptAll()
+    const { deps, pushSingle } = createDeps()
+
+    await createCrdtSnapshotBatchPush(deps)([entry('note-a'), entry('note-x', { unmerged: true })])
+
+    expect(pushSingle.mock.calls.map((c) => c[0])).toEqual(['note-x'])
+    expect(pushSingle.mock.calls[0][2]).toEqual({ unmerged: true })
+    const batched = pushCrdtSnapshotBatchMock.mock.calls[0][0] as Array<{ noteId: string }>
+    expect(batched.map((s) => s.noteId)).toEqual(['note-a'])
+  })
+
+  // #2299: a peer snapshot above this device's cursor is a per-note refusal;
+  // the note is owed a pull and stays pending, never retried on the spot.
+  it('owes a pull for a note refused as not covered and keeps it pending', async () => {
+    pushCrdtSnapshotBatchMock.mockResolvedValue({
+      results: [
+        { noteId: 'note-a', accepted: true, sequenceNum: 1 },
+        {
+          noteId: 'note-b',
+          accepted: false,
+          reason: 'CRDT_SNAPSHOT_NOT_COVERED',
+          blockingCursor: 61
+        }
+      ]
+    })
+    const onNotCovered = vi.fn()
+    const { deps, pushSingle } = createDeps({ onNotCovered })
+
+    const results = await createCrdtSnapshotBatchPush(deps)([
+      entry('note-a', { unmerged: false, coversThrough: 50 }),
+      entry('note-b', { unmerged: false, coversThrough: 50 })
+    ])
+
+    expect(results.get('note-b')).toBe(false)
+    expect(onNotCovered).toHaveBeenCalledExactlyOnceWith('note-b', { cursor: 61, claimed: true })
+    expect(pushSingle).not.toHaveBeenCalled()
+    expect(pushCrdtSnapshotBatchMock).toHaveBeenCalledTimes(1)
   })
 
   it('retries a too-large batch one note at a time so the offender can be named', async () => {

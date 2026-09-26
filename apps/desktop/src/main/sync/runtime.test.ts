@@ -18,6 +18,7 @@ const runtimeMocks = vi.hoisted(() => {
     setOnItemEnqueued = vi.fn((cb: () => void) => {
       this.onItemEnqueued = cb
     })
+    listFullStateNoteBodyNoteIds = vi.fn(() => runtimeMocks.fullStateNoteIds)
   }
 
   class NoteBodyOutbox {
@@ -84,6 +85,11 @@ const runtimeMocks = vi.hoisted(() => {
     hasUnmergedRemoteCrdtState = vi.fn((noteId: string) =>
       runtimeMocks.unverifiedCrdtNotes.has(noteId)
     )
+    snapshotCoverage = vi.fn((_noteId: string) => ({ unmerged: false, coversThrough: 50 }))
+    recordSnapshotRefusal = vi.fn()
+    oweCrdtPull = vi.fn()
+    markCrdtRemoteStateUnmerged = vi.fn()
+    clearCrdtUnmergedForDroppedNote = vi.fn()
     constructor(public deps: Record<string, unknown>) {
       SyncEngine.instances.push(this)
     }
@@ -135,6 +141,7 @@ const runtimeMocks = vi.hoisted(() => {
     calendarBindingSync: service('calendar_binding'),
     calendarExternalEventSync: service('calendar_external_event'),
     networkOnline: true,
+    fullStateNoteIds: [] as string[],
     engineStartError: null as Error | null,
     workerStartError: null as Error | null,
     /** When set, the mocked engine's start parks here until `resolve` fires. */
@@ -186,6 +193,8 @@ const runtimeMocks = vi.hoisted(() => {
       isNoteLocalOnly: vi.fn(() => false),
       isNoteSyncable: vi.fn(() => true),
       init: vi.fn(),
+      setSnapshotCoverage: vi.fn(),
+      setOweRemoteMerge: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       readSyncableState: vi.fn(async () => new Uint8Array([7])),
@@ -272,6 +281,7 @@ vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager 
 vi.mock('./engine', () => ({ SyncEngine: runtimeMocks.SyncEngine }))
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
 vi.mock('./note-body-outbox', () => ({
+  NoteBodyFlushDeferredError: class NoteBodyFlushDeferredError extends Error {},
   NoteBodyOutbox: runtimeMocks.NoteBodyOutbox,
   importLegacyPendingCrdtNotes: runtimeMocks.importLegacyPendingCrdtNotes
 }))
@@ -403,6 +413,10 @@ vi.mock('./http-client', () => ({
   pushCrdtSnapshot: runtimeMocks.pushCrdtSnapshot,
   pushCrdtFullUpdate: runtimeMocks.pushCrdtFullUpdate,
   SyncServerError: runtimeMocks.SyncServerError,
+  isSnapshotNotCovered: (err: unknown) =>
+    err instanceof runtimeMocks.SyncServerError && err.statusCode === 409,
+  snapshotRefusalCursor: (err: unknown) =>
+    err instanceof runtimeMocks.SyncServerError && err.statusCode === 409 ? 61 : null,
   // runtime.ts → sync-errors.ts imports these; they only need to exist here.
   NetworkError: class NetworkError extends Error {},
   RateLimitError: class RateLimitError extends Error {},
@@ -484,6 +498,7 @@ describe('sync runtime', () => {
     runtimeMocks.SyncEngine.instances = []
     runtimeMocks.SyncWorkerBridge.instances = []
     runtimeMocks.networkOnline = true
+    runtimeMocks.fullStateNoteIds = []
     runtimeMocks.engineStartError = null
     runtimeMocks.workerStartError = null
     runtimeMocks.engineStartGate = null
@@ -877,18 +892,19 @@ describe('sync runtime', () => {
 
     const snapshotPush = runtimeMocks.crdtProvider.init.mock.calls[0][1] as (
       noteId: string,
-      state: Uint8Array
+      state: Uint8Array,
+      coverage: { unmerged: boolean; coversThrough?: number }
     ) => Promise<void>
 
     runtimeMocks.getValidAccessToken.mockResolvedValueOnce(null)
-    await expect(snapshotPush('note-no-token', new Uint8Array([1]))).rejects.toThrow(
-      'Missing credentials'
-    )
+    await expect(
+      snapshotPush('note-no-token', new Uint8Array([1]), { unmerged: false })
+    ).rejects.toThrow('Missing credentials')
 
     runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(new runtimeMocks.SyncServerError(401))
-    await expect(snapshotPush('note-auth', new Uint8Array([1]))).rejects.toThrow(
-      'sync server error'
-    )
+    await expect(
+      snapshotPush('note-auth', new Uint8Array([1]), { unmerged: false })
+    ).rejects.toThrow('sync server error')
     expect(queue.pause).toHaveBeenCalled()
     expect(runtimeMocks.refreshAccessToken).toHaveBeenCalled()
     expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
@@ -897,9 +913,9 @@ describe('sync runtime', () => {
     // note_too_large, no queue pause (other notes must keep syncing).
     const pauseCallsBeforeSnapshot = queue.pause.mock.calls.length
     runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(new runtimeMocks.SyncServerError(413))
-    await expect(snapshotPush('note-oversized', new Uint8Array([1]))).rejects.toThrow(
-      'sync server error'
-    )
+    await expect(
+      snapshotPush('note-oversized', new Uint8Array([1]), { unmerged: false })
+    ).rejects.toThrow('sync server error')
     expect(runtimeMocks.browserSend).toHaveBeenCalledWith(
       'sync:status-changed',
       expect.objectContaining({ errorCategory: 'note_too_large' })
@@ -909,9 +925,9 @@ describe('sync runtime', () => {
     runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(
       new runtimeMocks.SyncServerError(413, 'STORAGE_QUOTA_EXCEEDED: Storage quota exceeded')
     )
-    await expect(snapshotPush('note-quota', new Uint8Array([1]))).rejects.toThrow(
-      'STORAGE_QUOTA_EXCEEDED'
-    )
+    await expect(
+      snapshotPush('note-quota', new Uint8Array([1]), { unmerged: false })
+    ).rejects.toThrow('STORAGE_QUOTA_EXCEEDED')
     expect(runtimeMocks.browserSend).toHaveBeenCalledWith(
       'sync:status-changed',
       expect.objectContaining({ errorCategory: 'storage_quota_exceeded' })
@@ -926,7 +942,8 @@ describe('sync runtime', () => {
     await runtime.startSyncRuntime()
     const snapshotPush = runtimeMocks.crdtProvider.init.mock.calls[0][1] as (
       noteId: string,
-      state: Uint8Array
+      state: Uint8Array,
+      coverage: { unmerged: boolean; coversThrough?: number }
     ) => Promise<void>
     runtimeMocks.unverifiedCrdtNotes.add('note-unverified')
     runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
@@ -935,7 +952,7 @@ describe('sync runtime', () => {
 
     // #when the snapshot scheduler, the pending-note replay, or the push
     // coordinator asks for this note's full state to be pushed
-    await snapshotPush('note-unverified', new Uint8Array([1, 2, 3]))
+    await snapshotPush('note-unverified', new Uint8Array([1, 2, 3]), { unmerged: false })
 
     // #then it must NOT reach /sync/crdt/snapshot. That route runs
     // pruneUpdatesBeforeSnapshot, which deletes every crdt_updates row at or
@@ -957,7 +974,8 @@ describe('sync runtime', () => {
     await runtime.startSyncRuntime()
     const snapshotPush = runtimeMocks.crdtProvider.init.mock.calls[0][1] as (
       noteId: string,
-      state: Uint8Array
+      state: Uint8Array,
+      coverage: { unmerged: boolean; coversThrough?: number }
     ) => Promise<void>
     runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
     runtimeMocks.pushCrdtFullUpdate.mockClear()
@@ -970,7 +988,7 @@ describe('sync runtime', () => {
     }))
 
     // #when
-    await snapshotPush('note-1', new Uint8Array([1, 2, 3]))
+    await snapshotPush('note-1', new Uint8Array([1, 2, 3]), { unmerged: false })
 
     // #then #2297 review (A-M6, B-7): the pushed revision is recorded so the
     // change feed skips this device's own snapshot.
@@ -984,9 +1002,86 @@ describe('sync runtime', () => {
     expect(runtimeMocks.pushCrdtSnapshot).toHaveBeenCalledWith(
       'note-1',
       new Uint8Array([10, 11]),
-      'access-token'
+      'access-token',
+      { unmerged: false }
     )
     expect(runtimeMocks.pushCrdtFullUpdate).not.toHaveBeenCalled()
+  })
+
+  // #2299 review round 2 (A-7): a queued full-state row (a note that left
+  // local-only while no runtime ran) may owe bodies the feed skipped, so the
+  // note claims nothing until its own flush pull merged. Flagged, not owed a
+  // second pull: the flush merges the server state before it pushes.
+  it('flags every syncing note holding a queued full-state row at start, without a pull', async () => {
+    runtimeMocks.fullStateNoteIds = ['note-a', 'note-local', 'note-b']
+    runtimeMocks.crdtProvider.isNoteLocalOnly.mockImplementation(
+      (noteId: string) => noteId === 'note-local'
+    )
+    const runtime = await loadRuntime()
+
+    await runtime.startSyncRuntime()
+
+    const engine = runtimeMocks.SyncEngine.instances.at(-1)!
+    expect(engine.markCrdtRemoteStateUnmerged.mock.calls).toEqual([['note-a'], ['note-b']])
+    expect(engine.oweCrdtPull).not.toHaveBeenCalled()
+    runtimeMocks.crdtProvider.isNoteLocalOnly.mockReturnValue(false)
+  })
+
+  it('unflags a full-state note the flush drops as no longer syncing', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const engine = runtimeMocks.SyncEngine.instances.at(-1)!
+    const outbox = runtimeMocks.NoteBodyOutbox.instances.at(-1)!
+    runtimeMocks.crdtProvider.isNoteSyncable.mockReturnValueOnce(false)
+
+    await expect(outbox.readFullState!('note-gone')).resolves.toBeNull()
+
+    expect(engine.clearCrdtUnmergedForDroppedNote).toHaveBeenCalledExactlyOnceWith('note-gone')
+    expect(engine.mergeRemoteCrdtForNote).not.toHaveBeenCalled()
+  })
+
+  // #2299: the provider reads coverage at the encode, from the engine.
+  it("wires the engine's snapshot coverage into the provider and owes a pull on a refusal", async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const engine = runtimeMocks.SyncEngine.instances.at(-1)!
+    const reader = runtimeMocks.crdtProvider.setSnapshotCoverage.mock.calls.at(-1)![0] as (
+      noteId: string,
+      heldRevision: string | undefined
+    ) => unknown
+    expect(reader('note-1', 'rev-held')).toEqual({ unmerged: false, coversThrough: 50 })
+    expect(engine.snapshotCoverage).toHaveBeenCalledWith('note-1', 'rev-held')
+
+    const snapshotPush = runtimeMocks.crdtProvider.init.mock.calls[0][1] as (
+      noteId: string,
+      state: Uint8Array,
+      coverage: { unmerged: boolean; coversThrough?: number }
+    ) => Promise<void>
+    runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
+    runtimeMocks.pushCrdtSnapshot.mockClear()
+    runtimeMocks.pushCrdtSnapshot.mockRejectedValueOnce(new runtimeMocks.SyncServerError(409))
+
+    const claim = { unmerged: false, coversThrough: 50, baseRevision: 'rev-held' }
+    await expect(snapshotPush('note-1', new Uint8Array([1]), claim)).rejects.toThrow(
+      'sync server error'
+    )
+
+    expect(runtimeMocks.pushCrdtSnapshot).toHaveBeenCalledWith(
+      'note-1',
+      new Uint8Array([10, 11]),
+      'access-token',
+      claim
+    )
+    expect(engine.recordSnapshotRefusal).toHaveBeenCalledWith('note-1', {
+      cursor: 61,
+      claimed: true,
+      baseRevision: 'rev-held'
+    })
+    const owe = runtimeMocks.crdtProvider.setOweRemoteMerge.mock.calls.at(-1)![0] as (
+      noteId: string
+    ) => void
+    owe('note-2')
+    expect(engine.oweCrdtPull).toHaveBeenCalledWith('note-2')
   })
 
   it('splits a CRDT batch too big for one request across several requests', async () => {

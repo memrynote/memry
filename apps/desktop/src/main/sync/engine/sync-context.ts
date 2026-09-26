@@ -146,7 +146,13 @@ export const SYNC_STATE_KEYS = {
    * nothing owed back. A page without `noteBodies` (the server stopped serving
    * them) deletes the key, so the next negotiated page re-arms the sweep.
    */
-  NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep'
+  NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep',
+  /**
+   * The random id this data DB shares with its CRDT store (#2299). A mismatch
+   * with the store's copy means the two were restored or replaced apart; see
+   * `reconcileCrdtStoreEpoch`. Missing reads as a mismatch.
+   */
+  CRDT_STORE_EPOCH: 'crdtStoreEpoch'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */

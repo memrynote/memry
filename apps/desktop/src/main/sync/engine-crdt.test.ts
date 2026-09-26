@@ -377,7 +377,8 @@ describe('SyncEngine', () => {
       closeIfInactive: vi.fn().mockResolvedValue(true),
       applyRemoteUpdate: vi.fn(),
       getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
-      seedFromMarkdownPublic: vi.fn()
+      seedFromMarkdownPublic: vi.fn(),
+      recordWholeBodyMerged: vi.fn()
     })
 
     it('#then the engine reports the note as holding unverified server state', async () => {
@@ -495,7 +496,8 @@ describe('SyncEngine', () => {
         closeIfInactive: vi.fn().mockResolvedValue(true),
         applyRemoteUpdate,
         getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
-        seedFromMarkdownPublic: vi.fn()
+        seedFromMarkdownPublic: vi.fn(),
+        recordWholeBodyMerged: vi.fn()
       }) as unknown as SyncEngineDeps['crdtProvider']
 
     it('#then a single-note pull skips an unresolved-signer update without misaligning the good ones', async () => {

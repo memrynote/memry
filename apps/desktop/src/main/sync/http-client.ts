@@ -1,5 +1,9 @@
 import { net } from 'electron'
-import { NEGOTIABLE_SYNC_TYPES } from '@memry/contracts/sync-api'
+import {
+  CRDT_SNAPSHOT_NOT_COVERED,
+  NEGOTIABLE_SYNC_TYPES,
+  type CrdtSnapshotPushEntry
+} from '@memry/contracts/sync-api'
 import { getMainI18n } from '../lib/main-i18n'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { withRetry } from '@memry/sync-client/retry'
@@ -62,7 +66,7 @@ export async function getSyncVaultHeaders(): Promise<Record<string, string>> {
 }
 
 interface ServerErrorResponse {
-  error?: string | { code: string; message: string }
+  error?: string | ({ code: string; message: string } & Record<string, unknown>)
   message?: string
 }
 
@@ -154,7 +158,12 @@ export const syncFetch = async <T>(
       errorBody?.message ||
       `Server error (${response.status})`
     const serverError = errorCode ? `${errorCode}: ${message}` : message
-    throw new SyncServerError(message, response.status, serverError)
+    throw new SyncServerError(
+      message,
+      response.status,
+      serverError,
+      typeof errorBody?.error === 'object' ? errorBody.error : undefined
+    )
   }
 
   return responseBody as T
@@ -259,17 +268,56 @@ export interface CrdtBatchPullResponse {
   snapshotMeta?: Record<string, CrdtSnapshotMeta>
 }
 
+/** The #2299 claim of a snapshot push, sent only when it names a cursor. */
+export interface SnapshotClaimFields {
+  coversThrough?: number
+  baseRevision?: string
+}
+
+const claimFields = (claim: SnapshotClaimFields): SnapshotClaimFields =>
+  claim.coversThrough === undefined
+    ? {}
+    : {
+        coversThrough: claim.coversThrough,
+        ...(claim.baseRevision === undefined ? {} : { baseRevision: claim.baseRevision })
+      }
+
+/**
+ * `coversThrough` and `baseRevision` (#2299) are sent only with a claim; see
+ * protocol 07 §7.7.1. A server that predates them ignores the keys and prunes
+ * by its watermark.
+ */
 export async function pushCrdtSnapshot(
   noteId: string,
   encryptedSnapshot: Uint8Array,
-  token: string
+  token: string,
+  claim: SnapshotClaimFields = {}
 ): Promise<{ sequenceNum: number; revision?: string }> {
-  const b64 = Buffer.from(encryptedSnapshot).toString('base64')
+  const body: CrdtSnapshotPushEntry = {
+    noteId,
+    snapshot: Buffer.from(encryptedSnapshot).toString('base64'),
+    ...claimFields(claim)
+  }
   return postToServer<{ sequenceNum: number; revision?: string }>(
     '/sync/crdt/snapshot',
-    { noteId, snapshot: b64 },
+    body,
     token
   )
+}
+
+/**
+ * The server refused a `coversThrough` push because another device wrote the
+ * note's snapshot above that cursor (#2299): a 409 on the single route.
+ */
+export const isSnapshotNotCovered = (err: unknown): boolean =>
+  err instanceof SyncServerError &&
+  err.statusCode === 409 &&
+  (err.serverError?.startsWith(CRDT_SNAPSHOT_NOT_COVERED) ?? false)
+
+/** The refusing snapshot's feed cursor, when the refusal named one. */
+export const snapshotRefusalCursor = (err: unknown): number | null => {
+  const cursor = err instanceof SyncServerError ? err.details?.blockingCursor : undefined
+  return typeof cursor === 'number' && Number.isSafeInteger(cursor) ? cursor : null
 }
 
 /** One note's outcome inside a batched snapshot push. */
@@ -280,6 +328,8 @@ export interface CrdtSnapshotBatchResult {
   /** The snapshot's new revision; absent from a server older than #2187. */
   revision?: string
   reason?: string
+  /** The refusing snapshot's feed cursor on a CRDT_SNAPSHOT_NOT_COVERED (#2299). */
+  blockingCursor?: number
 }
 
 export interface CrdtSnapshotBatchResponse {
@@ -306,13 +356,14 @@ export interface CrdtSnapshotBatchResponse {
  * not repeat a noteId within one request; both are 400s.
  */
 export async function pushCrdtSnapshotBatch(
-  snapshots: Array<{ noteId: string; snapshot: Uint8Array }>,
+  snapshots: Array<{ noteId: string; snapshot: Uint8Array } & SnapshotClaimFields>,
   token: string
 ): Promise<CrdtSnapshotBatchResponse> {
-  const body = {
-    snapshots: snapshots.map(({ noteId, snapshot }) => ({
+  const body: { snapshots: CrdtSnapshotPushEntry[] } = {
+    snapshots: snapshots.map(({ noteId, snapshot, ...claim }) => ({
       noteId,
-      snapshot: Buffer.from(snapshot).toString('base64')
+      snapshot: Buffer.from(snapshot).toString('base64'),
+      ...claimFields(claim)
     }))
   }
   return postToServer<CrdtSnapshotBatchResponse>('/sync/crdt/snapshot/batch', body, token)

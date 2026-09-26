@@ -107,7 +107,14 @@ export class NoteBodyFeed {
     vaultKey: Uint8Array,
     declared: boolean
   ): Promise<PageNoteBodies | null> {
-    if (!declared) return null
+    if (!declared) {
+      // A run from cursor 0 does not declare note_body, yet its pages move
+      // LAST_CURSOR past body rows it never serves. A snapshot claim of that
+      // cursor would cover them (#2299, 07 §7.7.1), so the run re-arms the
+      // legacy sweep exactly as a page from a server that stopped serving does.
+      this.trackNegotiation(false)
+      return null
+    }
     this.trackNegotiation(Array.isArray(changes.noteBodies))
     if (!Array.isArray(changes.noteBodies)) return null
     const page: PageNoteBodies = { bodies: [], refused: [], owed: [] }
@@ -117,10 +124,15 @@ export class NoteBodyFeed {
     const pageRecords = new Set(
       changes.items.filter((i) => i.type === 'note' || i.type === 'journal').map((i) => i.id)
     )
-    const wanted = (noteId: string): boolean =>
-      !pageRecords.has(noteId) &&
-      !provider.isNoteLocalOnly(noteId) &&
-      isKnownNote(this.deps.ctx.deps.db, noteId)
+    const wanted = (noteId: string): boolean => {
+      if (pageRecords.has(noteId) || provider.isNoteLocalOnly(noteId)) return false
+      if (isKnownNote(this.deps.ctx.deps.db, noteId)) return true
+      // Dropped with no row, and the cursor moves past it. A note or journal
+      // (deterministic ids) created here later lacks this body, so it may not
+      // claim that cursor until a whole-body pull merges it (#2299, B-L4).
+      provider.withholdClaimUntilPulled(noteId)
+      return false
+    }
     const parsed: NoteBodyChange[] = []
     for (const raw of changes.noteBodies) {
       const result = NoteBodyChangeSchema.safeParse(raw)
@@ -210,6 +222,10 @@ export class NoteBodyFeed {
           noteId,
           bodies.map((body) => body.update)
         )
+        // A row deleted while the doc opened: dropped like one never there.
+        if (!merged && !isKnownNote(this.deps.ctx.deps.db, noteId)) {
+          provider.withholdClaimUntilPulled(noteId)
+        }
         // Only a snapshot the doc now holds: a watermark for one it does not
         // makes the CRDT pull skip the baseline this note is owed.
         const snapshot = [...bodies].reverse().find((body) => body.snapshot)?.snapshot

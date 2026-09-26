@@ -1,6 +1,8 @@
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { Context } from 'hono'
 
+import { CRDT_SNAPSHOT_NOT_COVERED } from '@memry/contracts/sync-api'
+
 import { createLogger } from './logger'
 import { captureServerError } from '../services/analytics'
 import type { AppContext } from '../types'
@@ -43,6 +45,9 @@ export const ErrorCodes = {
   SYNC_PAYMENT_REQUIRED: 'SYNC_PAYMENT_REQUIRED',
   SYNC_VAULT_LIMIT_EXCEEDED: 'SYNC_VAULT_LIMIT_EXCEEDED',
   SYNC_VAULT_NOT_FOUND: 'SYNC_VAULT_NOT_FOUND',
+  // A coversThrough snapshot push below the cursor of a snapshot another
+  // device wrote (#2299): a per-note 409, never retried until the next pull.
+  CRDT_SNAPSHOT_NOT_COVERED,
 
   // Bootstrap sessions (#1837): a fresh-device pull window. NOT_ELIGIBLE is a
   // typed 409 (the device already synced this vault) so the client can fall
@@ -106,6 +111,8 @@ export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]
 export class AppError extends Error {
   readonly code: ErrorCode
   readonly statusCode: number
+  /** Extra fields for the `error` object of the response, e.g. a refusal's cursor. */
+  details?: Record<string, unknown>
 
   constructor(code: ErrorCode, message: string, statusCode = 500) {
     super(message)
@@ -117,8 +124,9 @@ export class AppError extends Error {
 
 export const formatErrorResponse = (
   error: AppError
-): { error: { code: ErrorCode; message: string } } => ({
+): { error: { code: ErrorCode; message: string } & Record<string, unknown> } => ({
   error: {
+    ...error.details,
     code: error.code,
     message: error.message
   }

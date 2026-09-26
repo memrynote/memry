@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   checkManifestIntegrity: vi.fn(),
   runInitialSeed: vi.fn(),
   getAllCrdtNoteIds: vi.fn(),
+  getAllSyncableNoteMetadataIds: vi.fn(),
   isIndexDatabaseInitialized: vi.fn(),
   getIndexDatabase: vi.fn(),
   beginBootstrap: vi.fn(),
@@ -75,7 +76,9 @@ vi.mock('../initial-seed', () => ({
 }))
 
 vi.mock('../../database/queries/notes', () => ({
-  getAllCrdtNoteIds: (...args: unknown[]) => mocks.getAllCrdtNoteIds(...args)
+  getAllCrdtNoteIds: (...args: unknown[]) => mocks.getAllCrdtNoteIds(...args),
+  getAllSyncableNoteMetadataIds: (...args: unknown[]) =>
+    mocks.getAllSyncableNoteMetadataIds(...args)
 }))
 
 vi.mock('../../database/client', () => ({
@@ -322,6 +325,7 @@ beforeEach(() => {
   mocks.checkManifestIntegrity.mockResolvedValue(manifestResult())
   mocks.isIndexDatabaseInitialized.mockReturnValue(false)
   mocks.getAllCrdtNoteIds.mockReturnValue([])
+  mocks.getAllSyncableNoteMetadataIds.mockReturnValue([])
   mocks.getIndexDatabase.mockReturnValue({ __db: 'index' })
 })
 
@@ -816,6 +820,28 @@ describe('FullSyncRunner', () => {
       // four seconds for a 121-note vault.
       expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
       expect(h.crdtSync.pendingPullCount).toBe(0)
+    })
+
+    // #2299 review A-8: the sweep that licenses snapshot claims takes its note
+    // set from the data DB too, so a note the index cache lacks is not skipped.
+    it('#then a note only the data DB knows is swept too, after the index order', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-2', 'note-1'])
+      mocks.getAllSyncableNoteMetadataIds.mockReturnValue(['note-1', 'journal-3'])
+      const scheduled: Array<() => Promise<void>> = []
+      h.actions.scheduleSync.mockImplementation((fn: () => Promise<void>) => {
+        scheduled.push(fn)
+      })
+
+      await h.runner.run()
+      await scheduled[0]()
+
+      expect(mocks.getAllSyncableNoteMetadataIds).toHaveBeenCalledWith(h.ctx.deps.db)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(
+        ['note-2', 'note-1', 'journal-3'],
+        expect.any(AbortSignal)
+      )
     })
 
     it('#then the scheduled work pulls the specific note', async () => {

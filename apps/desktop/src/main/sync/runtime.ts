@@ -91,14 +91,19 @@ import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
-import { NoteBodyOutbox, importLegacyPendingCrdtNotes } from './note-body-outbox'
+import {
+  NoteBodyFlushDeferredError,
+  NoteBodyOutbox,
+  importLegacyPendingCrdtNotes
+} from './note-body-outbox'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
 import { recoverDirtyItems } from './dirty-recovery'
 import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-eligibility'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { createCrdtSnapshotBatchPush } from './crdt-snapshot-batch'
-import { postToServer, pushCrdtSnapshot, pushCrdtFullUpdate, SyncServerError } from './http-client'
+import { createCrdtSnapshotPush } from './crdt-snapshot-push'
+import { postToServer, SyncServerError } from './http-client'
 import { classifyError } from './sync-errors'
 import {
   EVENT_CHANNELS,
@@ -568,7 +573,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
               // snapshot. Returning here would ack them, the silent drop this
               // path exists to remove; snapshotPushFn already surfaced it.
               log.error('CRDT snapshot fallback for an oversized update failed', { noteId })
-              throw new Error('CRDT snapshot fallback failed')
+              throw new NoteBodyFlushDeferredError('CRDT snapshot fallback failed')
             }
             // The snapshot is itself the compaction point, so no scheduled one.
             return
@@ -604,89 +609,17 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       }
       const noteBodyOutbox = new NoteBodyOutbox({ queue, push: pushNoteBody })
 
-      const snapshotPushFn = async (noteId: string, state: Uint8Array): Promise<void> => {
-        let token = await getValidAccessToken()
-        const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt snapshot push')
-        const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-        if (!token || !vaultKey || !signingSecretKey) {
-          log.warn('Missing credentials for CRDT snapshot push', {
-            noteId,
-            authAvailable: !!token,
-            hasVaultKey: !!vaultKey,
-            hasSigningKey: !!signingSecretKey
-          })
-          if (vaultKey) secureCleanup(vaultKey)
-          if (signingSecretKey) secureCleanup(signingSecretKey)
-          throw new Error('Missing credentials for CRDT snapshot push')
-        }
-
-        try {
-          const encrypted = encryptCrdtUpdate(state, vaultKey, noteId, signingSecretKey)
-
-          // The snapshot endpoint is the only destructive one. `storeSnapshot`
-          // overwrites the note's single R2 blob and `pruneUpdatesBeforeSnapshot`
-          // then deletes every `crdt_updates` row at or below the stored
-          // watermark — every device's rows, not just this one's. That is
-          // correct when this device really does contain everything the server
-          // has, and a lie whenever it does not: a merge pass that skipped a
-          // payload it could not verify (#1489), and equally a pull that failed,
-          // was rate-limited, was aborted, or has simply not run yet for a note
-          // the server has already told us a peer wrote (#1503). The rows it
-          // deletes are by definition absent from the snapshot replacing them.
-          // They are then gone for every device, permanently, and the vault key
-          // that could still decrypt them no longer has anything to decrypt.
-          //
-          // Every one of those funnels through this single choke point, so the
-          // routing decision belongs here rather than at each caller: the 30s
-          // `CrdtSnapshotScheduler`, the oversized-update fallback, `close()`,
-          // `pushAllSnapshots`, `compactDoc` and the push coordinator all reach
-          // the server through this fn.
-          //
-          // Failing closed instead — holding the note back until it merges — is
-          // not available: `GET /auth/devices` lists only non-revoked devices,
-          // so a revoked peer's key never returns, and a device that is offline
-          // or rate-limited may not merge for a long time. Either way the note
-          // would be held indefinitely, stranding this device's own edits. So
-          // the same doc state goes to the incremental endpoint, which stores
-          // and broadcasts it exactly like any other update and prunes nothing.
-          // This device's edits reach every peer; the unmerged payload stays on
-          // the server for a later pass to take in.
-          //
-          // The incremental route has a size ceiling the snapshot's R2 blob does
-          // not (`pushCrdtFullUpdate` throws past MAX_CRDT_UPDATE_PAYLOAD_CHARS),
-          // which keeps that one note pending and retried — a stall, not a loss,
-          // since its content is already durable in the local CRDT store, and it
-          // ends as soon as the note merges and the snapshot route reopens.
-          //
-          // `engine` is referenced lazily: nothing invokes this fn between
-          // `crdtProvider.init` below and the `const engine` assignment.
-          const viaUpdates = engine.hasUnmergedRemoteCrdtState(noteId)
-          const pushed = await withRetry(
-            () =>
-              withAuthRetry(
-                (authToken) =>
-                  viaUpdates
-                    ? pushCrdtFullUpdate(noteId, encrypted, authToken)
-                    : pushCrdtSnapshot(noteId, encrypted, authToken),
-                token!,
-                crdtAuthRetryDeps,
-                (fresh) => {
-                  token = fresh
-                }
-              ),
-            { maxRetries: 3, baseDelayMs: 2000 }
-          )
-          // The feed serves this device's own snapshot back (#2297); the
-          // recorded revision lets it skip the download.
-          if (!viaUpdates) await getCrdtProvider().recordPushedSnapshot(noteId, pushed.value ?? {})
-          // Distinct message per endpoint on purpose: log triage greps these
-          // strings, and the notes someone is grepping for are exactly the ones
-          // that did not take the snapshot route.
-          log.debug(viaUpdates ? 'Pushed CRDT full state as an update' : 'Pushed CRDT snapshot', {
-            noteId,
-            size: state.byteLength
-          })
-        } catch (err) {
+      // `engine` is referenced lazily: nothing invokes these fns between
+      // `crdtProvider.init` below and the `const engine` assignment.
+      const snapshotPushFn = createCrdtSnapshotPush({
+        getAccessToken: () => getValidAccessToken(),
+        getVaultKey: () => getOptionalRuntimeVaultKey(db, 'crdt snapshot push'),
+        getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
+        authRetryDeps: crdtAuthRetryDeps,
+        hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
+        onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
+        onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
+        onError: (noteId, err) => {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh — see the update-batch
             // handler above. The caller keeps pendingSnapshotBytes, so the
@@ -703,12 +636,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
               emitNoteTooLarge(noteId)
             }
           }
-          throw err
-        } finally {
-          secureCleanup(vaultKey)
-          secureCleanup(signingSecretKey)
         }
-      }
+      })
 
       // One request for up to MAX_CRDT_SNAPSHOT_BATCH_ENTRIES notes instead of
       // one per note. It reuses `snapshotPushFn` for everything the batch is
@@ -723,6 +652,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
         authRetryDeps: crdtAuthRetryDeps,
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
+        onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
           // reasons — see the comments in snapshotPushFn. A body-limit 413
@@ -892,6 +822,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       })
 
       queue.setOnItemEnqueued(() => engine.requestPush())
+      crdtProvider.setSnapshotCoverage((noteId, heldRevision) =>
+        engine.snapshotCoverage(noteId, heldRevision)
+      )
+      crdtProvider.setOweRemoteMerge((noteId) => engine.oweCrdtPull(noteId))
+      // A full-state row queued with no runtime (a note leaving local-only) may
+      // owe bodies the feed skipped: flagged, it claims nothing until its own
+      // flush pull merged, which clears the flag. No second pull is owed.
+      for (const noteId of queue.listFullStateNoteBodyNoteIds()) {
+        if (!crdtProvider.isNoteLocalOnly(noteId)) engine.markCrdtRemoteStateUnmerged(noteId)
+      }
 
       recoverDirtyItems(runtimeSyncDb, adapters)
 
@@ -957,7 +897,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // (#1514).
       noteBodyOutbox.enableFullStateFlush(async (noteId) => {
         if (runtimeAbort.signal.aborted) throw new Error('Sync runtime stopped')
-        if (!crdtProvider.isNoteSyncable(noteId)) return null
+        if (!crdtProvider.isNoteSyncable(noteId)) {
+          engine.clearCrdtUnmergedForDroppedNote(noteId)
+          return null
+        }
         if (!(await engine.mergeRemoteCrdtForNote(noteId))) {
           throw new Error('Server CRDT state did not merge')
         }

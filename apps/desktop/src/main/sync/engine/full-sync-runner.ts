@@ -23,7 +23,7 @@ import {
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
-import { getAllCrdtNoteIds } from '../../database/queries/notes'
+import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
 
 const log = createLogger('SyncEngine')
@@ -458,7 +458,7 @@ export class FullSyncRunner {
     // Read before the generation is re-stamped below: only a sweep that closes
     // a real drop/reconnect gap starts the floor for the next one.
     if (this.hasReconnectGap()) this.lastReconnectSweepAt = Date.now()
-    for (const noteId of getAllCrdtNoteIds(getIndexDatabase())) {
+    for (const noteId of this.sweepNoteIds()) {
       this.crdtSync.addPendingPull(noteId)
     }
     // Every note in the vault now carries its own flag, so the vault-wide
@@ -477,6 +477,19 @@ export class FullSyncRunner {
     // writes the persisted throttle once the paced drain has actually run it
     // through, and `unstampedSweepAt` holds the interval closed in between.
     this.unstampedSweepAt = Date.now()
+  }
+
+  /**
+   * The notes and journals a vault-wide sweep pulls: the index cache's order
+   * first (recent first), then every syncable markdown row of the data DB the
+   * cache lacks. The sweep that records `noteBodyLegacySweep = done` licenses
+   * snapshot claims (#2299), so a note missing from a rebuilding index must not
+   * be skipped by it.
+   */
+  private sweepNoteIds(): string[] {
+    const ids = new Set(getAllCrdtNoteIds(getIndexDatabase()))
+    for (const id of getAllSyncableNoteMetadataIds(this.ctx.deps.db)) ids.add(id)
+    return [...ids]
   }
 
   /**

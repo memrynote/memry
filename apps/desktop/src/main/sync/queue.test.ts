@@ -725,6 +725,16 @@ describe('SyncQueueManager', () => {
       expect(queue.listNoteBodyNoteIds().sort()).toEqual(['note-1', 'note-2'])
     })
 
+    // #2299 review round 2 (A-7): a queued full-state row may owe skipped bodies
+    it('lists only the notes that hold a full-state row', () => {
+      queue.enqueueNoteBody('note-1', NOTE_BODY_FULL_STATE_PAYLOAD)
+      queue.enqueueNoteBody('note-1', 'dXBkYXRl')
+      queue.enqueueNoteBody('note-2', 'dXBkYXRl')
+      queue.enqueueNoteBody('note-3', NOTE_BODY_FULL_STATE_PAYLOAD)
+
+      expect(queue.listFullStateNoteBodyNoteIds().sort()).toEqual(['note-1', 'note-3'])
+    })
+
     it('removes exactly the acknowledged rows and leaves a later one queued', () => {
       queue.enqueueNoteBody('note-1', 'Zmlyc3Q=')
       const [pushed] = queue.takeNoteBodyRows('note-1', 10)

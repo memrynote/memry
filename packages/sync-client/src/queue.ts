@@ -476,6 +476,21 @@ export class SyncQueueManager {
       .map((row) => row.itemId)
   }
 
+  /** Notes with a queued full-state row: their whole doc still owes a push. */
+  listFullStateNoteBodyNoteIds(): string[] {
+    return this.db
+      .selectDistinct({ itemId: syncQueue.itemId })
+      .from(syncQueue)
+      .where(
+        and(
+          eq(syncQueue.type, NOTE_BODY_QUEUE_TYPE),
+          eq(syncQueue.payload, NOTE_BODY_FULL_STATE_PAYLOAD)
+        )
+      )
+      .all()
+      .map((row) => row.itemId)
+  }
+
   countNoteBodyRows(): number {
     const result = this.db
       .select({ count: count() })

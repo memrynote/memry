@@ -33,6 +33,7 @@ pub mod lifecycle;
 pub mod markdown_seed;
 pub mod node_shapes;
 pub mod registry;
+pub mod snapshot_cadence;
 pub mod snapshots;
 pub mod text_extract;
 pub mod update_log;

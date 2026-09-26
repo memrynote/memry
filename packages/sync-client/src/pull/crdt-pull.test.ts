@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { compressPayload } from '../compress.ts'
 import { base64ToBytes, bytesToBase64 } from './base64.ts'
 import { CrdtBodyPuller, type CrdtPullDeps } from './crdt-pull.ts'
@@ -182,6 +182,77 @@ describe('CrdtBodyPuller', () => {
     expect(store.snapshots).toHaveLength(0)
     expect(store.updates.map((u) => u.seq)).toEqual([7])
     expect(store.since.get('n1')).toBe(7)
+  })
+
+  // #2299 review round 2 (A-8): the same revision rule as body_pull.rs
+  // `baseline_due`. A coversThrough push can replace the snapshot without its
+  // watermark passing this cursor; only the revision says it moved.
+  it('takes a snapshot whose revision it does not hold, whatever its sequence', async () => {
+    const store = memoryCrdtStore()
+    store.since.set('n1', 10)
+    await store.saveSnapshot('n1', new Uint8Array(), 5, 'rev-old')
+    store.snapshots.length = 0
+    const http = fakeHttp((req) => {
+      if (req.path === '/sync/crdt/updates/batch') {
+        return {
+          notes: { n1: { updates: [], hasMore: false } },
+          snapshotMeta: { n1: { sequenceNum: 8, revision: 'rev-new', signerDeviceId: 'd1' } }
+        }
+      }
+      if (req.path.startsWith('/sync/crdt/snapshot/')) {
+        return {
+          snapshot: packUpdate('moved'),
+          sequenceNum: 8,
+          signerDeviceId: 'd1',
+          revision: 'rev-new'
+        }
+      }
+      throw new Error(`unexpected ${req.path}`)
+    })
+
+    await makePuller(http, store).pullBodies(['n1'])
+
+    expect(store.snapshots).toEqual([{ noteId: 'n1', seq: 8, text: 'moved', revision: 'rev-new' }])
+    expect(store.since.get('n1')).toBe(10)
+  })
+
+  describe('a snapshot object the server cannot serve (#2299 review round 2, A-4)', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('fails the note on a 503 and stores nothing, never reads it as no snapshot', async () => {
+      vi.useFakeTimers()
+      const store = memoryCrdtStore()
+      const calls: string[] = []
+      const http: SyncHttpClient = {
+        async request(req) {
+          calls.push(req.path)
+          if (req.path.startsWith('/sync/crdt/snapshot/')) {
+            return {
+              status: 503,
+              headers: {},
+              body: encoder.encode(JSON.stringify({ error: { code: 'STORAGE_BLOB_NOT_FOUND' } }))
+            }
+          }
+          const batch = {
+            notes: { n1: { updates: [], hasMore: false } },
+            snapshotMeta: { n1: { sequenceNum: 5, revision: 'rev-a', signerDeviceId: 'd1' } }
+          }
+          return { status: 200, headers: {}, body: encoder.encode(JSON.stringify(batch)) }
+        },
+        onOnlineChanged: () => () => {},
+        isMetered: async () => false
+      }
+
+      const pulled = makePuller(http, store).pullBodies(['n1'])
+      await vi.runAllTimersAsync()
+
+      expect(await pulled).toEqual({ notesUpdated: 0, notesFailed: 1 })
+      expect(store.snapshots).toEqual([])
+      expect(store.since.get('n1')).toBeUndefined()
+      expect(calls.some((path) => path.startsWith('/sync/crdt/updates?'))).toBe(false)
+    })
   })
 
   it('stops at an unresolvable signer without advancing the watermark past it', async () => {

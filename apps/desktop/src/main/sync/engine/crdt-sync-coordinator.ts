@@ -382,6 +382,23 @@ export class CrdtSyncCoordinator {
     if (this.unmergedRemoteNotes.delete(noteId)) this.reportUnmergedDebt()
   }
 
+  /** A note no pass will walk (deleted, local-only): its flag may not stand. */
+  clearUnmergedForDroppedNote(noteId: string): void {
+    this.clearUnmergedIfClean(noteId, false)
+  }
+
+  /**
+   * A pass walked the note's whole server body into its doc. Clean, it also
+   * lets a doc seeded or created without persisted state claim again (#2299,
+   * `CrdtProvider.recordWholeBodyMerged`).
+   */
+  private settleMergedNote(noteId: string, sawUnmerged: boolean): void {
+    this.clearUnmergedIfClean(noteId, sawUnmerged)
+    if (!sawUnmerged && !this.pendingPulls.has(noteId)) {
+      this.ctx.deps.crdtProvider?.recordWholeBodyMerged(noteId)
+    }
+  }
+
   private rememberAppliedSequence(noteId: string, sequenceNum: number): number {
     const known = this.lastAppliedSequence.get(noteId) ?? 0
     const next = Math.max(known, sequenceNum)
@@ -756,7 +773,7 @@ export class CrdtSyncCoordinator {
         hasMore = result.hasMore
       }
 
-      this.clearUnmergedIfClean(noteId, sawUnmerged)
+      this.settleMergedNote(noteId, sawUnmerged)
 
       const postVector = crdtProvider.getStateVector(noteId)
       if (!postVector || postVector.length <= 2) {
@@ -1032,7 +1049,7 @@ export class CrdtSyncCoordinator {
             // only reaches this branch with a watermark, which only exists
             // because real CRDT state was applied to its doc, so its state
             // vector is not the empty one the seed fallback exists for.
-            this.clearUnmergedIfClean(noteId, false)
+            this.settleMergedNote(noteId, false)
             settledByProbe++
             continue
           }
@@ -1303,7 +1320,7 @@ export class CrdtSyncCoordinator {
       }
 
       for (const noteId of sinceMap.keys()) {
-        this.clearUnmergedIfClean(noteId, sawUnmerged.has(noteId))
+        this.settleMergedNote(noteId, sawUnmerged.has(noteId))
       }
 
       // Seed only notes whose snapshot baseline succeeded. A note whose baseline

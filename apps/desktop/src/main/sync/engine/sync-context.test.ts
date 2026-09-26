@@ -91,7 +91,10 @@ describe('SYNC_STATE_KEYS', () => {
         SCHEMA_INVALID_ITEMS: 'schemaInvalidItems',
         // #2297: absent, `pending` or `done`; an install without it has not
         // been served bodies by the feed yet.
-        NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep'
+        NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep',
+        // #2299: absent reads as a mismatch with the CRDT store's epoch, so an
+        // install from before it runs the vault sweep once.
+        CRDT_STORE_EPOCH: 'crdtStoreEpoch'
       })
     })
 

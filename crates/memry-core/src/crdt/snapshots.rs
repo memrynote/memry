@@ -17,11 +17,12 @@
 //!    already contains every server update above the prior watermark. The
 //!    client therefore stores the sequence number **the response gave it** and
 //!    never one it computed, and [`stable_watermark`] refuses to let a stored
-//!    watermark walk forward.
-//! 4. **A pushed snapshot stores a NULL local revision** (§7.13.4, until
-//!    #2187). The push response answers `{ sequenceNum }` and not `revision`,
-//!    and an invented token can collide with a real one and suppress a
-//!    baseline the client needed.
+//!    watermark walk forward. A `coversThrough` push (#2299) may move the
+//!    server's forward; keeping the lower one locally only replays more.
+//! 4. **A pushed snapshot stores the revision the response answered** (§7.13.4,
+//!    #2187, #2299), and NULL when a server answered none: an invented token
+//!    can collide with a real one and suppress a baseline the client needed.
+//!    The stored revision is the `baseRevision` of the next claimed push.
 //!
 //! **The prune here is the local one.** §7.7 is explicit that a client does no
 //! pruning of the *server's* log — the server does that itself, between the
@@ -45,11 +46,16 @@ use crate::protocol::http::{
 };
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
-use crate::sync::body_debt;
+use crate::sync::{body_debt, note_body_feed};
 
 use super::errors::CrdtError;
 use super::registry::Document;
 use super::update_log::{self, Namespace};
+
+pub use super::snapshot_cadence::{SNAPSHOT_MAX_WAIT_MS, SNAPSHOT_QUIET_MS, snapshot_is_due};
+
+/// The per-note refusal of a `coversThrough` push (chapter 07 §7.7).
+pub const CRDT_SNAPSHOT_NOT_COVERED: &str = "CRDT_SNAPSHOT_NOT_COVERED";
 
 /// Seals one full-state encode as chapter 04 §4.11's packed envelope.
 ///
@@ -238,12 +244,23 @@ impl SnapshotPusher {
         // §7.13.2 condition 1, from the durable side: a document owed a
         // whole-body pull has not merged the updates this snapshot would
         // prune, whatever the caller's gate says.
+        // The claim is read before the log check and the encode (#2299): the
+        // log only grows, so the state then holds every body at or below it.
         let owed_id = document.id().to_owned();
-        if self
+        let (owed, covers_through, base_revision) = self
             .db
-            .call(move |conn| body_debt::is_owed(conn, &owed_id))
-            .await?
-        {
+            .call(move |conn| {
+                let base = update_log::snapshot(conn, Namespace::Server, &owed_id)
+                    .map_err(crdt_to_storage)?
+                    .and_then(|row| row.server_revision);
+                Ok((
+                    body_debt::is_owed(conn, &owed_id)?,
+                    note_body_feed::covers_through(conn, &owed_id)?,
+                    base,
+                ))
+            })
+            .await?;
+        if owed {
             return Ok(SnapshotOutcome::Refused(Refusal::UnmergedRemoteState));
         }
         // The other half: a settled debt means the rows are in the log, not
@@ -271,23 +288,56 @@ impl SnapshotPusher {
         // §7.3's field name, §7.4's request shape for the sibling route: one
         // document per call, the payload base64 of the same packed envelope an
         // update travels in (§7.11).
+        let mut payload = json!({ "noteId": doc_id, "snapshot": BASE64.encode(&packed) });
+        if let Some(covers_through) = covers_through {
+            payload["coversThrough"] = json!(covers_through);
+            if let Some(base) = &base_revision {
+                payload["baseRevision"] = json!(base);
+            }
+        }
         let request = self
             .request("POST", "/sync/crdt/snapshot")
             // §7.10: every CRDT request is `maxRetries: 3`, `baseDelayMs:
             // 2000`, `retryOn429: false`.
             .retry(RetryPolicy::polled())
-            .json(&json!({ "noteId": doc_id, "snapshot": BASE64.encode(&packed) }));
-        let body: Json = self.http.send_json(request).await?;
+            .json(&payload);
+        let body: Json = match self.http.send_json(request).await {
+            Ok(body) => body,
+            // The stored snapshot holds state this push does not cover. Owing
+            // the document a pull refuses every push until a pull (which takes
+            // that snapshot, its revision being unknown here) settles it.
+            Err(ApiError::Status {
+                status: 409,
+                code: Some(code),
+                ..
+            }) if code == CRDT_SNAPSHOT_NOT_COVERED => {
+                let id = doc_id.clone();
+                self.db.call(move |conn| body_debt::owe(conn, &id)).await?;
+                return Ok(SnapshotOutcome::Refused(Refusal::UnmergedRemoteState));
+            }
+            Err(error) => return Err(error.into()),
+        };
 
         // §7.4: the server assigns the sequence number and a client never
         // proposes one. §7.6: on a document that already had a snapshot this
         // is the *original* watermark coming back, not a new one.
         let answered = body.get("sequenceNum").and_then(Json::as_i64);
+        let revision = body
+            .get("revision")
+            .and_then(Json::as_str)
+            .map(str::to_owned);
 
         let stored_doc_id = doc_id.clone();
         let pruned = self
             .db
-            .call(move |conn| store_pushed_snapshot(conn, &stored_doc_id, &state, answered, now_ms))
+            .call(move |conn| {
+                let pushed = PushedSnapshot {
+                    state: &state,
+                    answered,
+                    revision: revision.as_deref(),
+                };
+                store_pushed_snapshot(conn, &stored_doc_id, pushed, now_ms)
+            })
             .await?;
 
         Ok(SnapshotOutcome::Pushed {
@@ -344,52 +394,6 @@ fn holds_every_logged_update(
 /// believed, make [`super::update_log::load_plan`] skip every incremental
 /// between the two numbers forever. There is no reading of this function under
 /// which the client loses an update.
-/// §7.13.3's cadence: **30 s quiet, 120 s from the first request**.
-///
-/// The chapter's table mixes two kinds of trigger. "Document close", "shutdown"
-/// and "no editor open" are **shell** facts the core cannot see. The timing rule
-/// is not — it is arithmetic over two instants, and it belongs here for the same
-/// reason [`crate::crdt::text_extract::cross_shell_digest`] does: every shell
-/// following §7.13.3 must reach the same answer, and a cadence each one
-/// re-derives is a cadence they will disagree about.
-///
-/// The 120 s cap is the half worth stating. Quiet-only debouncing never fires
-/// on a document being typed into continuously — which is exactly the document
-/// whose log is growing fastest, and exactly the one §7.13.1 warns grows
-/// unboundedly.
-///
-/// **This is a SHOULD, not a MUST.** §7.13.1: correctness never depends on a
-/// snapshot and a client that pushes none is conforming. Nothing here overrides
-/// [`SnapshotGate`], which is the MUST and must still pass.
-pub const SNAPSHOT_QUIET_MS: i64 = 30_000;
-
-/// The ceiling on debouncing, measured from the **first** request in a run.
-pub const SNAPSHOT_MAX_WAIT_MS: i64 = 120_000;
-
-/// Whether §7.13.3's timing says a snapshot is due.
-///
-/// `first_requested_at` is when the current run of requests began and
-/// `last_requested_at` the most recent one; both are this device's clock, the
-/// same one the index watermarks use and never a server instant (data-model
-/// §A.5's reasoning applies — a server instant is not monotone here).
-///
-/// Returns `false` when there is nothing pending, so a caller can poll it on a
-/// timer without tracking that itself.
-pub fn snapshot_is_due(
-    first_requested_at: Option<i64>,
-    last_requested_at: Option<i64>,
-    now_ms: i64,
-) -> bool {
-    let (Some(first), Some(last)) = (first_requested_at, last_requested_at) else {
-        return false;
-    };
-    // `>=` on both, so an instant landing exactly on a boundary fires rather
-    // than waiting a whole further interval. Saturating, because a clock that
-    // steps backwards must not wrap into "due in 49 days".
-    now_ms.saturating_sub(last) >= SNAPSHOT_QUIET_MS
-        || now_ms.saturating_sub(first) >= SNAPSHOT_MAX_WAIT_MS
-}
-
 pub fn stable_watermark(existing: Option<i64>, answered: Option<i64>) -> i64 {
     match (existing, answered) {
         (Some(existing), Some(answered)) => existing.min(answered),
@@ -408,11 +412,17 @@ pub fn stable_watermark(existing: Option<i64>, answered: Option<i64>) -> i64 {
 /// with no snapshot, which is the one shape that loses body state.
 ///
 /// Returns the watermark written and how many rows were pruned.
+/// What the push response answered for the bytes it stored.
+struct PushedSnapshot<'a> {
+    state: &'a [u8],
+    answered: Option<i64>,
+    revision: Option<&'a str>,
+}
+
 fn store_pushed_snapshot(
     conn: &Connection,
     doc_id: &str,
-    state: &[u8],
-    answered: Option<i64>,
+    pushed: PushedSnapshot<'_>,
     now_ms: i64,
 ) -> Result<(i64, usize), StorageError> {
     let txn = conn.unchecked_transaction().map_err(failed)?;
@@ -420,13 +430,18 @@ fn store_pushed_snapshot(
     let existing = update_log::snapshot(&txn, Namespace::Server, doc_id)
         .map_err(crdt_to_storage)?
         .map(|row| row.last_seq);
-    let watermark = stable_watermark(existing, answered);
+    let watermark = stable_watermark(existing, pushed.answered);
 
-    // §7.13.4: NULL, never an invented token. The push response carries no
-    // `revision`, and a made-up one can collide with a server revision and
-    // suppress a baseline this client needed.
-    update_log::put_server_snapshot(&txn, doc_id, state, watermark, None, now_ms)
-        .map_err(crdt_to_storage)?;
+    // §7.13.4: the revision the server answered, never an invented token.
+    update_log::put_server_snapshot(
+        &txn,
+        doc_id,
+        pushed.state,
+        watermark,
+        pushed.revision,
+        now_ms,
+    )
+    .map_err(crdt_to_storage)?;
 
     let pruned = txn
         .execute(
@@ -454,63 +469,6 @@ fn failed(error: rusqlite::Error) -> StorageError {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn nothing_pending_is_never_due() {
-        // A caller may poll this on a timer without tracking pendingness.
-        assert!(!snapshot_is_due(None, None, 1_000_000));
-        assert!(!snapshot_is_due(Some(0), None, 1_000_000));
-        assert!(!snapshot_is_due(None, Some(0), 1_000_000));
-    }
-
-    #[test]
-    fn the_quiet_window_fires_only_after_thirty_seconds_of_silence() {
-        let first = 1_000_000;
-        // One request, then silence. Not due at 29.999 s, due at exactly 30 s.
-        assert!(!snapshot_is_due(
-            Some(first),
-            Some(first),
-            first + SNAPSHOT_QUIET_MS - 1
-        ));
-        assert!(snapshot_is_due(
-            Some(first),
-            Some(first),
-            first + SNAPSHOT_QUIET_MS
-        ));
-    }
-
-    #[test]
-    fn the_cap_fires_on_a_document_that_is_never_quiet() {
-        // The half that matters. A document typed into continuously resets the
-        // quiet window forever, and it is exactly the document whose log grows
-        // fastest — §7.13.1's unbounded growth. The 120 s cap from the FIRST
-        // request is what makes it snapshot at all.
-        let first = 1_000_000;
-        let busy_now = first + SNAPSHOT_MAX_WAIT_MS;
-        let never_quiet = busy_now - 1; // a request one millisecond ago
-        assert!(
-            !snapshot_is_due(Some(first), Some(never_quiet), busy_now - 1),
-            "quiet alone must not fire here, or the cap proves nothing"
-        );
-        assert!(
-            snapshot_is_due(Some(first), Some(never_quiet), busy_now),
-            "the 120 s cap must fire even though the document is still busy"
-        );
-    }
-
-    #[test]
-    fn a_clock_that_steps_backwards_is_not_due_rather_than_wrapping() {
-        // Saturating arithmetic: a backwards step must not read as 49 days.
-        let first = 1_000_000;
-        assert!(!snapshot_is_due(Some(first), Some(first), first - 10_000));
-    }
-
-    #[test]
-    fn the_cadence_constants_are_the_chapter_s() {
-        // §7.13.3's table, pinned so a tuning edit has to change the chapter.
-        assert_eq!(SNAPSHOT_QUIET_MS, 30_000);
-        assert_eq!(SNAPSHOT_MAX_WAIT_MS, 120_000);
-    }
 
     #[test]
     fn the_watermark_never_walks_forward_once_a_snapshot_exists() {

@@ -74,6 +74,7 @@ vi.mock('../services/crdt', () => ({
   storeUpdates: vi.fn().mockResolvedValue([1]),
   getUpdates: vi.fn().mockResolvedValue({ updates: [], hasMore: false }),
   getBatchUpdates: vi.fn().mockResolvedValue({}),
+  getSnapshotMeta: vi.fn().mockResolvedValue(null),
   storeSnapshot: vi.fn().mockResolvedValue({ sequenceNum: 0, revision: 'rev-0' }),
   storeSnapshotBatch: vi.fn().mockResolvedValue([]),
   getSnapshot: vi.fn().mockResolvedValue(null),
@@ -1499,7 +1500,8 @@ describe('sync routes', () => {
             createdAt: 111
           }
         ],
-        hasMore: true
+        hasMore: true,
+        snapshotMeta: null
       })
       expect(getUpdates).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1', 3, 500)
     })
@@ -1636,7 +1638,8 @@ describe('sync routes', () => {
         'note_1',
         'device-1',
         expect.any(ArrayBuffer),
-        null
+        null,
+        undefined
       )
       expect(pruneUpdatesBeforeSnapshot).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1')
     })

@@ -160,8 +160,13 @@ bodies were never written down — the same gap chapter 05 §5.11.1 was written 
 close. A port must not have to read the server to send a page request.
 
 **`GET /sync/crdt/updates`** — query `note_id`, `since`, `limit`.
-Response: `{ updates: [...], hasMore: boolean }`, **at the top level**. There is
-no `notes` wrapper on the single-document form; that belongs to the batch.
+Response: `{ updates: [...], hasMore: boolean, snapshotMeta }`, **at the top
+level**. There is no `notes` wrapper on the single-document form; that belongs
+to the batch. `snapshotMeta` (#2299, additive) is the note's
+`{ sequenceNum, revision, signerDeviceId }`, or `null` when it has no snapshot;
+it is read after the updates, so a prune landing in between shows up as a newer
+snapshot, never a missing one (`apps/sync-server/src/services/crdt.ts:280`). A
+server that predates it omits the key.
 
 **`POST /sync/crdt/updates/batch`** — request
 `{ notes: [{ noteId, since }], limit }`. At most **100** entries, duplicate
@@ -170,19 +175,21 @@ no `notes` wrapper on the single-document form; that belongs to the batch.
 Response: `{ notes: { <noteId>: { updates, hasMore } } }`, keyed by id — which
 is why the single form's flat shape above is worth stating separately.
 
-**`POST /sync/crdt/snapshot`** — request `{ noteId, snapshot }`, the snapshot
-being the base64 packed envelope. Response `{ sequenceNum, revision }`
+**`POST /sync/crdt/snapshot`** — request
+`{ noteId, snapshot, coversThrough?, baseRevision? }`, the snapshot being the
+base64 packed envelope and the other two the optional claim of §7.7.1 (#2299).
+Response `{ sequenceNum, revision }`
 (`apps/sync-server/src/routes/sync.ts:951`), the `revision` being the token the
 upsert just wrote (§7.13.4).
 
 **`POST /sync/crdt/snapshot/batch`** — request
-`{ snapshots: [{ noteId, snapshot }] }`, at most **50**, the lower cap because
+`{ snapshots: [{ noteId, snapshot, coversThrough?, baseRevision? }] }`, at most **50**, the lower cap because
 a snapshot may be 5 MiB decoded and roughly 6.7 MiB as base64. `snapshot` is
 deliberately unbounded per entry: an oversized payload is a per-note rejection,
 not a malformed batch. Response `{ results: [...] }`, one entry per request
 entry in request order, each `{ noteId, accepted: true, sequenceNum, revision }`
 or `{ noteId, accepted: false, reason }`
-(`apps/sync-server/src/services/crdt.ts:410-412`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:43`).
 
 `POST /sync/crdt/updates` takes
 `{ noteId: string, updates: string[] }` — the updates being base64 packed
@@ -209,11 +216,11 @@ edit. Rows written before the migration have no hash and are never matched.
 
 **Normative.** A fresh `crypto.randomUUID()` on **every** snapshot write, insert
 and conflict alike, and **never conditional on whether the bytes changed**
-(`apps/sync-server/src/services/crdt.ts:335`, applied by the upsert at `:315-318`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:287`, applied by the upsert at `:114`).
 
 The reason is on record: a revision that fails to move when the blob moves leaves
 a client skipping a snapshot it needed, with a stale body forever
-(`apps/sync-server/src/services/crdt.ts:332-334`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:300-302`).
 
 Rows written before `revision` existed carry `''` and are coalesced to a
 synthetic `legacy:<id>:<created_at>:<size_bytes>`, so an old snapshot is not
@@ -225,48 +232,252 @@ equality.**
 
 ## 7.6 Snapshot watermark stability
 
-**Normative.** Once a snapshot exists for a document, its `sequence_num` **stays
-put** across subsequent snapshot writes: the upsert reuses
+**Normative.** Once a snapshot exists for a document, a push **without**
+`coversThrough` leaves its `sequence_num` where it is: the upsert reuses
 `existingSnapshot?.sequence_num ?? currentSeq`
-(`apps/sync-server/src/services/crdt.ts:348`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:297-299`).
 
 The reason is on record: client-uploaded snapshots carry no causal metadata
 proving they already contain every server update above the prior watermark, so
-keeping the watermark stable keeps later incrementals pullable
-(`apps/sync-server/src/services/crdt.ts:345-347`).
+keeping the watermark stable keeps later incrementals pullable.
+
+A push **with** `coversThrough` carries that proof for the rows it covers, so
+it may move the watermark forward, and only over rows it prunes (§7.7.1). The
+watermark **never moves down**: the conflict clause writes
+`MAX(crdt_snapshots.sequence_num, excluded.sequence_num)`
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:114`), so a concurrent push that read an older watermark cannot
+lower it under rows another push already pruned.
 
 ## 7.7 Pruning is server-side
 
-**Normative.** `DELETE FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND
-note_id = ? AND sequence_num <= ?`
-(`apps/sync-server/src/services/crdt.ts:703`, driven by
-`pruneUpdatesBeforeSnapshot` at `:705`), with a batch form that runs every SUM
-ahead of every DELETE inside one D1 transaction
-(`apps/sync-server/src/services/crdt.ts:749`).
+**Normative.** Without `coversThrough`: `DELETE FROM crdt_updates WHERE user_id
+= ? AND vault_id = ? AND note_id = ? AND sequence_num <= ?`, bound to the
+snapshot's watermark (`pruneUpdatesBeforeSnapshot`,
+`apps/sync-server/src/services/crdt.ts:486`), with a batch form that runs every
+SUM ahead of every DELETE inside one D1 transaction (`:530`). A claimed push
+prunes inside its own write instead (§7.7.1).
 
 **A client does no pruning of the server's log.**
 
+### 7.7.1 `coversThrough` (#2299)
+
+**Meaning.** `coversThrough = C` on a snapshot push (single or per batch entry,
+`CrdtSnapshotCoversThroughSchema`, a non-negative integer) asserts: **every
+note_body feed row of this note with `server_cursor <= C` is merged into the
+pushed state.** `baseRevision` (optional, only with `C`) names the stored
+snapshot revision the pusher last merged or pushed. Both are optional; a server
+that predates them ignores the keys and applies §7.6 and §7.7 unchanged.
+
+**The gate: claims stay dormant until old desktops can no longer write.** A
+claimed row answers a pre-#2299 desktop's unclaimed push with a 409, and that
+desktop retries it (its oversized-update fallback about once a second). So the
+server honours `coversThrough` only when the env var
+`CRDT_CLAIM_MIN_DESKTOP_VERSION` is set **and** `client_policies['desktop']
+.min_write_version` is at or above it (`compareVersions`;
+`snapshotClaimsEnabled`, `apps/sync-server/src/services/client-policies.ts:73`,
+read once per request). Otherwise a claim is dropped and the push runs under
+the pre-#2299 rules exactly (`covers_through` stays NULL), so no claimed row
+exists and no legacy client ever meets the refusal. The env var is unset in
+`wrangler.toml` for every environment. **Rollout:** raise the desktop
+`min_write_version` to the #2299 release, then set the env var. Setting it last
+also closes most of the mixed-version deploy window below, because no claimed
+row exists before it.
+
+**Why the rules below exist.** Before #2299 the watermark stayed pinned after a
+note's first snapshot, so every update row above it survived any blob
+overwrite. A claimed push deletes rows above the old watermark; from then on
+those rows exist on the server **only inside that snapshot's blob**. Every rule
+below keeps that blob from being replaced by one that does not hold them.
+
+**The write** (`apps/sync-server/src/services/crdt-snapshot-write.ts`, one path for the single and batch routes):
+
+1. **One immutable object per write.** The blob goes to
+   `<user>/vaults/<v>/crdt/<noteId>/snapshot/<revision>`, and the row's
+   `blob_key` names it. The previous object is deleted only after the D1 commit
+   and only when its key differs; a refused write deletes its own object. A
+   losing concurrent write therefore never clobbers the winner's bytes. Rows
+   written before #2299 keep the fixed `.../snapshot` key; the next write
+   replaces it.
+2. **The claim is recorded**: `crdt_snapshots.covers_through`
+   (migration `0014_crdt_snapshot_covers_through.sql`, nullable, no backfill;
+   NULL means "no claim"). A write through the `baseRevision` arm stores the
+   union of both coverages, `MAX(C, COALESCE(old.covers_through, 0))`
+   (`STORED_COVERS_THROUGH_SQL`, `:106`): the pusher merged that snapshot, so
+   the new blob holds what it pruned. `old.server_cursor` is not used: rows
+   between the old claim and the old snapshot's cursor are not provably merged.
+3. **The guard is a condition of the upsert, never a prior read**
+   (`REPLACE_ALLOWED_SQL`, `:91`, on `ON CONFLICT DO UPDATE ... WHERE`, checked
+   through `changes()`). A stored row may be replaced:
+   - by an **unclaimed** push only when the row carries no claim either — an
+     unclaimed push onto a claimed row is refused, because it never merged the
+     rows that claim pruned (older clients and the Rust core see a failed
+     snapshot push and keep the note pending; nothing is lost). This case is
+     also refused from the stage-1 read, before the R2 put, so a legacy retry
+     costs a D1 read only; the upsert condition stays the authority;
+   - by a **claimed** push only when the row is legacy (no cursor, no claim);
+     or `baseRevision` equals the row's revision (compare-and-swap: the pusher
+     merged exactly that snapshot); or the row's cursor is at or below `C`,
+     whoever signed it (the pusher's feed has read it).
+
+   Nothing else. **A device id alone is no proof of state**: a data dir restored
+   from a backup or cloned to another machine signs with the same id, and a
+   stale own encode (a retry after a lost response, a push racing the
+   oversized-update fallback) can lack content its newer snapshot took through
+   `baseRevision`. Such a push gets the ordinary refusal and the client pulls.
+
+4. **Covered watermark** (`COVERED_WATERMARK_SQL`, `:128`). Starting above the
+   current watermark `W` (0 for a first snapshot, never `currentSeq`), take
+   update rows in `sequence_num` order while each has a non-NULL cursor at or
+   below `C`, and stop at the first that does not. The new watermark is
+   `max(W, last sequence taken)`.
+5. **The prune is in the same D1 batch as the upsert** and runs only when the
+   upsert applied (`COVERED_PRUNE_SCOPE_SQL`, `:142`, conditioned on the row now
+   carrying this push's revision): rows at or below that watermark with
+   `server_cursor IS NOT NULL AND server_cursor <= C`. Nothing else.
+6. **A refused write** (0 changes) is answered `409 CRDT_SNAPSHOT_NOT_COVERED`
+   with `error.blockingCursor` (the stored snapshot's cursor, from a re-read of
+   the row; the refusal wrote nothing, so the read is not a race), or in a
+   batch `{ accepted: false, reason: "CRDT_SNAPSHOT_NOT_COVERED",
+blockingCursor }`. There is no success answer for a refused write: a
+   revision it named would be recorded as held and sent as the next base.
+7. **An ambiguous commit.** D1 can throw after the batch committed (a lost
+   connection, an isolate reset). The rows are re-read: a row naming this
+   write's key committed, keeps its object and is answered as success, and the
+   object it replaced is left an orphan (its key is unknown). Only a write the
+   re-read shows uncommitted loses its object; if the re-read fails too,
+   nothing is deleted.
+
+**Readers racing the delete.** A reader can read the row, then miss the old
+object the next write deleted. `getSnapshot`
+(`apps/sync-server/src/services/crdt.ts:362`) re-reads the row once: a changed
+`blob_key` is fetched, an unchanged one answers a retryable **503**, and only a
+row that is gone answers `snapshot: null`. Never "no snapshot" for an existing
+row: desktop reads that as verified-empty and seeds from markdown. Desktop,
+the Rust core and `CrdtBodyPuller` treat the 503 as a transport failure.
+
+**Why the watermark moves.** A reader of §7.8 whose per-note cursor sits above
+the old watermark only fetches the snapshot when told of it. Pruning rows above
+a watermark that did not move would leave that reader a gap it never
+re-fetches. Moving it over exactly the pruned prefix makes the reader fetch the
+snapshot (which holds those rows) and resume above it.
+
+**NULL-cursor rows** are never pruned by a claimed push, and they stop the
+watermark (rule 4). The feed never served them, so `C` says nothing about them.
+Cost: a note whose pre-`0011` rows sit above its pinned watermark keeps them.
+
+**Clients.**
+
+- **Desktop** claims `C = LAST_CURSOR` only when all of: the legacy body sweep
+  is `done` (§7.17.5), the cursor is above 0, the note holds no tracked
+  unmerged state, and no refusal of this note is outstanding
+  (`SyncEngine.snapshotCoverage`, `apps/desktop/src/main/sync/engine.ts:511`).
+  - `encodeForPush` (`apps/desktop/src/main/sync/crdt-provider.ts:326`) is the
+    only way to produce push bytes: it reads the base revision first (the
+    persisted snapshot watermark, `readPushBase`, `:314`), then the claim and
+    the encode in one synchronous step, because a feed page can land bodies and
+    move `LAST_CURSOR` during any await. A reader that throws claims nothing.
+  - The provider withholds the claim when the doc cannot vouch for itself
+    (`canVouchFor`, `:295`): the store is in-memory, its epoch reconcile threw
+    this session, or the note's doc was created or seeded this session without
+    persisted state (a new note or journal, a markdown seed, a failed store
+    read) or the feed dropped the id as rowless, until a whole-body pull of the
+    note merges (`recordWholeBodyMerged`, `:300`). The push is then the plain
+    unclaimed one.
+  - A flagged note (at the encode or at send time) claims nothing and takes the
+    non-pruning route of §7.13.2.
+  - A refusal (`recordSnapshotRefusal`, `engine.ts:536`) owes the note a pull
+    and keeps it on `/sync/crdt/updates` until `LAST_CURSOR` reaches the
+    refusal's `blockingCursor`, or the held snapshot revision moved off the one
+    the refused push carried (a pull merged a newer snapshot, so the
+    compare-and-swap passes), or, for a refused unclaimed push, until the note
+    can claim at all. The refusal is never met again on the spot.
+  - A note leaving local-only is owed a pull (`oweCrdtPull`, `:545`): the feed
+    skipped its bodies without flagging it. At runtime start every syncing
+    note with a queued full-state row is flagged, without a second pull: its
+    own full-state flush merges the server state first and clears the flag,
+    and a flush that drops the note as no longer syncing clears it too. This
+    covers a note that left local-only while no runtime ran.
+  - A body the feed merges while the doc is compacting is only buffered, so it
+    is reported not landed and the note is owed its whole body
+    (`mergeRemoteUpdate`, `crdt-provider.ts:882`); a compaction that drops a
+    non-empty buffer (its push threw, or no live doc is left) owes the note too.
+  - The data DB and the CRDT store share one random epoch id
+    (`crdtStoreEpoch` in `sync_state`, and a meta key in the store), compared
+    for equality at open (`apps/desktop/src/main/sync/crdt-store-epoch.ts`). A
+    mismatch (a fresh or quarantined store, either side restored or copied
+    apart from the other) deletes `noteBodyLegacySweep`, raises
+    `crdtUnmergedDebt` and writes a new epoch to both, before anything can push
+    from the store; every install from before the epoch runs one vault sweep
+    after upgrading.
+  - An oversized update whose snapshot fallback fails (the note is on the
+    size-capped update route until its pull merges) backs off per note, 2 s
+    doubling to a minute, instead of retrying every second.
+  - The vault sweep takes its note set from the data DB as well as the index
+    cache, so a note missing from a rebuilding index is not skipped by the
+    sweep that licenses claims.
+- **The Rust core** claims its record cursor once `sync.note_body_legacy_pull`
+  is `done`, and only for a document whose server body it has read (a
+  `crdt:<docId>` cursor or a server snapshot row; `note_body_feed::covers_through`).
+  It sends the revision its last push answered, or its last baseline, as
+  `baseRevision`; an owed document is refused before any request; a refusal
+  owes the document (§7.17.4).
+- A client MUST NOT claim a cursor that moved past body rows it was not served:
+  a page without `noteBodies`, a desktop run from cursor 0 (which does not
+  declare `note_body`), and the Rust first sync's refs pass re-arm the legacy
+  pull.
+
+**Old or rolled-back servers.** They ignore the claim and prune by watermark. A
+new client is exactly as safe there as before: a note with tracked unmerged
+state never reaches the snapshot route, and everything else is the pre-#2299
+push. This is why desktop keeps the routing and `crdtUnmergedDebt`: an owed pull
+is tracked only per session, so after a crash only the vault-wide flag protects
+rows below `LAST_CURSOR`, and the client cannot tell which server it talks to.
+Deleting them needs durable per-note owed tracking (with the lowest unmerged
+cursor) first.
+
+**Deployment: 100% at once, no gradual rollout.** A Worker older than this
+change has no `MAX` on the watermark, no upsert condition and no per-write key.
+Running both versions side by side (a gradual deploy) lets an old Worker lower a
+watermark under rows a new one pruned, or overwrite a claimed snapshot. Deploy
+the server change to every Worker at once, and set
+`CRDT_CLAIM_MIN_DESKTOP_VERSION` only after that deploy has settled: before it,
+no claimed row exists for an old Worker to overwrite. Treat a rollback past the
+change as re-opening those overwrites (unset the env var first).
+
+**Limit: rollback-written snapshots.** A Worker rolled back past #2295 upserts
+snapshots without touching `server_cursor` (a stale value, or NULL on insert)
+and without `covers_through`. After the roll-forward such a row reads as legacy
+or as already read, so a claimed push can replace it although the feed never
+served it. This loses no update row (a rollback-era push prunes by the old
+rule), only snapshot-only content, as before #2299. A rollback runbook should
+force a legacy sweep.
+
 ## 7.8 The client's baseline rule
 
-**Normative** (`packages/sync-client/src/pull/crdt-pull.ts:161-166`). Fetch the
+**Normative** (`packages/sync-client/src/pull/crdt-pull.ts:162-164`). Fetch the
 snapshot first when:
 
 - the cursor is `0`; **or**
-- the server advertises a snapshot whose `sequenceNum` is **ahead of the cursor**
-  **and** whose `revision` **differs** from the locally stored one.
+- the server advertises a snapshot whose `revision` **differs** from the
+  locally stored one, whatever its `sequenceNum` (#2299; before it the rule
+  also required the `sequenceNum` to be ahead of the cursor). A claimed push
+  moves the watermark, and a cursor between the old and the new one is
+  otherwise never told. The Rust core applies the same rule
+  (`body_pull.rs::baseline_due`), reading `snapshotMeta` from the single-note
+  route (§7.4.1).
 
 Otherwise pull incrementals from `since = cursor`.
 
 The rule exists precisely because of pruning (§7.7): updates at or below the
 snapshot watermark are answered with silence, so a `since` under the watermark
 MUST take the snapshot first
-(`packages/sync-client/src/pull/crdt-pull.ts:155-160`). **When an old server
+(`packages/sync-client/src/pull/crdt-pull.ts:155-161`). **When an old server
 advertises no `snapshotMeta` at all and the cursor is not 0, the reference does
-not fetch** (`:166`, the `: false` branch).
+not fetch** (`:164`, the `: false` branch).
 
 After a baseline the client stores the snapshot with its sequence number and
-revision (`packages/sync-client/src/pull/crdt-pull.ts:191-196`) and advances the
-cursor only if the snapshot's sequence number is ahead (`:197-199`).
+revision (`packages/sync-client/src/pull/crdt-pull.ts:189-194`) and advances the
+cursor only if the snapshot's sequence number is ahead (`:195-197`).
 
 ## 7.9 Incremental application rules
 
@@ -356,7 +567,7 @@ snapshot endpoint under the §7.13.2 gate.
 that exist).
 
 **Snapshots use the identical packed envelope as updates. There is no separate
-snapshot envelope** (`apps/desktop/src/main/sync/runtime.ts:624` packs
+snapshot envelope** (`apps/desktop/src/main/sync/crdt-snapshot-push.ts:90` packs
 `Y.encodeStateAsUpdate(doc)` through the same
 `apps/desktop/src/main/sync/crdt-encrypt.ts` path).
 
@@ -400,7 +611,7 @@ device until the next vault sweep, up to 15 minutes away
 **Normative.** There is no update count, byte total, or age that triggers
 server-side compaction anywhere in `apps/sync-server/src/services/crdt.ts`. **A
 snapshot exists only because a client wrote one**
-(`apps/sync-server/src/services/crdt.ts:320`), and pruning (§7.7) only happens
+(`apps/sync-server/src/services/crdt-snapshot-write.ts`), and pruning (§7.7) only happens
 once one does.
 
 **Correctness never depends on a snapshot. There is no MUST-snapshot.** A client
@@ -417,8 +628,10 @@ form for a document **only when all of**:
    with **no stopped-at-gap and no unresolvable signer**
    (`packages/sync-client/src/pull/crdt-pull.ts:225-237`; desktop's guard is
    `hasUnmergedRemoteCrdtState`,
-   `apps/desktop/src/main/sync/engine.ts:459-463`, true for any document whose
-   session ended holding debt);
+   `apps/desktop/src/main/sync/engine.ts:477`, true for any document whose
+   session ended holding debt). With `coversThrough` (§7.7.1) the server
+   bounds the prune by what the claim covers, but the condition stands: a
+   server that predates the field ignores it;
 2. the document is neither local-only
    (`apps/desktop/src/main/sync/crdt-provider.ts:559`, `:865-868`) nor purged
    (`:654`);
@@ -427,9 +640,9 @@ form for a document **only when all of**:
 
 **Otherwise the client MUST NOT use the snapshot endpoint.** It MAY push the same
 full state to `POST /sync/crdt/updates`, which prunes nothing
-(`apps/desktop/src/main/sync/runtime.ts:663-670`). The payload either way is
+(`apps/desktop/src/main/sync/crdt-snapshot-push.ts:91`). The payload either way is
 `Y.encodeStateAsUpdate(doc)` in the packed envelope
-(`apps/desktop/src/main/sync/runtime.ts:624`).
+(`apps/desktop/src/main/sync/crdt-snapshot-push.ts:90`).
 
 The gate is pinned by
 `apps/sync-server/src/__tests__/crdt-snapshot-batch.test.ts:188` and
@@ -461,14 +674,17 @@ stored snapshot row is server-originated.**
 A client that pushes a snapshot learns the revision it wrote from the push
 response: both snapshot routes carry it (`apps/sync-server/src/routes/sync.ts:951`
 for the single note, the accepted batch outcome at
-`apps/sync-server/src/services/crdt.ts:410-412`), and it is the same token the
+`apps/sync-server/src/services/crdt-snapshot-write.ts:43`), and it is the same token the
 upsert bound, per push rather than per batch
-(`apps/sync-server/src/services/crdt.ts:335`, `:559`). **#2187**, resolved as the
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:287`). **#2187**, resolved as the
 additive option: the field is new, so old clients reading these bodies through an
 unvalidated cast ignore it.
 
-**A client that does not see a `revision` in the push response MUST store a NULL
-local revision rather than inventing one** — that is the case against an older
+**A client that sees a `revision` in the push response records it** (desktop's
+`recordPushedSnapshot`; the Rust core since #2299), and names it as the
+`baseRevision` of its next claimed push (§7.7.1). **A client that does not see a
+`revision` in the push response MUST store a NULL local revision rather than
+inventing one** — that is the case against an older
 server — because an invented token can collide with a server revision and
 suppress a baseline the client needed. Storing NULL remains correct on any
 server: the `sequenceNum > cursor` guard
@@ -597,13 +813,13 @@ bound; a counter would collide across devices immediately.
 (migration `0011_crdt_server_cursor.sql`) drawn from the same per-user
 `server_cursor_sequence` as `sync_items`. The cursor is reserved **inside the
 batch that commits the row** (`apps/sync-server/src/services/crdt.ts:193`,
-`:457`, `:703`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
+`apps/sync-server/src/services/crdt-snapshot-write.ts:337`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
 above a row that has not committed. Push requests and responses are unchanged,
 and no push response carries the cursor.
 
 - **A snapshot is re-cursored on every write**, insert and conflict alike, like
   a `sync_items` row: the upsert sets `server_cursor = excluded.server_cursor`
-  (`apps/sync-server/src/services/crdt.ts:409-413`). Its `sequence_num` stays
+  (`apps/sync-server/src/services/crdt-snapshot-write.ts:114`). Its `sequence_num` stays
   pinned (§7.6). A reader past the old cursor therefore sees the replaced
   snapshot again at its new cursor.
 - **Rows written before migration `0011` have a NULL cursor** and are never in
@@ -653,7 +869,10 @@ an update `u` is pruned, the document's snapshot row `s` has
    upsert gave `s` a fresh cursor above every row committed before it.
 2. Prune deletes only `sequence_num <= s.sequence_num`, a value read before `s`
    was first written and pinned after (§7.6), so every pruned `u` committed
-   before that upsert.
+   before that upsert. A `coversThrough` push (§7.7.1) prunes only rows with
+   `server_cursor <= C`, and `C` is a cursor the pusher already read from the
+   feed, so those rows too committed before the upsert that reserved `s`'s
+   cursor.
 3. So `u.server_cursor < s.server_cursor`, and `s`'s cursor only grows
    afterwards.
 
@@ -729,10 +948,24 @@ names the documents whose log grew.
   - It also refuses a resident document whose state and delete set would
     change if its log were replayed over it, so it cannot prune a logged
     update the document has not merged.
-  - It cannot close the race with the server. An update another device
-    commits after the encode is pruned if the server's watermark covers it,
-    which is the §7.6 assumption every client shares. `SnapshotPusher` has no
+  - It cannot close the race with the server by itself. An update another
+    device commits after the encode is pruned if the server's watermark
+    covers it, which is the §7.6 assumption. `SnapshotPusher` has no
     production caller yet.
+  - **`coversThrough` (#2299, §7.7.1)** closes that race on a server that
+    understands it. The push reads the record cursor together with its debt
+    check, before the log check and the encode, and sends it once
+    `sync.note_body_legacy_pull` is `done`, for a document whose server body
+    it has read (`note_body_feed::covers_through`), with the revision of its
+    stored server snapshot as `baseRevision`. The push records the revision the
+    server answers (§7.13.4).
+    A `409 CRDT_SNAPSHOT_NOT_COVERED` owes the document and answers
+    `Refused(UnmergedRemoteState)`, so the next push is refused locally until
+    a pull settles the debt; that pull takes the refusing snapshot, whose
+    revision is not held (§7.8). A page without `noteBodies` that moves the
+    record cursor (a plain pull, the CLI) and the first sync's refs pass
+    delete the legacy key, so no cursor is claimed until a page that serves
+    bodies owes every held document again.
 - **The body step never blocks the push**
   (`crates/memry-core/src/sync/body_step.rs`).
   - It runs the per-note pull for the due documents within a budget of 200
@@ -761,11 +994,14 @@ names the documents whose log grew.
 **Declaration.** Desktop declares `note_body` only on the `GET /sync/changes`
 of a pull run that starts past cursor 0
 (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:396`,
-`apps/desktop/src/main/sync/http-client.ts:23`; chapter 05 §5.3). A run from
+`apps/desktop/src/main/sync/http-client.ts:27`; chapter 05 §5.3). A run from
 cursor 0, which is a bootstrap or any reset of the cursor to 0, keeps the
 500-row record pages. Every note and journal record it applies pulls its whole
 body (`applyCrdtBatch`), and the legacy sweep below covers the rest. A page of
-a run that did not declare is read as a page without bodies.
+a run that did not declare is read as a page without bodies: it deletes the
+legacy-sweep key and discards a queued sweep, because the run moves
+`LAST_CURSOR` past body rows it never serves, and a snapshot claim of that
+cursor (§7.7.1) must wait for a new sweep (#2299).
 
 Per page of a declaring run
 (`apps/desktop/src/main/sync/engine/note-body-feed.ts`, class `NoteBodyFeed`):
@@ -837,7 +1073,7 @@ Per page of a declaring run
     and the markdown write-back see it.
   - An update that changed the doc is also stored explicitly. The landing
     awaits that write and rejects if it fails
-    (`apps/desktop/src/main/sync/crdt-provider.ts:718`). An update that
+    (`apps/desktop/src/main/sync/crdt-provider.ts:823`). An update that
     changed nothing, such as this device's own echo, is not stored again.
 
   Nothing else is ever stored. Bytes the store holds but no live doc merged
@@ -855,7 +1091,7 @@ Per page of a declaring run
   - **A body the doc cannot integrate (pending structs):** the note is owed a
     whole-body pull.
   - **No store at all (in-memory mode):** nothing is fetched, and every entry
-    that is read is owed to the CRDT pull (`note-body-feed.ts:148`).
+    that is read is owed to the CRDT pull (`note-body-feed.ts:155`).
 
 - **Every path that applies a note or journal record pulls its whole body.**
   That is how a dropped body arrives. The paths are:
@@ -871,7 +1107,7 @@ Per page of a declaring run
 
 - **No id without a row is ever owed or pulled.** Two places keep this:
   - `NoteBodyFeed` ledgers and owes only a note that still has a row when the
-    debt is recorded (`note-body-feed.ts:255`).
+    debt is recorded (`note-body-feed.ts:262`).
   - A queued pull, from the pending pulls or the paced sweep, drops an id with
     no row before it opens a doc and clears its flag
     (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:1391`). A note
@@ -886,7 +1122,7 @@ Per page of a declaring run
   (`apps/desktop/src/main/sync/engine/item-recovery.ts:193`). A failed heal
   waits out the cooldown again.
   - An id with no row, or a local-only note, is resolved without a pull
-    (`note-body-feed.ts:235`).
+    (`note-body-feed.ts:242`).
   - A heal that still left an update unverified keeps the entry.
   - A `note_body:<id>` entry is its own ledger entry (kind `envelope`), apart
     from the note record's own `blob_missing` or `pending_intent` entry.
@@ -901,7 +1137,7 @@ Per page of a declaring run
     owed is not recorded, since the CRDT pull would then skip the baseline the
     note is owed;
   - the revision the server returns for a snapshot this device pushed
-    (`crdt-provider.ts:742`; `apps/desktop/src/main/sync/runtime.ts:681`,
+    (`crdt-provider.ts:847`; `apps/desktop/src/main/sync/crdt-snapshot-push.ts:110`,
     `apps/desktop/src/main/sync/crdt-snapshot-batch.ts:162`). This device's own
     snapshot then comes back through the feed as a skipped entry, not a
     download.
@@ -915,21 +1151,25 @@ Per page of a declaring run
   and rows below the device cursor at first negotiation were never served as
   bodies.
   - The first page that carries a `noteBodies` array sets the sync-state key
-    `noteBodyLegacySweep` to `pending` (`note-body-feed.ts:267`).
+    `noteBodyLegacySweep` to `pending` (`note-body-feed.ts:274`).
   - A full sync whose pull delivered (ran to `hasMore: false` without a refused
     page) then forces the vault-wide sweep
-    (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:725`).
+    (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:738`).
   - Only that sweep's drain, with nothing owed back, records `done`, and only
-    if the key still reads `pending` (`full-sync-runner.ts:492`). An
+    if the key still reads `pending` (`full-sync-runner.ts:505`). An
     interrupted or partly failed sweep stays `pending`.
   - A page without `noteBodies` while the key is set means the server stopped
     serving bodies (§7.17.3). The page deletes the key and discards the sweep
-    this engine queued (`full-sync-runner.ts:515`), so that drain records
+    this engine queued (`full-sync-runner.ts:528`), so that drain records
     nothing. The next negotiated page forces a new sweep.
   - A device that was offline for the whole of a server rollback never sees a
     page without `noteBodies`. It cannot tell that the rollback wrote rows with
     no cursor, so its `done` stands. Detecting this needs a server signal, such
     as a feed epoch, which this part does not have.
+  - `done` is also what lets a snapshot push claim `coversThrough =
+LAST_CURSOR` (§7.7.1): only then has every body row below the cursor
+    either landed or left its note flagged. A CRDT store whose epoch does not
+    match the data DB's deletes the key too (§7.7.1).
 - **Bootstrap after `applyCrdtBatch` goes.** A run from cursor 0 gets bodies
   only through the records it applies and the sweeps. Once #2297 part b
   removes `applyCrdtBatch` and the sweeps, it MUST give that run another body

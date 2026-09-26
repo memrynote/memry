@@ -58,7 +58,13 @@ export async function landNoteBody(
       deps.onMissingBase(noteId)
       return false
     }
-    for (const update of updates) await provider.mergeRemoteUpdate(noteId, update)
+    for (const update of updates) {
+      // A doc compacting only buffers the update (#2299): not landed.
+      if (!(await provider.mergeRemoteUpdate(noteId, update))) {
+        deps.onMissingBase(noteId)
+        return false
+      }
+    }
     // Pending structs mean the doc lacks what these updates build on. The
     // write-back only ever sees what integrated, so the whole body is fetched.
     const store = provider.getDoc(noteId)?.store
