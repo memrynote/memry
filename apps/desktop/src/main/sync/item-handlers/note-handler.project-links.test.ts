@@ -292,6 +292,19 @@ describe('noteHandler.applyUpsert — project links on a synced update', () => {
       expect(dataDb.db.select().from(syncIntents).all()).toEqual([])
     })
 
+    it('an acknowledged push without the note replaces the payload it last applied', () => {
+      seedProject('proj-acked')
+      applyProject('proj-acked', { 'device-A': 2 }, ['n1'])
+      // This device then pushed the project from its own rows, which lack n1.
+      projectHandler.markPushSynced(ctx.db, 'proj-acked')
+
+      applyNoteNamingBeta({ 'device-A': 1, 'device-B': 1 })
+
+      expect(mockLocalMutation.mock.calls).toEqual([
+        ['project', 'enqueueUpdate', 'proj-acked', [['links']]]
+      ])
+    })
+
     it('converges: a peer that derived the same link pushes nothing more here', () => {
       seedProject('proj-peer')
       applyProject('proj-peer', { 'device-A': 2 }, [])
