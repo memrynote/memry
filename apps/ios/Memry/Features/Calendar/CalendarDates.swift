@@ -1,4 +1,5 @@
 import Foundation
+import os
 import MemryCore
 
 // Spec 007 CL015. The local-calendar arithmetic the views share, in the
@@ -33,7 +34,43 @@ enum CalendarDates {
 
     /// An ISO instant (with or without fractions or an offset).
     static func date(_ iso: String) -> Date? {
-        isoFormatter.date(from: iso) ?? isoPlain.date(from: iso)
+        utcInstant(iso) ?? isoFormatter.date(from: iso) ?? isoPlain.date(from: iso)
+    }
+
+    /// The core's own shape, `YYYY-MM-DDTHH:MM:SS[.sss]Z`, by arithmetic.
+    /// The grid reads every item's days on each pass; a formatter parse per
+    /// call cost ~200 ms for a week of 200 items (CL092), this costs none.
+    private static func utcInstant(_ iso: String) -> Date? {
+        let bytes = Array(iso.utf8)
+        guard bytes.count == 20 || bytes.count == 24, bytes.last == UInt8(ascii: "Z"),
+              bytes[4] == UInt8(ascii: "-"), bytes[7] == UInt8(ascii: "-"), bytes[10] == UInt8(ascii: "T"),
+              bytes[13] == UInt8(ascii: ":"), bytes[16] == UInt8(ascii: ":") else { return nil }
+        func number(_ from: Int, _ count: Int) -> Int? {
+            var value = 0
+            for byte in bytes[from ..< from + count] {
+                guard (UInt8(ascii: "0") ... UInt8(ascii: "9")).contains(byte) else { return nil }
+                value = value * 10 + Int(byte - UInt8(ascii: "0"))
+            }
+            return value
+        }
+        guard let year = number(0, 4), let month = number(5, 2), let day = number(8, 2),
+              let hour = number(11, 2), let minute = number(14, 2), let second = number(17, 2),
+              (1 ... 12).contains(month), (1 ... 31).contains(day), hour < 24, minute < 60, second < 61 else { return nil }
+        var millis = 0
+        if bytes.count == 24 {
+            guard bytes[19] == UInt8(ascii: "."), let fraction = number(20, 3) else { return nil }
+            millis = fraction
+        }
+        // Days from civil (Howard Hinnant), proleptic Gregorian.
+        let y = month <= 2 ? year - 1 : year
+        let era = (y >= 0 ? y : y - 399) / 400
+        let yoe = y - era * 400
+        let mp = (month + 9) % 12
+        let doy = (153 * mp + 2) / 5 + day - 1
+        let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+        let days = era * 146_097 + doe - 719_468
+        let seconds = days * 86_400 + hour * 3600 + minute * 60 + second
+        return Date(timeIntervalSince1970: TimeInterval(seconds) + TimeInterval(millis) / 1000)
     }
 
     /// `toLocalDateString`.
@@ -99,7 +136,34 @@ enum CalendarDates {
 
     // MARK: Spans (`date-utils.ts`)
 
-    static func spanStart(_ item: CalendarItem) -> String {
+    private struct SpanKey: Hashable {
+        let start: String
+        let end: String?
+        let allDay: Bool
+        let zone: String
+    }
+
+    /// Each item's first and last day, remembered: the grid, strips, month and
+    /// year ask for them per day per item on every pass (CL092).
+    private static let spanCache = OSAllocatedUnfairLock(initialState: [SpanKey: [String]]())
+
+    private static func span(_ item: CalendarItem) -> [String] {
+        let key = SpanKey(start: item.startAt, end: item.endAt, allDay: item.isAllDay, zone: TimeZone.current.identifier)
+        if let hit = spanCache.withLock({ $0[key] }) { return hit }
+        let value = [computeSpanStart(item), computeSpanEnd(item)]
+        spanCache.withLock { cache in
+            if cache.count > 4096 { cache.removeAll(keepingCapacity: true) }
+            cache[key] = value
+        }
+        return value
+    }
+
+    static func spanStart(_ item: CalendarItem) -> String { span(item)[0] }
+
+    /// `spanEndDateKey`: an all-day or midnight end is exclusive.
+    static func spanEnd(_ item: CalendarItem) -> String { span(item)[1] }
+
+    private static func computeSpanStart(_ item: CalendarItem) -> String {
         if isUtcAllDay(item) { return String(item.startAt.prefix(10)) }
         return date(item.startAt).map(key) ?? String(item.startAt.prefix(10))
     }
@@ -116,9 +180,8 @@ enum CalendarDates {
         return startsAtUtcMidnight && endsAtUtcMidnight && TimeZone.current.secondsFromGMT(for: start) != 0
     }
 
-    /// `spanEndDateKey`: an all-day or midnight end is exclusive.
-    static func spanEnd(_ item: CalendarItem) -> String {
-        let startKey = spanStart(item)
+    private static func computeSpanEnd(_ item: CalendarItem) -> String {
+        let startKey = computeSpanStart(item)
         guard let endText = item.endAt, let end = date(endText) else { return startKey }
         if isUtcAllDay(item) {
             let last = String(CalendarDates.iso(end.addingTimeInterval(-1)).prefix(10))

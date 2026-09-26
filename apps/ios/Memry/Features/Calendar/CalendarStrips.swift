@@ -36,10 +36,15 @@ struct CalendarWeekStrip: View {
         return VStack(spacing: Tokens.Space.tight) {
             Text(CalendarDates.start(of: day).formatted(.dateTime.weekday(.narrow)))
                 .font(Tokens.Calendar.weekdayLetter.font)
+                // Seven columns: AX sizes shrink to fit rather than wrap (CL090).
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(isToday ? Tokens.Text.tint.color : Tokens.Text.tertiary.color)
             Text(CalendarDates.start(of: day).formatted(.dateTime.day()))
                 .font(Tokens.Typography.body.font.weight(isToday || isSelected ? .semibold : .regular))
                 .foregroundStyle(numberColor(isToday: isToday, isSelected: isSelected, dim: dim))
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
                 .frame(width: Tokens.Calendar.dayCircle, height: Tokens.Calendar.dayCircle)
                 .background {
                     if isToday {
@@ -99,6 +104,8 @@ struct CalendarAllDayStrip: View {
     let items: [CalendarItem]
     let now: Date
     let actions: CalendarGridActions
+    /// Rows grow with Dynamic Type so AX text is not clipped (CL090).
+    @ScaledMetric(relativeTo: .footnote) private var rowHeight: CGFloat = 24
 
     var body: some View {
         let spans = items.filter { $0.isSpanning && CalendarDates.covers($0, day) }
@@ -106,6 +113,8 @@ struct CalendarAllDayStrip: View {
             HStack(alignment: .top, spacing: 0) {
                 Text(CalendarCopy.allDayLower)
                     .font(Tokens.Calendar.gutter.font)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
                     .foregroundStyle(Tokens.Text.tertiary.color)
                     .frame(width: Tokens.Calendar.gutterWidth - Tokens.Space.small, alignment: .trailing)
                     .padding(.trailing, Tokens.Space.small)
@@ -120,7 +129,7 @@ struct CalendarAllDayStrip: View {
                             spanLabel: label(item),
                             showsTime: CalendarDates.spanStart(item) == day
                         )
-                        .frame(height: 24)
+                        .frame(height: rowHeight)
                         .onTapGesture { actions.open(item) }
                         .calendarItemMenu(actions.contextMenu, item: item)
                         .accessibilityElement(children: .ignore)
@@ -130,7 +139,7 @@ struct CalendarAllDayStrip: View {
                     }
                 }
                 }
-                .frame(maxHeight: spans.count > 3 ? 3 * 27 + 12 : nil)
+                .frame(maxHeight: spans.count > 3 ? 3 * (rowHeight + 3) + 12 : nil)
                 .fixedSize(horizontal: false, vertical: spans.count <= 3)
                 .scrollBounceBehavior(.basedOnSize)
             }

@@ -118,7 +118,10 @@ struct CalendarWeekView: View {
             }
             if typeSize.isAccessibilitySize {
                 // Seven columns cannot hold AX text: the week reads as a list.
-                CalendarAgendaList(store: store, days: days, items: items, actions: actions)
+                ScrollView {
+                    CalendarAgendaList(store: store, days: days, items: items, actions: actions)
+                }
+                .refreshable { await store.sync() }
             } else {
                 CalendarWeekSpanRow(days: days, items: items, now: store.clock(), actions: actions)
                 ScrollViewReader { proxy in

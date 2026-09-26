@@ -130,7 +130,8 @@ final class CalendarStore {
         Task { await refreshFeeds() }
     }
 
-    /// Loads a window unless it is cached; a cached one refreshes behind.
+    /// Loads a window unless it is cached; paging back to a cached one only
+    /// marks it recent (a sync pass or a write refreshes every cached window).
     func ensure(_ window: CalendarWindow) async {
         if windows[window] == nil { await fetch(window) } else { touch(window) }
     }
@@ -158,6 +159,7 @@ final class CalendarStore {
                 Log.core.fault("calendar range repeated a projection id", .count(merged.count - unique.count))
             }
             windows[window] = unique
+            Log.core.debug("a calendar window was read", .count(unique.count))
             touch(window)
             failure = nil
         } catch {

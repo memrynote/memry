@@ -74,8 +74,13 @@ final class SettingsUITests: XCTestCase {
         if !tags.waitForExistence(timeout: 3) {
             app.buttons["more.settings"].firstMatch.tap()
         }
-        XCTAssertTrue(tags.waitForExistence(timeout: 10))
-        if !tags.isHittable { app.collectionViews.firstMatch.swipeUp() }
+        // A lazy list: Tags may sit below the fold and not be in the tree yet.
+        var found = tags.waitForExistence(timeout: 5)
+        for _ in 0 ..< 4 where !found || !tags.isHittable {
+            app.collectionViews.firstMatch.swipeUp()
+            found = tags.waitForExistence(timeout: 2)
+        }
+        XCTAssertTrue(found)
         tags.tap()
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5))
@@ -105,7 +110,10 @@ final class SettingsUITests: XCTestCase {
     private func openVault() throws {
         app.launch()
         let more = app.buttons["More"].firstMatch
-        let vault = app.staticTexts["MemryNote"]
+        // The shared staging account can hold several vaults with one name;
+        // `TEST_RUNNER_MEMRY_UI_VAULT` picks the one this run uses.
+        let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
+        let vault = app.staticTexts[name].firstMatch
         let signIn = app.staticTexts["Sign in to Memry"]
         let deadline = Date().addingTimeInterval(90)
         while Date() < deadline, !more.exists {

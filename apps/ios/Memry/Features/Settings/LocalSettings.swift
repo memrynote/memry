@@ -108,10 +108,12 @@ final class LocalSettings {
         AppFeature.allCases.filter { SettingsFeatureGates.isShipped($0) && isOn($0) }
     }
 
-    /// - Returns: `false` when the change was refused (the last feature on).
+    /// - Returns: `false` when the change was refused (the last tab on).
+    /// Calendar sits under More, not in the tab bar, so it never keeps a tab
+    /// alive and does not count here (spec 007 CL022).
     @discardableResult
     func set(_ feature: AppFeature, on: Bool) -> Bool {
-        if !on, shippedOn == [feature] { return false }
+        if !on, feature != .calendar, shippedOn.filter({ $0 != .calendar }) == [feature] { return false }
         if on { enabledFeatures.insert(feature) } else { enabledFeatures.remove(feature) }
         defaults.set(on, forKey: Key.feature(feature))
         return true

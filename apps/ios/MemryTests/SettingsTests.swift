@@ -90,7 +90,9 @@ struct SettingsTests {
     @Test func the_last_feature_that_is_on_refuses_to_turn_off() throws {
         let defaults = try #require(UserDefaults(suiteName: "settings-\(UUID().uuidString)"))
         let local = LocalSettings(defaults: defaults)
-        #expect(local.shippedOn == [.inbox, .journal, .tasks])
+        #expect(local.shippedOn == [.inbox, .journal, .tasks, .calendar])
+        // Calendar lives under More: it turns off freely and keeps no tab alive.
+        #expect(local.set(.calendar, on: false))
         #expect(local.set(.inbox, on: false))
         #expect(local.set(.journal, on: false))
         #expect(local.set(.tasks, on: false) == false)

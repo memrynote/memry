@@ -72,6 +72,9 @@ struct CalendarTimeGrid: View {
                 HStack(alignment: .top, spacing: 0) {
                     Text(hour == 0 ? "" : Self.hourLabel(hour))
                         .font(Tokens.Calendar.gutter.font)
+                        // A fixed gutter: AX sizes shrink the label, never wrap it.
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.4)
                         .foregroundStyle(Tokens.Text.tertiary.color)
                         .frame(width: Tokens.Calendar.gutterWidth - Tokens.Space.small, alignment: .trailing)
                         .padding(.trailing, Tokens.Space.small)

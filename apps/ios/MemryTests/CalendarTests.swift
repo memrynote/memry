@@ -152,6 +152,53 @@ struct CalendarLayoutTests {
         #expect(byId["d"]! == (0, 1))
     }
 
+    /// CL092: a week of 200 timed items lays out (per-day lanes, the span
+    /// rows) inside one frame.
+    @Test func a_week_of_200_items_lays_out_inside_a_frame() {
+        let week = (0 ..< 7).map { CalendarDates.addDays("2026-09-28", $0) }
+        let items = (0 ..< 200).map { index -> CalendarItem in
+            let day = week[index % 7]
+            // Starts 05:00-15:59 UTC so every item stays on its local day
+            // east or west of UTC by up to 8 hours.
+            let minute = (index * 37) % (11 * 60)
+            let start = String(format: "%@T%02d:%02d:00.000Z", day, 5 + minute / 60, minute % 60)
+            let endMinute = minute + 45
+            let end = String(format: "%@T%02d:%02d:00.000Z", day, 5 + endMinute / 60, endMinute % 60)
+            return item("load\(index)", start: start, end: end)
+        }
+        let clock = ContinuousClock()
+        var laid = 0
+        func pass() -> Duration {
+            clock.measure {
+                laid = 0
+                for day in week {
+                    let dayItems = items.filter { !$0.isSpanning && CalendarDates.covers($0, day) }
+                    laid += CalendarLayout.lanes(dayItems, start: \.startDate, end: \.endDate).count
+                }
+                _ = CalendarLayout.spanRows(items.filter(\.isSpanning), week: week, key: \.projectionId,
+                                            first: CalendarDates.spanStart, last: CalendarDates.spanEnd)
+            }
+        }
+        let cold = pass()
+        // Steady state is what paging and scrolling see; the best of five
+        // keeps a parallel test run's scheduling out of the number.
+        let best = (0 ..< 5).map { _ in pass() }.min() ?? cold
+        print("CL092 week layout: \(laid) items, cold \(cold), best warm \(best)")
+        #expect(laid == 200)
+        #expect(best < .milliseconds(16))
+    }
+
+    @Test func the_fast_instant_reader_agrees_with_the_formatter() {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        for text in ["2026-09-28T07:00:00.000Z", "2024-02-29T23:59:59.999Z", "1999-12-31T00:00:00.000Z", "2026-03-29T01:30:00.500Z"] {
+            #expect(CalendarDates.date(text) == formatter.date(from: text), "\(text)")
+        }
+        #expect(CalendarDates.date("2026-09-28T07:00:00Z") == Date(timeIntervalSince1970: 1_790_578_800))
+        #expect(CalendarDates.date("2026-09-28T10:00:00+03:00") == Date(timeIntervalSince1970: 1_790_578_800))
+        #expect(CalendarDates.date("2026-13-28T07:00:00.000Z") == nil)
+    }
+
     @Test func spans_clip_to_the_week_and_stack_rows() {
         let week = (0 ..< 7).map { CalendarDates.addDays("2026-09-21", $0) }
         let spans = [("long", "2026-09-18", "2026-09-23"), ("short", "2026-09-22", "2026-09-22"), ("next", "2026-09-26", "2026-09-30")]
