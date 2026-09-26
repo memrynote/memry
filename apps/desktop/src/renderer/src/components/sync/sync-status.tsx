@@ -38,8 +38,12 @@ type HeldBindingStatus = Extract<
   'local-only' | 'foreign' | 'needs-decision'
 >
 
-function isHeldBinding(status: VaultBindingState['status']): status is HeldBindingStatus {
+/** The open vault's binding when it keeps sync off, else null. */
+function useHeldVaultBinding(): HeldBindingStatus | null {
+  const status = useSyncOptional()?.vaultBinding.status
   return status === 'local-only' || status === 'foreign' || status === 'needs-decision'
+    ? status
+    : null
 }
 
 /**
@@ -83,6 +87,21 @@ function VaultBindingPanel({ status }: { status: HeldBindingStatus }): React.JSX
   )
 }
 
+/** Why sync is off: the vault's binding wins over the plan, which is account-wide. */
+function SyncOffPanel({
+  binding,
+  onOpenSettings
+}: {
+  binding: HeldBindingStatus | null
+  onOpenSettings: () => void
+}): React.JSX.Element {
+  return binding ? (
+    <VaultBindingPanel status={binding} />
+  ) : (
+    <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
+  )
+}
+
 /**
  * Footer-dock glyph: one cloud whose corner dot carries the state, so the dock
  * never flips between five unrelated icons. Syncing swaps to the spinning arrows
@@ -90,8 +109,10 @@ function VaultBindingPanel({ status }: { status: HeldBindingStatus }): React.JSX
  */
 function dockGlyph(
   status: string,
-  hasIssues: boolean
+  hasIssues: boolean,
+  bindingHeld: boolean
 ): { Icon: AppIcon; badge: DockBadgeTone | null; spin: boolean } {
+  if (bindingHeld) return { Icon: CloudOff, badge: null, spin: false }
   if (hasIssues || status === 'error') return { Icon: Cloud, badge: 'destructive', spin: false }
   switch (status) {
     case 'syncing':
@@ -144,11 +165,8 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
   // No plan, no sync runtime — nothing here is retryable and nothing failed.
   // The popover sells the upgrade instead of showing a dead Retry (#2201).
   const isLocalOnly = status === 'local_only'
-  const bindingStatus = useSyncOptional()?.vaultBinding.status ?? 'bound'
-  const heldBinding = isHeldBinding(bindingStatus) ? bindingStatus : null
-  const glyph = heldBinding
-    ? { Icon: CloudOff, badge: null, spin: false }
-    : dockGlyph(status, hasIssues)
+  const heldBinding = useHeldVaultBinding()
+  const glyph = dockGlyph(status, hasIssues, heldBinding !== null)
 
   const handleSync = async (): Promise<void> => {
     try {
@@ -299,10 +317,8 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
 
         {/* Actions, or the upgrade path when there is no plan to act on */}
         <Separator />
-        {heldBinding ? (
-          <VaultBindingPanel status={heldBinding} />
-        ) : isLocalOnly ? (
-          <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
+        {heldBinding || isLocalOnly ? (
+          <SyncOffPanel binding={heldBinding} onOpenSettings={onOpenSettings} />
         ) : (
           <div className="flex items-center gap-1 px-2 py-1.5">
             <Button

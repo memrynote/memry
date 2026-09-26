@@ -40,6 +40,10 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
   applyOpenVaultBinding,
   bindVaultForSync,
+  cancelBindingRetry,
+  fetchAccountVaults,
+  getSignedInUserId,
+  scheduleBindingRetry,
   getVaultBindingState,
   resetVaultBindingState,
   decideVaultBinding,
@@ -347,5 +351,45 @@ describe('applyOpenVaultBinding', () => {
 
     await expect(applyOpenVaultBinding(db)).resolves.toBe('unknown')
     expect(readVaultAccountBinding(db)).toBeNull()
+  })
+})
+
+describe('session and retry helpers', () => {
+  const tokenFor = (payload: object): string =>
+    ['{"alg":"none"}', JSON.stringify(payload)]
+      .map((part) => Buffer.from(part).toString('base64url'))
+      .join('.') + '.sig'
+
+  it('reads the account id from the refresh token when the access token is unusable', async () => {
+    vi.mocked(retrieveToken)
+      .mockResolvedValueOnce('not-a-jwt')
+      .mockResolvedValueOnce(tokenFor({ sub: 'user-b' }))
+    await expect(getSignedInUserId()).resolves.toBe('user-b')
+
+    vi.mocked(retrieveToken).mockResolvedValue(null)
+    await expect(getSignedInUserId()).resolves.toBeNull()
+  })
+
+  it('has no account vault list without an access token', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValueOnce(null)
+    await expect(fetchAccountVaults()).resolves.toBeNull()
+  })
+
+  it('schedules one retry at a time and cancels it', () => {
+    vi.useFakeTimers()
+    try {
+      const start = vi.fn(async () => null)
+      scheduleBindingRetry(start)
+      scheduleBindingRetry(start)
+      vi.advanceTimersByTime(60_000)
+      expect(start).toHaveBeenCalledTimes(1)
+
+      scheduleBindingRetry(start)
+      cancelBindingRetry()
+      vi.advanceTimersByTime(60_000)
+      expect(start).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
