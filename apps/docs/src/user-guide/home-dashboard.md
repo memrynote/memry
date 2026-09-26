@@ -27,7 +27,7 @@ One thing stays per-device on purpose: **which board is currently open**. Each m
 
 Two details worth knowing:
 
-- On a device that is signed in, Home waits for the first sync to finish before it seeds a starter board — otherwise every new machine would add one. If the server can't be reached it stops waiting after a few seconds and gives you a board anyway.
+- On a device that is signed in, Home waits until the first download from your account has finished before it seeds a starter board, so a new machine shows the boards you already have instead of adding one. Uploading this machine's own changes does not count. While that first download is still running, Home keeps waiting. If the server can't be reached it stops waiting after a few seconds and gives you a board anyway.
 - Boards you already had before this shipped are not lost. The first sync after upgrading uploads them, so nothing is orphaned on the machine that made them.
 
 If two devices reorder boards at the same time, the last write wins for position — both devices still end up showing the same order as each other, just not necessarily the order either one intended. Redrag once and it settles.
