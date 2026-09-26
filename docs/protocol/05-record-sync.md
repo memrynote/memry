@@ -119,6 +119,16 @@ syncs again. One clock-less note did exactly that to a paid vault (#2320).
 **Normative.** `{ accepted: string[], rejected: [{id, reason}], serverTime,
 maxCursor }` (`packages/contracts/src/sync-api.ts:402-412`).
 
+**`maxCursor` MUST NOT be used to advance the pull cursor.** It is the cursor
+of this device's own highest accepted row. Peer rows at lower cursors may still
+be unpulled, and every read is `server_cursor > ?`, so advancing to `maxCursor`
+skips them for good (#2283). The pull cursor moves only as §5.11 says.
+
+**The server assigns cursors inside the transaction that commits the rows**
+(`apps/sync-server/src/services/cursor.ts`, #2282). A reader can therefore
+never observe a cursor above a range whose rows have not committed yet, which is
+what makes paging by `server_cursor > ?` lossless.
+
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
 sending** (`apps/mobile/src/sync/outbox.ts:582-597`, rationale at `:584-589`).

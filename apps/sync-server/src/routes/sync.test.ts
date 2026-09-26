@@ -835,20 +835,20 @@ describe('sync routes', () => {
       expect(json.rejected).toEqual([{ id: VALID_UUID, reason: 'VERSION_CONFLICT' }])
     })
 
-    it('should update device cursor when items are accepted', async () => {
-      // #given
+    // #2283: last_cursor_seen records how far the device has PULLED. Its own
+    // accepted rows say nothing about peer rows below them.
+    it('should leave the device pull cursor alone when items are accepted', async () => {
       const body = { items: [makePushItem()] }
 
-      // #when
-      await app.request(
+      const res = await app.request(
         'http://localhost/sync/push',
         jsonPost('/sync/push', body),
         env,
         executionCtx
       )
 
-      // #then
-      expect(updateDeviceCursor).toHaveBeenCalledWith(env.DB, 'device-1', 'user-1', 1, 'vault-1')
+      expect(res.status).toBe(200)
+      expect(updateDeviceCursor).not.toHaveBeenCalled()
     })
 
     it('should return 400 for empty items array', async () => {

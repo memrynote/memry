@@ -10,10 +10,6 @@ vi.mock('./blob', async (importOriginal) => ({
   getBlob: vi.fn()
 }))
 
-vi.mock('./cursor', () => ({
-  allocateCursorRange: vi.fn()
-}))
-
 vi.mock('./quota', () => ({
   adjustStorageUsed: vi.fn().mockResolvedValue(undefined),
   checkQuota: vi.fn().mockResolvedValue(undefined),
@@ -60,7 +56,6 @@ import {
 import { getDevice } from './device'
 import { getBlob, putBlob } from './blob'
 import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
-import { allocateCursorRange } from './cursor'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
 const mockedVerifyEd25519 = vi.mocked(verifyEd25519)
@@ -69,20 +64,21 @@ const mockedEncodeSignaturePayload = vi.mocked(encodeSignaturePayload)
 const mockedCheckQuota = vi.mocked(checkQuota)
 const mockedReserveStorage = vi.mocked(reserveStorage)
 const mockedAdjustStorageUsed = vi.mocked(adjustStorageUsed)
-const mockedAllocateCursorRange = vi.mocked(allocateCursorRange)
-
-/**
- * Arms the cursor mock as an incrementing sequence: each allocation hands out
- * the next contiguous range, like the real per-user sequence row does.
- */
+let cursorSequenceTop = 41
 const armCursorSequence = (start = 42): void => {
-  let next = start
-  mockedAllocateCursorRange.mockImplementation(async (_db, _userId, count: number) => {
-    const first = next
-    next += count
-    return { first, last: next - 1 }
-  })
+  cursorSequenceTop = start - 1
 }
+const answerCursorReservation = (binds: unknown[]) => {
+  cursorSequenceTop += binds[0] as number
+  return { success: true, results: [{ current_cursor: cursorSequenceTop }] }
+}
+const isCursorReservation = (sql: string): boolean => sql.includes('UPDATE server_cursor_sequence')
+
+const reservedCursorCounts = (batches: RecordedPushStatement[][]): number[] =>
+  batches
+    .flat()
+    .filter((stmt) => isCursorReservation(stmt.sql))
+    .map((stmt) => stmt.binds[0] as number)
 
 // ============================================================================
 // D1 mock helpers
@@ -168,6 +164,7 @@ const createPushDb = (
         return { success: true, results: rows }
       }
       if (options.writeError) throw options.writeError
+      if (isCursorReservation(stmt.sql)) return answerCursorReservation(stmt.binds)
       return { success: true, results: [] }
     })
   })
@@ -1822,7 +1819,7 @@ describe('processRecordPushBatch', () => {
 
   it('should keep maxCursor at zero when accepted items do not return cursors', async () => {
     // #given
-    mockedAllocateCursorRange.mockResolvedValueOnce({ first: 0, last: 0 })
+    armCursorSequence(0)
     const { db } = createPushDb()
 
     // #when
@@ -1841,7 +1838,7 @@ describe('processRecordPushBatch', () => {
 
   it('should allocate ONE contiguous cursor range and assign it in item order', async () => {
     // #given
-    const { db } = createPushDb()
+    const { db, batches } = createPushDb()
     const items = [
       createValidPushItem({ id: 'item-a' }),
       createValidPushItem({ id: 'item-b' }),
@@ -1858,8 +1855,7 @@ describe('processRecordPushBatch', () => {
     )
 
     // #then — one allocation for the whole batch, not one per item
-    expect(mockedAllocateCursorRange).toHaveBeenCalledTimes(1)
-    expect(mockedAllocateCursorRange).toHaveBeenCalledWith(db, 'user-1', 3)
+    expect(reservedCursorCounts(batches)).toEqual([3])
     expect(result.outcomes.map((outcome) => outcome.serverCursor)).toEqual([42, 43, 44])
     expect(result.maxCursor).toBe(44)
   })
@@ -1937,7 +1933,7 @@ describe('processRecordPushBatch', () => {
   it('should reject every item with INTERNAL_ERROR when the device lookup itself fails', async () => {
     // #given — an infrastructure error from the device read, not a "not found"
     mockedGetDevice.mockRejectedValueOnce(new Error('D1 unavailable'))
-    const { db } = createPushDb()
+    const { db, batches } = createPushDb()
     const items = [createValidPushItem({ id: 'item-a' }), createValidPushItem({ id: 'item-b' })]
 
     // #when
@@ -1956,7 +1952,7 @@ describe('processRecordPushBatch', () => {
       { id: 'item-a', reason: 'INTERNAL_ERROR' },
       { id: 'item-b', reason: 'INTERNAL_ERROR' }
     ])
-    expect(mockedAllocateCursorRange).not.toHaveBeenCalled()
+    expect(reservedCursorCounts(batches)).toEqual([])
   })
 
   it('should reserve storage ONCE with the summed growth of the batch', async () => {
@@ -1995,7 +1991,7 @@ describe('processRecordPushBatch', () => {
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(quotaError)
       .mockResolvedValueOnce(undefined)
-    const { db } = createPushDb()
+    const { db, batches } = createPushDb()
 
     // #when
     const result = await processRecordPushBatch(
@@ -2013,7 +2009,7 @@ describe('processRecordPushBatch', () => {
     // #then — exactly the per-item outcomes the old serial loop produced
     expect(result.accepted).toEqual(['item-a', 'item-c'])
     expect(result.rejected).toEqual([{ id: 'item-b', reason: 'STORAGE_QUOTA_EXCEEDED' }])
-    expect(mockedAllocateCursorRange).toHaveBeenCalledWith(db, 'user-1', 2)
+    expect(reservedCursorCounts(batches)).toEqual([2])
     expect(result.outcomes.map((outcome) => outcome.serverCursor)).toEqual([42, undefined, 43])
   })
 
@@ -2025,7 +2021,7 @@ describe('processRecordPushBatch', () => {
       }
       return { etag: 'etag-1' } as unknown as R2Object
     })
-    const { db } = createPushDb()
+    const { db, batches } = createPushDb()
     const items = [
       createValidPushItem({ id: 'item-a' }),
       createValidPushItem({ id: 'item-b' }),
@@ -2044,7 +2040,7 @@ describe('processRecordPushBatch', () => {
     // #then
     expect(result.accepted).toEqual(['item-a', 'item-c'])
     expect(result.rejected).toEqual([{ id: 'item-b', reason: 'STORAGE_UPLOAD_FAILED' }])
-    expect(mockedAllocateCursorRange).toHaveBeenCalledWith(db, 'user-1', 2)
+    expect(reservedCursorCounts(batches)).toEqual([2])
     expect(mockedAdjustStorageUsed).toHaveBeenCalledWith(db, 'user-1', -payloadBytesOf(items[1]))
   })
 
@@ -2111,7 +2107,7 @@ describe('processRecordPushBatch', () => {
     expect(upserts).toHaveLength(2)
     expect(upserts.map((stmt) => stmt.binds[8])).toEqual([1, 2])
     // The second wave preserves the created_at the first wave's row carries.
-    expect(upserts[1].binds[16]).toBe(111)
+    expect(upserts[1].binds[17]).toBe(111)
   })
 })
 
@@ -2243,7 +2239,7 @@ describe('processPushItem', () => {
 
     expect(result.accepted).toBe(true)
     const [upsert] = upsertStatements(batches)
-    expect(upsert.binds[16]).toBe(123456)
+    expect(upsert.binds[17]).toBe(123456)
     expect(upsert.binds[8]).toBe(4)
   })
 
@@ -2303,13 +2299,14 @@ describe('processPushItem', () => {
     )
 
     expect(result.accepted).toBe(true)
-    // db.batch call 1 = existing lookup, call 2 = the transactional write.
     expect(db.batch).toHaveBeenCalledTimes(2)
     const writeBatch = batches[1]
-    expect(writeBatch).toHaveLength(2)
-    expect(writeBatch[0].sql).toContain('INSERT INTO sync_items')
-    expect(writeBatch[1].sql).toContain('MAX(0, storage_used + ?)')
-    expect(writeBatch[1].binds).toEqual([payloadBytesOf(item) - 50000, 'user-1'])
+    expect(writeBatch).toHaveLength(4)
+    expect(writeBatch[0].sql).toContain('INSERT INTO server_cursor_sequence')
+    expect(writeBatch[1].sql).toContain('UPDATE server_cursor_sequence')
+    expect(writeBatch[2].sql).toContain('INSERT INTO sync_items')
+    expect(writeBatch[3].sql).toContain('MAX(0, storage_used + ?)')
+    expect(writeBatch[3].binds).toEqual([payloadBytesOf(item) - 50000, 'user-1'])
   })
 
   it('should accept settings updates without top-level clock even if legacy rows have a stored clock', async () => {
@@ -2415,7 +2412,7 @@ describe('processPushItem', () => {
 
     expect(result.accepted).toBe(true)
     const [upsert] = upsertStatements(batches)
-    expect(upsert.binds[16]).toBe(987)
+    expect(upsert.binds[17]).toBe(987)
     expect(upsert.binds[8]).toBe(2)
   })
 
@@ -2432,7 +2429,7 @@ describe('processPushItem', () => {
 
     expect(result.accepted).toBe(true)
     const [upsert] = upsertStatements(batches)
-    expect(upsert.binds[18]).toEqual(expect.any(Number))
+    expect(upsert.binds[19]).toEqual(expect.any(Number))
   })
 
   it('should reject a concurrent write that would resurrect a tombstoned row', async () => {
@@ -2487,7 +2484,7 @@ describe('processPushItem', () => {
 
     expect(result.accepted).toBe(true)
     const [upsert] = upsertStatements(batches)
-    expect(upsert.binds[18]).toBeNull()
+    expect(upsert.binds[19]).toBeNull()
   })
 
   it('should still resurrect an unclocked legacy tombstone so old rows never wedge', async () => {
@@ -2503,7 +2500,7 @@ describe('processPushItem', () => {
 
     expect(result.accepted).toBe(true)
     const [upsert] = upsertStatements(batches)
-    expect(upsert.binds[18]).toBeNull()
+    expect(upsert.binds[19]).toBeNull()
   })
 
   it('should return AppError and unknown error codes from failed processing', async () => {
@@ -2718,13 +2715,14 @@ describe('concurrent same-item pushes (torn blob regression)', () => {
           return statements.map(() => ({ success: true, results: [] }))
         }
         await new Promise<void>((resolve) => gates.push(resolve))
-        // 21 binds = the sync_items upsert (19 columns, plus the two
-        // attribution columns). Identifying it by arity keeps this double from
-        // matching the storage-adjustment statement in the same batch.
-        const upsert = statements.find((stmt) => stmt.binds.length === 21)
+        const upsert = statements.find((stmt) => stmt.sql.includes('INSERT INTO sync_items'))
         finalRow.blobKey = upsert?.binds[5] as string
-        finalRow.signature = upsert?.binds[13] as string
-        return statements.map(() => ({ success: true, results: [] }))
+        finalRow.signature = upsert?.binds[14] as string
+        return statements.map((stmt) =>
+          isCursorReservation(stmt.sql)
+            ? answerCursorReservation(stmt.binds)
+            : { success: true, results: [] }
+        )
       })
       return { prepare, batch }
     }

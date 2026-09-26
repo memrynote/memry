@@ -313,13 +313,16 @@ describe('PushCoordinator', () => {
       )
     })
 
-    it('#then it advances the pull cursor when the server reports a higher maxCursor', async () => {
+    // #2283
+    it('#then it leaves the pull cursor where the last pull put it', async () => {
       const { coordinator, queue, stateManager } = createHarness(getDb())
+      stateManager.setStateValue('lastCursor', '40')
+      vi.mocked(stateManager.setStateValue).mockClear()
       postToServerMock.mockResolvedValue({
         accepted: ['note-1'],
         rejected: [],
         serverTime: Math.floor(Date.now() / 1000),
-        maxCursor: 42
+        maxCursor: 100
       })
 
       queue.enqueue({
@@ -331,7 +334,9 @@ describe('PushCoordinator', () => {
 
       await coordinator.push()
 
-      expect(stateManager.setStateValue).toHaveBeenCalledWith('lastCursor', '42')
+      expect(queue.getSize()).toBe(0)
+      expect(stateManager.getStateValue('lastCursor')).toBe('40')
+      expect(stateManager.setStateValue).not.toHaveBeenCalledWith('lastCursor', expect.anything())
     })
   })
 

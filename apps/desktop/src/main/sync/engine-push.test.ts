@@ -55,6 +55,62 @@ describe('SyncEngine', () => {
     })
   })
 
+  // #2283
+  describe('#given a peer range is unpulled #when this device pushes one item (accepted 1, cursor delta 7)', () => {
+    it('#then the next pull still starts below the peer range', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      engine.setStateValue('lastCursor', '12')
+
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-a',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'From A' })
+      })
+      vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockReturnValue({
+        pushItem: {
+          id: 'task-a',
+          type: 'task',
+          operation: 'create',
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: 'device-1',
+          clock: { 'device-1': 1 }
+        },
+        sizeBytes: 100
+      })
+      vi.spyOn(await import('./http-client'), 'postToServer').mockImplementation(
+        async (path: string) =>
+          path === '/sync/push'
+            ? {
+                accepted: ['task-a'],
+                rejected: [],
+                serverTime: Math.floor(Date.now() / 1000),
+                maxCursor: 19
+              }
+            : { items: [] }
+      )
+      const getSpy = vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 19
+      })
+
+      await engine.push()
+      expect(engine.getStateValue('lastCursor')).toBe('12')
+
+      await engine.pull()
+      expect(getSpy).toHaveBeenCalledWith(expect.stringContaining('&cursor=12'), 'test-token')
+
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given engine with empty queue #when push called -A', () => {
     it('#then returns without making network calls', async () => {
       const deps = createMockDeps(getDb())

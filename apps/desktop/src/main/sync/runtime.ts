@@ -293,13 +293,13 @@ export function getSyncEngine(): SyncEngine | null {
   return runtime?.engine ?? null
 }
 
-export function getCrdtQueue(): CrdtUpdateQueue | null {
-  return runtime?.crdtQueue ?? null
-}
+export const getCrdtQueue = (): CrdtUpdateQueue | null => runtime?.crdtQueue ?? null
 
 export function getNetworkMonitor(): NetworkMonitor | null {
   return runtime?.network ?? null
 }
+
+export const getSyncWebSocket = (): WebSocketManager | null => runtime?.ws ?? null
 
 async function seedExistingCrdtDocs(
   crdtProvider: ReturnType<typeof getCrdtProvider>,

@@ -19,6 +19,11 @@ const outstandingCountMock = vi.fn(() => 3)
 const getNetworkMonitorMock = vi.fn(() => ({ setOnlineForTests: networkSetOnlineMock }))
 const getCrdtQueueMock = vi.fn(() => ({ getOutstandingCount: outstandingCountMock }))
 const startSyncRuntimeMock = vi.fn(async () => ({}))
+const wsDisconnectMock = vi.fn()
+const getSyncWebSocketMock = vi.fn(() => ({ disconnect: wsDisconnectMock }))
+const getSyncEngineMock = vi.fn(() => ({
+  getStateValue: (key: string) => (key === 'lastCursor' ? '42' : undefined)
+}))
 const getOrInitializeLocalVaultKeyMock = vi.fn(async () => new Uint8Array([1]))
 const getOrCreateVaultUuidMock = vi.fn(() => 'vault-1')
 const resetVaultUuidCacheMock = vi.fn()
@@ -88,6 +93,8 @@ vi.mock('./sync/crdt-writeback', () => ({
 vi.mock('./sync/runtime', () => ({
   getCrdtQueue: getCrdtQueueMock,
   getNetworkMonitor: getNetworkMonitorMock,
+  getSyncEngine: getSyncEngineMock,
+  getSyncWebSocket: getSyncWebSocketMock,
   startSyncRuntime: startSyncRuntimeMock
 }))
 
@@ -250,6 +257,10 @@ describe('main test hooks', () => {
 
     await hooks.setNetworkOnlineForTests(false)
     expect(networkSetOnlineMock).toHaveBeenCalledWith(false)
+    await hooks.disconnectSyncSocketForTests()
+    expect(wsDisconnectMock).toHaveBeenCalled()
+    await expect(hooks.getSyncStateValueForTests('lastCursor')).resolves.toBe('42')
+    await expect(hooks.getSyncStateValueForTests('missing')).resolves.toBeNull()
     await expect(hooks.getCrdtPendingCount()).resolves.toBe(3)
     await expect(hooks.getCrdtDocMarkdown('note-1')).resolves.toBe('# Note')
     await expect(hooks.getCrdtDocMarkdown('missing')).resolves.toBeNull()
@@ -269,6 +280,8 @@ describe('main test hooks', () => {
     process.env.NODE_ENV = 'test'
     getNetworkMonitorMock.mockReturnValue(null)
     getCrdtQueueMock.mockReturnValue(null)
+    getSyncWebSocketMock.mockReturnValue(null)
+    getSyncEngineMock.mockReturnValue(null)
     const { registerTestHooks } = await importHooks()
 
     registerTestHooks()
@@ -278,6 +291,10 @@ describe('main test hooks', () => {
       'Sync runtime is not initialized'
     )
     await expect(hooks.getCrdtPendingCount()).resolves.toBe(0)
+    await expect(hooks.disconnectSyncSocketForTests()).rejects.toThrow(
+      'Sync runtime is not initialized'
+    )
+    await expect(hooks.getSyncStateValueForTests('lastCursor')).resolves.toBeNull()
   })
 
   it('seeds calendar projections and broadcasts renderer invalidations', async () => {

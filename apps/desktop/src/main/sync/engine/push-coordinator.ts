@@ -19,7 +19,6 @@ import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import {
-  SYNC_STATE_KEYS,
   MAX_PUSH_ITERATIONS,
   MIN_PUSH_BATCH_SIZE,
   YIELD_EVERY_N_ITEMS,
@@ -88,7 +87,6 @@ export class PushCoordinator {
     let quotaEventSent = false
     let signatureEventSent = false
     let lastServerTime = 0
-    let lastMaxCursor = 0
     let vaultKey: Uint8Array | null = null
     let signingKeyBytes: Uint8Array | null = null
 
@@ -294,9 +292,6 @@ export class PushCoordinator {
           })
 
           lastServerTime = response.value.serverTime
-          if (response.value.maxCursor > lastMaxCursor) {
-            lastMaxCursor = response.value.maxCursor
-          }
           const acceptedSet = new Set(response.value.accepted)
           for (let pi = 0; pi < pushItems.length; pi++) {
             if (this.ctx.abortController?.signal.aborted) break
@@ -410,16 +405,9 @@ export class PushCoordinator {
           this.stateManager.updateLastSyncAt()
           this.ctx.rateLimitConsecutive = 0
           if (lastServerTime > 0) this.stateManager.checkClockSkew(lastServerTime)
-
-          if (lastMaxCursor > 0) {
-            const currentCursor = Number(
-              this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? '0'
-            )
-            if (lastMaxCursor > currentCursor) {
-              this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(lastMaxCursor))
-              log.debug('Push: advanced pull cursor', { from: currentCursor, to: lastMaxCursor })
-            }
-          }
+          // The push response's maxCursor never moves LAST_CURSOR (#2283,
+          // protocol 05 §5.5): peer rows below it may still be unpulled, and
+          // every read is `server_cursor > ?`, so they would be skipped for good.
 
           if (this.ctx.deps.queue.getPendingCount() === 0) {
             this.ctx.deps.emitToRenderer(EVENT_CHANNELS.QUEUE_CLEARED, {

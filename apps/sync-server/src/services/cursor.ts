@@ -1,34 +1,36 @@
-export interface CursorRange {
-  first: number
-  last: number
+/**
+ * Reserves `count` server cursors for one user inside the D1 batch that
+ * commits the rows carrying them (#2282).
+ *
+ * D1 runs one batch as one transaction on a single writer, so the sequence
+ * bump and the rows commit together: no reader can see a cursor above a range
+ * whose rows have not committed yet. Reserving in a separate batch reopened
+ * exactly that window. Device X reserved [10..12], device Y reserved [13] and
+ * committed first, and every reader paging `server_cursor > ?` past 13 skipped
+ * 10..12 for good.
+ *
+ * Row `position` (0-based, in batch order) gets cursor `top - (count - 1 - position)`.
+ */
+export interface CursorReservation {
+  /** SQL expression for a row's cursor. Bind `cursorBinds(position)` in its place. */
+  cursorSql: string
+  cursorBinds(position: number): [string, number]
+  /** The whole batch: the reservation first, then `writes`. */
+  batch(writes: D1PreparedStatement[]): D1PreparedStatement[]
+  /** The cursor row `position` got, read from the results of `batch`. */
+  cursorAt(results: D1Result[], position: number): number
 }
 
-/**
- * Reserves `count` strictly monotonic server cursors for one user in a single
- * atomic D1 round trip.
- *
- * The whole reservation is ONE `UPDATE ... RETURNING` on the user's
- * `server_cursor_sequence` row, so two devices pushing concurrently each get a
- * disjoint contiguous range: D1 serializes the row update, and the returned
- * value is the top of the range this caller (and nobody else) advanced the
- * sequence by. Per-user monotonicity — which pull ordering depends on — is
- * therefore exactly what the old one-cursor-per-call code guaranteed, at one
- * D1 batch per push batch instead of one per item.
- *
- * A caller that ends up not using part of its range (an item rejected after
- * allocation) leaves a gap in the sequence. Gaps are harmless: cursors are an
- * ordering token, and every reader pages with `server_cursor > ?`.
- */
-export const allocateCursorRange = async (
+export const reserveCursors = (
   db: D1Database,
   userId: string,
   count: number
-): Promise<CursorRange> => {
+): CursorReservation => {
   if (count < 1) {
-    throw new Error(`allocateCursorRange requires count >= 1, got ${count}`)
+    throw new Error(`reserveCursors requires count >= 1, got ${count}`)
   }
-
-  const [, updateResult] = await db.batch([
+  const offsetFromTop = (position: number): number => count - 1 - position
+  const reservation = [
     db
       .prepare(
         'INSERT INTO server_cursor_sequence (user_id, current_cursor) VALUES (?, 0) ON CONFLICT (user_id) DO NOTHING'
@@ -39,8 +41,13 @@ export const allocateCursorRange = async (
         'UPDATE server_cursor_sequence SET current_cursor = current_cursor + ? WHERE user_id = ? RETURNING current_cursor'
       )
       .bind(count, userId)
-  ])
-
-  const row = (updateResult.results as Array<{ current_cursor: number }>)[0]
-  return { first: row.current_cursor - count + 1, last: row.current_cursor }
+  ]
+  return {
+    cursorSql: '(SELECT current_cursor FROM server_cursor_sequence WHERE user_id = ?) - ?',
+    cursorBinds: (position) => [userId, offsetFromTop(position)],
+    batch: (writes) => [...reservation, ...writes],
+    cursorAt: (results, position) =>
+      (results[1].results as Array<{ current_cursor: number }>)[0].current_cursor -
+      offsetFromTop(position)
+  }
 }
