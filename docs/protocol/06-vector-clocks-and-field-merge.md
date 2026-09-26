@@ -233,12 +233,20 @@ and a client that breaks any of them reintroduces divergence.**
   the live — merged — row by P2, and its union clock has one component the
   stored row lacks, so `detectReplay` accepts it.
 - **P4 — an EQUAL incoming clock applies the remote row, it does not skip it.**
-  `packages/sync-client/src/item-handlers/types.ts:67`. This is what settles the
-  two devices whose P3 re-pushes collide: the first is accepted, the second is
-  refused as a replay (`apps/sync-server/src/services/sync.ts:179-190`) and
-  marked done anyway
+  `packages/sync-client/src/item-handlers/types.ts` (`resolveClockConflict`).
+  This is what settles the two devices whose P3 re-pushes collide: the first is
+  accepted, the second is refused as a replay
+  (`apps/sync-server/src/services/sync.ts:179-190`) and marked done anyway
   (`apps/desktop/src/main/sync/engine/push-coordinator.ts:299-305`), and the
   refused device then pulls the accepted row under the same clock and takes it.
+  **The one exception is an identical payload** (#2294): an equal clock MAY be
+  skipped when the local row's push payload, parsed by the type's payload
+  schema, is equal to the incoming one under the §6.4.2 canonical comparison.
+  Applying it would write the same values, so skipping cannot strand a device;
+  it is what makes a device's own row pulled back, and a page re-pulled after
+  a crash (chapter 05 §5.11), a no-op. A client that cannot build the local
+  payload for a type MUST apply. Desktop: `BaseItemHandler.resolveUpsertClock`
+  (`packages/sync-client/src/item-handlers/base-handler.ts`).
 
 In the ordinary interleavings P1 to P3 leave **at most one device running
 `mergeFields` on a given concurrent pair**; the other sees its own row (`equal` →
@@ -260,7 +268,7 @@ push payload at enqueue time reintroduces the 3c divergence **deterministically,
 not as a race**. A conforming client MUST rebuild the payload from the live row
 at send time (P2), MUST re-queue a merged item so the union-clocked row is
 pushed (P3), MUST apply — never skip — a remote row whose clock is EQUAL to the
-local one (P4), and MUST implement rule 3's asymmetric key-presence test
+local one unless its payload is identical to the local one (P4), and MUST implement rule 3's asymmetric key-presence test
 exactly — a "symmetric" rewrite breaks 3a and 3b against desktop.
 
 P3 and P4 are what make the seat-dependent winner of 3c/3d survivable: the value
@@ -410,7 +418,7 @@ entry can name as "winning" the value that the convergence step then discarded.
 The task itself is not affected.
 
 **Core obligation.** Implement P3 and P4. A core that merges without re-queueing,
-or that treats an equal clock as a no-op, turns this race back into the
+or that treats an equal clock with a different payload as a no-op, turns this race back into the
 permanent divergence this section once described.
 
 ## 6.7 Field lists

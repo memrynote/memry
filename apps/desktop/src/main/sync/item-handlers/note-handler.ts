@@ -188,8 +188,19 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const existing = getNoteMetadataById(ctx.db, itemId)
 
     if (existing) {
-      const resolution = this.resolveClock(existing.clock, remoteClock)
+      const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
       if (resolution.action === 'skip') {
+        // The only re-request for embedded attachments whose download died with
+        // the process before the page re-pulled; already-present ones are
+        // deduped (#2294).
+        if (resolution.identical) {
+          requestEmbeddedAttachmentDownloads(
+            ctx.db,
+            itemId,
+            data.attachmentReferences,
+            data.modifiedAt
+          )
+        }
         log.info('Skipping remote note update, local is newer', { itemId })
         return 'skipped'
       }

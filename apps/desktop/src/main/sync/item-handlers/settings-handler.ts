@@ -28,13 +28,13 @@ import {
   SIDEBAR_SHOW_FILES_SETTINGS_KEY
 } from '../../settings/sidebar-tree-view-store'
 import { createLogger } from '../../lib/logger'
-import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import { applyTraySetting } from '../../tray'
 import type {
   SyncItemHandler,
   ApplyContext,
   ApplyResult,
-  DrizzleDb
+  DrizzleDb,
+  EmitToWindows
 } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('SettingsHandler')
@@ -48,7 +48,7 @@ class SettingsHandler implements SyncItemHandler<SettingsSyncPayload> {
   readonly schema = SettingsSyncPayloadSchema
 
   applyUpsert(
-    _ctx: ApplyContext,
+    ctx: ApplyContext,
     _itemId: string,
     data: SettingsSyncPayload,
     _clock: VectorClock
@@ -61,7 +61,9 @@ class SettingsHandler implements SyncItemHandler<SettingsSyncPayload> {
 
     manager.mergeRemote(data)
 
-    propagateMergedSettings(manager.getSettings())
+    // `ctx.emit`, not a direct window broadcast: inside a pull page it is held
+    // until the page commits, so a rolled-back page announces nothing (#2294).
+    propagateMergedSettings(manager.getSettings(), ctx.emit)
 
     return 'applied'
   }
@@ -87,17 +89,21 @@ export const settingsHandler = new SettingsHandler()
  * A failed write is logged and swallowed so one unwritable key cannot fail the
  * whole synced settings item.
  */
-function propagateMergedSidebarFlag(key: string, value: boolean | undefined): void {
+function propagateMergedSidebarFlag(
+  key: string,
+  value: boolean | undefined,
+  emit: EmitToWindows
+): void {
   if (typeof value !== 'boolean') return
   try {
     setSetting(getDatabase(), key, JSON.stringify(value))
-    broadcastToAllWindows(SettingsChannels.events.CHANGED, { key, value })
+    emit(SettingsChannels.events.CHANGED, { key, value })
   } catch (err) {
     log.warn(`Failed to propagate merged ${key}:`, err)
   }
 }
 
-function propagateMergedSettings(merged: SyncedSettings): void {
+function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): void {
   // Inbox settings live only in the local data DB (not portable config.json
   // prefs), so persist them regardless of whether a vault path is resolvable.
   // Otherwise a merge that lands while getCurrentVaultPath() is transiently null
@@ -149,7 +155,7 @@ function propagateMergedSettings(merged: SyncedSettings): void {
       const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
       const next = { ...current, ...merged.sidebar.sortModes }
       setSetting(db, SIDEBAR_SORT_SETTINGS_KEY, JSON.stringify(next))
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+      emit(SettingsChannels.events.CHANGED, {
         key: SIDEBAR_SORT_SETTINGS_KEY,
         value: next
       })
@@ -166,7 +172,7 @@ function propagateMergedSettings(merged: SyncedSettings): void {
       const db = getDatabase()
       const next = merged.sidebar.sectionOrder.filter((id) => typeof id === 'string')
       setSetting(db, SIDEBAR_SECTION_ORDER_SETTINGS_KEY, JSON.stringify(next))
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+      emit(SettingsChannels.events.CHANGED, {
         key: SIDEBAR_SECTION_ORDER_SETTINGS_KEY,
         value: next
       })
@@ -184,7 +190,7 @@ function propagateMergedSettings(merged: SyncedSettings): void {
       const db = getDatabase()
       const next = merged.sidebar.navCollapsed
       setSetting(db, SIDEBAR_NAV_COLLAPSED_SETTINGS_KEY, JSON.stringify(next))
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+      emit(SettingsChannels.events.CHANGED, {
         key: SIDEBAR_NAV_COLLAPSED_SETTINGS_KEY,
         value: next
       })
@@ -196,8 +202,8 @@ function propagateMergedSettings(merged: SyncedSettings): void {
   // The Collections tree view options, guarded the same way and for the same
   // reason: `false` is a real value for both (folders first again, files
   // hidden), so a truthy check would drop exactly those merges.
-  propagateMergedSidebarFlag(SIDEBAR_NOTES_FIRST_SETTINGS_KEY, merged.sidebar?.notesFirst)
-  propagateMergedSidebarFlag(SIDEBAR_SHOW_FILES_SETTINGS_KEY, merged.sidebar?.showFiles)
+  propagateMergedSidebarFlag(SIDEBAR_NOTES_FIRST_SETTINGS_KEY, merged.sidebar?.notesFirst, emit)
+  propagateMergedSidebarFlag(SIDEBAR_SHOW_FILES_SETTINGS_KEY, merged.sidebar?.showFiles, emit)
 
   let vaultPath: string | null = null
   try {
@@ -261,7 +267,7 @@ function propagateMergedSettings(merged: SyncedSettings): void {
     applyTraySetting(merged.general.minimizeToTray)
   }
 
-  broadcastSettingsChanged(merged, journalBroadcast)
+  broadcastSettingsChanged(merged, journalBroadcast, emit)
 
   applySyncedLocale(merged.general?.language)
 }
@@ -332,33 +338,34 @@ function applySyncedLocale(candidate: string | undefined): void {
 
 /**
  * This runs inside the sync item's DB transaction (#935, #1000): anything that
- * escapes here rolls back an item that was already applied. broadcastToAllWindows
- * skips destroyed windows and contains a per-window send failure, but
- * BrowserWindow.getAllWindows() itself can still throw during app teardown —
- * which the previous hand-rolled loop tolerated. Keep tolerating it, but log it
- * rather than dropping it silently.
+ * escapes here rolls back an item that was already applied. Outside a pull page
+ * `emit` is the window broadcast, which skips destroyed windows and contains a
+ * per-window send failure, but BrowserWindow.getAllWindows() itself can still
+ * throw during app teardown. Keep tolerating it, but log it rather than
+ * dropping it silently.
  */
 function broadcastSettingsChanged(
   merged: SyncedSettings,
-  journal: JournalBroadcastPayload | null
+  journal: JournalBroadcastPayload | null,
+  emit: EmitToWindows
 ): void {
   try {
     if (merged.general) {
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+      emit(SettingsChannels.events.CHANGED, {
         key: 'general',
         value: merged.general
       })
     }
 
     if (merged.editor) {
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+      emit(SettingsChannels.events.CHANGED, {
         key: 'editor',
         value: merged.editor
       })
     }
 
     if (merged.inbox) {
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+      emit(SettingsChannels.events.CHANGED, {
         key: 'inbox',
         value: merged.inbox
       })
@@ -368,7 +375,7 @@ function broadcastSettingsChanged(
     // view omits days this device set before settings sync covered them, and a
     // shallow patch would replace the renderer's whole map with that subset.
     if (journal && Object.keys(journal).length > 0) {
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+      emit(SettingsChannels.events.CHANGED, {
         key: 'journal',
         value: journal
       })

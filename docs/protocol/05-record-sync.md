@@ -387,7 +387,37 @@ per-type cursor: the feed is one ordered stream.
 latency trace (#2280); a client that advanced to it mid-page would claim the
 rest of the page as applied. Only the page's `nextCursor`, after the page is
 applied, moves the cursor
-(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:328`).
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts`, `persistPageCursor`).
+
+**The cursor commits with the page's last rows when nothing runs after them**
+(#2294). "After apply" includes every step that has to finish for the page to
+count as applied, not only the row writes. Desktop applies a page of up to 500
+refs in slices of at most 100 ids (§5.10), one transaction per slice, and the
+cursor never moves before the last slice:
+
+- When no slice of the page left post-commit work, the last slice writes
+  `nextCursor` as the last statement of its own transaction, so the cursor and
+  the page's last rows commit together or not at all.
+- Post-commit work is any of: a crypto or parse failure awaiting its by-id
+  re-fetch, a note or journal whose CRDT body is fetched after the commit, an
+  item deferred for an end-of-run retry, or a page transaction that could not be
+  opened (the connection was already inside another transaction). Then the
+  cursor is written after the page, once that work has run, as a separate
+  statement.
+- Either way the cursor is not written when an abort stopped the item loop.
+
+Before any cursor write, the last slice's transaction flags the page's notes as
+holding unmerged remote CRDT state and persists that debt, so a crash can never
+leave a note looking merged with the cursor past it (a snapshot push from a
+merged-looking note prunes peer updates; chapter 07).
+
+A crash at any point before the cursor commits leaves it on the previous page,
+so the whole page is pulled again on restart. Re-pulling is idempotent: the
+rows that already committed arrive with an equal clock and an identical payload
+and are skipped (chapter 06 §6.5.2 P4). A crash after an in-transaction cursor
+commit can only lose the note files (healed by the bulk-apply journal) and the
+index rows of that slice (healed by the vault re-index on the next open). A page
+with no refs has no transaction to join and stores its cursor alone.
 
 Because cursors are assigned in commit order (§5.5) and the cursor moves only
 after apply, a client MAY drop a realtime wake whose `cursor` is at or below its

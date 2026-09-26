@@ -4,7 +4,7 @@ import sodium from 'libsodium-wrappers-sumo'
 import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { canvases, canvasEntityRefs, canvasAssets } from '@memry/db-schema/data-schema'
 import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
-import type { CanvasSyncPayload } from '@memry/contracts/sync-payloads'
+import { CanvasSyncPayloadSchema, type CanvasSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
@@ -910,6 +910,32 @@ describe('canvasHandler', () => {
       // Restore is fired AFTER the tx commits, once, with the same descriptors.
       expect(mockEnsureAssetsPresent).toHaveBeenCalledTimes(1)
       expect(mockEnsureAssetsPresent).toHaveBeenCalledWith(ASSET_CTX, 'c1', [a1, a2])
+    })
+
+    // #2294 review: an identical equal-clock re-delivery skips the row write, but
+    // it is the only retry for assets whose download died with the process.
+    it('#given an identical equal-clock re-delivery #then skips the row but still restores assets', async () => {
+      const a1 = asset('h1')
+      const data: CanvasSyncPayload = {
+        id: 'c1',
+        vaultId: VAULT_ID,
+        title: 'Remote',
+        scene: sceneWithAssets('note-1', [a1]),
+        clock: { B: 1 }
+      }
+      canvasHandler.applyUpsert(ctx, 'c1', data, { B: 1 })
+      mockEnsureAssetsPresent.mockClear()
+      const echo = CanvasSyncPayloadSchema.parse(
+        JSON.parse(canvasHandler.buildPushPayload(db, 'c1', LOCAL_DEVICE, 'update')!)
+      )
+      ctx = { db, emit: vi.fn() }
+
+      const result = canvasHandler.applyUpsert(ctx, 'c1', echo, { B: 1 })
+      await vi.waitFor(() => expect(mockEnsureAssetsPresent).toHaveBeenCalledTimes(1))
+
+      expect(result).toBe('skipped')
+      expect(ctx.emit).not.toHaveBeenCalled()
+      expect(mockEnsureAssetsPresent).toHaveBeenCalledWith(ASSET_CTX, 'c1', [a1])
     })
 
     it('#given a concurrent-clock conflict copy #then records shared assets under BOTH ids (GC union protects them)', () => {

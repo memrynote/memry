@@ -3,6 +3,7 @@ import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
 import { hasPendingDelete } from './pending-deletes'
+import type { PageApplyHandle } from './bulk-apply'
 import { recordUnknownPayloadFields } from './unknown-fields'
 import { createLogger } from '../lib/logger'
 import { trackMainEvent } from '../telemetry/track'
@@ -35,19 +36,27 @@ export class ItemApplier {
   ) {}
 
   /**
-   * `dbOverride` lets the pull coordinator route a whole page's applies through
-   * its page-transaction-scoped data DB (see bulk-apply.ts). Absent, behavior
-   * is unchanged.
+   * `page` routes the apply through the pull's page transaction (see
+   * bulk-apply.ts): its data DB, and handler emits held until the page commits
+   * (#2294). An item whose apply throws rolls back its own savepoint, so its
+   * emits are dropped here rather than queued. Absent, behavior is unchanged.
    */
-  apply(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyItemResult {
-    const result = this.dispatch(input, dbOverride)
+  apply(
+    input: ApplyItemInput,
+    page?: Pick<PageApplyHandle, 'db' | 'afterCommit'>
+  ): ApplyItemResult {
+    const itemEmits: Array<() => void> = []
+    const emit: EmitToWindows = page
+      ? (channel, data) => itemEmits.push(() => this.emitToWindows(channel, data))
+      : this.emitToWindows
+    const result = this.dispatch(input, page?.db ?? this.db, emit)
+    for (const notify of itemEmits) page?.afterCommit(notify)
     if (result === 'applied' || result === 'conflict') this.changedCount++
     return result
   }
 
-  private dispatch(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyItemResult {
-    const db = dbOverride ?? this.db
-    const ctx = { db, emit: this.emitToWindows, vaultKey: input.vaultKey }
+  private dispatch(input: ApplyItemInput, db: DrizzleDb, emit: EmitToWindows): ApplyItemResult {
+    const ctx = { db, emit, vaultKey: input.vaultKey }
     const adapter = this.adapters?.getRemote(input.type) ?? getRemoteSyncAdapter(input.type)
     const handler = adapter ? null : getHandler(input.type)
 
@@ -71,7 +80,7 @@ export class ItemApplier {
       return adapter
         ? adapter.applyRemoteMutation({
             db,
-            emit: this.emitToWindows,
+            emit,
             itemId: input.itemId,
             operation: 'delete',
             clock: input.clock,
@@ -127,7 +136,7 @@ export class ItemApplier {
     return adapter
       ? adapter.applyRemoteMutation({
           db,
-          emit: this.emitToWindows,
+          emit,
           itemId: input.itemId,
           operation: input.operation,
           data,

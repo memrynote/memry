@@ -1,4 +1,8 @@
-import { EVENT_CHANNELS, type ItemRecoveredEvent } from '@memry/contracts/ipc-events'
+import {
+  EVENT_CHANNELS,
+  type ItemCorruptEvent,
+  type ItemRecoveredEvent
+} from '@memry/contracts/ipc-events'
 import { createLogger } from '../../lib/logger'
 import { trackMainLog } from '../../telemetry/diagnostics'
 import { sortByApplyOrder } from './apply-order'
@@ -74,6 +78,37 @@ export function applyRecoveredItems(
   }
   deps.ledger.record(refused, 'payload')
   deps.ledger.resolve(settled)
+}
+
+/**
+ * A pulled slice's crypto and parse failures, re-fetched by id once after the
+ * slice committed: the recovered ones apply (outside any page transaction),
+ * the rest are surfaced as corrupt. Extracted from PullCoordinator.
+ */
+export async function refetchCorruptItems(
+  deps: ItemRecoveryDeps,
+  refs: ItemRef[],
+  accessJwt: string,
+  vaultKey: Uint8Array
+): Promise<void> {
+  deps.tracker.clearExpired()
+  const { recovered, permanentFailures } = await deps.tracker.refetch(refs, accessJwt, vaultKey)
+  applyRecoveredItems(deps, recovered, vaultKey)
+
+  for (const ref of permanentFailures) {
+    deps.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
+      itemId: ref.id,
+      type: ref.type,
+      error: 'Item corrupt after re-fetch attempt'
+    } satisfies ItemCorruptEvent)
+  }
+
+  if (recovered.length > 0 || permanentFailures.length > 0) {
+    log.info('Pull: re-fetch summary', {
+      recovered: recovered.length,
+      permanentFailures: permanentFailures.length
+    })
+  }
 }
 
 /** Re-fetches the ledger's retryable entries by id and applies them again (#2285). */

@@ -165,6 +165,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     // M5: assets externalized into the scene sidecar. `[]` for a pre-M5 /
     // inline-base64 scene → no rows recorded, no downloads triggered.
     const descriptors = readMemryAssets(scene)
+    let identicalSkip = false
 
     const result = ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(canvases).where(eq(canvases.id, itemId)).get()
@@ -216,8 +217,9 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
         return 'applied'
       }
 
-      const resolution = this.resolveClock(existing.clock, remoteClock)
+      const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
       if (resolution.action === 'skip') {
+        identicalSkip = resolution.identical
         log.info('Skipping remote canvas update, local is newer', { itemId })
         return 'skipped'
       }
@@ -329,8 +331,11 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
 
     // AFTER commit (never inside the tx): fetch any missing asset files so the
     // applied scene renders. Skipped applies (D5 / LWW-lose) applied no scene, so
-    // there is nothing to restore. Fire-and-forget: a download must not fail apply.
-    if (result !== 'skipped' && descriptors.length > 0) {
+    // there is nothing to restore — except an identical equal-clock skip: its
+    // scene is the local one, and this is the only retry for assets whose
+    // download died with the process before the page re-pulled (#2294).
+    // Fire-and-forget: a download must not fail apply.
+    if ((result !== 'skipped' || identicalSkip) && descriptors.length > 0) {
       void restoreCanvasAssets(itemId, descriptors)
     }
     return result

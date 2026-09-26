@@ -14,6 +14,9 @@ import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { ItemApplier, type ApplyItemInput, type EmitToWindows } from './apply-item'
 import { SyncQueueManager } from '@memry/sync-client/queue'
+import { SyncAdapterRegistry } from '@memry/sync-core'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { z } from 'zod'
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -1073,3 +1076,62 @@ function makeFilterPayload(overrides: Record<string, unknown> = {}): Uint8Array 
     })
   )
 }
+
+// #2294 review: inside a pull page, an item's emits wait for the page commit,
+// and an item whose apply throws (its savepoint rolled back) queues none.
+describe('ItemApplier inside a pull page', () => {
+  let testDb: TestDatabaseResult
+  beforeEach(() => {
+    testDb = createTestDataDb()
+  })
+  afterEach(() => {
+    testDb.close()
+  })
+  const emitThen = (fail: boolean): SyncAdapterRegistry<DrizzleDb, EmitToWindows> =>
+    new SyncAdapterRegistry<DrizzleDb, EmitToWindows>([
+      {
+        type: 'filter',
+        kind: 'record',
+        remote: {
+          type: 'filter',
+          schema: z.object({ name: z.string() }),
+          applyRemoteMutation: ({ emit, itemId }) => {
+            emit('saved-filters:updated', { id: itemId })
+            if (fail) throw new Error('item failed after its emit')
+            return 'applied'
+          }
+        }
+      }
+    ])
+  const input: ApplyItemInput = {
+    itemId: 'filter-1',
+    type: 'filter',
+    operation: 'update',
+    content: new TextEncoder().encode(JSON.stringify({ name: 'x' })),
+    clock: { 'device-B': 1 }
+  }
+
+  it('queues an applied item emit for after the page commits', () => {
+    const emit = vi.fn()
+    const page = { db: asSyncDb(testDb.db), afterCommit: vi.fn() }
+
+    new ItemApplier(asSyncDb(testDb.db), emit, emitThen(false)).apply(input, page)
+
+    expect(emit).not.toHaveBeenCalled()
+    expect(page.afterCommit).toHaveBeenCalledOnce()
+    page.afterCommit.mock.calls[0][0]()
+    expect(emit).toHaveBeenCalledWith('saved-filters:updated', { id: 'filter-1' })
+  })
+
+  it('drops the emits of an item whose apply throws', () => {
+    const emit = vi.fn()
+    const page = { db: asSyncDb(testDb.db), afterCommit: vi.fn() }
+
+    expect(() =>
+      new ItemApplier(asSyncDb(testDb.db), emit, emitThen(true)).apply(input, page)
+    ).toThrow('item failed after its emit')
+
+    expect(page.afterCommit).not.toHaveBeenCalled()
+    expect(emit).not.toHaveBeenCalled()
+  })
+})

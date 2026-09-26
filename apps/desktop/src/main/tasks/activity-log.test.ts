@@ -318,6 +318,29 @@ describe('superseded rows', () => {
     expect(all[0].oldValue).toBe(JSON.stringify('2026-08-12'))
   })
 
+  // #2294 review: the sync apply passes its `ctx.emit`, which a pull page
+  // holds until commit; a direct window broadcast would announce a row that
+  // may still roll back.
+  it('announces a superseded row through the caller emitter, not a window broadcast', async () => {
+    const { BrowserWindow } = await import('electron')
+    vi.mocked(BrowserWindow.getAllWindows).mockClear()
+    const announce = vi.fn()
+
+    recordTaskSuperseded(
+      {
+        taskId: 'task-1',
+        field: 'dueDate',
+        losingValue: '2026-08-12',
+        winningValue: '2026-08-20',
+        mergedClock: { 'device-A': 3, 'device-B': 3 }
+      },
+      announce
+    )
+
+    expect(announce).toHaveBeenCalledWith('task-activity:created', { taskId: 'task-1' })
+    expect(BrowserWindow.getAllWindows).not.toHaveBeenCalled()
+  })
+
   it('never puts a losing description body into a synced row', () => {
     const body = 'b'.repeat(4000)
 

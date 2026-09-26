@@ -199,9 +199,22 @@ export interface PageApplyHandle {
    * rollback semantics hold inside the page without any remapping here.
    */
   db: DrizzleDb
-  /** Journal the deferred file ops, then COMMIT both DBs (data first). */
+  /**
+   * False when the data connection was already inside someone else's
+   * transaction, so the page's statements autocommit one by one. A write that
+   * must commit atomically with the page's rows (the pull cursor, #2294) cannot
+   * rely on the page then.
+   */
+  readonly transacted: boolean
+  /**
+   * Queue a renderer notification for after the data COMMIT. A rolled-back or
+   * failed page drops it, so no window hears "applied" for rows that never
+   * landed (#2294).
+   */
+  afterCommit(notify: () => void): void
+  /** Journal the deferred file ops, then COMMIT both DBs (data first), then notify. */
   commit(): void
-  /** ROLLBACK both DBs and discard the page's deferred file ops. */
+  /** ROLLBACK both DBs and discard the page's deferred file ops and notifications. */
   rollback(): void
   /**
    * Run the deferred file writes and unlinks (after commit). Resolves once
@@ -216,7 +229,12 @@ class PageApplySession implements PageApplyHandle {
   private readonly dataRaw: Database.Database | null
   private readonly indexRaw: Database.Database | null
   private pendingOps: PendingVaultFileOp[] = []
+  private pendingNotifications: Array<() => void> = []
   private finished = false
+
+  get transacted(): boolean {
+    return this.dataRaw !== null
+  }
 
   constructor(dataDb: DrizzleDb) {
     this.dataRaw = extractRawClient(dataDb)
@@ -254,60 +272,93 @@ class PageApplySession implements PageApplyHandle {
     this.pendingOps.push({ kind: 'delete', absolutePath, deferredAt: Date.now() })
   }
 
+  afterCommit(notify: () => void): void {
+    this.pendingNotifications.push(notify)
+  }
+
   commit(): void {
     if (this.finished) return
     this.finished = true
     if (activeSession === this) activeSession = null
 
-    // The journal must be durable before the rows it covers: a crash right
-    // after the data commit must still find every pending file's bytes.
     const unlandedBeforeCommit = unlandedOps
-    this.pendingOps = latestOpPerPath(this.pendingOps)
-    unlandedOps = latestOpPerPath([...unlandedOps, ...this.pendingOps])
-    if (unlandedOps.length > 0) {
-      writeJournal(unlandedOps)
-    }
-
     try {
-      // Data first, index second. The index DB is a rebuildable cache; a crash
-      // between the two commits leaves data rows whose index rows are missing,
-      // which the next re-pull of the page treats as an update (no duplicate
-      // paths). The reverse order would leave index ghosts that collide with the
-      // re-pulled creates.
-      this.dataRaw?.exec('COMMIT')
-      try {
-        this.indexRaw?.exec('COMMIT')
-      } catch (err) {
-        // Same rule as the data connection below: a failed COMMIT leaves the
-        // connection inside an open transaction, and an index one left open
-        // would run every later FTS/graph statement uncommitted-visible and
-        // fail every future BEGIN IMMEDIATE for the life of the process. The
-        // data rows are already safe and the index is a rebuildable cache, so
-        // the rolled-back page's index rows simply re-apply on the next pull.
-        log.error('Index DB page commit failed after data commit', { error: err })
-        try {
-          if (this.indexRaw?.inTransaction) this.indexRaw.exec('ROLLBACK')
-        } catch (rollbackErr) {
-          log.error('Could not roll back the index DB page transaction', { error: rollbackErr })
-        }
+      // The journal must be durable before the rows it covers: a crash right
+      // after the data commit must still find every pending file's bytes. It is
+      // written inside this try so a failed journal write (ENOSPC, EACCES) rolls
+      // the page back like a failed COMMIT; outside it, `finished` was already
+      // set, `rollback()` became a no-op and the page transaction stayed open.
+      this.pendingOps = latestOpPerPath(this.pendingOps)
+      unlandedOps = latestOpPerPath([...unlandedOps, ...this.pendingOps])
+      if (unlandedOps.length > 0) {
+        writeJournal(unlandedOps)
       }
+
+      // Data first, index second. The index DB is a rebuildable cache. The
+      // reverse order would leave index ghosts that collide with a later
+      // re-apply of the same creates.
+      this.dataRaw?.exec('COMMIT')
     } catch (err) {
       // A failed COMMIT leaves the connection inside an open transaction — it
       // must be rolled back here, or every later statement in the process runs
-      // inside this half-dead page transaction forever. The journaled ops
-      // cover rows that no longer exist, so restore the journal to what it
-      // held before this page — including earlier pages' entries this page's
-      // ops superseded — and the page is re-pulled whole.
+      // inside this half-dead page transaction forever. The index transaction
+      // never committed either. The journaled ops cover rows that no longer
+      // exist, so restore the journal to what it held before this page —
+      // including earlier pages' entries this page's ops superseded — and the
+      // page is re-pulled whole.
       log.error('Data DB page commit failed — rolled back', { error: err })
-      try {
-        if (this.dataRaw?.inTransaction) this.dataRaw.exec('ROLLBACK')
-      } catch (rollbackErr) {
-        log.error('Could not roll back after a failed page commit', { error: rollbackErr })
+      for (const [label, raw] of [
+        ['data', this.dataRaw],
+        ['index', this.indexRaw]
+      ] as const) {
+        try {
+          if (raw?.inTransaction) raw.exec('ROLLBACK')
+        } catch (rollbackErr) {
+          log.error(`Could not roll back the ${label} DB after a failed page commit`, {
+            error: rollbackErr
+          })
+        }
       }
+      this.pendingNotifications = []
       unlandedOps = unlandedBeforeCommit
-      if (unlandedOps.length === 0) removeJournal()
-      else writeJournal(unlandedOps)
+      try {
+        if (unlandedOps.length === 0) removeJournal()
+        else writeJournal(unlandedOps)
+      } catch (journalErr) {
+        log.error('Could not restore the bulk apply journal', { error: journalErr })
+      }
       throw err
+    }
+
+    try {
+      this.indexRaw?.exec('COMMIT')
+    } catch (err) {
+      // Same rule as the data connection above: a failed COMMIT leaves the
+      // connection inside an open transaction, and an index one left open
+      // would run every later FTS/graph statement uncommitted-visible and fail
+      // every future BEGIN IMMEDIATE for the life of the process. The data rows
+      // (and, for a page's last slice, the pull cursor) are already committed,
+      // so nothing re-pulls this page: its index rows come back from the vault
+      // re-index (`indexVault`, `reconcileProjections`) on the next vault open,
+      // or from the next change to each item (#2294).
+      log.error('Index DB page commit failed after data commit', { error: err })
+      try {
+        if (this.indexRaw?.inTransaction) this.indexRaw.exec('ROLLBACK')
+      } catch (rollbackErr) {
+        log.error('Could not roll back the index DB page transaction', { error: rollbackErr })
+      }
+    }
+
+    // The rows are committed; a window that throws (destroyed mid-send) must
+    // neither fail the page nor silence the windows after it.
+    const notifications = this.pendingNotifications
+    this.pendingNotifications = []
+    for (const notify of notifications) {
+      try {
+        notify()
+      } catch (err) {
+        log.error('Post-commit renderer notification failed', { error: err })
+      }
     }
   }
 
@@ -335,6 +386,7 @@ class PageApplySession implements PageApplyHandle {
       else writeJournal(unlandedOps)
     }
     this.pendingOps = []
+    this.pendingNotifications = []
   }
 
   async flushFiles(): Promise<void> {
