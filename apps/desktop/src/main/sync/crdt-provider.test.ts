@@ -413,7 +413,7 @@ describe('CrdtProvider', () => {
     })
     expect(queue.enqueue).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'local')
   })
 
   // #2297 review (B-2, A-L3): the landing resolves only on the store's own
@@ -428,7 +428,7 @@ describe('CrdtProvider', () => {
 
     expect(provider.getDoc('note-1')!.getMap('meta').get('title')).toBe('from the feed')
     expect(store.storeUpdate).toHaveBeenCalledWith('note-1', update)
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'remote')
     expect(queue.enqueue).not.toHaveBeenCalled()
   })
 
@@ -508,7 +508,7 @@ describe('CrdtProvider', () => {
 
     expect(queue.enqueue).not.toHaveBeenCalled()
     expect(mocks.persistenceInstances.at(-1)!.storeUpdate).toHaveBeenCalled()
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'local')
   })
 
   it('broadcasts one shared Uint8Array instead of a boxed copy per receiving window', async () => {
@@ -540,7 +540,7 @@ describe('CrdtProvider', () => {
     expect(mocks.sent).toEqual([])
     expect(queue.enqueue).not.toHaveBeenCalled()
     expect(mocks.recordNetworkUpdate).toHaveBeenCalledWith('note-1')
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'remote')
 
     await provider.close('note-1')
     expect(mocks.sent[0]).toMatchObject({
@@ -1062,7 +1062,7 @@ describe('CrdtProvider', () => {
       }
     })
     expect(queue.enqueue).toHaveBeenCalled()
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'local')
   })
 
   it('skips remote updates for unopened docs and network-origin local queueing', async () => {
@@ -1193,7 +1193,7 @@ describe('CrdtProvider', () => {
       dateAfterRestart: reloaded.getMap('meta').get('date')
     }).toEqual({
       inMemory: 'pulled during compaction',
-      writtenBackDoc: ['note-1', compactedLiveDoc],
+      writtenBackDoc: ['note-1', compactedLiveDoc, 'remote'],
       broadcastToEditor: 'pulled during compaction',
       afterRestart: 'pulled during compaction',
       dateAfterRestart: '2026-01-01'
@@ -2273,7 +2273,7 @@ describe('CrdtProvider', () => {
         channel: CRDT_EVENTS.STATE_CHANGED,
         payload: { noteId: 'note-1', origin: 'ipc' }
       })
-      expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+      expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'local')
     })
 
     it('costs an ordinary note nothing', async () => {

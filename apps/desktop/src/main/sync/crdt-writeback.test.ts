@@ -240,8 +240,8 @@ describe('crdt writeback', () => {
   })
 
   it('debounces and writes back an existing markdown note with merged frontmatter', async () => {
-    scheduleWriteback('note-1', makeDoc('Yjs title', ['new-tag']))
-    scheduleWriteback('note-1', makeDoc('Latest title', ['new-tag']))
+    scheduleWriteback('note-1', makeDoc('Yjs title', ['new-tag']), 'remote')
+    scheduleWriteback('note-1', makeDoc('Latest title', ['new-tag']), 'remote')
 
     expect(getWritebackDebugState('note-1')).toMatchObject({
       pending: true,
@@ -299,7 +299,7 @@ describe('crdt writeback', () => {
     })
     mocks.safeRead.mockResolvedValue('---\ntitle: Existing\n---\nold markdown\n\n- [[Somewhere]]')
 
-    scheduleWriteback('note-1', makeDoc('Existing', []))
+    scheduleWriteback('note-1', makeDoc('Existing', []), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.atomicWrite).not.toHaveBeenCalled()
@@ -325,7 +325,7 @@ describe('crdt writeback', () => {
     })
     mocks.safeRead.mockResolvedValue('Line one  \nLine two')
 
-    scheduleWriteback('note-1', makeDoc('Foreign', []))
+    scheduleWriteback('note-1', makeDoc('Foreign', []), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.atomicWrite).not.toHaveBeenCalled()
@@ -351,7 +351,7 @@ describe('crdt writeback', () => {
     })
     mocks.safeRead.mockResolvedValue('Line one  \nLine two')
 
-    scheduleWriteback('note-1', makeDoc('Foreign', []))
+    scheduleWriteback('note-1', makeDoc('Foreign', []), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.atomicWrite).toHaveBeenCalledWith(
@@ -378,7 +378,7 @@ describe('crdt writeback', () => {
     mocks.serializeParsedNote.mockReturnValue('already mutated body')
     mocks.yDocToMarkdown.mockResolvedValue('already mutated body')
 
-    scheduleWriteback('note-1', makeDoc('Mutated', []))
+    scheduleWriteback('note-1', makeDoc('Mutated', []), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.atomicWrite).not.toHaveBeenCalled()
@@ -392,7 +392,7 @@ describe('crdt writeback', () => {
       contentHash: 'hash:---\ntitle: Existing\n---\nold markdown'
     })
 
-    scheduleWriteback('note-1', makeDoc('Existing', []))
+    scheduleWriteback('note-1', makeDoc('Existing', []), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.atomicWrite).toHaveBeenCalledWith(
@@ -406,7 +406,7 @@ describe('crdt writeback', () => {
     mocks.findUnrepresentableNodes.mockReturnValue(['wikiLink'])
 
     // #when
-    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    scheduleWriteback('note-1', makeDoc('Yjs title'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     // #then the vault file is left exactly as the user last saw it — a lossy
@@ -428,13 +428,13 @@ describe('crdt writeback', () => {
   it('resumes writing back once the doc is representable again', async () => {
     // #given a pass that was refused
     mocks.findUnrepresentableNodes.mockReturnValue(['wikiLink'])
-    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    scheduleWriteback('note-1', makeDoc('Yjs title'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
     expect(mocks.atomicWrite).not.toHaveBeenCalled()
 
     // #when the next edit leaves nothing unrepresentable
     mocks.findUnrepresentableNodes.mockReturnValue([])
-    scheduleWriteback('note-1', makeDoc('Later title'))
+    scheduleWriteback('note-1', makeDoc('Later title'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     // #then the refusal did not latch — the note writes normally
@@ -449,7 +449,7 @@ describe('crdt writeback', () => {
     mocks.yDocToMarkdown.mockResolvedValue(null)
 
     // #when
-    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    scheduleWriteback('note-1', makeDoc('Yjs title'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     // #then
@@ -464,7 +464,7 @@ describe('crdt writeback', () => {
     const previousNodeEnv = process.env.NODE_ENV
     process.env.NODE_ENV = 'production'
     try {
-      scheduleWriteback('note-prod', makeDoc('Yjs title'))
+      scheduleWriteback('note-prod', makeDoc('Yjs title'), 'remote')
       expect(getWritebackDebugState('note-prod')).toBeNull()
 
       await vi.advanceTimersByTimeAsync(500)
@@ -502,7 +502,7 @@ describe('crdt writeback', () => {
     ])
     mocks.yDocToMarkdown.mockResolvedValueOnce(markdown)
 
-    scheduleWriteback('note-1', doc)
+    scheduleWriteback('note-1', doc, 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.atomicWrite).toHaveBeenCalledWith(
@@ -531,7 +531,7 @@ describe('crdt writeback', () => {
       emoji: null
     })
 
-    scheduleWriteback('note-applied', makeDoc('Untitled'))
+    scheduleWriteback('note-applied', makeDoc('Untitled'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     // #then no second file, no CREATED event, and the applied title survives
@@ -560,9 +560,9 @@ describe('crdt writeback', () => {
       id === 'note-1' ? existingRow : undefined
     )
 
-    scheduleWriteback('note-new', makeDoc('New Note', ['tag-a']))
-    scheduleWriteback('j2026-01-02', makeDoc('Ignored', ['journal']))
-    scheduleWriteback('note-1', makeDoc('Existing'))
+    scheduleWriteback('note-new', makeDoc('New Note', ['tag-a']), 'remote')
+    scheduleWriteback('j2026-01-02', makeDoc('Ignored', ['journal']), 'remote')
+    scheduleWriteback('note-1', makeDoc('Existing'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     // #then only the note with a row is written, and nothing is announced as new
@@ -579,7 +579,7 @@ describe('crdt writeback', () => {
   it('writes nothing back for a note whose armed pass was cancelled', async () => {
     // #given the user deletes a note inside the debounce window. A pass that
     // still fired could write back the file the delete just removed.
-    scheduleWriteback('note-deleted', makeDoc('Deleted Note'))
+    scheduleWriteback('note-deleted', makeDoc('Deleted Note'), 'remote')
     mocks.getNoteCacheById.mockReturnValue(undefined)
 
     cancelWriteback('note-deleted')
@@ -593,7 +593,7 @@ describe('crdt writeback', () => {
   it('cancels a note with nothing armed, and cancels twice, without complaint', async () => {
     cancelWriteback('never-scheduled')
 
-    scheduleWriteback('note-deleted', makeDoc('Deleted Note'))
+    scheduleWriteback('note-deleted', makeDoc('Deleted Note'), 'remote')
     cancelWriteback('note-deleted')
     cancelWriteback('note-deleted')
     await vi.advanceTimersByTimeAsync(500)
@@ -602,8 +602,8 @@ describe('crdt writeback', () => {
   })
 
   it('leaves other notes armed when one note is cancelled', async () => {
-    scheduleWriteback('note-deleted', makeDoc('Deleted Note'))
-    scheduleWriteback('note-1', makeDoc('Kept Note'))
+    scheduleWriteback('note-deleted', makeDoc('Deleted Note'), 'remote')
+    scheduleWriteback('note-1', makeDoc('Kept Note'), 'remote')
 
     cancelWriteback('note-deleted')
     await vi.advanceTimersByTimeAsync(500)
@@ -673,7 +673,7 @@ describe('crdt writeback', () => {
   })
 
   it('flushPendingWritebacks runs a scheduled write-back without advancing the debounce timer', async () => {
-    scheduleWriteback('note-1', makeDoc('Pending title', ['flush-tag']))
+    scheduleWriteback('note-1', makeDoc('Pending title', ['flush-tag']), 'remote')
     expect(mocks.atomicWrite).not.toHaveBeenCalled()
 
     await flushPendingWritebacks()
@@ -685,7 +685,7 @@ describe('crdt writeback', () => {
   })
 
   it('flushPendingWritebacks clears pending timers so they do not fire a second time', async () => {
-    scheduleWriteback('note-1', makeDoc('Pending title'))
+    scheduleWriteback('note-1', makeDoc('Pending title'), 'remote')
 
     await flushPendingWritebacks()
     expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
@@ -701,7 +701,7 @@ describe('crdt writeback', () => {
 
   it('flushPendingWritebacks swallows a failing write-back and logs instead of rejecting', async () => {
     mocks.yDocToMarkdown.mockRejectedValueOnce(new Error('conversion boom'))
-    scheduleWriteback('note-1', makeDoc('Pending title'))
+    scheduleWriteback('note-1', makeDoc('Pending title'), 'remote')
 
     await expect(flushPendingWritebacks()).resolves.toBeUndefined()
     expect(mocks.logger.error).toHaveBeenCalledWith(
@@ -727,7 +727,7 @@ describe('crdt writeback', () => {
   /** 60 updates 500ms apart — the rhythm that fires the debounce every time. */
   async function typeFor30Seconds(): Promise<void> {
     for (let i = 0; i < 60; i++) {
-      scheduleWriteback('note-1', makeDoc('Typing', ['new-tag']))
+      scheduleWriteback('note-1', makeDoc('Typing', ['new-tag']), 'remote')
       await vi.advanceTimersByTimeAsync(500)
     }
     await vi.advanceTimersByTimeAsync(5000)
@@ -783,12 +783,12 @@ describe('crdt writeback', () => {
   it('flushPendingWritebacks still lands a write-back that is inside its cooldown', async () => {
     withWritebackCost(200)
 
-    scheduleWriteback('note-1', makeDoc('First', ['new-tag']))
+    scheduleWriteback('note-1', makeDoc('First', ['new-tag']), 'remote')
     await vi.advanceTimersByTimeAsync(500)
     expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
 
     // Second edit lands inside the 1800ms cooldown, so its timer has not fired.
-    scheduleWriteback('note-1', makeDoc('Second', ['new-tag']))
+    scheduleWriteback('note-1', makeDoc('Second', ['new-tag']), 'remote')
     await vi.advanceTimersByTimeAsync(500)
     expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
 
@@ -845,7 +845,7 @@ describe('crdt writeback', () => {
       // live right now
       const closedDoc = makeDocWithBody('paragraph one')
       vaultFile = 'paragraph one'
-      scheduleWriteback('note-1', closedDoc)
+      scheduleWriteback('note-1', closedDoc, 'remote')
 
       // #when — the note is closed and reopened inside the debounce: the
       // provider's map now holds a different Y.Doc for the same id, and a sync
@@ -874,7 +874,7 @@ describe('crdt writeback', () => {
       // reopened doc holds content that has not been written yet
       const closedDoc = makeDocWithBody('paragraph one')
       vaultFile = 'paragraph one'
-      scheduleWriteback('note-1', closedDoc)
+      scheduleWriteback('note-1', closedDoc, 'remote')
 
       const reopenedDoc = makeDocWithBody('paragraph one\n\nparagraph two from another device')
       mocks.getDoc.mockReturnValue(reopenedDoc)
@@ -897,7 +897,7 @@ describe('crdt writeback', () => {
       vaultFile = 'paragraph one'
       mocks.getDoc.mockReturnValue(liveDoc)
 
-      scheduleWriteback('note-1', liveDoc)
+      scheduleWriteback('note-1', liveDoc, 'remote')
       await vi.advanceTimersByTimeAsync(500)
 
       expect(vaultFile).toBe('paragraph one edited')
@@ -909,7 +909,7 @@ describe('crdt writeback', () => {
       // state and must not be dropped on the floor.
       const closedDoc = makeDocWithBody('paragraph one edited')
       vaultFile = 'paragraph one'
-      scheduleWriteback('note-1', closedDoc)
+      scheduleWriteback('note-1', closedDoc, 'remote')
       mocks.getDoc.mockReturnValue(undefined)
 
       await vi.advanceTimersByTimeAsync(500)
@@ -920,7 +920,7 @@ describe('crdt writeback', () => {
     it('resolves the live doc on the shutdown flush too', async () => {
       const closedDoc = makeDocWithBody('paragraph one')
       vaultFile = 'paragraph one\n\nparagraph two from another device'
-      scheduleWriteback('note-1', closedDoc)
+      scheduleWriteback('note-1', closedDoc, 'remote')
 
       mocks.getDoc.mockReturnValue(
         makeDocWithBody('paragraph one\n\nparagraph two from another device')
@@ -953,7 +953,7 @@ describe('crdt writeback', () => {
     )
 
     // #when
-    scheduleWriteback('note-1', makeDoc('Existing'))
+    scheduleWriteback('note-1', makeDoc('Existing'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     // #then this device's own copy of the file gets renamed from the body diff
@@ -970,7 +970,7 @@ describe('crdt writeback', () => {
       throw new Error('attachments folder is read-only')
     })
 
-    scheduleWriteback('note-1', makeDoc('Existing'))
+    scheduleWriteback('note-1', makeDoc('Existing'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     // The note's bytes are already on disk when the reconcile runs; a folder
@@ -1000,7 +1000,7 @@ describe('crdt writeback', () => {
     mocks.yDocToMarkdown.mockResolvedValue(oversizedBody)
 
     // #when
-    scheduleWriteback('note-1', makeDoc('Server log'))
+    scheduleWriteback('note-1', makeDoc('Server log'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     // #then the file still lands on disk — it is the user's data, and the
@@ -1024,7 +1024,7 @@ describe('crdt writeback', () => {
   it('still hands the renderer the body of a note-class inbound edit', async () => {
     // #then the guard must cost note-class notes nothing — this is the shape
     // every synced note has today
-    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    scheduleWriteback('note-1', makeDoc('Yjs title'), 'remote')
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.sent).toContainEqual({
@@ -1050,7 +1050,7 @@ describe('crdt-writeback per-vault state reset', () => {
     // #given — a vault session that populated every module-level per-note map
     markWritebackIgnored('/vault-a/notes/One.md')
     recordNetworkUpdate('note-1')
-    scheduleWriteback('note-1', makeDoc('One'))
+    scheduleWriteback('note-1', makeDoc('One'), 'remote')
 
     expect(isWritebackIgnored('/vault-a/notes/One.md')).toBe(true)
     expect(wasRecentNetworkUpdate('note-1')).toBe(true)
