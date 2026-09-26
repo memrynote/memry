@@ -177,7 +177,8 @@ any non-delete push against a tombstoned id unless the incoming clock happens st
 stored one, answering `SYNC_DELETE_WINS`; `push-coordinator` drains that rejection without retrying,
 because a retry is refused identically every time. The rule does not expire: past the
 version-history window the server keeps the tombstone row as a payload-less marker, and a purged
-tombstone reaches `applyDelete` with the same clock a signed one would carry.
+tombstone whose delete attestation verifies reaches `applyDelete` with the same clock a signed one
+would carry. An unattested one never reaches a handler.
 
 Handlers used to keep the row on a concurrent clock, and the two rules together stranded exactly one
 device: the device that edited an item before it saw the delete had its push refused forever and its

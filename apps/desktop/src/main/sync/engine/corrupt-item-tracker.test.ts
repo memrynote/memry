@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import sodium from 'libsodium-wrappers-sumo'
+import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
+import { deleteAttestationPayload } from '@memry/contracts/delete-attestation'
+import { signPayload } from '../../crypto/signatures'
 import { CorruptItemTracker } from './corrupt-item-tracker'
 import { CORRUPT_ITEM_COOLDOWN_MS, MAX_CORRUPT_ITEMS } from './sync-context'
 import type { SyncContext } from './sync-context'
@@ -33,6 +37,37 @@ vi.mock('./purged-tombstone-guard', () => ({
   localTombstoneRefusal: vi.fn(() => null)
 }))
 
+await sodium.ready
+const signer = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(5))
+
+/** A purged tombstone entry, attested by device-a unless `attest` is false (#2408). */
+const purged = (
+  id: string,
+  type: string,
+  clock: Record<string, number>,
+  serverCursor: number,
+  attest = true
+) => ({
+  id,
+  type,
+  deletedAt: 5,
+  clock,
+  serverCursor,
+  ...(attest
+    ? {
+        signerDeviceId: 'device-a',
+        deleteAttestation: sodium.to_base64(
+          signPayload(
+            deleteAttestationPayload({ id, type: type as 'task', deletedAt: 5, clock }),
+            CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+            signer.privateKey
+          ),
+          sodium.base64_variants.ORIGINAL
+        )
+      }
+    : {})
+})
+
 const createTracker = (): CorruptItemTracker => {
   const ctx = {
     deps: {
@@ -46,7 +81,9 @@ const createTracker = (): CorruptItemTracker => {
     quarantineItem: vi.fn()
   } as unknown as QuarantineManager
 
-  const resolveDeviceKey = vi.fn().mockResolvedValue(new Uint8Array(32))
+  const resolveDeviceKey = vi.fn(async (deviceId: string) =>
+    deviceId === 'device-a' ? signer.publicKey : new Uint8Array(32)
+  )
 
   return new CorruptItemTracker(ctx, quarantine, resolveDeviceKey)
 }
@@ -306,21 +343,9 @@ describe('CorruptItemTracker', () => {
         vi.mocked(postToServer).mockResolvedValue({
           items: [],
           purgedTombstones: [
-            {
-              id: 'task-dead',
-              type: 'task',
-              deletedAt: 5,
-              clock: { 'device-a': 2 },
-              serverCursor: 7
-            },
+            purged('task-dead', 'task', { 'device-a': 2 }, 7),
             { id: 'task-clockless', type: 'task', deletedAt: 5, serverCursor: 8 },
-            {
-              id: 'inbox',
-              type: 'project',
-              deletedAt: 5,
-              clock: { 'device-a': 1 },
-              serverCursor: 9
-            }
+            purged('inbox', 'project', { 'device-a': 1 }, 9)
           ],
           blobMissing: [{ id: 'task-lost', type: 'task', serverCursor: 3 }]
         })
@@ -346,7 +371,7 @@ describe('CorruptItemTracker', () => {
             content: '',
             clock: { 'device-a': 2 },
             deletedAt: 5,
-            signerDeviceId: ''
+            signerDeviceId: 'device-a'
           }
         ])
         expect(result.blobMissing).toEqual([{ id: 'task-lost', type: 'task' }])
@@ -365,15 +390,7 @@ describe('CorruptItemTracker', () => {
         vi.mocked(localTombstoneRefusal).mockReturnValueOnce('local_clockless')
         vi.mocked(postToServer).mockResolvedValue({
           items: [],
-          purgedTombstones: [
-            {
-              id: 'task-dead',
-              type: 'task',
-              deletedAt: 5,
-              clock: { 'device-a': 2 },
-              serverCursor: 7
-            }
-          ]
+          purgedTombstones: [purged('task-dead', 'task', { 'device-a': 2 }, 7)]
         })
         vi.mocked(decryptPullBatch).mockResolvedValue({ decrypted: [], failures: [] })
 
@@ -386,6 +403,58 @@ describe('CorruptItemTracker', () => {
         expect(result.recovered).toEqual([])
         expect(result.missing).toEqual([])
         expect(result.skipped).toEqual([{ id: 'task-dead', type: 'task' }])
+      })
+
+      // #2408: a failure to resolve a signer key is not an answer about the
+      // item: the refs take the failed-with-cooldown path and are never missing.
+      it('#then a key-resolution failure is a failed refetch, never missing', async () => {
+        vi.mocked(postToServer).mockResolvedValue({
+          items: [],
+          purgedTombstones: [purged('task-dead', 'task', { 'device-a': 2 }, 7)]
+        })
+        const tracker = new CorruptItemTracker(
+          {
+            deps: { network: { online: true }, workerBridge: undefined },
+            abortController: null
+          } as unknown as SyncContext,
+          { quarantineItem: vi.fn() } as unknown as QuarantineManager,
+          vi.fn().mockRejectedValue(new Error('No access token'))
+        )
+        const ref = { id: 'task-dead', type: 'task' }
+
+        const result = await tracker.refetch([ref], 'token', new Uint8Array(32))
+
+        expect(result.missing).toEqual([])
+        expect(result.recovered).toEqual([])
+        expect(result.permanentFailures).toEqual([ref])
+        expect(tracker.shouldRetry(ref)).toBe(false)
+      })
+
+      // #2408: an entry no device attested is refused like an envelope refusal:
+      // counted missing, never recovered, never a delete.
+      it('#then a forged or unattested purged tombstone is missing, not recovered', async () => {
+        const forged = purged('task-forged', 'task', { 'device-a': 2 }, 7)
+        vi.mocked(postToServer).mockResolvedValue({
+          items: [],
+          purgedTombstones: [
+            { ...forged, clock: { x: 2 ** 31 } },
+            purged('task-legacy', 'task', { 'device-a': 2 }, 8, false),
+            { ...purged('task-unknown', 'task', { 'device-a': 2 }, 9), signerDeviceId: 'device-x' }
+          ]
+        })
+        vi.mocked(decryptPullBatch).mockResolvedValue({ decrypted: [], failures: [] })
+        vi.mocked(localTombstoneRefusal).mockClear()
+        const refs = ['task-forged', 'task-legacy', 'task-unknown'].map((id) => ({
+          id,
+          type: 'task'
+        }))
+
+        const result = await createTracker().refetch(refs, 'token', new Uint8Array(32))
+
+        expect(result.recovered).toEqual([])
+        expect(result.skipped).toEqual([])
+        expect(result.missing).toEqual(refs)
+        expect(localTombstoneRefusal).not.toHaveBeenCalled()
       })
     })
   })

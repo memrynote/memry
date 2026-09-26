@@ -26,7 +26,11 @@ export async function getDeviceSigningKey(
   }
 
   log.debug('Device key not in local cache, fetching from server', { deviceId })
-  await fetchAndCacheDeviceKeys(db, accessToken)
+  // Null below means the server's device list was read and does not name this
+  // device (#2408). A list that could not be read is a failure, not an answer.
+  if (!(await refreshDeviceKeys(db, accessToken))) {
+    throw new Error('Invalid /auth/devices response')
+  }
 
   const refreshed = db
     .select({ signingPublicKey: syncDevices.signingPublicKey })
@@ -44,6 +48,11 @@ export async function getDeviceSigningKey(
 }
 
 export async function fetchAndCacheDeviceKeys(db: DrizzleDb, accessToken: string): Promise<void> {
+  await refreshDeviceKeys(db, accessToken)
+}
+
+/** Caches `GET /auth/devices`; false when the response is not a device list. */
+async function refreshDeviceKeys(db: DrizzleDb, accessToken: string): Promise<boolean> {
   const { value: raw } = await withRetry(
     () => getFromServer<unknown>('/auth/devices', accessToken),
     { maxRetries: 3, baseDelayMs: 2000 }
@@ -51,7 +60,7 @@ export async function fetchAndCacheDeviceKeys(db: DrizzleDb, accessToken: string
   const parsed = DeviceKeysResponseSchema.safeParse(raw)
   if (!parsed.success) {
     log.error('Invalid device keys response from server', { error: parsed.error.message })
-    return
+    return false
   }
 
   for (const device of parsed.data.devices) {
@@ -73,4 +82,5 @@ export async function fetchAndCacheDeviceKeys(db: DrizzleDb, accessToken: string
   }
 
   log.info('Cached device keys from server', { count: parsed.data.devices.length })
+  return true
 }

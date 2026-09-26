@@ -33,6 +33,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import { CBOR_FIELD_ORDER } from '../cbor-ordering'
+import { DELETE_ATTESTATION_PURPOSE } from '../delete-attestation'
 import {
   ARGON2_PARAMS,
   CRYPTO_VERSION,
@@ -290,6 +291,18 @@ export const COVERED: readonly Covered[] = [
     label: 'CBOR_FIELD_ORDER.TOMBSTONE',
     value: CBOR_FIELD_ORDER.TOMBSTONE,
     spelledAs: ['`id, type, deletedAt, deviceId`']
+  },
+  {
+    slug: C04,
+    label: 'CBOR_FIELD_ORDER.DELETE_ATTESTATION',
+    value: CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+    spelledAs: ['`purpose, id, type, deletedAt, clock`']
+  },
+  {
+    slug: C04,
+    label: 'DELETE_ATTESTATION_PURPOSE',
+    value: DELETE_ATTESTATION_PURPOSE,
+    spelledAs: ['`memry-delete-attestation-v1`']
   },
 
   // --- chapter 08 -----------------------------------------------------------

@@ -1,4 +1,9 @@
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
+import {
+  deleteAttestationPayload,
+  deleteClaimOf,
+  type DeleteClaim
+} from '@memry/contracts/delete-attestation'
 import type { PushItem, SyncItemType, SyncOperation, VectorClock } from '@memry/contracts/sync-api'
 import { compressPayload } from '../compress.ts'
 import {
@@ -32,6 +37,10 @@ export interface EncryptRecordInput {
   stateVector?: string
   deletedAt?: number
 }
+
+/** The bytes a delete attestation signs (protocol 04 §4.8.4, #2408). */
+export const deleteAttestationMessage = (claim: DeleteClaim): Uint8Array =>
+  encodeCbor(deleteAttestationPayload(claim), CBOR_FIELD_ORDER.DELETE_ATTESTATION)
 
 export async function encryptRecordForPush(
   crypto: SyncPushCryptoProvider,
@@ -85,6 +94,14 @@ export async function encryptRecordForPush(
 
     const message = encodeCbor(signaturePayload, CBOR_FIELD_ORDER.SYNC_ITEM)
     const signature = crypto.signDetached(message, input.signingSecretKey)
+    // The payload signature is shed with the payload after retention; this
+    // content-free one survives it, so a purged tombstone stays verifiable.
+    const claim = deleteClaimOf(input)
+    const deleteAttestation = claim
+      ? crypto.toBase64(
+          crypto.signDetached(deleteAttestationMessage(claim), input.signingSecretKey)
+        )
+      : undefined
 
     return {
       pushItem: {
@@ -99,7 +116,8 @@ export async function encryptRecordForPush(
         signerDeviceId: input.signerDeviceId,
         ...(input.clock ? { clock: input.clock } : {}),
         ...(input.stateVector ? { stateVector: input.stateVector } : {}),
-        ...(input.deletedAt !== undefined ? { deletedAt: input.deletedAt } : {})
+        ...(input.deletedAt !== undefined ? { deletedAt: input.deletedAt } : {}),
+        ...(deleteAttestation ? { deleteAttestation } : {})
       },
       sizeBytes: ciphertext.length
     }

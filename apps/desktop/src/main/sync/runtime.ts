@@ -782,7 +782,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         },
         getDevicePublicKey: async (deviceId) => {
           const token = await getValidAccessToken()
-          if (!token) return null
+          // Null means "no such device" to every caller (#2408). Without a token
+          // the lookup never ran, so it fails and the caller holds instead.
+          if (!token) throw new Error('No access token to resolve a device signing key')
           return getDeviceSigningKey(runtimeSyncDb, deviceId, token)
         },
         emitToRenderer: emitFn,

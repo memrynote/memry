@@ -407,4 +407,60 @@ describe('D1 schema', () => {
       }
     })
   })
+
+  // #2408: the delete attestation column is additive and never backfilled.
+  // Every existing row, live row, signed tombstone or #2302 marker, reads NULL:
+  // unattested, which clients refuse to apply as a purged tombstone.
+  describe('0015_sync_items_delete_attestation', () => {
+    it('keeps existing rows untouched, with a NULL attestation', () => {
+      const db = new Database(':memory:')
+      for (const file of migrationFiles().filter((name) => name < '0015')) {
+        db.exec(loadMigrationSql(file))
+      }
+      db.prepare(
+        `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'a@b.com', 'otp', 1, 1)`
+      ).run()
+      const insert = db.prepare(
+        `INSERT INTO sync_items
+           (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
+            signature, server_cursor, created_at, updated_at, deleted_at, clock)
+         VALUES (?, 'user-1', 'default', 'task', ?, ?, 42, 'h', 's', ?, 1, 1, ?, '{"d":1}')`
+      )
+      insert.run('row-live', 'task-live', 'k', 7, null)
+      insert.run('row-marker', 'task-marker', '', 8, 1700000000)
+
+      db.exec(loadMigrationSql('0015_sync_items_delete_attestation.sql'))
+
+      expect(
+        db
+          .prepare(
+            'SELECT id, blob_key, deleted_at, delete_attestation FROM sync_items ORDER BY id'
+          )
+          .all()
+      ).toEqual([
+        {
+          id: 'row-live',
+          blob_key: 'k',
+          deleted_at: null,
+          delete_attestation: null
+        },
+        {
+          id: 'row-marker',
+          blob_key: '',
+          deleted_at: 1700000000,
+          delete_attestation: null
+        }
+      ])
+      const columns = db.prepare('PRAGMA table_info(sync_items)').all() as Array<{
+        name: string
+        notnull: number
+        dflt_value: unknown
+      }>
+      expect(columns.find((entry) => entry.name === 'delete_attestation')).toMatchObject({
+        notnull: 0,
+        dflt_value: null
+      })
+    })
+  })
 })

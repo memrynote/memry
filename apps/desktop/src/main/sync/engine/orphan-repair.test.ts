@@ -557,4 +557,39 @@ describe('repairOrphans with a real CorruptItemTracker (#2302)', () => {
 
     expect(later).toEqual({ repaired: 0, tombstoned: 1 })
   })
+
+  // #2408: a parent tombstone no device attested is never applied or recovered
+  // as a delete. Orphan repair already trusts server absence, so the child is
+  // handled exactly as when the server returns nothing for the parent.
+  it('never applies a forged purged parent tombstone; the child is handled as for an absent parent', async () => {
+    const outcome = async (pullBody: Record<string, unknown>) => {
+      const ctx = makeCtx()
+      vi.mocked(postToServer).mockResolvedValueOnce(pullBody)
+      const result = await run(ctx, realTracker(ctx))
+      return {
+        result,
+        applied: vi.mocked(ctx.applier.apply).mock.calls,
+        enqueued: vi.mocked(ctx.deps.queue.enqueue).mock.calls
+      }
+    }
+
+    const forged = await outcome({
+      items: [],
+      purgedTombstones: [
+        {
+          id: 'proj-gone',
+          type: 'project',
+          deletedAt: 5,
+          clock: { x: 2 ** 31 },
+          serverCursor: 1,
+          signerDeviceId: 'device-A',
+          deleteAttestation: Buffer.alloc(64, 7).toString('base64')
+        }
+      ]
+    })
+    const absent = await outcome({ items: [] })
+
+    expect(forged.applied).toEqual([])
+    expect(forged).toEqual(absent)
+  })
 })

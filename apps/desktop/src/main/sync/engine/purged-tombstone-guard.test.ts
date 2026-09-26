@@ -124,6 +124,20 @@ describe('localTombstoneRefusal (#2302)', () => {
     expect(guard(tombstone('note', 'note-edited'))).toBe('local_newer')
   })
 
+  // #2408: the Rust core pushes deletedAt in epoch milliseconds, and the marker
+  // serves it as pushed. It is compared in seconds like the local timestamps.
+  it('compares a millisecond deletedAt (a Rust-origin marker) in seconds', () => {
+    seedTag('recreated', { 'device-b': 1 }, NEW)
+    seedTag('stale', { 'device-b': 1 }, OLD)
+    const inMs = (name: string): PurgedTombstone => ({
+      ...tombstone('tag_definition', name),
+      deletedAt: DELETED_AT * 1000
+    })
+
+    expect(guard(inMs('recreated'))).toBe('local_newer')
+    expect(guard(inMs('stale'))).toBeNull()
+  })
+
   it('does not apply the recreate rules to a random-id type', () => {
     testDb.db
       .insert(tasks)

@@ -19,6 +19,7 @@
 //! | `_offline` never reaches the wire            | chapter 06 §6.6                         |
 //! | a clock-required row with no clock is refused | chapter 05 §5.4                        |
 //! | a policy refusal leaves the queue untouched  | chapter 11 §11.9                        |
+//! | a delete push attests what it sends          | chapter 04 §4.8.4 (#2408)               |
 
 mod http_fakes;
 mod support;
@@ -32,12 +33,14 @@ use memry_core::api::errors::StorageError;
 use memry_core::crypto::sodium;
 use memry_core::protocol::account::{AccountCipher, AccountSealer, DeviceSigner, SealEntropy};
 use memry_core::protocol::crdt_envelope::CrdtMaterial;
+use memry_core::protocol::delete_attestation::{self, DeleteClaim};
 use memry_core::protocol::envelope::{self, RecordMaterial, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items::SyncItemRow;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{CrdtCipher, PackedUpdate};
+use memry_core::sync::clock::VectorClock;
 use memry_core::sync::outbox::{self, Change};
 use memry_core::sync::pull::RecordCipher;
 use memry_core::sync::push::{PendingRecord, PushCoordinator, PushSealer};
@@ -578,4 +581,74 @@ async fn a_kill_switch_refusal_leaves_the_row_queued_with_its_attempt_count_unmo
     // No row removed, and no backoff accrued against a condition the user
     // cannot fix.
     assert_eq!(outbox_count_and_attempts(&db), (1, 0));
+}
+
+// ------------------------------------------------- delete attestation (#2408)
+
+fn pending_row(
+    item_type: &str,
+    operation: SyncOperation,
+    deleted_at: Option<i64>,
+) -> PendingRecord {
+    PendingRecord {
+        operation,
+        row: SyncItemRow {
+            item_type: item_type.to_owned(),
+            item_id: "t1".to_owned(),
+            payload: Some("{}".to_owned()),
+            payload_state: "full".to_owned(),
+            clock: Some(r#"{"_offline":2,"device-a":1}"#.to_owned()),
+            field_clocks: None,
+            server_cursor: None,
+            signer_device_id: None,
+            updated_at: 1,
+            deleted_at,
+            corrupt_reason: None,
+            corrupt_at: None,
+        },
+    }
+}
+
+/// #2408, chapter 04 §4.8.4: a delete push carries an attestation over the
+/// clock and deletedAt it actually sends (rebound, `_offline`-free, ms), and
+/// only an attestable delete carries one.
+#[test]
+fn a_delete_push_attests_the_clock_and_deleted_at_it_sends() {
+    let (public, secret) = sodium::sign_seed_keypair(&[9u8; 32]).expect("a keypair");
+    let sealer = AccountSealer::new(
+        vec![3u8; 32],
+        DeviceSigner::new("device-a", secret.to_vec()).expect("a signer"),
+    );
+
+    let sealed = sealer
+        .seal_record(&pending_row(
+            "task",
+            SyncOperation::Delete,
+            Some(1_760_000_000_000),
+        ))
+        .expect("seals");
+    let clock: VectorClock = serde_json::from_value(sealed["clock"].clone()).expect("a clock");
+    assert_eq!(clock, VectorClock::from([("device-a".to_owned(), 3)]));
+    let claim = DeleteClaim {
+        item_type: "task",
+        item_id: "t1",
+        clock: &clock,
+        deleted_at: sealed["deletedAt"].as_i64().expect("deletedAt"),
+    };
+    delete_attestation::verify(&claim, str_field(&sealed, "deleteAttestation"), &public)
+        .expect("the attestation verifies over what was pushed");
+
+    for (item_type, operation, deleted_at) in [
+        ("task", SyncOperation::Update, None),
+        ("task", SyncOperation::Delete, None),
+        ("settings", SyncOperation::Delete, Some(1_760_000_000_000)),
+    ] {
+        let sealed = sealer
+            .seal_record(&pending_row(item_type, operation, deleted_at))
+            .expect("seals");
+        assert!(
+            sealed.get("deleteAttestation").is_none(),
+            "{item_type} {operation:?} {deleted_at:?} attested"
+        );
+    }
 }

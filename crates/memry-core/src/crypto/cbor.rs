@@ -58,6 +58,9 @@ pub mod field_order {
         "encryptedFileKey",
         "keyNonce",
     ];
+    /// The delete attestation, §4.8.4 (#2408). `purpose` is what keeps it
+    /// disjoint from `SYNC_ITEM`, whose allowlist rejects that key.
+    pub const DELETE_ATTESTATION: &[&str] = &["purpose", "id", "type", "deletedAt", "clock"];
 
     /// Looks an allowlist up by the name chapter 04 §4.7.3 gives it.
     pub fn by_name(name: &str) -> Option<&'static [&'static str]> {
@@ -70,6 +73,7 @@ pub mod field_order {
             "PROVIDER_AUTH_CONFIRM" => PROVIDER_AUTH_CONFIRM,
             "VAULT_TRANSFER_CONFIRM" => VAULT_TRANSFER_CONFIRM,
             "ATTACHMENT_MANIFEST" => ATTACHMENT_MANIFEST,
+            "DELETE_ATTESTATION" => DELETE_ATTESTATION,
             _ => return None,
         })
     }

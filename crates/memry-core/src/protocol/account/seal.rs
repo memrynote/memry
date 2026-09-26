@@ -50,6 +50,7 @@ use serde_json::Value as Json;
 use zeroize::Zeroizing;
 
 use crate::protocol::crdt_envelope::{self, CrdtMaterial, CrdtRequest};
+use crate::protocol::delete_attestation;
 use crate::protocol::envelope::{self, EnvelopeError, RecordMaterial, RecordRequest};
 use crate::storage::repositories::sync_items::SyncItemRow;
 use crate::sync::clock::{self, OFFLINE_CLOCK_DEVICE_ID, VectorClock};
@@ -212,6 +213,7 @@ impl PushSealer for AccountSealer {
             });
         };
 
+        let clock = wire_clock(row, &self.signer.device_id)?;
         let sealed = envelope::encrypt(
             &RecordRequest {
                 id: &row.item_id,
@@ -221,7 +223,7 @@ impl PushSealer for AccountSealer {
                 vault_key: &self.vault_key,
                 signing_secret_key: &self.signer.secret_key,
                 signer_device_id: &self.signer.device_id,
-                clock: wire_clock(row, &self.signer.device_id)?,
+                clock: clock.clone(),
                 // Never, on this path. See the module header, rule 1.
                 state_vector: None,
                 deleted_at: row.deleted_at,
@@ -229,7 +231,23 @@ impl PushSealer for AccountSealer {
             &self.entropy.record(),
         )?;
 
-        Ok(envelope::to_record_push_json(&sealed.envelope))
+        let mut pushed = envelope::to_record_push_json(&sealed.envelope);
+        // §4.8.4 (#2408): the record signature is shed with the payload after
+        // retention; this one is not, so the purged tombstone stays verifiable.
+        // It signs the same pushed clock and deletedAt the server will store.
+        if let Some(claim) = delete_attestation::claim_of(
+            &row.item_type,
+            &row.item_id,
+            item.operation,
+            clock.as_ref(),
+            row.deleted_at,
+        ) {
+            let attestation = delete_attestation::sign(&claim, &self.signer.secret_key)?;
+            if let Some(fields) = pushed.as_object_mut() {
+                fields.insert("deleteAttestation".to_owned(), Json::String(attestation));
+            }
+        }
+        Ok(pushed)
     }
 
     /// One packed CRDT envelope, chapter 04 §4.11.

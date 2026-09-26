@@ -24,7 +24,8 @@ describe('CBOR_FIELD_ORDER', () => {
         'KEY_CONFIRM',
         'PROVIDER_AUTH_CONFIRM',
         'VAULT_TRANSFER_CONFIRM',
-        'ATTACHMENT_MANIFEST'
+        'ATTACHMENT_MANIFEST',
+        'DELETE_ATTESTATION'
       ].sort()
     )
   })
@@ -65,10 +66,7 @@ describe('CBOR_FIELD_ORDER', () => {
   })
 
   it('pins the PROVIDER_AUTH_CONFIRM field order', () => {
-    expect(CBOR_FIELD_ORDER.PROVIDER_AUTH_CONFIRM).toEqual([
-      'sessionId',
-      'encryptedProviderAuth'
-    ])
+    expect(CBOR_FIELD_ORDER.PROVIDER_AUTH_CONFIRM).toEqual(['sessionId', 'encryptedProviderAuth'])
   })
 
   it('pins the ATTACHMENT_MANIFEST field order', () => {
@@ -77,6 +75,17 @@ describe('CBOR_FIELD_ORDER', () => {
       'manifestNonce',
       'encryptedFileKey',
       'keyNonce'
+    ])
+  })
+
+  // #2408: the delete attestation's signed fields (protocol 04 §4.8.4).
+  it('pins the DELETE_ATTESTATION field order', () => {
+    expect(CBOR_FIELD_ORDER.DELETE_ATTESTATION).toEqual([
+      'purpose',
+      'id',
+      'type',
+      'deletedAt',
+      'clock'
     ])
   })
 

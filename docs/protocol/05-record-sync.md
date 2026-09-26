@@ -130,6 +130,11 @@ and it is live on every type.
 
 `RecordPushItemSchema` omits `stateVector` (chapter 04 §4.6).
 
+An attestable delete (a clock-required type with a clock and a `deletedAt`)
+also carries `deleteAttestation` (chapter 04 §4.8.4, #2408). The server
+verifies it per item like the record signature; a server that predates #2408
+strips the unknown key, so the delete lands unattested.
+
 **Those item requirements are enforced PER ITEM, never as a request.** The route
 parses `RecordPushEnvelopeSchema` — the same 1..100 bound with the items left
 unvalidated — and then runs `RecordPushItemSchema` on each item. Only the
@@ -834,15 +839,23 @@ migration `0013_sync_items_tombstone_marker.sql`). The server never deletes a
   served the same way: a delete does not need its bytes.
 - `?inline=1` never inlines a marker; its id is left to `POST /sync/pull`.
 
-A purged tombstone entry is **unsigned**:
+A purged tombstone entry has no record signature. It carries the deleting
+device's delete attestation (chapter 04 §4.8.4, #2408) when there is one:
 
-| Field          | Type                                                           |
-| -------------- | -------------------------------------------------------------- |
-| `id`           | string                                                         |
-| `type`         | `RecordSyncItemType`                                           |
-| `deletedAt`    | non-negative integer, epoch seconds                            |
-| `clock?`       | vector clock; absent for a legacy tombstone stored without one |
-| `serverCursor` | non-negative integer, the row's `server_cursor`                |
+| Field                | Type                                                           |
+| -------------------- | -------------------------------------------------------------- |
+| `id`                 | string                                                         |
+| `type`               | `RecordSyncItemType`                                           |
+| `deletedAt`          | non-negative integer, as the deleting device pushed it         |
+| `clock?`             | vector clock; absent for a legacy tombstone stored without one |
+| `serverCursor`       | non-negative integer, the row's `server_cursor`                |
+| `signerDeviceId?`    | string; the device that attested the delete                    |
+| `deleteAttestation?` | base64; present together with `signerDeviceId`, or neither     |
+
+The server serves the two attestation fields only together, only when the row
+holds both, which it does only for a delete whose push carried a verified
+attestation (migration `0015_sync_items_delete_attestation.sql`). They ride on
+the `purged_tombstones` capability; no other token gates them.
 
 A conforming client:
 
@@ -850,6 +863,21 @@ A conforming client:
   in `RECORD_CLOCK_REQUIRED_ITEM_TYPES`, and it carries a non-empty clock. Any
   other entry is refused and applies nothing: without a clock the handler guard
   cannot run and the delete would be unconditional.
+- MUST apply an admitted entry only if its `deleteAttestation` verifies under
+  the signing key of `signerDeviceId` over the entry's **own** `type`, `id`,
+  `clock` and `deletedAt` (#2408). An entry with no attestation, half of one,
+  a signer that a completed device-key lookup does not name, or a signature
+  that does not verify is refused,
+  logged and never applied; the cursor still advances. Every marker shed before
+  #2408, and every delete an old client pushed, is such an entry: **it is
+  always refused.** No local evidence can stand in for the signature, because
+  the only clock to compare against is the one the server asserts.
+- MUST NOT turn a failure to obtain the signer's key (no session token, a
+  network error, an unreadable device list) into a refusal: the page fails and
+  the cursor holds, so the entry is verified on a later pull. Once refused, the
+  cursor has passed the marker and the delete is lost for this device.
+- MUST compare `deletedAt` with local timestamps in one unit: it is served as
+  pushed, seconds from the desktop and milliseconds from the Rust core.
 - MUST NOT apply an admitted entry to a local row that has no clock or an empty
   clock: the handler guard would be skipped and the unsigned delete would be
   unconditional (a restored vault folder, a tag minted from note usage).
@@ -870,12 +898,20 @@ A conforming client:
   absences (a partial manifest, a type the server does not serve, a lost blob,
   a tombstone purged before #2302).
 
-Desktop: `apps/desktop/src/main/sync/engine/pull-envelope.ts` admits entries and
-maps them to the same apply input a signed tombstone produces, after the local
-refusals in `purged-tombstone-guard.ts`. It declares `purged_tombstones`. The
-Rust core and the shared sync-client do not declare it (#2304), so they never
-see a marker; an iOS device that missed a delete keeps its copy locally, and
-the marker stops a push of it from reaching the server.
+Desktop: `apps/desktop/src/main/sync/engine/pull-envelope.ts` admits entries,
+verifies each attestation (`apps/desktop/src/main/sync/delete-attestation.ts`,
+keys from the local `sync_devices` cache, then `GET /auth/devices`), applies the
+local refusals in `purged-tombstone-guard.ts`, and only then maps an attested
+entry to the apply input a signed tombstone produces. It declares
+`purged_tombstones`. A corrupt-item refetch counts an unattested entry as
+`missing`, like an entry the envelope refused. The Rust core and the shared
+sync-client do not declare it (#2304), so they never see a marker; an iOS device
+that missed a delete keeps its copy locally, and the marker stops a push of it
+from reaching the server. The Rust core produces attestations on every
+attestable delete it pushes and carries the verifier
+(`crates/memry-core/src/protocol/delete_attestation.rs`), but consumes no
+purged tombstone: that would need a new delete path on iOS, and the §5.12.1
+untyped-delete behaviour stays as documented there.
 
 **Residual risks.**
 
@@ -888,9 +924,22 @@ the marker stops a push of it from reaching the server.
 - A re-create stores a fresh clock that the old tombstone's clock dominated. A
   device offline past retention with the old version and a higher clock can
   overwrite the re-created item on its next update.
-- A purged tombstone is asserted by the server, not signed by a device. The
-  admission rules and the device-id check bound a faulty server; they do not
-  stop a malicious one from naming a known device with a dominating clock.
+- **Resolved for the desktop (#2408):** a purged tombstone used to be asserted
+  by the server alone, so a malicious one could name a known device with a
+  dominating clock and delete any note, task or journal. The desktop now
+  applies only a device-attested delete. The trust root is the same as the
+  record signature's: a server that can inject a fake device into
+  `GET /auth/devices` can still forge either.
+- A delete attested by a device that was revoked before this client cached its
+  key is refused (`signer_unknown`): `GET /auth/devices` lists active devices
+  only. The item stays, as for any refused entry.
+- Every marker shed before #2408, and every delete from an old client, is
+  refused for ever. That is the pre-#2302 outcome for a device that missed the
+  delete.
+- Orphan repair trusts server absence: a parent the server serves as a refused
+  purged tombstone counts as gone, exactly as a parent it omits, so the child is
+  tombstoned. The attestation does not protect children of a parent the server
+  claims is gone; a server that omits the parent achieves the same.
 
 ### 5.12.4 Rows whose payload is lost (#2302)
 

@@ -9,6 +9,7 @@ pub mod attachments;
 pub mod auth;
 pub mod compress;
 pub mod crdt_envelope;
+pub mod delete_attestation;
 pub mod envelope;
 pub mod http;
 pub mod linking;

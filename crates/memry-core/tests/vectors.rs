@@ -15,7 +15,7 @@ use ciborium::value::Value;
 use memry_core::api::errors::{CborError, CompressError, RecoveryError, StorageError};
 use memry_core::crypto::{cbor, keys, recovery, sodium};
 use memry_core::protocol::envelope::EnvelopeError;
-use memry_core::protocol::{compress, envelope, types};
+use memry_core::protocol::{compress, delete_attestation, envelope, types};
 use memry_core::storage::migrations;
 use memry_core::storage::repositories::{ApplyOutcome, InboundRecord, projectors, sync_items};
 use serde_json::Value as Json;
@@ -675,10 +675,29 @@ fn check_record_envelope_case(case: &Json) {
 
     // Stage two and three in one assertion: every base64 field and the
     // signature over them, including which optional keys are present at all.
+    // `deleteAttestation` is not part of the envelope: the push sealer adds it
+    // (chapter 04 §4.8.4, #2408), so it is checked on its own below.
+    let mut envelope_fields = expected["pushItem"].clone();
+    let attestation = envelope_fields
+        .as_object_mut()
+        .and_then(|fields| fields.remove("deleteAttestation"));
     assert_eq!(
         envelope::to_json(&sealed.envelope),
-        expected["pushItem"],
+        envelope_fields,
         "{name}"
+    );
+    let clock = clock_field(input);
+    let claim = delete_attestation::claim_of(
+        str_field(input, "type"),
+        str_field(input, "id"),
+        envelope::SyncOperation::from_wire(Some(str_field(input, "operation"))).unwrap(),
+        clock.as_ref(),
+        input["deletedAt"].as_i64(),
+    );
+    assert_eq!(
+        claim.map(|claim| delete_attestation::sign(&claim, secret_key.as_slice()).unwrap()),
+        attestation.map(|value| value.as_str().unwrap().to_owned()),
+        "{name}: deleteAttestation"
     );
     assert_eq!(
         sealed.size_bytes,

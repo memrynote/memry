@@ -736,13 +736,17 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
       }
     ])
     const envelope = await import('./pull-envelope')
-    vi.spyOn(envelope, 'purgedTombstoneApplyItems').mockReturnValue([
-      envelope.purgedTombstoneToApplyItem({
+    // An attested purged tombstone (#2408) as the apply input it maps to.
+    vi.spyOn(envelope, 'purgedTombstoneApplyItems').mockResolvedValue([
+      {
         id: 'note-1',
         type: 'note',
+        operation: 'delete',
+        content: '',
+        clock: { 'device-2': 3 },
         deletedAt: 5,
-        clock: { 'device-2': 3 }
-      })
+        signerDeviceId: 'device-2'
+      }
     ])
     const db = getDb().db
     const { ItemApplier } = await import('../apply-item')
