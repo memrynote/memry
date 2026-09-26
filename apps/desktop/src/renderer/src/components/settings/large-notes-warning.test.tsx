@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import type { LargeNotesResult } from '@memry/contracts/ipc-sync-ops'
 import { LargeNotesWarning } from './large-notes-warning'
@@ -45,7 +45,7 @@ describe('LargeNotesWarning', () => {
     expect(screen.getByText('Not syncing')).toBeInTheDocument()
   })
 
-  it('#given a note still under the ceiling #then it warns while the note still syncs', async () => {
+  it('#given a note still under the ceiling #then it collapses to one row and expands on demand', async () => {
     getLargeNotes.mockResolvedValue({
       maxBytes: 3_826_189,
       notes: [
@@ -60,6 +60,10 @@ describe('LargeNotesWarning', () => {
     })
 
     renderWithProviders(<LargeNotesWarning />)
+
+    const toggle = await screen.findByRole('button', { expanded: false })
+    expect(screen.queryByText('Meeting log')).not.toBeInTheDocument()
+    fireEvent.click(toggle)
 
     expect(await screen.findByText('Meeting log')).toBeInTheDocument()
     expect(screen.getByText('Approaching the limit')).toBeInTheDocument()

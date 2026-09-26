@@ -22,6 +22,7 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
+  SettingRowTall,
   ACCENT_SWITCH,
   COMPACT_SELECT
 } from '@/components/settings/settings-primitives'
@@ -145,7 +146,7 @@ export function JournalSettings() {
     <div className="flex flex-col text-xs/4">
       <SettingsHeader title={t('journal.header.title')} subtitle={t('journal.header.subtitle')} />
 
-      <SettingsGroup label={t('journal.groups.defaultTemplate')}>
+      <SettingsGroup label={t('journal.v2.groups.defaultTemplate')}>
         <SettingRow
           label={t('journal.template.label')}
           description={t('journal.template.description')}
@@ -193,7 +194,7 @@ export function JournalSettings() {
             {showPerDay ? (
               <ChevronDown className="size-3.5" />
             ) : (
-              <ChevronRight className="size-3.5" />
+              <ChevronRight className="size-3.5 rtl:rotate-180" />
             )}
             {t('journal.weekday.summary', { count: configuredDayCount })}
           </button>
@@ -250,14 +251,14 @@ export function JournalSettings() {
           })}
       </SettingsGroup>
 
-      <SettingsGroup label={t('journal.groups.location')}>
+      <SettingsGroup label={t('journal.v2.groups.location')}>
         <SettingRow label={t('journal.folder.label')} description={t('journal.folder.description')}>
           <Input
             value={journalFolder}
             onChange={(e) => setJournalFolder(e.target.value)}
             onBlur={handleJournalFolderBlur}
             placeholder={t('journal.folder.placeholder')}
-            className="h-7 w-40 text-xs/4"
+            className="h-7 w-40 font-mono text-xs/4"
           />
         </SettingRow>
 
@@ -270,16 +271,21 @@ export function JournalSettings() {
             onChange={(e) => setJournalDateFormat(e.target.value)}
             onBlur={handleJournalDateFormatBlur}
             placeholder={t('journal.dateFormat.placeholder')}
-            className="h-7 w-40 text-xs/4"
+            className="h-7 w-40 font-mono text-xs/4"
           />
         </SettingRow>
 
-        <SettingRow
+        <SettingRowTall
           label={t('journal.preview.label')}
           description={t('journal.preview.description')}
         >
-          <span className="font-mono text-xs/4 text-muted-foreground">{previewPath}</span>
-        </SettingRow>
+          <div
+            data-testid="journal-preview-path"
+            className="break-all rounded-md bg-muted/50 px-3 py-2 font-mono text-xs/4 text-muted-foreground"
+          >
+            {previewPath}
+          </div>
+        </SettingRowTall>
       </SettingsGroup>
 
       {/*

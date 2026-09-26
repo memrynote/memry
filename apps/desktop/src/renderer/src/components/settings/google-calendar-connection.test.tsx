@@ -290,8 +290,29 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    expect(await screen.findByText('1 selected')).toBeInTheDocument()
-    expect(screen.queryByText('2 selected')).not.toBeInTheDocument()
+    const count = await screen.findByTestId('calendar-provider-count-google')
+    await waitFor(() => expect(count).toHaveAttribute('data-total-count', '3'))
+    expect(count).toHaveAttribute('data-selected-count', '1')
+  })
+
+  it('marks the calendar new memrynote events go to as the default', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: 'work',
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: null
+    })
+
+    renderGoogleCalendarConnection()
+
+    const work = await screen.findByTestId('calendar-source-row-google-calendar-work')
+    await waitFor(() => expect(work).toHaveTextContent(/Default|defaultPill/))
+    expect(screen.getByTestId('calendar-source-row-google-calendar-home')).not.toHaveTextContent(
+      /Default|defaultPill/
+    )
   })
 
   it('lists each account with only its own calendars underneath', async () => {

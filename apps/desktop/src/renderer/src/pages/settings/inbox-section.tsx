@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useInboxPreferences } from '@/hooks/use-inbox-preferences'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { ReviewTimeInput } from '@/components/settings/review-time-input'
@@ -13,6 +14,9 @@ import {
   SettingRow,
   ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
+
+const SEGMENT_ITEM =
+  'h-auto min-w-0 rounded-[5px] border-none py-0.75 px-2.5 text-xs/4 text-muted-foreground shadow-none hover:bg-transparent data-[state=on]:bg-background data-[state=on]:font-medium data-[state=on]:text-foreground data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
 
 export function InboxSettings() {
   const { t } = useT('settings')
@@ -120,6 +124,7 @@ export function InboxSettings() {
             data-testid="inbox-review-test"
             variant="outline"
             size="sm"
+            className="h-7 px-2.5 text-xs/4 shadow-none"
             disabled={isSendingTest}
             onClick={() => void handleSendTest()}
           >
@@ -133,20 +138,26 @@ export function InboxSettings() {
           label={t('inbox.imageFiling.mode.label')}
           description={t('inbox.imageFiling.mode.description')}
         >
-          <div className="flex items-center gap-1.5">
+          <ToggleGroup
+            type="single"
+            value={settings.imageFilingMode}
+            onValueChange={(value) => {
+              if (value) void handleImageModeChange(value as ImageFilingMode)
+            }}
+            aria-label={t('inbox.imageFiling.mode.label')}
+            className="gap-0 rounded-[7px] bg-muted p-0.5"
+          >
             {(['embed', 'link'] as const).map((mode) => (
-              <Button
+              <ToggleGroupItem
                 key={mode}
+                value={mode}
                 data-testid={`inbox-image-filing-${mode}`}
-                variant={settings.imageFilingMode === mode ? 'secondary' : 'outline'}
-                size="sm"
-                aria-pressed={settings.imageFilingMode === mode}
-                onClick={() => void handleImageModeChange(mode)}
+                className={SEGMENT_ITEM}
               >
                 {t(`inbox.imageFiling.mode.${mode}`)}
-              </Button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </SettingRow>
 
         <SettingRow

@@ -15,17 +15,21 @@ import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { friendlyError } from '@/hooks/use-ai-inline'
 import { createLogger } from '@/lib/logger'
+import { cn } from '@/lib/utils'
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
 import {
   SettingsGroup,
   SettingRow,
-  SettingRowTall,
   ACCENT_SWITCH,
-  COMPACT_SELECT
+  COMPACT_SELECT,
+  SETTINGS_GROUP_LABEL
 } from '@/components/settings/settings-primitives'
 
 const log = createLogger('Page:Settings:AIInline')
+
+const QUIET_ACTION =
+  'inline-flex items-center gap-1.5 rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
 
 const PROVIDER_LABEL_KEYS: Record<AIInlineSettings['provider'], string> = {
   ollama: 'ai.inline.providers.ollama',
@@ -215,9 +219,7 @@ export function AIInlineSettings(): React.JSX.Element {
   if (isLoading) {
     return (
       <div className="pb-6">
-        <h4 className="uppercase pb-2 text-muted-foreground font-medium text-[11px]/3.5 tracking-[0.05em]">
-          {t('ai.inline.title')}
-        </h4>
+        <h4 className={SETTINGS_GROUP_LABEL}>{t('ai.v2.inline.group')}</h4>
         <p className="text-xs/4 text-muted-foreground">{t('ai.inline.loading')}</p>
       </div>
     )
@@ -226,9 +228,37 @@ export function AIInlineSettings(): React.JSX.Element {
   const needsApiKey = settings.provider !== 'ollama'
   const models = modelChoices(settings.provider, settings.model, ollamaModels)
 
+  const connectionControls = (
+    <>
+      <span
+        title={serverPort ? t('ai.inline.activePort', { port: serverPort }) : undefined}
+        className="inline-flex w-24 items-center gap-1.5 text-xs/4 text-muted-foreground"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'size-1.5 shrink-0 rounded-full',
+            serverPort ? 'bg-emerald-500' : 'border border-muted-foreground/60'
+          )}
+        />
+        <span className="sr-only">{t('ai.inline.connection')}</span>
+        {serverPort ? t('ai.v2.connected') : t('ai.inline.notConnected')}
+      </span>
+      <button
+        type="button"
+        onClick={() => void handleTestConnection()}
+        disabled={isTesting || (needsApiKey && !settings.apiKey)}
+        className={QUIET_ACTION}
+      >
+        {isTesting && <Loader2 className="size-3 animate-spin" />}
+        {t('ai.inline.test')}
+      </button>
+    </>
+  )
+
   return (
-    <SettingsGroup label={t('ai.groups.inline')}>
-      <SettingRow label={t('ai.inline.enable')} description={t('ai.inline.enableDescription')}>
+    <SettingsGroup label={t('ai.v2.inline.group')}>
+      <SettingRow label={t('ai.v2.inline.enabled')} description={t('ai.inline.enableDescription')}>
         <Switch
           checked={settings.enabled}
           onCheckedChange={(...args) => void handleToggleEnabled(...args)}
@@ -237,18 +267,15 @@ export function AIInlineSettings(): React.JSX.Element {
       </SettingRow>
 
       {settings.enabled && (
-        <>
-          <SettingRow
-            label={t('ai.inline.provider')}
-            description={t('ai.inline.providerDescription')}
-          >
+        <SettingRow label={t('ai.inline.model')} description={t('ai.inline.modelDescription')}>
+          <div className="flex items-center gap-2">
             <Select
               value={settings.provider}
               onValueChange={(value) =>
                 void handleProviderChange(value as AIInlineSettings['provider'])
               }
             >
-              <SelectTrigger className={COMPACT_SELECT}>
+              <SelectTrigger aria-label={t('ai.inline.provider')} className={COMPACT_SELECT}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -259,106 +286,68 @@ export function AIInlineSettings(): React.JSX.Element {
                 ))}
               </SelectContent>
             </Select>
-          </SettingRow>
-
-          <SettingRow label={t('ai.inline.model')} description={t('ai.inline.modelDescription')}>
             <Select value={settings.model} onValueChange={(model) => void updateSetting({ model })}>
-              <SelectTrigger className={COMPACT_SELECT}>
+              <SelectTrigger
+                aria-label={t('ai.inline.model')}
+                className={cn(COMPACT_SELECT, 'font-mono')}
+              >
                 <SelectValue placeholder={t('ai.inline.selectModel')} />
               </SelectTrigger>
               <SelectContent>
                 {models.map((model) => (
-                  <SelectItem key={model} value={model}>
+                  <SelectItem key={model} value={model} className="font-mono">
                     {model}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </SettingRow>
-
-          {needsApiKey && (
-            <SettingRowTall
-              label={t('ai.inline.apiKey')}
-              description={t('ai.inline.apiKeyDescription')}
-            >
-              <div className="flex gap-2">
-                <Input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={settings.apiKey}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
-                  onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
-                  placeholder={t('ai.inline.apiKeyPlaceholder', {
-                    provider: t(PROVIDER_LABEL_KEYS[settings.provider])
-                  })}
-                  className="flex-1 h-7 text-xs/4"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowApiKey((v) => !v)}
-                  tabIndex={-1}
-                  className="h-7 w-7 p-0"
-                >
-                  {showApiKey ? (
-                    <EyeOff className="w-3.5 h-3.5" />
-                  ) : (
-                    <Eye className="w-3.5 h-3.5" />
-                  )}
-                </Button>
-              </div>
-            </SettingRowTall>
-          )}
-
-          {settings.provider === 'ollama' && (
-            <SettingRowTall
-              label={t('ai.inline.ollamaUrl')}
-              description={t('ai.inline.ollamaUrlDescription')}
-            >
-              <Input
-                value={settings.baseUrl}
-                onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
-                onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
-                placeholder={tPhaseF('phaseF.pagesSettingsAiInlineSection.httpLocalhost11434V1')}
-                className="h-7 text-xs/4"
-              />
-            </SettingRowTall>
-          )}
-
-          <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              {serverPort ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                  <span className="text-[13px]/4 font-medium text-foreground">
-                    {t('ai.inline.connection')}
-                  </span>
-                  <span className="text-xs/4 text-muted-foreground">
-                    {t('ai.inline.activePort', { port: serverPort })}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
-                  <span className="text-[13px]/4 font-medium text-foreground">
-                    {t('ai.inline.connection')}
-                  </span>
-                  <span className="text-xs/4 text-muted-foreground">
-                    {t('ai.inline.notConnected')}
-                  </span>
-                </>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleTestConnection()}
-              disabled={isTesting || (needsApiKey && !settings.apiKey)}
-              className="h-7 px-3 text-xs/4"
-            >
-              {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : t('ai.inline.test')}
-            </Button>
           </div>
-        </>
+        </SettingRow>
+      )}
+
+      {settings.enabled && needsApiKey && (
+        <SettingRow label={t('ai.inline.apiKey')} description={t('ai.inline.apiKeyDescription')}>
+          <div className="flex items-center gap-2">
+            <Input
+              type={showApiKey ? 'text' : 'password'}
+              value={settings.apiKey}
+              onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
+              onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
+              placeholder={t('ai.inline.apiKeyPlaceholder', {
+                provider: t(PROVIDER_LABEL_KEYS[settings.provider])
+              })}
+              className="h-7 w-44 font-mono text-xs/4"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowApiKey((v) => !v)}
+              tabIndex={-1}
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+            >
+              {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </Button>
+            {connectionControls}
+          </div>
+        </SettingRow>
+      )}
+
+      {settings.enabled && settings.provider === 'ollama' && (
+        <SettingRow
+          label={t('ai.inline.ollamaUrl')}
+          description={t('ai.inline.ollamaUrlDescription')}
+        >
+          <div className="flex items-center gap-2">
+            <Input
+              value={settings.baseUrl}
+              onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
+              onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
+              placeholder={tPhaseF('phaseF.pagesSettingsAiInlineSection.httpLocalhost11434V1')}
+              className="h-7 w-52 font-mono text-xs/4"
+            />
+            {connectionControls}
+          </div>
+        </SettingRow>
       )}
     </SettingsGroup>
   )

@@ -187,7 +187,7 @@ export function TagManager() {
         />
       </div>
 
-      <div className="flex flex-col rounded-lg overflow-y-auto max-h-[60vh] border border-border bg-surface-active">
+      <div className="flex flex-col overflow-y-auto max-h-[60vh] border-y border-border">
         {filteredTags.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
             {t('tags.noMatch', { query: search })}
@@ -199,7 +199,7 @@ export function TagManager() {
           return (
             <div key={tag.name}>
               {i > 0 && <div className="h-px bg-border" />}
-              <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
+              <div className="flex items-center justify-between min-h-11 py-2 shrink-0 group">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <TagIconChip
                     icon={tag.icon ?? null}
@@ -221,21 +221,18 @@ export function TagManager() {
                       className="h-6 text-[13px]/4 px-1.5 w-40"
                     />
                   ) : (
-                    <span className="font-medium text-[13px]/4 text-foreground truncate">
-                      {tag.name}
-                    </span>
+                    <span className="text-[13px]/4 text-foreground truncate">{tag.name}</span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0 ms-4">
-                  <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-muted text-[10px]/3 font-medium text-muted-foreground tabular-nums">
-                    {tag.count}
-                  </span>
+                <div className="flex items-center gap-2 shrink-0 ms-4">
+                  <span className="text-xs/4 text-muted-foreground tabular-nums">{tag.count}</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all"
+                        aria-label={t('tags.v2.actionsAria', { name: tag.name })}
+                        className="p-1 rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:text-foreground transition-all"
                       >
                         <MoreHorizontal className="w-3.5 h-3.5" />
                       </button>
@@ -270,7 +267,7 @@ export function TagManager() {
         })}
       </div>
 
-      <p className="text-xs/4 text-muted-foreground pt-3">
+      <p className="text-xs/4 text-muted-foreground pt-2">
         {t('tags.summary', { count: tags.length })}
       </p>
 

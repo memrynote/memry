@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { Switch } from '@/components/ui/switch'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
-import { ACCENT_SWITCH } from '@/components/settings/settings-primitives'
+import { CalendarSwitchRow } from '@/components/settings/calendar-provider-row'
 
 const log = createLogger('CalendarProviderAgentAccess')
 
@@ -58,28 +57,14 @@ export function ProviderAgentAccessRow({ providerId }: { providerId: string }): 
   }
 
   return (
-    <div className="flex items-start justify-between gap-3 px-4 py-3">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-[13px]/4 font-medium text-foreground">
-          {t('calendar.providers.agentAccess.label')}
-        </span>
-        <p className="text-xs/4 text-muted-foreground">
-          {t('calendar.providers.agentAccess.description')}
-        </p>
-        {error && (
-          <p role="alert" className="text-xs text-destructive">
-            {error}
-          </p>
-        )}
-      </div>
-      <Switch
-        checked={consent === true}
-        disabled={isLoading || isSaving}
-        onCheckedChange={(checked) => void save(checked)}
-        aria-label={t('calendar.providers.agentAccess.label')}
-        className={ACCENT_SWITCH}
-        data-testid={`calendar-provider-agent-access-${providerId}`}
-      />
-    </div>
+    <CalendarSwitchRow
+      label={t('calendar.providers.agentAccess.label')}
+      description={t('calendar.providers.agentAccess.description')}
+      checked={consent === true}
+      disabled={isLoading || isSaving}
+      onCheckedChange={(checked) => void save(checked)}
+      error={error}
+      data-testid={`calendar-provider-agent-access-${providerId}`}
+    />
   )
 }

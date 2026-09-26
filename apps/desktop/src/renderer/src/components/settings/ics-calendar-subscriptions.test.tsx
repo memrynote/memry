@@ -55,6 +55,11 @@ const FAILING_SOURCE: CalendarSourceRecord = {
 
 let i18nEn: I18nInstance
 
+/** With no subscriptions the row starts collapsed; open it to reach the link field. */
+async function expandSubscriptions(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Subscribed calendars' }))
+}
+
 function renderSubscriptions() {
   return renderWithProviders(
     <I18nextProvider i18n={i18nEn}>
@@ -87,6 +92,7 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
     })
     const user = userEvent.setup()
     renderSubscriptions()
+    await expandSubscriptions(user)
 
     await user.type(screen.getByTestId('ics-subscribe-url'), '  webcal://example.com/feed.ics ')
     await user.click(screen.getByTestId('ics-subscribe-submit'))
@@ -128,6 +134,7 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
     mockListSources.mockResolvedValue({ sources: [HTTP_SOURCE] })
     const user = userEvent.setup()
     renderSubscriptions()
+    const row = await screen.findByTestId(`ics-source-row-${HTTP_SOURCE.id}`)
 
     const input = screen.getByTestId('ics-subscribe-url')
     await user.type(input, 'https://example.com/feed.ics')
@@ -139,9 +146,7 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
     expect(warning).toHaveTextContent('travel unencrypted')
     expect(input).toHaveAttribute('aria-describedby', warning.id)
 
-    expect(await screen.findByTestId(`ics-source-row-${HTTP_SOURCE.id}`)).toHaveTextContent(
-      'nas.local · Read-only · Not encrypted'
-    )
+    expect(row).toHaveTextContent('nas.local · Read-only · Not encrypted')
   })
 
   it('renames a subscription in place; Escape cancels without saving', async () => {
@@ -206,6 +211,7 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
     })
     const user = userEvent.setup()
     renderSubscriptions()
+    await expandSubscriptions(user)
 
     await user.type(screen.getByTestId('ics-subscribe-url'), 'webcal://example.com/feed.ics')
     await user.click(screen.getByTestId('ics-subscribe-submit'))
@@ -221,6 +227,7 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
   it('explains where to find a link, and that Proton stays read-only by design', async () => {
     const user = userEvent.setup()
     renderSubscriptions()
+    await expandSubscriptions(user)
 
     expect(screen.queryByTestId('ics-link-help-proton')).toBeNull()
     await user.click(screen.getByTestId('ics-link-help-toggle'))

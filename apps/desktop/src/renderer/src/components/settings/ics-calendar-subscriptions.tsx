@@ -13,7 +13,6 @@ import {
   type CalendarEventColor
 } from '@memry/contracts/calendar-colors'
 import { useT } from '@memry/i18n/renderer'
-import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -23,11 +22,20 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { ProviderAgentAccessRow } from '@/components/settings/calendar-provider-agent-access'
 import {
+  CALENDAR_BORDERED_BUTTON,
+  CALENDAR_DESTRUCTIVE_BUTTON,
+  CALENDAR_QUIET_BUTTON,
+  CalendarProviderRow
+} from '@/components/settings/calendar-provider-row'
+import {
   calendarService,
   onCalendarChanged,
   type CalendarSourceRecord,
   type IcsCalendarMutationResponse
 } from '@/services/calendar-service'
+
+/** The file extension, shown as-is in every language. */
+const ICS_TILE = 'ics'
 
 const ICS_SOURCES_QUERY_KEY = ['calendar', 'ics', 'sources'] as const
 
@@ -157,63 +165,29 @@ export function IcsCalendarSubscriptions(): React.JSX.Element {
     updateMutation.error ?? removeMutation.error ?? refreshMutation.error ?? null
 
   return (
-    <div className="grid gap-3 px-4 py-3">
-      <p className="text-xs/4 text-muted-foreground">{t('calendar.subscriptions.description')}</p>
-
-      <form
-        className="flex items-center gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          if (!url.trim() || subscribeMutation.isPending) return
-          subscribeMutation.mutate(url.trim())
-        }}
-      >
-        <Input
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          placeholder={t('calendar.subscriptions.urlPlaceholder')}
-          aria-label={t('calendar.subscriptions.urlLabel')}
-          aria-invalid={subscribeMutation.isError}
-          aria-describedby={isPlainHttp(url) ? httpWarningId : undefined}
-          spellCheck={false}
-          autoComplete="off"
-          data-testid="ics-subscribe-url"
-        />
-        <Button
-          type="submit"
-          variant="outline"
-          size="sm"
-          className="h-7 shrink-0 px-3 text-xs/4"
-          disabled={!url.trim() || subscribeMutation.isPending}
-          data-testid="ics-subscribe-submit"
-        >
-          {subscribeMutation.isPending
-            ? t('calendar.subscriptions.subscribing')
-            : t('calendar.subscriptions.subscribe')}
-        </Button>
-      </form>
-
-      {isPlainHttp(url) && (
-        <p
-          id={httpWarningId}
-          className="flex items-start gap-1.5 text-[11px]/4 text-muted-foreground"
-          data-testid="ics-subscribe-http-warning"
-        >
-          <AlertTriangle className="mt-px size-3 shrink-0" aria-hidden />
-          {t('calendar.subscriptions.httpWarning')}
-        </p>
-      )}
-
-      {subscribeMutation.error && (
-        <p role="alert" className="text-xs text-destructive">
-          {extractErrorMessage(subscribeMutation.error, unknownError('ipc'))}
-        </p>
-      )}
-
-      <IcsLinkHelp />
-
+    <CalendarProviderRow
+      providerId={ICS_CALENDAR_PROVIDER}
+      tile={ICS_TILE}
+      mono
+      name={t('calendar.subscriptions.name')}
+      data-testid="calendar-provider-row-ics"
+      defaultOpen={sources.length > 0}
+      hint={
+        <span className="truncate">
+          {t('calendar.v2.subscriptionCount', { count: sources.length })} ·{' '}
+          {t('calendar.subscriptions.readOnly')}
+        </span>
+      }
+      alert={
+        rowActionError ? (
+          <p role="alert" className="text-xs/4 text-destructive">
+            {extractErrorMessage(rowActionError, unknownError('ipc'))}
+          </p>
+        ) : null
+      }
+    >
       {sources.length > 0 && (
-        <ul className="grid gap-2" aria-label={t('calendar.subscriptions.name')}>
+        <ul className="flex flex-col" aria-label={t('calendar.subscriptions.name')}>
           {sources.map((source) => {
             const statusLine =
               source.syncStatus === 'error' && source.lastError
@@ -245,19 +219,63 @@ export function IcsCalendarSubscriptions(): React.JSX.Element {
         </ul>
       )}
 
-      {rowActionError && (
-        <p role="alert" className="text-xs text-destructive">
-          {extractErrorMessage(rowActionError, unknownError('ipc'))}
-        </p>
-      )}
+      <div className="flex flex-col gap-1.5">
+        <p className="text-xs/4 text-muted-foreground">{t('calendar.subscriptions.description')}</p>
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!url.trim() || subscribeMutation.isPending) return
+            subscribeMutation.mutate(url.trim())
+          }}
+        >
+          <Input
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+            placeholder={t('calendar.subscriptions.urlPlaceholder')}
+            aria-label={t('calendar.subscriptions.urlLabel')}
+            aria-invalid={subscribeMutation.isError}
+            aria-describedby={isPlainHttp(url) ? httpWarningId : undefined}
+            spellCheck={false}
+            autoComplete="off"
+            className="h-7 font-mono text-xs/4"
+            data-testid="ics-subscribe-url"
+          />
+          <button
+            type="submit"
+            className={CALENDAR_BORDERED_BUTTON}
+            disabled={!url.trim() || subscribeMutation.isPending}
+            data-testid="ics-subscribe-submit"
+          >
+            {subscribeMutation.isPending
+              ? t('calendar.subscriptions.subscribing')
+              : t('calendar.subscriptions.subscribe')}
+          </button>
+        </form>
+
+        {isPlainHttp(url) && (
+          <p
+            id={httpWarningId}
+            className="flex items-start gap-1.5 text-xs/4 text-muted-foreground"
+            data-testid="ics-subscribe-http-warning"
+          >
+            <AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden />
+            {t('calendar.subscriptions.httpWarning')}
+          </p>
+        )}
+
+        {subscribeMutation.error && (
+          <p role="alert" className="text-xs/4 text-destructive">
+            {extractErrorMessage(subscribeMutation.error, unknownError('ipc'))}
+          </p>
+        )}
+
+        <IcsLinkHelp />
+      </div>
 
       {/* #1394: subscribed calendars have their own AI answer, separate from Google's. */}
-      {sources.length > 0 && (
-        <div className="-mx-4 -mb-3 border-t border-border/60">
-          <ProviderAgentAccessRow providerId={ICS_CALENDAR_PROVIDER} />
-        </div>
-      )}
-    </div>
+      {sources.length > 0 && <ProviderAgentAccessRow providerId={ICS_CALENDAR_PROVIDER} />}
+    </CalendarProviderRow>
   )
 }
 
@@ -269,7 +287,7 @@ function IcsLinkHelp(): React.JSX.Element {
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger
-        className="group flex items-center gap-1 rounded-sm text-[11px]/4 font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group flex items-center gap-1 rounded-sm text-xs/4 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         data-testid="ics-link-help-toggle"
       >
         <ChevronRight
@@ -278,9 +296,9 @@ function IcsLinkHelp(): React.JSX.Element {
         />
         {t('calendar.subscriptions.help.toggle')}
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-2 grid gap-2 ps-4 text-[11px]/4 text-muted-foreground">
+      <CollapsibleContent className="mt-2 flex flex-col gap-2 ps-4 text-xs/4 text-muted-foreground">
         <p>{t('calendar.subscriptions.help.intro')}</p>
-        <ul className="grid gap-1.5">
+        <ul className="flex flex-col gap-1.5">
           {HELP_SERVICES.map((service) => (
             <li key={service} data-testid={`ics-link-help-${service}`}>
               <span className="font-medium text-foreground">
@@ -326,6 +344,7 @@ function IcsSubscriptionRow({
   const [draftTitle, setDraftTitle] = useState<string | null>(null)
   const host = feedHost(source)
   const meta = [
+    t('calendar.v2.subscription'),
     host,
     t('calendar.subscriptions.readOnly'),
     isPlainHttp(source.remoteId) ? t('calendar.subscriptions.notEncrypted') : null,
@@ -351,17 +370,29 @@ function IcsSubscriptionRow({
   return (
     <li
       data-testid={`ics-source-row-${source.id}`}
-      className="flex items-start justify-between gap-3 rounded-md border border-border/70 bg-muted/20 px-3 py-2"
+      className="flex min-h-12 items-center justify-between gap-3 py-2"
     >
-      <div className="flex min-w-0 flex-1 items-start gap-2">
-        <IcsColorPicker source={source} disabled={isBusy} onPick={(color) => onUpdate({ color })} />
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span
+          aria-hidden
+          className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border font-mono text-[11px]/4 text-muted-foreground"
+        >
+          {ICS_TILE}
+        </span>
 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           {draftTitle === null ? (
-            <span className="truncate text-xs font-medium text-foreground">{source.title}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <IcsColorPicker
+                source={source}
+                disabled={isBusy}
+                onPick={(color) => onUpdate({ color })}
+              />
+              <span className="truncate text-[13px]/4 text-foreground">{source.title}</span>
+            </span>
           ) : (
             <form
-              className="flex items-center gap-1"
+              className="flex items-center gap-2"
               onSubmit={(event) => {
                 event.preventDefault()
                 void saveTitle()
@@ -380,51 +411,45 @@ function IcsSubscriptionRow({
                 aria-label={t('calendar.subscriptions.renameLabel')}
                 maxLength={200}
                 autoFocus
-                className="h-6 text-xs"
+                className="h-7 text-xs/4"
                 data-testid={`ics-source-title-input-${source.id}`}
               />
-              <Button
+              <button
                 type="submit"
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[11px]/4"
+                className={CALENDAR_QUIET_BUTTON}
                 disabled={!draftTitle.trim() || isBusy}
                 data-testid={`ics-source-title-save-${source.id}`}
               >
                 {t('calendar.subscriptions.save')}
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[11px]/4"
+                className={CALENDAR_QUIET_BUTTON}
                 onClick={() => setDraftTitle(null)}
               >
                 {t('calendar.subscriptions.cancel')}
-              </Button>
+              </button>
             </form>
           )}
-          <span className="truncate text-[11px]/4 text-muted-foreground">{meta}</span>
-          {errorLine && <p className="text-[11px]/4 text-destructive">{errorLine}</p>}
+          <span className="truncate text-xs/4 text-muted-foreground">{meta}</span>
+          {errorLine && <p className="text-xs/4 text-destructive">{errorLine}</p>}
         </div>
       </div>
 
       {draftTitle === null && (
-        <div className="flex shrink-0 items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px]/4"
+        <div className="flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            className={CALENDAR_QUIET_BUTTON}
             disabled={isBusy}
             onClick={() => setDraftTitle(source.title)}
             data-testid={`ics-source-rename-${source.id}`}
           >
             {t('calendar.subscriptions.rename')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px]/4"
+          </button>
+          <button
+            type="button"
+            className={CALENDAR_QUIET_BUTTON}
             disabled={isRefreshing || isBusy}
             onClick={onRefresh}
             data-testid={`ics-source-refresh-${source.id}`}
@@ -432,17 +457,16 @@ function IcsSubscriptionRow({
             {isRefreshing
               ? t('calendar.subscriptions.refreshing')
               : t('calendar.subscriptions.refresh')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px]/4"
+          </button>
+          <button
+            type="button"
+            className={CALENDAR_DESTRUCTIVE_BUTTON}
             disabled={isBusy}
             onClick={onRemove}
             data-testid={`ics-source-remove-${source.id}`}
           >
             {t('calendar.subscriptions.remove')}
-          </Button>
+          </button>
         </div>
       )}
     </li>
@@ -470,7 +494,7 @@ function IcsColorPicker({ source, disabled, onPick }: IcsColorPickerProps): Reac
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         className={cn(
-          'mt-0.5 size-3 shrink-0 rounded-full border border-border',
+          'size-2.5 shrink-0 rounded-full border border-border',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
           !currentHex && 'bg-background'
         )}

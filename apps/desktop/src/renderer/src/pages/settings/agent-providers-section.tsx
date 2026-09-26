@@ -12,24 +12,18 @@ import type {
 } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
-import {
+  ACCENT_SWITCH,
   SettingsGroup,
   SettingsHeader,
-  SettingRow,
-  SettingRowTall
+  SettingRow
 } from '@/components/settings/settings-primitives'
-import { RefreshCw } from '@/lib/icons'
+import { ChevronRight } from '@/lib/icons'
 import { trackTelemetry } from '@/lib/telemetry'
+import { cn } from '@/lib/utils'
 
 type Translate = (key: string, vars?: Record<string, string | number>) => string
 
@@ -222,10 +216,28 @@ export function AgentProvidersSection({
     }
   }, [])
 
+  const testConnection = useCallback(async () => {
+    setBusy('test')
+    try {
+      setStatus(await window.api.agent.testLocalProvider())
+    } finally {
+      setBusy(null)
+    }
+  }, [])
+
   const connectionError =
     status && (!status.connected || !status.modelAvailable) ? status.detail : null
 
   if (!settings || !preferences) return null
+
+  const localStatus: { tone: StatusTone; text: string } =
+    busy === 'save' || busy === 'test'
+      ? { tone: 'pending', text: t('agentProviders.status.checking') }
+      : connectionError
+        ? { tone: 'warning', text: t('agentProviders.status.disconnected') }
+        : status
+          ? { tone: 'ready', text: t('agentProviders.status.connected') }
+          : { tone: 'off', text: t('agentProviders.v2.localModel.notChecked') }
 
   return (
     <div>
@@ -236,208 +248,351 @@ export function AgentProvidersSection({
         />
       )}
 
-      <SettingsGroup label={t('agentProviders.permissions.group')}>
+      <GroupHeading
+        label={t('agentProviders.v2.permissions.group')}
+        hint={t('agentProviders.v2.permissions.hint')}
+      />
+      <SettingsGroup>
         <SettingRow
-          label={t('agentProviders.permissions.access.label')}
+          label={t('agentProviders.v2.permissions.access')}
           description={t('agentProviders.permissions.access.description')}
         >
-          <Select
+          <SegmentedControl<AgentAccessMode>
+            label={t('agentProviders.v2.permissions.access')}
             value={preferences.accessMode}
-            onValueChange={(value) => void changeAccessMode(value as AgentAccessMode)}
-          >
-            <SelectTrigger className="h-8 w-44 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="vault_only">
-                {t('agentProviders.permissions.access.vaultOnly')}
-              </SelectItem>
-              <SelectItem value="computer_access">
-                {t('agentProviders.permissions.access.computerAccess')}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+            onChange={(value) => void changeAccessMode(value)}
+            options={[
+              { value: 'vault_only', label: t('agentProviders.permissions.access.vaultOnly') },
+              {
+                value: 'computer_access',
+                label: t('agentProviders.permissions.access.computerAccess')
+              }
+            ]}
+          />
         </SettingRow>
         <SettingRow
-          label={t('agentProviders.permissions.confirm.label')}
+          label={t('agentProviders.v2.permissions.changes')}
           description={t('agentProviders.permissions.confirm.description')}
         >
-          <Select
+          <SegmentedControl<AgentToolApprovalMode>
+            label={t('agentProviders.v2.permissions.changes')}
             value={preferences.toolApprovalMode}
-            onValueChange={(value) => void changeToolApprovalMode(value as AgentToolApprovalMode)}
-          >
-            <SelectTrigger className="h-8 w-44 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="always_accept">
-                {t('agentProviders.permissions.confirm.alwaysAllow')}
-              </SelectItem>
-              <SelectItem value="ask">
-                {t('agentProviders.permissions.confirm.askBeforeChanges')}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+            onChange={(value) => void changeToolApprovalMode(value)}
+            options={[
+              { value: 'ask', label: t('agentProviders.permissions.confirm.askBeforeChanges') },
+              {
+                value: 'always_accept',
+                label: t('agentProviders.permissions.confirm.alwaysAllow')
+              }
+            ]}
+          />
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label={t('agentProviders.alwaysAllowed.group')}>
-        <SettingRow
-          label={t('agentProviders.alwaysAllowed.group')}
-          description={t('agentProviders.alwaysAllowed.description')}
-        >
-          <span className="text-xs/4 text-muted-foreground">{alwaysAllowed.length}</span>
-        </SettingRow>
+      <GroupHeading
+        label={t('agentProviders.v2.runtimes.group')}
+        hint={t('agentProviders.v2.runtimes.hint')}
+      />
+      <SettingsGroup>
+        {CLI_AGENT_ROWS.map((row) => {
+          const cli = backendStatuses?.[row.backend]
+          const tone = cliStatusTone(cli)
+          const statusText = cliStatusText(cli, t)
+          return (
+            <div
+              key={row.backend}
+              className="flex min-h-11 items-center justify-between gap-4 py-2.5"
+            >
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <div className="flex items-center gap-2">
+                  <StatusDot tone={tone} />
+                  <span className="text-[13px]/4 text-foreground">
+                    {t(`agentProviders.cliAgents.${row.key}.label`)}
+                  </span>
+                </div>
+                {tone === 'off' && (
+                  <span className="ps-3.5 text-xs/4 text-muted-foreground">
+                    {t(`agentProviders.cliAgents.${row.key}.description`)}
+                  </span>
+                )}
+              </div>
+              <span
+                title={statusText}
+                className={cn('w-56 shrink-0 truncate text-end text-xs/4', STATUS_TEXT_CLASS[tone])}
+              >
+                {statusText}
+              </span>
+            </div>
+          )
+        })}
+        <Collapsible>
+          <CollapsibleTrigger className="group flex min-h-14 w-full items-center justify-between gap-4 rounded-sm py-2.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <div className="flex items-center gap-2">
+                <StatusDot tone={localStatus.tone} />
+                <span className="text-[13px]/4 text-foreground">
+                  {t('agentProviders.v2.localModel.label')}
+                </span>
+              </div>
+              <span className="ps-3.5 text-xs/4 text-muted-foreground">
+                {t('agentProviders.v2.localModel.hint')}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className={cn('text-xs/4', STATUS_TEXT_CLASS[localStatus.tone])}>
+                {localStatus.text}
+              </span>
+              <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-90 rtl:rotate-180 rtl:group-data-[state=open]:rotate-90" />
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="flex flex-col pb-2 ps-3.5">
+              <FieldRow label={t('agentProviders.fields.preset.label')}>
+                <SegmentedControl<AgentLocalProviderPreset>
+                  label={t('agentProviders.fields.preset.label')}
+                  value={settings.preset}
+                  onChange={changePreset}
+                  options={[
+                    { value: 'ollama', label: t('agentProviders.presets.ollama') },
+                    { value: 'lm_studio', label: t('agentProviders.presets.lmStudio') },
+                    { value: 'llama_cpp', label: t('agentProviders.presets.llamaCpp') },
+                    { value: 'custom', label: t('agentProviders.presets.custom') }
+                  ]}
+                />
+              </FieldRow>
+              <FieldRow
+                label={t('agentProviders.fields.baseUrl.label')}
+                hint={t('agentProviders.fields.baseUrl.description')}
+              >
+                <Input
+                  aria-label={t('agentProviders.fields.baseUrl.label')}
+                  value={settings.baseUrl}
+                  onChange={(event) => updateSetting('baseUrl', event.target.value)}
+                  className="h-7 w-64 font-mono text-xs"
+                />
+              </FieldRow>
+              {nonLoopback && (
+                <FieldRow
+                  label={t('agentProviders.fields.allowNonLoopback.label')}
+                  hint={t('agentProviders.fields.allowNonLoopback.description')}
+                >
+                  <Switch
+                    aria-label={t('agentProviders.fields.allowNonLoopback.label')}
+                    checked={settings.allowNonLoopback}
+                    onCheckedChange={(checked) => updateSetting('allowNonLoopback', checked)}
+                    className={ACCENT_SWITCH}
+                  />
+                </FieldRow>
+              )}
+              <FieldRow
+                label={t('agentProviders.fields.model.label')}
+                hint={t('agentProviders.fields.model.description')}
+              >
+                <button
+                  type="button"
+                  className={QUIET_ACTION}
+                  onClick={() => void loadModels()}
+                  disabled={busy === 'models'}
+                >
+                  {t('agentProviders.v2.localModel.fetchModels')}
+                </button>
+                <Input
+                  aria-label={t('agentProviders.fields.model.label')}
+                  value={settings.model}
+                  onChange={(event) => updateSetting('model', event.target.value)}
+                  className="h-7 w-48 font-mono text-xs"
+                />
+              </FieldRow>
+              {models.length > 0 && (
+                <div className="flex flex-wrap justify-end gap-1 pb-2">
+                  {models.map((model) => (
+                    <button
+                      key={model}
+                      type="button"
+                      onClick={() => updateSetting('model', model)}
+                      className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs/4 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {model}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <FieldRow
+                label={t('agentProviders.fields.apiKey.label')}
+                hint={
+                  settings.apiKeyConfigured
+                    ? t('agentProviders.fields.apiKey.configured')
+                    : t('agentProviders.fields.apiKey.description')
+                }
+              >
+                <Input
+                  aria-label={t('agentProviders.fields.apiKey.label')}
+                  value={apiKey}
+                  type="password"
+                  placeholder={t('agentProviders.v2.localModel.optional')}
+                  onChange={(event) => updateApiKey(event.target.value)}
+                  className="h-7 w-48 font-mono text-xs"
+                />
+              </FieldRow>
+              <FieldRow label={t('agentProviders.status.label')}>
+                {busy === 'save' || busy === 'test' ? (
+                  <span className="text-xs/4 text-muted-foreground">
+                    {t('agentProviders.status.checking')}
+                  </span>
+                ) : connectionError ? (
+                  <span
+                    className="max-w-60 truncate text-xs/4 text-destructive"
+                    title={connectionError}
+                  >
+                    {connectionError}
+                  </span>
+                ) : status ? (
+                  <span className="text-xs/4 text-green-600">
+                    {t('agentProviders.status.connected')}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  className={QUIET_ACTION}
+                  onClick={() => void testConnection()}
+                  disabled={busy !== null}
+                >
+                  {t('agentProviders.actions.test')}
+                </button>
+              </FieldRow>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </SettingsGroup>
+
+      <GroupHeading
+        label={t('agentProviders.v2.alwaysAllowed.group')}
+        hint={t('agentProviders.alwaysAllowed.description')}
+      />
+      <SettingsGroup>
         {alwaysAllowed.length === 0 ? (
-          <SettingRow label={t('agentProviders.alwaysAllowed.empty')}>
-            <span />
-          </SettingRow>
+          <div className="flex min-h-11 items-center py-2.5 text-xs/4 text-muted-foreground">
+            {t('agentProviders.alwaysAllowed.empty')}
+          </div>
         ) : (
           alwaysAllowed.map((toolName) => (
-            <SettingRow key={toolName} label={toolName}>
-              <Button
-                variant="ghost"
-                size="sm"
+            <div key={toolName} className="flex min-h-11 items-center justify-between gap-4 py-2.5">
+              <code className="min-w-0 truncate font-mono text-xs/4 text-foreground">
+                {toolName}
+              </code>
+              <button
+                type="button"
+                className={QUIET_ACTION}
                 aria-label={t('agentProviders.alwaysAllowed.revokeLabel', { tool: toolName })}
                 onClick={() => void revokeAlwaysAllowed(toolName)}
               >
                 {t('agentProviders.alwaysAllowed.revoke')}
-              </Button>
-            </SettingRow>
+              </button>
+            </div>
           ))
         )}
       </SettingsGroup>
+    </div>
+  )
+}
 
-      <SettingsGroup label={t('agentProviders.groups.cliAgents')}>
-        {CLI_AGENT_ROWS.map((row) => (
-          <SettingRow
-            key={row.backend}
-            label={t(`agentProviders.cliAgents.${row.key}.label`)}
-            description={t(`agentProviders.cliAgents.${row.key}.description`)}
-          >
-            <span
-              className={
-                backendStatuses?.[row.backend]?.available
-                  ? 'text-xs/4 text-green-600'
-                  : 'text-xs/4 text-muted-foreground'
-              }
-            >
-              {cliStatusText(backendStatuses?.[row.backend], t)}
-            </span>
-          </SettingRow>
-        ))}
-      </SettingsGroup>
+const QUIET_ACTION =
+  'shrink-0 rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
 
-      <SettingsGroup label={t('agentProviders.groups.local')}>
-        <SettingRow label={t('agentProviders.fields.preset.label')}>
-          <Select
-            value={settings.preset}
-            onValueChange={(value) => changePreset(value as AgentLocalProviderPreset)}
-          >
-            <SelectTrigger className="h-8 w-40 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ollama">{t('agentProviders.presets.ollama')}</SelectItem>
-              <SelectItem value="lm_studio">{t('agentProviders.presets.lmStudio')}</SelectItem>
-              <SelectItem value="llama_cpp">{t('agentProviders.presets.llamaCpp')}</SelectItem>
-              <SelectItem value="custom">{t('agentProviders.presets.custom')}</SelectItem>
-            </SelectContent>
-          </Select>
-        </SettingRow>
-        <SettingRowTall
-          label={t('agentProviders.fields.baseUrl.label')}
-          description={t('agentProviders.fields.baseUrl.description')}
-        >
-          <Input
-            value={settings.baseUrl}
-            onChange={(event) => updateSetting('baseUrl', event.target.value)}
-            className="h-8 font-mono text-xs"
-          />
-        </SettingRowTall>
-        {nonLoopback && (
-          <SettingRow
-            label={t('agentProviders.fields.allowNonLoopback.label')}
-            description={t('agentProviders.fields.allowNonLoopback.description')}
-          >
-            <Checkbox
-              checked={settings.allowNonLoopback}
-              onCheckedChange={(checked) => updateSetting('allowNonLoopback', checked === true)}
-            />
-          </SettingRow>
-        )}
-        <SettingRowTall
-          label={t('agentProviders.fields.model.label')}
-          description={t('agentProviders.fields.model.description')}
-        >
-          <div className="flex gap-2">
-            <Input
-              value={settings.model}
-              onChange={(event) => updateSetting('model', event.target.value)}
-              className="h-8 flex-1 text-xs"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => void loadModels()}
-              disabled={busy === 'models'}
-            >
-              <RefreshCw className="size-3.5" />
-              {t('agentProviders.actions.models')}
-            </Button>
-          </div>
-          {models.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {models.map((model) => (
-                <button
-                  key={model}
-                  type="button"
-                  onClick={() => updateSetting('model', model)}
-                  className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  {model}
-                </button>
-              ))}
-            </div>
-          )}
-        </SettingRowTall>
-        <SettingRowTall
-          label={t('agentProviders.fields.apiKey.label')}
-          description={
-            settings.apiKeyConfigured
-              ? t('agentProviders.fields.apiKey.configured')
-              : t('agentProviders.fields.apiKey.description')
-          }
-        >
-          <Input
-            value={apiKey}
-            type="password"
-            onChange={(event) => updateApiKey(event.target.value)}
-            className="h-8 text-xs"
-          />
-        </SettingRowTall>
-        {(busy === 'save' || status) && (
-          <SettingRow label={t('agentProviders.status.label')}>
-            {busy === 'save' ? (
-              <span className="text-xs/4 text-muted-foreground">
-                {t('agentProviders.status.checking')}
-              </span>
-            ) : connectionError ? (
-              <span
-                className="max-w-60 truncate text-xs/4 text-destructive"
-                title={connectionError}
-              >
-                {connectionError}
-              </span>
-            ) : (
-              <span className="text-xs/4 text-green-600">
-                {t('agentProviders.status.connected')}
-              </span>
+type StatusTone = 'ready' | 'pending' | 'warning' | 'off'
+
+const STATUS_DOT_CLASS: Record<StatusTone, string> = {
+  ready: 'bg-green-500',
+  pending: 'bg-amber-500',
+  warning: 'bg-amber-500',
+  off: 'border border-muted-foreground/60'
+}
+
+const STATUS_TEXT_CLASS: Record<StatusTone, string> = {
+  ready: 'text-green-600',
+  pending: 'text-muted-foreground',
+  warning: 'text-amber-600',
+  off: 'text-muted-foreground'
+}
+
+function cliStatusTone(cli: AgentBackendStatus | undefined): StatusTone {
+  if (!cli) return 'off'
+  if (cli.reason === 'agent_unavailable') return 'warning'
+  if (cli.available) return 'ready'
+  if (cli.version && cli.minimumRequired) return 'warning'
+  return 'off'
+}
+
+function StatusDot({ tone }: { tone: StatusTone }): React.JSX.Element {
+  return (
+    <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT_CLASS[tone])} />
+  )
+}
+
+function GroupHeading({ label, hint }: { label: string; hint?: string }): React.JSX.Element {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 pb-1.5">
+      <h4 className="font-semibold text-xs/4 text-foreground">{label}</h4>
+      {hint && <span className="text-xs/4 text-muted-foreground">{hint}</span>}
+    </div>
+  )
+}
+
+function FieldRow({
+  label,
+  hint,
+  children
+}: {
+  label: string
+  hint?: string
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <div className="flex min-h-10 items-center justify-between gap-4 border-t border-border py-2">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-xs/4 text-foreground">{label}</span>
+        {hint && <span className="text-[11px]/4 text-muted-foreground">{hint}</span>}
+      </div>
+      <div className="flex shrink-0 items-center gap-3">{children}</div>
+    </div>
+  )
+}
+
+function SegmentedControl<T extends string>({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  label: string
+  value: T
+  options: Array<{ value: T; label: string }>
+  onChange: (value: T) => void
+}): React.JSX.Element {
+  return (
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-md bg-muted p-0.5">
+      {options.map((option) => {
+        const active = option.value === value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => {
+              if (!active) onChange(option.value)
+            }}
+            className={cn(
+              'rounded-[5px] px-2.5 py-1 text-xs/4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              active
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
             )}
-          </SettingRow>
-        )}
-      </SettingsGroup>
+          >
+            {option.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

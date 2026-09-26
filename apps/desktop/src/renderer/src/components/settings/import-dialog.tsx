@@ -197,9 +197,9 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
             )}
 
             {run.preview && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col border-t border-border">
                 {run.preview.groups.map((g, gi) => (
-                  <div key={gi} className="rounded-md border border-border p-3 text-xs/4">
+                  <div key={gi} className="border-b border-border py-2.5 text-xs/4">
                     <div className="font-medium text-[13px]/4 text-foreground">{g.label}</div>
                     {g.error ? (
                       <div className="mt-1 text-destructive">{formatImportMessage(g.error)}</div>
@@ -233,13 +233,13 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
             )}
 
             {showProgress && (
-              <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-active p-3">
+              <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-[13px]/4 text-foreground">
                   {run.isRunning && <Spinner />}
                   <span className="truncate">{statusText || t('import.dialog.running')}</span>
                 </div>
                 {run.progress && run.progress.total > 0 && (
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-[var(--tint)] transition-[width]"
                       style={{

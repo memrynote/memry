@@ -11,9 +11,11 @@ import { GenericCalendarProviderPanel } from '@/components/settings/generic-cale
  * preset connect form, and reconnect copy that names the real failure.
  */
 export function CaldavProviderPanel({
-  provider
+  provider,
+  name
 }: {
   provider: CalendarProviderDescriptor
+  name?: string
 }): React.JSX.Element {
   const { t } = useT('settings')
 
@@ -28,6 +30,7 @@ export function CaldavProviderPanel({
   return (
     <GenericCalendarProviderPanel
       provider={provider}
+      name={name}
       describeReconnect={describeReconnect}
       renderConnectForm={({ onConnected, reconnect }) => (
         <CaldavConnectForm

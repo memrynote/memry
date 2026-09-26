@@ -8,13 +8,17 @@ import type {
   CalendarSourceRecord
 } from '@memry/contracts/calendar-api'
 import { useT } from '@memry/i18n/renderer'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Switch } from '@/components/ui/switch'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { calendarService } from '@/services/calendar-service'
-import { ACCENT_SWITCH } from '@/components/settings/settings-primitives'
+import {
+  CALENDAR_BORDERED_BUTTON,
+  CALENDAR_DESTRUCTIVE_BUTTON,
+  CALENDAR_QUIET_BUTTON,
+  CalendarCheckRow,
+  CalendarProviderRow,
+  CalendarStatusLabel,
+  CalendarSwitchRow
+} from '@/components/settings/calendar-provider-row'
 import {
   ProviderAgentAccessRow,
   providerSettingsQueryKey
@@ -52,6 +56,8 @@ function expectSuccess(result: CalendarProviderMutationResponse, fallback: strin
 
 export function GenericCalendarProviderPanel({
   provider,
+  name = provider.id,
+  tile,
   renderConnectForm,
   describeReconnect,
   renderConnectedNotice,
@@ -59,6 +65,9 @@ export function GenericCalendarProviderPanel({
   calendarNote
 }: {
   provider: CalendarProviderDescriptor
+  name?: string
+  /** The row's 28px tile; defaults to the name's first letter. */
+  tile?: ReactNode
   /** A provider-specific connect form (CalDAV presets); defaults to the form for its auth flow. */
   renderConnectForm?: (args: ProviderConnectFormArgs) => ReactNode
   /** Copy for an account that needs reconnecting on this device. */
@@ -162,20 +171,46 @@ export function GenericCalendarProviderPanel({
     <DefaultConnectForm provider={provider} onConnected={onConnected} />
   )
 
-  return (
-    <div className="grid gap-3 px-4 py-3" data-testid={`calendar-provider-panel-${id}`}>
-      <ProviderPanelHeader
-        provider={provider}
-        connected={connected}
-        busy={busy}
-        onRefresh={() => refreshMutation.mutate()}
-        onToggleAddAccount={() => setShowConnectForm((open) => !open)}
-        onDisconnect={() => disconnectMutation.mutate(undefined)}
-      />
+  const needsAttention = accounts.some((account) => account.status !== 'connected')
+  const selectedCount = calendars.filter((source) => source.isSelected).length
+  const pollMinutes = capabilities.pollIntervalMs
+    ? Math.round(capabilities.pollIntervalMs / 60_000)
+    : null
 
-      {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {extractErrorMessage(error, t('calendar.providers.refreshFailed'))}
+  return (
+    <CalendarProviderRow
+      providerId={id}
+      tile={tile ?? name.charAt(0).toUpperCase()}
+      name={name}
+      data-testid={`calendar-provider-panel-${id}`}
+      defaultOpen={needsAttention}
+      onConnectRequest={() => {
+        if (connected && capabilities.supportsMultiAccount) setShowConnectForm(true)
+      }}
+      hint={
+        <ProviderRowHint
+          provider={provider}
+          connected={connected}
+          needsAttention={needsAttention}
+          accounts={accounts}
+        />
+      }
+      meta={
+        connected && calendars.length > 0
+          ? t('calendar.v2.calendarCount', { selected: selectedCount, count: calendars.length })
+          : null
+      }
+      alert={
+        error ? (
+          <p role="alert" className="text-xs/4 text-destructive">
+            {extractErrorMessage(error, t('calendar.providers.refreshFailed'))}
+          </p>
+        ) : null
+      }
+    >
+      {!capabilities.supportsPush && pollMinutes !== null && (
+        <p className="text-xs/4 text-muted-foreground" data-testid={`calendar-provider-poll-${id}`}>
+          {t('calendar.providers.pollInterval', { minutes: pollMinutes })}
         </p>
       )}
 
@@ -209,22 +244,87 @@ export function GenericCalendarProviderPanel({
       )}
 
       {connected && capabilities.supportsWrite && (
-        <ProviderPushRow
-          providerId={id}
-          enabled={pushEnabled}
-          pending={pushMutation.isPending}
-          onChange={(checked) => pushMutation.mutate(checked)}
+        <CalendarSwitchRow
+          label={t('calendar.providers.push.label')}
+          description={t('calendar.providers.push.description')}
+          checked={pushEnabled}
+          disabled={pushMutation.isPending}
+          onCheckedChange={(checked) => pushMutation.mutate(checked)}
+          data-testid={`calendar-provider-push-${id}`}
         />
       )}
 
       {connected && capabilities.supportsWrite && <CalendarDefaultTargetRow providerId={id} />}
 
+      {connected && <ProviderAgentAccessRow providerId={id} />}
+
       {connected && (
-        <div className="-mx-4 border-t border-border/60">
-          <ProviderAgentAccessRow providerId={id} />
+        <div className="flex flex-wrap items-center gap-4 border-t border-border pt-3">
+          <button
+            type="button"
+            className={CALENDAR_QUIET_BUTTON}
+            disabled={busy}
+            onClick={() => refreshMutation.mutate()}
+          >
+            {t('calendar.providers.syncNow')}
+          </button>
+          {capabilities.supportsMultiAccount ? (
+            <button
+              type="button"
+              className={CALENDAR_QUIET_BUTTON}
+              data-testid={`calendar-provider-add-account-${id}`}
+              onClick={() => setShowConnectForm((open) => !open)}
+            >
+              {t('calendar.providers.addAccount')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={CALENDAR_DESTRUCTIVE_BUTTON}
+              disabled={busy}
+              onClick={() => disconnectMutation.mutate(undefined)}
+            >
+              {t('calendar.providers.disconnect')}
+            </button>
+          )}
         </div>
       )}
-    </div>
+    </CalendarProviderRow>
+  )
+}
+
+/** Status, the connected account, and a Read-only mark, on one line. */
+function ProviderRowHint({
+  provider,
+  connected,
+  needsAttention,
+  accounts
+}: {
+  provider: CalendarProviderDescriptor
+  connected: boolean
+  needsAttention: boolean
+  accounts: CalendarProviderAccountStatus[]
+}): React.JSX.Element {
+  const { t } = useT('settings')
+  const { id, capabilities } = provider
+  const emails = accounts.map((account) => account.email).join(', ')
+  return (
+    <>
+      <CalendarStatusLabel
+        tone={connected ? (needsAttention ? 'warn' : 'ok') : 'off'}
+        label={
+          connected
+            ? t('calendar.providers.statuses.connected')
+            : t('calendar.providers.statuses.notConnected')
+        }
+      />
+      {connected && emails && <span className="truncate">· {emails}</span>}
+      {!capabilities.supportsWrite && (
+        <span className="shrink-0" data-testid={`calendar-provider-read-only-${id}`}>
+          · {t('calendar.providers.readOnly')}
+        </span>
+      )}
+    </>
   )
 }
 
@@ -250,42 +350,40 @@ function ProviderAccountList({
 }): React.JSX.Element {
   const { t } = useT('settings')
   return (
-    <ul className="grid gap-2" aria-label={t('calendar.providers.accounts')}>
+    <ul className="flex flex-col gap-1" aria-label={t('calendar.providers.accounts')}>
       {accounts.map((account) => (
         <li
           key={account.accountId}
           data-testid={`calendar-provider-account-${account.accountId}`}
-          className="grid gap-1 rounded-md border border-border/70 px-3 py-2"
+          className="flex flex-col gap-1"
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-xs font-medium text-foreground">{account.email}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 shrink-0 px-2 text-[11px]/4"
+          <div className="flex min-h-7 items-center justify-between gap-3">
+            <span className="truncate text-xs/4 text-foreground">{account.email}</span>
+            <button
+              type="button"
+              className={CALENDAR_DESTRUCTIVE_BUTTON}
               disabled={busy}
               onClick={() => onDisconnect(account.accountId)}
             >
               {t('calendar.providers.disconnect')}
-            </Button>
+            </button>
           </div>
           {account.status === 'reconnect_required' && (
             <div
               className="grid gap-1.5"
               data-testid={`calendar-provider-reconnect-${account.accountId}`}
             >
-              <p className="text-[11px]/4 text-amber-800 dark:text-amber-300">
+              <p className="text-xs/4 text-amber-800 dark:text-amber-300">
                 {describeReconnect?.(account) ?? t('calendar.providers.reconnectRequired')}
               </p>
               {renderConnectForm && reconnectAccountId !== account.accountId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 w-fit px-2 text-[11px]/4"
+                <button
+                  type="button"
+                  className={`${CALENDAR_BORDERED_BUTTON} w-fit`}
                   onClick={() => onReconnect(account.accountId)}
                 >
                   {t('calendar.providers.reconnect')}
-                </Button>
+                </button>
               )}
               {renderConnectForm &&
                 reconnectAccountId === account.accountId &&
@@ -293,7 +391,7 @@ function ProviderAccountList({
             </div>
           )}
           {account.status === 'error' && account.lastError && (
-            <p className="text-[11px]/4 text-destructive">{account.lastError}</p>
+            <p className="text-xs/4 text-destructive">{account.lastError}</p>
           )}
         </li>
       ))}
@@ -323,39 +421,35 @@ function ProviderCalendarList({
   const renderCalendar = (source: CalendarSourceRecord): React.JSX.Element => {
     const hint = note?.(source) ?? null
     return (
-      <li key={source.id} className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <label className="flex min-w-0 items-center gap-2 text-xs text-foreground">
-            <Checkbox
-              checked={source.isSelected}
-              disabled={selectionPending}
-              onCheckedChange={(checked) =>
-                onSelect({ id: source.id, isSelected: checked === true })
-              }
-              aria-label={source.title}
-            />
-            <span className="truncate">{source.title}</span>
-          </label>
-          {hint && <p className="ps-6 text-[11px]/4 text-muted-foreground">{hint}</p>}
-        </div>
-        {source.syncStatus === 'error' && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 shrink-0 px-2 text-[11px]/4"
-            disabled={retryPending}
-            onClick={() => onRetry(source.id)}
-          >
-            {t('calendar.providers.retry')}
-          </Button>
-        )}
+      <li key={source.id}>
+        <CalendarCheckRow
+          title={source.title}
+          color={source.color}
+          checked={source.isSelected}
+          disabled={selectionPending}
+          onCheckedChange={(checked) => onSelect({ id: source.id, isSelected: checked })}
+          trailing={
+            source.syncStatus === 'error' ? (
+              <button
+                type="button"
+                className={CALENDAR_QUIET_BUTTON}
+                disabled={retryPending}
+                onClick={() => onRetry(source.id)}
+              >
+                {t('calendar.providers.retry')}
+              </button>
+            ) : null
+          }
+        >
+          {hint && <p className="text-[11px]/4 text-muted-foreground">{hint}</p>}
+        </CalendarCheckRow>
       </li>
     )
   }
 
   if (!groupLabel) {
     return (
-      <ul className="grid gap-1.5" aria-label={t('calendar.providers.calendars')}>
+      <ul className="flex flex-col" aria-label={t('calendar.providers.calendars')}>
         {calendars.map(renderCalendar)}
       </ul>
     )
@@ -367,104 +461,17 @@ function ProviderCalendarList({
     groups.set(label, [...(groups.get(label) ?? []), source])
   }
   return (
-    <div className="grid gap-3" aria-label={t('calendar.providers.calendars')} role="group">
+    <div
+      className="flex flex-col gap-3"
+      aria-label={t('calendar.providers.calendars')}
+      role="group"
+    >
       {[...groups.entries()].map(([label, members]) => (
-        <section key={label} className="grid gap-1.5" aria-label={label}>
-          <h4 className="text-[11px]/4 font-medium text-muted-foreground">{label}</h4>
-          <ul className="grid gap-1.5">{members.map(renderCalendar)}</ul>
+        <section key={label} className="flex flex-col gap-0.5" aria-label={label}>
+          <h4 className="text-xs/4 text-muted-foreground">{label}</h4>
+          <ul className="flex flex-col">{members.map(renderCalendar)}</ul>
         </section>
       ))}
-    </div>
-  )
-}
-
-/** Status and read-only badges, the refresh interval, and the account actions. */
-function ProviderPanelHeader({
-  provider,
-  connected,
-  busy,
-  onRefresh,
-  onToggleAddAccount,
-  onDisconnect
-}: {
-  provider: CalendarProviderDescriptor
-  connected: boolean
-  busy: boolean
-  onRefresh: () => void
-  onToggleAddAccount: () => void
-  onDisconnect: () => void
-}): React.JSX.Element {
-  const { t } = useT('settings')
-  const { id, capabilities } = provider
-  const pollMinutes = capabilities.pollIntervalMs
-    ? Math.round(capabilities.pollIntervalMs / 60_000)
-    : null
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex min-w-0 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge
-            variant="secondary"
-            className="h-4 w-fit border-0 px-1.5 py-0 text-[10px]/3 text-foreground"
-          >
-            {connected
-              ? t('calendar.providers.statuses.connected')
-              : t('calendar.providers.statuses.notConnected')}
-          </Badge>
-          {!capabilities.supportsWrite && (
-            <Badge
-              variant="outline"
-              className="h-4 w-fit px-1.5 py-0 text-[10px]/3"
-              data-testid={`calendar-provider-read-only-${id}`}
-            >
-              {t('calendar.providers.readOnly')}
-            </Badge>
-          )}
-        </div>
-        {!capabilities.supportsPush && pollMinutes !== null && (
-          <p
-            className="text-xs/4 text-muted-foreground"
-            data-testid={`calendar-provider-poll-${id}`}
-          >
-            {t('calendar.providers.pollInterval', { minutes: pollMinutes })}
-          </p>
-        )}
-      </div>
-      {connected && (
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-3 text-xs/4"
-            disabled={busy}
-            onClick={onRefresh}
-          >
-            {t('calendar.providers.syncNow')}
-          </Button>
-          {capabilities.supportsMultiAccount && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-3 text-xs/4"
-              data-testid={`calendar-provider-add-account-${id}`}
-              onClick={onToggleAddAccount}
-            >
-              {t('calendar.providers.addAccount')}
-            </Button>
-          )}
-          {!capabilities.supportsMultiAccount && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-3 text-xs/4"
-              disabled={busy}
-              onClick={onDisconnect}
-            >
-              {t('calendar.providers.disconnect')}
-            </Button>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -482,50 +489,14 @@ function DefaultConnectForm({
     return <CalendarBasicConnectForm provider={provider} onConnected={onConnected} />
   }
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="h-7 w-fit px-3 text-xs/4"
+    <button
+      type="button"
+      className={`${CALENDAR_BORDERED_BUTTON} w-fit`}
       onClick={() => {
         void calendarService.connectProvider({ provider: provider.id }).then(onConnected)
       }}
     >
       {t('calendar.providers.connect')}
-    </Button>
-  )
-}
-
-/** The one-way switch: whether Memry writes to this provider at all. */
-function ProviderPushRow({
-  providerId,
-  enabled,
-  pending,
-  onChange
-}: {
-  providerId: string
-  enabled: boolean
-  pending: boolean
-  onChange: (checked: boolean) => void
-}): React.JSX.Element {
-  const { t } = useT('settings')
-  return (
-    <div className="flex items-start justify-between gap-3 border-t border-border/60 pt-3">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-[13px]/4 font-medium text-foreground">
-          {t('calendar.providers.push.label')}
-        </span>
-        <p className="text-xs/4 text-muted-foreground">
-          {t('calendar.providers.push.description')}
-        </p>
-      </div>
-      <Switch
-        checked={enabled}
-        disabled={pending}
-        onCheckedChange={onChange}
-        aria-label={t('calendar.providers.push.label')}
-        className={ACCENT_SWITCH}
-        data-testid={`calendar-provider-push-${providerId}`}
-      />
-    </div>
+    </button>
   )
 }

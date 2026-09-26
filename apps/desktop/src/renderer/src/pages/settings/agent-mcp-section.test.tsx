@@ -32,7 +32,8 @@ describe('AgentMcpSection', () => {
     render(<AgentMcpSection />)
 
     expect(await screen.findByText('http://127.0.0.1:1234')).toBeInTheDocument()
-    expect(screen.getByText('local-token-placeholder')).toBeInTheDocument()
+    expect(screen.queryByText('local-token-placeholder')).not.toBeInTheDocument()
+    expect(screen.getByText('loca••••••••lder')).toBeInTheDocument()
     expect(screen.getByText('20 tools')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Copy URL' }))
@@ -46,6 +47,8 @@ describe('AgentMcpSection', () => {
     await waitFor(() => {
       expect(window.api.agentMcp.rotateToken).toHaveBeenCalled()
     })
-    expect(await screen.findByText('rotated-local-token-placeholder')).toBeInTheDocument()
+    expect(await screen.findByText('rota••••••••lder')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Copy Bearer token' }))
+    expect(writeTextMock).toHaveBeenLastCalledWith('rotated-local-token-placeholder')
   })
 })

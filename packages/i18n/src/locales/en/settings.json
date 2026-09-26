@@ -11,7 +11,9 @@
         "editing": "Editing",
         "modules": "Modules",
         "services": "Services",
-        "data": "Data"
+        "data": "Data",
+        "workspace": "Workspace",
+        "features": "Features"
       },
       "items": {
         "account": "Account",
@@ -30,8 +32,30 @@
         "tags": "Tags",
         "properties": "Properties",
         "import": "Import",
-        "features": "Features"
+        "features": "Features",
+        "modules": "Modules",
+        "aiAgents": "AI & Agents",
+        "tagsProperties": "Tags & Properties",
+        "vaultData": "Vault & Data"
       }
+    },
+    "drillIn": {
+      "back": "Back to {section}"
+    },
+    "modules": {
+      "configure": "Configure {module}"
+    },
+    "vaultImport": {
+      "label": "Import from another app",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist and more",
+      "action": "Import…"
+    },
+    "search": {
+      "placeholder": "Search settings",
+      "count": "{count, plural, one {# setting} other {# settings}}",
+      "empty": "No matching settings",
+      "move": "move",
+      "open": "open"
     }
   },
   "features": {
@@ -73,21 +97,23 @@
   "general": {
     "header": {
       "title": "General",
-      "subtitle": "Application startup and tab behavior",
+      "subtitle": "Language, startup, tabs and privacy.",
       "loading": "Loading settings..."
     },
     "groups": {
       "startup": "Startup",
       "updates": "Updates",
-      "languageRegion": "Language & Region",
+      "languageRegion": "Language & region",
       "tabBehavior": "Tab Behavior",
       "window": "Window Behavior",
       "fileCreation": "File Creation",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "startupWindows": "Startup & windows",
+      "newNotes": "New notes"
     },
     "startup": {
       "launchAtLogin": {
-        "label": "Launch at Login",
+        "label": "Launch at login",
         "description": "Start memrynote when you log in",
         "error": "Failed to update start on boot"
       }
@@ -123,7 +149,25 @@
         "downloading": "Downloading...",
         "downloadingPercent": "Downloading {percent}%",
         "downloaded": "Restart to Install",
-        "idle": "Check for Updates"
+        "idle": "Check now"
+      },
+      "label": "Updates",
+      "checkedAgo": "{status} · checked {time}",
+      "status": {
+        "unsupported": "Available in packaged releases",
+        "idle": "Not checked yet",
+        "checking": "Checking…",
+        "upToDate": "Up to date",
+        "available": "Version {version} available",
+        "downloading": "Downloading…",
+        "downloadingPercent": "Downloading {percent}%",
+        "downloaded": "Version {version} ready to install"
+      },
+      "mode": {
+        "label": "Update mode",
+        "off": "Don't check",
+        "notify": "Notify only",
+        "auto": "Download automatically"
       }
     },
     "language": {
@@ -133,16 +177,16 @@
       "failed": "Failed to change language. Please try again."
     },
     "clockFormat": {
-      "label": "Time Format",
+      "label": "Time format",
       "description": "12-hour or 24-hour clock",
       "options": {
-        "12h": "12-hour",
-        "24h": "24-hour"
+        "12h": "12h",
+        "24h": "24h"
       },
       "error": "Failed to update time format"
     },
     "dateFormat": {
-      "label": "Date Format",
+      "label": "Date format",
       "description": "How calendar dates are displayed",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
@@ -154,51 +198,52 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Open Pages in a New Tab",
+        "label": "Open pages in a new tab",
         "description": "Clicking or creating a page — notes, folders, projects, canvases, tags, bookmarks — opens it in a new tab. When off, the current tab is reused, including when following links inside a note; pinned tabs are never replaced. \"Open in New Tab\", \"Open to the Side\" and middle-click always open a new tab."
       },
       "restoreSession": {
-        "label": "Restore Session on Start",
-        "description": "Reopen tabs from your last session"
+        "label": "Restore tabs on start",
+        "description": "Reopen the tabs and splits you had last time."
       },
       "closeButton": {
-        "label": "Tab Close Button",
+        "label": "Tab close button",
         "description": "When to show the close button",
         "options": {
-          "always": "Always visible",
-          "hover": "Show on hover",
-          "active": "Only on active tab"
+          "always": "Always",
+          "hover": "On hover",
+          "active": "Active tab only"
         }
       },
       "error": "Failed to update setting"
     },
     "window": {
       "minimizeToTray": {
-        "label": "Minimize to Tray",
+        "label": "Keep running in menu bar when closed",
         "description": "Closing the window hides memrynote to the system tray instead of closing it. Click the tray icon to bring it back. On macOS the app also stays in the Dock; on Linux desktops without a system tray the window closes as usual.",
         "error": "Failed to update minimize to tray"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Create in Selected Folder",
+        "label": "Create inside the selected folder",
         "description": "New notes and folders are created inside the currently selected folder. When off, items are always created at root."
       },
       "defaultNoteFolder": {
-        "label": "Default Location for New Notes",
-        "description": "Where a new note goes when you don't pick a folder. Creating a note inside a folder still uses that folder, and your sidebar is unaffected. Empty = vault root",
-        "placeholder": "notes"
+        "label": "Default location",
+        "description": "Used when no folder is selected in the sidebar.",
+        "placeholder": "notes",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
-        "label": "Share Anonymous Usage Metrics",
-        "description": "It's only anon metrics — no note content, search queries, file paths, emails, or raw IDs are ever sent. Includes redacted diagnostic logs — no note content.",
+        "label": "Share anonymous usage metrics",
+        "description": "Never note content, titles or names. Includes redacted diagnostic logs.",
         "error": "Failed to update telemetry setting"
       },
       "autoSendDiagnostics": {
-        "label": "Automatically Send Error Reports",
-        "description": "When an error screen appears, send a redacted diagnostic report automatically. No note content. Turn off to be asked each time.",
+        "label": "Send error reports automatically",
+        "description": "Redacted logs when an error screen appears. Off asks each time.",
         "error": "Failed to update error report setting"
       },
       "diagnostics": {
@@ -214,9 +259,9 @@
         "previewError": "Couldn't prepare the diagnostic report",
         "error": "Failed to send diagnostic report",
         "sendReport": {
-          "label": "Diagnostic Report",
+          "label": "Diagnostic report",
           "description": "Send a one-time report of redacted technical logs to help us debug an issue you hit.",
-          "button": "Send diagnostic report"
+          "button": "Send report…"
         }
       }
     }
@@ -306,6 +351,17 @@
       },
       "fontSizeError": "Failed to update font size",
       "fontFamilyError": "Failed to update font family"
+    },
+    "v2": {
+      "groups": {
+        "text": "Text & zoom"
+      },
+      "colorMode": "Color mode",
+      "accent": "Accent color",
+      "customColor": "Custom color",
+      "fontFamily": "Font family",
+      "fontSize": "Font size",
+      "zoom": "Zoom"
     }
   },
   "editor": {
@@ -337,6 +393,11 @@
       "label": "Check Spelling",
       "description": "Underline misspelled words in notes and journals",
       "error": "Failed to update spell check"
+    },
+    "v2": {
+      "width": "Editor width",
+      "toolbarMode": "Sticky formatting toolbar",
+      "spellCheck": "Check spelling"
     }
   },
   "templates": {
@@ -379,6 +440,12 @@
         "title": "Duplicate Template",
         "description": "Enter a name for the new template copy.",
         "placeholder": "Template name"
+      }
+    },
+    "v2": {
+      "new": "New template",
+      "groups": {
+        "mine": "My templates"
       }
     }
   },
@@ -449,6 +516,12 @@
       "cleared": "Template cleared for {day}",
       "error": "Failed to update template for {day}",
       "summary": "{count} of 7 set"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Default template",
+        "location": "Location & format"
+      }
     }
   },
   "tasks": {
@@ -801,6 +874,17 @@
         "icloudRevoked": "iCloud stopped accepting this app-specific password. Resetting your Apple ID password revokes every app-specific password. Create a new one at account.apple.com and reconnect.",
         "rejected": "The server stopped accepting this password. If you changed it or revoked the app password, create a new one and reconnect."
       }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Layout",
+        "connected": "Connected calendars"
+      },
+      "addCalendar": "Add calendar",
+      "calendarCount": "{selected} of {count, plural, one {# calendar} other {# calendars}}",
+      "defaultPill": "Default",
+      "subscription": "Subscription",
+      "subscriptionCount": "{count, plural, =0 {No subscriptions} one {# subscription} other {# subscriptions}}"
     }
   },
   "account": {
@@ -943,6 +1027,11 @@
       "signedOut": "Signed out successfully",
       "signOutFailed": "Failed to sign out",
       "deviceLinked": "Device linked successfully"
+    },
+    "v2": {
+      "stats": {
+        "plan": "Plan"
+      }
     }
   },
   "setup": {
@@ -1241,6 +1330,39 @@
       "connectFailed": "Failed to connect",
       "testFailed": "Connection test failed",
       "updateFailed": "Failed to update setting"
+    },
+    "tabs": {
+      "models": "Models",
+      "agents": "Agents",
+      "connect": "Connect"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "On-device models",
+        "hint": "Downloaded once, run offline"
+      },
+      "embedding": {
+        "label": "Search embeddings",
+        "hint": "{dimension} dims · {count, plural, one {# note} other {# notes}} embedded"
+      },
+      "voiceModel": {
+        "label": "Voice transcription"
+      },
+      "download": "Download",
+      "connected": "Connected",
+      "inline": {
+        "group": "Inline editing",
+        "enabled": "Enabled"
+      },
+      "voice": {
+        "group": "Voice memos",
+        "transcribeWith": "Transcribe with",
+        "local": "Local",
+        "openai": "OpenAI",
+        "nameBy": "Name memos by",
+        "keySaved": "Saved",
+        "keyNotSet": "Not set"
+      }
     }
   },
   "import": {
@@ -1409,6 +1531,18 @@
       "todoist": {
         "importing": "Importing Todoist tasks…"
       }
+    },
+    "v2": {
+      "searchPlaceholder": "Find an app or file type…",
+      "noMatch": "No sources match “{query}”",
+      "formatAccount": "Account",
+      "showMore": "{count, plural, one {Show # more} other {Show # more}}",
+      "showLess": "Show less",
+      "groups": {
+        "noteApps": "Note apps",
+        "tasks": "Tasks, journal & bookmarks",
+        "files": "Files"
+      }
     }
   },
   "vault": {
@@ -1520,6 +1654,12 @@
         "unsupported": "{count, plural, one {# unsupported file skipped} other {# unsupported files skipped}}",
         "failed": "{count, plural, one {# failed} other {# failed}}"
       }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "This vault"
+      },
+      "largeNotesCount": "{count, plural, one {# note} other {# notes}}"
     }
   },
   "tags": {
@@ -1558,6 +1698,9 @@
       "colorUpdated": "Updated color for \"{name}\"",
       "colorFailed": "Failed to update color",
       "iconFailed": "Failed to update icon"
+    },
+    "v2": {
+      "actionsAria": "Actions for {name}"
     }
   },
   "properties": {
@@ -1603,6 +1746,9 @@
       "deleteFailed": "Failed to delete property",
       "deleted": "Deleted property \"{name}\"",
       "addFailed": "Failed to add option"
+    },
+    "v2": {
+      "actionsAria": "Actions for {name}"
     }
   },
   "commandLine": {
@@ -1767,6 +1913,15 @@
           "description": "Show keyboard shortcuts reference"
         }
       }
+    },
+    "v2": {
+      "all": "All",
+      "categoryFilter": "Filter by category",
+      "systemWide": "System-wide",
+      "globalCapture": "Global capture",
+      "recordingHint": "Press keys… esc to cancel",
+      "reset": "Reset",
+      "resetAll": "Reset all to defaults"
     }
   },
   "phaseF": {
@@ -1882,7 +2037,14 @@
     },
     "copyLabel": "Copy {label}",
     "notRunning": "Not running",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "toolsBadge": "{count, plural, one {# tool} other {# tools}}",
+    "v2": {
+      "hint": "Local server for Cursor, Claude Desktop, Zed",
+      "running": "Running",
+      "tokenHint": "This launch only",
+      "copy": "Copy",
+      "rotate": "Rotate"
+    }
   },
   "agentProviders": {
     "header": {
@@ -1978,6 +2140,28 @@
       "empty": "Nothing is always allowed. Every change still asks.",
       "revoke": "Revoke",
       "revokeLabel": "Revoke the standing approval for {tool}"
+    },
+    "v2": {
+      "permissions": {
+        "group": "Permissions",
+        "hint": "Applies to every agent chat",
+        "access": "Access",
+        "changes": "Changes"
+      },
+      "runtimes": {
+        "group": "Agent runtimes",
+        "hint": "Detected from PATH"
+      },
+      "localModel": {
+        "label": "Local model",
+        "hint": "OpenAI-compatible server on this machine",
+        "notChecked": "Not checked",
+        "optional": "Optional",
+        "fetchModels": "Fetch models"
+      },
+      "alwaysAllowed": {
+        "group": "Always allowed tools"
+      }
     }
   }
 }

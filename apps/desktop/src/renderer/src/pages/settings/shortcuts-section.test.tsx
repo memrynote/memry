@@ -134,9 +134,67 @@ describe('ShortcutsSettings', () => {
     await userEvent.click(screen.getByTitle('Clear shortcut'))
     expect(setGlobalCapture).toHaveBeenCalledWith(null)
 
-    await userEvent.click(screen.getByRole('button', { name: /reset all/i }))
+    await userEvent.click(screen.getByTestId('shortcuts-reset-all'))
     expect(resetToDefaults).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('All shortcuts reset to defaults')
+  })
+
+  it('hides reset-all and per-row reset while every binding is the default', () => {
+    render(<ShortcutsSettings />)
+
+    expect(screen.queryByTestId('shortcuts-reset-all')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Reset to default')).not.toBeInTheDocument()
+  })
+
+  it('offers a quiet per-row reset on changed bindings', async () => {
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: {
+        overrides: { 'nav.newNote': { key: 'n', modifiers: { meta: true, shift: true } } },
+        globalCapture: null
+      },
+      isLoading: false,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+
+    render(<ShortcutsSettings />)
+
+    const newNoteRow = screen.getByText('New Note').closest('.group') as HTMLElement
+    await userEvent.click(within(newNoteRow).getByTitle('Reset to default'))
+    expect(updateSettings).toHaveBeenCalledWith({ overrides: {} })
+  })
+
+  it('tints the recording row and shows a conflict inline without saving', async () => {
+    render(<ShortcutsSettings />)
+
+    const newNoteRow = screen.getByText('New Note').closest('.group') as HTMLElement
+    await userEvent.click(within(newNoteRow).getByTitle('Click to rebind'))
+
+    expect(newNoteRow.className).toContain('bg-tint-light')
+    expect(within(newNoteRow).getByText('Press shortcut…')).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+
+    expect(within(newNoteRow).getByText('Conflicts with: Search')).toHaveClass('text-destructive')
+    expect(updateSettings).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(newNoteRow.className).not.toContain('bg-tint-light')
+    expect(within(newNoteRow).queryByText('Conflicts with: Search')).not.toBeInTheDocument()
+  })
+
+  it('filters groups by category and keeps system-wide capture under All only', async () => {
+    render(<ShortcutsSettings />)
+
+    expect(screen.getByText('Capture a note from anywhere')).toBeInTheDocument()
+    expect(screen.getByText('New Note')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Editor' }))
+
+    expect(screen.getByText('Bold')).toBeInTheDocument()
+    expect(screen.queryByText('New Note')).not.toBeInTheDocument()
+    expect(screen.queryByText('Capture a note from anywhere')).not.toBeInTheDocument()
   })
 
   it('shows global capture permission guidance and save failures', async () => {
