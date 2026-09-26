@@ -20,6 +20,36 @@ The new task is created in the current view's scope:
 | Inside a project                | That project, with the project's first status                    |
 | Inside a status column (kanban) | That column                                                      |
 
+In the Tasks page's capture bar, a task is due **Today** unless you change it — see [Setting Properties Before You Press Enter](#setting-properties-before-you-press-enter).
+
+## Setting Properties Before You Press Enter
+
+When the Tasks page's capture field is focused, a `Today ⌄` chip appears at its end. It shows what the task will be created with, so you don't have to find the task afterwards to finish it off.
+
+- **Click the date** to open the date picker — Today, Tomorrow, Next week, Remove date, a calendar, and Add time. **Remove date** creates the task with no due date.
+- **Click the arrow**, or press <kbd>⌥</kbd> <kbd>↓</kbd> in the field, to open the task options:
+  - **Priority** — five buttons at the top, or <kbd>1</kbd>–<kbd>5</kbd> while the menu is open
+  - **Project**, **Status**, **Start date**, **Repeat**, **Reminder**, **Tags**
+  - **Link note** — writes `[[` into the field and opens the note picker
+  - **Open full details** — the add-task dialog, same as <kbd>⌘</kbd> <kbd>Enter</kbd>
+
+In the menu, <kbd>↑</kbd> / <kbd>↓</kbd> move, <kbd>→</kbd> opens a submenu, <kbd>←</kbd> goes back, and <kbd>Esc</kbd> returns you to the text.
+
+Everything you set away from its default shows as a small chip beside the date. Click a chip to change it, or hover it and press **×** to drop it. After <kbd>Enter</kbd> the chips reset, ready for the next task.
+
+### Typed Markers and the Menu Agree
+
+The menu and the [markers](#the-whole-grammar) set the same fields, and the last thing you did wins:
+
+| You do                                       | The task gets                             |
+| -------------------------------------------- | ----------------------------------------- |
+| Pick **High**, then type `!low`              | Low — the typed marker came last          |
+| Type `Ship it !low`, then pick **Urgent**    | Urgent — `!low` is removed from the field |
+| Type `#launch`, then add the tag `design`    | Both tags — tags add up                   |
+| Type `@friday` with the date chip on _Today_ | Due Friday — the chip switches to Friday  |
+
+A reminder is attached as soon as the task has been saved.
+
 ## Natural Language Dates
 
 Start a date with `@` — the same `@` phrases the note editor understands — and quick-add parses the whole phrase into a due date:
