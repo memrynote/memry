@@ -472,6 +472,13 @@ vi.mock('./token-manager', () => ({
   setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed
 }))
 
+vi.mock('./vault-account-binding', () => ({
+  applyOpenVaultBinding: vi.fn(async () => 'start'),
+  scheduleBindingRetry: vi.fn(),
+  cancelBindingRetry: vi.fn(),
+  resetVaultBindingState: vi.fn()
+}))
+
 vi.mock('./key-verification', () => ({
   // 'unknown' = account verifier unavailable → runtime proceeds as before.
   checkLocalKeyAgainstAccount: vi.fn().mockResolvedValue('unknown'),

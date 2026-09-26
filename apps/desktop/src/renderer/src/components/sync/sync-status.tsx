@@ -10,6 +10,8 @@ import { Separator } from '@/components/ui/separator'
 import { SidebarMenuButton } from '@/components/ui/sidebar'
 import { DockButton, type DockBadgeTone } from '@/components/sidebar/footer-dock'
 import { useT } from '@memry/i18n/renderer'
+import { useSyncOptional } from '@/contexts/sync-context'
+import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 
 const log = createLogger('SyncStatus')
 
@@ -31,6 +33,80 @@ function UnpaidSyncPanel({ onOpenSettings }: { onOpenSettings: () => void }): Re
   )
 }
 
+type HeldBindingStatus = Extract<
+  VaultBindingState['status'],
+  'local-only' | 'foreign' | 'needs-decision'
+>
+
+/** The open vault's binding when it keeps sync off, else null. */
+function useHeldVaultBinding(): HeldBindingStatus | null {
+  const status = useSyncOptional()?.vaultBinding.status
+  return status === 'local-only' || status === 'foreign' || status === 'needs-decision'
+    ? status
+    : null
+}
+
+/**
+ * The open vault does not sync with this account, by the user's choice or
+ * because it is someone else's. Retry and Pause mean nothing here, so the
+ * popover explains why and offers the one action that applies.
+ */
+function VaultBindingPanel({ status }: { status: HeldBindingStatus }): React.JSX.Element {
+  const { t } = useT('settings')
+  const sync = useSyncOptional()
+
+  const message =
+    status === 'local-only'
+      ? t('vault.binding.status.localOnly')
+      : status === 'foreign'
+        ? t('vault.binding.status.foreign')
+        : t('vault.binding.status.needsDecision')
+
+  return (
+    <div className="space-y-2 px-3 py-2.5">
+      <p className="text-muted-foreground text-xs">{message}</p>
+      {status === 'local-only' && (
+        <Button
+          size="sm"
+          className="h-7 w-full text-xs"
+          onClick={() => void sync?.resolveVaultBinding('sync')}
+        >
+          {t('vault.binding.status.startSync')}
+        </Button>
+      )}
+      {status === 'needs-decision' && (
+        <Button
+          size="sm"
+          className="h-7 w-full text-xs"
+          onClick={() => sync?.openVaultBindingPrompt()}
+        >
+          {t('vault.binding.status.choose')}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Popover footer: the sync actions, unless sync is off. The vault's binding
+ * wins over the plan, which is account-wide.
+ */
+function SyncPopoverFooter({
+  binding,
+  unpaid,
+  onOpenSettings,
+  children
+}: {
+  binding: HeldBindingStatus | null
+  unpaid: boolean
+  onOpenSettings: () => void
+  children: React.ReactNode
+}): React.JSX.Element {
+  if (binding) return <VaultBindingPanel status={binding} />
+  if (unpaid) return <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
+  return <>{children}</>
+}
+
 /**
  * Footer-dock glyph: one cloud whose corner dot carries the state, so the dock
  * never flips between five unrelated icons. Syncing swaps to the spinning arrows
@@ -38,8 +114,10 @@ function UnpaidSyncPanel({ onOpenSettings }: { onOpenSettings: () => void }): Re
  */
 function dockGlyph(
   status: string,
-  hasIssues: boolean
+  hasIssues: boolean,
+  bindingHeld: boolean
 ): { Icon: AppIcon; badge: DockBadgeTone | null; spin: boolean } {
+  if (bindingHeld) return { Icon: CloudOff, badge: null, spin: false }
   if (hasIssues || status === 'error') return { Icon: Cloud, badge: 'destructive', spin: false }
   switch (status) {
     case 'syncing':
@@ -92,7 +170,8 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
   // No plan, no sync runtime — nothing here is retryable and nothing failed.
   // The popover sells the upgrade instead of showing a dead Retry (#2201).
   const isLocalOnly = status === 'local_only'
-  const glyph = dockGlyph(status, hasIssues)
+  const heldBinding = useHeldVaultBinding()
+  const glyph = dockGlyph(status, hasIssues, heldBinding !== null)
 
   const handleSync = async (): Promise<void> => {
     try {
@@ -243,9 +322,11 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
 
         {/* Actions, or the upgrade path when there is no plan to act on */}
         <Separator />
-        {isLocalOnly ? (
-          <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
-        ) : (
+        <SyncPopoverFooter
+          binding={heldBinding}
+          unpaid={isLocalOnly}
+          onOpenSettings={onOpenSettings}
+        >
           <div className="flex items-center gap-1 px-2 py-1.5">
             <Button
               variant="ghost"
@@ -283,7 +364,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
               <Settings className="size-3.5" aria-hidden="true" />
             </Button>
           </div>
-        )}
+        </SyncPopoverFooter>
       </PopoverContent>
     </Popover>
   )

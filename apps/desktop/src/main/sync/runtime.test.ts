@@ -157,6 +157,8 @@ const runtimeMocks = vi.hoisted(() => {
     retrieveKey: vi.fn(),
     storeGet: vi.fn(),
     getOrInitializeLocalVaultKey: vi.fn(),
+    applyOpenVaultBinding: vi.fn(),
+    scheduleBindingRetry: vi.fn(),
     getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
     deriveDevicePublicKey: vi.fn(),
     secureCleanup: vi.fn(),
@@ -442,6 +444,13 @@ vi.mock('./token-manager', () => ({
   setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed
 }))
 
+vi.mock('./vault-account-binding', () => ({
+  applyOpenVaultBinding: runtimeMocks.applyOpenVaultBinding,
+  scheduleBindingRetry: runtimeMocks.scheduleBindingRetry,
+  cancelBindingRetry: vi.fn(),
+  resetVaultBindingState: vi.fn()
+}))
+
 vi.mock('./key-verification', () => ({
   // 'unknown' = account verifier unavailable → runtime proceeds as before.
   checkLocalKeyAgainstAccount: vi.fn().mockResolvedValue('unknown'),
@@ -512,6 +521,7 @@ describe('sync runtime', () => {
     runtimeMocks.storeGet.mockReturnValue({})
     runtimeMocks.getValidAccessToken.mockResolvedValue('access-token')
     runtimeMocks.getOrInitializeLocalVaultKey.mockResolvedValue(new Uint8Array([1, 2, 3]))
+    runtimeMocks.applyOpenVaultBinding.mockResolvedValue('start')
     runtimeMocks.retrieveKey.mockResolvedValue(new Uint8Array([4, 5, 6]))
     runtimeMocks.deriveDevicePublicKey.mockReturnValue(new Uint8Array([7, 8, 9]))
     runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
@@ -639,6 +649,29 @@ describe('sync runtime', () => {
 
     expect(runtimeMocks.getDatabase).not.toHaveBeenCalled()
     expect(runtime.getSyncEngine()).toBeNull()
+  })
+
+  it('holds sync for a vault that belongs to another account, before any sync service exists', async () => {
+    runtimeMocks.applyOpenVaultBinding.mockResolvedValueOnce('held')
+    const runtime = await loadRuntime()
+
+    await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+    expect(runtimeMocks.getOrInitializeLocalVaultKey).not.toHaveBeenCalled()
+    expect(runtimeMocks.SyncQueueManager.instances).toHaveLength(0)
+    expect(runtimeMocks.SyncEngine.instances).toHaveLength(0)
+    expect(runtimeMocks.scheduleBindingRetry).not.toHaveBeenCalled()
+    expect(runtime.getSyncEngine()).toBeNull()
+  })
+
+  it('retries later when vault ownership could not be checked', async () => {
+    runtimeMocks.applyOpenVaultBinding.mockResolvedValueOnce('unknown')
+    const runtime = await loadRuntime()
+
+    await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+    expect(runtimeMocks.scheduleBindingRetry).toHaveBeenCalledWith(runtime.startSyncRuntime)
+    expect(runtimeMocks.SyncEngine.instances).toHaveLength(0)
   })
 
   it('skips startup when the account is not on a paid plan', async () => {

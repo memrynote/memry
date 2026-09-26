@@ -19,6 +19,7 @@ import {
 import { abandonBootstrap, beginBootstrap, markBootstrapInteractive } from './bootstrap-metrics'
 import { deleteFromServer, getFromServer, postToServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
+import { getSignedInUserId } from './vault-account-binding'
 import { decryptVaultName, encryptVaultName } from './vault-name-crypto'
 
 const log = createLogger('VaultDirectory')
@@ -79,8 +80,15 @@ export async function refreshVaultDirectory(opts?: { force?: boolean }): Promise
     setAccountVaultsCache({ fetchedAt: Date.now(), vaults: remote })
 
     const remoteByUuid = new Map(remote.map((v) => [v.vaultUuid, v]))
+    const userId = await getSignedInUserId()
     for (const local of getVaults()) {
       if (!local.vaultUuid) continue
+      // Only vaults this account syncs. The list is every folder ever opened on
+      // this machine, including another account's vaults left behind by a
+      // sign-out; registering those would hand their names and a vault slot to
+      // whoever signed in next. Unbound vaults register once they bind.
+      const binding = local.accountBinding
+      if (!userId || binding?.mode !== 'sync' || binding.userId !== userId) continue
       const entry = remoteByUuid.get(local.vaultUuid)
       if (entry && entry.name === local.name) continue
       const { encryptedName, nameNonce } = encryptVaultName(local.name, nameKey, local.vaultUuid)

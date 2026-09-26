@@ -1,4 +1,5 @@
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
+import type { VaultBindingChoice } from '@memry/contracts/ipc-sync-ops'
 import { invoke, logListenerError, subscribe } from '../lib/ipc'
 
 export const syncOps = {
@@ -13,7 +14,10 @@ export const syncOps = {
     invoke(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, { fieldPath, value }),
   getSyncedSettings: () => invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS),
   getStorageBreakdown: () => invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN),
-  getLargeNotes: () => invoke(SYNC_CHANNELS.GET_LARGE_NOTES)
+  getLargeNotes: () => invoke(SYNC_CHANNELS.GET_LARGE_NOTES),
+  getVaultBinding: () => invoke(SYNC_CHANNELS.GET_VAULT_BINDING),
+  resolveVaultBinding: (choice: VaultBindingChoice) =>
+    invoke(SYNC_CHANNELS.RESOLVE_VAULT_BINDING, { choice })
 }
 
 type CryptoItemType = 'note' | 'task' | 'project' | 'settings'
