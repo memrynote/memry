@@ -160,34 +160,11 @@ export const cleanupStaleIdentifySessions = async (db: D1Database): Promise<numb
   return result.meta.changes ?? 0
 }
 
-const CLEANUP_BATCH_SIZE = 1000
-
-// Best-effort delete each row's R2 blob, then batch-delete the D1 rows by id.
-// ponytail: table is a hardcoded caller literal, not user input — safe to interpolate.
-const deleteRowsAndBlobs = async <T extends { id: string }>(
-  db: D1Database,
-  storage: R2Bucket,
-  table: string,
-  rows: T[],
-  blobKeyOf: (row: T) => string
-): Promise<number> => {
-  for (const row of rows) {
-    try {
-      await storage.delete(blobKeyOf(row))
-    } catch {
-      // R2 delete may fail if blob already removed; proceed with D1 cleanup
-    }
-  }
-
-  const ids = rows.map((r) => r.id)
-  const placeholders = ids.map(() => '?').join(',')
-  const result = await db
-    .prepare(`DELETE FROM ${table} WHERE id IN (${placeholders})`)
-    .bind(...ids)
-    .run()
-
-  return result.meta.changes ?? 0
-}
+// Orphaned chunks reaped per tick, and ids per DELETE (D1 binds at most 100).
+// A tick spends one select, then per batch a D1 delete, a D1 re-check and one
+// bulk R2 delete: 13 subrequests at the cap.
+const ORPHAN_CHUNK_LIMIT = 300
+const ORPHAN_CHUNK_BATCH = 90
 
 // Rows shed per tick, and users whose objects are deleted per tick. Each user
 // costs one bulk R2 delete and every 50 rows one db.batch, so a tick spends at
@@ -309,13 +286,45 @@ export const cleanupOrphanedBlobChunks = async (
   storage: R2Bucket
 ): Promise<number> => {
   const orphaned = await db
-    .prepare(`SELECT id, r2_key FROM blob_chunks WHERE ref_count <= 0 LIMIT ${CLEANUP_BATCH_SIZE}`)
-    .all<{ id: string; r2_key: string }>()
+    .prepare(`SELECT id FROM blob_chunks WHERE ref_count <= 0 LIMIT ${ORPHAN_CHUNK_LIMIT}`)
+    .all<{ id: string }>()
+  const ids = (orphaned.results ?? []).map((row) => row.id)
 
-  const rows = orphaned.results ?? []
-  if (rows.length === 0) return 0
-
-  return deleteRowsAndBlobs(db, storage, 'blob_chunks', rows, (r) => r.r2_key)
+  let reaped = 0
+  for (let start = 0; start < ids.length; start += ORPHAN_CHUNK_BATCH) {
+    const batch = ids.slice(start, start + ORPHAN_CHUNK_BATCH)
+    // The row goes first, and only while it is still orphaned: an upload of the
+    // same hash re-references it (ON CONFLICT ref_count + 1) and needs the object.
+    const deleted = await db
+      .prepare(
+        `DELETE FROM blob_chunks WHERE id IN (${batch.map(() => '?').join(',')}) AND ref_count <= 0
+         RETURNING r2_key`
+      )
+      .bind(...batch)
+      .all<{ r2_key: string }>()
+    const reapedKeys = (deleted.results ?? []).map((row) => row.r2_key)
+    reaped += reapedKeys.length
+    if (reapedKeys.length === 0) continue
+    // An upload retrying the same bytes puts the object, then inserts a fresh
+    // row; skip any key such a row claimed since the delete above.
+    const reclaimed = await db
+      .prepare(
+        `SELECT r2_key FROM blob_chunks WHERE r2_key IN (${reapedKeys.map(() => '?').join(',')})`
+      )
+      .bind(...reapedKeys)
+      .all<{ r2_key: string }>()
+    const live = new Set((reclaimed.results ?? []).map((row) => row.r2_key))
+    const keys = reapedKeys.filter((key) => !live.has(key))
+    if (keys.length === 0) continue
+    try {
+      await storage.delete(keys)
+    } catch (error) {
+      // The rows are gone, so the objects are unreferenced; a failed delete only
+      // leaks storage, it never removes an object a row still points at.
+      logger.warn('Orphaned chunk object delete failed', { count: keys.length, error })
+    }
+  }
+  return reaped
 }
 
 const parseUploadedChunkHashes = (value: string): Set<string> => {

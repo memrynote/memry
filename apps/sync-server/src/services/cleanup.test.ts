@@ -425,25 +425,22 @@ describe('cleanup services', () => {
   })
 
   describe('cleanupOrphanedBlobChunks', () => {
-    it('deletes R2 blobs and D1 rows for orphaned chunks', async () => {
+    it('deletes the still-orphaned rows, then their R2 objects in one call', async () => {
       // #given
       const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
 
-      const selectAll = vi.fn().mockResolvedValue({
-        results: [
-          { id: 'c1', r2_key: 'chunks/c1' },
-          { id: 'c2', r2_key: 'chunks/c2' }
-        ]
+      const selectAll = vi.fn().mockResolvedValue({ results: [{ id: 'c1' }, { id: 'c2' }] })
+      const deleteAll = vi.fn().mockResolvedValue({
+        results: [{ r2_key: 'chunks/c1' }, { r2_key: 'chunks/c2' }]
       })
-
-      const deleteRun = vi.fn().mockResolvedValue({ meta: { changes: 2 } })
-      const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+      const deleteBind = vi.fn().mockReturnValue({ all: deleteAll })
 
       const db = {
         prepare: vi
           .fn()
           .mockReturnValueOnce({ all: selectAll })
           .mockReturnValueOnce({ bind: deleteBind })
+          .mockReturnValueOnce({ bind: () => ({ all: async () => ({ results: [] }) }) })
       } as unknown as D1Database
 
       // #when
@@ -451,36 +448,34 @@ describe('cleanup services', () => {
 
       // #then
       expect(result).toBe(2)
-      expect(storage.delete).toHaveBeenCalledWith('chunks/c1')
-      expect(storage.delete).toHaveBeenCalledWith('chunks/c2')
       expect(deleteBind).toHaveBeenCalledWith('c1', 'c2')
+      expect(storage.delete).toHaveBeenCalledTimes(1)
+      expect(storage.delete).toHaveBeenCalledWith(['chunks/c1', 'chunks/c2'])
     })
 
-    it('still deletes orphaned chunk rows when R2 delete fails and D1 changes are omitted', async () => {
+    it('counts the reaped rows when the R2 delete fails', async () => {
       // #given
       const storage = {
         delete: vi.fn().mockRejectedValue(new Error('missing'))
       } as unknown as R2Bucket
 
-      const selectAll = vi.fn().mockResolvedValue({
-        results: [{ id: 'c1', r2_key: 'chunks/c1' }]
-      })
-
-      const deleteRun = vi.fn().mockResolvedValue({ meta: {} })
-      const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+      const selectAll = vi.fn().mockResolvedValue({ results: [{ id: 'c1' }] })
+      const deleteAll = vi.fn().mockResolvedValue({ results: [{ r2_key: 'chunks/c1' }] })
+      const deleteBind = vi.fn().mockReturnValue({ all: deleteAll })
 
       const db = {
         prepare: vi
           .fn()
           .mockReturnValueOnce({ all: selectAll })
           .mockReturnValueOnce({ bind: deleteBind })
+          .mockReturnValueOnce({ bind: () => ({ all: async () => ({ results: [] }) }) })
       } as unknown as D1Database
 
       // #when
       const result = await cleanupOrphanedBlobChunks(db, storage)
 
       // #then
-      expect(result).toBe(0)
+      expect(result).toBe(1)
       expect(deleteBind).toHaveBeenCalledWith('c1')
     })
 

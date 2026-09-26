@@ -883,6 +883,13 @@ canonical note upsert leaves it (and the sync stamp) untouched when a caller
 has nothing to say about it. Ordinary vault writes — a content save, a rename,
 a move, a re-index — carry file state only, and must not erase it.
 
+On the server, dereferencing only lowers a chunk's `ref_count`; a scheduled
+sweep reaps chunks at zero. It deletes the row first, and only while it is
+still unreferenced, then deletes the objects of the rows it removed, skipping
+any key a retried upload claimed in the meantime. A failed object delete only
+leaks storage. The sweep works in batches of 90 ids (D1 binds at most 100),
+300 chunks per tick.
+
 ## Tombstones
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.
