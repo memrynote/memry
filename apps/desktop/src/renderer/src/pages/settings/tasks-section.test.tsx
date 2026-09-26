@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { I18nextProvider } from 'react-i18next'
@@ -213,13 +213,7 @@ describe('TasksSettings', () => {
       expect(screen.queryByText('Loading settings...')).not.toBeInTheDocument()
     })
 
-    const viewTrigger = screen.getAllByRole('combobox')[2]
-    await user.click(viewTrigger)
-
-    await waitFor(() => {
-      expect(screen.getByText('Today')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Today'))
+    await user.click(screen.getByRole('radio', { name: 'Today' }))
 
     await waitFor(() => {
       expect(window.api.settings.setTaskSettings).toHaveBeenCalledWith({
@@ -236,14 +230,11 @@ describe('TasksSettings', () => {
       expect(screen.queryByText('Loading settings...')).not.toBeInTheDocument()
     })
 
-    await user.click(screen.getAllByRole('combobox')[2])
+    const views = within(screen.getByRole('group', { name: 'Default View' }))
+    expect(views.getByRole('radio', { name: 'All' })).toHaveAttribute('data-state', 'on')
+    expect(views.getByRole('radio', { name: 'Tomorrow' })).toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(screen.getByText('Next 7 days')).toBeInTheDocument()
-    })
-    expect(screen.getByText('Tomorrow')).toBeInTheDocument()
-
-    await user.click(screen.getByText('Next 7 days'))
+    await user.click(views.getByRole('radio', { name: 'Next 7 days' }))
 
     await waitFor(() => {
       expect(window.api.settings.setTaskSettings).toHaveBeenCalledWith({

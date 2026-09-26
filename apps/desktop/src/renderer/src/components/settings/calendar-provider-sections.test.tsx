@@ -98,6 +98,11 @@ function renderSections(): void {
   )
 }
 
+/** Provider rows start collapsed unless connected Google or an account needs attention. */
+async function expandProvider(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await screen.findByRole('button', { name }))
+}
+
 describe('provider-aware Settings → Calendar shell (#1395)', () => {
   beforeAll(async () => {
     i18nEn = await createRendererI18n({ locale: 'en' })
@@ -147,12 +152,14 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
   })
 
   it('a read-only provider shows the badge and its poll interval, and no push switch', async () => {
+    const user = userEvent.setup()
     renderSections()
 
     const panel = await screen.findByTestId('calendar-provider-panel-read-only-dav')
     expect(
       await within(panel).findByTestId('calendar-provider-read-only-read-only-dav')
     ).toBeInTheDocument()
+    await expandProvider(user, 'read-only-dav')
     expect(within(panel).getByTestId('calendar-provider-poll-read-only-dav')).toHaveTextContent(
       'every 15 minutes'
     )
@@ -164,7 +171,9 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
   })
 
   it('a writable provider offers the push switch and no read-only badge', async () => {
+    const user = userEvent.setup()
     renderSections()
+    await expandProvider(user, 'writable-single')
 
     const panel = await screen.findByTestId('calendar-provider-panel-writable-single')
     expect(
@@ -193,6 +202,8 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
     }))
     const user = userEvent.setup()
     renderSections()
+    await expandProvider(user, 'writable-single')
+    await expandProvider(user, 'read-only-dav')
 
     const select = await screen.findByTestId('calendar-provider-default-target-writable-single')
     expect(screen.queryByTestId('calendar-provider-default-target-read-only-dav')).toBeNull()
@@ -204,7 +215,10 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
   })
 
   it('multi-account providers list accounts with Add account; single-connection ones do not', async () => {
+    const user = userEvent.setup()
     renderSections()
+    await expandProvider(user, 'read-only-dav')
+    await expandProvider(user, 'writable-single')
 
     const multi = await screen.findByTestId('calendar-provider-panel-read-only-dav')
     expect(
@@ -226,7 +240,9 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
     mocks.getProviderStatus.mockImplementation(async ({ provider }: { provider: string }) =>
       status(provider, false)
     )
+    const user = userEvent.setup()
     renderSections()
+    await expandProvider(user, 'read-only-dav')
 
     const form = await screen.findByTestId('calendar-basic-connect-read-only-dav')
     expect(within(form).getByLabelText('Server address')).toBeInTheDocument()
@@ -252,6 +268,7 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
     })
     const user = userEvent.setup()
     renderSections()
+    await expandProvider(user, 'writable-single')
 
     const form = await screen.findByTestId('calendar-basic-connect-writable-single')
     await user.type(within(form).getByLabelText('Server address'), 'https://dav.example.com')
@@ -279,6 +296,60 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
         }
       })
     )
+  })
+})
+
+describe('Settings → Calendar → Add calendar', () => {
+  beforeAll(async () => {
+    i18nEn ??= await createRendererI18n({ locale: 'en' })
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.listProviders.mockResolvedValue({ providers: PROVIDERS })
+    mocks.getProviderStatus.mockImplementation(async ({ provider }: { provider: string }) =>
+      status(provider, provider !== 'writable-single')
+    )
+    mocks.listSources.mockResolvedValue({ sources: [] })
+    mocks.listProviderCalendars.mockResolvedValue({
+      provider: 'writable-single',
+      calendars: [],
+      primary: null,
+      currentDefaultId: null
+    })
+    window.api = {
+      ...window.api,
+      settings: {
+        ...window.api.settings,
+        getCalendarProviderSettings: vi.fn(async () => ({ agentReadEventsConsent: null })),
+        setCalendarProviderSettings: vi.fn(async () => ({ success: true }))
+      }
+    }
+  })
+
+  it('opens a disconnected provider on its connect form', async () => {
+    const user = userEvent.setup()
+    renderSections()
+    await screen.findByTestId('calendar-provider-panel-writable-single')
+    expect(screen.queryByTestId('calendar-basic-connect-writable-single')).toBeNull()
+
+    await user.click(screen.getByTestId('calendar-add-calendar'))
+    await user.click(await screen.findByTestId('calendar-add-calendar-writable-single'))
+
+    expect(await screen.findByTestId('calendar-basic-connect-writable-single')).toBeInTheDocument()
+  })
+
+  it('opens a connected multi-account provider with its add-account form showing', async () => {
+    const user = userEvent.setup()
+    renderSections()
+    const panel = await screen.findByTestId('calendar-provider-panel-read-only-dav')
+    await within(panel).findByText('· me@example.com')
+    expect(screen.queryByTestId('calendar-basic-connect-read-only-dav')).toBeNull()
+
+    await user.click(screen.getByTestId('calendar-add-calendar'))
+    await user.click(await screen.findByTestId('calendar-add-calendar-read-only-dav'))
+
+    expect(await screen.findByTestId('calendar-basic-connect-read-only-dav')).toBeInTheDocument()
   })
 })
 
@@ -378,6 +449,7 @@ describe('Settings → Calendar → This Mac (#2374)', () => {
 
     const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
     expect(within(section).getByText('This Mac')).toBeInTheDocument()
+    await expandProvider(user, 'This Mac')
     expect(within(section).getByText(/never leave this Mac/)).toBeInTheDocument()
     expect(mocks.connectProvider).not.toHaveBeenCalled()
 
@@ -395,6 +467,7 @@ describe('Settings → Calendar → This Mac (#2374)', () => {
     renderSections()
 
     const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
+    await expandProvider(user, 'This Mac')
     await user.click(within(section).getByRole('button', { name: 'Allow calendar access' }))
 
     const problem = await within(section).findByTestId('macos-calendar-problem')
@@ -416,6 +489,7 @@ describe('Settings → Calendar → This Mac (#2374)', () => {
     renderSections()
 
     const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
+    await expandProvider(user, 'This Mac')
     await user.click(within(section).getByRole('button', { name: 'Allow calendar access' }))
 
     const problem = await within(section).findByTestId('macos-calendar-problem')
@@ -439,9 +513,11 @@ describe('Settings → Calendar → This Mac (#2374)', () => {
         macCalendar('birthdays', 'Birthdays', { sourceTitle: 'Other', connectedVia: null })
       ]
     })
+    const user = userEvent.setup()
     renderSections()
 
     const section = await screen.findByTestId('calendar-provider-section-apple-eventkit')
+    await expandProvider(user, 'This Mac')
     const google = await within(section).findByRole('region', { name: 'me@example.com' })
     expect(within(google).getByRole('checkbox', { name: 'Work' })).not.toBeChecked()
     expect(google).toHaveTextContent('Already connected via Google Calendar')

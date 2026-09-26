@@ -8,7 +8,6 @@ import {
   type VaultActivityFilter,
   type VaultActivityRetentionDays
 } from '@memry/contracts/vault-activity-api'
-import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Select,
@@ -64,7 +63,10 @@ const TONE_ICON_CLASS: Record<VaultActivityTone, string> = {
 }
 
 const TOGGLE_ITEM_CLASS =
-  'rounded-none border-none px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white'
+  'h-6 rounded-[5px] border-none px-2.5 text-xs/4 font-medium text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm'
+
+const QUIET_ACTION_CLASS =
+  'text-xs/4 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50 disabled:hover:text-muted-foreground'
 
 interface VaultActivitySettingsProps {
   /** `vault-activity` when Settings was opened to bring this group into view. */
@@ -159,7 +161,7 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
   } else {
     body = (
       <ul
-        className="flex flex-col max-h-96 overflow-y-auto -mx-4"
+        className="flex flex-col max-h-96 overflow-y-auto border-t border-border"
         data-testid="vault-activity-list"
       >
         {entries.map((entry) => (
@@ -202,7 +204,7 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
           </Select>
         </SettingRow>
 
-        <div className="flex flex-col gap-3 py-3 px-4">
+        <div className="flex flex-col gap-3 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <ToggleGroup
               type="single"
@@ -210,37 +212,32 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
               onValueChange={(value) => {
                 if (value === 'all' || value === 'problems') setFilter(value)
               }}
-              className="gap-0 rounded-md border border-border overflow-clip"
+              className="gap-0.5 rounded-md bg-muted p-0.5"
             >
               <ToggleGroupItem value="all" className={TOGGLE_ITEM_CLASS}>
                 {t('vault.activity.filter.all')}
               </ToggleGroupItem>
-              <ToggleGroupItem
-                value="problems"
-                className={cn(TOGGLE_ITEM_CLASS, 'border-s border-border')}
-              >
+              <ToggleGroupItem value="problems" className={TOGGLE_ITEM_CLASS}>
                 {t('vault.activity.filter.problems')}
               </ToggleGroupItem>
             </ToggleGroup>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-3 text-xs/4"
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className={QUIET_ACTION_CLASS}
                 disabled={!available}
                 onClick={() => void handleReveal()}
               >
                 {t('vault.activity.reveal')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-3 text-xs/4"
+              </button>
+              <button
+                type="button"
+                className={QUIET_ACTION_CLASS}
                 disabled={!available || entries.length === 0}
                 onClick={() => setConfirmClear(true)}
               >
                 {t('vault.activity.clear')}
-              </Button>
+              </button>
             </div>
           </div>
           {body}
@@ -286,7 +283,7 @@ function VaultActivityRow({
   const items = entry.items ?? []
 
   return (
-    <li className="flex items-start gap-2.5 py-2 px-4 border-t border-border first:border-t-0">
+    <li className="flex items-start gap-2.5 py-2 border-b border-border last:border-b-0">
       <Icon
         className={cn('w-4 h-4 mt-px shrink-0', TONE_ICON_CLASS[description.tone])}
         aria-hidden="true"

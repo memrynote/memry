@@ -7,6 +7,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import { useTasksContext } from '@/contexts/tasks'
 import { toast } from 'sonner'
@@ -32,6 +33,9 @@ const DEFAULT_VIEW_OPTIONS = [
   { value: 'tomorrow', labelKey: 'tasks.defaultView.options.tomorrow' },
   { value: 'next7', labelKey: 'tasks.defaultView.options.next7' }
 ] as const
+
+const SEGMENT_ITEM =
+  'h-auto min-w-0 rounded-[5px] border-none py-0.75 px-2.5 text-xs/4 text-muted-foreground shadow-none hover:bg-transparent data-[state=on]:bg-background data-[state=on]:font-medium data-[state=on]:text-foreground data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
 
 export function TasksSettings() {
   const { t } = useT('settings')
@@ -143,21 +147,21 @@ export function TasksSettings() {
           label={t('tasks.defaultView.label')}
           description={t('tasks.defaultView.description')}
         >
-          <Select
+          <ToggleGroup
+            type="single"
             value={settings.defaultView}
-            onValueChange={(...args) => void handleDefaultViewChange(...args)}
+            onValueChange={(value) => {
+              if (value) void handleDefaultViewChange(value)
+            }}
+            aria-label={t('tasks.defaultView.label')}
+            className="gap-0 rounded-[7px] bg-muted p-0.5"
           >
-            <SelectTrigger className={COMPACT_SELECT}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DEFAULT_VIEW_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {t(opt.labelKey)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {DEFAULT_VIEW_OPTIONS.map((opt) => (
+              <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM}>
+                {t(opt.labelKey)}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </SettingRow>
       </SettingsGroup>
 

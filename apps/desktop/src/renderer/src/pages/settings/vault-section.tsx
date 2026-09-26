@@ -8,7 +8,9 @@ import { formatBytes } from '@/lib/format'
 import {
   SettingsHeader,
   SettingsGroup,
-  SettingRow
+  SettingRow,
+  SETTINGS_GROUP_LABEL,
+  SETTINGS_LIST
 } from '@/components/settings/settings-primitives'
 import { LargeNotesWarning } from '@/components/settings/large-notes-warning'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
@@ -47,6 +49,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
   const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
   const [vaultPath, setVaultPath] = useState<string | null>(null)
   const [currentVaultUuid, setCurrentVaultUuid] = useState<string | null>(null)
+  const [currentVaultName, setCurrentVaultName] = useState<string | null>(null)
   const [vaultToDownload, setVaultToDownload] = useState<AccountVaultInfo | null>(null)
   const [switchError, setSwitchError] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -72,6 +75,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
       .then((result) => {
         const current = result?.vaults?.find((v) => v.path === result.currentVault)
         setCurrentVaultUuid(current?.vaultUuid ?? null)
+        setCurrentVaultName(current?.name ?? null)
       })
       .catch(() => null)
   }, [])
@@ -136,79 +140,116 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
     <div className="flex flex-col text-xs/4">
       <SettingsHeader title={t('vault.header.title')} subtitle={t('vault.header.subtitle')} />
 
-      <SettingsGroup label={t('vault.groups.storageUsage')}>
-        {loading ? (
-          <div className="py-3 px-4">
-            <p className="text-xs/4 text-muted-foreground">{t('vault.loadingStorage')}</p>
-          </div>
-        ) : data ? (
-          <div className="py-3 px-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-[13px]/4 text-foreground">
-                {t('vault.storage.used', {
-                  used: formatBytes(data.used),
-                  limit: formatBytes(data.limit)
-                })}
+      <div className="flex flex-col pb-8">
+        <h4 className={SETTINGS_GROUP_LABEL}>{t('vault.v2.groups.thisVault')}</h4>
+        <div className={SETTINGS_LIST}>
+          <div className="flex min-h-14 items-center justify-between gap-4 border-b border-border py-2.5">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate text-[13px]/4 text-foreground">
+                {currentVaultName ?? t('vault.vaultPath')}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void handleRefresh()}
-                disabled={isRefreshing}
-                className="h-7 w-7 p-0"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
+              <span className="truncate font-mono text-xs/4 text-muted-foreground">
+                {vaultPath ?? '~/Documents/memry'}
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() => void handleReveal()}
+              disabled={!vaultPath}
+              className="shrink-0 text-xs/4 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50 disabled:hover:text-muted-foreground"
+            >
+              {t('vault.reveal')}
+            </button>
+          </div>
 
-            <div className="h-2 rounded-full bg-muted overflow-hidden flex">
-              {Object.entries(data.breakdown).map(([key, bytes]) => {
-                const pct = data.limit > 0 ? (bytes / data.limit) * 100 : 0
-                if (pct < 0.5) return null
-                return (
-                  <div
-                    key={key}
-                    className="h-full first:rounded-s-full last:rounded-e-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
-                    }}
-                  />
-                )
-              })}
-            </div>
-
-            {Object.entries(data.breakdown).map(([key, bytes]) => (
-              <div key={key} className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c' }}
-                  />
-                  <span className="text-xs/4 text-muted-foreground">
-                    {t(`vault.storage.categories.${key}`, { defaultValue: key })}
+          <div
+            className="flex flex-col gap-2.5 border-b border-border py-3"
+            data-testid="vault-storage"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[13px]/4 text-foreground">{t('vault.storage.title')}</span>
+              {data && !loading && (
+                <span className="flex items-center gap-2">
+                  <span className="text-xs/4 text-muted-foreground tabular-nums">
+                    {t('vault.storage.used', {
+                      used: formatBytes(data.used),
+                      limit: formatBytes(data.limit)
+                    })}
                   </span>
-                </div>
-                <span className="text-xs/4 text-muted-foreground tabular-nums">
-                  {formatBytes(bytes)}
+                  <button
+                    type="button"
+                    onClick={() => void handleRefresh()}
+                    disabled={isRefreshing}
+                    aria-label={t('vault.storage.refreshAria')}
+                    className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                  >
+                    <RefreshCw className={`size-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
                 </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="py-3 px-4">
-            <p className="text-xs/4 text-muted-foreground">{t('vault.signInStorage')}</p>
-          </div>
-        )}
-      </SettingsGroup>
+              )}
+            </div>
 
-      {/* Renders nothing unless a note is at or over the per-note sync ceiling. */}
-      <LargeNotesWarning />
+            {loading ? (
+              <p className="text-xs/4 text-muted-foreground">{t('vault.loadingStorage')}</p>
+            ) : data ? (
+              <>
+                <div
+                  className="flex h-1 overflow-hidden rounded-full bg-muted"
+                  role="progressbar"
+                  aria-valuenow={data.used}
+                  aria-valuemax={data.limit}
+                  aria-label={t('vault.storage.usageAria', {
+                    used: formatBytes(data.used),
+                    limit: formatBytes(data.limit)
+                  })}
+                >
+                  {Object.entries(data.breakdown).map(([key, bytes]) => {
+                    const pct = data.limit > 0 ? (bytes / data.limit) * 100 : 0
+                    if (pct < 0.5) return null
+                    return (
+                      <div
+                        key={key}
+                        className="h-full"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  {Object.entries(data.breakdown).map(([key, bytes]) => (
+                    <span key={key} className="inline-flex items-center gap-1.5 text-xs/4">
+                      <span
+                        className="size-2 shrink-0 rounded-[2px]"
+                        style={{ backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c' }}
+                      />
+                      <span className="text-muted-foreground">
+                        {t(`vault.storage.categories.${key}`, { defaultValue: key })}
+                      </span>
+                      <span className="text-muted-foreground tabular-nums">
+                        {formatBytes(bytes)}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs/4 text-muted-foreground">{t('vault.signInStorage')}</p>
+            )}
+          </div>
+
+          {/* Renders nothing unless a note is at or over the per-note sync ceiling. */}
+          <LargeNotesWarning />
+        </div>
+      </div>
 
       <SettingsGroup label={t('vault.groups.accountVaults')}>
         {isUnsyncedVault && suggestedVault && (
-          <div className="py-3 px-4 border-b border-border space-y-2">
-            <p className="font-semibold text-[13px]/4 text-foreground">
+          <div className="flex flex-col gap-2 py-3">
+            <p className="inline-flex items-center gap-2 text-[13px]/4 text-foreground">
+              <span className="size-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
               {t('vault.accountVaults.unsyncedTitle')}
             </p>
             <p className="text-xs/4 text-muted-foreground">
@@ -222,7 +263,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 px-3 text-xs/4"
+                className="h-7 self-start px-3 text-xs/4"
                 onClick={() => void handleSwitchTo(suggestedLocalPath)}
               >
                 {t('vault.accountVaults.unsyncedOpen')}
@@ -231,7 +272,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 px-3 text-xs/4"
+                className="h-7 self-start px-3 text-xs/4"
                 onClick={() => setVaultToDownload(suggestedVault)}
               >
                 {t('vault.accountVaults.unsyncedDownload')}
@@ -242,7 +283,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
         )}
 
         {accountVaults.length === 0 ? (
-          <div className="py-3 px-4">
+          <div className="py-3">
             <p className="text-xs/4 text-muted-foreground">{t('vault.accountVaults.empty')}</p>
           </div>
         ) : (
@@ -262,37 +303,22 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
                       `${t('vault.accountVaults.cloudOnly')} · ${t('vault.accountVaults.itemsCount', { count: vault.itemCount })}`)
                 }
               >
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  type="button"
                   disabled={isActive}
                   onClick={() => {
                     setDeleteError(null)
                     setVaultToDelete({ uuid: vault.vaultUuid, name })
                   }}
                   aria-label={`Delete ${name} from account`}
-                  className="h-7 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  className="text-xs/4 text-destructive transition-colors hover:text-destructive/80 disabled:text-muted-foreground disabled:opacity-50"
                 >
                   {t('vault.accountVaults.delete')}
-                </Button>
+                </button>
               </SettingRow>
             )
           })
         )}
-      </SettingsGroup>
-
-      <SettingsGroup label={t('vault.groups.location')}>
-        <SettingRow label={t('vault.vaultPath')} description={vaultPath ?? '~/Documents/memry'}>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void handleReveal()}
-            disabled={!vaultPath}
-            className="h-7 px-3 text-xs/4"
-          >
-            {t('vault.reveal')}
-          </Button>
-        </SettingRow>
       </SettingsGroup>
 
       <VaultActivitySettings focusTarget={focusTarget} focusRequestId={focusRequestId} />

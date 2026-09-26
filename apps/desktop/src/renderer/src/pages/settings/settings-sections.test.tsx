@@ -621,7 +621,9 @@ describe('settings section coverage', () => {
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     expect(screen.getByText('account.sync.upsell.title')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('link device'))
+    expect(screen.getByTestId('account-stats-strip')).toHaveTextContent('account.v2.stats.plan')
+
+    fireEvent.click(screen.getByRole('button', { name: 'devices.linkNew' }))
     expect(screen.getByText('qr linking')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('approve link'))
@@ -866,7 +868,7 @@ describe('settings section coverage', () => {
       })
     )
 
-    fireEvent.click(screen.getByLabelText('editor.spellCheck.label'))
+    fireEvent.click(screen.getByLabelText('editor.v2.spellCheck'))
     await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ spellCheck: true })
     )
@@ -952,7 +954,7 @@ describe('settings section coverage', () => {
     expect(window.api.agent.getLocalProviderSettings).toHaveBeenCalled()
     expect(window.api.agent.getPreferences).toHaveBeenCalled()
 
-    expect(await screen.findByText('agentProviders.permissions.group')).toBeInTheDocument()
+    expect(await screen.findByText('agentProviders.v2.permissions.group')).toBeInTheDocument()
 
     // CLI agent detection status: Claude detected with a version, Codex and
     // Antigravity missing.
@@ -978,6 +980,8 @@ describe('settings section coverage', () => {
       })
     )
 
+    expect(screen.queryByText('agentProviders.presets.lmStudio')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /agentProviders\.v2\.localModel\.label/ }))
     fireEvent.click(screen.getByText('agentProviders.presets.lmStudio'))
     expect(screen.getByDisplayValue('http://localhost:1234/v1')).toBeInTheDocument()
 
@@ -986,8 +990,12 @@ describe('settings section coverage', () => {
     })
     expect(screen.getByText('agentProviders.fields.allowNonLoopback.label')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('checkbox'))
-    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.models' }))
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'agentProviders.fields.allowNonLoopback.label' })
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'agentProviders.v2.localModel.fetchModels' })
+    )
     expect(await screen.findByText('qwen2.5')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'qwen2.5' }))
@@ -1008,7 +1016,37 @@ describe('settings section coverage', () => {
       { timeout: 2000 }
     )
     expect(window.api.agent.testLocalProvider).toHaveBeenCalled()
-    await screen.findByText('agentProviders.status.connected', undefined, { timeout: 2000 })
+    await screen.findAllByText('agentProviders.status.connected', undefined, { timeout: 2000 })
+
+    expect(
+      screen.getByRole('radio', { name: 'agentProviders.permissions.confirm.askBeforeChanges' })
+    ).toHaveAttribute('aria-checked', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.test' }))
+    await waitFor(() => expect(window.api.agent.testLocalProvider).toHaveBeenCalledTimes(2))
+  })
+
+  it('lists and revokes always-allowed agent tools', async () => {
+    vi.mocked(window.api.agent.getToolGrants)
+      .mockResolvedValueOnce({ tools: ['create_note'] })
+      .mockResolvedValueOnce({ tools: [] })
+    window.api.agent.editTrustList = vi.fn().mockResolvedValue(null)
+    render(<AgentProvidersSection />)
+
+    expect(await screen.findByText('create_note')).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'agentProviders.alwaysAllowed.revokeLabel {"tool":"create_note"}'
+      })
+    )
+
+    await waitFor(() =>
+      expect(window.api.agent.editTrustList).toHaveBeenCalledWith({
+        remove: ['create_note'],
+        scope: 'vault'
+      })
+    )
+    expect(await screen.findByText('agentProviders.alwaysAllowed.empty')).toBeInTheDocument()
   })
 
   it('installs the terminal command from command line settings', async () => {

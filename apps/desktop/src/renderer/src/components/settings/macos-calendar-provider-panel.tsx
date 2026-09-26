@@ -6,10 +6,14 @@ import type {
   CalendarSourceRecord
 } from '@memry/contracts/calendar-api'
 import { useT } from '@memry/i18n/renderer'
-import { Button } from '@/components/ui/button'
+import { Laptop } from '@/lib/icons'
 import { calendarService } from '@/services/calendar-service'
 import { createLogger } from '@/lib/logger'
 import { GenericCalendarProviderPanel } from '@/components/settings/generic-calendar-provider-panel'
+import {
+  CALENDAR_BORDERED_BUTTON,
+  CALENDAR_QUIET_BUTTON
+} from '@/components/settings/calendar-provider-row'
 
 const log = createLogger('MacosCalendarProviderPanel')
 
@@ -54,32 +58,26 @@ function PermissionProblem({
   return (
     <div
       role="alert"
-      className="grid gap-2 rounded-md border border-border/70 px-3 py-2"
+      className="flex flex-col gap-1.5"
       data-testid="macos-calendar-problem"
       data-code={code}
     >
       <p className="text-xs/4 text-foreground">{copy(code)}</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-4">
         {FIXABLE_IN_SYSTEM_SETTINGS.has(code) && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-3 text-xs/4"
-            onClick={openSystemSettings}
-          >
+          <button type="button" className={CALENDAR_BORDERED_BUTTON} onClick={openSystemSettings}>
             {t('calendar.providers.appleEventKit.openSystemSettings')}
-          </Button>
+          </button>
         )}
         {onCheckAgain && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-3 text-xs/4"
+          <button
+            type="button"
+            className={CALENDAR_QUIET_BUTTON}
             disabled={checking}
             onClick={onCheckAgain}
           >
             {t('calendar.providers.appleEventKit.checkAgain')}
-          </Button>
+          </button>
         )}
       </div>
     </div>
@@ -111,23 +109,22 @@ function MacosCalendarConnect({
   })
 
   return (
-    <div className="grid gap-2" data-testid="macos-calendar-connect">
+    <div className="flex flex-col gap-2" data-testid="macos-calendar-connect">
       <p className="text-xs/4 text-muted-foreground">
         {t('calendar.providers.appleEventKit.description')}
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 w-fit px-3 text-xs/4"
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className={CALENDAR_BORDERED_BUTTON}
           disabled={connect.isPending}
           onClick={() => connect.mutate()}
         >
           {connect.isPending
             ? t('calendar.providers.connecting')
             : t('calendar.providers.appleEventKit.connect')}
-        </Button>
-        <span className="text-[11px]/4 text-muted-foreground">
+        </button>
+        <span className="text-xs/4 text-muted-foreground">
           {t('calendar.providers.appleEventKit.connectHint')}
         </span>
       </div>
@@ -170,9 +167,11 @@ function MacosCalendarNotice({
  * Calendars are grouped by the account Calendar.app files them under.
  */
 export function MacosCalendarProviderPanel({
-  provider
+  provider,
+  name
 }: {
   provider: CalendarProviderDescriptor
+  name?: string
 }): React.JSX.Element {
   const { t } = useT('settings')
 
@@ -187,6 +186,8 @@ export function MacosCalendarProviderPanel({
   return (
     <GenericCalendarProviderPanel
       provider={provider}
+      name={name ?? t('calendar.providers.appleEventKit.name')}
+      tile={<Laptop className="size-3.5" />}
       renderConnectForm={({ onConnected }) => <MacosCalendarConnect onConnected={onConnected} />}
       renderConnectedNotice={(status) => <MacosCalendarNotice status={status} />}
       calendarGroupLabel={(source) => {

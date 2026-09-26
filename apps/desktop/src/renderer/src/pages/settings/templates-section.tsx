@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -23,7 +23,7 @@ import { useTabs } from '@/contexts/tabs'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
+import { SettingsHeader, SETTINGS_GROUP_LABEL } from '@/components/settings/settings-primitives'
 
 export function TemplatesSettings() {
   const { t } = useT('settings')
@@ -100,25 +100,53 @@ export function TemplatesSettings() {
       <SettingsHeader
         title={t('templates.header.title')}
         subtitle={t('templates.header.subtitle')}
-        action={
-          <Button
-            onClick={handleCreateTemplate}
-            variant="outline"
-            size="sm"
-            className="gap-1.5 border-[var(--tint)] text-[var(--tint)] hover:bg-[var(--tint)]/10"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            {t('templates.actions.new')}
-          </Button>
-        }
       />
 
       {isLoading ? (
         <div className="text-muted-foreground text-xs/4 py-4">{t('templates.loading')}</div>
       ) : (
         <>
+          <TemplateGroup
+            label={t('templates.v2.groups.mine')}
+            action={
+              <Button
+                type="button"
+                onClick={handleCreateTemplate}
+                variant="outline"
+                size="sm"
+                className="h-auto gap-1 py-1 px-2 text-xs/4 font-normal shadow-none"
+              >
+                <Plus className="size-3" />
+                {t('templates.v2.new')}
+              </Button>
+            }
+          >
+            {customTemplates.length === 0 ? (
+              <div className="flex flex-col justify-center gap-0.5 min-h-14 py-3">
+                <span className="text-[13px]/4 text-foreground">{t('templates.empty.title')}</span>
+                <span className="text-xs/4 text-muted-foreground">
+                  {t('templates.empty.description')}
+                </span>
+              </div>
+            ) : (
+              customTemplates.map((template) => (
+                <TemplateRow
+                  key={template.id}
+                  template={template}
+                  onSelect={() => handleEditTemplate(template.id, template.name)}
+                  onEdit={() => handleEditTemplate(template.id, template.name)}
+                  onDuplicate={() => {
+                    setDuplicateId(template.id)
+                    setDuplicateName(t('templates.copySuffix', { name: template.name }))
+                  }}
+                  onDelete={() => setDeleteConfirm(template.id)}
+                />
+              ))
+            )}
+          </TemplateGroup>
+
           {builtInTemplates.length > 0 && (
-            <SettingsGroup label={t('templates.groups.builtIn')}>
+            <TemplateGroup label={t('templates.groups.builtIn')}>
               {builtInTemplates.map((template) => (
                 <TemplateRow
                   key={template.id}
@@ -132,33 +160,7 @@ export function TemplatesSettings() {
                   onDelete={null}
                 />
               ))}
-            </SettingsGroup>
-          )}
-
-          {customTemplates.length > 0 && (
-            <SettingsGroup label={t('templates.groups.myTemplates')}>
-              {customTemplates.map((template) => (
-                <TemplateRow
-                  key={template.id}
-                  template={template}
-                  onSelect={() => handleEditTemplate(template.id, template.name)}
-                  onEdit={() => handleEditTemplate(template.id, template.name)}
-                  onDuplicate={() => {
-                    setDuplicateId(template.id)
-                    setDuplicateName(t('templates.copySuffix', { name: template.name }))
-                  }}
-                  onDelete={() => setDeleteConfirm(template.id)}
-                />
-              ))}
-            </SettingsGroup>
-          )}
-
-          {customTemplates.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
-              <p className="text-[13px]/4 font-medium">{t('templates.empty.title')}</p>
-              <p className="text-xs/4">{t('templates.empty.description')}</p>
-            </div>
+            </TemplateGroup>
           )}
         </>
       )}
@@ -211,6 +213,28 @@ export function TemplatesSettings() {
   )
 }
 
+function TemplateGroup({
+  label,
+  action,
+  children
+}: {
+  label: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section aria-label={label} className="flex flex-col pb-8">
+      <div className="flex items-end justify-between gap-4 pb-1.5">
+        <h4 className={`${SETTINGS_GROUP_LABEL} pb-0`}>{label}</h4>
+        {action}
+      </div>
+      <div className="flex flex-col border-t border-border [&>*]:border-b [&>*]:border-border">
+        {children}
+      </div>
+    </section>
+  )
+}
+
 interface TemplateRowProps {
   template: {
     id: string
@@ -240,31 +264,33 @@ function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: Temp
           onSelect()
         }
       }}
-      className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group cursor-pointer hover:bg-muted/40"
+      className="flex items-center justify-between min-h-11 py-2.5 shrink-0 group cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className="text-muted-foreground shrink-0">
-          {template.icon || <FileText className="w-3.5 h-3.5" />}
+        <span className="flex items-center justify-center size-4 shrink-0 text-xs/4 text-muted-foreground">
+          {template.icon || <FileText className="size-3.5" />}
         </span>
-        <div className="flex flex-col gap-px min-w-0">
-          <span className="font-medium text-[13px]/4 text-foreground">{template.name}</span>
-          {template.description && (
-            <span className="text-xs/4 text-muted-foreground truncate">{template.description}</span>
-          )}
-        </div>
+        <span className="max-w-1/2 shrink-0 truncate text-[13px]/4 text-foreground">
+          {template.name}
+        </span>
+        {template.description && (
+          <span className="min-w-0 truncate text-xs/4 text-muted-foreground">
+            {template.description}
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-1 shrink-0 ms-4">
         {template.isBuiltIn ? (
-          <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
+          <Lock className="size-3 text-muted-foreground/60" />
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 onClick={(e) => e.stopPropagation()}
-                className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all"
+                className="p-1 rounded-sm text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <MoreHorizontal className="w-3.5 h-3.5" />
+                <MoreHorizontal className="size-3.5" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>

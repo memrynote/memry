@@ -20,6 +20,9 @@ vi.mock('./agent-providers-section', () => ({
   AgentProvidersSection: () => <div data-testid="agent-providers-panel" />
 }))
 
+vi.mock('./command-line-section', () => ({
+  CommandLineSettings: () => <div data-testid="command-line-panel" />
+}))
 vi.mock('./agent-mcp-section', () => ({
   AgentMcpSection: () => <div data-testid="agent-mcp-panel" />
 }))
@@ -122,38 +125,39 @@ describe('AISettings', () => {
 
     expect(screen.getByText('Loading settings...')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Enable AI Features')).toBeInTheDocument())
-    expect(screen.queryByText('Local Embedding Model')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('embedding-model-row')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('switch'))
     expect(api.settings.setAISettings).toHaveBeenCalledWith({ enabled: true })
     expect(toast.success).toHaveBeenCalledWith('AI features enabled')
-    await waitFor(() => expect(screen.getByText('Local Embedding Model')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('embedding-model-row')).toBeInTheDocument())
 
     await userEvent.click(screen.getByRole('button', { name: 'Download & Load Model' }))
     expect(api.settings.loadAIModel).toHaveBeenCalled()
     await waitFor(() => expect(screen.getByText('Loaded')).toBeInTheDocument())
 
-    await userEvent.click(screen.getByRole('button', { name: 'Rebuild' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Rebuild Index' }))
     expect(api.settings.reindexEmbeddings).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Embeddings reindexed: 3 computed, 1 skipped')
   })
 
-  it('keeps agent provider and MCP controls collapsed inside AI settings', async () => {
+  it('splits AI settings into Models, Agents and Connect tabs', async () => {
     render(<AISettings />)
 
-    await waitFor(() => expect(screen.getByText('Agent Permissions')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Models' })).toBeInTheDocument())
+    expect(screen.getByRole('tab', { name: 'Models' })).toHaveAttribute('data-state', 'active')
     expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('agent-mcp-panel')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: /Agent Permissions/ }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Agents' }))
     expect(screen.getByTestId('agent-providers-panel')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: /Agent MCP/ }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Connect' }))
     expect(screen.getByTestId('agent-mcp-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('command-line-panel')).toBeInTheDocument()
   })
 
-  it('opens the matching advanced panel for legacy agent settings sections', async () => {
-    render(<AISettings initialOpenPanel="agent-mcp" />)
+  it('opens the requested tab for legacy agent settings sections', async () => {
+    render(<AISettings initialTab="connect" />)
 
     await waitFor(() => expect(screen.getByTestId('agent-mcp-panel')).toBeInTheDocument())
     expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
@@ -222,8 +226,7 @@ describe('AISettings', () => {
 
     await waitFor(() => expect(screen.getByText('Timestamp')).toBeInTheDocument())
 
-    const selects = screen.getAllByRole('combobox')
-    await userEvent.click(selects[1])
+    await userEvent.click(screen.getByRole('combobox'))
     await userEvent.click(await screen.findByRole('option', { name: 'Transcript title' }))
 
     expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({
@@ -231,10 +234,27 @@ describe('AISettings', () => {
     })
   })
 
+  it('switches the voice provider with the segmented control', async () => {
+    render(<AISettings />)
+
+    const localSegment = await screen.findByRole('button', { pressed: true })
+    const openaiSegment = screen.getByRole('button', { pressed: false })
+
+    await userEvent.click(localSegment)
+    expect(api.settings.setVoiceTranscriptionSettings).not.toHaveBeenCalled()
+
+    await userEvent.click(openaiSegment)
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({ provider: 'openai' })
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('Enter OpenAI API key')).toBeInTheDocument()
+    )
+    expect(openaiSegment).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('surfaces progress and errors from embedding callbacks', async () => {
     render(<AISettings />)
 
-    await waitFor(() => expect(screen.getByText('Embedding Index')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('embedding-model-row')).toBeInTheDocument())
 
     await act(async () => {
       embeddingCallbacks[0]({ phase: 'downloading', progress: 30 })
@@ -242,6 +262,10 @@ describe('AISettings', () => {
 
     expect(screen.getByText('Downloading model...')).toBeInTheDocument()
     expect(screen.getByText('30%')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Downloading model...' })).toHaveAttribute(
+      'aria-valuenow',
+      '30'
+    )
 
     await act(async () => {
       embeddingCallbacks[0]({ phase: 'error', status: 'model failed' })
@@ -303,7 +327,9 @@ describe('AISettings', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save Key' }))
     expect(toast.error).toHaveBeenCalledWith('key exploded')
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Rebuild' })).toBeDisabled())
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Rebuild Index' })).not.toBeInTheDocument()
+    )
   })
 
   it('handles reindex progress completion and voice/embedding progress error fallbacks', async () => {
@@ -332,9 +358,9 @@ describe('AISettings', () => {
     )
 
     render(<AISettings />)
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Rebuild' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Rebuild Index' })).toBeEnabled())
 
-    await userEvent.click(screen.getByRole('button', { name: 'Rebuild' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Rebuild Index' }))
     await act(async () => {
       embeddingCallbacks[0]({ phase: 'embedding', current: 2, total: 5 })
     })

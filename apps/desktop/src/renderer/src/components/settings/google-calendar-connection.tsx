@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   calendarService,
@@ -15,6 +12,15 @@ import {
 } from '@/services/calendar-service'
 import type { CalendarProviderStatus } from '@/services/calendar-service'
 import { GoogleCalendarSourcePicker } from './google-calendar-source-picker'
+import {
+  CALENDAR_BORDERED_BUTTON,
+  CALENDAR_DESTRUCTIVE_BUTTON,
+  CALENDAR_QUIET_BUTTON,
+  CalendarProviderRow,
+  CalendarStatusLabel,
+  CalendarSwitchRow,
+  type CalendarStatusTone
+} from '@/components/settings/calendar-provider-row'
 import { GoogleCalendarOnboardingDialog } from '@/components/calendar/google-calendar-onboarding-dialog'
 import { googleCalendarsQueryKey } from '@/hooks/use-google-calendars'
 import { useT } from '@memry/i18n/renderer'
@@ -39,16 +45,16 @@ function accountDetail(account: GoogleAccountStatus, reconnectLabel: string): st
   return null
 }
 
-function accountToneClass(status: GoogleAccountStatus['status']): string {
+function accountDotClass(status: GoogleAccountStatus['status']): string {
   switch (status) {
     case 'connected':
-      return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+      return 'bg-emerald-500'
     case 'reconnect_required':
-      return 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300'
+      return 'bg-amber-500'
     case 'error':
-      return 'border-destructive/50 bg-destructive/10 text-destructive'
+      return 'bg-destructive'
     default:
-      return 'border-muted-foreground/30 bg-muted text-muted-foreground'
+      return 'border border-muted-foreground/60'
   }
 }
 
@@ -242,199 +248,191 @@ export function GoogleCalendarConnection(): React.JSX.Element {
     pushSettingMutation.error ??
     null
 
+  const connected = Boolean(status?.connected)
+  const statusTone: CalendarStatusTone = connected
+    ? reconnectRequired && !status?.hasLocalAuth
+      ? 'warn'
+      : 'ok'
+    : 'off'
+  const statusLabel = connected
+    ? reconnectRequired && !status?.hasLocalAuth
+      ? t('calendar.google.statuses.reconnectRequired')
+      : t('calendar.google.statuses.connected')
+    : t('calendar.google.statuses.notConnected')
+  const accountEmails = (status?.accounts ?? []).map((account) => account.email).join(', ')
+  const pickerProps = {
+    isUpdating: isPending,
+    onToggleSource: (sourceId: string, isSelected: boolean) =>
+      sourceMutation.mutate({ sourceId, isSelected }),
+    onRetrySource: (sourceId: string) => retryMutation.mutate(sourceId),
+    retryingSourceId: retryMutation.isPending ? (retryMutation.variables ?? null) : null,
+    defaultRemoteId: googleSettingsData?.defaultTargetCalendarId ?? null
+  }
+
   return (
-    <div className="px-4 py-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <Badge
-            variant="secondary"
-            className="h-4 w-fit border-0 px-1.5 py-0 text-[10px]/3 text-foreground"
-          >
-            {status?.connected
-              ? reconnectRequired && !status.hasLocalAuth
-                ? t('calendar.google.statuses.reconnectRequired')
-                : t('calendar.google.statuses.connected')
-              : t('calendar.google.statuses.notConnected')}
-          </Badge>
-
-          <p className="text-xs/4 text-muted-foreground">{t('calendar.google.description')}</p>
-
-          {mutationError && (
-            <p className="text-xs text-destructive">
+    <>
+      <CalendarProviderRow
+        providerId="google"
+        tile="G"
+        name={t('calendar.google.name')}
+        data-testid="calendar-provider-row-google"
+        defaultOpen={connected}
+        onConnectRequest={() => {
+          if (!isPending) connectMutation.mutate()
+        }}
+        hint={
+          <>
+            <CalendarStatusLabel tone={statusTone} label={statusLabel} />
+            <span className="truncate">
+              {'· '}
+              {connected && accountEmails ? accountEmails : t('calendar.google.description')}
+            </span>
+          </>
+        }
+        meta={
+          connected ? (
+            <span
+              data-testid="calendar-provider-count-google"
+              data-selected-count={importedSelectedCount}
+              data-total-count={importedSources.length}
+            >
+              {t('calendar.v2.calendarCount', {
+                selected: importedSelectedCount,
+                count: importedSources.length
+              })}
+            </span>
+          ) : null
+        }
+        action={
+          connected ? null : (
+            <button
+              type="button"
+              className={CALENDAR_BORDERED_BUTTON}
+              disabled={isPending}
+              onClick={() => connectMutation.mutate()}
+            >
+              {t('calendar.google.connect')}
+            </button>
+          )
+        }
+        alert={
+          mutationError ? (
+            <p role="alert" className="text-xs/4 text-destructive">
               {extractErrorMessage(mutationError, t('calendar.google.syncFailed'))}
             </p>
-          )}
-        </div>
+          ) : null
+        }
+      >
+        {connected ? (
+          <>
+            {accountGroups.groups.map(({ account, calendars }) => (
+              <div
+                key={account.accountId}
+                data-testid={`calendar-account-group-${account.accountId}`}
+                className="flex flex-col gap-1"
+              >
+                <div className="flex min-h-7 items-center justify-between gap-3">
+                  <span
+                    data-testid={`calendar-account-chip-${account.accountId}`}
+                    data-account-status={account.status}
+                    className="flex min-w-0 items-center gap-1.5 text-xs/4 text-foreground"
+                    title={account.lastError ?? undefined}
+                  >
+                    <span
+                      aria-hidden
+                      className={`size-1.5 shrink-0 rounded-full ${accountDotClass(account.status)}`}
+                    />
+                    <span className="truncate">{account.email}</span>
+                    {accountDetail(account, t('calendar.google.accountReconnect')) && (
+                      <span className="max-w-[12rem] truncate text-muted-foreground">
+                        · {accountDetail(account, t('calendar.google.accountReconnect'))}
+                      </span>
+                    )}
+                  </span>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {status?.connected ? (
-            <>
+                  <button
+                    type="button"
+                    className={CALENDAR_DESTRUCTIVE_BUTTON}
+                    data-testid={`calendar-account-disconnect-${account.accountId}`}
+                    disabled={isPending}
+                    onClick={() => disconnectMutation.mutate(account.accountId)}
+                  >
+                    {t('calendar.google.disconnect')}
+                  </button>
+                </div>
+
+                <GoogleCalendarSourcePicker sources={calendars} {...pickerProps} />
+              </div>
+            ))}
+
+            {accountGroups.unclaimed.length > 0 && (
+              <GoogleCalendarSourcePicker sources={accountGroups.unclaimed} {...pickerProps} />
+            )}
+
+            <div className="flex flex-col gap-3">
+              <CalendarSwitchRow
+                label={t('calendar.google.pushToGoogle.label')}
+                description={t('calendar.google.pushToGoogle.description')}
+                checked={pushEventsToGoogle}
+                disabled={pushSettingMutation.isPending || googleSettingsIsLoading}
+                onCheckedChange={(checked) => pushSettingMutation.mutate(checked)}
+              />
+              <CalendarSwitchRow
+                label={t('calendar.google.agentAccess.label')}
+                description={t('calendar.google.agentAccess.description')}
+                checked={agentReadEventsConsent}
+                disabled={agentAccessMutation.isPending || googleSettingsIsLoading}
+                onCheckedChange={(checked) => agentAccessMutation.mutate(checked)}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 border-t border-border pt-3">
               {reconnectRequired ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-3 text-xs/4"
+                <button
+                  type="button"
+                  className={CALENDAR_BORDERED_BUTTON}
                   disabled={isPending}
                   onClick={() => connectMutation.mutate()}
                 >
                   {t('calendar.google.reconnect')}
-                </Button>
+                </button>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-3 text-xs/4"
+                <button
+                  type="button"
+                  className={CALENDAR_QUIET_BUTTON}
                   disabled={isPending}
                   onClick={() => refreshMutation.mutate()}
                 >
                   {t('calendar.google.syncNow')}
-                </Button>
+                </button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-3 text-xs/4"
+              <button
+                type="button"
+                className={CALENDAR_QUIET_BUTTON}
                 data-testid="calendar-add-account"
                 disabled={isPending}
                 onClick={() => connectMutation.mutate()}
               >
                 {t('calendar.google.addAccount')}
-              </Button>
-              {/* Per-account disconnect lives in each group below. This is the
+              </button>
+              {/* Per-account disconnect lives in each account above. This is the
                   way out for an install that reports no account rows at all —
                   without it such a user would be connected with no way to undo it. */}
               {accountGroups.groups.length === 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-3 text-xs/4"
+                <button
+                  type="button"
+                  className={CALENDAR_DESTRUCTIVE_BUTTON}
                   data-testid="calendar-disconnect-all"
                   disabled={isPending}
                   onClick={() => disconnectMutation.mutate(undefined)}
                 >
                   {t('calendar.google.disconnect')}
-                </Button>
+                </button>
               )}
-            </>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-3 text-xs/4"
-              disabled={isPending}
-              onClick={() => connectMutation.mutate()}
-            >
-              {t('calendar.google.connect')}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {status?.connected && (
-        <div className="mt-3 grid gap-2">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[11px]/3.5 font-medium uppercase tracking-[0.05em] text-muted-foreground">
-              {t('calendar.google.importedCalendars')}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {t('calendar.google.selected', { count: importedSelectedCount })}
-            </span>
-          </div>
-
-          {accountGroups.groups.map(({ account, calendars }) => (
-            <div
-              key={account.accountId}
-              data-testid={`calendar-account-group-${account.accountId}`}
-              className="grid gap-2 rounded-md border border-border/70 px-3 py-2.5"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span
-                  data-testid={`calendar-account-chip-${account.accountId}`}
-                  data-account-status={account.status}
-                  className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px]/4 ${accountToneClass(account.status)}`}
-                  title={account.lastError ?? undefined}
-                >
-                  <span className="truncate">{account.email}</span>
-                  {accountDetail(account, t('calendar.google.accountReconnect')) && (
-                    <span className="max-w-[12rem] truncate text-[10px]/3 opacity-75">
-                      · {accountDetail(account, t('calendar.google.accountReconnect'))}
-                    </span>
-                  )}
-                </span>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 shrink-0 px-2 text-[11px]/4"
-                  data-testid={`calendar-account-disconnect-${account.accountId}`}
-                  disabled={isPending}
-                  onClick={() => disconnectMutation.mutate(account.accountId)}
-                >
-                  {t('calendar.google.disconnect')}
-                </Button>
-              </div>
-
-              <GoogleCalendarSourcePicker
-                sources={calendars}
-                isUpdating={isPending}
-                onToggleSource={(sourceId, isSelected) =>
-                  sourceMutation.mutate({ sourceId, isSelected })
-                }
-                onRetrySource={(sourceId) => retryMutation.mutate(sourceId)}
-                retryingSourceId={
-                  retryMutation.isPending ? (retryMutation.variables ?? null) : null
-                }
-              />
             </div>
-          ))}
-
-          {accountGroups.unclaimed.length > 0 && (
-            <GoogleCalendarSourcePicker
-              sources={accountGroups.unclaimed}
-              isUpdating={isPending}
-              onToggleSource={(sourceId, isSelected) =>
-                sourceMutation.mutate({ sourceId, isSelected })
-              }
-              onRetrySource={(sourceId) => retryMutation.mutate(sourceId)}
-              retryingSourceId={retryMutation.isPending ? (retryMutation.variables ?? null) : null}
-            />
-          )}
-
-          <div className="mt-1 flex items-start justify-between gap-3 border-t border-border/60 pt-3">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[13px]/4 font-medium text-foreground">
-                {t('calendar.google.pushToGoogle.label')}
-              </span>
-              <p className="text-xs/4 text-muted-foreground">
-                {t('calendar.google.pushToGoogle.description')}
-              </p>
-            </div>
-            <Switch
-              checked={pushEventsToGoogle}
-              disabled={pushSettingMutation.isPending || googleSettingsIsLoading}
-              onCheckedChange={(checked) => pushSettingMutation.mutate(checked)}
-              aria-label={t('calendar.google.pushToGoogle.label')}
-            />
-          </div>
-
-          <div className="mt-1 flex items-start justify-between gap-3 border-t border-border/60 pt-3">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[13px]/4 font-medium text-foreground">
-                {t('calendar.google.agentAccess.label')}
-              </span>
-              <p className="text-xs/4 text-muted-foreground">
-                {t('calendar.google.agentAccess.description')}
-              </p>
-            </div>
-            <Switch
-              checked={agentReadEventsConsent}
-              disabled={agentAccessMutation.isPending || googleSettingsIsLoading}
-              onCheckedChange={(checked) => agentAccessMutation.mutate(checked)}
-              aria-label={t('calendar.google.agentAccess.label')}
-            />
-          </div>
-        </div>
-      )}
+          </>
+        ) : null}
+      </CalendarProviderRow>
 
       <GoogleCalendarOnboardingDialog
         open={showOnboarding}
@@ -443,7 +441,7 @@ export function GoogleCalendarConnection(): React.JSX.Element {
           await queryClient.invalidateQueries({ queryKey: googleCalendarsQueryKey })
         }}
       />
-    </div>
+    </>
   )
 }
 

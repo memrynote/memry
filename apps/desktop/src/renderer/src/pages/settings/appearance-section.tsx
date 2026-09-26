@@ -1,12 +1,4 @@
-import {
-  type ComponentType,
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState
-} from 'react'
+import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picker'
 import { Sun, Moon, Monitor, FileText, Minus, Plus, RotateCcw } from '@/lib/icons'
@@ -248,31 +240,28 @@ function SegmentedControl({
     <div
       role="group"
       aria-label={ariaLabel}
-      className="flex items-center shrink-0 rounded-lg overflow-hidden border border-border"
+      className="flex items-center shrink-0 rounded-[7px] bg-muted p-0.5"
     >
-      {options.map((opt, i) => {
+      {options.map((opt) => {
         const isActive = value === opt.value
-        const prevActive = i > 0 && value === options[i - 1].value
         const Icon = opt.icon
 
         return (
-          <Fragment key={opt.value}>
-            {i > 0 && !isActive && !prevActive && <div className="w-px h-5 bg-border shrink-0" />}
-            <button
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => onValueChange(opt.value)}
-              className={cn(
-                'flex items-center gap-1.5 py-1.5 px-3 text-xs transition-colors cursor-pointer',
-                isActive
-                  ? 'bg-tint text-tint-foreground font-semibold'
-                  : 'bg-foreground/[0.04] text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {Icon && <Icon className="size-3" />}
-              {opt.label}
-            </button>
-          </Fragment>
+          <button
+            key={opt.value}
+            type="button"
+            aria-pressed={isActive}
+            onClick={() => onValueChange(opt.value)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-[5px] py-0.75 px-2.5 text-xs/4 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+              isActive
+                ? 'bg-background font-medium text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {Icon && <Icon className="size-3" />}
+            {opt.label}
+          </button>
         )
       })}
     </div>
@@ -532,10 +521,7 @@ export function AppearanceSettings() {
       />
 
       <SettingsGroup label={t('appearance.groups.theme')}>
-        <SettingRow
-          label={t('appearance.theme.colorMode.label')}
-          description={t('appearance.theme.colorMode.description')}
-        >
+        <SettingRow label={t('appearance.v2.colorMode')}>
           <SegmentedControl
             options={themeOptions}
             value={settings.theme}
@@ -543,13 +529,8 @@ export function AppearanceSettings() {
             ariaLabel={t('appearance.theme.colorMode.aria')}
           />
         </SettingRow>
-      </SettingsGroup>
 
-      <SettingsGroup label={t('appearance.groups.accentColor')}>
-        <div className="flex items-center justify-between py-3.5 px-4">
-          <span className="font-medium text-[13px]/4 text-foreground">
-            {t('appearance.accent.pick')}
-          </span>
+        <SettingRow label={t('appearance.v2.accent')}>
           <div className="flex items-center shrink-0 gap-2">
             {ACCENT_PRESETS.map((preset) => (
               <button
@@ -557,25 +538,28 @@ export function AppearanceSettings() {
                 type="button"
                 aria-label={t(preset.labelKey)}
                 onClick={() => void handleAccentChange(preset.value)}
-                className="size-6 rounded-xl shrink-0 transition-all duration-150 cursor-pointer hover:scale-110 focus-visible:outline-none"
+                className="size-4 rounded-full shrink-0 transition-transform duration-150 cursor-pointer hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 style={{
                   backgroundColor: preset.value,
                   boxShadow:
                     settings.accentColor === preset.value
-                      ? `var(--background) 0px 0px 0px 2px, ${preset.value}80 0px 0px 0px 3.5px`
+                      ? `var(--background) 0px 0px 0px 2px, ${preset.value} 0px 0px 0px 3.5px`
                       : 'none'
                 }}
                 title={t(preset.labelKey)}
               />
             ))}
           </div>
-        </div>
+        </SettingRow>
 
-        <SettingRow
-          label={t('appearance.accent.custom.label')}
-          description={t('appearance.accent.custom.description')}
-        >
+        <SettingRow label={t('appearance.v2.customColor')}>
           <div className="flex items-center shrink-0 gap-2">
+            <div
+              className="size-4 rounded-full shrink-0"
+              style={{
+                backgroundColor: HEX_COLOR_REGEX.test(customHex) ? customHex : settings.accentColor
+              }}
+            />
             <Input
               placeholder={t('appearance.accent.custom.placeholder')}
               value={customHex || settings.accentColor}
@@ -587,24 +571,24 @@ export function AppearanceSettings() {
               onBlur={() => {
                 if (customHex === settings.accentColor) setCustomHex('')
               }}
-              className="w-24 h-7 font-mono text-xs bg-muted/50 border-border"
+              aria-label={t('appearance.accent.custom.label')}
+              className="w-20 h-auto py-1 px-2 rounded-md font-mono text-xs/4 bg-transparent border-border shadow-none"
               maxLength={7}
-            />
-            <div
-              className="size-5 rounded-[10px] shrink-0"
-              style={{
-                backgroundColor: HEX_COLOR_REGEX.test(customHex) ? customHex : settings.accentColor
-              }}
             />
           </div>
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label={t('appearance.groups.typography')}>
-        <SettingRow
-          label={t('appearance.typography.fontSize.label')}
-          description={t('appearance.typography.fontSize.description')}
-        >
+      <SettingsGroup label={t('appearance.v2.groups.text')}>
+        <SettingRow label={t('appearance.v2.fontFamily')}>
+          <FontFamilyPicker
+            choice={fontChoice}
+            systemFonts={systemFonts}
+            onSelect={(...args) => void handleFontChoiceChange(...args)}
+          />
+        </SettingRow>
+
+        <SettingRow label={t('appearance.v2.fontSize')}>
           <Stepper
             value={fontSizePx}
             min={FONT_SIZE_PX_MIN}
@@ -620,23 +604,7 @@ export function AppearanceSettings() {
           />
         </SettingRow>
 
-        <SettingRow
-          label={t('appearance.typography.fontFamily.label')}
-          description={t('appearance.typography.fontFamily.description')}
-        >
-          <FontFamilyPicker
-            choice={fontChoice}
-            systemFonts={systemFonts}
-            onSelect={(...args) => void handleFontChoiceChange(...args)}
-          />
-        </SettingRow>
-      </SettingsGroup>
-
-      <SettingsGroup label={t('appearance.groups.zoom')}>
-        <SettingRow
-          label={t('appearance.zoom.label')}
-          description={t('appearance.zoom.description')}
-        >
+        <SettingRow label={t('appearance.v2.zoom')}>
           <Stepper
             value={zoomFactor}
             min={ZOOM_FACTOR_MIN}

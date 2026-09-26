@@ -2,19 +2,7 @@ import { useState, useCallback, useEffect, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import {
-  Bot,
-  Brain,
-  ChevronRight,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  Mic,
-  Eye,
-  EyeOff,
-  Server
-} from '@/lib/icons'
+import { Loader2, XCircle, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
@@ -22,6 +10,8 @@ import { cn } from '@/lib/utils'
 import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
 import { AgentProvidersSection } from './agent-providers-section'
 import { AgentMcpSection } from './agent-mcp-section'
+import { CommandLineSettings } from './command-line-section'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useT } from '@memry/i18n/renderer'
 import {
   Select,
@@ -34,11 +24,9 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
-  SettingRowTall,
   COMPACT_SELECT,
   ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
 
 const log = createLogger('Page:Settings:AI')
@@ -65,16 +53,129 @@ interface VoiceModelStatus {
   error: string | null
 }
 
-type AssistantAdvancedPanel = 'agent-providers' | 'agent-mcp'
+export type AISettingsTab = 'models' | 'agents' | 'connect'
+
+const AI_TABS_LIST =
+  'h-auto w-full justify-start gap-5 rounded-none border-b border-border bg-transparent p-0'
+const AI_TAB =
+  'rounded-none border-b-2 border-transparent bg-transparent px-0 pb-2 pt-0 text-[13px]/4 text-muted-foreground shadow-none data-[state=active]:border-[var(--tint)] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+
+const QUIET_ACTION =
+  'inline-flex items-center gap-1.5 rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
+const ROW_PRIMARY_ACTION = 'h-7 px-2.5 text-xs/4'
+
+const VOICE_PROVIDER_OPTIONS = [
+  { value: 'local', labelKey: 'ai.v2.voice.local' },
+  { value: 'openai', labelKey: 'ai.v2.voice.openai' }
+] as const satisfies ReadonlyArray<{
+  value: VoiceTranscriptionSettings['provider']
+  labelKey: string
+}>
+
+type StatusTone = 'ready' | 'progress' | 'idle'
+
+const STATUS_DOT: Record<StatusTone, string> = {
+  ready: 'bg-emerald-500',
+  progress: 'bg-amber-500',
+  idle: 'border border-muted-foreground/60'
+}
+
+function StatusIndicator({
+  tone,
+  label,
+  title
+}: {
+  tone: StatusTone
+  label: string
+  title?: string
+}) {
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center gap-1.5 text-xs/4 text-muted-foreground"
+    >
+      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[tone])} />
+      {label}
+    </span>
+  )
+}
+
+interface LocalModelRowProps {
+  label: string
+  modelName: string
+  hint: string
+  status: ReactNode
+  action: ReactNode
+}
+
+function LocalModelRow({ label, modelName, hint, status, action }: LocalModelRowProps) {
+  return (
+    <div className="flex items-center justify-between gap-4 min-h-14 py-2.5">
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <span className="shrink-0 text-[13px]/4 text-foreground">{label}</span>
+          <span className="truncate font-mono text-xs/4 text-muted-foreground">{modelName}</span>
+        </div>
+        <span className="text-xs/4 text-muted-foreground">{hint}</span>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <div className="w-28">{status}</div>
+        <div className="flex min-w-32 justify-end">{action}</div>
+      </div>
+    </div>
+  )
+}
+
+function InlineProgress({
+  label,
+  value,
+  percent
+}: {
+  label: string
+  value: string
+  percent: number
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 pb-3">
+      <div className="flex justify-between gap-4 text-xs/4 text-muted-foreground">
+        <span>{label}</span>
+        <span className="tabular-nums">{value}</span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(percent)}
+        className="h-1 overflow-hidden rounded-full bg-muted"
+      >
+        <div
+          className="h-full rounded-full bg-[var(--tint)] transition-all duration-300"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function RowError({ message }: { message: string }) {
+  return (
+    <p className="flex items-center gap-1 pb-3 text-xs/4 text-destructive">
+      <XCircle className="size-3.5 shrink-0" />
+      {message}
+    </p>
+  )
+}
+
 interface AISettingsProps {
-  initialOpenPanel?: AssistantAdvancedPanel
+  initialTab?: AISettingsTab
   /** Only `voice-local-model` targets this section; other targets are ignored. */
   focusTarget?: SettingsFocusTarget | null
   focusRequestId?: number
 }
 
 export function AISettings({
-  initialOpenPanel,
+  initialTab = 'models',
   focusTarget = null,
   focusRequestId = 0
 }: AISettingsProps = {}) {
@@ -377,129 +478,218 @@ export function AISettings({
       </SettingsGroup>
 
       {settings.enabled && (
-        <>
-          <SettingsGroup label={t('ai.groups.voice')}>
-            <SettingRow
-              label={t('ai.voice.provider')}
-              description={t('ai.voice.providerDescription')}
-            >
-              <Select
-                value={voiceSettings.provider}
-                onValueChange={(value) =>
-                  void handleVoiceProviderChange(value as 'local' | 'openai')
-                }
-              >
-                <SelectTrigger className={COMPACT_SELECT}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="local">{t('ai.voice.providers.local')}</SelectItem>
-                  <SelectItem value="openai">{t('ai.voice.providers.openai')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingRow>
+        <Tabs defaultValue={initialTab}>
+          <TabsList className={AI_TABS_LIST}>
+            <TabsTrigger value="models" className={AI_TAB}>
+              {t('ai.tabs.models')}
+            </TabsTrigger>
+            <TabsTrigger value="agents" className={AI_TAB}>
+              {t('ai.tabs.agents')}
+            </TabsTrigger>
+            <TabsTrigger value="connect" className={AI_TAB}>
+              {t('ai.tabs.connect')}
+            </TabsTrigger>
+          </TabsList>
 
-            <SettingRow
-              label={t('ai.voice.memoNameMode')}
-              description={t('ai.voice.memoNameModeDescription')}
-            >
-              <Select
-                value={voiceSettings.memoNameMode}
-                onValueChange={(value) =>
-                  void handleVoiceMemoNameModeChange(
-                    value as VoiceTranscriptionSettings['memoNameMode']
-                  )
-                }
-              >
-                <SelectTrigger className={COMPACT_SELECT}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="transcript">{t('ai.voice.naming.transcript')}</SelectItem>
-                  <SelectItem value="timestamp">{t('ai.voice.naming.timestamp')}</SelectItem>
-                  <SelectItem value="none">{t('ai.voice.naming.none')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingRow>
-
-            <SettingRowTall
-              key={voiceModelFocusRequestId ?? 'voice-local-model'}
-              data-testid="voice-local-model-row"
-              className={cn(voiceModelFocusRequestId !== null && 'settings-focus-heartbeat')}
-              label={t('ai.voice.localModel')}
-              description={t('ai.voice.localModelDescription')}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Mic className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium text-[13px]/4">
-                      {voiceModelStatus?.name || 'Whisper Small'}
-                    </span>
-                    {voiceModelStatus?.loaded ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
-                        {t('ai.voice.status.ready')}
-                      </span>
-                    ) : isDownloadingVoiceModel || voiceModelStatus?.loading ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        {t('ai.voice.status.downloading')}
-                      </span>
-                    ) : voiceModelStatus?.downloaded ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-emerald-500/15 text-emerald-600">
-                        {t('ai.voice.status.downloaded')}
-                      </span>
+          <TabsContent value="models" className="mt-6">
+            <div className="flex items-baseline gap-2 pb-1.5">
+              <h4 className="font-semibold text-xs/4 text-foreground">
+                {t('ai.v2.onDevice.label')}
+              </h4>
+              <span className="text-xs/4 text-muted-foreground">{t('ai.v2.onDevice.hint')}</span>
+            </div>
+            <SettingsGroup>
+              <div data-testid="embedding-model-row">
+                <LocalModelRow
+                  label={t('ai.v2.embedding.label')}
+                  modelName={modelStatus?.name || 'all-MiniLM-L6-v2'}
+                  hint={t('ai.v2.embedding.hint', {
+                    dimension: modelStatus?.dimension || 384,
+                    count: modelStatus?.embeddingCount ?? 0
+                  })}
+                  status={
+                    modelStatus?.loaded ? (
+                      <StatusIndicator tone="ready" label={t('ai.embedding.loaded')} />
+                    ) : modelStatus?.loading || isLoadingModel ? (
+                      <StatusIndicator tone="progress" label={t('ai.embedding.loading')} />
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-muted text-muted-foreground">
-                        {t('ai.voice.status.notDownloaded')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-xs/4 text-muted-foreground">{t('ai.voice.cacheHint')}</div>
-
-                {voiceModelStatus?.error && (
-                  <div className="text-xs text-destructive flex items-center gap-1">
-                    <XCircle className="w-3.5 h-3.5" />
-                    {voiceModelStatus.error}
-                  </div>
+                      <StatusIndicator tone="idle" label={t('ai.voice.status.notDownloaded')} />
+                    )
+                  }
+                  action={
+                    modelStatus?.loaded ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleReindexEmbeddings()}
+                        disabled={isReindexing || !settings.enabled}
+                        className={QUIET_ACTION}
+                      >
+                        {isReindexing && <Loader2 className="size-3 animate-spin" />}
+                        {t('ai.embedding.rebuildIndex')}
+                      </button>
+                    ) : !isLoadingModel ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleLoadModel()}
+                        className={ROW_PRIMARY_ACTION}
+                      >
+                        {t('ai.embedding.downloadLoad')}
+                      </Button>
+                    ) : null
+                  }
+                />
+                {isLoadingModel && reindexProgress && (
+                  <InlineProgress
+                    label={
+                      reindexProgress.phase === 'downloading'
+                        ? t('ai.embedding.downloadingModel')
+                        : t('ai.embedding.loadingModel')
+                    }
+                    value={`${Math.round(reindexProgress.current)}%`}
+                    percent={reindexProgress.current}
+                  />
                 )}
-
-                {voiceModelProgress && (
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-[10px]/3 text-muted-foreground">
-                      <span>{voiceModelProgress.status || t('ai.voice.preparing')}</span>
-                      <span>{Math.round(voiceModelProgress.progress)}%</span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
-                        style={{ width: `${voiceModelProgress.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {!voiceModelStatus?.downloaded && !isDownloadingVoiceModel && (
-                  <Button
-                    onClick={() => void handleDownloadVoiceModel()}
-                    size="sm"
-                    className="w-full"
-                  >
-                    {t('ai.voice.download')}
-                  </Button>
-                )}
+                {isReindexing &&
+                  reindexProgress &&
+                  reindexProgress.phase !== 'downloading' &&
+                  reindexProgress.phase !== 'loading' && (
+                    <InlineProgress
+                      label={
+                        reindexProgress.phase === 'scanning'
+                          ? t('ai.embedding.scanning')
+                          : reindexProgress.phase === 'embedding'
+                            ? t('ai.embedding.generating')
+                            : t('ai.embedding.complete')
+                      }
+                      value={`${reindexProgress.current} / ${reindexProgress.total}`}
+                      percent={
+                        reindexProgress.total > 0
+                          ? (reindexProgress.current / reindexProgress.total) * 100
+                          : 0
+                      }
+                    />
+                  )}
+                {modelStatus?.error && <RowError message={modelStatus.error} />}
               </div>
-            </SettingRowTall>
 
-            {voiceSettings.provider === 'openai' && (
-              <SettingRowTall
-                label={t('ai.voice.apiKey')}
-                description={t('ai.voice.apiKeyDescription')}
+              <div
+                key={voiceModelFocusRequestId ?? 'voice-local-model'}
+                data-testid="voice-local-model-row"
+                className={cn(voiceModelFocusRequestId !== null && 'settings-focus-heartbeat')}
               >
-                <div className="space-y-2">
-                  <div className="flex gap-2">
+                <LocalModelRow
+                  label={t('ai.v2.voiceModel.label')}
+                  modelName={voiceModelStatus?.name || 'Whisper Small'}
+                  hint={t('ai.voice.cacheHint')}
+                  status={
+                    voiceModelStatus?.loaded ? (
+                      <StatusIndicator tone="ready" label={t('ai.voice.status.ready')} />
+                    ) : isDownloadingVoiceModel || voiceModelStatus?.loading ? (
+                      <StatusIndicator tone="progress" label={t('ai.voice.status.downloading')} />
+                    ) : voiceModelStatus?.downloaded ? (
+                      <StatusIndicator tone="ready" label={t('ai.voice.status.downloaded')} />
+                    ) : (
+                      <StatusIndicator tone="idle" label={t('ai.voice.status.notDownloaded')} />
+                    )
+                  }
+                  action={
+                    !voiceModelStatus?.downloaded && !isDownloadingVoiceModel ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={t('ai.voice.download')}
+                        onClick={() => void handleDownloadVoiceModel()}
+                        className={ROW_PRIMARY_ACTION}
+                      >
+                        {t('ai.v2.download')}
+                      </Button>
+                    ) : null
+                  }
+                />
+                {voiceModelProgress && (
+                  <InlineProgress
+                    label={voiceModelProgress.status || t('ai.voice.preparing')}
+                    value={`${Math.round(voiceModelProgress.progress)}%`}
+                    percent={voiceModelProgress.progress}
+                  />
+                )}
+                {voiceModelStatus?.error && <RowError message={voiceModelStatus.error} />}
+              </div>
+            </SettingsGroup>
+
+            <AIInlineSettingsPanel />
+
+            <SettingsGroup label={t('ai.v2.voice.group')}>
+              <SettingRow
+                label={t('ai.v2.voice.transcribeWith')}
+                description={t('ai.voice.providerDescription')}
+              >
+                <div
+                  role="group"
+                  aria-label={t('ai.v2.voice.transcribeWith')}
+                  className="inline-flex items-center gap-0.5 rounded-md bg-muted p-0.5"
+                >
+                  {VOICE_PROVIDER_OPTIONS.map((option) => {
+                    const isActive = voiceSettings.provider === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => {
+                          if (!isActive) void handleVoiceProviderChange(option.value)
+                        }}
+                        className={cn(
+                          'rounded-[5px] px-2.5 py-0.5 text-xs/4 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                          isActive
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        {t(option.labelKey)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </SettingRow>
+
+              <SettingRow
+                label={t('ai.v2.voice.nameBy')}
+                description={t('ai.voice.memoNameModeDescription')}
+              >
+                <Select
+                  value={voiceSettings.memoNameMode}
+                  onValueChange={(value) =>
+                    void handleVoiceMemoNameModeChange(
+                      value as VoiceTranscriptionSettings['memoNameMode']
+                    )
+                  }
+                >
+                  <SelectTrigger className={COMPACT_SELECT}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="transcript">{t('ai.voice.naming.transcript')}</SelectItem>
+                    <SelectItem value="timestamp">{t('ai.voice.naming.timestamp')}</SelectItem>
+                    <SelectItem value="none">{t('ai.voice.naming.none')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              {voiceSettings.provider === 'openai' && (
+                <SettingRow
+                  label={t('ai.voice.apiKey')}
+                  description={t('ai.voice.apiKeyDescription')}
+                >
+                  <div className="flex items-center gap-2">
+                    <StatusIndicator
+                      tone={hasVoiceApiKey ? 'ready' : 'idle'}
+                      label={
+                        hasVoiceApiKey ? t('ai.v2.voice.keySaved') : t('ai.v2.voice.keyNotSet')
+                      }
+                      title={hasVoiceApiKey ? t('ai.voice.keySaved') : undefined}
+                    />
                     <Input
                       type={showVoiceApiKey ? 'text' : 'password'}
                       value={voiceApiKey}
@@ -507,14 +697,14 @@ export function AISettings({
                       placeholder={
                         hasVoiceApiKey ? t('ai.voice.replaceKey') : t('ai.voice.enterKey')
                       }
-                      className="flex-1 h-7 text-xs/4"
+                      className="h-7 w-44 font-mono text-xs/4"
                     />
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowVoiceApiKey((visible) => !visible)}
                       tabIndex={-1}
-                      className="h-7 w-7 p-0"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                     >
                       {showVoiceApiKey ? (
                         <EyeOff className="w-3.5 h-3.5" />
@@ -523,206 +713,32 @@ export function AISettings({
                       )}
                     </Button>
                     <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => void handleSaveVoiceApiKey()}
                       disabled={!voiceApiKey.trim()}
-                      className="h-7 px-3"
+                      className={ROW_PRIMARY_ACTION}
                     >
                       {t('ai.voice.saveKey')}
                     </Button>
                   </div>
-
-                  {hasVoiceApiKey && (
-                    <div className="text-xs/4 text-muted-foreground flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      {t('ai.voice.keySaved')}
-                    </div>
-                  )}
-                </div>
-              </SettingRowTall>
-            )}
-          </SettingsGroup>
-
-          <SettingsGroup label={t('ai.groups.embeddingModel')}>
-            <div className="py-3 px-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Brain className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-medium text-[13px]/4">
-                    {modelStatus?.name || 'all-MiniLM-L6-v2'}
-                  </span>
-                  {modelStatus?.loaded ? (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
-                      {t('ai.embedding.loaded')}
-                    </span>
-                  ) : modelStatus?.loading || isLoadingModel ? (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      {t('ai.embedding.loading')}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="text-xs/4 text-muted-foreground">{t('ai.embedding.cacheHint')}</div>
-
-              <div className="flex gap-6">
-                <div>
-                  <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
-                    {t('ai.embedding.dimensions')}
-                  </span>
-                  <p className="text-[13px]/4 font-semibold text-foreground">
-                    {modelStatus?.dimension || 384}
-                  </p>
-                </div>
-                <div>
-                  <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
-                    {t('ai.embedding.embeddings')}
-                  </span>
-                  <p className="text-[13px]/4 font-semibold text-foreground">
-                    {(modelStatus?.embeddingCount ?? 0).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              {modelStatus?.error && (
-                <div className="text-xs text-destructive flex items-center gap-1">
-                  <XCircle className="w-3.5 h-3.5" />
-                  {modelStatus.error}
-                </div>
+                </SettingRow>
               )}
+            </SettingsGroup>
+          </TabsContent>
 
-              {!modelStatus?.loaded && !isLoadingModel && (
-                <Button onClick={() => void handleLoadModel()} size="sm" className="w-full">
-                  {t('ai.embedding.downloadLoad')}
-                </Button>
-              )}
+          <TabsContent value="agents" className="mt-6">
+            <AgentProvidersSection embedded />
+          </TabsContent>
 
-              {isLoadingModel && reindexProgress && (
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-[10px]/3 text-muted-foreground">
-                    <span>
-                      {reindexProgress.phase === 'downloading'
-                        ? t('ai.embedding.downloadingModel')
-                        : t('ai.embedding.loadingModel')}
-                    </span>
-                    <span>{Math.round(reindexProgress.current)}%</span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
-                      style={{ width: `${reindexProgress.current}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+          <TabsContent value="connect" className="mt-6">
+            <AgentMcpSection embedded />
+            <div id="settings-anchor-command-line">
+              <CommandLineSettings embedded />
             </div>
-          </SettingsGroup>
-
-          <SettingsGroup label={t('ai.groups.embeddingIndex')}>
-            <SettingRow
-              label={t('ai.embedding.rebuildIndex')}
-              description={t('ai.embedding.rebuildDescription')}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void handleReindexEmbeddings()}
-                disabled={isReindexing || !modelStatus?.loaded || !settings.enabled}
-                className="gap-1.5"
-              >
-                {isReindexing ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-3.5 h-3.5" />
-                )}
-                {t('ai.embedding.rebuild')}
-              </Button>
-            </SettingRow>
-            {isReindexing &&
-              reindexProgress &&
-              reindexProgress.phase !== 'downloading' &&
-              reindexProgress.phase !== 'loading' && (
-                <div className="px-4 pb-3 space-y-1.5">
-                  <div className="flex justify-between text-[10px]/3 text-muted-foreground">
-                    <span>
-                      {reindexProgress.phase === 'scanning'
-                        ? t('ai.embedding.scanning')
-                        : reindexProgress.phase === 'embedding'
-                          ? t('ai.embedding.generating')
-                          : t('ai.embedding.complete')}
-                    </span>
-                    <span>
-                      {reindexProgress.current} / {reindexProgress.total}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
-                      style={{
-                        width: `${reindexProgress.total > 0 ? (reindexProgress.current / reindexProgress.total) * 100 : 0}%`
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-          </SettingsGroup>
-
-          <AIInlineSettingsPanel />
-
-          <div className="flex flex-col pb-6 gap-2">
-            <AssistantAdvancedPanel
-              title={t('agentProviders.header.title')}
-              description={t('agentProviders.header.subtitle')}
-              icon={<Bot className="size-3.5" />}
-              defaultOpen={initialOpenPanel === 'agent-providers'}
-            >
-              <AgentProvidersSection embedded />
-            </AssistantAdvancedPanel>
-
-            <AssistantAdvancedPanel
-              title={t('agentMcp.header.title')}
-              description={t('agentMcp.header.subtitle')}
-              icon={<Server className="size-3.5" />}
-              defaultOpen={initialOpenPanel === 'agent-mcp'}
-            >
-              <AgentMcpSection embedded />
-            </AssistantAdvancedPanel>
-          </div>
-        </>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
-  )
-}
-
-function AssistantAdvancedPanel({
-  title,
-  description,
-  icon,
-  defaultOpen,
-  children
-}: {
-  title: string
-  description: string
-  icon: ReactNode
-  defaultOpen: boolean
-  children: ReactNode
-}) {
-  return (
-    <Collapsible defaultOpen={defaultOpen}>
-      <CollapsibleTrigger className="group flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 text-start transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-            {icon}
-          </span>
-          <span className="flex min-w-0 flex-col gap-px">
-            <span className="font-medium text-[13px]/4 text-foreground">{title}</span>
-            <span className="truncate text-xs/4 text-muted-foreground">{description}</span>
-          </span>
-        </span>
-        <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pt-3">{children}</CollapsibleContent>
-    </Collapsible>
   )
 }

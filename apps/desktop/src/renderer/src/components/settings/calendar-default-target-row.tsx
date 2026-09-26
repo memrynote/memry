@@ -59,9 +59,9 @@ export function CalendarDefaultTargetRow({
   }
 
   return (
-    <div className="flex items-start justify-between gap-3 border-t border-border/60 pt-3">
+    <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
       <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-[13px]/4 font-medium text-foreground">
+        <span className="text-[13px]/4 text-foreground">
           {t('calendar.providers.defaultTarget.label')}
         </span>
         <p className="text-xs/4 text-muted-foreground">
@@ -77,7 +77,7 @@ export function CalendarDefaultTargetRow({
         value={value}
         onChange={(event) => void choose(event.target.value)}
         aria-label={t('calendar.providers.defaultTarget.label')}
-        className="h-[30px] max-w-[12rem] shrink-0 rounded-[7px] border border-input bg-transparent px-2 text-xs"
+        className="h-7 max-w-[12rem] shrink-0 rounded-md border border-border bg-transparent px-2 text-xs/4 text-foreground"
         data-testid={`calendar-provider-default-target-${providerId}`}
       >
         <option value={NOT_DEFAULT}>{t('calendar.providers.defaultTarget.none')}</option>

@@ -11,8 +11,6 @@ import type {
   DiscoveredProviderCalendar
 } from '@memry/contracts/calendar-api'
 import { useT } from '@memry/i18n/renderer'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { calendarService } from '@/services/calendar-service'
@@ -20,6 +18,12 @@ import {
   CalendarWriterCompatNotice,
   writerCompatNeedsAcknowledgement
 } from '@/components/settings/calendar-writer-compat-notice'
+import {
+  CALENDAR_BORDERED_BUTTON,
+  CALENDAR_FIELD_INPUT,
+  CalendarCheckRow,
+  CalendarFieldRow
+} from '@/components/settings/calendar-provider-row'
 
 export interface CaldavReconnectTarget {
   serverUrl: string
@@ -118,16 +122,10 @@ function CaldavSubmitButton({
   const idle = tested ? t('calendar.providers.connect') : t('calendar.caldav.testConnection')
   const working = tested ? t('calendar.providers.connecting') : t('calendar.caldav.testing')
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        type="submit"
-        variant="outline"
-        size="sm"
-        className="h-7 w-fit px-3 text-xs/4"
-        disabled={busy || disabled}
-      >
+    <div className="flex justify-end pt-1">
+      <button type="submit" className={CALENDAR_BORDERED_BUTTON} disabled={busy || disabled}>
         {busy ? working : idle}
-      </Button>
+      </button>
     </div>
   )
 }
@@ -228,7 +226,7 @@ export function CaldavConnectForm({
 
   return (
     <form
-      className="grid gap-2"
+      className="flex flex-col gap-1"
       data-testid={`caldav-connect-form${reconnect ? '-reconnect' : ''}`}
       onSubmit={(event) => {
         event.preventDefault()
@@ -274,7 +272,7 @@ export function CaldavConnectForm({
       )}
 
       {error && (
-        <p role="alert" className="text-xs text-destructive" data-testid="caldav-connect-error">
+        <p role="alert" className="text-xs/4 text-destructive" data-testid="caldav-connect-error">
           {error}
         </p>
       )}
@@ -320,13 +318,12 @@ function CaldavAccountFields({
   return (
     <>
       {!reconnect && (
-        <label className="grid gap-1 text-xs text-foreground">
-          <span>{t('calendar.caldav.presetLabel')}</span>
+        <CalendarFieldRow label={t('calendar.caldav.presetLabel')}>
           <select
             value={presetId}
             onChange={(event) => onPresetChange(event.target.value as CaldavPresetId)}
             aria-label={t('calendar.caldav.presetLabel')}
-            className="h-[30px] rounded-[7px] border border-input bg-transparent px-2 text-xs"
+            className="h-7 w-full rounded-md border border-border bg-transparent px-2 text-xs/4 text-foreground"
           >
             {CALDAV_PRESETS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -334,26 +331,35 @@ function CaldavAccountFields({
               </option>
             ))}
           </select>
-        </label>
+        </CalendarFieldRow>
       )}
 
       {!reconnect && !preset.serverUrl && (
-        <Input
-          value={serverInput}
-          onChange={(event) => onServerInputChange(event.target.value)}
-          placeholder={
-            preset.hostTemplate
-              ? t('calendar.caldav.hostPlaceholder')
-              : t('calendar.providers.basic.serverPlaceholder')
-          }
-          aria-label={
+        <CalendarFieldRow
+          label={
             preset.hostTemplate
               ? t('calendar.caldav.hostLabel')
               : t('calendar.providers.basic.serverLabel')
           }
-          spellCheck={false}
-          autoComplete="url"
-        />
+        >
+          <Input
+            value={serverInput}
+            onChange={(event) => onServerInputChange(event.target.value)}
+            placeholder={
+              preset.hostTemplate
+                ? t('calendar.caldav.hostPlaceholder')
+                : t('calendar.providers.basic.serverPlaceholder')
+            }
+            aria-label={
+              preset.hostTemplate
+                ? t('calendar.caldav.hostLabel')
+                : t('calendar.providers.basic.serverLabel')
+            }
+            spellCheck={false}
+            autoComplete="url"
+            className={`${CALENDAR_FIELD_INPUT} font-mono`}
+          />
+        </CalendarFieldRow>
       )}
 
       {reconnect ? (
@@ -361,28 +367,34 @@ function CaldavAccountFields({
           {t('calendar.caldav.reconnectFor', { username: reconnect.username })}
         </p>
       ) : (
-        <Input
-          value={username}
-          onChange={(event) => onUsernameChange(event.target.value)}
-          placeholder={
+        <CalendarFieldRow
+          label={
             presetId === 'icloud'
               ? t('calendar.caldav.appleIdLabel')
               : t('calendar.providers.basic.usernameLabel')
           }
-          aria-label={t('calendar.providers.basic.usernameLabel')}
-          spellCheck={false}
-          autoComplete="username"
-        />
+        >
+          <Input
+            value={username}
+            onChange={(event) => onUsernameChange(event.target.value)}
+            aria-label={t('calendar.providers.basic.usernameLabel')}
+            spellCheck={false}
+            autoComplete="username"
+            className={CALENDAR_FIELD_INPUT}
+          />
+        </CalendarFieldRow>
       )}
-      <Input
-        type="password"
-        value={password}
-        onChange={(event) => onCredentialChange(event.target.value)}
-        placeholder={t('calendar.providers.basic.passwordLabel')}
-        aria-label={t('calendar.providers.basic.passwordLabel')}
-        autoComplete="current-password"
-      />
-      <p className="text-[11px]/4 text-muted-foreground">
+      <CalendarFieldRow label={t('calendar.providers.basic.passwordLabel')}>
+        <Input
+          type="password"
+          value={password}
+          onChange={(event) => onCredentialChange(event.target.value)}
+          aria-label={t('calendar.providers.basic.passwordLabel')}
+          autoComplete="current-password"
+          className={CALENDAR_FIELD_INPUT}
+        />
+      </CalendarFieldRow>
+      <p className="text-xs/4 text-muted-foreground">
         {presetId === 'icloud'
           ? t('calendar.caldav.icloudHelp')
           : t('calendar.caldav.appPasswordHelp')}{' '}
@@ -391,7 +403,7 @@ function CaldavAccountFields({
             href={preset.appAccessHelpUrl}
             target="_blank"
             rel="noreferrer"
-            className="underline underline-offset-2"
+            className="underline underline-offset-2 hover:text-foreground"
           >
             {t('calendar.caldav.createAppPassword')}
           </a>
@@ -413,24 +425,22 @@ function CaldavCalendarChoice({
 }): React.JSX.Element {
   const { t } = useT('settings')
   return (
-    <fieldset className="grid gap-1.5" data-testid="caldav-discovered-calendars">
-      <legend className="pb-1 text-xs font-medium text-foreground">
+    <fieldset className="flex flex-col pt-2" data-testid="caldav-discovered-calendars">
+      <legend className="pb-1 text-xs/4 text-muted-foreground">
         {t('calendar.caldav.chooseCalendars')}
       </legend>
       {calendars.map((calendar) => (
-        <label key={calendar.id} className="flex items-center gap-2 text-xs text-foreground">
-          <Checkbox
-            checked={selected.has(calendar.id)}
-            onCheckedChange={(checked) => {
-              const next = new Set(selected)
-              if (checked === true) next.add(calendar.id)
-              else next.delete(calendar.id)
-              onChange(next)
-            }}
-            aria-label={calendar.title}
-          />
-          <span className="truncate">{calendar.title}</span>
-        </label>
+        <CalendarCheckRow
+          key={calendar.id}
+          title={calendar.title}
+          checked={selected.has(calendar.id)}
+          onCheckedChange={(checked) => {
+            const next = new Set(selected)
+            if (checked) next.add(calendar.id)
+            else next.delete(calendar.id)
+            onChange(next)
+          }}
+        />
       ))}
     </fieldset>
   )

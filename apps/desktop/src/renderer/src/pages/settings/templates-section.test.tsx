@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -69,9 +69,7 @@ vi.mock('@/components/settings/settings-primitives', () => ({
       {action}
     </header>
   ),
-  SettingsGroup: ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <section aria-label={label}>{children}</section>
-  )
+  SETTINGS_GROUP_LABEL: 'group-label'
 }))
 
 vi.mock('@/components/ui/dropdown-menu', () => ({
@@ -161,11 +159,23 @@ describe('TemplatesSettings', () => {
     expect(screen.getByText('templates.empty.description')).toBeInTheDocument()
   })
 
+  it('splits my templates and built-ins, with New template in the my-templates header', () => {
+    render(<TemplatesSettings />)
+
+    const mine = screen.getByRole('region', { name: 'templates.v2.groups.mine' })
+    const builtIn = screen.getByRole('region', { name: 'templates.groups.builtIn' })
+
+    expect(within(mine).getByRole('button', { name: /templates.v2.new/ })).toBeInTheDocument()
+    expect(within(mine).getByRole('button', { name: 'Meeting Notes' })).toBeInTheDocument()
+    expect(within(builtIn).getByRole('button', { name: 'Daily Journal' })).toBeInTheDocument()
+    expect(within(builtIn).queryByRole('button', { name: /templates.v2.new/ })).toBeNull()
+  })
+
   it('opens create and edit tabs', async () => {
     const user = userEvent.setup()
     render(<TemplatesSettings />)
 
-    await user.click(screen.getByRole('button', { name: /templates.actions.new/ }))
+    await user.click(screen.getByRole('button', { name: /templates.v2.new/ }))
     expect(openTab).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'template-editor',
@@ -230,7 +240,7 @@ describe('TemplatesSettings', () => {
   it('closes settings modal when creating a template', async () => {
     const user = userEvent.setup()
     render(<TemplatesSettings />)
-    await user.click(screen.getByRole('button', { name: /templates.actions.new/ }))
+    await user.click(screen.getByRole('button', { name: /templates.v2.new/ }))
     expect(closeSettings).toHaveBeenCalledTimes(1)
     expect(openTab).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'template-editor', path: '/templates/new' })

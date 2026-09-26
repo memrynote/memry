@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -14,8 +13,7 @@ import {
   COMPACT_SELECT,
   SettingsGroup,
   SettingsHeader,
-  SettingRow,
-  SettingRowTall
+  SettingRow
 } from '@/components/settings/settings-primitives'
 import { useT } from '@memry/i18n/renderer'
 
@@ -23,7 +21,9 @@ type TerminalCommandStatus = Awaited<
   ReturnType<typeof window.api.settings.getTerminalCommandStatus>
 >
 
-export function CommandLineSettings(): React.JSX.Element {
+export function CommandLineSettings({
+  embedded = false
+}: { embedded?: boolean } = {}): React.JSX.Element {
   const { t } = useT('settings')
   const [status, setStatus] = useState<TerminalCommandStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -93,11 +93,6 @@ export function CommandLineSettings(): React.JSX.Element {
   const installed = status?.installed ?? false
   const vaults = status?.vaults ?? []
   const defaultVaultPath = status?.defaultVaultPath ?? 'none'
-  const description = status
-    ? installed
-      ? t('commandLine.command.descriptionInstalled', { path: status.shimPath })
-      : t('commandLine.command.descriptionNotInstalled')
-    : t('commandLine.status.loading')
   const defaultVaultDescription =
     status?.defaultVaultPath && status.vaults.length > 0
       ? t('commandLine.defaultVault.descriptionSelected', { path: status.defaultVaultPath })
@@ -105,12 +100,58 @@ export function CommandLineSettings(): React.JSX.Element {
 
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader
-        title={t('commandLine.header.title')}
-        subtitle={t('commandLine.header.subtitle')}
-      />
+      {!embedded && (
+        <SettingsHeader
+          title={t('commandLine.header.title')}
+          subtitle={t('commandLine.header.subtitle')}
+        />
+      )}
 
-      <SettingsGroup label={t('commandLine.groups.terminal')}>
+      <div className="flex items-baseline justify-between gap-4 pb-1.5">
+        <h4 className="font-semibold text-xs/4 text-foreground">
+          {t(embedded ? 'commandLine.header.title' : 'commandLine.groups.terminal')}
+        </h4>
+        <button
+          type="button"
+          className="shrink-0 rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+          disabled={isLoading || isChanging}
+          onClick={() => void refresh()}
+        >
+          {t('commandLine.actions.refresh')}
+        </button>
+      </div>
+      <SettingsGroup>
+        <div className="flex min-h-14 items-center justify-between gap-4 py-2.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-[13px]/4 text-foreground">{t('commandLine.command.label')}</span>
+            {!status ? (
+              <span className="text-xs/4 text-muted-foreground">
+                {t('commandLine.status.loading')}
+              </span>
+            ) : installed ? (
+              <span
+                className="truncate font-mono text-xs/4 text-muted-foreground"
+                title={t('commandLine.command.descriptionInstalled', { path: status.shimPath })}
+              >
+                {status.shimPath}
+              </span>
+            ) : (
+              <span className="text-xs/4 text-muted-foreground">
+                {t('commandLine.command.descriptionNotInstalled')}
+              </span>
+            )}
+            {status?.pathHint && (
+              <span className="text-xs/4 text-muted-foreground">{status.pathHint}</span>
+            )}
+          </div>
+          <Switch
+            checked={installed}
+            disabled={isLoading || isChanging || !status?.supported}
+            onCheckedChange={(...args) => void handleToggle(...args)}
+            className={ACCENT_SWITCH}
+            aria-label={t('commandLine.command.toggleLabel')}
+          />
+        </div>
         <SettingRow
           label={t('commandLine.defaultVault.label')}
           description={defaultVaultDescription}
@@ -138,38 +179,7 @@ export function CommandLineSettings(): React.JSX.Element {
             </SelectContent>
           </Select>
         </SettingRow>
-        <SettingRowTall label={t('commandLine.command.label')} description={description}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 flex flex-col gap-1">
-              <code className="truncate rounded bg-muted px-2 py-1 text-[11px]/4 text-muted-foreground">
-                memrynote tasks today
-              </code>
-              {status?.pathHint && (
-                <span className="text-[11px]/4 text-muted-foreground">{status.pathHint}</span>
-              )}
-            </div>
-            <Switch
-              checked={installed}
-              disabled={isLoading || isChanging || !status?.supported}
-              onCheckedChange={(...args) => void handleToggle(...args)}
-              className={ACCENT_SWITCH}
-              aria-label={t('commandLine.command.toggleLabel')}
-            />
-          </div>
-        </SettingRowTall>
       </SettingsGroup>
-
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={isLoading || isChanging}
-          onClick={() => void refresh()}
-        >
-          {t('commandLine.actions.refresh')}
-        </Button>
-      </div>
     </div>
   )
 }

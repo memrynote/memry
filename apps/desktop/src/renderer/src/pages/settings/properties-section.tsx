@@ -270,7 +270,7 @@ function PropertyManager() {
         />
       </div>
 
-      <div className="flex flex-col rounded-lg overflow-y-auto max-h-[60vh] border border-border bg-surface-active">
+      <div className="flex flex-col overflow-y-auto max-h-[60vh] border-y border-border">
         {selectDefs.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
             {t('properties.noMatch', { query: search })}
@@ -292,7 +292,7 @@ function PropertyManager() {
             <div key={def.name}>
               {i > 0 && <div className="h-px bg-border" />}
               <div
-                className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group cursor-pointer hover:bg-accent/50 transition-colors"
+                className="flex items-center justify-between min-h-11 py-2 shrink-0 group cursor-pointer"
                 onClick={() => setExpandedDef(isExpanded ? null : def.name)}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -301,17 +301,15 @@ function PropertyManager() {
                   ) : (
                     <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
                   )}
-                  <span className="font-medium text-[13px]/4 text-foreground truncate">
-                    {def.name}
-                  </span>
-                  <span className="text-[10px]/3 font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
+                  <span className="text-[13px]/4 text-foreground truncate">{def.name}</span>
+                  <span className="text-xs/4 text-muted-foreground shrink-0">
                     {t(`properties.types.${def.type}`, {
                       defaultValue: config?.label ?? def.type
                     })}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 ms-4">
-                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                <div className="flex items-center gap-2 shrink-0 ms-4">
+                  <span className="text-xs/4 text-muted-foreground tabular-nums">
                     {t('properties.optionCount', { count: optionCount })}
                   </span>
                   <DropdownMenu>
@@ -319,7 +317,8 @@ function PropertyManager() {
                       <button
                         type="button"
                         onClick={(e) => e.stopPropagation()}
-                        className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all"
+                        aria-label={t('properties.v2.actionsAria', { name: def.name })}
+                        className="p-1 rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:text-foreground transition-all"
                       >
                         <MoreHorizontal className="w-3.5 h-3.5" />
                       </button>
@@ -338,7 +337,7 @@ function PropertyManager() {
               </div>
 
               {isExpanded && (
-                <div className="px-4 pb-3">
+                <div className="pb-3">
                   {def.type === 'status' && categories
                     ? STATUS_CATEGORY_ORDER.map((catKey) => {
                         const cat = categories[catKey]
@@ -346,7 +345,7 @@ function PropertyManager() {
                         return (
                           <div key={catKey} className="mb-2">
                             <div className="flex items-center justify-between py-1">
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                              <span className="text-xs/4 text-muted-foreground">
                                 {getStatusCategoryLabel(catKey, cat.label)}
                               </span>
                               <button
@@ -358,7 +357,8 @@ function PropertyManager() {
                                   })
                                   setNewOptionName('')
                                 }}
-                                className="text-muted-foreground/50 hover:text-muted-foreground"
+                                aria-label={t('properties.addOption')}
+                                className="text-muted-foreground hover:text-foreground"
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
@@ -470,7 +470,7 @@ function PropertyManager() {
                             setAddingOption(def.name)
                             setNewOptionName('')
                           }}
-                          className="flex items-center gap-1.5 ps-5 py-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground"
+                          className="flex items-center gap-1.5 ps-5 py-1 text-xs/4 text-muted-foreground hover:text-foreground"
                         >
                           <Plus className="w-3 h-3" />
                           {t('properties.addOption')}
@@ -485,7 +485,7 @@ function PropertyManager() {
         })}
       </div>
 
-      <p className="text-xs/4 text-muted-foreground pt-3">
+      <p className="text-xs/4 text-muted-foreground pt-2">
         {t('properties.summary', { count: selectDefs.length })}
       </p>
 
@@ -606,11 +606,11 @@ function OptionRow({
           {option.value}
         </span>
       )}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover/option:opacity-100 transition-opacity">
+      <div className="flex items-center gap-0.5 opacity-0 group-hover/option:opacity-100 focus-within:opacity-100 transition-opacity">
         <button
           type="button"
           onClick={onStartEdit}
-          className="p-0.5 rounded text-muted-foreground/50 hover:text-foreground"
+          className="p-0.5 rounded text-muted-foreground hover:text-foreground"
           title={t('properties.renameTitle')}
         >
           <Pencil className="w-3 h-3" />
@@ -618,7 +618,7 @@ function OptionRow({
         <button
           type="button"
           onClick={onRemove}
-          className="p-0.5 rounded text-muted-foreground/50 hover:text-destructive"
+          className="p-0.5 rounded text-muted-foreground hover:text-destructive"
           title={t('properties.removeTitle')}
         >
           <Trash2 className="w-3 h-3" />

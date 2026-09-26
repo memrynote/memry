@@ -26,6 +26,9 @@ const GLOBAL_CLICK_OPTIONS = [
   { value: 'calendar', labelKey: 'calendar.options.openCalendar' }
 ] as const
 
+const SEGMENT_ITEM =
+  'h-auto min-w-0 rounded-[5px] border-none py-0.75 px-2.5 text-xs/4 text-muted-foreground shadow-none hover:bg-transparent data-[state=on]:bg-background data-[state=on]:font-medium data-[state=on]:text-foreground data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
+
 const OVERRIDE_OPTIONS = [
   { value: 'inherit', labelKey: 'calendar.options.useGlobal' },
   { value: 'calendar', labelKey: 'calendar.options.openCalendar' },
@@ -87,9 +90,7 @@ export function CalendarSettingsSection() {
     <div className="flex flex-col text-xs/4">
       <SettingsHeader title={t('calendar.header.title')} subtitle={t('calendar.header.subtitle')} />
 
-      <CalendarProviderSections />
-
-      <SettingsGroup label={t('calendar.groups.weekStart')}>
+      <SettingsGroup label={t('calendar.v2.groups.layout')}>
         <SettingRow
           label={t('calendar.weekStart.label')}
           description={t('calendar.weekStart.description')}
@@ -98,27 +99,26 @@ export function CalendarSettingsSection() {
             type="single"
             value={settings.weekStartDay}
             onValueChange={(...args) => void handleWeekStartChange(...args)}
-            className="gap-0 rounded-md border border-border overflow-clip"
+            aria-label={t('calendar.weekStart.label')}
+            className="gap-0 rounded-[7px] bg-muted p-0.5"
           >
             <ToggleGroupItem
               value="sunday"
               aria-label={t('calendar.weekStart.options.sunday')}
-              className="rounded-none border-none px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white"
+              className={SEGMENT_ITEM}
             >
               {t('calendar.weekStart.options.sunday')}
             </ToggleGroupItem>
             <ToggleGroupItem
               value="monday"
               aria-label={t('calendar.weekStart.options.monday')}
-              className="rounded-none border-none border-s border-border px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white"
+              className={SEGMENT_ITEM}
             >
               {t('calendar.weekStart.options.monday')}
             </ToggleGroupItem>
           </ToggleGroup>
         </SettingRow>
-      </SettingsGroup>
 
-      <SettingsGroup label={t('calendar.groups.dayCellClick')}>
         <SettingRow
           label={t('calendar.defaultBehavior.label')}
           description={t('calendar.defaultBehavior.description')}
@@ -160,9 +160,7 @@ export function CalendarSettingsSection() {
             </SelectContent>
           </Select>
         </SettingRow>
-      </SettingsGroup>
 
-      <SettingsGroup label={t('calendar.groups.notes')}>
         <SettingRow
           label={t('calendar.showNotesOnCalendar.label')}
           description={t('calendar.showNotesOnCalendar.description')}
@@ -170,10 +168,13 @@ export function CalendarSettingsSection() {
           <Switch
             checked={settings.showNotesOnCalendar}
             onCheckedChange={(...args) => void handleShowNotesChange(...args)}
+            aria-label={t('calendar.showNotesOnCalendar.label')}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
       </SettingsGroup>
+
+      <CalendarProviderSections />
     </div>
   )
 }

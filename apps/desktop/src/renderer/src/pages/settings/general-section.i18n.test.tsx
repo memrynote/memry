@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { TabProvider } from '@/contexts/tabs'
@@ -18,6 +19,10 @@ vi.mock('sonner', () => ({
 
 const mocks = vi.hoisted(() => ({
   openIncidentReport: vi.fn()
+}))
+
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNoteFoldersQuery: () => ({ folders: [{ path: 'Inbox' }] })
 }))
 
 vi.mock('@/components/diagnostics/incident-report-provider', () => ({
@@ -41,11 +46,13 @@ const updateState = {
 
 function renderGeneral(i18n: I18nInstance) {
   return render(
-    <I18nextProvider i18n={i18n}>
-      <TabProvider>
-        <GeneralSettings />
-      </TabProvider>
-    </I18nextProvider>
+    <QueryClientProvider client={new QueryClient()}>
+      <I18nextProvider i18n={i18n}>
+        <TabProvider>
+          <GeneralSettings />
+        </TabProvider>
+      </I18nextProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -114,20 +121,15 @@ describe('GeneralSettings i18n', () => {
 
     renderGeneral(i18n)
 
-    expect(await screen.findByText('Language & Region')).toBeInTheDocument()
+    expect(await screen.findByText('Language & region')).toBeInTheDocument()
     expect(screen.getByText('Language')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Most of the app updates immediately. Some system-level text — already-shown notifications, dock label, window title bar — refreshes after the next launch.'
-      )
-    ).toBeInTheDocument()
-    expect(screen.getByText('Time Format')).toBeInTheDocument()
+    expect(screen.getByText('Time format')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '12h' })).toHaveAttribute('data-state', 'on')
 
-    const selects = screen.getAllByRole('combobox')
-    await user.click(selects[1])
-
-    expect(await screen.findAllByText('12-hour')).not.toHaveLength(0)
-    expect(screen.getByText('24-hour')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: '24h' }))
+    await waitFor(() =>
+      expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ clockFormat: '24h' })
+    )
   })
 
   it('uses the settings namespace fallback when locale changes fail', async () => {
@@ -135,7 +137,7 @@ describe('GeneralSettings i18n', () => {
 
     renderGeneral(i18n)
 
-    await screen.findByText('Language & Region')
+    await screen.findByText('Language & region')
     const languageSelect = document.querySelector('#language-select')
     if (!(languageSelect instanceof HTMLElement)) {
       throw new Error('Language select not found')
@@ -159,8 +161,7 @@ describe('GeneralSettings i18n', () => {
 
     renderGeneral(i18n)
 
-    expect(await screen.findByText('Installed version v2026-05-06')).toBeInTheDocument()
-    expect(screen.getByText('Available version v2026-05-06.2')).toBeInTheDocument()
+    expect(await screen.findByText('Version v2026-05-06.2 available')).toBeInTheDocument()
   })
 
   it('updates startup, tabs, file creation, telemetry, clock, and downloaded updater actions', async () => {
@@ -182,55 +183,50 @@ describe('GeneralSettings i18n', () => {
 
     renderGeneral(i18n)
 
-    await screen.findByText('Launch at Login')
-    const switches = screen.getAllByRole('switch')
+    await screen.findByText('Launch at login')
+    const toggle = (name: string) => user.click(screen.getByRole('switch', { name }))
 
-    await user.click(switches[0])
+    await toggle('Launch at login')
     await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ startOnBoot: true })
     )
 
-    // Updates group: auto-check (on by default) and auto-download (off by default).
-    await user.click(switches[1])
-    await waitFor(() => expect(api.updater.setAutoCheck).toHaveBeenCalledWith(false))
-
-    await user.click(switches[2])
-    await waitFor(() => expect(api.updater.setAutoDownload).toHaveBeenCalledWith(true))
-
-    await user.click(switches[3])
-    await waitFor(() =>
-      expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ openPagesInNewTab: false })
-    )
-
-    await user.click(switches[4])
+    await toggle('Restore tabs on start')
     await waitFor(() =>
       expect(api.settings.setTabSettings).toHaveBeenCalledWith({ restoreSessionOnStart: false })
     )
 
-    await user.click(switches[5])
+    await toggle('Open pages in a new tab')
+    await waitFor(() =>
+      expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ openPagesInNewTab: false })
+    )
+
+    await toggle('Keep running in menu bar when closed')
     await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ minimizeToTray: true })
     )
 
-    await user.click(switches[6])
+    await toggle('Create inside the selected folder')
     await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({
         createInSelectedFolder: false
       })
     )
 
-    await user.click(switches[7])
+    await toggle('Share anonymous usage metrics')
     await waitFor(() => expect(api.telemetry.setEnabled).toHaveBeenCalledWith(false))
 
-    const selects = screen.getAllByRole('combobox')
-    await user.click(selects[1])
-    await user.click(await screen.findByText('24-hour'))
-    await waitFor(() =>
-      expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ clockFormat: '24h' })
-    )
+    // The two persisted updater flags keep their own switches.
+    await toggle('Automatically download updates')
+    await waitFor(() => expect(api.updater.setAutoDownload).toHaveBeenCalledWith(true))
+    expect(api.updater.setAutoCheck).not.toHaveBeenCalled()
 
-    await user.click(selects[3])
-    await user.click(await screen.findByText('Always visible'))
+    await toggle('Automatically check for updates')
+    await waitFor(() => expect(api.updater.setAutoCheck).toHaveBeenCalledWith(false))
+
+    const selects = screen.getAllByRole('combobox')
+    await user.click(selects[2])
+    await user.click(await screen.findByRole('option', { name: 'Always' }))
     await waitFor(() =>
       expect(api.settings.setTabSettings).toHaveBeenCalledWith({ tabCloseButton: 'always' })
     )
@@ -244,8 +240,8 @@ describe('GeneralSettings i18n', () => {
 
     const unsupported = renderGeneral(i18n)
 
-    await screen.findByText('Check for Updates')
-    await user.click(screen.getByRole('button', { name: 'Check for Updates' }))
+    await screen.findByText('Check now')
+    await user.click(screen.getByRole('button', { name: 'Check now' }))
     expect(toast.info).toHaveBeenCalledWith('Auto-updates are available in packaged releases only')
     unsupported.unmount()
 
@@ -266,7 +262,7 @@ describe('GeneralSettings i18n', () => {
     })
 
     const available = renderGeneral(i18n)
-    await screen.findByText('memrynote v2026-05-06.2 is available to download')
+    await screen.findByText('Version v2026-05-06.2 available')
     await user.click(screen.getByRole('button', { name: 'Download Update' }))
     await waitFor(() => expect(api.updater.downloadUpdate).toHaveBeenCalled())
     available.unmount()
@@ -285,8 +281,8 @@ describe('GeneralSettings i18n', () => {
     })
 
     renderGeneral(i18n)
-    await screen.findByText('Check for new releases and install them without leaving the app')
-    await user.click(screen.getByRole('button', { name: 'Check for Updates' }))
+    await screen.findByText('Not checked yet')
+    await user.click(screen.getByRole('button', { name: 'Check now' }))
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith('memrynote v2026-05-06 is up to date')
     )
@@ -298,8 +294,8 @@ describe('GeneralSettings i18n', () => {
 
     renderGeneral(i18n)
 
-    await screen.findByText('Diagnostic Report')
-    const button = screen.getByRole('button', { name: 'Send diagnostic report' })
+    await screen.findByText('Diagnostic report')
+    const button = screen.getByRole('button', { name: 'Send report…' })
     expect(button).toBeEnabled()
 
     await user.click(button)
@@ -314,8 +310,8 @@ describe('GeneralSettings i18n', () => {
 
     renderGeneral(i18n)
 
-    await screen.findByText('Diagnostic Report')
-    const button = screen.getByRole('button', { name: 'Send diagnostic report' })
+    await screen.findByText('Diagnostic report')
+    const button = screen.getByRole('button', { name: 'Send report…' })
     expect(button).toBeEnabled()
 
     await user.click(button)

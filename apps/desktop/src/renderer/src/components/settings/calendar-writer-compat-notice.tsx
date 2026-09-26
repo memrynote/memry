@@ -29,7 +29,7 @@ export function CalendarWriterCompatNotice({
   return (
     <div
       role="alert"
-      className="grid gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs/4 text-foreground"
+      className="flex flex-col gap-2 border-s-2 border-amber-500 py-1 ps-3 text-xs/4 text-foreground"
       data-testid="calendar-writer-compat-warning"
     >
       <p>

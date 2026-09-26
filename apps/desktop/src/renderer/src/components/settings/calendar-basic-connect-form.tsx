@@ -4,7 +4,6 @@ import type {
   CalendarWriterCompatResponse
 } from '@memry/contracts/calendar-api'
 import { useT } from '@memry/i18n/renderer'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { calendarService } from '@/services/calendar-service'
@@ -12,6 +11,11 @@ import {
   CalendarWriterCompatNotice,
   writerCompatNeedsAcknowledgement
 } from '@/components/settings/calendar-writer-compat-notice'
+import {
+  CALENDAR_BORDERED_BUTTON,
+  CALENDAR_FIELD_INPUT,
+  CalendarFieldRow
+} from '@/components/settings/calendar-provider-row'
 
 export interface CalendarBasicConnectFormProps {
   provider: CalendarProviderDescriptor
@@ -94,7 +98,7 @@ export function CalendarBasicConnectForm({
 
   return (
     <form
-      className="grid gap-2"
+      className="flex flex-col gap-1"
       data-testid={`calendar-basic-connect-${provider.id}`}
       onSubmit={(event) => {
         event.preventDefault()
@@ -102,31 +106,38 @@ export function CalendarBasicConnectForm({
       }}
     >
       {!serverLocked && (
-        <Input
-          value={serverUrl}
-          onChange={(event) => setServerUrl(event.target.value)}
-          placeholder={t('calendar.providers.basic.serverPlaceholder')}
-          aria-label={t('calendar.providers.basic.serverLabel')}
-          spellCheck={false}
-          autoComplete="url"
-        />
+        <CalendarFieldRow label={t('calendar.providers.basic.serverLabel')}>
+          <Input
+            value={serverUrl}
+            onChange={(event) => setServerUrl(event.target.value)}
+            placeholder={t('calendar.providers.basic.serverPlaceholder')}
+            aria-label={t('calendar.providers.basic.serverLabel')}
+            spellCheck={false}
+            autoComplete="url"
+            className={`${CALENDAR_FIELD_INPUT} font-mono`}
+          />
+        </CalendarFieldRow>
       )}
-      <Input
-        value={username}
-        onChange={(event) => setUsername(event.target.value)}
-        placeholder={t('calendar.providers.basic.usernameLabel')}
-        aria-label={t('calendar.providers.basic.usernameLabel')}
-        spellCheck={false}
-        autoComplete="username"
-      />
-      <Input
-        type="password"
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-        placeholder={t('calendar.providers.basic.passwordLabel')}
-        aria-label={t('calendar.providers.basic.passwordLabel')}
-        autoComplete="current-password"
-      />
+      <CalendarFieldRow label={t('calendar.providers.basic.usernameLabel')}>
+        <Input
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          aria-label={t('calendar.providers.basic.usernameLabel')}
+          spellCheck={false}
+          autoComplete="username"
+          className={CALENDAR_FIELD_INPUT}
+        />
+      </CalendarFieldRow>
+      <CalendarFieldRow label={t('calendar.providers.basic.passwordLabel')}>
+        <Input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          aria-label={t('calendar.providers.basic.passwordLabel')}
+          autoComplete="current-password"
+          className={CALENDAR_FIELD_INPUT}
+        />
+      </CalendarFieldRow>
 
       {compat && writerCompatNeedsAcknowledgement(compat) && (
         <CalendarWriterCompatNotice
@@ -137,20 +148,16 @@ export function CalendarBasicConnectForm({
       )}
 
       {error && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-xs/4 text-destructive">
           {error}
         </p>
       )}
 
-      <Button
-        type="submit"
-        variant="outline"
-        size="sm"
-        className="h-7 w-fit px-3 text-xs/4"
-        disabled={!canSubmit}
-      >
-        {isConnecting ? t('calendar.providers.connecting') : t('calendar.providers.connect')}
-      </Button>
+      <div className="flex justify-end pt-1">
+        <button type="submit" className={CALENDAR_BORDERED_BUTTON} disabled={!canSubmit}>
+          {isConnecting ? t('calendar.providers.connecting') : t('calendar.providers.connect')}
+        </button>
+      </div>
     </form>
   )
 }
