@@ -247,6 +247,14 @@ touch.
    snapshot watermark is recorded, which is what makes the CRDT sweep skip its baseline GET.
 5. **Commit.** Every `PACK_APPLY_PAGE_ENTRIES` = 100 applied entries, and at the end of each pack,
    the page transaction commits with the pack watermark written **inside** it.
+6. **Settle after the pull.** A packed body lands before any record does, and packs are immutable,
+   so a pack can hold the body of a note deleted after it was built. The write-back an apply arms
+   therefore writes nothing: it never creates a note for a doc with no row. Once the first
+   item-granular pull returns, each packed doc whose id now has a note or journal row is written
+   to that note's file (`CrdtProvider.materialize`), and each one whose id has no row is purged,
+   watermark included. Without the first half a live note would keep the body its record carried,
+   because the record's CRDT walk finds the watermark current and merges nothing. Without the
+   second, a deleted note's doc would outlive it.
 
 ### Signer identity
 
