@@ -3,8 +3,9 @@ import { eq } from 'drizzle-orm'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { DEVICE_LOCAL_CALENDAR_PROVIDERS } from '@memry/contracts/calendar-api'
-import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
+import { deleteFromLocalRow } from './delete-fallback'
 import { nextLocalClock } from './tombstone-clocks'
 
 /**
@@ -87,8 +88,7 @@ export class CalendarSourceSyncService {
         // The row may already be gone; its snapshot still says where it came from.
         if (snapshotPayload && isDeviceLocalSource(parseSnapshot(snapshotPayload))) return null
         if (snapshotPayload) return withIncrementedClock(snapshotPayload, deviceId)
-        if (local) return withIncrementedClock(JSON.stringify(local), deviceId)
-        return JSON.stringify({ id: itemId, clock: incrementClock({}, deviceId) })
+        return deleteFromLocalRow('calendar_source', itemId, local, deviceId)
       }
     })
   }
