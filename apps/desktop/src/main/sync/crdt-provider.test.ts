@@ -100,6 +100,7 @@ const mocks = vi.hoisted(() => {
     flushPendingWritebacks: vi.fn(),
     recordNetworkUpdate: vi.fn(),
     resetWritebackState: vi.fn(),
+    writebackNow: vi.fn(),
     persistenceInstances: [] as Array<{
       getYDoc: ReturnType<typeof vi.fn>
       clearDocument: ReturnType<typeof vi.fn>
@@ -249,7 +250,8 @@ vi.mock('./crdt-writeback', () => ({
   cancelWriteback: (...args: unknown[]) => mocks.cancelWriteback(...args),
   flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
   recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args),
-  resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args)
+  resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args),
+  writebackNow: (...args: unknown[]) => mocks.writebackNow(...args)
 }))
 
 vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
@@ -418,6 +420,26 @@ describe('CrdtProvider', () => {
 
   // #2297 review (B-2, A-L3): the landing resolves only on the store's own
   // answer, so a failed write is never reported as landed.
+  // A doc that took its server state before the note had a row: merging the
+  // same state again fires no update, so only this writes its body.
+  it('materializes a closed note from its doc and releases it, leaving an open one open', async () => {
+    const written: Array<[string, string]> = []
+    mocks.writebackNow.mockImplementation(async (noteId: string, doc: Y.Doc) => {
+      written.push([noteId, doc.getMap('meta').get('title') as string])
+    })
+    await provider.open('note-2', 4, { skipSeed: true })
+    provider.applyRemoteUpdate('note-2', new Uint8Array(makeRemoteUpdate('packed body')))
+
+    await provider.materialize('note-1')
+    await provider.materialize('note-2')
+
+    expect(written).toEqual([
+      ['note-1', undefined],
+      ['note-2', 'packed body']
+    ])
+    expect(provider.getOpenNoteIds()).toEqual(['note-2'])
+  })
+
   it('merges a feed update into an open doc, writes it back, and awaits its explicit store write', async () => {
     await provider.open('note-1', undefined, { skipSeed: true })
     const store = mocks.persistenceInstances[0]
