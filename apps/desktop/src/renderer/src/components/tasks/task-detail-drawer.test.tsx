@@ -102,16 +102,16 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
   TagAutocomplete: ({
     tags,
     onTagsChange,
-    placeholder
+    variant
   }: {
     tags: string[]
     onTagsChange: (tags: string[]) => void
-    placeholder?: string
+    variant?: string
   }) => (
-    <div>
+    <div data-variant={variant}>
       <span data-testid="tag-autocomplete-tags">{tags.join(',')}</span>
       <button type="button" onClick={() => onTagsChange([...tags, 'new-tag'])}>
-        {placeholder}
+        Add tags
       </button>
     </div>
   )
@@ -297,9 +297,14 @@ describe('TaskDetailDrawer — editable properties', () => {
         />
       )
 
-      await user.click(screen.getByRole('button', { name: 'Tags' }))
+      await user.click(screen.getByRole('button', { name: 'Add tags' }))
 
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', { tags: ['work', 'new-tag'] })
+      // Tags sit in the property rail, not as their own labelled section.
+      expect(screen.getByTestId('tag-autocomplete-tags').parentElement).toHaveAttribute(
+        'data-variant',
+        'row'
+      )
     })
   })
 
@@ -387,6 +392,19 @@ describe('TaskDetailDrawer — editable properties', () => {
 
       expect(screen.queryByText(/^in \d/)).not.toBeInTheDocument()
       expect(screen.queryByText(/overdue$/)).not.toBeInTheDocument()
+    })
+
+    // No label column: the date text itself says which date it is.
+    it('names each date in its trigger text, and the date kind when empty', () => {
+      renderWithI18n(
+        <TaskDetailDrawer
+          {...defaultProps}
+          task={createTask({ dueDate: null, startDate: new Date(2026, 3, 10) })}
+        />
+      )
+
+      expect(screen.getByText(/^Starts /)).toBeInTheDocument()
+      expect(screen.getByText('Due Date')).toBeInTheDocument()
     })
   })
 
@@ -491,18 +509,19 @@ describe('TaskDetailDrawer — editable properties', () => {
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', { projectId: 'project-2' })
     })
 
-    it('shows Project label in properties grid row', () => {
+    it('names the project row via its tooltip instead of a visible label', () => {
       renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
-      expect(screen.getByText('Project')).toBeInTheDocument()
+      expect(screen.getByTitle('Project')).toBeInTheDocument()
+      expect(screen.queryByText('Project')).not.toBeInTheDocument()
     })
   })
 
-  describe('repeat section', () => {
-    it('renders repeat section with add button for non-repeating task', () => {
+  describe('repeat row', () => {
+    it('shows an Add repeat row for a non-repeating task', () => {
       renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
-      expect(screen.getByText('Repeat')).toBeInTheDocument()
+      expect(screen.getByTitle('Repeat')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /add repeat/i })).toBeInTheDocument()
     })
 
@@ -522,17 +541,22 @@ describe('TaskDetailDrawer — editable properties', () => {
         />
       )
 
-      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /stop repeating/i })).toBeInTheDocument()
+      const trigger = screen.getByRole('button', { name: /^repeat:/i })
+      expect(screen.queryByRole('button', { name: /stop repeating/i })).not.toBeInTheDocument()
+
+      // Edit and Stop live behind the rule, not as standing buttons.
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false })
+      expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'Stop repeating' })).toBeInTheDocument()
     })
 
-    it('appears after sub-issues in DOM order', () => {
+    it('sits in the property rail, before sub-issues', () => {
       renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
-      const subIssuesLabel = screen.getByText('Sub-issues')
-      const repeatLabel = screen.getByText('Repeat')
+      const repeatRow = screen.getByTitle('Repeat')
+      const subIssuesHeading = screen.getByText('Sub-issues')
 
-      const result = subIssuesLabel.compareDocumentPosition(repeatLabel)
+      const result = repeatRow.compareDocumentPosition(subIssuesHeading)
       const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
       expect(result & FOLLOWING).toBe(FOLLOWING)
     })
@@ -618,7 +642,8 @@ describe('TaskDetailDrawer — editable properties', () => {
       renderWithI18n(<TaskDetailDrawer {...defaultProps} task={createTask()} />)
 
       expect(screen.getByText('Related')).toBeInTheDocument()
-      expect(screen.getByText('No related items yet')).toBeInTheDocument()
+      // Empty reads as the add row itself, not a separate empty-state line.
+      expect(screen.getByRole('button', { name: 'Add related item' })).toBeInTheDocument()
       expect(screen.queryByText('Linked Notes')).not.toBeInTheDocument()
     })
 
@@ -796,6 +821,20 @@ describe('TaskDetailDrawer — editable properties', () => {
 
       fireEvent.keyDown(document, { key: 'Escape' })
       expect(onClose).toHaveBeenCalled()
+    })
+
+    it('Escape in the sub-issue input cancels the add without closing the drawer', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      renderWithI18n(
+        <TaskDetailDrawer {...defaultProps} onAddSubtask={vi.fn()} onClose={onClose} />
+      )
+
+      await user.click(screen.getByRole('button', { name: /add sub-issue/i }))
+      await user.type(screen.getByPlaceholderText('Add sub-issue…'), 'draft{Escape}')
+
+      expect(screen.queryByPlaceholderText('Add sub-issue…')).not.toBeInTheDocument()
+      expect(onClose).not.toHaveBeenCalled()
     })
   })
 })

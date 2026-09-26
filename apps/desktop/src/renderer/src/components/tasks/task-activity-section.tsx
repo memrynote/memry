@@ -3,12 +3,13 @@ import { useT } from '@memry/i18n/renderer'
 import { useTaskActivity, ACTIVITY_PREVIEW_SIZE } from '@/hooks/use-task-activity'
 import { TaskActivityRow } from './task-activity-row'
 import { TaskActivitySheet } from './task-activity-sheet'
+import { DrawerSection, DrawerSectionHeading } from './drawer-section'
 
 export interface TaskActivitySectionProps {
   taskId: string
   taskTitle: string
   language: string
-  /** The drawer's own SectionLabel, passed in so this matches its siblings. */
+  /** The section's heading text; rendered with the drawer's shared heading. */
   label: React.ReactNode
 }
 
@@ -35,39 +36,45 @@ export function TaskActivitySection({
   })
 
   return (
-    <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
-      <div className="flex items-center justify-between">
+    <DrawerSection className="pb-3">
+      <DrawerSectionHeading
+        trailing={
+          total > entries.length && (
+            <button
+              type="button"
+              onClick={() => setIsSheetOpen(true)}
+              className="text-[12px] leading-4 text-text-tertiary hover:text-text-secondary transition-colors"
+            >
+              {t('drawer.activityShowAll', { count: total })}
+            </button>
+          )
+        }
+      >
         {label}
-        {total > entries.length && (
-          <button
-            type="button"
-            onClick={() => setIsSheetOpen(true)}
-            className="text-[11px] leading-3.5 text-text-tertiary hover:text-text-secondary transition-colors"
-          >
-            {t('drawer.activityShowAll', { count: total })}
-          </button>
+      </DrawerSectionHeading>
+
+      {/* `px-2` puts the timeline gutter on the drawer's icon lane. */}
+      <div className="flex flex-col px-2 pt-1">
+        {isLoading && (
+          <span className="text-[12px] leading-4 text-text-tertiary">
+            {t('drawer.activityLoading')}
+          </span>
         )}
+        {error && (
+          <span className="text-[12px] leading-4 text-destructive">
+            {t('drawer.activityError')}
+          </span>
+        )}
+        {!isLoading && !error && entries.length === 0 && (
+          <span className="text-[12px] leading-4 text-text-tertiary">
+            {t('drawer.activityEmpty')}
+          </span>
+        )}
+
+        {entries.map((entry) => (
+          <TaskActivityRow key={entry.id} entry={entry} language={language} />
+        ))}
       </div>
-
-      {isLoading && (
-        <span className="text-[11px] leading-3.5 text-text-tertiary">
-          {t('drawer.activityLoading')}
-        </span>
-      )}
-      {error && (
-        <span className="text-[11px] leading-3.5 text-destructive">
-          {t('drawer.activityError')}
-        </span>
-      )}
-      {!isLoading && !error && entries.length === 0 && (
-        <span className="text-[11px] leading-3.5 text-text-tertiary">
-          {t('drawer.activityEmpty')}
-        </span>
-      )}
-
-      {entries.map((entry) => (
-        <TaskActivityRow key={entry.id} entry={entry} language={language} />
-      ))}
 
       <TaskActivitySheet
         open={isSheetOpen}
@@ -76,6 +83,6 @@ export function TaskActivitySection({
         taskTitle={taskTitle}
         language={language}
       />
-    </div>
+    </DrawerSection>
   )
 }

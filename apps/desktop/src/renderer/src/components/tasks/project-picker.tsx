@@ -186,6 +186,7 @@ export const ProjectPicker = ({
               type="button"
               className={cn(
                 'flex items-center rounded-sm py-0.5 px-2 gap-1.5 cursor-pointer transition-opacity',
+                'text-[11px] font-medium leading-3.5',
                 'hover:opacity-80 focus-visible:outline-none',
                 className
               )}
@@ -195,7 +196,7 @@ export const ProjectPicker = ({
               aria-label={`Project: ${badgeName}. Click to change.`}
             >
               <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: badgeColor }} />
-              <div className="text-[11px] font-medium leading-3.5" style={{ color: badgeColor }}>
+              <div className="min-w-0 truncate" style={{ color: badgeColor }}>
                 {badgeName}
               </div>
             </button>

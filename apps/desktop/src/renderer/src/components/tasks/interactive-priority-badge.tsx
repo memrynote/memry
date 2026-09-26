@@ -77,6 +77,7 @@ export const InteractivePriorityBadge = ({
           type="button"
           className={cn(
             'flex items-center rounded-sm py-px px-[7px] gap-1 cursor-pointer transition-opacity [font-synthesis:none]',
+            'text-[11px] font-medium leading-3.5',
             'hover:opacity-80 focus-visible:outline-none',
             fixedWidth && 'w-[70px] justify-start',
             className
@@ -86,7 +87,7 @@ export const InteractivePriorityBadge = ({
         >
           <PriorityIcon priority={priority} />
           <div
-            className="text-[11px] font-medium leading-3.5"
+            className="min-w-0 truncate"
             style={{ color: config.color ?? 'var(--text-tertiary)' }}
           >
             {displayLabel}

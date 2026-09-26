@@ -9,8 +9,21 @@ import { PanelResizeRail } from '@/components/ui/panel-resize-rail'
 import { type Task, type Priority, type RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getSubtasks } from '@/lib/subtask-utils'
-import { DatePropertyRow } from '@/components/tasks/date-property-row'
-import { TaskRepeatSection } from '@/components/tasks/task-repeat-section'
+import {
+  DatePropertyRow,
+  PropertyRow,
+  PROPERTY_ROW_TRIGGER,
+  PROPERTY_ROW_TRIGGER_NEUTRAL_TEXT,
+  PROPERTY_ROW_TRIGGER_PROJECT
+} from '@/components/tasks/date-property-row'
+import { TaskRepeatRow } from '@/components/tasks/task-repeat-section'
+import { TaskSubissuesSection } from '@/components/tasks/task-subissues-section'
+import {
+  DRAWER_ADD_ROW,
+  DRAWER_ROW,
+  DrawerSection,
+  DrawerSectionHeading
+} from '@/components/tasks/drawer-section'
 import { notesService } from '@/services/notes-service'
 import { canvasService } from '@/services/canvas-service'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -25,7 +38,6 @@ import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
-import { StatusIcon } from '@/components/tasks/status-icon'
 import { FileAudio, FileImage, FilePdf, FileVideo, PenTool, X, Plus, Trash } from '@/lib/icons'
 import { TaskUnarchiveButton } from './task-unarchive-button'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
@@ -71,12 +83,6 @@ const formatCreatedDate = (date: Date, language: string): string =>
 // ============================================================================
 // SMALL DISPLAY COMPONENTS
 // ============================================================================
-
-const SectionLabel = ({ children }: { children: React.ReactNode }): React.JSX.Element => (
-  <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-    {children}
-  </span>
-)
 
 const NoteIcon = ({ color }: { color: string }): React.JSX.Element => (
   <svg
@@ -188,9 +194,6 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   const [noteNames, setNoteNames] = useState<RelatedItemInfoByKey>({})
   const [canvasNames, setCanvasNames] = useState<RelatedItemInfoByKey>({})
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isAddingSubtask, setIsAddingSubtask] = useState(false)
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
-  const subtaskInputRef = useRef<HTMLInputElement>(null)
 
   const [isLinkingNote, setIsLinkingNote] = useState(false)
   const [noteSearchQuery, setNoteSearchQuery] = useState('')
@@ -290,10 +293,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     if (!isOpen) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        if (isAddingSubtask) {
-          setIsAddingSubtask(false)
-          setNewSubtaskTitle('')
-        } else if (isLinkingNote) {
+        if (isLinkingNote) {
           setIsLinkingNote(false)
           setNoteSearchQuery('')
         } else {
@@ -303,12 +303,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [isOpen, onClose, isAddingSubtask, isLinkingNote])
-
-  const handleStartAddSubtask = useCallback(() => {
-    setIsAddingSubtask(true)
-    requestAnimationFrame(() => subtaskInputRef.current?.focus())
-  }, [])
+  }, [isOpen, onClose, isLinkingNote])
 
   const handleStartLinkNote = useCallback(() => {
     setIsLinkingNote(true)
@@ -321,11 +316,6 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   )
 
   const subtasks = useMemo(() => (task ? getSubtasks(task.id, tasks) : []), [task, tasks])
-
-  const completedSubtaskCount = useMemo(
-    () => subtasks.filter((s) => s.completedAt !== null).length,
-    [subtasks]
-  )
 
   const { notes: noteResults, canvases: canvasResults } = useRelatedItemSearch(
     isLinkingNote,
@@ -492,28 +482,24 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             </div>
 
             {/* ── Properties Grid ── */}
-            <div className="flex flex-col pt-3 pb-4 border-b border-border px-5">
-              <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  {t('task.status')}
-                </span>
+            {/* px-3 + the trigger's px-2 = 20px icon lane, in line with the title. */}
+            <div className="flex flex-col gap-0.5 py-2.5 border-b border-border px-3">
+              <PropertyRow label={t('task.status')}>
                 <InteractiveStatusBadge
                   statusId={task.statusId}
                   statuses={project.statuses}
                   onStatusChange={handleStatusChange}
+                  className={PROPERTY_ROW_TRIGGER_NEUTRAL_TEXT}
                 />
-              </div>
+              </PropertyRow>
 
-              <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  {t('task.priority')}
-                </span>
+              <PropertyRow label={t('task.priority')}>
                 <InteractivePriorityBadge
                   priority={task.priority}
                   onPriorityChange={handlePriorityChange}
-                  compact
+                  className={PROPERTY_ROW_TRIGGER_NEUTRAL_TEXT}
                 />
-              </div>
+              </PropertyRow>
 
               <DatePropertyRow
                 label={t('task.startDate')}
@@ -526,6 +512,8 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   dueDate={task.startDate ?? null}
                   dueTime={null}
                   onDateChange={handleStartDateChange}
+                  variant="property"
+                  className={PROPERTY_ROW_TRIGGER}
                 />
               </DatePropertyRow>
 
@@ -541,166 +529,60 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   onDateChange={handleDueDateChange}
                   onTimeChange={handleDueTimeChange}
                   isRepeating={task.isRepeating}
+                  variant="property"
+                  className={PROPERTY_ROW_TRIGGER}
                 />
               </DatePropertyRow>
 
-              <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  {t('task.reminder')}
-                </span>
-                <TaskReminderButton taskId={task.id} />
-              </div>
+              <TaskRepeatRow
+                taskTitle={task.title}
+                repeatConfig={task.repeatConfig}
+                isRepeating={task.isRepeating}
+                dueDate={task.dueDate}
+                onRepeatChange={handleRepeatChange}
+              />
 
-              <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  {t('task.project')}
-                </span>
+              <PropertyRow label={t('task.reminder')}>
+                <TaskReminderButton taskId={task.id} className={PROPERTY_ROW_TRIGGER} />
+              </PropertyRow>
+
+              <PropertyRow label={t('task.project')}>
                 <InteractiveProjectBadge
                   projectId={task.projectId}
                   projects={projects}
                   onProjectChange={handleProjectChange}
                   allowCreate
+                  className={PROPERTY_ROW_TRIGGER_PROJECT}
                 />
-              </div>
+              </PropertyRow>
+
+              <TagAutocomplete tags={task.tags} onTagsChange={handleTagsChange} variant="row" />
             </div>
 
-            {/* ── Tags ── */}
-            {/* TagAutocomplete brings its own label/padding/border chrome (see
-                components/filing/tag-autocomplete.tsx), so it sits as its own
-                section rather than nested in the compact properties-grid rows. */}
-            <TagAutocomplete
-              tags={task.tags}
-              onTagsChange={handleTagsChange}
-              placeholder={t('task.tags')}
-            />
-
-            {/* ── Description ── */}
-            <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
-              <SectionLabel>{t('task.description')}</SectionLabel>
+            {/* ── Description: no heading, the text speaks for itself ── */}
+            <div className="px-5 pt-4 pb-1">
               <TaskDescriptionEditor
                 key={task.id}
                 initialContent={task.description ?? ''}
                 onContentChange={handleDescriptionChange}
                 placeholder={t('task.descriptionPlaceholder')}
                 ariaLabel={t('task.description')}
-                className="text-[13px] leading-5 text-text-secondary"
+                className="text-[13px] leading-5 text-text-primary"
               />
             </div>
 
-            {/* ── Sub-issues ── */}
-            <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
-              <div className="flex items-center justify-between">
-                <SectionLabel>{t('drawer.subIssues')}</SectionLabel>
-                <div className="flex items-center gap-1.5">
-                  {subtasks.length > 0 && (
-                    <span className="text-[11px] text-text-tertiary leading-3.5">
-                      {completedSubtaskCount} / {subtasks.length}
-                    </span>
-                  )}
-                  {onAddSubtask && (
-                    <button
-                      type="button"
-                      onClick={handleStartAddSubtask}
-                      className="text-text-tertiary hover:text-text-secondary transition-colors"
-                      aria-label={t('drawer.addSubIssue')}
-                    >
-                      <Plus size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-              {subtasks.map((sub) => {
-                const isDone = sub.completedAt !== null
-                const subStatus = project.statuses.find((s) => s.id === sub.statusId)
-                const doneStatus = project.statuses.find((s) => s.type === 'done')
-                const subType = isDone
-                  ? 'done'
-                  : ((subStatus?.type ?? 'todo') as 'todo' | 'in_progress' | 'done')
-                const subColor = isDone
-                  ? (doneStatus?.color ?? subStatus?.color ?? 'var(--text-tertiary)')
-                  : (subStatus?.color ?? 'var(--text-tertiary)')
-
-                return (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    onClick={() => onToggleComplete?.(sub.id)}
-                    className="flex items-center py-1 gap-2 text-start"
-                  >
-                    <StatusIcon type={subType} color={subColor} />
-                    <span
-                      className={cn(
-                        'text-[12px] leading-4',
-                        isDone
-                          ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
-                          : 'text-text-primary'
-                      )}
-                    >
-                      {sub.title}
-                    </span>
-                  </button>
-                )
-              })}
-              {isAddingSubtask && (
-                <div className="flex items-center py-1 gap-2">
-                  <StatusIcon type="todo" color="var(--text-tertiary)" />
-                  <input
-                    ref={subtaskInputRef}
-                    type="text"
-                    value={newSubtaskTitle}
-                    onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newSubtaskTitle.trim()) {
-                        onAddSubtask?.(task.id, newSubtaskTitle.trim())
-                        setNewSubtaskTitle('')
-                      }
-                      if (e.key === 'Escape') {
-                        setIsAddingSubtask(false)
-                        setNewSubtaskTitle('')
-                      }
-                    }}
-                    onBlur={() => {
-                      if (!newSubtaskTitle.trim()) {
-                        setIsAddingSubtask(false)
-                        setNewSubtaskTitle('')
-                      }
-                    }}
-                    placeholder={t('drawer.subIssuePlaceholder')}
-                    aria-label={t('drawer.subIssuePlaceholder')}
-                    className="flex-1 text-[12px] leading-4 text-text-primary placeholder:text-text-tertiary bg-transparent outline-none"
-                  />
-                </div>
-              )}
-              {subtasks.length === 0 && !isAddingSubtask && (
-                <span className="text-[11px] text-text-tertiary leading-3.5">
-                  {t('drawer.noSubIssues')}
-                </span>
-              )}
-            </div>
-
-            {/* ── Repeat ── */}
-            <TaskRepeatSection
-              taskTitle={task.title}
-              repeatConfig={task.repeatConfig}
-              isRepeating={task.isRepeating}
-              dueDate={task.dueDate}
-              projectColor={project.color}
-              onRepeatChange={handleRepeatChange}
+            <TaskSubissuesSection
+              subtasks={subtasks}
+              statuses={project.statuses}
+              onToggleComplete={onToggleComplete}
+              onAddSubtask={onAddSubtask && ((title) => onAddSubtask(task.id, title))}
             />
 
             {/* ── Related ── */}
-            <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
-              <div className="flex items-center justify-between">
-                <SectionLabel>{t('drawer.related')}</SectionLabel>
-                <button
-                  type="button"
-                  onClick={handleStartLinkNote}
-                  className="text-text-tertiary hover:text-text-secondary transition-colors"
-                  aria-label={t('drawer.addRelatedItem')}
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
+            <DrawerSection>
+              <DrawerSectionHeading count={relatedRefs.length || undefined}>
+                {t('drawer.related')}
+              </DrawerSectionHeading>
               {relatedRefs.map((ref) => {
                 const key = relatedItemKey(ref)
                 const info = displayedRelatedNames[key]
@@ -732,7 +614,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 return (
                   <div
                     key={key}
-                    className="group flex items-center rounded-md py-1.5 px-2.5 gap-2 bg-foreground/[0.03] hover:bg-foreground/[0.05] transition-colors cursor-pointer"
+                    className={cn(DRAWER_ROW, 'group cursor-pointer')}
                     role="button"
                     tabIndex={0}
                     onClick={openRef}
@@ -744,7 +626,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     }}
                   >
                     <RelatedIcon kind={ref.kind} info={info} projectColor={project.color} />
-                    <span className="flex-1 min-w-0 text-[12px] text-text-secondary leading-4 truncate">
+                    <span className="flex-1 min-w-0 text-text-primary truncate">
                       {info?.title ?? t('drawer.loading')}
                     </span>
                     <button
@@ -753,7 +635,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                         e.stopPropagation()
                         unlinkRef()
                       }}
-                      className="shrink-0 rounded-sm p-0.5 text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary transition-all"
+                      className="shrink-0 rounded-sm p-0.5 text-text-tertiary opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-text-secondary transition-all"
                       aria-label={t('drawer.removeRelatedItem', {
                         title: info?.title ?? t('drawer.relatedItemFallback')
                       })}
@@ -763,8 +645,8 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   </div>
                 )
               })}
-              {isLinkingNote && (
-                <div className="flex flex-col gap-1">
+              {isLinkingNote ? (
+                <div className="flex flex-col gap-0.5">
                   <input
                     ref={noteSearchInputRef}
                     type="text"
@@ -778,9 +660,9 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     }}
                     placeholder={t('drawer.searchRelated')}
                     aria-label={t('drawer.searchRelated')}
-                    className="text-[12px] leading-4 text-text-primary placeholder:text-text-tertiary bg-foreground/[0.03] rounded-md py-1.5 px-2.5 outline-none border border-border focus:border-ring"
+                    className="h-7 rounded-md px-2 text-[13px] leading-[18px] text-text-primary placeholder:text-text-tertiary bg-surface-active/60 outline-none"
                   />
-                  <div className="max-h-[160px] overflow-y-auto scrollbar-thin flex flex-col gap-0.5">
+                  <div className="max-h-[168px] overflow-y-auto scrollbar-thin flex flex-col">
                     {searchResults.map((item) => (
                       <button
                         key={relatedItemKey(item)}
@@ -815,16 +697,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                           setNoteSearchQuery('')
                           setIsLinkingNote(false)
                         }}
-                        className="flex items-center rounded-md py-1.5 px-2.5 gap-2 text-start hover:bg-foreground/[0.05] transition-colors"
+                        className={DRAWER_ROW}
                       >
                         <RelatedIcon kind={item.kind} info={item} projectColor={project.color} />
-                        <span className="text-[12px] text-text-secondary leading-4 truncate">
-                          {item.title}
-                        </span>
+                        <span className="text-text-primary truncate">{item.title}</span>
                       </button>
                     ))}
                     {searchResults.length === 0 && (
-                      <span className="text-[11px] text-text-tertiary leading-3.5 py-1.5 px-2.5">
+                      <span className="px-2 text-[12px] leading-7 text-text-tertiary">
                         {noteSearchQuery
                           ? t('drawer.noMatchingRelated')
                           : t('drawer.noRelatedAvailable')}
@@ -832,20 +712,20 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     )}
                   </div>
                 </div>
+              ) : (
+                <button type="button" onClick={handleStartLinkNote} className={DRAWER_ADD_ROW}>
+                  <Plus className="size-3.5 shrink-0" aria-hidden="true" />
+                  {t('drawer.addRelatedItem')}
+                </button>
               )}
-              {relatedRefs.length === 0 && !isLinkingNote && (
-                <span className="text-[11px] text-text-tertiary leading-3.5">
-                  {t('drawer.noRelatedItems')}
-                </span>
-              )}
-            </div>
+            </DrawerSection>
 
             {/* ── Activity ── */}
             <TaskActivitySection
               taskId={task.id}
               taskTitle={task.title}
               language={i18n.language}
-              label={<SectionLabel>{t('drawer.activity')}</SectionLabel>}
+              label={t('drawer.activity')}
             />
 
             {/* ── Footer ── */}

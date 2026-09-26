@@ -15,7 +15,13 @@ interface InteractiveDueDateBadgeProps {
   onDateChange: (date: Date | null) => void
   onTimeChange?: (time: string | null) => void
   isRepeating?: boolean
-  variant?: 'default' | 'compact'
+  /**
+   * `property`: the task drawer's label-less property row. The text names the
+   * date kind ("Starts Sep 30" / "Due Sep 25", or "Start date" when empty), and
+   * a set date with no urgency reads as primary text rather than the muted
+   * empty-state colour.
+   */
+  variant?: 'default' | 'compact' | 'property'
   fixedWidth?: boolean
   className?: string
 }
@@ -40,7 +46,7 @@ export const InteractiveDueDateBadge = ({
   onDateChange,
   onTimeChange,
   isRepeating = false,
-  variant: _variant = 'default',
+  variant = 'default',
   fixedWidth = false,
   className
 }: InteractiveDueDateBadgeProps): React.JSX.Element => {
@@ -69,6 +75,13 @@ export const InteractiveDueDateBadge = ({
 
   const dateStatus = dateKind === 'start' ? 'none' : (status?.status ?? 'none')
 
+  const isProperty = variant === 'property'
+  const visibleLabel = !isProperty
+    ? dateLabel
+    : !dueDate
+      ? t(dateKind === 'start' ? 'task.startDate' : 'task.dueDate')
+      : t(dateKind === 'start' ? 'task.startsOn' : 'task.dueOn', { date: dateLabel })
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild onClick={handleTriggerClick}>
@@ -76,8 +89,13 @@ export const InteractiveDueDateBadge = ({
           type="button"
           className={cn(
             'flex items-center gap-1.5 cursor-pointer transition-opacity rounded-[5px] py-[3px] px-2 border border-solid',
+            'text-[12px] leading-4',
             'hover:opacity-80 focus-visible:outline-none',
             badgeStyles[dateStatus],
+            isProperty &&
+              dueDate &&
+              (dateStatus === 'none' || dateStatus === 'later') &&
+              'text-text-primary',
             fixedWidth && 'w-[110px] flex justify-end',
             className
           )}
@@ -89,7 +107,7 @@ export const InteractiveDueDateBadge = ({
         >
           {isRepeating && <Repeat className="size-3 shrink-0" />}
           <Calendar size={12} className="shrink-0" />
-          <div className="text-[12px] leading-4">{dateLabel}</div>
+          <div className="min-w-0 truncate">{visibleLabel}</div>
         </button>
       </PopoverTrigger>
       {/* A raw `PopoverContent` has no height management: Radix's popper sets

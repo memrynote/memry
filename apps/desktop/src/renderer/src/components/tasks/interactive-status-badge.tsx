@@ -29,6 +29,7 @@ export const InteractiveStatusBadge = ({
           type="button"
           className={cn(
             'flex min-w-0 items-center rounded-sm py-0.5 px-2 gap-1 cursor-pointer transition-opacity',
+            'text-[11px] font-medium leading-3.5',
             'hover:opacity-80 focus-visible:outline-none',
             className
           )}
@@ -36,10 +37,7 @@ export const InteractiveStatusBadge = ({
           aria-label={`Status: ${statusName}. Click to change.`}
         >
           <StatusIcon type={currentStatus?.type ?? 'todo'} color={statusColor} />
-          <div
-            className="min-w-0 truncate text-[11px] font-medium leading-3.5"
-            style={{ color: statusColor }}
-          >
+          <div className="min-w-0 truncate" style={{ color: statusColor }}>
             {statusName}
           </div>
         </button>

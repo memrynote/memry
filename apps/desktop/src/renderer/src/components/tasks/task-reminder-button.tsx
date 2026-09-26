@@ -71,6 +71,7 @@ export function TaskReminderButton({
           aria-label={ariaLabel}
           className={cn(
             'flex items-center gap-1.5 cursor-pointer whitespace-nowrap rounded-[5px] py-[3px] px-2 border border-solid',
+            'text-[12px] leading-4',
             'border-foreground/10 bg-foreground/[0.03] dark:bg-foreground/[0.06]',
             'transition-opacity hover:opacity-80 focus-visible:outline-none',
             'disabled:cursor-not-allowed disabled:opacity-50',
@@ -83,7 +84,7 @@ export function TaskReminderButton({
           ) : (
             <Bell className="size-3 shrink-0" />
           )}
-          <span className="text-[12px] leading-4">{label}</span>
+          <span className="min-w-0 truncate">{label}</span>
           {activeReminderCount > 1 && (
             <span className="rounded-[3px] bg-foreground/10 px-1 text-[10px] font-medium leading-4 text-text-secondary">
               +{activeReminderCount - 1}

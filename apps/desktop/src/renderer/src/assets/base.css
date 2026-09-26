@@ -161,12 +161,59 @@
   background-color: transparent !important;
 }
 
-/* Task description editor: the app zeroes .bn-editor padding-inline globally, but
-   BlockNote renders its drag/plus side menu in a left gutter. Reserve that gutter
-   so the handles (and their menus) are not clipped by the drawer's overflow. */
+/* Task description editor: text starts flush, on the same 20px lane as the
+   drawer's section headings. The drag handle (the only side-menu button here,
+   see task-description-editor.tsx) sits in the drawer's 20px inline padding,
+   so it is 18px wide rather than shadcn's auto-sized 24px button. */
 .task-description-editor .bn-editor {
-  padding-inline-start: 28px !important;
+  padding-inline-start: 0 !important;
   padding-inline-end: 4px !important;
+}
+
+:root .task-description-editor .bn-side-menu .bn-button {
+  width: 18px;
+  min-width: 18px;
+}
+
+/* Task description body text at the drawer's 13px text size instead of the
+   note editor's 1rem. Kept in rem (13/16) so it still follows the Appearance
+   font-size setting like the note body does. Headings are em-based, so they
+   scale down with it. `:root` outranks the global `:root .bn-default-styles`
+   rule further down. */
+:root .task-description-editor .bn-default-styles {
+  font-size: 0.8125rem;
+}
+
+/* Side-menu height = the first line box at that 13px base (the global rules
+   below assume 1rem body text and rem-sized headings). Heading levels are the
+   same --level ems as the note editor, at line-height 1.3. `!important` for the
+   same reason as the global heading rules: shadcn's CSS loads after this file. */
+:root .task-description-editor .bn-side-menu {
+  height: calc(0.8125rem * 1.5 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'] {
+  height: calc(0.8125rem * 1.875 * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='2'] {
+  height: calc(0.8125rem * 1.5 * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='3'] {
+  height: calc(0.8125rem * 1.25 * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='4'] {
+  height: calc(0.8125rem * 1.125 * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='5'] {
+  height: calc(0.8125rem * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='6'] {
+  height: calc(0.8125rem * 0.875 * 1.3 + 2px) !important;
 }
 
 /* Code block: theme-aware. The highlighter emits both github-light and

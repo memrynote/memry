@@ -7,7 +7,12 @@
  */
 
 import { memo, useCallback, useEffect, useRef } from 'react'
-import { useCreateBlockNote } from '@blocknote/react'
+import {
+  DragHandleButton,
+  SideMenu,
+  SideMenuController,
+  useCreateBlockNote
+} from '@blocknote/react'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
@@ -33,6 +38,20 @@ interface TaskDescriptionEditorProps {
   /** Optional aria-label for the editor region. */
   ariaLabel?: string
 }
+
+// The description's text starts on the drawer's 20px lane, so the side menu
+// lives in the drawer's own 20px inline padding. That fits the drag handle but
+// not the handle plus BlockNote's `+`; adding a block stays one `/` away.
+const DragHandleOnlySideMenu = (): React.JSX.Element => (
+  <SideMenu>
+    <DragHandleButton />
+  </SideMenu>
+)
+
+// BlockNote's default middleware nudges the menu down per heading level to
+// match its own heading sizes; base.css restates the menu height per level
+// instead (as the note editor does), so the offset has to go.
+const SIDE_MENU_FLOATING_OPTIONS = { useFloatingOptions: { middleware: [] } }
 
 export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
   initialContent,
@@ -123,7 +142,13 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
         editable={editable}
         onChange={() => void handleChange()}
         theme={editorTheme}
-      />
+        sideMenu={false}
+      >
+        <SideMenuController
+          sideMenu={DragHandleOnlySideMenu}
+          floatingUIOptions={SIDE_MENU_FLOATING_OPTIONS}
+        />
+      </BlockNoteView>
     </section>
   )
 })
