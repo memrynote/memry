@@ -498,7 +498,7 @@ describe('re-create clock seeding (#2409)', () => {
     it.each(CONTENT_TYPES)(
       '%s: deleted and re-created with the runtime down, the next runtime start pushes it past the delete',
       (type) => {
-        const fixture = FIXTURES[type]
+        const fixture: Fixture = FIXTURES[type]
         fixture.insert(db, { [DEVICE]: 2 })
         enqueueLocalSyncDelete(type, fixture.id, ...fixture.deleteArgs(db))
         fixture.remove(db)
