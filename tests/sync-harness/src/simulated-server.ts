@@ -57,7 +57,11 @@ export class SimulatedServer {
         RESEND_API_KEY: 'test-resend-key',
         OTP_HMAC_KEY: 'test-otp-hmac-key',
         RECOVERY_DUMMY_SECRET: 'test-recovery-secret',
-        MIN_APP_VERSION: '0.1.0',
+        // Electron E2E launches out/main/index.js with no package.json beside
+        // it, so app.getVersion() falls back to the executable's version: the
+        // bundle version on macOS, "0.0" on Linux CI. A 0.1.0 floor refused
+        // every Linux E2E socket with 426 and the realtime path went untested.
+        MIN_APP_VERSION: '0.0.0',
         ALLOWED_ORIGIN: 'http://localhost:3000'
       }
     })

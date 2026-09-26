@@ -132,6 +132,10 @@ export class SyncEngine extends SyncEventEmitter {
   // see armPeriodicPull.
   private lastPullTickWsGeneration: number | null = null
   private lastPullTickPullAt = 0
+  // True while a wake-driven pull is queued and has not started (#2290). More
+  // wakes add nothing: that pull reads the feed after they arrived. Cleared as
+  // the pull starts, so wakes during a running pull queue exactly one more.
+  private wakePullQueued = false
 
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
@@ -620,8 +624,9 @@ export class SyncEngine extends SyncEventEmitter {
 
   private syncLock: Promise<void> = Promise.resolve()
 
-  private scheduleSync(fn: () => Promise<void>): void {
-    if (this.ctx.fullSyncActive) return
+  /** False when `fn` was dropped because a fullSync is running. */
+  private scheduleSync(fn: () => Promise<void>): boolean {
+    if (this.ctx.fullSyncActive) return false
     const run = () =>
       fn()
         .catch((error) => {
@@ -637,6 +642,24 @@ export class SyncEngine extends SyncEventEmitter {
     } else {
       this.ctx.inFlightSync = run()
     }
+    return true
+  }
+
+  private scheduleWakePull(cursor: unknown): void {
+    // A skip filter only, never adopted as LAST_CURSOR (protocol §9.11). Exact
+    // because the server assigns cursors in commit order (#2282) and only the
+    // pull moves LAST_CURSOR (#2283): every row at or below it is applied here.
+    const lastCursor = Number(this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? 0)
+    if (typeof cursor === 'number' && cursor <= lastCursor) return
+    if (this.wakePullQueued) return
+    // Set before scheduling: with nothing in flight scheduleSync runs `fn`
+    // synchronously, and `fn` clears the flag as the pull starts.
+    this.wakePullQueued = true
+    const scheduled = this.scheduleSync(async () => {
+      this.wakePullQueued = false
+      await this.pull()
+    })
+    if (!scheduled) this.wakePullQueued = false
   }
 
   private async acquireSyncLock(): Promise<(() => void) | null> {
@@ -704,6 +727,8 @@ export class SyncEngine extends SyncEventEmitter {
     this.ctx.abortController?.abort()
     this.ctx.fullSyncActive = false
     this.ctx.inFlightSync = null
+    // A wake pull chained behind the abandoned sync may never run.
+    this.wakePullQueued = false
     this.activeLockRelease?.()
     this.releaseLock()
   }
@@ -808,11 +833,7 @@ export class SyncEngine extends SyncEventEmitter {
   private handleWsMessage = (message: Exclude<SyncSocketEvent, { kind: 'ignored' }>): void => {
     switch (message.kind) {
       case 'changes_available':
-        if (!this.stateManager.isPaused()) {
-          this.scheduleSync(async () => {
-            await this.pull()
-          })
-        }
+        if (!this.stateManager.isPaused()) this.scheduleWakePull(message.cursor)
         break
       case 'crdt_updated': {
         const { noteId } = message

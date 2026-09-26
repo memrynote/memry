@@ -358,6 +358,11 @@ rest of the page as applied. Only the page's `nextCursor`, after the page is
 applied, moves the cursor
 (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:325`).
 
+Because cursors are assigned in commit order (§5.5) and the cursor moves only
+after apply, a client MAY drop a realtime wake whose `cursor` is at or below its
+applied cursor (chapter 09 §9.11). The wake's cursor is only compared, never
+stored as the device cursor.
+
 ## 5.11.1 The response shapes
 
 **Normative.** The chapters describe these routes' _behaviour_ at length and
