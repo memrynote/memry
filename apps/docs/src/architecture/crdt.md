@@ -602,6 +602,22 @@ document to its vault `.md` file and re-indexes it for search.
   without this the emptied file would be written and replicated. The pass keeps the file
   instead, and reports it the way it reports a failed conversion.
 
+- **A doc with no note row is never turned into a note** — the pass skips it. A body that
+  arrives before its record may belong to a note this device has not seen yet, or to one
+  whose tombstone it has not pulled, and the two look the same from the doc. The record is
+  what creates the note and its file; the record's CRDT walk then writes the body. A
+  `crdt_updated` pull for a row-less id merges nothing for the same reason, as the batch
+  pull and the change feed already did, so the walk that follows the record lands the whole
+  body. Packed bodies are settled after the first pull (see
+  [Vault Packs](/architecture/vault-packs#client-bootstrap-flow)).
+- **Derived reminders are pushed only from local edits** — the pass re-derives the note's
+  `note_date` reminders from its date pills. A pass armed by an editor update stamps and
+  queues what it derives, as before. A pass armed only by remote state leaves the derived
+  row unclocked and unqueued, so the server's row for the same id, with any dismissal or
+  snooze made elsewhere, applies over it instead of merging as a conflict whose push-back
+  would reset that state on other devices. The initial seed skips such rows for the same
+  reason while they hold no user intent (`pending` or `triggered`).
+
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
 results and the file on disk catch up when the pass runs.
