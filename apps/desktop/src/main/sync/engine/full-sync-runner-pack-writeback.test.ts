@@ -14,7 +14,8 @@ import {
   cancelPendingWritebacks,
   flushPendingWritebacks,
   resetWritebackState,
-  scheduleWriteback
+  scheduleWriteback,
+  writebackNow
 } from '../crdt-writeback'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
 import type { SyncContext } from './sync-context'
@@ -266,7 +267,9 @@ async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
     getOpenNoteIds: () => [],
     purge: async (noteId: string) => {
       docs.delete(noteId)
-    }
+    },
+    // `CrdtProvider.materialize`: open the doc, write it back now.
+    materialize: (noteId: string) => writebackNow(noteId, docFor(noteId))
   }
 
   mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {

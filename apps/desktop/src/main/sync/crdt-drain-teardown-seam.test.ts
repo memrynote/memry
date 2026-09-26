@@ -27,6 +27,7 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -552,8 +553,18 @@ describe('full-state flush liveness, stopSyncRuntime to the note-body outbox', (
     return { reached, release: letGo }
   }
 
-  /** What an older build left in userData, imported once by startSyncRuntime. */
+  /**
+   * What an older build left in userData, imported once by startSyncRuntime,
+   * for notes this vault holds rows for: a per-note pull merges into nothing
+   * else.
+   */
   function writeLegacyPendingNotes(noteIds: string[]): void {
+    for (const id of noteIds) {
+      runtimeMocks
+        .db!.db.insert(noteMetadata)
+        .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+        .run()
+    }
     fs.writeFileSync(
       path.join(runtimeMocks.userDataDir, 'crdt-pending-notes.json'),
       JSON.stringify(noteIds)

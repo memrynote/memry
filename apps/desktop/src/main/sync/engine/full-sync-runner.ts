@@ -24,6 +24,7 @@ import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt-body-debts'
 import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
+import { isKnownNote } from '../note-body-apply'
 
 const log = createLogger('SyncEngine')
 
@@ -365,6 +366,7 @@ export class FullSyncRunner {
       /* telemetry only — sync proceeds */
     }
     this.ctx.fullSyncActive = true
+    let packSeededNoteIds: string[] = []
     if (isFreshDevice) {
       // Compaction packs (#1840): seed note bodies from a handful of large
       // transfers before the item-granular pull, so the CRDT sweep that
@@ -374,7 +376,7 @@ export class FullSyncRunner {
       // byte-for-byte as it does on a deployment with no packs at all. It is
       // awaited rather than fired off because it writes into the same Y.Docs
       // and the same DBs the pull is about to touch.
-      await this.applyBootstrapPacks()
+      packSeededNoteIds = await this.applyBootstrapPacks()
     }
     // A pull that delivered ran to the head of the feed unrefused (#1835): only
     // then can a vault sweep cover every note whose record exists (#2297).
@@ -395,6 +397,7 @@ export class FullSyncRunner {
         }
       }
       log.debug('fullSync: pull complete')
+      await this.settlePackSeededDocs(packSeededNoteIds)
 
       const queueBeforeSeed = this.ctx.deps.queue.getPendingCount()
       const signingKeys = await this.ctx.deps.getSigningKeys()
@@ -611,7 +614,8 @@ export class FullSyncRunner {
    * deployment where packs do not exist. The sync cursor is untouched either
    * way — nothing in this path writes `LAST_CURSOR`.
    */
-  private async applyBootstrapPacks(): Promise<void> {
+  private async applyBootstrapPacks(): Promise<string[]> {
+    const seeded: string[] = []
     try {
       const provider = this.ctx.deps.crdtProvider
       // No CRDT store means no document to seed and no watermark to record;
@@ -627,7 +631,7 @@ export class FullSyncRunner {
           hasProvider: provider != null,
           storeId: provider?.storeId ?? null
         })
-        return
+        return seeded
       }
 
       const [
@@ -656,58 +660,67 @@ export class FullSyncRunner {
       const pacer = new DownloadPacer(PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE)
       pacer.setMultiplier(getBootstrapElevationFactor())
 
+      const applier = createCrdtSnapshotApplier({
+        store: {
+          getSnapshotWatermark: (noteId) => provider.getSnapshotWatermark(noteId),
+          putSnapshotWatermark: (noteId, watermark) =>
+            provider.putSnapshotWatermark(noteId, watermark),
+          // `skipSeed`, exactly as the CRDT sweep opens a doc it is about to
+          // apply server state into: seeding from local markdown first would
+          // give the doc a fresh client id and a history the packed baseline
+          // never saw. Without an open doc the provider drops the update.
+          openDoc: async (noteId) => {
+            await provider.open(noteId, undefined, { skipSeed: true })
+          },
+          applyRemoteUpdate: (noteId, update) => provider.applyRemoteUpdate(noteId, update),
+          getStateVector: (noteId) => provider.getStateVector(noteId),
+          closeDoc: async (noteId) => {
+            await provider.closeIfInactive(noteId)
+          }
+        },
+        getVaultKey: this.ctx.deps.getVaultKey,
+        getSignerPublicKeys: async () => {
+          // `sync_devices` holds ONLY this device's own row on a fresh
+          // install — peer rows arrive through `fetchAndCacheDeviceKeys`,
+          // whose single caller is the item-granular CRDT pull that runs
+          // AFTER this. Every packed snapshot was signed by some other
+          // device, so without this refresh not one packed blob verifies and
+          // the whole feature is a no-op on exactly the devices it exists
+          // for. Resolved lazily by the applier — once per bootstrap, and
+          // only once an entry is actually up for apply — so a vault with no
+          // usable packs pays nothing, and a failed refresh just leaves the
+          // cache as the candidate list.
+          const token = await this.ctx.deps.getAccessToken().catch(() => null)
+          if (token) {
+            try {
+              await fetchAndCacheDeviceKeys(this.ctx.deps.db, token)
+            } catch (error) {
+              log.debug('Could not refresh device signing keys for pack bootstrap', {
+                error: error instanceof Error ? error.message : String(error)
+              })
+            }
+          }
+          return decodeSignerPublicKeys(
+            this.ctx.deps.db
+              .select({ key: syncDevices.signingPublicKey })
+              .from(syncDevices)
+              .all()
+              .map((row) => row.key)
+          )
+        }
+      })
+
       const result = await runPackBootstrap({
         getAccessToken: this.ctx.deps.getAccessToken,
         tempDir: path.join(app.getPath('userData'), 'sync-packs'),
-        snapshots: createCrdtSnapshotApplier({
-          store: {
-            getSnapshotWatermark: (noteId) => provider.getSnapshotWatermark(noteId),
-            putSnapshotWatermark: (noteId, watermark) =>
-              provider.putSnapshotWatermark(noteId, watermark),
-            // `skipSeed`, exactly as the CRDT sweep opens a doc it is about to
-            // apply server state into: seeding from local markdown first would
-            // give the doc a fresh client id and a history the packed baseline
-            // never saw. Without an open doc the provider drops the update.
-            openDoc: async (noteId) => {
-              await provider.open(noteId, undefined, { skipSeed: true })
-            },
-            applyRemoteUpdate: (noteId, update) => provider.applyRemoteUpdate(noteId, update),
-            getStateVector: (noteId) => provider.getStateVector(noteId),
-            closeDoc: async (noteId) => {
-              await provider.closeIfInactive(noteId)
-            }
-          },
-          getVaultKey: this.ctx.deps.getVaultKey,
-          getSignerPublicKeys: async () => {
-            // `sync_devices` holds ONLY this device's own row on a fresh
-            // install — peer rows arrive through `fetchAndCacheDeviceKeys`,
-            // whose single caller is the item-granular CRDT pull that runs
-            // AFTER this. Every packed snapshot was signed by some other
-            // device, so without this refresh not one packed blob verifies and
-            // the whole feature is a no-op on exactly the devices it exists
-            // for. Resolved lazily by the applier — once per bootstrap, and
-            // only once an entry is actually up for apply — so a vault with no
-            // usable packs pays nothing, and a failed refresh just leaves the
-            // cache as the candidate list.
-            const token = await this.ctx.deps.getAccessToken().catch(() => null)
-            if (token) {
-              try {
-                await fetchAndCacheDeviceKeys(this.ctx.deps.db, token)
-              } catch (error) {
-                log.debug('Could not refresh device signing keys for pack bootstrap', {
-                  error: error instanceof Error ? error.message : String(error)
-                })
-              }
-            }
-            return decodeSignerPublicKeys(
-              this.ctx.deps.db
-                .select({ key: syncDevices.signingPublicKey })
-                .from(syncDevices)
-                .all()
-                .map((row) => row.key)
-            )
+        snapshots: {
+          shouldApply: (noteId, meta) => applier.shouldApply(noteId, meta),
+          apply: async (noteId, bytes, meta) => {
+            const applied = await applier.apply(noteId, bytes, meta)
+            if (applied) seeded.push(noteId)
+            return applied
           }
-        }),
+        },
         beginPage: () => beginPageApply(this.ctx.deps.db),
         getStateValue: (key) => this.stateManager.getStateValue(key),
         setStateValue: (key, value) => this.stateManager.setStateValue(key, value),
@@ -730,6 +743,39 @@ export class FullSyncRunner {
         error: error instanceof Error ? error.message : String(error)
       })
     }
+    return seeded
+  }
+
+  /**
+   * Packed bodies land before any record exists, so the write-back each of
+   * them armed found no row and wrote nothing. After the pull, a note it
+   * created gets its body from the doc. A doc whose id still has no row is
+   * dropped: the pull tombstoned it, or it never had a record. A record that
+   * arrives later has no watermark left to settle against, so its body debt
+   * walks the whole body again.
+   */
+  private async settlePackSeededDocs(noteIds: readonly string[]): Promise<void> {
+    const provider = this.ctx.deps.crdtProvider
+    if (!provider || noteIds.length === 0) return
+    let materialized = 0
+    let purged = 0
+    for (const noteId of noteIds) {
+      try {
+        if (isKnownNote(this.ctx.deps.db, noteId)) {
+          await provider.materialize(noteId)
+          materialized++
+        } else {
+          await provider.purge(noteId)
+          purged++
+        }
+      } catch (error) {
+        log.warn('fullSync: could not settle a pack-seeded doc', {
+          noteId,
+          error: error instanceof Error ? error.message : String(error)
+        })
+      }
+    }
+    log.info('fullSync: pack-seeded docs settled', { materialized, purged })
   }
 
   /**
