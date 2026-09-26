@@ -1225,6 +1225,38 @@ describe('CrdtSyncCoordinator', () => {
       expect(rows()).toEqual([])
     })
 
+    // A body stored for an id with no row is one the write-back can never
+    // write: the record walk that lands later merges nothing new, so no
+    // update fires. And for a tombstoned id nothing should be stored at all.
+    it('#then a broadcast pull of an id with no row merges nothing', async () => {
+      const { ctx } = createBatchContext()
+      const merged: string[] = []
+      const provider = ctx.deps.crdtProvider as unknown as {
+        applyRemoteUpdate: ReturnType<typeof vi.fn>
+      }
+      provider.applyRemoteUpdate.mockImplementation((noteId: string) => merged.push(noteId))
+      fetchCrdtSnapshotMock.mockResolvedValue(null)
+      getFromServerMock.mockResolvedValue({
+        updates: [{ sequenceNum: 3, data: 'eA==', createdAt: 1, signerDeviceId: 'device-a' }],
+        hasMore: false
+      })
+      decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
+      const coordinator = new CrdtSyncCoordinator(
+        ctx,
+        vi.fn().mockResolvedValue(new Uint8Array([1])),
+        (noteId) => noteId === 'live',
+        store()
+      )
+      coordinator.markRemoteStateUnmerged('gone')
+
+      await expect(coordinator.pullCrdtForNote('gone')).resolves.toBe(false)
+      await expect(coordinator.pullCrdtForNote('live')).resolves.toBe(true)
+
+      expect(merged).toEqual(['live'])
+      expect(coordinator.hasUnmergedRemoteState('gone')).toBe(false)
+      expect(rows()).toEqual([])
+    })
+
     it('#then a local-only note is neither owed a record body nor drained out of its debt', async () => {
       const { ctx } = createBatchContext()
       const provider = ctx.deps.crdtProvider as unknown as {
