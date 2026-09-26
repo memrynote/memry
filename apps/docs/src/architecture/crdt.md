@@ -608,7 +608,7 @@ document to its vault `.md` file and re-indexes it for search.
   what creates the note and its file; the record's CRDT walk then writes the body. A
   `crdt_updated` pull for a row-less id merges nothing for the same reason, as the batch
   pull and the change feed already did, so the walk that follows the record lands the whole
-  body. Packed bodies are settled after the first pull (see
+  body. Packed bodies are settled after a delivered pull (see
   [Vault Packs](/architecture/vault-packs#client-bootstrap-flow)).
 - **Derived reminders are pushed only from local edits** — the pass re-derives the note's
   `note_date` reminders from its date pills. A pass armed by an editor update stamps and

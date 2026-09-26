@@ -256,14 +256,22 @@ touch.
    snapshot watermark is recorded, which is what makes the CRDT sweep skip its baseline GET.
 5. **Commit.** Every `PACK_APPLY_PAGE_ENTRIES` = 100 applied entries, and at the end of each pack,
    the page transaction commits with the pack watermark written **inside** it.
-6. **Settle after the pull.** A packed body lands before any record does, and packs are immutable,
-   so a pack can hold the body of a note deleted after it was built. The write-back an apply arms
-   therefore writes nothing: it never creates a note for a doc with no row. Once the first
-   item-granular pull returns, each packed doc whose id now has a note or journal row is written
-   to that note's file (`CrdtProvider.materialize`), and each one whose id has no row is purged,
-   watermark included. Without the first half a live note would keep the body its record carried,
-   because the record's CRDT walk finds the watermark current and merges nothing. Without the
-   second, a deleted note's doc would outlive it.
+6. **Settle after a delivered pull.** A packed body lands before any record does, and packs are
+   immutable, so a pack can hold the body of a note deleted after it was built. The write-back an
+   apply arms therefore writes nothing: it never creates a note for a doc with no row. Once a pull
+   reports it delivered, each packed doc whose id now has a note or journal row is written to that
+   note's file (`CrdtProvider.materialize`), and each one whose id has no row is purged, watermark
+   included. Without the first half a live note would keep the body its record carried, because
+   the record's CRDT walk finds the watermark current and merges nothing. Without the second, a
+   deleted note's doc would outlive it.
+
+   The settle is durable. Before an apply records its watermark, it writes a
+   `packSeeded:<noteId>` row to `sync_state` (and `packSeedSettlePending` once per run), and the
+   settle removes a row only after its doc is settled. A run killed after pack apply, or mid-settle,
+   is finished by the next full sync whose pull delivers, on the same device. A pull that does not
+   deliver settles nothing, so no packed doc is purged before its record could land. A doc that
+   comes back empty is never written over the record's file; its watermark is dropped instead, so
+   the record's walk fetches the whole body.
 
 ### Signer identity
 
