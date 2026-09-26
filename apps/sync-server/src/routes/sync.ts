@@ -53,7 +53,7 @@ import { captureBusinessEvent, safeWaitUntil, waitUntilCaptured } from '../servi
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
 import {
-  storeUpdates,
+  storeUpdatesWithCursor,
   getUpdates,
   getBatchUpdates,
   getSnapshotMeta,
@@ -802,9 +802,9 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
   )
 
   const totalBytes = buffers.reduce((sum, buf) => sum + buf.byteLength, 0)
-  let sequences: number[]
+  let stored: { sequences: number[]; cursor?: number }
   try {
-    sequences = await storeUpdates(
+    stored = await storeUpdatesWithCursor(
       c.env.DB,
       userId,
       vaultId,
@@ -827,7 +827,10 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
     }
     throw error
   }
+  const { sequences, cursor } = stored
 
+  // `cursor` (#2420) is the highest cursor this push inserted; a duplicate-only
+  // retry inserted nothing and still broadcasts, without one.
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(doId)
   waitUntilCaptured(
@@ -840,7 +843,8 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
           excludeDeviceId: deviceId,
           vaultId,
           type: 'crdt_updated',
-          noteId: parsed.noteId
+          noteId: parsed.noteId,
+          cursor
         })
       })
     ),
@@ -986,7 +990,7 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
     (await snapshotClaimsEnabled(c.env.DB, c.env.CRDT_CLAIM_MIN_DESKTOP_VERSION))
       ? snapshotClaim(parsed)
       : undefined
-  let result: { sequenceNum: number; revision: string }
+  let result: { sequenceNum: number; revision: string; cursor?: number }
   try {
     result = await storeSnapshot(
       c.env.DB,
@@ -1042,6 +1046,9 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
   // still being removed. Delivery is best-effort for the same reason as the
   // update path: the write already succeeded, so a failed broadcast is captured
   // in the background rather than returned as an error the client would retry.
+  //
+  // `cursor` (#2420) is the stored row's; an older own encode wrote nothing and
+  // is still announced, without one.
   const doId = c.env.USER_SYNC_STATE.idFromName(userId)
   const stub = c.env.USER_SYNC_STATE.get(doId)
   waitUntilCaptured(
@@ -1054,7 +1061,8 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
           excludeDeviceId: deviceId,
           vaultId,
           type: 'crdt_updated',
-          noteId: parsed.noteId
+          noteId: parsed.noteId,
+          cursor: result.cursor
         })
       })
     ),
@@ -1173,8 +1181,17 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
       }
       throw error
     }
+    // The response keeps its shape: the cursor rides only on the broadcast.
     decoded.forEach((entry, position) => {
-      results[entry.index] = outcomes[position]
+      const outcome = outcomes[position]
+      results[entry.index] = outcome.accepted
+        ? {
+            noteId: outcome.noteId,
+            accepted: true,
+            sequenceNum: outcome.sequenceNum,
+            revision: outcome.revision
+          }
+        : outcome
     })
   }
 
@@ -1220,7 +1237,8 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
                 excludeDeviceId: deviceId,
                 vaultId,
                 type: 'crdt_updated',
-                noteId: outcome.noteId
+                noteId: outcome.noteId,
+                cursor: outcome.cursor
               })
             })
           )

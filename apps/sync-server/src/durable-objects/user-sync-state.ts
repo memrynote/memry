@@ -227,9 +227,10 @@ export class UserSyncState extends DurableObject<Bindings> {
       }
     }
 
-    // Broadcast hop of the end-to-end trace (#2280). Only a record push carries
-    // a cursor. No device or item ids: the cursor and vault are the join key.
-    if (body.cursor !== undefined) {
+    // Broadcast hop of the end-to-end trace (#2280), record pushes only: a
+    // `crdt_updated` frame carries a cursor too (#2420) and is not traced. No
+    // device or item ids: the cursor and vault are the join key.
+    if (msgType === 'changes_available' && body.cursor !== undefined) {
       logger.info('Record changes broadcast', { vaultId: body.vaultId, cursor: body.cursor, sent })
     }
 

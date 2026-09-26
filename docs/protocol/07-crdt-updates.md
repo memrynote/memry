@@ -893,7 +893,8 @@ snapshot contains the updates it prunes (§7.6).
   client never sees those writes. Desktop reads the feed since #2297 part a but
   still runs the `crdt_updated`, per-note pull and sweep paths, so a rollback is
   still safe for it; it stops being safe once those paths are removed.
-- The `crdt_updated` broadcast (chapter 09) is unchanged and carries no cursor.
+- The `crdt_updated` broadcast (chapter 09) now carries the cursor the write
+  reserved (#2420), omitted when it stored nothing new; it is never a pull cursor.
 
 ### 7.17.4 The Rust core (#2304)
 

@@ -71,7 +71,7 @@ vi.mock('../services/vault-deletion', () => ({
 }))
 
 vi.mock('../services/crdt', () => ({
-  storeUpdates: vi.fn().mockResolvedValue([1]),
+  storeUpdatesWithCursor: vi.fn().mockResolvedValue({ sequences: [1] }),
   getUpdates: vi.fn().mockResolvedValue({ updates: [], hasMore: false }),
   getBatchUpdates: vi.fn().mockResolvedValue({}),
   getSnapshotMeta: vi.fn().mockResolvedValue(null),
@@ -149,7 +149,7 @@ import { ensureSyncVaultAllowed, isPaidSyncEntitlementActive } from '../services
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { deleteVaultData, vaultExistsForUser } from '../services/vault-deletion'
 import {
-  storeUpdates,
+  storeUpdatesWithCursor,
   getUpdates,
   getBatchUpdates,
   storeSnapshot,
@@ -1449,7 +1449,7 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(storeUpdates).toHaveBeenCalledTimes(1)
+      expect(storeUpdatesWithCursor).toHaveBeenCalledTimes(1)
       expect(processRecordPushBatch).not.toHaveBeenCalled()
     })
 
@@ -1975,7 +1975,7 @@ describe('sync routes', () => {
     })
 
     it('logs and returns quota errors for CRDT update and snapshot writes', async () => {
-      vi.mocked(storeUpdates).mockRejectedValueOnce(
+      vi.mocked(storeUpdatesWithCursor).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
       )
 
@@ -1986,7 +1986,7 @@ describe('sync routes', () => {
         executionCtx
       )
       expect(res.status).toBe(413)
-      expect(storeUpdates).toHaveBeenCalled()
+      expect(storeUpdatesWithCursor).toHaveBeenCalled()
 
       vi.mocked(storeSnapshot).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)

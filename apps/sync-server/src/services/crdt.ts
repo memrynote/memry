@@ -58,8 +58,25 @@ export const storeUpdates = async (
   signerDeviceId: string,
   updates: ArrayBuffer[],
   client: ClientIdentity | null = null
-): Promise<number[]> => {
-  if (updates.length === 0) return []
+): Promise<number[]> =>
+  (await storeUpdatesWithCursor(db, userId, vaultId, noteId, signerDeviceId, updates, client))
+    .sequences
+
+/**
+ * `storeUpdates`, plus `cursor`: the highest server_cursor among the rows this
+ * call inserted (#2420). Absent when every update was already stored, since a
+ * duplicate's reserved cursor stays unused and names no row.
+ */
+export const storeUpdatesWithCursor = async (
+  db: D1Database,
+  userId: string,
+  vaultId: string,
+  noteId: string,
+  signerDeviceId: string,
+  updates: ArrayBuffer[],
+  client: ClientIdentity | null = null
+): Promise<{ sequences: number[]; cursor?: number }> => {
+  if (updates.length === 0) return { sequences: [] }
 
   const ids = updates.map(() => crypto.randomUUID())
   const hashes = await Promise.all(
@@ -171,12 +188,16 @@ export const storeUpdates = async (
 
   const writeResults = results.slice(results.length - statements.length)
   let storedBytes = 0
+  let cursor: number | undefined
   const sequences = updates.map((update, position) => {
     const [stored] = writeResults[position * 2 + 1].results as Array<{
       id: string
       sequence_num: number
     }>
-    if (stored.id === ids[position]) storedBytes += update.byteLength
+    if (stored.id === ids[position]) {
+      storedBytes += update.byteLength
+      cursor = cursors.cursorAt(results, position)
+    }
     return stored.sequence_num
   })
 
@@ -204,7 +225,7 @@ export const storeUpdates = async (
     }
   }
 
-  return sequences
+  return cursor === undefined ? { sequences } : { sequences, cursor }
 }
 
 export const getUpdates = async (

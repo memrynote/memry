@@ -1182,7 +1182,8 @@ attempt.
 
 Both CRDT write paths notify peers the same way. Once the write is durable, the server broadcasts
 `crdt_updated` carrying the note id to every socket on that vault except the pushing device, and
-each peer pulls that one note. Nothing else carries a body — the record feed moves metadata only —
+each peer pulls that one note. The frame also carries the highest `server_cursor` the write reserved,
+omitted when it stored nothing new; clients must not use it as their pull cursor. Nothing else carries a body — the record feed moves metadata only —
 so a body write that does not broadcast stays invisible until the receiving device's next vault
 sweep, which is up to 15 minutes away.
 

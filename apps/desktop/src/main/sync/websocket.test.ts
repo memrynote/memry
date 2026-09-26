@@ -216,6 +216,26 @@ describe('WebSocketManager', () => {
       ])
     })
 
+    // #2420: the reserved cursor reaches the engine; nothing acts on it yet.
+    it('#then passes the cursor of a crdt_updated frame through', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      const messageSpy = vi.fn()
+      manager.on('message', messageSpy)
+
+      await manager.connect()
+      lastWs().simulateOpen()
+      lastWs().simulateMessage({
+        type: 'crdt_updated',
+        payload: { vaultId: 'v1', noteId: 'n1', cursor: 43 }
+      })
+      lastWs().simulateMessage({ type: 'crdt_updated', payload: { noteId: 'n2' } })
+
+      expect(messageSpy.mock.calls.map(([event]) => event)).toEqual([
+        { kind: 'crdt_updated', vaultId: 'v1', noteId: 'n1', cursor: 43 },
+        { kind: 'crdt_updated', noteId: 'n2' }
+      ])
+    })
+
     // #2291: the payload check moved from the engine into the parser.
     it('#then drops a calendar frame without a sourceId without an error event', async () => {
       const manager = new WebSocketManager(createMockDeps())

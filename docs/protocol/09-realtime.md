@@ -119,16 +119,16 @@ NOT reject a frame for carrying an unknown `type`.**
 (`packages/contracts/src/sync-socket.ts:18-27`), with the payload each carries
 and where it is produced:
 
-| Type                         | Payload                                                                 | Producer                                                                                                                                                         |
-| ---------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `changes_available`          | `{ cursor?, vaultId? }` (`packages/contracts/src/sync-socket.ts:59-62`) | the default broadcast type (`apps/sync-server/src/durable-objects/user-sync-state.ts:177`), sent after a record push (`apps/sync-server/src/routes/sync.ts:439`) |
-| `crdt_updated`               | `{ vaultId?, noteId }` (`packages/contracts/src/sync-socket.ts:63-66`)  | after a CRDT update push (`apps/sync-server/src/routes/sync.ts:731`), a snapshot push (`:930`) and a batch (`:1062`)                                             |
-| `calendar_changes_available` | `{ sourceId }`                                                          | the calendar webhook route (`apps/sync-server/src/routes/webhooks.ts:183-187`)                                                                                   |
-| `auth_ok`                    | `{ exp? }` (`packages/contracts/src/sync-socket.ts:74`)                 | the in-place re-auth reply (§9.8)                                                                                                                                |
-| `error`                      | `{ code?, message? }` (`packages/contracts/src/sync-socket.ts:75`)      | `WS_RATE_LIMITED` (`apps/sync-server/src/durable-objects/user-sync-state.ts:293-298`) and `WS_TOKEN_EXPIRED` (`:401-406`)                                        |
-| `linking_request`            | `{ sessionId, newDeviceName, newDevicePlatform }`                       | `POST /auth/linking/scan` (`apps/sync-server/src/routes/linking.ts:155-163`)                                                                                     |
-| `linking_approved`           | `{ sessionId }`                                                         | `POST /auth/linking/approve` (`apps/sync-server/src/routes/linking.ts:262-266`)                                                                                  |
-| `heartbeat`                  | **none**                                                                | **no producer**; see §9.5.2                                                                                                                                      |
+| Type                         | Payload                                                                         | Producer                                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `changes_available`          | `{ cursor?, vaultId? }` (`packages/contracts/src/sync-socket.ts:59-62`)         | the default broadcast type (`apps/sync-server/src/durable-objects/user-sync-state.ts:177`), sent after a record push (`apps/sync-server/src/routes/sync.ts:439`) |
+| `crdt_updated`               | `{ vaultId?, noteId, cursor? }` (`packages/contracts/src/sync-socket.ts:63-69`) | after a CRDT update push (`apps/sync-server/src/routes/sync.ts:731`), a snapshot push (`:930`) and a batch (`:1062`)                                             |
+| `calendar_changes_available` | `{ sourceId }`                                                                  | the calendar webhook route (`apps/sync-server/src/routes/webhooks.ts:183-187`)                                                                                   |
+| `auth_ok`                    | `{ exp? }` (`packages/contracts/src/sync-socket.ts:74`)                         | the in-place re-auth reply (§9.8)                                                                                                                                |
+| `error`                      | `{ code?, message? }` (`packages/contracts/src/sync-socket.ts:75`)              | `WS_RATE_LIMITED` (`apps/sync-server/src/durable-objects/user-sync-state.ts:293-298`) and `WS_TOKEN_EXPIRED` (`:401-406`)                                        |
+| `linking_request`            | `{ sessionId, newDeviceName, newDevicePlatform }`                               | `POST /auth/linking/scan` (`apps/sync-server/src/routes/linking.ts:155-163`)                                                                                     |
+| `linking_approved`           | `{ sessionId }`                                                                 | `POST /auth/linking/approve` (`apps/sync-server/src/routes/linking.ts:262-266`)                                                                                  |
+| `heartbeat`                  | **none**                                                                        | **no producer**; see §9.5.2                                                                                                                                      |
 
 ### 9.5.1 Calendar and linking payload shapes — Q09.3
 
@@ -318,6 +318,18 @@ core does the same in `SyncEngine::wake`
 (`crates/memry-core/src/sync/engine.rs`), fed by the `cursor` that
 `Hint::ChangesAvailable` carries (`crates/memry-core/src/sync/socket_frame.rs`). The
 periodic pull stays the fallback for a missed broadcast.
+
+`crdt_updated` carries an optional `cursor` (#2420): the highest
+`server_cursor` the write reserved. For an update push that is the highest
+cursor among the rows it inserted; for a snapshot push, single or batch, the
+stored row's cursor. **It is omitted when the write stored nothing new**: a
+duplicate-only update retry (chapter 07, #2296), or a snapshot write re-read as
+committed after its batch answer was lost (chapter 07 §7.7.1). A refused
+snapshot write broadcasts nothing. The same rule as the `changes_available` cursor applies: **a client
+MUST NOT use it as its own pull cursor**; it exists for the skip filter above
+(#2421). Clients that predate it ignore the key, and a `crdt_updated` without
+one keeps meaning "pull this note". A client that reads a malformed `cursor`
+MUST drop the cursor and keep the frame, which still names a note to pull.
 
 **A device is excluded from its own broadcast** by `excludeDeviceId`
 (`apps/sync-server/src/durable-objects/user-sync-state.ts:188`), and a broadcast

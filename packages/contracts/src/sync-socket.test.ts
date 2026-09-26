@@ -107,6 +107,33 @@ describe('parseSyncSocketFrame', () => {
     })
   })
 
+  // #2420: the server names the cursor its CRDT write reserved.
+  it('carries the cursor of a crdt_updated frame', () => {
+    expect(
+      parseSyncSocketFrame(frame('crdt_updated', { vaultId: 'v1', noteId: 'n1', cursor: 43 }))
+    ).toEqual({ kind: 'crdt_updated', vaultId: 'v1', noteId: 'n1', cursor: 43 })
+  })
+
+  // #2420: a duplicate-only retry reserves nothing, and an old server never sends one.
+  // #2420: a bad cursor must not cost the per-note pull the frame asks for.
+  it('keeps a crdt_updated frame whose cursor is malformed, without the cursor', () => {
+    for (const cursor of [-1, 1.5, '43', null]) {
+      const event = parseSyncSocketFrame(frame('crdt_updated', { noteId: 'n1', cursor }))
+      expect(event).toMatchObject({ kind: 'crdt_updated', noteId: 'n1' })
+      expect(event).toHaveProperty('cursor', undefined)
+    }
+  })
+
+  it('parses a crdt_updated frame without a cursor, as an old server sends it', () => {
+    const event = parseSyncSocketFrame(frame('crdt_updated', { vaultId: 'v1', noteId: 'n1' }))
+    expect(event).toEqual({ kind: 'crdt_updated', vaultId: 'v1', noteId: 'n1' })
+    expect(event).not.toHaveProperty('cursor')
+    expect(parseSyncSocketFrame(frame('crdt_updated', { noteId: 'n1' }))).toEqual({
+      kind: 'crdt_updated',
+      noteId: 'n1'
+    })
+  })
+
   it('tolerates a payload-less frame', () => {
     expect(parseSyncSocketFrame(frame('changes_available'))).toEqual({ kind: 'changes_available' })
   })

@@ -115,9 +115,9 @@ describe('storeSnapshotBatch', () => {
 
     // #then — order is the request's, not the database's
     expect(outcomes).toEqual([
-      { noteId: 'note_c', accepted: true, sequenceNum: 0, revision: expect.any(String) },
-      { noteId: 'note_a', accepted: true, sequenceNum: 0, revision: expect.any(String) },
-      { noteId: 'note_b', accepted: true, sequenceNum: 0, revision: expect.any(String) }
+      { noteId: 'note_c', accepted: true, sequenceNum: 0, revision: expect.any(String), cursor: 1 },
+      { noteId: 'note_a', accepted: true, sequenceNum: 0, revision: expect.any(String), cursor: 2 },
+      { noteId: 'note_b', accepted: true, sequenceNum: 0, revision: expect.any(String), cursor: 3 }
     ])
 
     for (const { noteId } of inputs) {
@@ -205,8 +205,20 @@ describe('storeSnapshotBatch', () => {
     // #then — the existing watermark is preserved so updates 3..4 stay pullable,
     // while the fresh note takes the current max
     expect(outcomes).toEqual([
-      { noteId: 'note_old', accepted: true, sequenceNum: 2, revision: expect.any(String) },
-      { noteId: 'note_new', accepted: true, sequenceNum: 3, revision: expect.any(String) }
+      {
+        noteId: 'note_old',
+        accepted: true,
+        sequenceNum: 2,
+        revision: expect.any(String),
+        cursor: 9
+      },
+      {
+        noteId: 'note_new',
+        accepted: true,
+        sequenceNum: 3,
+        revision: expect.any(String),
+        cursor: 10
+      }
     ])
     expect(snapshotRow('note_old').sequence_num).toBe(2)
     expect(snapshotRow('note_new').sequence_num).toBe(3)
@@ -290,9 +302,21 @@ describe('storeSnapshotBatch', () => {
 
     // #then only that note fails, and it fails with a typed reason
     expect(outcomes).toEqual([
-      { noteId: 'note_ok1', accepted: true, sequenceNum: 0, revision: expect.any(String) },
+      {
+        noteId: 'note_ok1',
+        accepted: true,
+        sequenceNum: 0,
+        revision: expect.any(String),
+        cursor: 1
+      },
       { noteId: 'note_bad', accepted: false, reason: ErrorCodes.STORAGE_UNAUTHORIZED },
-      { noteId: 'note_ok2', accepted: true, sequenceNum: 0, revision: expect.any(String) }
+      {
+        noteId: 'note_ok2',
+        accepted: true,
+        sequenceNum: 0,
+        revision: expect.any(String),
+        cursor: 2
+      }
     ])
 
     // #then the failed put left NO row behind, and its reservation came back
