@@ -634,6 +634,28 @@ const foreignSpellingCases: RoundtripCase[] = [
   }
 ]
 
+/**
+ * A task block keeps its line as a `title` string, not as inline content, so
+ * a title holding markup has to come back from the source line itself. Read
+ * from the parsed inline nodes, `**Dune** [[Dune (2021)]]` came back `Dune `
+ * and that was written to disk when no task row repaired it.
+ */
+const taskLineCases: RoundtripCase[] = [
+  {
+    name: 'task line with bold and a wiki link',
+    markdown: '- [ ] **Dune** [[Dune (2021)]] x {task:t1}'
+  },
+  {
+    name: 'task line with a link',
+    markdown: '- [ ] Read the [lease](https://example.com/lease) {task:t1}'
+  },
+  { name: 'task line with inline code', markdown: '- [x] Run `pnpm test` first {task:t1}' },
+  {
+    name: 'task line with a colour span',
+    markdown: '- [ ] Buy <span style="color:red">red</span> paint {task:t1}'
+  }
+]
+
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...mentionCases,
   ...dateCases,
@@ -642,6 +664,7 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...mathCases,
   ...containerCases,
   ...blockMarkerCases,
+  ...taskLineCases,
   ...nestedUnderListCases,
   ...diagramCases,
   ...whiteboardCases,
