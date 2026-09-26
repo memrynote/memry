@@ -2,14 +2,14 @@ import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from 'react
 import { cn } from '@/lib/utils'
 
 /**
- * The sidebar footer's single tray: sync, vault dots, help and settings share one
- * soft inset surface instead of four loose icons on the sidebar background.
+ * The sidebar footer's single row: sync, the vault pill, help and settings, set off
+ * from the list above by a full-width divider rather than a filled surface.
  */
 export function FooterDock({ children }: { children: ReactNode }): React.JSX.Element {
   return (
     <div
       data-testid="sidebar-footer-dock"
-      className="flex items-center gap-0.5 rounded-[11px] border border-black/[0.05] bg-sidebar-accent/60 p-1 dark:border-white/[0.06]"
+      className="-mx-2 flex items-center gap-0.5 border-t border-sidebar-border px-2 pt-2"
     >
       {children}
     </div>

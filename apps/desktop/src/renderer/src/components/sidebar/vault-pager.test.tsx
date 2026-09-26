@@ -39,7 +39,7 @@ function renderPager(onSwitch = vi.fn().mockResolvedValue(true), list = 'list') 
   const view = render(
     <QueryClientProvider client={new QueryClient()}>
       <div data-sidebar="sidebar">
-        <VaultPager vaults={vaults} activePath="/vaults/work" activeName="Work" onSwitch={onSwitch}>
+        <VaultPager vaults={vaults} activePath="/vaults/work" onSwitch={onSwitch}>
           <div>{list}</div>
         </VaultPager>
       </div>
@@ -90,9 +90,9 @@ describe('VaultPager', () => {
     localStorage.clear()
   })
 
-  it('shows the open vault name above the list', () => {
+  it('shows the list without the open vault name, which lives in the footer pill', () => {
     renderPager()
-    expect(screen.getByText('Work')).toBeInTheDocument()
+    expect(screen.queryByText('Work')).not.toBeInTheDocument()
     expect(screen.getByText('list')).toBeInTheDocument()
   })
 
@@ -277,7 +277,7 @@ describe('VaultPager', () => {
             <VaultPager
               vaults={vaults}
               activePath="/vaults/work"
-              activeName="Work"
+
               onSwitch={onSwitch}
             >
               <div>list</div>

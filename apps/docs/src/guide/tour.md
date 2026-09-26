@@ -143,9 +143,12 @@ At the bottom of the sidebar, one tray holds the footer controls:
 
 With more than one vault, the sidebar pages between them. Swipe sideways with two fingers on the
 trackpad over the sidebar list and the neighbouring vault's page follows your fingers in; let go
-past the middle to switch, or short of it to spring back. Clicking a vault dot and
+past the middle to switch, or short of it to spring back.
 <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on
 Windows and Linux) play the same move.
+
+The open vault's color and name sit in a pill in the sidebar footer. While you swipe it blends
+toward the incoming vault, and clicking it opens the list of every vault.
 
 Vaults you visited recently come back the way you left them, with the same tabs, scroll position
 and open note, so going back and forth is instant. The first visit to a vault in a session loads

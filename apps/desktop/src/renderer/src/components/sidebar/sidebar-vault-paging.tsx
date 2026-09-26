@@ -4,7 +4,7 @@ import { useVault, useVaultList } from '@/hooks/use-vault'
 import type { VaultSwitchDirection } from '@/lib/vault-switch-state'
 import { VaultSwitcher } from '@/components/vault-switcher'
 import { VaultPager } from '@/components/sidebar/vault-pager'
-import { VaultIndicator } from '@/components/sidebar/vault-indicator'
+import { VaultPill } from '@/components/sidebar/vault-pill'
 
 export interface SidebarVaultPages {
   /** Switchable vaults in stored order. A folder that is not reachable cannot open, so it is not a page. */
@@ -12,7 +12,6 @@ export interface SidebarVaultPages {
   activePath: string | null
   /** The open vault's list entry; null until the list has loaded. */
   activeVault: VaultInfo | null
-  activeName: string
   switchTo: (vault: VaultInfo, direction: VaultSwitchDirection) => Promise<boolean>
 }
 
@@ -44,7 +43,6 @@ export function useSidebarVaultPages(): SidebarVaultPages {
     vaults,
     activePath,
     activeVault,
-    activeName: activeVault?.name ?? activePath?.split(/[\\/]/).pop() ?? '',
     switchTo
   }
 }
@@ -59,22 +57,17 @@ export function SidebarVaultPager({
 }) {
   if (!pages.activePath) return <>{children}</>
   return (
-    <VaultPager
-      vaults={pages.vaults}
-      activePath={pages.activePath}
-      activeName={pages.activeName}
-      onSwitch={pages.switchTo}
-    >
+    <VaultPager vaults={pages.vaults} activePath={pages.activePath} onSwitch={pages.switchTo}>
       {children}
     </VaultPager>
   )
 }
 
 /**
- * The footer's vault control: the dot indicator once the vault list has
- * loaded, the plain switcher before that so ⌘⇧O always has a target.
+ * The footer's vault control: the vault pill once the vault list has loaded,
+ * the plain switcher before that so ⌘⇧O always has a target.
  */
-export function SidebarVaultIndicator({ pages }: { pages: SidebarVaultPages }) {
+export function SidebarVaultSwitcher({ pages }: { pages: SidebarVaultPages }) {
   if (!pages.activeVault) {
     return (
       <div className="flex-1 min-w-0">
@@ -82,5 +75,5 @@ export function SidebarVaultIndicator({ pages }: { pages: SidebarVaultPages }) {
       </div>
     )
   }
-  return <VaultIndicator vaults={pages.vaults} activePath={pages.activeVault.path} />
+  return <VaultPill vaults={pages.vaults} activePath={pages.activeVault.path} />
 }

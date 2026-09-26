@@ -819,7 +819,7 @@ describe('cold major renderer components', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('switches vaults, opens a new vault, signs in, and removes vault list entries', async () => {
+  it('switches vaults, opens a new vault, and removes vault list entries', async () => {
     const { rerender } = render(<VaultSwitcher />)
 
     fireEvent.click(screen.getByText('Side'))
@@ -838,8 +838,9 @@ describe('cold major renderer components', () => {
     mocks.authState = { status: 'anonymous', email: null }
     mocks.vaults = []
     rerender(<VaultSwitcher />)
-    fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.signInToSync'))
-    expect(mocks.openSettings).toHaveBeenCalledWith('account')
+    expect(
+      screen.queryByText('phaseF.componentsVaultSwitcher.signInToSync')
+    ).not.toBeInTheDocument()
     expect(screen.getByText('phaseF.componentsVaultSwitcher.noVaultsYet')).toBeInTheDocument()
   })
 

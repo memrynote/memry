@@ -160,19 +160,3 @@ export function neighborIndex(
   const index = activeIndex + step
   return activeIndex >= 0 && index >= 0 && index < count ? index : null
 }
-
-/**
- * Which vaults the footer indicator shows. At most `max` slots, the window
- * following the active vault; an edge with more vaults beyond it is marked so
- * the dot there can shrink.
- */
-export function indicatorWindow(
-  count: number,
-  activeIndex: number,
-  max = 5
-): { start: number; end: number; moreBefore: boolean; moreAfter: boolean } {
-  if (count <= max) return { start: 0, end: count, moreBefore: false, moreAfter: false }
-  const start = clamp(activeIndex - Math.floor(max / 2), 0, count - max)
-  const end = start + max
-  return { start, end, moreBefore: start > 0, moreAfter: end < count }
-}

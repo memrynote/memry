@@ -131,7 +131,7 @@ export function resetVaultSwitchState(): void {
 // =============================================================================
 
 /**
- * The pager (sidebar content) and the indicator (sidebar footer) render in
+ * The pager (sidebar content) and the vault pill (sidebar footer) render in
  * different subtrees but move on one progress value, so nothing animates on its
  * own clock. Published at most once per animation frame.
  */
@@ -173,7 +173,7 @@ export function useVaultSwipeProgress(): VaultSwipeProgress {
 // =============================================================================
 
 /**
- * A click on an indicator dot or the next/previous-vault shortcut asks the
+ * The next/previous-vault shortcut (or a caller naming a vault) asks the
  * pager to move, so every way of switching from the sidebar plays the same
  * transition through one owner.
  */

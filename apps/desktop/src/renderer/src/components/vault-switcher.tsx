@@ -24,7 +24,6 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useAccountVaults } from '@/hooks/use-account-vaults'
-import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useAuth } from '@/contexts/auth-context'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -37,7 +36,7 @@ import { useT } from '@memry/i18n/renderer'
 interface VaultSwitcherProps {
   /**
    * Replaces the default name button as the element that opens the vault list.
-   * The sidebar footer passes the indicator's active pill.
+   * The sidebar footer passes the vault pill.
    */
   renderTrigger?: (state: { isLoading: boolean; name: string }) => ReactElement
 }
@@ -47,7 +46,6 @@ export function VaultSwitcher({ renderTrigger }: VaultSwitcherProps = {}) {
   const { isMobile, open: sidebarOpen, setOpen: setSidebarOpen, setOpenMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
   const { vaults, removeVault, refresh: refreshVaults } = useVaultList()
-  const { open: openSettings } = useSettingsModal()
   const { state: authState } = useAuth()
   const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
   const [vaultToRemove, setVaultToRemove] = useState<VaultInfo | null>(null)
@@ -148,11 +146,6 @@ export function VaultSwitcher({ renderTrigger }: VaultSwitcherProps = {}) {
     target.focus()
   }, [])
 
-  const handleSignIn = useCallback(() => {
-    setOpen(false)
-    openSettings('account')
-  }, [openSettings])
-
   const handleRemoveClick = (e: React.SyntheticEvent, vault: VaultInfo): void => {
     e.stopPropagation()
     setVaultToRemove(vault)
@@ -189,7 +182,7 @@ export function VaultSwitcher({ renderTrigger }: VaultSwitcherProps = {}) {
   }, [vaultToDelete, refreshAccountVaults, refreshVaults, tPhaseF])
 
   return (
-    <SidebarMenu className={renderTrigger ? 'w-auto' : undefined}>
+    <SidebarMenu className={renderTrigger ? 'w-auto max-w-full' : undefined}>
       <SidebarMenuItem>
         <Picker
           value={null}
@@ -384,22 +377,6 @@ export function VaultSwitcher({ renderTrigger }: VaultSwitcherProps = {}) {
                 label={tPhaseF('phaseF.componentsVaultSwitcher.openVault')}
                 icon={<Plus className="size-3.5" />}
               />
-
-              {!isAuthenticated && (
-                <>
-                  <Picker.Separator />
-                  <button
-                    type="button"
-                    onClick={handleSignIn}
-                    className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer focus:outline-none focus-visible:bg-accent"
-                  >
-                    <Cloud className="size-3.5 text-sidebar-terracotta" />
-                    <span className="text-sidebar-terracotta font-medium">
-                      {tPhaseF('phaseF.componentsVaultSwitcher.signInToSync')}
-                    </span>
-                  </button>
-                </>
-              )}
             </Picker.List>
           </Picker.Content>
         </Picker>

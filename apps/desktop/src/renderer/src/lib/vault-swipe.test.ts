@@ -3,7 +3,6 @@ import {
   INITIAL_SWIPE,
   VAULT_SWIPE,
   applyWheel,
-  indicatorWindow,
   neighborIndex,
   reachedFullWidth,
   resolveRelease,
@@ -133,23 +132,5 @@ describe('neighborIndex', () => {
     expect(neighborIndex(2, -1, false, 3)).toBeNull()
     expect(neighborIndex(0, 1, false, 3)).toBeNull()
     expect(neighborIndex(-1, -1, false, 3)).toBeNull()
-  })
-})
-
-describe('indicatorWindow', () => {
-  it('shows every vault up to five', () => {
-    expect(indicatorWindow(5, 0)).toEqual({ start: 0, end: 5, moreBefore: false, moreAfter: false })
-  })
-
-  it('pins the window to the start for the first vaults', () => {
-    expect(indicatorWindow(8, 0)).toEqual({ start: 0, end: 5, moreBefore: false, moreAfter: true })
-  })
-
-  it('centres the window on the active vault', () => {
-    expect(indicatorWindow(8, 3)).toEqual({ start: 1, end: 6, moreBefore: true, moreAfter: true })
-  })
-
-  it('pins the window to the end for the last vaults', () => {
-    expect(indicatorWindow(8, 7)).toEqual({ start: 3, end: 8, moreBefore: true, moreAfter: false })
   })
 })

@@ -153,7 +153,6 @@ interface VaultPagerProps {
   /** Switchable vaults in the user's order, including the open one. */
   vaults: VaultInfo[]
   activePath: string
-  activeName: string
   /** Performs the switch; resolves false when it failed and the list must return. */
   onSwitch: (vault: VaultInfo, direction: VaultSwitchDirection) => Promise<boolean>
   children: ReactNode
@@ -165,17 +164,12 @@ interface VaultPagerProps {
  *
  * Only the open vault has live data, so the neighbour's page is the sidebar it
  * drew when it was last open (see `vault-sidebar-snapshot`), falling back to
- * its name for a vault never opened here. The same snapshot covers the list
+ * its name for a vault never opened here. The open vault's name is not drawn
+ * on the page; it lives in the footer pill, which follows the swipe. The same snapshot covers the list
  * right after a switch until the new vault's queries have loaded, so the page
  * the user swiped to is the page they land on.
  */
-export function VaultPager({
-  vaults,
-  activePath,
-  activeName,
-  onSwitch,
-  children
-}: VaultPagerProps) {
+export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPagerProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLDivElement>(null)
@@ -448,7 +442,7 @@ export function VaultPager({
     }
   }, [activeIndex, captureSnapshot, context, isRtl, paint, release, showPeek, uncover, vaults])
 
-  // Indicator clicks and the next/previous shortcuts play the same transition.
+  // Page requests (the next/previous shortcuts) play the same transition as a swipe.
   useVaultPageRequest(
     useCallback(
       (request: VaultPageRequest) => {
@@ -559,7 +553,6 @@ export function VaultPager({
   return (
     <div ref={viewportRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <div ref={trackRef} className="relative flex min-h-0 flex-1 flex-col">
-        <VaultTitleRow name={activeName} dotColor="var(--tint)" className="pt-2" />
         {children}
         {cover !== null && (
           // Inside the track so a swipe that starts under it carries it along.

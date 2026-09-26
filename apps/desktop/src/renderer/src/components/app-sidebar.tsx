@@ -21,8 +21,8 @@ import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
 import {
-  SidebarVaultIndicator,
   SidebarVaultPager,
+  SidebarVaultSwitcher,
   useSidebarVaultPages
 } from '@/components/sidebar/sidebar-vault-paging'
 import {
@@ -819,7 +819,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
         <SidebarVaultPager pages={vaultPages}>
           {/* Quick Action: New — persistent, stays visible during drill-down */}
-          <div className="shrink-0 flex items-center px-3 pt-1 pb-0 group-data-[collapsible=icon]:hidden">
+          <div className="shrink-0 flex items-center px-3 pt-2 pb-0 group-data-[collapsible=icon]:hidden">
             <div className="flex flex-1 items-center h-[30px] rounded-[5px] bg-sidebar-surface overflow-hidden">
               <button
                 type="button"
@@ -906,7 +906,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
               <CloudOff aria-hidden="true" />
             </DockButton>
           )}
-          <SidebarVaultIndicator pages={vaultPages} />
+          <SidebarVaultSwitcher pages={vaultPages} />
           <SidebarFeedbackButton />
           <SidebarSettingsButton />
         </FooterDock>
