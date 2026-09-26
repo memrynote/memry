@@ -1553,6 +1553,13 @@ changes page actually delivered items, so that is a genuine never-pulled device 
 the client's own `LAST_CURSOR` gate uses. An already-synced device gets `BOOTSTRAP_NOT_ELIGIBLE`
 (409).
 
+Any `GET /sync/changes` page that delivers an item therefore spends eligibility, including one
+that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
+used to read `/sync/changes?limit=1`, so every fresh desktop device got the 409 on its first full
+sync. It now reads `GET /sync/status`, which sits behind the same `authMiddleware` revocation check
+and only reads `device_sync_state`. Desktop builds that still send the old probe keep losing the
+session; that costs them elevated limits, not data.
+
 | Constant                                 | Value      | Why                                                 |
 | ---------------------------------------- | ---------- | --------------------------------------------------- |
 | `BOOTSTRAP_SESSION_TTL_SECONDS`          | 60 minutes | Per-token lifetime; slides on renewal               |
