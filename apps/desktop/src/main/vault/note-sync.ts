@@ -346,7 +346,7 @@ export function syncNoteStatToCache(
     parsedContent: null,
     fileSize,
     tags: [],
-    properties: {},
+    properties: null,
     wikiLinks: []
   }
 
@@ -360,7 +360,8 @@ export function syncNoteStatToCache(
  * scan; only `indexedHead` is materialised, and it is what reaches search and
  * the snippet. Tags, properties and links stay empty on purpose: a log dump's
  * `#hashtags` and `[[brackets]]` are not the user's vault structure, and the
- * file is read-only anyway.
+ * file is read-only anyway. Properties are null, not empty: the frontmatter
+ * was never read, so the project links it derived earlier stay.
  */
 export interface LargeFileBodySyncInput {
   id: string
@@ -410,7 +411,7 @@ export function syncLargeFileBodyToCache(_db: IndexDb, input: LargeFileBodySyncI
     modifiedAt,
     parsedContent: input.indexedHead,
     tags: [],
-    properties: {},
+    properties: null,
     wikiLinks: []
   }
 

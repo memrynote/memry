@@ -26,7 +26,11 @@ import {
   getProjectLinkForItem
 } from '../../database/queries/projects'
 import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
-import { linkNotesNamingProject } from '../../projections/projectors/note-project-links-projector'
+import {
+  linkNotesNamingProject,
+  pushLinksMissingFromPayload,
+  rememberSyncedProjectLinks
+} from '../../projections/projectors/note-project-links-projector'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -255,6 +259,10 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
         if (data.links) {
           reconcileLinks(tx as unknown as DrizzleDb, itemId, data.links)
         }
+        rememberSyncedProjectLinks(
+          itemId,
+          (data.links ?? []).map((l) => l.itemId)
+        )
 
         const updated = tx.select().from(projects).where(eq(projects.id, itemId)).get()
         const updatedStatuses = tx
@@ -296,8 +304,9 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
       // Before the payload's links, so their `pinned`/`position` land on the
       // rows this derives. The project applied either way; a failure here
       // leaves those notes unlinked until their next apply.
+      let derivedNoteIds: string[] = []
       try {
-        linkNotesNamingProject(tx as unknown as DataDb, name)
+        derivedNoteIds = linkNotesNamingProject(tx as unknown as DataDb, itemId, name)
       } catch (err) {
         log.error('Failed to link notes that name a synced project', { itemId, error: err })
       }
@@ -305,6 +314,11 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
       if (data.links) {
         reconcileLinks(tx as unknown as DrizzleDb, itemId, data.links)
       }
+      rememberSyncedProjectLinks(
+        itemId,
+        (data.links ?? []).map((l) => l.itemId)
+      )
+      pushLinksMissingFromPayload(tx as unknown as DataDb, itemId, derivedNoteIds)
 
       const inserted = tx.select().from(projects).where(eq(projects.id, itemId)).get()
       const insertedStatuses = tx
@@ -368,6 +382,15 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
     db.update(projects).set({ syncedAt: utcNow() }).where(eq(projects.id, itemId)).run()
+    const links = db
+      .select({ itemId: projectLinks.itemId })
+      .from(projectLinks)
+      .where(eq(projectLinks.projectId, itemId))
+      .all()
+    rememberSyncedProjectLinks(
+      itemId,
+      links.map((l) => l.itemId)
+    )
   }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
