@@ -408,6 +408,87 @@ describe('PropertyDefinitionsService', () => {
     expect(service.get('Broken')).toEqual({ name: 'Broken', type: 'select', options: [] })
   })
 
+  it('keeps a synced relation definition out of properties.md so the file still loads', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+`)
+    )
+    dataDb.rows.push(
+      {
+        name: 'related',
+        type: 'relation',
+        options: null,
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 1 },
+        syncedAt: null
+      },
+      {
+        name: 'Area',
+        type: 'select',
+        options: JSON.stringify([{ value: 'Work', color: 'indigo' }]),
+        defaultValue: null,
+        color: null,
+        clock: { deviceB: 2 },
+        syncedAt: null
+      }
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+    expect(service.get('related')).toBeUndefined()
+
+    const written = atomicWriteMock.mock.calls.at(-1)![1] as string
+    expect(written).not.toContain('relation')
+
+    safeReadMock.mockResolvedValue(written)
+    const relaunched = PropertyDefinitionsService.init('/vault')
+    await relaunched.reload()
+    expect(relaunched.getAll().map((def) => def.name)).toEqual(['Stage', 'Area'])
+  })
+
+  it('recovers the other definitions from a properties.md that already names a relation', async () => {
+    safeReadMock.mockResolvedValue(
+      propertiesFile(`  Stage:
+    type: select
+    options:
+      - value: Idea
+        color: sky
+  related:
+    type: relation
+    options: []
+`)
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.reload()
+
+    expect(service.getAll()).toEqual([
+      { name: 'Stage', type: 'select', options: [{ value: 'Idea', color: 'sky' }] }
+    ])
+    const written = atomicWriteMock.mock.calls.at(-1)![1] as string
+    expect(written).toContain('Stage')
+    expect(written).not.toContain('relation')
+  })
+
+  it('never serializes a relation definition into properties.md', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Area', type: 'select', options: [] })
+    await service.upsert({ name: 'related', type: 'relation' })
+
+    const written = atomicWriteMock.mock.calls.at(-1)![1] as string
+    expect(written).not.toContain('relation')
+    safeReadMock.mockResolvedValue(written)
+    const relaunched = PropertyDefinitionsService.init('/vault')
+    await relaunched.reload()
+
+    expect(relaunched.getAll()).toEqual([{ name: 'Area', type: 'select', options: [] }])
+  })
+
   it('unions a synced status definition with the workflow columns it was pushed with', async () => {
     safeReadMock.mockResolvedValue(null)
     dataDb.rows.push({

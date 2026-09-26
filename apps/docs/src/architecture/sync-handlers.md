@@ -125,6 +125,10 @@ empty, and the row clears itself.
 Only top-level keys are preserved. An unknown key nested inside a known object is still stripped by
 that object's schema.
 
+`id` and `syncedAt` are never kept. Many push payloads are row dumps that carry both, but `id` is
+the envelope id and `syncedAt` is device-local, so no schema models them. Keeping them wrote a row
+for nearly every applied item.
+
 ## Canvas: the payload comes from a file
 
 `canvas-handler.ts` is the one handler whose content does not live in the data DB. A canvas scene

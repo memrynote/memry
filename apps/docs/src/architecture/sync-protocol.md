@@ -634,6 +634,10 @@ row is what replicates. Two consequences worth knowing before touching either:
   clocked rows into the cache and persists when the union gained something — including on a device
   that has no file yet. A remote delete reconciles the file too, or the next reload reads the
   definition straight back in.
+- A `relation` definition never reaches the file. The file schema has no member for it, and one
+  such entry fails the parse for the whole file. The union skips a synced `relation` row, the
+  writer skips one in the cache, and `reload()` drops and rewrites a `relation` entry an older
+  build already wrote.
 
 `property_definition` is not in `LEGACY_RECORD_SYNC_ITEM_TYPES`; clients that predate it negotiate
 it away via `X-Memry-Sync-Types` and never see it.
