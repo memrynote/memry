@@ -1,4 +1,4 @@
-import { eq, and, sql, desc, asc, lt, lte, count, notInArray } from 'drizzle-orm'
+import { eq, and, ne, sql, desc, asc, lt, lte, count, notInArray, inArray } from 'drizzle-orm'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
@@ -28,6 +28,32 @@ const AUTO_PURGE_CHECK_EVERY_N_ENQUEUES = 50
 
 /** Bound on the in-memory enqueue-time map; the oldest entry goes first. */
 const MAX_TRACKED_ENQUEUE_TIMES = 10_000
+
+/**
+ * `sync_queue.type` of a note's CRDT body rows (#2298). Not a record type: every
+ * record method below skips these rows, so `/sync/push` never sees them; the
+ * desktop note-body outbox owns them and posts them to `/sync/crdt/updates`.
+ *
+ * Append-only on purpose. `enqueue` coalesces into the pending row for the same
+ * `(itemId, type)` and overwrites its payload, which for Yjs updates would keep
+ * only the last unflushed one and lose every edit before it.
+ */
+export const NOTE_BODY_QUEUE_TYPE = 'note_body'
+
+/**
+ * Payload of a note_body row that owes the note's whole doc state instead of
+ * carrying one base64 Yjs update: edits made while no sync runtime was running,
+ * a note leaving local-only, and ids imported from the retired
+ * `crdt-pending-notes.json`. A real update is never empty.
+ */
+export const NOTE_BODY_FULL_STATE_PAYLOAD = ''
+
+const isRecordRow = ne(syncQueue.type, NOTE_BODY_QUEUE_TYPE)
+
+export interface NoteBodyRow {
+  id: string
+  payload: string
+}
 
 export interface EnqueueInput {
   type: SyncItemType
@@ -147,7 +173,7 @@ export class SyncQueueManager {
    */
   dequeue(batchSize: number, excludeIds?: Iterable<string>): Array<typeof syncQueue.$inferSelect> {
     const excluded = excludeIds ? Array.from(excludeIds) : []
-    const withinBudget = lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS)
+    const withinBudget = and(isRecordRow, lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS))
 
     return this.db
       .select()
@@ -164,6 +190,7 @@ export class SyncQueueManager {
     return this.db
       .select()
       .from(syncQueue)
+      .where(isRecordRow)
       .orderBy(desc(syncQueue.priority), asc(syncQueue.createdAt))
       .limit(count)
       .all()
@@ -258,7 +285,7 @@ export class SyncQueueManager {
   }
 
   getSize(): number {
-    const result = this.db.select({ count: count() }).from(syncQueue).get()
+    const result = this.db.select({ count: count() }).from(syncQueue).where(isRecordRow).get()
     return result?.count ?? 0
   }
 
@@ -266,14 +293,14 @@ export class SyncQueueManager {
     const result = this.db
       .select({ count: count() })
       .from(syncQueue)
-      .where(lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS))
+      .where(and(isRecordRow, lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS)))
       .get()
     return result?.count ?? 0
   }
 
   getRawPendingCount(): number {
     const result = this.db.get<{ cnt: number }>(
-      sql`SELECT count(*) as cnt FROM sync_queue WHERE attempts < ${DEFAULT_MAX_ATTEMPTS}`
+      sql`SELECT count(*) as cnt FROM sync_queue WHERE attempts < ${DEFAULT_MAX_ATTEMPTS} AND type != ${NOTE_BODY_QUEUE_TYPE}`
     )
     return result?.cnt ?? 0
   }
@@ -282,7 +309,13 @@ export class SyncQueueManager {
     const result = this.db
       .select({ count: count() })
       .from(syncQueue)
-      .where(and(sql`${syncQueue.attempts} > 0`, lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS)))
+      .where(
+        and(
+          isRecordRow,
+          sql`${syncQueue.attempts} > 0`,
+          lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS)
+        )
+      )
       .get()
     return result?.count ?? 0
   }
@@ -308,7 +341,7 @@ export class SyncQueueManager {
     return this.db
       .select()
       .from(syncQueue)
-      .where(and(sql`${syncQueue.attempts} > 0`, lt(syncQueue.attempts, maxAttempts)))
+      .where(and(isRecordRow, sql`${syncQueue.attempts} > 0`, lt(syncQueue.attempts, maxAttempts)))
       .orderBy(asc(syncQueue.attempts), asc(syncQueue.createdAt))
       .all()
   }
@@ -359,24 +392,120 @@ export class SyncQueueManager {
     return row !== undefined
   }
 
+  /**
+   * Append one note_body row; never coalesces a raw update (see
+   * `NOTE_BODY_QUEUE_TYPE`). A full-state row is written at most once per note:
+   * a second one would owe exactly what the first already owes.
+   */
+  enqueueNoteBody(noteId: string, payload: string): void {
+    this.db.transaction((tx) => {
+      if (payload === NOTE_BODY_FULL_STATE_PAYLOAD) {
+        const owed = tx
+          .select({ id: syncQueue.id })
+          .from(syncQueue)
+          .where(
+            and(
+              eq(syncQueue.type, NOTE_BODY_QUEUE_TYPE),
+              eq(syncQueue.itemId, noteId),
+              eq(syncQueue.payload, NOTE_BODY_FULL_STATE_PAYLOAD)
+            )
+          )
+          .get()
+        if (owed) return
+      }
+      tx.insert(syncQueue)
+        .values({
+          id: crypto.randomUUID(),
+          type: NOTE_BODY_QUEUE_TYPE,
+          itemId: noteId,
+          operation: 'update',
+          payload,
+          priority: 0,
+          attempts: 0,
+          createdAt: new Date()
+        })
+        .run()
+    })
+  }
+
+  /** A note's body rows in enqueue order (rowid; `created_at` is whole seconds). */
+  takeNoteBodyRows(noteId: string, limit: number): NoteBodyRow[] {
+    return this.db
+      .select({ id: syncQueue.id, payload: syncQueue.payload })
+      .from(syncQueue)
+      .where(and(eq(syncQueue.type, NOTE_BODY_QUEUE_TYPE), eq(syncQueue.itemId, noteId)))
+      .orderBy(sql`rowid`)
+      .limit(limit)
+      .all()
+  }
+
+  hasNoteBody(noteId: string): boolean {
+    const row = this.db
+      .select({ id: syncQueue.id })
+      .from(syncQueue)
+      .where(and(eq(syncQueue.type, NOTE_BODY_QUEUE_TYPE), eq(syncQueue.itemId, noteId)))
+      .limit(1)
+      .get()
+    return row !== undefined
+  }
+
+  listNoteBodyNoteIds(): string[] {
+    return this.db
+      .selectDistinct({ itemId: syncQueue.itemId })
+      .from(syncQueue)
+      .where(eq(syncQueue.type, NOTE_BODY_QUEUE_TYPE))
+      .all()
+      .map((row) => row.itemId)
+  }
+
+  countNoteBodyRows(): number {
+    const result = this.db
+      .select({ count: count() })
+      .from(syncQueue)
+      .where(eq(syncQueue.type, NOTE_BODY_QUEUE_TYPE))
+      .get()
+    return result?.count ?? 0
+  }
+
+  removeNoteBodyRows(ids: string[]): void {
+    if (ids.length === 0) return
+    this.db
+      .delete(syncQueue)
+      .where(and(eq(syncQueue.type, NOTE_BODY_QUEUE_TYPE), inArray(syncQueue.id, ids)))
+      .run()
+  }
+
+  removeNoteBody(noteId: string): number {
+    return this.db
+      .delete(syncQueue)
+      .where(and(eq(syncQueue.type, NOTE_BODY_QUEUE_TYPE), eq(syncQueue.itemId, noteId)))
+      .run().changes
+  }
+
   getQueueStats(): QueueStats {
     const total = this.getSize()
     const pending = this.db
       .select({ count: count() })
       .from(syncQueue)
-      .where(eq(syncQueue.attempts, 0))
+      .where(and(isRecordRow, eq(syncQueue.attempts, 0)))
       .get()
 
     const deadLetter = this.db
       .select({ count: count() })
       .from(syncQueue)
-      .where(sql`${syncQueue.attempts} >= ${DEFAULT_MAX_ATTEMPTS}`)
+      .where(and(isRecordRow, sql`${syncQueue.attempts} >= ${DEFAULT_MAX_ATTEMPTS}`))
       .get()
 
     const failed = this.db
       .select({ count: count() })
       .from(syncQueue)
-      .where(and(sql`${syncQueue.attempts} > 0`, lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS)))
+      .where(
+        and(
+          isRecordRow,
+          sql`${syncQueue.attempts} > 0`,
+          lt(syncQueue.attempts, DEFAULT_MAX_ATTEMPTS)
+        )
+      )
       .get()
 
     return {

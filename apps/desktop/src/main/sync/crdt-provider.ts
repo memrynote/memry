@@ -4,9 +4,10 @@ import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { getIndexDatabase } from '../database/client'
+import { getDatabase, getIndexDatabase } from '../database/client'
 import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
-import type { CrdtUpdateQueue } from './crdt-queue'
+import type { NoteBodyOutbox } from './note-body-outbox'
+import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-client/queue'
 import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
 import { parallelWithLimit } from '@memry/sync-client/concurrency'
 import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
@@ -24,7 +25,6 @@ import {
   type CrdtSnapshotWatermark
 } from '@memry/sync-client/crdt-snapshot-watermark'
 import { recordCrdtPersistenceOutcome } from '../store'
-import { recordPendingCrdtNotes } from './crdt-pending-notes'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
@@ -148,13 +148,13 @@ export class CrdtProvider {
   private storeIdentity: string | null = null
   private persistenceReady = false
   private persistenceInitPromise: Promise<void> | null = null
-  private updateQueue: CrdtUpdateQueue | null = null
+  private updateQueue: NoteBodyOutbox | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
   /**
-   * Notes already written to the durable pending store during the current
-   * queue-less stretch — see `recordUnqueuedUpdate`. Purely a write-dedupe: the
-   * ids themselves live on disk.
+   * Notes already given a full-state row during the current queue-less stretch
+   * — see `recordUnqueuedUpdate`. Purely a write-dedupe: the rows live in
+   * sync_queue.
    */
   private recordedUnqueuedNotes = new Set<string>()
   private readonly inactiveDocLimit: number
@@ -210,7 +210,7 @@ export class CrdtProvider {
   }
 
   async init(
-    queue?: CrdtUpdateQueue,
+    queue?: NoteBodyOutbox,
     snapshotPush?: SnapshotPushFn,
     /**
      * Optional on purpose: every caller that does not wire one keeps the
@@ -225,9 +225,9 @@ export class CrdtProvider {
     this.snapshotPushFn = snapshotPush ?? null
     this.snapshotBatchPushFn = snapshotBatchPush ?? null
     // Start the next queue-less stretch from a clean slate. Whatever was
-    // recorded during the previous one is on disk and is the drain's problem
+    // recorded during the previous one is in sync_queue and is the outbox's
     // now; keeping the ids here would suppress the re-record if this provider
-    // ever went queue-less again with the store already cleared.
+    // ever went queue-less again after the outbox pushed those rows.
     this.recordedUnqueuedNotes.clear()
     log.debug('CrdtProvider sync callbacks updated')
   }
@@ -289,7 +289,7 @@ export class CrdtProvider {
     // be optimistic: the store's preflight/probe is what the await above pays
     // for, and a window that re-opened before it settled would be rejected all
     // over again. Whatever else main attaches to a fresh provider (init()'s
-    // update queue and snapshot push) lands in the same microtask as this
+    // body outbox and snapshot push) lands in the same microtask as this
     // resolve, so a renderer's IPC round-trip can never beat it.
     broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY)
     log.info('CRDT provider ready, asked stranded editors to rebind')
@@ -497,8 +497,8 @@ export class CrdtProvider {
    * snapshot — re-reads the row live in `pushSnapshotForNote`.
    *
    * Public because the flag is not only a push-side concern: `CrdtSyncCoordinator`
-   * asks the same question before it pulls, and the pending-note replay asks it
-   * before it decides a note is syncable at all. Both want the live row rather
+   * asks the same question before it pulls, and the note-body outbox asks it
+   * before it pushes a full-state row at all. Both want the live row rather
    * than a doc's cached copy — neither is guaranteed to have the doc open.
    */
   isNoteLocalOnly(noteId: string): boolean {
@@ -520,27 +520,26 @@ export class CrdtProvider {
    * — immediately after the two writes, so a doc opened concurrently and this
    * doc agree. A note with no open doc needs nothing: `doOpen` re-reads.
    *
-   * Either direction also hands the doc's snapshot debt to the pending-note
-   * replay, by clearing it here. Clearing it going ON is obvious. Going OFF
-   * matters more: `setNoteLocalOnlyState` records the note for
-   * `drainPendingCrdtNotes`, which pulls and merges the server's state before
-   * it pushes, and a note that has just stopped being local-only is precisely
-   * the population most likely to have diverged from a peer. Leaving the debt
-   * would let the next `close()` fire a *blind* snapshot first — and a snapshot
-   * asserts completeness, so the server prunes the peer edits it does not
-   * contain. The replay is the carrier for this body; close() must not race it.
+   * Either direction also hands the doc's snapshot debt to the note-body
+   * outbox, by clearing it here. Clearing it going ON is obvious. Going OFF
+   * matters more: nothing else pushes the body written while the note was
+   * local-only, so this queues a full-state row, which the outbox pushes after
+   * merging the server's state. A note that has just stopped being local-only
+   * is precisely the population most likely to have diverged from a peer, and
+   * leaving the debt would let the next `close()` fire a *blind* snapshot first
+   * — a snapshot asserts completeness, so the server prunes the peer edits it
+   * does not contain.
    *
-   * Going ON also empties the update queue's buffer for this note, and that is
-   * not the same window as the flag above. `onDocUpdate` reads the flag at
-   * *enqueue* time, but the queue flushes on a ~1s loop, so every update typed
-   * in the second before the toggle is already buffered and would still be
-   * pushed. The queue is the only thing holding those bytes — clearing the
-   * pending-note store cannot reach into it — so the drop has to happen here,
-   * ahead of the `docs` lookup: a doc the LRU has since evicted still leaves a
-   * buffer behind.
+   * Going ON also drops the note's queued body rows, and that is not the same
+   * window as the flag above. `onDocUpdate` reads the flag at *enqueue* time,
+   * but the outbox flushes on a ~1s window, so every update typed in the second
+   * before the toggle is already queued and would still be pushed. The drop
+   * happens ahead of the `docs` lookup: a doc the LRU has since evicted still
+   * leaves rows behind.
    */
   setNoteLocalOnly(noteId: string, localOnly: boolean): void {
-    if (localOnly) this.updateQueue?.dropNote(noteId)
+    if (localOnly) this.dropOwedBody(noteId)
+    else this.recordOwedFullState(noteId)
 
     const entry = this.docs.get(noteId)
     if (!entry) return
@@ -644,7 +643,7 @@ export class CrdtProvider {
    * Each line ahead of `close()` closes a route that survives the doc itself.
    * The armed write-back keeps its own reference to the Y.Doc and, with the
    * note's index row already gone, would re-create the file from `meta.title`.
-   * The update queue's buffer is not reachable from the doc at all. And the
+   * The note's queued body rows are not reachable from the doc at all. And the
    * snapshot debt would make `close()` push the body of a note that no longer
    * exists — a snapshot asserts completeness, so that push is what puts the
    * deleted note back on the server.
@@ -653,7 +652,7 @@ export class CrdtProvider {
    */
   async purge(noteId: string): Promise<void> {
     cancelWriteback(noteId)
-    this.updateQueue?.dropNote(noteId)
+    this.dropOwedBody(noteId)
 
     const entry = this.docs.get(noteId)
     if (entry) entry.pendingSnapshotBytes = 0
@@ -861,7 +860,7 @@ export class CrdtProvider {
 
     // The row is already in hand, so the authoritative read costs nothing here
     // — and this is the one push path that is reached for a note with no open
-    // doc (the pending-note replay, and the push coordinator's create), so it
+    // doc (the push coordinator's create, the oversized-update fallback), so it
     // cannot lean on the per-doc cached flag.
     //
     // `false` is honest to both callers: the replay reads it as "not settled"
@@ -921,6 +920,22 @@ export class CrdtProvider {
       }
       if (!wasOpen) await this.close(noteId)
       return null
+    }
+  }
+
+  /**
+   * The note's whole doc state for a full-state outbox row, or `null` when the
+   * note no longer syncs (deleted, binary, local-only) or is empty. A doc that
+   * was not open is closed again afterwards.
+   */
+  async readSyncableState(noteId: string): Promise<Uint8Array | null> {
+    if (!this.isNoteSyncable(noteId)) return null
+    const wasOpen = this.docs.has(noteId)
+    try {
+      const state = Y.encodeStateAsUpdate(await this.open(noteId))
+      return state.length <= 4 ? null : state
+    } finally {
+      if (!wasOpen) await this.close(noteId)
     }
   }
 
@@ -1280,8 +1295,8 @@ export class CrdtProvider {
     // exactly the same for a local-only note. This is the only branch that
     // sends bytes off the machine, and it is the one the record feed already
     // refuses for the same notes (`seedUnclockedNotes`, `offline-clock`).
-    // Recording the note for later replay is skipped for the same reason the
-    // push is: the pending store exists to get a body to the server.
+    // Recording a full-state row is skipped for the same reason the push is:
+    // that row exists to get a body to the server.
     if (origin !== ORIGIN_NETWORK && !entry.localOnly) {
       if (this.updateQueue) {
         this.updateQueue.enqueue(noteId, update)
@@ -1300,34 +1315,55 @@ export class CrdtProvider {
   }
 
   /**
-   * Remember a local edit that had no update queue to hand it to.
+   * Remember a local edit that had no outbox to hand it to.
    *
-   * `init(queue, ...)` runs from `startSyncRuntime` and nowhere else, and
-   * `destroy()` nulls the queue again, so with no session — signed out, not on
-   * a paid plan, before the vault opens — there is no queue at all. The update
-   * still reaches the doc and the local CRDT store, but until now it was
-   * recorded as owed *nowhere*: the queue's own shutdown path
-   * (`persistUnflushed`) only ever covers updates the queue accepted and could
-   * not flush, never updates it never saw. That is the whole of "edit while
-   * signed out, sign back in, the other device never sees it" — the edit was
-   * safe locally and invisible forever. `drainPendingCrdtNotes` on the next
-   * runtime start pushes the note's full doc state, which is the only shape
-   * this backlog has: there are no incrementals to replay.
+   * `init(outbox, ...)` runs from `startSyncRuntime` and nowhere else, and
+   * `destroy()` nulls it again, so with no session — signed out, not on a paid
+   * plan — there is no outbox. The update still reaches the doc and the local
+   * CRDT store; what the server is owed is recorded as one full-state row in
+   * this vault's sync_queue, which the next runtime's outbox pushes. Full state
+   * rather than one row per update: an install that never syncs would
+   * otherwise grow sync_queue by every keystroke it ever makes.
    *
-   * Deduped per note for the lifetime of the queue-less stretch, so the cost is
-   * one small synchronous JSON write per *note touched*, not per update — the
-   * same recorder the shutdown path uses, called at a rate it was built for.
-   * Eager rather than debounced on purpose: the id has to be on disk before a
-   * crash or a kill, and the dedupe means the second update for a note never
-   * pays for the write again. The mark goes up before the write for the same
-   * reason — a store that cannot be written (full disk) must not turn every
-   * later keystroke into another failing disk write.
+   * Deduped per note for the queue-less stretch, so this is one small
+   * synchronous write per *note touched*. The mark goes up before the write so
+   * a database that cannot be written does not turn every later keystroke into
+   * another failing write.
    */
   private recordUnqueuedUpdate(noteId: string): void {
     if (this.recordedUnqueuedNotes.has(noteId)) return
     this.recordedUnqueuedNotes.add(noteId)
-    recordPendingCrdtNotes([noteId])
-    log.debug('Recorded a local CRDT edit made with no update queue', { noteId })
+    this.recordOwedFullState(noteId)
+    log.debug('Recorded a local CRDT edit made with no outbox', { noteId })
+  }
+
+  private recordOwedFullState(noteId: string): void {
+    if (this.updateQueue) return this.updateQueue.enqueueFullState(noteId)
+    this.writeWithoutRuntime(noteId, (queue) =>
+      queue.enqueueNoteBody(noteId, NOTE_BODY_FULL_STATE_PAYLOAD)
+    )
+  }
+
+  private dropOwedBody(noteId: string): void {
+    if (this.updateQueue) return this.updateQueue.dropNote(noteId)
+    this.writeWithoutRuntime(noteId, (queue) => queue.removeNoteBody(noteId))
+  }
+
+  /**
+   * With no sync runtime the rows still go to this vault's sync_queue, where
+   * the next runtime's outbox finds them. A failed write is logged, not
+   * thrown: this runs on the edit path, and the edit itself is already safe in
+   * the local doc and store.
+   */
+  private writeWithoutRuntime(noteId: string, write: (queue: SyncQueueManager) => void): void {
+    try {
+      write(new SyncQueueManager(getDatabase()))
+    } catch (err) {
+      log.error('Could not write the CRDT body outbox with no sync runtime', {
+        noteId,
+        error: err
+      })
+    }
   }
 
   private broadcastToWindows(
@@ -1602,8 +1638,8 @@ export class CrdtProvider {
   /**
    * May the CRDT feed still carry this note's body to the server?
    *
-   * The union of both refusals, for the pending-note replay — which has to
-   * decide whether an id in the durable store is still owed a push at all. The
+   * The union of both refusals, for the note-body outbox — which has to decide
+   * whether a full-state row is still owed a push at all. The
    * two halves stay separate because `validateNoteForCrdt` also gates the
    * renderer's editor handshake, and a local-only note opens and edits there
    * like any other; only its *sync* is off.

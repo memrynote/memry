@@ -7,9 +7,7 @@ const mocks = vi.hoisted(() => ({
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncDelete: vi.fn(),
   enqueueLocalSyncUpdate: vi.fn(),
-  removePendingNoteSyncItems: vi.fn(),
-  recordPendingCrdtNotes: vi.fn(),
-  clearPendingCrdtNotes: vi.fn()
+  removePendingNoteSyncItems: vi.fn()
 }))
 
 vi.mock('../sync/crdt-provider', () => ({
@@ -18,11 +16,6 @@ vi.mock('../sync/crdt-provider', () => ({
     setNoteLocalOnly: mocks.setNoteLocalOnly,
     purge: mocks.purge
   })
-}))
-
-vi.mock('../sync/crdt-pending-notes', () => ({
-  recordPendingCrdtNotes: mocks.recordPendingCrdtNotes,
-  clearPendingCrdtNotes: mocks.clearPendingCrdtNotes
 }))
 
 vi.mock('../sync/local-mutations', () => ({
@@ -97,21 +90,15 @@ describe('setNoteLocalOnlyState', () => {
 
     expect(mocks.setNoteLocalOnly).toHaveBeenCalledWith('note-1', true)
     expect(mocks.removePendingNoteSyncItems).toHaveBeenCalledWith('note-1')
-    expect(mocks.clearPendingCrdtNotes).toHaveBeenCalledWith(['note-1'])
-    expect(mocks.recordPendingCrdtNotes).not.toHaveBeenCalled()
   })
 
-  it('owes the server the whole body again when local-only is cleared', () => {
-    // The metadata `update` this raises carries `content: null`, and the push
-    // coordinator only pushes a CRDT snapshot for `operation === 'create'`. So
-    // without the pending record the note would resume syncing its metadata
-    // with its body frozen wherever the server last saw it.
+  it('re-queues the note record and lets the provider queue its body when local-only is cleared', () => {
+    // The provider's setNoteLocalOnly(false) queues the full-state body row;
+    // this function owes the record feed an update.
     setNoteLocalOnlyState('note-1', false)
 
     expect(mocks.setNoteLocalOnly).toHaveBeenCalledWith('note-1', false)
     expect(mocks.enqueueLocalSyncUpdate).toHaveBeenCalledWith('note', 'note-1')
-    expect(mocks.recordPendingCrdtNotes).toHaveBeenCalledWith(['note-1'])
-    expect(mocks.clearPendingCrdtNotes).not.toHaveBeenCalled()
   })
 })
 
@@ -135,13 +122,5 @@ describe('syncNoteDelete', () => {
     expect(mocks.enqueueLocalSyncDelete.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.purge.mock.invocationCallOrder[0]
     )
-  })
-
-  it('drops the note from the pending-CRDT set the replay drains', () => {
-    // The drain merges remote state per pending id, which is a second route
-    // into the same write-back that re-creates the note.
-    syncNoteDelete('note-1')
-
-    expect(mocks.clearPendingCrdtNotes).toHaveBeenCalledWith(['note-1'])
   })
 })

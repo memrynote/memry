@@ -104,13 +104,6 @@ vi.mock('./sync/crdt-provider', () => ({
   })
 }))
 
-// The CRDT half of the local-only toggle: a body that stopped going up while
-// the flag was set is owed to the server as a whole document once it clears.
-vi.mock('./sync/crdt-pending-notes', () => ({
-  recordPendingCrdtNotes: vi.fn(),
-  clearPendingCrdtNotes: vi.fn()
-}))
-
 vi.mock('./sync/local-mutations', () => ({
   enqueueLocalSyncCreate: mocks.enqueueLocalSyncCreate,
   enqueueLocalSyncUpdate: mocks.enqueueLocalSyncUpdate,

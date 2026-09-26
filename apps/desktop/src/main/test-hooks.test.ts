@@ -17,7 +17,7 @@ const getWritebackDebugStateMock = vi.fn(() => ({ pending: false }))
 const networkSetOnlineMock = vi.fn()
 const outstandingCountMock = vi.fn(() => 3)
 const getNetworkMonitorMock = vi.fn(() => ({ setOnlineForTests: networkSetOnlineMock }))
-const getCrdtQueueMock = vi.fn(() => ({ getOutstandingCount: outstandingCountMock }))
+const getNoteBodyOutboxMock = vi.fn(() => ({ getOutstandingCount: outstandingCountMock }))
 const startSyncRuntimeMock = vi.fn(async () => ({}))
 const wsDisconnectMock = vi.fn()
 const getSyncWebSocketMock = vi.fn(() => ({ disconnect: wsDisconnectMock }))
@@ -91,7 +91,7 @@ vi.mock('./sync/crdt-writeback', () => ({
 }))
 
 vi.mock('./sync/runtime', () => ({
-  getCrdtQueue: getCrdtQueueMock,
+  getNoteBodyOutbox: getNoteBodyOutboxMock,
   getNetworkMonitor: getNetworkMonitorMock,
   getSyncEngine: getSyncEngineMock,
   getSyncWebSocket: getSyncWebSocketMock,
@@ -199,7 +199,7 @@ describe('main test hooks', () => {
     }) as typeof fetch
     dbGetMock.mockReturnValue({ id: 'project-1' })
     getNetworkMonitorMock.mockReturnValue({ setOnlineForTests: networkSetOnlineMock })
-    getCrdtQueueMock.mockReturnValue({ getOutstandingCount: outstandingCountMock })
+    getNoteBodyOutboxMock.mockReturnValue({ getOutstandingCount: outstandingCountMock })
     getGooglePushRuntimeMock.mockReturnValue({ getActiveChannelCount: vi.fn(() => 2) })
     pushSourceToGoogleCalendarMock.mockResolvedValue({
       remoteCalendarId: 'primary',
@@ -279,7 +279,7 @@ describe('main test hooks', () => {
   it('reports sync runtime missing states', async () => {
     process.env.NODE_ENV = 'test'
     getNetworkMonitorMock.mockReturnValue(null)
-    getCrdtQueueMock.mockReturnValue(null)
+    getNoteBodyOutboxMock.mockReturnValue(null)
     getSyncWebSocketMock.mockReturnValue(null)
     getSyncEngineMock.mockReturnValue(null)
     const { registerTestHooks } = await importHooks()

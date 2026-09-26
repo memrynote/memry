@@ -66,8 +66,11 @@ const crdtProvider = vi.hoisted(() => {
 })
 
 vi.mock('drizzle-orm', () => ({
-  eq: vi.fn((left, right) => ({ left, right }))
+  eq: vi.fn((left, right) => ({ left, right })),
+  ne: vi.fn((left, right) => ({ ne: [left, right] }))
 }))
+
+vi.mock('@memry/sync-client/queue', () => ({ NOTE_BODY_QUEUE_TYPE: 'note_body' }))
 
 vi.mock('../crypto', () => ({
   deleteKey: (...args: unknown[]) => mocks.deleteKey(...args)
@@ -196,6 +199,8 @@ describe('session teardown', () => {
     expect(mocks.clearPendingSession).toHaveBeenCalled()
     expect(mocks.clearPendingLinkCompletion).toHaveBeenCalled()
     expect(mocks.transaction).toHaveBeenCalled()
+    // #2298: queued note bodies survive sign-out, like the CRDT store.
+    expect(mocks.deleteWhere).toHaveBeenCalledWith({ ne: [expect.anything(), 'note_body'] })
     expect(mocks.storeSet).toHaveBeenCalledWith('sync', {})
   })
 
