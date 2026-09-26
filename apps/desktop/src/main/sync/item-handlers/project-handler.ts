@@ -24,6 +24,7 @@ import {
   isMarkdownNote,
   getProjectLinkForItem
 } from '../../database/queries/projects'
+import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -182,6 +183,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
             remoteId: itemId,
             localId: localInbox.id
           })
+          recordDeclinedRef(tx, { type: 'project', id: itemId })
           return 'skipped'
         }
       }

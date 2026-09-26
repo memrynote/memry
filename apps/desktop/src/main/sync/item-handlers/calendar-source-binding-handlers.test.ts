@@ -182,6 +182,31 @@ describe('calendarSourceHandler', () => {
       clock: { 'device-a': 1 }
     })
   })
+
+  it('declines a new id whose provider, kind and remote id are already held', () => {
+    const natural = { provider: 'memry', kind: 'calendar' as const, remoteId: 'local-default' }
+    calendarSourceHandler.applyUpsert(
+      ctx,
+      'J-ORU2rryGIPtE4XM8Cp6',
+      { ...natural, title: 'memrynote Local' },
+      { 'device-a': 1 }
+    )
+
+    const result = calendarSourceHandler.applyUpsert(
+      ctx,
+      'g_5wMhgKcYyOhRoh6Cm6X',
+      { ...natural, title: 'Duplicate' },
+      { 'device-b': 1 }
+    )
+
+    expect(result).toBe('skipped')
+    expect(
+      testDb.db
+        .select({ id: calendarSources.id, title: calendarSources.title })
+        .from(calendarSources)
+        .all()
+    ).toEqual([{ id: 'J-ORU2rryGIPtE4XM8Cp6', title: 'memrynote Local' }])
+  })
 })
 
 describe('calendarBindingHandler', () => {

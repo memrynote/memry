@@ -24,10 +24,29 @@ import { noteMetadata } from '@memry/db-schema/data-schema'
 import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from '@memry/sync-client/queue'
+import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
+import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
+import { tagCategories } from '@memry/db-schema/schema/tag-categories'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
+import { agentMessages } from '@memry/db-schema/schema/agent-messages'
+import { calendarSourceHandler } from '@memry/sync-client/item-handlers/calendar-source-handler'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { projectHandler } from './item-handlers/project-handler'
 
 vi.mock('../database/client', () => ({
   getIndexDatabase: vi.fn()
 }))
+
+const serverRef = (type: string, id: string) => ({
+  id,
+  type,
+  version: 1,
+  modifiedAt: 1000,
+  size: 50
+})
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -1312,6 +1331,195 @@ describe('checkManifestIntegrity', () => {
         isOnline: () => true,
         // Wired exactly as engine.ts wires it.
         isQuarantined: (itemId, itemType) => ledger.has(itemType, itemId)
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+    })
+  })
+
+  describe('#given server rows of calendar, folder, tag category and agent types', () => {
+    it('#then rows held locally with clocks are not server-only and are not re-uploaded', async () => {
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(calendarSources)
+        .values({
+          id: 'src-1',
+          provider: 'google',
+          kind: 'calendar',
+          remoteId: 'primary',
+          title: 'Work',
+          clock
+        })
+        .run()
+      testDb.db
+        .insert(calendarEvents)
+        .values({ id: 'evt-1', title: 'Standup', startAt: '2026-05-01T09:00:00.000Z', clock })
+        .run()
+      testDb.db
+        .insert(calendarBindings)
+        .values({
+          id: 'bind-1',
+          sourceType: 'event',
+          sourceId: 'evt-1',
+          provider: 'google',
+          remoteCalendarId: 'primary',
+          remoteEventId: 'remote-evt-1',
+          ownershipMode: 'memry_managed',
+          writebackMode: 'broad',
+          clock
+        })
+        .run()
+      testDb.db
+        .insert(calendarExternalEvents)
+        .values({
+          id: 'ext-1',
+          sourceId: 'src-1',
+          remoteEventId: 'remote-ext-1',
+          title: 'Lunch',
+          startAt: '2026-05-01T12:00:00.000Z',
+          clock
+        })
+        .run()
+      testDb.db.insert(tagCategories).values({ id: 'cat-1', name: 'Areas', clock }).run()
+      testDb.db.insert(folderConfigs).values({ path: 'Projects', icon: 'folder', clock }).run()
+      testDb.db
+        .insert(agentConversations)
+        .values({
+          id: 'conv-1',
+          vaultId: 'vault-1',
+          titleCiphertext: 'x',
+          backend: 'codex',
+          vectorClock: clock,
+          fieldClocks: {},
+          createdAt: 1,
+          updatedAt: 1
+        })
+        .run()
+      testDb.db
+        .insert(agentMessages)
+        .values({
+          id: 'msg-1',
+          conversationId: 'conv-1',
+          role: 'user',
+          contentCiphertext: 'x',
+          attachmentsCiphertext: 'x',
+          status: 'complete',
+          vectorClock: clock,
+          createdAt: 1,
+          updatedAt: 1
+        })
+        .run()
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          serverRef('calendar_source', 'src-1'),
+          serverRef('calendar_event', 'evt-1'),
+          serverRef('calendar_binding', 'bind-1'),
+          serverRef('calendar_external_event', 'ext-1'),
+          serverRef('tag_category', 'cat-1'),
+          serverRef('folder_config', 'Projects'),
+          serverRef('agent_conversation', 'conv-1'),
+          serverRef('agent_message', 'msg-1')
+        ],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+      expect(queue.getPendingCount()).toBe(0)
+    })
+
+    it('#then a calendar event missing locally still triggers a re-pull', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [serverRef('calendar_event', 'evt-missing')],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: true, serverOnlyCount: 1 })
+    })
+
+    it('#then a type this build cannot enumerate is never counted server-only', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [serverRef('whiteboard', 'wb-1')],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+    })
+  })
+
+  describe('#given ids this device declined on apply #when check runs', () => {
+    const ctx = (): ApplyContext => ({ db: testDb.db as unknown as DrizzleDb, emit: vi.fn() })
+
+    it('#then a calendar source natural-key duplicate and an inbox alias are not server-only', async () => {
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(projects)
+        .values({
+          id: 'local-inbox',
+          name: 'Inbox',
+          color: '#000',
+          position: 1,
+          isInbox: true,
+          clock
+        })
+        .run()
+      calendarSourceHandler.applyUpsert(
+        ctx(),
+        'J-ORU2rryGIPtE4XM8Cp6',
+        { provider: 'memry', kind: 'calendar', remoteId: 'local-default', title: 'Local' },
+        clock
+      )
+      calendarSourceHandler.applyUpsert(
+        ctx(),
+        'g_5wMhgKcYyOhRoh6Cm6X',
+        { provider: 'memry', kind: 'calendar', remoteId: 'local-default', title: 'Local' },
+        { 'device-B': 1 }
+      )
+      projectHandler.applyUpsert(
+        ctx(),
+        'uWYGrsxGL6FVKU08nlnmx',
+        { name: 'Inbox', isInbox: true },
+        { 'device-B': 1 }
+      )
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [
+          serverRef('project', 'local-inbox'),
+          serverRef('project', 'uWYGrsxGL6FVKU08nlnmx'),
+          serverRef('calendar_source', 'J-ORU2rryGIPtE4XM8Cp6'),
+          serverRef('calendar_source', 'g_5wMhgKcYyOhRoh6Cm6X')
+        ],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
       })
 
       expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })

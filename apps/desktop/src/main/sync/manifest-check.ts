@@ -16,6 +16,14 @@ import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
+import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
+import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { tagCategories } from '@memry/db-schema/schema/tag-categories'
+import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
+import { agentMessages } from '@memry/db-schema/schema/agent-messages'
 import type {
   RecordSyncItemType,
   RecordSyncManifest,
@@ -24,6 +32,7 @@ import type {
 import { withRetry } from '@memry/sync-client/retry'
 import { toOutboundReminderPayload } from '@memry/sync-client/reminder-outbound'
 import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
+import { listDeclinedRefs, retainDeclinedRefs } from '@memry/sync-client/declined-refs'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
 import { clearPendingDelete, listPendingDeletes } from './pending-deletes'
@@ -160,6 +169,10 @@ export async function checkManifestIntegrity(
           : [itemRefKey(l.type, l.id)]
       )
     )
+    for (const key of getPresenceOnlyKeys(deps.db)) localKeys.add(key)
+    const declinedKeys = new Set(
+      listDeclinedRefs(deps.db).map((ref) => itemRefKey(ref.type, ref.id))
+    )
 
     let reEnqueuedCount = 0
     for (const local of deps.reuploadLocalOnly === false ? [] : localRefs) {
@@ -204,8 +217,11 @@ export async function checkManifestIntegrity(
         // rest of the vault's life. The local→server direction above still
         // repairs activity rows that never reached the server.
         item.type !== 'task_activity' &&
+        // A type with no local enumeration can never be proven missing.
+        ENUMERATED_TYPES.has(item.type) &&
         !localKeys.has(itemRefKey(item.type, item.id)) &&
         !tombstonedKeys.has(itemRefKey(item.type, item.id)) &&
+        !declinedKeys.has(itemRefKey(item.type, item.id)) &&
         !deps.isQuarantined?.(item.id, item.type)
     )
     if (serverOnlyIds.length > 0) {
@@ -226,6 +242,7 @@ export async function checkManifestIntegrity(
 
       clearPendingDelete(deps.db, pending.type, pending.itemId)
     }
+    retainDeclinedRefs(deps.db, (ref) => serverItemMap.has(itemRefKey(ref.type, ref.id)))
 
     if (reEnqueuedCount > 0) {
       log.info('Manifest check complete', { reEnqueued: reEnqueuedCount })
@@ -254,9 +271,90 @@ function tombstoneRefKeys(type: SyncItemType, itemId: string): string[] {
     : [itemRefKey(type, itemId)]
 }
 
+/** The types `getLocalSyncableRefs` lists, and so the manifest check can re-upload. */
+const REUPLOADABLE_TYPES = [
+  'task',
+  'project',
+  'inbox',
+  'filter',
+  'task_activity',
+  'canvas_folder',
+  'template',
+  'home_page',
+  'custom_icon',
+  'bookmark',
+  'reminder',
+  'canvas',
+  'tag_definition',
+  'property_definition',
+  'settings',
+  'note',
+  'journal'
+] as const satisfies readonly RecordSyncItemType[]
+
 interface LocalSyncableRef {
   id: string
-  type: RecordSyncItemType
+  type: (typeof REUPLOADABLE_TYPES)[number]
+}
+
+/**
+ * Types listed only so a server row this device holds is not counted
+ * server-only. They are never re-uploaded from here: that needs a payload
+ * builder per type, and `buildRefPayload` has none for them. Rows of a
+ * device-local calendar provider never get a clock, so the clock filter keeps
+ * them out.
+ */
+const PRESENCE_ONLY_IDS = {
+  calendar_event: (db: DrizzleDb) =>
+    db
+      .select({ id: calendarEvents.id })
+      .from(calendarEvents)
+      .where(isNotNull(calendarEvents.clock))
+      .all(),
+  calendar_source: (db: DrizzleDb) =>
+    db
+      .select({ id: calendarSources.id })
+      .from(calendarSources)
+      .where(isNotNull(calendarSources.clock))
+      .all(),
+  calendar_binding: (db: DrizzleDb) =>
+    db
+      .select({ id: calendarBindings.id })
+      .from(calendarBindings)
+      .where(isNotNull(calendarBindings.clock))
+      .all(),
+  calendar_external_event: (db: DrizzleDb) =>
+    db
+      .select({ id: calendarExternalEvents.id })
+      .from(calendarExternalEvents)
+      .where(isNotNull(calendarExternalEvents.clock))
+      .all(),
+  folder_config: (db: DrizzleDb) =>
+    db
+      .select({ id: folderConfigs.path })
+      .from(folderConfigs)
+      .where(isNotNull(folderConfigs.clock))
+      .all(),
+  tag_category: (db: DrizzleDb) =>
+    db
+      .select({ id: tagCategories.id })
+      .from(tagCategories)
+      .where(isNotNull(tagCategories.clock))
+      .all(),
+  agent_conversation: (db: DrizzleDb) =>
+    db.select({ id: agentConversations.id }).from(agentConversations).all(),
+  agent_message: (db: DrizzleDb) => db.select({ id: agentMessages.id }).from(agentMessages).all()
+} satisfies Partial<Record<RecordSyncItemType, (db: DrizzleDb) => Array<{ id: string }>>>
+
+const ENUMERATED_TYPES: ReadonlySet<string> = new Set([
+  ...REUPLOADABLE_TYPES,
+  ...Object.keys(PRESENCE_ONLY_IDS)
+])
+
+function getPresenceOnlyKeys(db: DrizzleDb): string[] {
+  return Object.entries(PRESENCE_ONLY_IDS).flatMap(([type, listIds]) =>
+    listIds(db).map((row) => itemRefKey(type, row.id))
+  )
 }
 
 /**
