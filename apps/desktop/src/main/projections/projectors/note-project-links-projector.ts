@@ -20,6 +20,30 @@ import type { ProjectionEvent, ProjectionProjector } from '../types'
 const logger = createLogger('Projections:NoteProjectLinks')
 
 /**
+ * The note ids in each project's last synced `links` payload: the last one
+ * this device applied, or pushed and had acknowledged. Memory only, so it is
+ * unknown for a project not synced since start-up.
+ */
+const syncedLinkNoteIds = new Map<string, ReadonlySet<string>>()
+
+export function rememberSyncedProjectLinks(projectId: string, itemIds: Iterable<string>): void {
+  syncedLinkNoteIds.set(projectId, new Set(itemIds))
+}
+
+/** An unknown payload counts as carrying the note, so nothing is pushed on a guess. */
+function syncedPayloadLacks(projectId: string, noteId: string): boolean {
+  const carried = syncedLinkNoteIds.get(projectId)
+  return carried !== undefined && !carried.has(noteId)
+}
+
+const linksIntent = (projectId: string) => ({
+  type: 'project' as const,
+  itemId: projectId,
+  op: 'update' as const,
+  args: [['links']]
+})
+
+/**
  * Derives a markdown note's `project_links` rows from its frontmatter, which is
  * the source of truth. Rows that survive the diff are never deleted and
  * reinserted — that is what preserves `position` and `pinned`, which are
@@ -30,13 +54,14 @@ const logger = createLogger('Projections:NoteProjectLinks')
  * outside the projector must guard on the note actually being markdown, and
  * must not let a throw here fail their own work.
  *
- * `origin` decides whether the project is pushed. A `local` change commits the
- * rows with a project sync intent: the project payload is where every other
- * device, and iOS in particular, learns the membership. A `remote` note
- * arrived by sync, and the device that changed its frontmatter already pushed
- * the project, so only the rows are written. Pushing from every receiver bumps
- * the project clock on each device and pushes the new row's `position` and
- * `pinned` defaults over a pin set elsewhere.
+ * `origin` decides whether the project is pushed. The project payload is where
+ * every other device, and iOS in particular, learns the membership. A `local`
+ * change pushes every project it touched. A `remote` note arrived by sync, and
+ * the device that changed its frontmatter normally pushed the project already:
+ * a push from every receiver bumps the project clock on each device and pushes
+ * the new row's `position` and `pinned` defaults over a pin set elsewhere. So a
+ * remote link is pushed only when the project's synced payload is known to
+ * lack it: its writer could not resolve the name, or had no projector.
  */
 export function reconcileNoteLinks(
   noteId: string,
@@ -46,34 +71,29 @@ export function reconcileNoteLinks(
   const db = getDatabase()
   const desired = resolveNamedProjects(db, noteId, properties)
 
-  if (origin === 'remote') {
-    writeNoteLinks(db, noteId, desired)
-    return
-  }
-
   // A project's links only sync because its own payload carries them, and a
   // link write does not move `projects.modified_at`, so no sweep would find a
   // lost one: the link rows and the project's sync intent commit together (#2301).
   commitLocalChange(db, () => {
-    const touched = writeNoteLinks(db, noteId, desired)
-    return {
-      value: undefined,
-      intents: [...touched].map((projectId) => ({
-        type: 'project' as const,
-        itemId: projectId,
-        op: 'update' as const,
-        args: [['links']]
-      }))
-    }
+    const { inserted, removed } = writeNoteLinks(db, noteId, desired)
+    const owed =
+      origin === 'local'
+        ? [...inserted, ...removed]
+        : [...inserted].filter((projectId) => syncedPayloadLacks(projectId, noteId))
+    return { value: undefined, intents: owed.map(linksIntent) }
   })
 }
 
 /**
  * A note applied before the project it names found nothing to link to. When
  * that project row lands from sync, link every markdown note whose frontmatter
- * names it, with no intent: the project's own payload came with it.
+ * names it. Returns the notes it newly linked to `projectId`.
  */
-export function linkNotesNamingProject(db: DataDb, projectName: string): void {
+export function linkNotesNamingProject(
+  db: DataDb,
+  projectId: string,
+  projectName: string
+): string[] {
   const key = projectName.toLowerCase()
   const rows = getIndexDatabase()
     .select({ noteId: noteProperties.noteId, value: noteProperties.value })
@@ -81,12 +101,33 @@ export function linkNotesNamingProject(db: DataDb, projectName: string): void {
     .where(eq(noteProperties.name, PROJECT_PROPERTY_KEY))
     .all()
 
+  const linked: string[] = []
   for (const row of rows) {
     const properties = { [PROJECT_PROPERTY_KEY]: deserializeValue(row.value, 'project') }
     if (!readProjectNames(properties).some((name) => name.toLowerCase() === key)) continue
     if (!isMarkdownNote(db, row.noteId)) continue
-    writeNoteLinks(db, row.noteId, resolveNamedProjects(db, row.noteId, properties))
+    const { inserted } = writeNoteLinks(
+      db,
+      row.noteId,
+      resolveNamedProjects(db, row.noteId, properties)
+    )
+    if (inserted.has(projectId)) linked.push(row.noteId)
   }
+  return linked
+}
+
+/**
+ * Pushes `projectId` when its synced payload lacks any of `noteIds`: links
+ * this device derived that no device has published. Call it after the
+ * payload's own links are applied, so the push carries them.
+ */
+export function pushLinksMissingFromPayload(
+  db: DataDb,
+  projectId: string,
+  noteIds: readonly string[]
+): void {
+  if (!noteIds.some((noteId) => syncedPayloadLacks(projectId, noteId))) return
+  commitLocalChange(db, () => ({ value: undefined, intents: [linksIntent(projectId)] }))
 }
 
 function resolveNamedProjects(
@@ -121,10 +162,15 @@ function resolveNamedProjects(
   return desired
 }
 
-function writeNoteLinks(db: DataDb, noteId: string, desired: ReadonlySet<string>): Set<string> {
+function writeNoteLinks(
+  db: DataDb,
+  noteId: string,
+  desired: ReadonlySet<string>
+): { inserted: Set<string>; removed: Set<string> } {
   const existing = listNoteProjectLinkIds(db, noteId)
   const existingProjectIds = new Set(existing.map((row) => row.projectId))
-  const touched = new Set<string>()
+  const inserted = new Set<string>()
+  const removed = new Set<string>()
 
   for (const projectId of desired) {
     if (existingProjectIds.has(projectId)) continue
@@ -134,7 +180,7 @@ function writeNoteLinks(db: DataDb, noteId: string, desired: ReadonlySet<string>
       itemType: 'note',
       itemId: noteId
     })
-    touched.add(projectId)
+    inserted.add(projectId)
   }
 
   for (const row of existing) {
@@ -143,9 +189,9 @@ function writeNoteLinks(db: DataDb, noteId: string, desired: ReadonlySet<string>
     // written by the project-hub file importer carries 'file' even for a
     // markdown note, and would otherwise be undeletable.
     deleteProjectLink(db, row.projectId, row.itemType, noteId)
-    touched.add(row.projectId)
+    removed.add(row.projectId)
   }
-  return touched
+  return { inserted, removed }
 }
 
 export function createNoteProjectLinksProjector(): ProjectionProjector {
@@ -159,6 +205,8 @@ export function createNoteProjectLinksProjector(): ProjectionProjector {
     async project(event: ProjectionEvent): Promise<void> {
       if (event.type !== 'note.upserted') return
       if (event.note.kind !== 'markdown') return
+      // Unread frontmatter says nothing about membership (tier 0, large files).
+      if (event.note.properties === null) return
 
       try {
         reconcileNoteLinks(event.note.noteId, event.note.properties, 'local')

@@ -71,6 +71,7 @@ vi.mock('../local-mutations', async (importOriginal) => ({
 }))
 
 import { noteHandler } from './note-handler'
+import { projectHandler } from './project-handler'
 import { syncNoteToCache } from '../../vault/note-sync'
 import { createNoteProjectLinksProjector } from '../../projections/projectors/note-project-links-projector'
 
@@ -215,6 +216,116 @@ describe('noteHandler.applyUpsert — project links on a synced update', () => {
 
     expect(dataDb.db.select().from(projectLinks).all()).toHaveLength(1)
     expect(mockLocalMutation).not.toHaveBeenCalled()
+  })
+
+  describe('when the project payload this device last synced is known', () => {
+    const applyProject = (id: string, clock: Record<string, number>, noteIds: string[]) =>
+      projectHandler.applyUpsert(
+        ctx,
+        id,
+        {
+          name: 'Beta',
+          color: '#000',
+          position: 0,
+          links: noteIds.map((itemId, index) => ({
+            id: `origin-link-${itemId}`,
+            projectId: id,
+            itemType: 'note',
+            itemId,
+            position: index,
+            pinned: 0
+          })),
+          createdAt: '2026-01-01T00:00:00.000Z',
+          modifiedAt: '2026-01-02T00:00:00.000Z'
+        },
+        clock
+      )
+
+    const seedProject = (id: string) =>
+      dataDb.db
+        .insert(projects)
+        .values({
+          id,
+          name: 'Beta',
+          color: '#000',
+          position: 0,
+          isInbox: false,
+          clock: { 'device-A': 1 },
+          createdAt: '2026-01-01T00:00:00.000Z',
+          modifiedAt: '2026-01-01T00:00:00.000Z'
+        })
+        .run()
+
+    const applyNoteNamingBeta = (clock: Record<string, number>) =>
+      noteHandler.applyUpsert(ctx, 'n1', { properties: { project: ['Beta'] }, clock }, clock)
+
+    it('pushes the project once when its synced payload lacks the note (writer could not resolve it)', () => {
+      seedProject('proj-lacks')
+      expect(applyProject('proj-lacks', { 'device-A': 2 }, [])).toBe('applied')
+
+      expect(applyNoteNamingBeta({ 'device-A': 1, 'device-B': 1 })).toBe('applied')
+
+      expect(
+        dataDb.db
+          .select({ projectId: projectLinks.projectId, itemId: projectLinks.itemId })
+          .from(projectLinks)
+          .all()
+      ).toEqual([{ projectId: 'proj-lacks', itemId: 'n1' }])
+      expect(mockLocalMutation.mock.calls).toEqual([
+        ['project', 'enqueueUpdate', 'proj-lacks', [['links']]]
+      ])
+    })
+
+    it('pushes nothing when its synced payload already carries the note', () => {
+      seedProject('proj-has')
+      expect(applyProject('proj-has', { 'device-A': 2 }, ['n1'])).toBe('applied')
+
+      expect(applyNoteNamingBeta({ 'device-A': 1, 'device-B': 1 })).toBe('applied')
+
+      expect(
+        dataDb.db
+          .select({ projectId: projectLinks.projectId, itemId: projectLinks.itemId })
+          .from(projectLinks)
+          .all()
+      ).toEqual([{ projectId: 'proj-has', itemId: 'n1' }])
+      expect(mockLocalMutation.mock.calls).toEqual([])
+      expect(dataDb.db.select().from(syncIntents).all()).toEqual([])
+    })
+
+    it('an acknowledged push without the note replaces the payload it last applied', () => {
+      seedProject('proj-acked')
+      applyProject('proj-acked', { 'device-A': 2 }, ['n1'])
+      // This device then pushed the project from its own rows, which lack n1.
+      projectHandler.markPushSynced(ctx.db, 'proj-acked')
+
+      applyNoteNamingBeta({ 'device-A': 1, 'device-B': 1 })
+
+      expect(mockLocalMutation.mock.calls).toEqual([
+        ['project', 'enqueueUpdate', 'proj-acked', [['links']]]
+      ])
+    })
+
+    it('converges: a peer that derived the same link pushes nothing more here', () => {
+      seedProject('proj-peer')
+      applyProject('proj-peer', { 'device-A': 2 }, [])
+      applyNoteNamingBeta({ 'device-A': 1, 'device-B': 1 })
+
+      // The peer derived the same link from the same note and pushed the project.
+      expect(applyProject('proj-peer', { 'device-A': 2, 'device-C': 1 }, ['n1'])).not.toBe(
+        'skipped'
+      )
+      applyNoteNamingBeta({ 'device-A': 1, 'device-B': 2 })
+
+      expect(mockLocalMutation.mock.calls).toEqual([
+        ['project', 'enqueueUpdate', 'proj-peer', [['links']]]
+      ])
+      expect(
+        dataDb.db
+          .select({ projectId: projectLinks.projectId, itemId: projectLinks.itemId })
+          .from(projectLinks)
+          .all()
+      ).toEqual([{ projectId: 'proj-peer', itemId: 'n1' }])
+    })
   })
 
   it('does not reconcile links for a non-markdown note', () => {

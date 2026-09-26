@@ -26,7 +26,12 @@ export interface MarkdownNoteProjection {
   /** Only set by tier 0, where it is the one thing `stat` knows about the body. */
   fileSize?: number | null
   tags: string[]
-  properties: Record<string, unknown>
+  /**
+   * Null when the frontmatter was not read: tier 0 and the large-file tier.
+   * An empty object means the note has no properties, which unlinks it from
+   * every project; null must never be read that way.
+   */
+  properties: Record<string, unknown> | null
   wikiLinks: string[]
 }
 
