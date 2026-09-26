@@ -163,7 +163,7 @@ test.describe('Editor command flows E2E', () => {
     await resetEditorDocument(page, '')
     await focusEditor(page)
     await pastePlainText(page, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
-    await expect(page.locator('[data-paste-link-menu]')).toBeVisible()
+    await expect(page.locator('[data-inline-choice-menu]')).toBeVisible()
     // Menu order: Mention, Embed, Bookmark, URL — one ArrowDown reaches Embed
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Enter')
@@ -269,7 +269,7 @@ test.describe('Editor command flows E2E', () => {
     await resetToEmptyBulletItem(page)
 
     await pastePlainText(page, url)
-    await expect(page.locator('[data-paste-link-menu]')).toBeVisible()
+    await expect(page.locator('[data-inline-choice-menu]')).toBeVisible()
     // Menu order: Mention, Bookmark, URL — "URL" is always the last option.
     await page.keyboard.press('ArrowUp')
     await page.keyboard.press('Enter')
