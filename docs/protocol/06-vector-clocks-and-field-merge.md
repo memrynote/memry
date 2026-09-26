@@ -331,7 +331,8 @@ happen before the first push.
 
 Desktop used to violate the rule above. `recoverDirtyItems` routes
 `syncedAt IS NULL` rows to `enqueueCreate`, not `enqueueRecoveredUpdate`
-(`apps/desktop/src/main/sync/dirty-recovery.ts:57-68`), and rebinding ran only
+(`enqueueCreateOrRecoveredUpdate` in
+`apps/desktop/src/main/sync/dirty-recovery.ts`), and rebinding ran only
 from `recoverPendingChange`, which only `enqueueRecoveredUpdate` called;
 `applyLocalChange` increments the real device id but never strips `_offline`,
 and `seedUnclocked` only touches `clock IS NULL` rows
@@ -348,14 +349,16 @@ with nothing offline about it returns `null` and is untouched. Pinned by
 `apps/desktop/src/main/sync/dirty-recovery.test.ts`.
 
 **Residual, still open.** The fix reaches the types that implement
-`recoverPendingChange` — tasks and projects. Doc-clock-only types that mint
-`_offline` through `local-mutations.ts` (inbox, saved filters, templates, home
-pages, custom icons, bookmarks, reminders, canvases, canvas folders, task
-activity) have no rebinding hook, so their `_offline` still reaches the wire.
-Notes and journals are unaffected: `incrementNoteClockOffline` ticks the real
-device id and skips the bump when none is registered
-(`packages/sync-client/src/offline-clock.ts`). **The server filters nothing**:
-there is no reference to `_offline` anywhere under `apps/sync-server/src`.
+`recoverPendingChange`: tasks and projects (field clocks), and since #2286 the
+doc-clock types inbox, saved filters, templates, home pages, custom icons,
+bookmarks, reminders, canvas folders and task activity, through
+`recoverOfflineDocClock` (`packages/sync-client/src/offline-clock.ts`). Canvases
+still mint `_offline` through `local-mutations.ts` with no rebinding hook, so
+their `_offline` still reaches the wire. Notes and journals are unaffected:
+`incrementNoteClockOffline` ticks the real device id and skips the bump when
+none is registered (`packages/sync-client/src/offline-clock.ts`). **The server
+filters nothing**: there is no reference to `_offline` anywhere under
+`apps/sync-server/src`.
 
 Why it matters wherever it remains: `_offline` is a device id two machines can
 both claim, so their clocks compare equal for edits that are genuinely

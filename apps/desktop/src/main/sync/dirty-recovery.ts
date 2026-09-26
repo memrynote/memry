@@ -1,11 +1,30 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
-import { and, gt, isNull, isNotNull, or, sql } from 'drizzle-orm'
+import { and, gt, isNull, isNotNull, or, sql, type SQL } from 'drizzle-orm'
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
+import { RECORD_SYNC_ITEM_TYPES, type RecordSyncItemType } from '@memry/contracts/sync-api'
 import { noteMetadata } from '@memry/db-schema/data-schema'
-import type { SyncAdapterRegistry } from '@memry/sync-core'
+import type { RecordLocalSyncAdapter, SyncAdapterRegistry } from '@memry/sync-core'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { savedFilters } from '@memry/db-schema/schema/settings'
+import { bookmarks } from '@memry/db-schema/schema/bookmarks'
+import { templates } from '@memry/db-schema/schema/templates'
+import { homePages } from '@memry/db-schema/schema/home-pages'
+import { customIcons } from '@memry/db-schema/schema/custom-icons'
+import { reminders } from '@memry/db-schema/schema/reminders'
+import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
+import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import { getInboxSyncService } from '@memry/sync-client/inbox-sync'
+import { getFilterSyncService } from '@memry/sync-client/filter-sync'
+import { getBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
+import { getTemplateSyncService } from '@memry/sync-client/template-sync'
+import { getHomePageSyncService } from '@memry/sync-client/home-page-sync'
+import { getCustomIconSyncService } from '@memry/sync-client/custom-icon-sync'
+import { getReminderSyncService } from '@memry/sync-client/reminder-sync'
+import { getCanvasFolderSyncService } from '@memry/sync-client/canvas-folder-sync'
+import { getTaskActivitySyncService } from '@memry/sync-client/task-activity-sync'
+import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
 import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
 import { getProjectSyncService } from '@memry/sync-client/project-sync'
@@ -15,35 +34,75 @@ import { createLogger } from '../lib/logger'
 
 const log = createLogger('DirtyRecovery')
 
+type RecoveryAdapters = SyncAdapterRegistry<DrizzleDb, (channel: string, data: unknown) => void>
+
 export interface RecoveryResult {
   tasks: number
   projects: number
   notes: number
   journals: number
   inbox: number
+  /** Every swept type with at least one re-enqueued row, the five above included. */
+  byType: Partial<Record<RecordSyncItemType, number>>
   /** Deletes raised while the sync runtime was down, replayed from tombstones. */
   deletes: number
 }
 
+interface DirtyRow {
+  id: string
+  syncedAt: string | number | null
+  journalDate?: string | null
+}
+
 /**
- * Scans for locally-modified items that were never synced (e.g. edited while signed out).
- * Re-enqueues them for the next sync cycle, rebinding offline placeholder clocks when present.
- *
- * Detection: modifiedAt > syncedAt (modified since last sync) OR syncedAt IS NULL (never synced).
- * Safe to call multiple times — SyncQueueManager.enqueue() deduplicates by itemId+type+operation.
+ * How one record sync item type finds the rows it still owes the server and
+ * hands them back to its local sync service. `enqueue` reports whether it did.
  */
-export function recoverDirtyItems(
-  db: DrizzleDb,
-  adapters?: SyncAdapterRegistry<DrizzleDb, (channel: string, data: unknown) => void>
-): RecoveryResult {
-  const taskSync = adapters?.getLocal('task') ?? getTaskSyncService()
-  const projectSync = adapters?.getLocal('project') ?? getProjectSyncService()
+interface DirtySweep {
+  kind: 'sweep'
+  /** Wrapped, not the bare getter: this table is built at import time. */
+  service(): RecordLocalSyncAdapter | null | undefined
+  select(db: DrizzleDb): DirtyRow[]
+  enqueue(service: RecordLocalSyncAdapter, row: DirtyRow): boolean
+}
 
-  let taskCount = 0
-  let projectCount = 0
+/** A type with no startup sweep, and the one-line reason why. */
+interface DirtySweepExemption {
+  kind: 'exempt'
+  reason: string
+}
 
-  if (taskSync) {
-    const dirtyTasks = db
+/**
+ * Tasks, projects and the doc-clock record types: a never-synced row goes out
+ * as a create, which bumps the clock; a row modified since its last sync is
+ * re-pushed at its stored clock, which was already advanced when it was written.
+ * Both paths rebind `_offline` ticks first (`recoverPendingChange`), so the
+ * placeholder device id never reaches the wire (#2179, #2286).
+ */
+function enqueueCreateOrRecoveredUpdate(service: RecordLocalSyncAdapter, row: DirtyRow): boolean {
+  if (!row.syncedAt) {
+    service.enqueueCreate(row.id)
+  } else if (service.enqueueRecoveredUpdate) {
+    service.enqueueRecoveredUpdate(row.id)
+  } else {
+    service.enqueueUpdate(row.id)
+  }
+  return true
+}
+
+/**
+ * Never pushed, or edited since the last push. `gt` against a NULL `syncedAt`
+ * is NULL in SQLite, so the second arm needs no `IS NOT NULL` guard.
+ */
+function isDirty(syncedAt: SQLiteColumn, modifiedAt?: SQLiteColumn): SQL | undefined {
+  return modifiedAt ? or(isNull(syncedAt), gt(modifiedAt, syncedAt)) : isNull(syncedAt)
+}
+
+const recoverDirtyTasks: DirtySweep = {
+  kind: 'sweep',
+  service: () => getTaskSyncService(),
+  select: (db) =>
+    db
       .select({ id: tasks.id, syncedAt: tasks.syncedAt })
       .from(tasks)
       .where(
@@ -52,26 +111,15 @@ export function recoverDirtyItems(
           isNull(tasks.syncedAt)
         )
       )
-      .all()
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
 
-    for (const t of dirtyTasks) {
-      const op = t.syncedAt ? 'update' : 'create'
-      log.debug('Recovering dirty task', { taskId: t.id, op, syncedAt: t.syncedAt })
-      if (t.syncedAt) {
-        if (taskSync.enqueueRecoveredUpdate) {
-          taskSync.enqueueRecoveredUpdate(t.id)
-        } else {
-          taskSync.enqueueUpdate(t.id)
-        }
-      } else {
-        taskSync.enqueueCreate(t.id)
-      }
-      taskCount++
-    }
-  }
-
-  if (projectSync) {
-    const dirtyProjects = db
+const recoverDirtyProjects: DirtySweep = {
+  kind: 'sweep',
+  service: () => getProjectSyncService(),
+  select: (db) =>
+    db
       .select({ id: projects.id, syncedAt: projects.syncedAt })
       .from(projects)
       .where(
@@ -80,49 +128,8 @@ export function recoverDirtyItems(
           isNull(projects.syncedAt)
         )
       )
-      .all()
-
-    for (const p of dirtyProjects) {
-      log.debug('Recovering dirty project', { projectId: p.id, syncedAt: p.syncedAt })
-      if (p.syncedAt) {
-        if (projectSync.enqueueRecoveredUpdate) {
-          projectSync.enqueueRecoveredUpdate(p.id)
-        } else {
-          projectSync.enqueueUpdate(p.id)
-        }
-      } else {
-        projectSync.enqueueCreate(p.id)
-      }
-      projectCount++
-    }
-  }
-
-  const noteCount = recoverDirtyNotes(db, adapters)
-  const journalCount = recoverDirtyJournals(db, adapters)
-  const inboxCount = recoverDirtyInbox(db, adapters)
-  // The delete half of the same sweep. Create and update leave a dirty row the
-  // queries above find; a delete leaves no row at all, so it is captured as a
-  // tombstone when it is raised and replayed here instead (#1579).
-  const deleteCount = flushPendingLocalDeletes(db)
-
-  if (taskCount > 0 || projectCount > 0 || noteCount > 0 || journalCount > 0 || inboxCount > 0) {
-    log.info('Recovered dirty items for sync', {
-      tasks: taskCount,
-      projects: projectCount,
-      notes: noteCount,
-      journals: journalCount,
-      inbox: inboxCount
-    })
-  }
-
-  return {
-    tasks: taskCount,
-    projects: projectCount,
-    notes: noteCount,
-    journals: journalCount,
-    inbox: inboxCount,
-    deletes: deleteCount
-  }
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
 }
 
 /**
@@ -143,35 +150,33 @@ export function recoverDirtyItems(
  * the stored clock instead of bumping it, so a note that is actually in step is
  * simply replay-detected by the server and stamped clean.
  */
-function recoverDirtyNotes(
-  db: DrizzleDb,
-  adapters?: SyncAdapterRegistry<DrizzleDb, (channel: string, data: unknown) => void>
-): number {
-  const noteSync = adapters?.getLocal('note') ?? getNoteSyncService()
-  if (!noteSync?.enqueueRecoveredUpdate) return 0
-
-  const dirtyNotes = db
-    .select({ id: noteMetadata.id })
-    .from(noteMetadata)
-    .where(
-      and(
-        isNotNull(noteMetadata.clock),
-        isNull(noteMetadata.journalDate),
-        sql`${noteMetadata.localOnly} IS NOT 1`,
-        or(
-          isNull(noteMetadata.syncedAt),
-          and(isNotNull(noteMetadata.syncedAt), gt(noteMetadata.modifiedAt, noteMetadata.syncedAt))
+const recoverDirtyNotes: DirtySweep = {
+  kind: 'sweep',
+  service: () => getNoteSyncService(),
+  select: (db) =>
+    db
+      .select({ id: noteMetadata.id, syncedAt: noteMetadata.syncedAt })
+      .from(noteMetadata)
+      .where(
+        and(
+          isNotNull(noteMetadata.clock),
+          isNull(noteMetadata.journalDate),
+          sql`${noteMetadata.localOnly} IS NOT 1`,
+          or(
+            isNull(noteMetadata.syncedAt),
+            and(
+              isNotNull(noteMetadata.syncedAt),
+              gt(noteMetadata.modifiedAt, noteMetadata.syncedAt)
+            )
+          )
         )
       )
-    )
-    .all()
-
-  for (const note of dirtyNotes) {
-    log.debug('Recovering dirty note', { noteId: note.id })
+      .all(),
+  enqueue: (noteSync, note) => {
+    if (!noteSync.enqueueRecoveredUpdate) return false
     noteSync.enqueueRecoveredUpdate(note.id)
+    return true
   }
-
-  return dirtyNotes.length
 }
 
 /**
@@ -208,34 +213,28 @@ function recoverDirtyNotes(
  * time. Bumping produces exactly the push the fix in `markItemAsFiled` would
  * have produced at filing time.
  */
-function recoverDirtyInbox(
-  db: DrizzleDb,
-  adapters?: SyncAdapterRegistry<DrizzleDb, (channel: string, data: unknown) => void>
-): number {
-  const inboxSync = adapters?.getLocal('inbox') ?? getInboxSyncService()
-  if (!inboxSync) return 0
-
-  const dirtyItems = db
-    .select({ id: inboxItems.id })
-    .from(inboxItems)
-    .where(
-      and(
-        isNotNull(inboxItems.clock),
-        sql`${inboxItems.localOnly} IS NOT 1`,
-        or(
-          isNull(inboxItems.syncedAt),
-          and(isNotNull(inboxItems.syncedAt), gt(inboxItems.modifiedAt, inboxItems.syncedAt))
+const recoverDirtyInbox: DirtySweep = {
+  kind: 'sweep',
+  service: () => getInboxSyncService(),
+  select: (db) =>
+    db
+      .select({ id: inboxItems.id, syncedAt: inboxItems.syncedAt })
+      .from(inboxItems)
+      .where(
+        and(
+          isNotNull(inboxItems.clock),
+          sql`${inboxItems.localOnly} IS NOT 1`,
+          or(
+            isNull(inboxItems.syncedAt),
+            and(isNotNull(inboxItems.syncedAt), gt(inboxItems.modifiedAt, inboxItems.syncedAt))
+          )
         )
       )
-    )
-    .all()
-
-  for (const item of dirtyItems) {
-    log.debug('Recovering dirty inbox item', { itemId: item.id })
+      .all(),
+  enqueue: (inboxSync, item) => {
     inboxSync.enqueueUpdate(item.id)
+    return true
   }
-
-  return dirtyItems.length
 }
 
 /**
@@ -253,7 +252,7 @@ function recoverDirtyInbox(
  * `JournalSyncService.buildSnapshotPayload` resolves the journal's file path
  * from it *before* its own try/catch, and `formatJournalFilename` does
  * `isoDate.split('-')`, so recovering a journal without one throws out of this
- * loop and takes the whole sweep — tasks, projects and notes included — with it.
+ * loop and takes every other journal in the sweep with it.
  *
  * Same narrow scope as notes: only journals the server already knows (`clock`
  * set) and that are not local-only. Clock-less journals belong to
@@ -261,38 +260,293 @@ function recoverDirtyInbox(
  * than bumping it, so a journal that is actually in step is replay-detected
  * server side and simply stamped as synced.
  */
-function recoverDirtyJournals(
-  db: DrizzleDb,
-  adapters?: SyncAdapterRegistry<DrizzleDb, (channel: string, data: unknown) => void>
-): number {
-  const journalSync = adapters?.getLocal('journal') ?? getJournalSyncService()
-  if (!journalSync?.enqueueRecoveredUpdate) return 0
-
-  const dirtyJournals = db
-    .select({ id: noteMetadata.id, journalDate: noteMetadata.journalDate })
-    .from(noteMetadata)
-    .where(
-      and(
-        isNotNull(noteMetadata.clock),
-        isNotNull(noteMetadata.journalDate),
-        sql`${noteMetadata.localOnly} IS NOT 1`,
-        or(
-          isNull(noteMetadata.syncedAt),
-          and(isNotNull(noteMetadata.syncedAt), gt(noteMetadata.modifiedAt, noteMetadata.syncedAt))
+const recoverDirtyJournals: DirtySweep = {
+  kind: 'sweep',
+  service: () => getJournalSyncService(),
+  select: (db) =>
+    db
+      .select({
+        id: noteMetadata.id,
+        syncedAt: noteMetadata.syncedAt,
+        journalDate: noteMetadata.journalDate
+      })
+      .from(noteMetadata)
+      .where(
+        and(
+          isNotNull(noteMetadata.clock),
+          isNotNull(noteMetadata.journalDate),
+          sql`${noteMetadata.localOnly} IS NOT 1`,
+          or(
+            isNull(noteMetadata.syncedAt),
+            and(
+              isNotNull(noteMetadata.syncedAt),
+              gt(noteMetadata.modifiedAt, noteMetadata.syncedAt)
+            )
+          )
         )
       )
-    )
-    .all()
-
-  let recovered = 0
-  for (const journal of dirtyJournals) {
-    // Unreachable given the `isNotNull` above — but the date is what keeps the
+      .all(),
+  enqueue: (journalSync, journal) => {
+    // Unreachable given the `isNotNull` above, but the date is what keeps the
     // payload builder from throwing, so it is narrowed here rather than asserted.
-    if (!journal.journalDate) continue
-    log.debug('Recovering dirty journal', { noteId: journal.id })
+    if (!journalSync.enqueueRecoveredUpdate || !journal.journalDate) return false
     journalSync.enqueueRecoveredUpdate(journal.id, journal.journalDate)
-    recovered++
+    return true
+  }
+}
+
+/**
+ * The doc-clock record types below share one shape: a whole-row `clock`, a
+ * `syncedAt` stamped by both `markPushSynced` and pull-apply, and a local sync
+ * service whose `recoverPendingChange` rebinds `_offline` ticks. The clock is
+ * the only thing that says the server has ever seen a row, so clock-less rows
+ * are left to `seedUnclocked`, exactly as the note and inbox arms do.
+ *
+ * Filters, bookmarks and task activity have no modification timestamp, so only
+ * a never-synced row is detectable. An edit to an already-pushed filter or
+ * bookmark that loses its queue row stays uncovered until P4.2 (#2301); task
+ * activity rows are immutable, so there is no such edit.
+ */
+const recoverDirtyFilters: DirtySweep = {
+  kind: 'sweep',
+  service: () => getFilterSyncService(),
+  select: (db) =>
+    db
+      .select({ id: savedFilters.id, syncedAt: savedFilters.syncedAt })
+      .from(savedFilters)
+      .where(and(isNotNull(savedFilters.clock), isDirty(savedFilters.syncedAt)))
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
+const recoverDirtyBookmarks: DirtySweep = {
+  kind: 'sweep',
+  service: () => getBookmarkSyncService(),
+  select: (db) =>
+    db
+      .select({ id: bookmarks.id, syncedAt: bookmarks.syncedAt })
+      .from(bookmarks)
+      .where(and(isNotNull(bookmarks.clock), isDirty(bookmarks.syncedAt)))
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
+const recoverDirtyTemplates: DirtySweep = {
+  kind: 'sweep',
+  service: () => getTemplateSyncService(),
+  select: (db) =>
+    db
+      .select({ id: templates.id, syncedAt: templates.syncedAt })
+      .from(templates)
+      .where(and(isNotNull(templates.clock), isDirty(templates.syncedAt, templates.modifiedAt)))
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
+const recoverDirtyHomePages: DirtySweep = {
+  kind: 'sweep',
+  service: () => getHomePageSyncService(),
+  select: (db) =>
+    db
+      .select({ id: homePages.id, syncedAt: homePages.syncedAt })
+      .from(homePages)
+      .where(and(isNotNull(homePages.clock), isDirty(homePages.syncedAt, homePages.updatedAt)))
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
+const recoverDirtyCustomIcons: DirtySweep = {
+  kind: 'sweep',
+  service: () => getCustomIconSyncService(),
+  select: (db) =>
+    db
+      .select({ id: customIcons.id, syncedAt: customIcons.syncedAt })
+      .from(customIcons)
+      .where(
+        and(isNotNull(customIcons.clock), isDirty(customIcons.syncedAt, customIcons.updatedAt))
+      )
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
+/**
+ * A reminder firing moves `modifiedAt` without a push (`status: 'triggered'` is
+ * device-local), so this also re-pushes fired reminders once. That is harmless:
+ * the recovered update replays the stored clock with the device-local fields
+ * stripped, the server refuses it as a replay, and the refusal stamps the row.
+ */
+const recoverDirtyReminders: DirtySweep = {
+  kind: 'sweep',
+  service: () => getReminderSyncService(),
+  select: (db) =>
+    db
+      .select({ id: reminders.id, syncedAt: reminders.syncedAt })
+      .from(reminders)
+      .where(and(isNotNull(reminders.clock), isDirty(reminders.syncedAt, reminders.modifiedAt)))
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
+/**
+ * Epoch-ms columns, compared with each other only. Tombstones are skipped: a
+ * soft-deleted folder re-pushed as a create or update would resurrect it, and
+ * its delete is replayed from `sync_pending_deletes` instead.
+ */
+const recoverDirtyCanvasFolders: DirtySweep = {
+  kind: 'sweep',
+  service: () => getCanvasFolderSyncService(),
+  select: (db) =>
+    db
+      .select({ id: canvasFolders.id, syncedAt: canvasFolders.syncedAt })
+      .from(canvasFolders)
+      .where(
+        and(
+          isNotNull(canvasFolders.clock),
+          isNull(canvasFolders.deletedAt),
+          isDirty(canvasFolders.syncedAt, canvasFolders.updatedAt)
+        )
+      )
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
+/**
+ * Same retention cutoff as `seedUnclocked` and apply: pushing an expired row
+ * would hand it back to peers that already pruned it.
+ */
+const recoverDirtyTaskActivity: DirtySweep = {
+  kind: 'sweep',
+  service: () => getTaskActivitySyncService(),
+  select: (db) =>
+    db
+      .select({ id: taskActivity.id, syncedAt: taskActivity.syncedAt })
+      .from(taskActivity)
+      .where(
+        and(
+          isNotNull(taskActivity.clock),
+          isDirty(taskActivity.syncedAt),
+          sql`${taskActivity.createdAt} >= ${taskActivityRetentionCutoff()}`
+        )
+      )
+      .all(),
+  enqueue: enqueueCreateOrRecoveredUpdate
+}
+
+const RELIES_ON_P4_2 = 'Relies on the transactional outbox, P4.2 (#2301).'
+
+/**
+ * Startup safety net for every record sync item type (#2286). A local edit
+ * writes the row, then the clock, then the outbox row, in three transactions;
+ * a crash between the last two, or any `increment*ClockOffline` fallback,
+ * leaves a clocked row with no queue row and nothing else ever pushes it.
+ *
+ * Keyed by `RecordSyncItemType`, so a new type does not compile until it is
+ * given a sweep or an exemption, and `dirty-recovery.test.ts` enumerates
+ * `RECORD_SYNC_ITEM_TYPES` against this table.
+ */
+export const DIRTY_RECOVERY: Record<RecordSyncItemType, DirtySweep | DirtySweepExemption> = {
+  note: recoverDirtyNotes,
+  task: recoverDirtyTasks,
+  project: recoverDirtyProjects,
+  settings: {
+    kind: 'exempt',
+    reason: `Singleton with no syncedAt column, so no dirty marker. ${RELIES_ON_P4_2}`
+  },
+  inbox: recoverDirtyInbox,
+  filter: recoverDirtyFilters,
+  journal: recoverDirtyJournals,
+  tag_definition: { kind: 'exempt', reason: `No syncedAt column. ${RELIES_ON_P4_2}` },
+  tag_category: { kind: 'exempt', reason: `No syncedAt column. ${RELIES_ON_P4_2}` },
+  property_definition: {
+    kind: 'exempt',
+    reason: `syncedAt is stamped by pull-apply only, never after a push, so NULL marks every locally made definition. ${RELIES_ON_P4_2}`
+  },
+  folder_config: { kind: 'exempt', reason: `No syncedAt column. ${RELIES_ON_P4_2}` },
+  custom_icon: recoverDirtyCustomIcons,
+  calendar_event: {
+    kind: 'exempt',
+    reason: `syncedAt is never stamped by a push (no markPushSynced), so it carries no dirty signal. ${RELIES_ON_P4_2}`
+  },
+  calendar_source: {
+    kind: 'exempt',
+    reason: `syncedAt is never stamped by a push (no markPushSynced), so it carries no dirty signal. ${RELIES_ON_P4_2}`
+  },
+  calendar_binding: {
+    kind: 'exempt',
+    reason: `syncedAt is the provider write-engine's bookkeeping, never stamped by a push. ${RELIES_ON_P4_2}`
+  },
+  calendar_external_event: {
+    kind: 'exempt',
+    reason: `syncedAt is never stamped by a push (no markPushSynced), so it carries no dirty signal. ${RELIES_ON_P4_2}`
+  },
+  agent_conversation: {
+    kind: 'exempt',
+    reason: 'Desktop has no local push path for this type (agent/sync/backfill.ts is not wired).'
+  },
+  agent_message: {
+    kind: 'exempt',
+    reason: 'Desktop has no local push path for this type, and no syncedAt column.'
+  },
+  canvas: {
+    kind: 'exempt',
+    reason: `updatedAt > lastSyncedAt is no dirty signal: a scene over the sync cap is kept local on purpose (canvas/sync-bridge.ts) and a sweep would push it. ${RELIES_ON_P4_2}`
+  },
+  canvas_folder: recoverDirtyCanvasFolders,
+  bookmark: recoverDirtyBookmarks,
+  reminder: recoverDirtyReminders,
+  template: recoverDirtyTemplates,
+  task_activity: recoverDirtyTaskActivity,
+  home_page: recoverDirtyHomePages
+}
+
+/**
+ * Scans for locally-modified items that were never synced (e.g. edited while signed out).
+ * Re-enqueues them for the next sync cycle, rebinding offline placeholder clocks when present.
+ *
+ * Detection: modifiedAt > syncedAt (modified since last sync) OR syncedAt IS NULL (never synced),
+ * per type as declared in `DIRTY_RECOVERY`.
+ * Safe to call multiple times — SyncQueueManager.enqueue() deduplicates by itemId+type+operation.
+ */
+export function recoverDirtyItems(db: DrizzleDb, adapters?: RecoveryAdapters): RecoveryResult {
+  const byType: Partial<Record<RecordSyncItemType, number>> = {}
+
+  for (const type of RECORD_SYNC_ITEM_TYPES) {
+    const entry = DIRTY_RECOVERY[type]
+    if (entry.kind === 'exempt') continue
+
+    const service = adapters?.getLocal(type) ?? entry.service()
+    if (!service) continue
+
+    // Runs synchronously inside sync runtime start: one type's failure must not
+    // cost every other type its sweep, or abort the start.
+    try {
+      let recovered = 0
+      for (const row of entry.select(db)) {
+        log.debug('Recovering dirty item', { type, itemId: row.id, syncedAt: row.syncedAt })
+        if (entry.enqueue(service, row)) recovered++
+      }
+      if (recovered > 0) byType[type] = recovered
+    } catch (err) {
+      log.warn('Dirty recovery failed for a sync type', { type, error: err })
+    }
   }
 
-  return recovered
+  // The delete half of the same sweep. Create and update leave a dirty row the
+  // queries above find; a delete leaves no row at all, so it is captured as a
+  // tombstone when it is raised and replayed here instead (#1579).
+  const deleteCount = flushPendingLocalDeletes(db)
+
+  if (Object.keys(byType).length > 0) {
+    log.info('Recovered dirty items for sync', byType)
+  }
+
+  return {
+    tasks: byType.task ?? 0,
+    projects: byType.project ?? 0,
+    notes: byType.note ?? 0,
+    journals: byType.journal ?? 0,
+    inbox: byType.inbox ?? 0,
+    byType,
+    deletes: deleteCount
+  }
 }

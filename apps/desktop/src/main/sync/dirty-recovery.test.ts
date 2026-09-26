@@ -6,13 +6,42 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
+import { savedFilters } from '@memry/db-schema/schema/settings'
+import { bookmarks } from '@memry/db-schema/schema/bookmarks'
+import { templates } from '@memry/db-schema/schema/templates'
+import { homePages } from '@memry/db-schema/schema/home-pages'
+import { customIcons } from '@memry/db-schema/schema/custom-icons'
+import { reminders } from '@memry/db-schema/schema/reminders'
+import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
+import { taskActivity } from '@memry/db-schema/schema/task-activity'
+import { RECORD_SYNC_ITEM_TYPES, type RecordSyncItemType } from '@memry/contracts/sync-api'
 import type { DataDb } from '../database/client'
 import { incrementNoteClockOffline } from '@memry/sync-client/offline-clock'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { initTaskSyncService, resetTaskSyncService } from '@memry/sync-client/task-sync'
 import { initProjectSyncService, resetProjectSyncService } from '@memry/sync-client/project-sync'
 import { initInboxSyncService, resetInboxSyncService } from '@memry/sync-client/inbox-sync'
-import { recoverDirtyItems } from './dirty-recovery'
+import { initFilterSyncService, resetFilterSyncService } from '@memry/sync-client/filter-sync'
+import { initBookmarkSyncService, resetBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
+import { initTemplateSyncService, resetTemplateSyncService } from '@memry/sync-client/template-sync'
+import {
+  initHomePageSyncService,
+  resetHomePageSyncService
+} from '@memry/sync-client/home-page-sync'
+import {
+  initCustomIconSyncService,
+  resetCustomIconSyncService
+} from '@memry/sync-client/custom-icon-sync'
+import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
+import {
+  initCanvasFolderSyncService,
+  resetCanvasFolderSyncService
+} from '@memry/sync-client/canvas-folder-sync'
+import {
+  initTaskActivitySyncService,
+  resetTaskActivitySyncService
+} from '@memry/sync-client/task-activity-sync'
+import { DIRTY_RECOVERY, recoverDirtyItems } from './dirty-recovery'
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -136,7 +165,7 @@ describe('dirty-recovery', () => {
 
     // #then — recovery should not mutate non-offline clocks
     const task = db.select().from(tasks).where(eq(tasks.id, 'task-stale')).get()
-    const clock = task.clock as Record<string, number>
+    const clock = task?.clock as Record<string, number>
     expect(clock['old-device']).toBe(1)
     expect(clock['device-A']).toBeUndefined()
   })
@@ -160,7 +189,7 @@ describe('dirty-recovery', () => {
 
     // #then — recovery should not inflate field-level metadata
     const task = db.select().from(tasks).where(eq(tasks.id, 'task-nofc')).get()
-    expect(task.fieldClocks ?? null).toBeNull()
+    expect(task?.fieldClocks ?? null).toBeNull()
   })
 
   it('rebinds offline task clocks to current device during recovery', () => {
@@ -194,8 +223,8 @@ describe('dirty-recovery', () => {
     expect(payloadFieldClocks?.title).toEqual({ 'old-device': 1 })
 
     const task = db.select().from(tasks).where(eq(tasks.id, 'task-offline')).get()
-    const clock = task.clock as Record<string, number>
-    const fc = task.fieldClocks as Record<string, Record<string, number>>
+    const clock = task?.clock as Record<string, number>
+    const fc = task?.fieldClocks as Record<string, Record<string, number>>
     expect(clock._offline).toBeUndefined()
     expect(fc.statusId._offline).toBeUndefined()
   })
@@ -235,8 +264,8 @@ describe('dirty-recovery', () => {
     expect(payloadFieldClocks?.title).toEqual({ 'device-A': 2 })
 
     const task = db.select().from(tasks).where(eq(tasks.id, 'task-offline-create')).get()
-    expect((task.clock as Record<string, number>)._offline).toBeUndefined()
-    const fc = task.fieldClocks as Record<string, Record<string, number>>
+    expect((task?.clock as Record<string, number>)._offline).toBeUndefined()
+    const fc = task?.fieldClocks as Record<string, Record<string, number>>
     expect(fc.title._offline).toBeUndefined()
   })
 
@@ -671,6 +700,30 @@ describe('dirty-recovery', () => {
       expect(recoverDirtyItems(db).inbox).toBe(1)
     })
 
+    it('rebinds an offline tick instead of putting _offline on the wire (#2286)', () => {
+      // #given — captured while signed out: incrementInboxClockOffline parked
+      // the tick under `_offline` and wrote no queue row
+      insertItem({
+        id: 'inbox-offline',
+        clock: { 'device-A': 1, _offline: 1 },
+        syncedAt: null,
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+
+      // #when
+      recoverDirtyItems(db)
+
+      // #then — still the bumping update this arm always used, rebound first
+      const queued = queue.peek(1)[0]
+      expect(queued?.operation).toBe('update')
+      expect(queued?.payload).not.toContain('_offline')
+      expect((JSON.parse(queued?.payload ?? '{}') as { clock?: unknown }).clock).toEqual({
+        'device-A': 3
+      })
+      const row = db.select().from(inboxItems).where(eq(inboxItems.id, 'inbox-offline')).get()
+      expect(row?.clock).toEqual({ 'device-A': 3 })
+    })
+
     it('stops firing once the push is stamped, and never queues a row twice', () => {
       insertItem({
         id: 'inbox-filed',
@@ -695,6 +748,316 @@ describe('dirty-recovery', () => {
 
       // #then — the sweep goes quiet for good
       expect(recoverDirtyItems(db).inbox).toBe(0)
+    })
+  })
+
+  it('pushes a never-synced project as a create with no _offline key on the wire (#2286)', () => {
+    db.update(projects)
+      .set({ clock: { _offline: 2 }, syncedAt: null })
+      .where(eq(projects.id, 'proj-1'))
+      .run()
+
+    recoverDirtyItems(db)
+
+    const queued = queue.peek(1)[0]
+    expect(queued?.operation).toBe('create')
+    expect(queued?.payload).not.toContain('_offline')
+    expect((JSON.parse(queued?.payload ?? '{}') as { clock?: unknown }).clock).toEqual({
+      'device-A': 3
+    })
+  })
+
+  // A local edit is three transactions — row, clock, outbox — so a crash
+  // between the last two leaves a clocked row with no queue row. The same shape
+  // comes out of every increment*ClockOffline fallback. These types used to have
+  // no startup sweep at all, so such an edit was lost for good (#2286).
+  describe('record types swept by the dirty recovery registry', () => {
+    type RowSync = {
+      clock: Record<string, number> | null
+      syncedAt: string | null
+      modifiedAt: string
+    }
+    interface SweptTypeFixture {
+      type: RecordSyncItemType
+      init(): void
+      reset(): void
+      insert(id: string, sync: RowSync): void
+      /** False where the table has no modification timestamp to compare. */
+      tracksModification: boolean
+      readClock(id: string): unknown
+    }
+
+    const deps = (): Parameters<typeof initFilterSyncService>[0] => ({
+      queue,
+      db,
+      getDeviceId: () => 'device-A'
+    })
+    const ms = (iso: string | null): number | null => (iso === null ? null : Date.parse(iso))
+
+    const FIXTURES: SweptTypeFixture[] = [
+      {
+        type: 'filter',
+        init: () => initFilterSyncService(deps()),
+        reset: resetFilterSyncService,
+        insert: (id, { clock, syncedAt }) =>
+          db.insert(savedFilters).values({ id, name: id, config: {}, clock, syncedAt }).run(),
+        tracksModification: false,
+        readClock: (id) =>
+          db.select().from(savedFilters).where(eq(savedFilters.id, id)).get()?.clock
+      },
+      {
+        type: 'bookmark',
+        init: () => initBookmarkSyncService(deps()),
+        reset: resetBookmarkSyncService,
+        insert: (id, { clock, syncedAt }) =>
+          db
+            .insert(bookmarks)
+            .values({ id, itemType: 'note', itemId: `${id}-target`, clock, syncedAt })
+            .run(),
+        tracksModification: false,
+        readClock: (id) => db.select().from(bookmarks).where(eq(bookmarks.id, id)).get()?.clock
+      },
+      {
+        type: 'template',
+        init: () => initTemplateSyncService(deps()),
+        reset: resetTemplateSyncService,
+        insert: (id, sync) =>
+          db
+            .insert(templates)
+            .values({ id, name: id, ...sync })
+            .run(),
+        tracksModification: true,
+        readClock: (id) => db.select().from(templates).where(eq(templates.id, id)).get()?.clock
+      },
+      {
+        type: 'home_page',
+        init: () => initHomePageSyncService(deps()),
+        reset: resetHomePageSyncService,
+        insert: (id, { clock, syncedAt, modifiedAt }) =>
+          db
+            .insert(homePages)
+            .values({ id, name: id, clock, syncedAt, updatedAt: modifiedAt })
+            .run(),
+        tracksModification: true,
+        readClock: (id) => db.select().from(homePages).where(eq(homePages.id, id)).get()?.clock
+      },
+      {
+        type: 'custom_icon',
+        init: () => initCustomIconSyncService(deps()),
+        reset: resetCustomIconSyncService,
+        insert: (id, { clock, syncedAt, modifiedAt }) =>
+          db
+            .insert(customIcons)
+            .values({ id, name: id, ext: 'png', data: 'x', clock, syncedAt, updatedAt: modifiedAt })
+            .run(),
+        tracksModification: true,
+        readClock: (id) => db.select().from(customIcons).where(eq(customIcons.id, id)).get()?.clock
+      },
+      {
+        type: 'reminder',
+        init: () => initReminderSyncService(deps()),
+        reset: resetReminderSyncService,
+        insert: (id, sync) =>
+          db
+            .insert(reminders)
+            .values({
+              id,
+              targetType: 'task',
+              targetId: `${id}-target`,
+              remindAt: '2026-02-01T00:00:00.000Z',
+              ...sync
+            })
+            .run(),
+        tracksModification: true,
+        readClock: (id) => db.select().from(reminders).where(eq(reminders.id, id)).get()?.clock
+      },
+      {
+        type: 'canvas_folder',
+        init: () => initCanvasFolderSyncService(deps()),
+        reset: resetCanvasFolderSyncService,
+        // Epoch ms, not ISO: canvas_folders matches canvases.
+        insert: (id, { clock, syncedAt, modifiedAt }) =>
+          db
+            .insert(canvasFolders)
+            .values({
+              id,
+              vaultId: 'vault-1',
+              path: id,
+              createdAt: Date.parse('2026-01-01T00:00:00Z'),
+              updatedAt: Date.parse(modifiedAt),
+              clock,
+              syncedAt: ms(syncedAt)
+            })
+            .run(),
+        tracksModification: true,
+        readClock: (id) =>
+          db.select().from(canvasFolders).where(eq(canvasFolders.id, id)).get()?.clock
+      },
+      {
+        type: 'task_activity',
+        init: () => initTaskActivitySyncService(deps()),
+        reset: resetTaskActivitySyncService,
+        // Inside the retention window, or the row is pruned rather than pushed.
+        insert: (id, { clock, syncedAt }) =>
+          db
+            .insert(taskActivity)
+            .values({
+              id,
+              taskId: 'task-1',
+              action: 'created',
+              createdAt: new Date().toISOString(),
+              clock,
+              syncedAt
+            })
+            .run(),
+        tracksModification: false,
+        readClock: (id) =>
+          db.select().from(taskActivity).where(eq(taskActivity.id, id)).get()?.clock
+      }
+    ]
+
+    // The five arms that predate the registry keep their own tests above.
+    const SWEPT_ABOVE: RecordSyncItemType[] = ['task', 'project', 'note', 'journal', 'inbox']
+
+    it('covers every record sync item type with a sweep or a stated exemption (#2286)', () => {
+      expect(Object.keys(DIRTY_RECOVERY).sort()).toEqual([...RECORD_SYNC_ITEM_TYPES].sort())
+      for (const type of RECORD_SYNC_ITEM_TYPES) {
+        const entry = DIRTY_RECOVERY[type]
+        if (entry.kind === 'exempt') expect(entry.reason.trim(), type).not.toBe('')
+      }
+
+      const swept = RECORD_SYNC_ITEM_TYPES.filter((type) => DIRTY_RECOVERY[type].kind === 'sweep')
+      const tested = [...SWEPT_ABOVE, ...FIXTURES.map((fixture) => fixture.type)]
+      expect([...swept].sort()).toEqual(tested.sort())
+    })
+
+    describe.each(FIXTURES)('$type', (fixture) => {
+      beforeEach(() => fixture.init())
+      afterEach(() => fixture.reset())
+
+      const pushed = (): { operation?: string; raw: string; clock: unknown } => {
+        const queued = queue.peek(1)[0]
+        const raw = queued?.payload ?? '{}'
+        return {
+          operation: queued?.operation,
+          raw,
+          clock: (JSON.parse(raw) as { clock?: unknown }).clock
+        }
+      }
+
+      it.runIf(fixture.tracksModification)(
+        're-pushes a row modified after its last sync at its stored clock (#2286)',
+        () => {
+          // #given — the clock advanced (here under `_offline`), the queue row
+          // never landed
+          fixture.insert('dirty', {
+            clock: { 'device-A': 1, _offline: 1 },
+            syncedAt: '2026-01-01T00:00:00.000Z',
+            modifiedAt: '2026-01-02T00:00:00.000Z'
+          })
+
+          // #when
+          recoverDirtyItems(db)
+
+          // #then — one update, rebound but not bumped a second time
+          expect(queue.getPendingCount()).toBe(1)
+          const item = pushed()
+          expect(item.operation).toBe('update')
+          expect(item.raw).not.toContain('_offline')
+          expect(item.clock).toEqual({ 'device-A': 2 })
+          expect(fixture.readClock('dirty')).toEqual({ 'device-A': 2 })
+        }
+      )
+
+      it('pushes a clocked never-synced row as a create with no _offline key on the wire (#2286)', () => {
+        // #given — created while signed out: the offline fallback clocked it
+        // under `_offline` and wrote no queue row
+        fixture.insert('offline', {
+          clock: { _offline: 2 },
+          syncedAt: null,
+          modifiedAt: '2026-01-02T00:00:00.000Z'
+        })
+
+        // #when
+        recoverDirtyItems(db)
+
+        // #then
+        expect(queue.getPendingCount()).toBe(1)
+        const item = pushed()
+        expect(item.operation).toBe('create')
+        expect(item.raw).not.toContain('_offline')
+        expect(item.clock).toEqual({ 'device-A': 3 })
+        expect(fixture.readClock('offline')).toEqual({ 'device-A': 3 })
+      })
+
+      it('leaves clean and clock-less rows alone', () => {
+        fixture.insert('clean', {
+          clock: { 'device-A': 1 },
+          syncedAt: '2026-01-03T00:00:00.000Z',
+          modifiedAt: '2026-01-02T00:00:00.000Z'
+        })
+        // seedUnclocked owns the first push of a row with no clock
+        fixture.insert('unclocked', {
+          clock: null,
+          syncedAt: null,
+          modifiedAt: '2026-01-02T00:00:00.000Z'
+        })
+
+        recoverDirtyItems(db)
+
+        expect(queue.getPendingCount()).toBe(0)
+      })
+    })
+
+    it('keeps sweeping the other types when one type throws', () => {
+      // #given — a dirty note whose service throws, and a dirty task after it
+      db.insert(noteMetadata)
+        .values({
+          id: 'note-throws',
+          path: 'notes/note-throws.md',
+          title: 'A note',
+          createdAt: '2026-01-01T00:00:00Z',
+          clock: { 'device-A': 1 },
+          modifiedAt: '2026-01-02T00:00:00Z'
+        } as never)
+        .run()
+      db.insert(tasks)
+        .values({ id: 'task-after', projectId: 'proj-1', title: 'T', priority: 0, position: 0 })
+        .run()
+      const throwingNotes = {
+        getLocal: (type: string) =>
+          type === 'note'
+            ? {
+                enqueueRecoveredUpdate: () => {
+                  throw new Error('payload builder failed')
+                }
+              }
+            : undefined
+      } as unknown as Parameters<typeof recoverDirtyItems>[1]
+
+      // #when / #then — runtime start is not aborted, and tasks still recover
+      expect(recoverDirtyItems(db, throwingNotes).tasks).toBe(1)
+    })
+
+    it('skips a soft-deleted canvas folder, whose delete has its own replay', () => {
+      initCanvasFolderSyncService(deps())
+      db.insert(canvasFolders)
+        .values({
+          id: 'folder-gone',
+          vaultId: 'vault-1',
+          path: 'Gone',
+          createdAt: 1,
+          updatedAt: 3,
+          deletedAt: 3,
+          clock: { 'device-A': 2 },
+          syncedAt: 2
+        })
+        .run()
+
+      recoverDirtyItems(db)
+
+      expect(queue.getPendingCount()).toBe(0)
+      resetCanvasFolderSyncService()
     })
   })
 })

@@ -75,6 +75,11 @@ sync runs — on the next launch, or as soon as the network comes back — it pu
 current state. A long offline editing session also stays cheap in memory: queued edits for a note
 are merged together rather than kept one per keystroke.
 
+The same startup check covers tasks, projects, inbox items, saved filters, bookmarks, templates, home
+boards, custom icons, reminders, canvas folders and task history: a change that was saved on disk
+but never handed to sync, for example because the app quit at the wrong moment, is pushed on the
+next launch.
+
 Deletions are kept the same way, and they are kept for every delete, not only the ones raised while
 sync is between runs. When you delete a note, task, or project, memrynote records the deletion on
 disk before anything else and keeps that record until a full check of your account confirms the

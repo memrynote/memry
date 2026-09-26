@@ -4,8 +4,8 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import { toOutboundReminderPayload } from '@memry/sync-client/reminder-outbound'
+import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
-
 
 interface ReminderSyncDeps {
   queue: SyncQueueManager
@@ -32,14 +32,15 @@ export class ReminderSyncService {
   private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: ReminderSyncDeps) {
+    const load = (reminderId: string): Record<string, unknown> | undefined =>
+      deps.db.select().from(reminders).where(eq(reminders.id, reminderId)).get() as
+        Record<string, unknown> | undefined
+
     this.controller = new RecordSyncController({
       type: 'reminder',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (reminderId) =>
-        deps.db.select().from(reminders).where(eq(reminders.id, reminderId)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -52,6 +53,11 @@ export class ReminderSyncService {
       // row's derived remindAt) never go out. All four outbound sites share
       // one implementation so they cannot drift — see reminder-outbound.ts.
       serialize: (local) => toOutboundReminderPayload(local),
+      recoverPendingChange: (reminderId, deviceId) =>
+        recoverOfflineDocClock(load(reminderId), deviceId, (clock) =>
+          deps.db.update(reminders).set({ clock }).where(eq(reminders.id, reminderId)).run()
+        ),
+      serializeRecovered: (local) => toOutboundReminderPayload(local),
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })
   }
@@ -62,6 +68,10 @@ export class ReminderSyncService {
 
   enqueueUpdate(reminderId: string): void {
     this.controller.enqueueUpdate(reminderId)
+  }
+
+  enqueueRecoveredUpdate(reminderId: string): void {
+    this.controller.enqueueRecoveredUpdate(reminderId)
   }
 
   enqueueDelete(reminderId: string, snapshotPayload: string): void {
