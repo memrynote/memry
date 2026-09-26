@@ -60,6 +60,7 @@ import {
   FEED_ONLY_SYNC_TYPES,
   LEGACY_RECORD_SYNC_ITEM_TYPES,
   NEGOTIABLE_SYNC_TYPES,
+  RECREATABLE_AFTER_PURGE_ITEM_TYPES,
   OFFLINE_CLOCK_DEVICE_ID,
   RECORD_CLOCK_REQUIRED_ITEM_TYPES,
   RECORD_SYNC_ITEM_TYPES,
@@ -167,13 +168,19 @@ export const COVERED: readonly Covered[] = [
     slug: C00,
     label: 'FEED_ONLY_SYNC_TYPES',
     value: FEED_ONLY_SYNC_TYPES,
-    spelledAs: ['| `FEED_ONLY_SYNC_TYPES` | 1 |']
+    spelledAs: ['| `FEED_ONLY_SYNC_TYPES` | 2 |']
+  },
+  {
+    slug: C00,
+    label: 'RECREATABLE_AFTER_PURGE_ITEM_TYPES size',
+    value: RECREATABLE_AFTER_PURGE_ITEM_TYPES.length,
+    spelledAs: ['| `RECREATABLE_AFTER_PURGE_ITEM_TYPES` | 10 |']
   },
   {
     slug: C00,
     label: 'NEGOTIABLE_SYNC_TYPES size',
     value: NEGOTIABLE_SYNC_TYPES.length,
-    spelledAs: ['| `NEGOTIABLE_SYNC_TYPES` | 26 |']
+    spelledAs: ['| `NEGOTIABLE_SYNC_TYPES` | 27 |']
   },
   {
     slug: C00,

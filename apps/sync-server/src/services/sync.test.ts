@@ -1183,9 +1183,12 @@ describe('pullItems', () => {
       })
     } as unknown as R2ObjectBody)
 
-    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
-      'item-1'
-    ])
+    const { items: result } = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      ['item-1']
+    )
 
     expect(result).toEqual([
       {
@@ -1233,9 +1236,12 @@ describe('pullItems', () => {
     } as unknown as R2ObjectBody)
 
     // #when
-    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
-      'item-2'
-    ])
+    const { items: result } = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      ['item-2']
+    )
 
     // #then — operation must be 'create', not hardcoded 'update'
     expect(result[0].operation).toBe('create')
@@ -1284,10 +1290,12 @@ describe('pullItems', () => {
       })
     } as unknown as R2ObjectBody)
 
-    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
-      'item-note',
-      'item-attachment'
-    ])
+    const { items: result } = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      ['item-note', 'item-attachment']
+    )
 
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('item_type IN'))
     expect(result).toEqual([
@@ -1310,7 +1318,12 @@ describe('pullItems', () => {
   })
 
   it('should return an empty array without querying D1 for empty pulls', async () => {
-    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [])
+    const { items: result } = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      []
+    )
 
     expect(result).toEqual([])
     expect(db.prepare).not.toHaveBeenCalled()
@@ -1365,7 +1378,7 @@ describe('pullItems', () => {
     } as unknown as R2ObjectBody)
 
     // #when
-    const result = await pullItems(
+    const { items: result } = await pullItems(
       db as unknown as D1Database,
       {} as R2Bucket,
       'user-1',
@@ -1456,7 +1469,7 @@ describe('pullItems', () => {
     // #when / #then
     await expect(
       pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', ['item-1'])
-    ).resolves.toEqual([])
+    ).resolves.toMatchObject({ items: [] })
 
     const corruptStmt = createMockStatement()
     corruptStmt.all.mockResolvedValue({ results: [row] })
@@ -1511,9 +1524,12 @@ describe('pullItems', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when
-    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
-      'item-1'
-    ])
+    const { items: result } = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      ['item-1']
+    )
 
     // #then
     expect(result).toEqual([])
@@ -1555,7 +1571,7 @@ describe('pullItems', () => {
     })
 
     // #when
-    const result = await pullItems(
+    const { items: result } = await pullItems(
       db as unknown as D1Database,
       {} as R2Bucket,
       'user-1',
@@ -1625,11 +1641,12 @@ describe('pullItems', () => {
     } as unknown as R2ObjectBody)
 
     // #when
-    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
-      'item-a',
-      'item-skip',
-      'item-b'
-    ])
+    const { items: result } = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      ['item-a', 'item-skip', 'item-b']
+    )
 
     // #then — the unsupported row is dropped, surviving rows keep their order
     expect(result.map((item) => item.id)).toEqual(['item-a', 'item-b'])
@@ -1674,7 +1691,7 @@ describe('pullItems', () => {
     })
 
     // #when
-    const result = await pullItems(
+    const { items: result } = await pullItems(
       db as unknown as D1Database,
       {} as R2Bucket,
       'user-1',
@@ -2639,7 +2656,7 @@ describe('sync-type negotiation', () => {
       const db = createMockDb()
 
       // #when
-      const result = await pullItems(
+      const { items: result } = await pullItems(
         db as unknown as D1Database,
         {} as R2Bucket,
         'user-1',
@@ -2935,10 +2952,12 @@ describe('pullItems missing blob tolerance', () => {
           } as unknown as R2ObjectBody)
     )
 
-    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
-      'item-gone',
-      'item-ok'
-    ])
+    const { items: result } = await pullItems(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      ['item-gone', 'item-ok']
+    )
 
     expect(result.map((item) => item.id)).toEqual(['item-ok'])
   })

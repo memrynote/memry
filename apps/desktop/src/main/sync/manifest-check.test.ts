@@ -1172,4 +1172,120 @@ describe('checkManifestIntegrity', () => {
       expect(remaining.map((r) => r.itemId)).toEqual(['task-2'])
     })
   })
+
+  // #2302: the manifest diff never deletes because something is absent. A local
+  // row the server does not list is re-uploaded (a server marker then refuses
+  // it per item, and the next pull applies the tombstone under §5.8); a lost
+  // blob held in the ledger never counts as server-only.
+  describe('#2302 absence never deletes', () => {
+    const seedTask = (id: string) =>
+      testDb.db
+        .insert(tasks)
+        .values({ id, projectId: 'proj-1', title: id, priority: 0, position: 0, clock: { d: 1 } })
+        .run()
+
+    it('#then a synced local row absent from the manifest is re-enqueued and kept, never deleted', async () => {
+      seedTask('task-purged-on-server')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(
+        testDb.db.select().from(tasks).where(eq(tasks.id, 'task-purged-on-server')).get()
+      ).toBeDefined()
+      expect(queue.dequeue(1)[0]).toMatchObject({
+        itemId: 'task-purged-on-server',
+        operation: 'create'
+      })
+    })
+
+    // #2302 review (A-F3, B-6): no re-upload when this run's pull did not deliver.
+    it('#then reuploadLocalOnly false skips the re-upload but still diffs server-only items', async () => {
+      seedTask('task-local-only')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-server-only', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true,
+        reuploadLocalOnly: false
+      })
+
+      expect(queue.getPendingCount()).toBe(0)
+      expect(result).toMatchObject({ performed: true, rePullNeeded: true, serverOnlyCount: 1 })
+      expect(
+        testDb.db.select().from(tasks).where(eq(tasks.id, 'task-local-only')).get()
+      ).toBeDefined()
+    })
+
+    it('#then a partial manifest (stalled cursor) deletes nothing', async () => {
+      seedTask('task-a')
+      seedTask('task-b')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-a', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000),
+        nextCursor: 0
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      expect(
+        testDb.db
+          .select()
+          .from(tasks)
+          .all()
+          .map((row) => row.id)
+          .sort()
+      ).toEqual(['task-a', 'task-b'])
+    })
+
+    it('#then a blob_missing ledger entry is not server-only, so no full re-pull loop', async () => {
+      const { SchemaInvalidLedger } = await import('./engine/schema-invalid-ledger')
+      const state = new Map<string, string>()
+      const ledger = new SchemaInvalidLedger(
+        {
+          getStateValue: (key: string) => state.get(key),
+          setStateValue: (key: string, value: string) => state.set(key, value)
+        } as unknown as ConstructorParameters<typeof SchemaInvalidLedger>[0],
+        () => '1.0.0'
+      )
+      ledger.record([{ id: 'task-lost', type: 'task' }], 'blob_missing')
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'task-lost', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true,
+        // Wired exactly as engine.ts wires it.
+        isQuarantined: (itemId, itemType) => ledger.has(itemType, itemId)
+      })
+
+      expect(result).toMatchObject({ performed: true, rePullNeeded: false, serverOnlyCount: 0 })
+    })
+  })
 })

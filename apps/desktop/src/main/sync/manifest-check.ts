@@ -52,6 +52,14 @@ interface ManifestCheckDeps {
    * quarantined item is skipped on every pull, so counting it server-only
    * would reset the cursor and re-pull the whole vault on every check. */
   isQuarantined?: (itemId: string, itemType: string) => boolean
+  /**
+   * False skips re-uploading local rows the manifest lacks (#2302). Set it when
+   * this run's pull did not deliver: the pull is what applies a purged
+   * tombstone first, and the server accepts a `create` over the marker of a
+   * recreatable type, so a re-upload without it can resurrect a deleted item.
+   * The server-to-local diff and pending-delete retirement still run.
+   */
+  reuploadLocalOnly?: boolean
 }
 
 export interface ManifestCheckResult {
@@ -154,7 +162,7 @@ export async function checkManifestIntegrity(
     )
 
     let reEnqueuedCount = 0
-    for (const local of localRefs) {
+    for (const local of deps.reuploadLocalOnly === false ? [] : localRefs) {
       const serverRef = serverItemMap.get(itemRefKey(local.type, local.id))
 
       if (!serverRef) {

@@ -92,7 +92,13 @@ export async function refetchCorruptItems(
   vaultKey: Uint8Array
 ): Promise<void> {
   deps.tracker.clearExpired()
-  const { recovered, permanentFailures } = await deps.tracker.refetch(refs, accessJwt, vaultKey)
+  const { recovered, permanentFailures, blobMissing } = await deps.tracker.refetch(
+    refs,
+    accessJwt,
+    vaultKey
+  )
+  // A lost blob stays quarantined so the manifest does not count it server-only (#2302).
+  deps.ledger.record(blobMissing, 'blob_missing')
   applyRecoveredItems(deps, recovered, vaultKey)
 
   for (const ref of permanentFailures) {
@@ -119,14 +125,20 @@ export async function retrySchemaInvalidItems(
 ): Promise<void> {
   const retryable = deps.ledger.retryable()
   if (retryable.length === 0) return
-  const { recovered, missing, invalid } = await deps.tracker.refetch(retryable, token, vaultKey)
+  const { recovered, missing, invalid, blobMissing } = await deps.tracker.refetch(
+    retryable,
+    token,
+    vaultKey
+  )
   deps.ledger.resolve(missing)
   deps.ledger.record(invalid, 'envelope')
+  deps.ledger.record(blobMissing, 'blob_missing')
   applyRecoveredItems(deps, recovered, vaultKey)
   log.info('Retried schema-invalid items', {
     retryable: retryable.length,
     recovered: recovered.length,
     missing: missing.length,
-    invalid: invalid.length
+    invalid: invalid.length,
+    blobMissing: blobMissing.length
   })
 }

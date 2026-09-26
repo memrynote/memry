@@ -346,4 +346,65 @@ describe('D1 schema', () => {
       expect(column).toMatchObject({ notnull: 0, dflt_value: null })
     })
   })
+
+  // #2302: the tombstone marker and blob-missing columns are additive and never
+  // backfilled. Existing live rows and unshed tombstones keep NULL in both.
+  describe('0013_sync_items_tombstone_marker', () => {
+    it('keeps existing live rows and tombstones untouched, with NULL marker columns', () => {
+      const db = new Database(':memory:')
+      for (const file of migrationFiles().filter((name) => name < '0013')) {
+        db.exec(loadMigrationSql(file))
+      }
+      db.prepare(
+        `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'a@b.com', 'otp', 1, 1)`
+      ).run()
+      const insert = db.prepare(
+        `INSERT INTO sync_items
+           (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
+            signature, server_cursor, created_at, updated_at, deleted_at, clock)
+         VALUES (?, 'user-1', 'default', 'task', ?, 'k', 42, 'h', 's', ?, 1, 1, ?, '{"d":1}')`
+      )
+      insert.run('row-live', 'task-live', 7, null)
+      insert.run('row-dead', 'task-dead', 8, 1700000000)
+
+      db.exec(loadMigrationSql('0013_sync_items_tombstone_marker.sql'))
+
+      expect(
+        db
+          .prepare(
+            'SELECT id, blob_key, size_bytes, deleted_at, payload_purged_at, blob_missing_at FROM sync_items ORDER BY id'
+          )
+          .all()
+      ).toEqual([
+        {
+          id: 'row-dead',
+          blob_key: 'k',
+          size_bytes: 42,
+          deleted_at: 1700000000,
+          payload_purged_at: null,
+          blob_missing_at: null
+        },
+        {
+          id: 'row-live',
+          blob_key: 'k',
+          size_bytes: 42,
+          deleted_at: null,
+          payload_purged_at: null,
+          blob_missing_at: null
+        }
+      ])
+      const columns = db.prepare('PRAGMA table_info(sync_items)').all() as Array<{
+        name: string
+        notnull: number
+        dflt_value: unknown
+      }>
+      for (const name of ['payload_purged_at', 'blob_missing_at']) {
+        expect(columns.find((entry) => entry.name === name)).toMatchObject({
+          notnull: 0,
+          dflt_value: null
+        })
+      }
+    })
+  })
 })

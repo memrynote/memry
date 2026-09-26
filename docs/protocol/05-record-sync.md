@@ -63,8 +63,10 @@ The server resolves the header into a subscription of two parts: the record
 types, and whether `note_body` was declared
 (`apps/sync-server/src/lib/sync-types.ts:20-24`).
 
-**`note_body` is the one feed-only type** (`FEED_ONLY_SYNC_TYPES`, chapter 00
-§0.7, #2295). Declaring it adds note and journal body rows to
+**`note_body` and `purged_tombstones` are the feed-only tokens**
+(`FEED_ONLY_SYNC_TYPES`, chapter 00 §0.7). `purged_tombstones` (#2302) says the
+client applies purged-tombstone markers; §5.12.3 has its rules. The rest of
+this paragraph is about `note_body` (#2295). Declaring it adds note and journal body rows to
 `GET /sync/changes` (§5.11.1) and nothing else: it is never a record type, so it
 never reaches the manifest, `POST /sync/pull`, bootstrap, or the record rows of
 `/sync/changes`. A header of only `note_body` is recognised and resolves to zero
@@ -256,6 +258,16 @@ behaviour (`:242-243`).
 row** and MUST NOT retry it; the correct recovery is to pull the tombstone and
 apply the delete locally.
 
+**The rule does not expire.** A tombstone past `version_history_days` loses its
+payload but keeps its row as a marker (§5.12.3), and the marker keeps
+`deleted_at` and `clock`, so this check and §5.7 refuse a stale push from a
+device that was offline past retention exactly as they refuse one against a
+fresh tombstone (#2302). Before #2302 the cleanup hard-deleted the row, push
+found no row, and the stale write came back as a create. Tombstones that cleanup
+already hard-deleted are gone; nothing identifies them, so they stay
+unprotected. The one exception is a `create` over a marker for a
+recreatable type, which re-creates the item (§5.12.3).
+
 ### Client-side rule (same predicate, other direction)
 
 **A conforming client MUST apply a pulled tombstone unless its local clock
@@ -269,6 +281,9 @@ upsert is rejected with `SYNC_DELETE_WINS` on every push and its pull left the
 item alive, so that one device kept a ghost copy of an item deleted on every
 other device. The local edit is dropped; delete-wins is the protocol's
 resolution for that conflict on both sides.
+
+A purged tombstone (§5.12.3) is applied under this same rule, through the same
+delete path.
 
 ## 5.9 Content hash and the stored blob — Q05.3
 
@@ -477,8 +492,8 @@ not know the fields ignores them; one that does MUST treat either as optional.
 **`POST /sync/pull`** — request `{ itemIds: string[] }`, **1 to 100**. The
 field is `itemIds`, not `ids`.
 
-Its response is `{ items: [...] }`, and **the item is not the §4.8 push
-shape.** This asymmetry is the single costliest thing this chapter failed to
+Its response is `{ items: [...], purgedTombstones?: [...], blobMissing?: [...] }`,
+and **the item is not the §4.8 push shape.** This asymmetry is the single costliest thing this chapter failed to
 say: a port that assumes one envelope reads five hundred items in a row as
 malformed, which is exactly what happened on the first staging run.
 
@@ -494,6 +509,17 @@ So a read item is
 The four ciphertext fields are identical in both spellings; only their nesting
 differs. A conforming reader accepts the nested form, and `record-envelope.json`
 pins the flat one because the vectors are written from the writer's side.
+
+`purgedTombstones` (§5.12.3) and `blobMissing` (§5.12.4) are present only when
+non-empty, so a page with neither is byte-identical to the pre-#2302 response.
+`purgedTombstones` is only ever sent to a client that declared
+`purged_tombstones` (§5.3).
+They are siblings of `items`, never elements of it: a client that predates them
+reads `items` alone and ignores the keys, while an unknown entry inside `items`
+would be recorded as an invalid item. The response schema types both arrays as
+`unknown[]`; a reader validates each entry on its own (§5.14)
+(`RecordPullPurgedTombstoneSchema`, `RecordPullBlobMissingSchema` in
+`packages/contracts/src/sync-api.ts`).
 
 **`GET /sync/changes`** → `{ items: <changes ref>[], deleted: string[], hasMore: boolean, nextCursor: integer, serverTimeMs?: integer, inline?: <read item>[], noteBodies?: <body entry>[] }`.
 
@@ -682,6 +708,9 @@ every item sharing a chunk with one bad row.
 - An item that fails its schema (the envelope schema, or the handler's payload
   schema) is recorded, not dropped: the cursor moves on, and the client
   re-fetches it by id after an app update (#2285).
+- `purgedTombstones` and `blobMissing` entries are validated one by one, like
+  items: a malformed entry is refused on its own and never costs its siblings or
+  the page (#2302).
 - **The breaker**: if a page yielded zero decoded items, produced at least one
   new corrupt item, and asked for at least one id, the cursor advances past the
   page but the run is **refused** so no success state is written
@@ -708,6 +737,145 @@ The ordering matters and is the reason the rule exists: the tombstone check runs
 a stale write from a device that had not seen the delete — does not resurrect
 locally. A client that recorded the tombstone only against a typed row it
 already had would lose the guarantee for any id it had never seen.
+
+### 5.12.3 Purged tombstones (#2302)
+
+**Normative.** A tombstone's signed payload is kept for the user's
+`version_history_days` (0 when the user has no entitlement row). After that the
+server sheds the payload (the R2 object, `signature`, `content_hash`, and
+`size_bytes`, which is refunded) but **keeps the row as a marker**: `deleted_at`,
+`clock`, `server_cursor` and the `(type, id)` identity stay
+(`apps/sync-server/src/services/cleanup.ts`, `cleanupExpiredTombstones`;
+migration `0013_sync_items_tombstone_marker.sql`). The server never deletes a
+`sync_items` row on retention.
+
+- **A marker is visible only to a client that declares `purged_tombstones`**
+  in `X-Memry-Sync-Types` (§5.3). For that client it appears in
+  `GET /sync/changes` `deleted`, except on a request with `cursor = 0`: a fresh
+  or reset device gains nothing from it and must not delete rows it restored
+  locally. Every other client (older desktops, the shared sync-client, the Rust
+  core) never sees a marker on the read side, exactly as when the old cleanup
+  hard-deleted the row. The id is not in `deleted`, so no client applies it as
+  an untyped §5.12.1 tombstone. A marker is excluded from the manifest for
+  everyone.
+- The marker is the row with `deleted_at` set and `blob_key = ''`.
+  `payload_purged_at` only records when the payload was shed: a worker rolled
+  back past #2302 can re-delete over a marker without clearing it, and that row
+  holds a signed payload again, so it is served signed and shed again.
+- The shed deletes each user's objects in one bulk R2 call and marks only rows
+  whose object delete succeeded; a failed delete leaves them for the next tick.
+  It sheds at most 200 rows for 20 users per tick, because the cron invocation
+  shares its subrequest budget with pack backfill.
+- It still refuses a stale push with `SYNC_DELETE_WINS` or `SYNC_REPLAY_DETECTED`
+  (§5.7, §5.8), for every client, declared or not. A push whose clock happens strictly after the marker's re-creates
+  the item as before, and reserves its full size.
+- **Re-create after the purge.** A push with `operation: 'create'` over a
+  marker is accepted as a new version, with a fresh size reservation and
+  without the §5.7 and §5.8 checks, **only** for types whose id legitimately
+  comes back after a delete (`apps/sync-server/src/services/sync.ts`,
+  `RECREATABLE_AFTER_PURGE_ITEM_TYPES`), for one of two reasons:
+  - the id is derived from user-visible data, so re-creating the thing
+    re-creates the id: `journal` (`j<YYYY-MM-DD>`), `tag_definition` and
+    `property_definition` (the name), `folder_config` (the path),
+    `canvas_folder` (`cvf_<path>`), `bookmark` (`bmk_<type>_<id>`),
+    `calendar_source`, `calendar_external_event` and `calendar_binding`
+    (provider-derived ids);
+  - the id is carried in a file the user can restore: a `note`'s id lives in
+    its frontmatter, so restoring a deleted note file from a backup or the OS
+    trash re-creates the same id.
+
+  Such a create carries a fresh clock that the old tombstone's clock
+  dominates, so without this rule the marker would refuse it forever and the
+  item would never reach another device. Every other clock-required type mints
+  random ids that live only in the database, so a same-id `create` over its
+  marker can only be a stale resurrection and is refused. `update` and
+  `delete` over a marker, and every push against a tombstone still inside
+  retention, follow §5.7 and §5.8 unchanged. `settings` has no required clock
+  and was never refused.
+
+- `POST /sync/pull` returns it in `purgedTombstones` to a declaring client (and
+  leaves it out for any other), never in `items`, and never reads R2 for it. A tombstone row whose blob is gone before it is marked is
+  served the same way: a delete does not need its bytes.
+- `?inline=1` never inlines a marker; its id is left to `POST /sync/pull`.
+
+A purged tombstone entry is **unsigned**:
+
+| Field          | Type                                                           |
+| -------------- | -------------------------------------------------------------- |
+| `id`           | string                                                         |
+| `type`         | `RecordSyncItemType`                                           |
+| `deletedAt`    | non-negative integer, epoch seconds                            |
+| `clock?`       | vector clock; absent for a legacy tombstone stored without one |
+| `serverCursor` | non-negative integer, the row's `server_cursor`                |
+
+A conforming client:
+
+- MUST apply a purged tombstone only if this request named its id, its type is
+  in `RECORD_CLOCK_REQUIRED_ITEM_TYPES`, and it carries a non-empty clock. Any
+  other entry is refused and applies nothing: without a clock the handler guard
+  cannot run and the delete would be unconditional.
+- MUST NOT apply an admitted entry to a local row that has no clock or an empty
+  clock: the handler guard would be skipped and the unsigned delete would be
+  unconditional (a restored vault folder, a tag minted from note usage).
+- For a `RECREATABLE_AFTER_PURGE_ITEM_TYPES` item, MUST NOT apply it while the
+  item has a queued create or update, or when the local row was created or
+  modified after the entry's `deletedAt`. That is a re-create or a restore,
+  which the server accepts over the marker; deleting it first would lose it.
+- SHOULD refuse an entry whose clock names a device id that appears neither in
+  the local row's clock nor among the account's devices the client knows.
+- SHOULD apply no purged tombstone during a pull run that started from cursor 0
+  (a fresh or reset device), since only the first page of such a run comes from
+  cursor 0.
+- Otherwise MUST apply the entry exactly as it applies a signed tombstone with
+  the same clock, under the §5.8 client rule: a local clock strictly after the
+  tombstone keeps the item.
+- MUST NOT delete a local row, or skip re-uploading it, because the server does
+  not list it. Absence carries no clock, and every read path has legitimate
+  absences (a partial manifest, a type the server does not serve, a lost blob,
+  a tombstone purged before #2302).
+
+Desktop: `apps/desktop/src/main/sync/engine/pull-envelope.ts` admits entries and
+maps them to the same apply input a signed tombstone produces, after the local
+refusals in `purged-tombstone-guard.ts`. It declares `purged_tombstones`. The
+Rust core and the shared sync-client do not declare it (#2304), so they never
+see a marker; an iOS device that missed a delete keeps its copy locally, and
+the marker stops a push of it from reaching the server.
+
+**Residual risks.**
+
+- A client that does not apply the marker (an old desktop, iOS until #2304, or
+  a current desktop that refused it locally) still holds the item. Its manifest
+  repair re-uploads it as `create`, which the server accepts over the marker
+  for a recreatable type: the item comes back. The current desktop re-uploads
+  only after a pull that delivered in the same run, and the pull is what
+  applies the marker. This matches the pre-#2302 behaviour for these types.
+- A re-create stores a fresh clock that the old tombstone's clock dominated. A
+  device offline past retention with the old version and a higher clock can
+  overwrite the re-created item on its next update.
+- A purged tombstone is asserted by the server, not signed by a device. The
+  admission rules and the device-id check bound a faulty server; they do not
+  stop a malicious one from naming a known device with a dominating clock.
+
+### 5.12.4 Rows whose payload is lost (#2302)
+
+**Normative.** When `POST /sync/pull` finds that a live row's R2 object is gone
+while the row still points at it, it stamps `blob_missing_at` on the row and
+returns `{ id, type, serverCursor }` in `blobMissing`. A 404 on a row that was
+replaced after it was read is not a lost blob: the row is left out, as before,
+and the replacement arrives at a later cursor. There is no background sweep:
+the pull, which meets every lost blob a client actually needs, is what reports
+it. Nothing deletes a row because of it. The next accepted push of the item
+clears it, and nothing triggers that push automatically.
+
+A conforming client records a `blobMissing` entry, applies nothing for it,
+never treats it as a delete, keeps any local row, and advances the cursor
+normally. Desktop holds it in the schema-invalid ledger as kind `blob_missing`,
+so the manifest check does not count the item as server-only (which would reset
+the cursor to 0 on every check), and re-fetches it by id on the corrupt-item
+cooldown. Orphan repair tombstones a child only on a positive "gone" answer for
+its parent (requested and no live row served, or its delete applied here); a
+parent in `blobMissing`, on the re-fetch cooldown, or in the schema-invalid
+ledger keeps its children.
 
 ## 5.15 The manifest, and the absence of a digest
 

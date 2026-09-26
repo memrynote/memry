@@ -1,5 +1,5 @@
 import { net } from 'electron'
-import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import { RECORD_SYNC_ITEM_TYPES, type FeedOnlySyncType } from '@memry/contracts/sync-api'
 import { getMainI18n } from '../lib/main-i18n'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { withRetry } from '@memry/sync-client/retry'
@@ -8,8 +8,10 @@ import { getBootstrapTokenHeaders } from './bootstrap-session-state'
 
 // Declared to the server so it never sends this build an item type our
 // RecordPullResponseSchema would reject — one unknown type fails the whole-page
-// safeParse and silently drops the page.
-const SYNC_TYPES_HEADER_VALUE = RECORD_SYNC_ITEM_TYPES.join(',')
+// safeParse and silently drops the page. `purged_tombstones` (#2302) says this
+// build applies purged-tombstone markers; without it the server hides them.
+const PURGED_TOMBSTONES: FeedOnlySyncType = 'purged_tombstones'
+const SYNC_TYPES_HEADER_VALUE = [...RECORD_SYNC_ITEM_TYPES, PURGED_TOMBSTONES].join(',')
 
 export type FetchFn = typeof globalThis.fetch
 

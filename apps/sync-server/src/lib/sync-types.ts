@@ -9,6 +9,7 @@ export const SYNC_TYPES_HEADER = 'X-Memry-Sync-Types'
 
 const RECORD_TYPES = new Set<string>(RECORD_SYNC_ITEM_TYPES)
 const NOTE_BODY: FeedOnlySyncType = 'note_body'
+const PURGED_TOMBSTONES: FeedOnlySyncType = 'purged_tombstones'
 
 /**
  * What one request may receive, parsed once from `X-Memry-Sync-Types`.
@@ -21,6 +22,12 @@ export interface SyncSubscription {
   recordTypes: readonly RecordSyncItemType[]
   /** The client declared `note_body`: /sync/changes also serves CRDT body rows. */
   noteBodies: boolean
+  /**
+   * The client declared `purged_tombstones` (#2302): it applies marker rows, so
+   * /sync/changes lists their ids (never from cursor 0) and /sync/pull serves
+   * them. Present only when declared; every other client never sees a marker.
+   */
+  purgedTombstones?: true
 }
 
 export const LEGACY_SYNC_SUBSCRIPTION: SyncSubscription = {
@@ -56,14 +63,21 @@ export function resolveSyncSubscription(header: string | undefined | null): Sync
 
   const recordTypes = new Set<RecordSyncItemType>()
   let noteBodies = false
+  let purgedTombstones = false
   for (const raw of header.split(',')) {
     const entry = raw.trim()
     if (entry === NOTE_BODY) {
       noteBodies = true
+    } else if (entry === PURGED_TOMBSTONES) {
+      purgedTombstones = true
     } else if (RECORD_TYPES.has(entry)) {
       recordTypes.add(entry as RecordSyncItemType)
     }
   }
 
-  return { recordTypes: [...recordTypes], noteBodies }
+  return {
+    recordTypes: [...recordTypes],
+    noteBodies,
+    ...(purgedTombstones ? { purgedTombstones: true as const } : {})
+  }
 }

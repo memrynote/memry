@@ -225,6 +225,36 @@ that is how two devices whose merge re-pushes collided converge (protocol 06 §6
 events raised while a slice applies are held until its transaction commits and dropped if the slice
 or the item rolls back, so no window is told about rows that never landed.
 
+A tombstone past the user's version-history window loses its payload on the server but keeps its
+row as a marker, so a device that was offline longer than that window cannot push the item back:
+the marker refuses the stale write per item exactly as a fresh tombstone does, for every client.
+The exception is a re-create of an item whose id comes from what the user sees (a journal's date, a
+tag or property name, a folder path, a bookmark target, a provider calendar or event) or from a file
+the user can restore (a note's frontmatter id, restored from a backup or the trash): a `create` over
+its marker is accepted, so re-creating or restoring it reaches the other devices.
+
+Only a client that declares `purged_tombstones` in `X-Memry-Sync-Types` sees a marker on the read
+side; for every other client (older desktops, iOS) it is invisible, as the old hard delete was. The
+desktop declares it. `/sync/changes` then lists the marker's id, except on a request from cursor 0,
+and `/sync/pull` returns the delete in a `purgedTombstones` list next to `items`, unsigned and
+without ciphertext. The desktop applies one only if the request asked for that id, the type carries
+a required clock and the entry has one, and then through the same delete path as a signed tombstone:
+a local row whose clock happens strictly after the tombstone is kept. It never applies one in a pull
+run that started from cursor 0, over a local row with no clock (a restored vault folder), over a
+re-created or restored item that is still queued or was touched after the delete, or when the clock
+names a device this account does not know. An applied purged tombstone is an ordinary delete inside
+the slice transaction and adds no post-commit work; a refused or skipped one is not applied at all,
+so neither changes when the cursor commits.
+
+A live row whose payload the server lost comes back in a `blobMissing` list instead of vanishing.
+The desktop applies nothing for it, keeps any local row, and records it in the schema-invalid ledger
+(retried after the one-hour cooldown, never counted server-only). Orphan repair tombstones a child
+only when the server positively says its parent is gone, never because a parent was not returned.
+Nothing on the desktop deletes a local row because the server does not list it, and the manifest
+check re-uploads local rows the server lacks only after a pull that delivered in the same run.
+Tombstones the server hard-deleted before markers existed stay unprotected. Protocol 05 §5.12.3 and
+§5.12.4 have the full rules.
+
 A `/sync/pull` body that is not a pull envelope at all is a server contract regression: the cursor
 holds, the run is refused and sync shows a server error, so the page re-arrives once the server
 answers correctly.

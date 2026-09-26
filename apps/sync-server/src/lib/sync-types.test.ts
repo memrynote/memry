@@ -60,4 +60,15 @@ describe('resolveSyncSubscription', () => {
     expect(resolveSyncSubscription('note_body')).toEqual({ recordTypes: [], noteBodies: true })
     expect(resolveSyncSubscription('note,task').noteBodies).toBe(false)
   })
+
+  // #2302
+  it('recognises purged_tombstones as a capability and never as a record type', () => {
+    expect(resolveSyncSubscription('note,purged_tombstones')).toEqual({
+      recordTypes: ['note'],
+      noteBodies: false,
+      purgedTombstones: true
+    })
+    expect(resolveSyncSubscription('note,task').purgedTombstones).toBeUndefined()
+    expect(resolveSyncSubscription(undefined).purgedTombstones).toBeUndefined()
+  })
 })

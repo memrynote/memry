@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { retrySchemaInvalidItems, type ItemRecoveryDeps } from './item-recovery'
+import {
+  refetchCorruptItems,
+  retrySchemaInvalidItems,
+  type ItemRecoveryDeps
+} from './item-recovery'
 import { SchemaInvalidLedger } from './schema-invalid-ledger'
 import type { CorruptItemTracker, RecoveredItem, RefetchResult } from './corrupt-item-tracker'
-import type { SyncContext } from './sync-context'
+import { CORRUPT_ITEM_COOLDOWN_MS, type SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 
 vi.mock('../../lib/logger', () => {
@@ -40,9 +44,12 @@ function harness(results: Record<string, string | Error>, refetch: Partial<Refet
       permanentFailures: [],
       missing: [],
       invalid: [],
+      blobMissing: [],
+      skipped: [],
       ...refetch
     })),
-    markFailed: vi.fn()
+    markFailed: vi.fn(),
+    clearExpired: vi.fn()
   }
   const onChanged = vi.fn()
   const deps: ItemRecoveryDeps = {
@@ -107,6 +114,39 @@ describe('retrySchemaInvalidItems', () => {
     ])
   })
 
+  // #2302: a lost blob that is still lost stays in the ledger; one the server
+  // no longer returns at all leaves it; one that healed applies and leaves it.
+  it('keeps a still-missing blob in the ledger and resolves a healed one', async () => {
+    vi.useFakeTimers()
+    const h = harness(
+      { 'task-healed': 'applied' },
+      {
+        recovered: [recovered('task-healed')],
+        blobMissing: [{ id: 'task-lost', type: 'task' }]
+      }
+    )
+    h.ledger.record(
+      ['task-lost', 'task-healed'].map((id) => ({ id, type: 'task' })),
+      'blob_missing'
+    )
+    vi.advanceTimersByTime(CORRUPT_ITEM_COOLDOWN_MS + 1)
+
+    await retrySchemaInvalidItems(h.deps, 'token', new Uint8Array(32))
+    vi.useRealTimers()
+
+    expect(h.tracker.refetch).toHaveBeenCalledWith(
+      [
+        { id: 'task-lost', type: 'task' },
+        { id: 'task-healed', type: 'task' }
+      ],
+      'token',
+      expect.any(Uint8Array)
+    )
+    expect(h.ledger.has('task', 'task-lost')).toBe(true)
+    expect(h.ledger.has('task', 'task-healed')).toBe(false)
+    expect(h.ledger.retryable()).toEqual([])
+  })
+
   it('does not call the server when nothing is retryable', async () => {
     const h = harness({}, {})
     h.ledger.record([{ id: 'task-1', type: 'task' }], 'payload')
@@ -114,5 +154,21 @@ describe('retrySchemaInvalidItems', () => {
     await retrySchemaInvalidItems(h.deps, 'token', new Uint8Array(32))
 
     expect(h.tracker.refetch).not.toHaveBeenCalled()
+  })
+
+  // #2302 with #2294: the page's corrupt re-fetch quarantines a lost blob, so
+  // the manifest does not count it server-only.
+  it('refetchCorruptItems records a lost blob in the ledger', async () => {
+    const h = harness({}, { blobMissing: [{ id: 'task-lost', type: 'task' }] })
+
+    await refetchCorruptItems(
+      h.deps,
+      [{ id: 'task-lost', type: 'task' }],
+      'token',
+      new Uint8Array(32)
+    )
+
+    expect(h.ledger.has('task', 'task-lost')).toBe(true)
+    expect(h.ledger.quarantinedItems()[0].lastError).toContain('blob_missing')
   })
 })
