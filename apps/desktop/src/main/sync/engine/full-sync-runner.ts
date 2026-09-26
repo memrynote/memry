@@ -764,7 +764,9 @@ export class FullSyncRunner {
    */
   private async settlePackSeededDocs(): Promise<void> {
     const provider = this.ctx.deps.crdtProvider
-    if (!provider) return
+    // With no persistent store every doc opens empty, so each marker would be
+    // settled as owed against state the real store still holds.
+    if (!provider || provider.storeId == null) return
     if (this.stateManager.getStateValue(SYNC_STATE_KEYS.PACK_SEED_SETTLE_PENDING) !== '1') return
     const db = this.ctx.deps.db
     const noteIds = listPackSeeded(db)
@@ -772,6 +774,7 @@ export class FullSyncRunner {
     let purged = 0
     let owed = 0
     for (const noteId of noteIds) {
+      if (this.ctx.abortController?.signal.aborted) break
       try {
         if (!isKnownNote(db, noteId)) {
           await provider.purge(noteId)
@@ -782,7 +785,9 @@ export class FullSyncRunner {
           // The doc lost the packed state its watermark vouches for, so the
           // record walk would settle against the watermark and write nothing.
           // Dropping the watermark makes that walk fetch the whole body.
-          this.crdtSync.oweWholeBody(noteId, 'compaction')
+          if (!this.crdtSync.oweWholeBody(noteId, 'compaction')) {
+            throw new Error('whole-body debt not persisted')
+          }
           owed++
         }
         this.stateManager.deleteStateValue(packSeededKey(noteId))
