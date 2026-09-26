@@ -265,14 +265,24 @@ interface Device {
   /** Notes the settle owed a whole-body walk. */
   owed: string[]
   provider: {
+    /** `null`: the store failed to open and the provider runs in memory. */
+    storeId: string | null
     materialize: (noteId: string) => Promise<boolean>
     applyRemoteUpdate: (noteId: string, update: Uint8Array) => boolean
   }
+  /** Whether `oweWholeBody` manages to persist its debt. */
+  debtDurable: boolean
+  abortController: AbortController
 }
 
 const devices: Device[] = []
 
-function makeDevice(options: { materializeFails?: (noteId: string) => boolean } = {}): Device {
+function makeDevice(
+  options: {
+    materializeFails?: (noteId: string) => boolean
+    onMaterialize?: (noteId: string) => void
+  } = {}
+): Device {
   const db = createTestDataDb()
   db.db
     .insert(syncDevices)
@@ -299,7 +309,7 @@ function makeDevice(options: { materializeFails?: (noteId: string) => boolean } 
     return doc
   }
   const provider = {
-    storeId: 'store-1',
+    storeId: 'store-1' as string | null,
     inactiveDocCapacity: 32,
     getSnapshotWatermark: async (noteId: string) => watermarks.get(noteId) ?? null,
     putSnapshotWatermark: async (
@@ -326,13 +336,22 @@ function makeDevice(options: { materializeFails?: (noteId: string) => boolean } 
     // `CrdtProvider.materialize`: open the doc, write it back now.
     materialize: async (noteId: string) => {
       if (options.materializeFails?.(noteId)) throw new Error('process killed mid-settle')
+      options.onMaterialize?.(noteId)
       const doc = docFor(noteId)
       if (Y.encodeStateVector(doc).length <= 2) return false
       await writebackNow(noteId, doc)
       return true
     }
   }
-  const device = { db, docs, watermarks, owed: [] as string[], provider }
+  const device = {
+    db,
+    docs,
+    watermarks,
+    owed: [] as string[],
+    provider,
+    debtDurable: true,
+    abortController: new AbortController()
+  }
   devices.push(device)
   return device
 }
@@ -379,7 +398,8 @@ async function runSync(
     applier: { changedCount: 0 },
     acquireLock: async () => () => {},
     releaseLock: vi.fn(),
-    fullSyncActive: false
+    fullSyncActive: false,
+    abortController: device.abortController
   } as unknown as SyncContext
 
   const runner = new FullSyncRunner(
@@ -412,7 +432,7 @@ async function runSync(
       nextDeferredPullAt: () => null,
       oweWholeBody: (noteId: string) => {
         device.owed.push(noteId)
-        return true
+        return device.debtDurable
       }
     } as unknown as CrdtSyncCoordinator,
     { pull: options.pull, push: async () => {}, scheduleSync: vi.fn() } satisfies FullSyncActions
@@ -645,6 +665,93 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
         files: { 'Plans.md': 'Record body' },
         owed: [live.id]
       })
+    })
+  })
+
+  describe('a settle that cannot finish keeps its markers', () => {
+    const live = { id: 'livenote0001', body: 'Live note body' }
+    const second = { id: 'livenote0002', body: 'Second body' }
+
+    const markers = (device: Device): string[] =>
+      device.db.db
+        .select({ key: syncState.key })
+        .from(syncState)
+        .all()
+        .map((row) => row.key)
+        .filter((key) => key.startsWith('packSeed'))
+        .sort()
+
+    const packThenDie = async (device: Device, packed: Array<typeof live>): Promise<void> => {
+      await runSync(device, {
+        fresh: true,
+        packed,
+        pull: async () => {
+          for (const note of packed) {
+            applyRecord(
+              { op: 'upsert', type: 'note', id: note.id, title: note.id, content: '' },
+              device.docs
+            )
+          }
+          throw new Error('process killed after the record pages committed')
+        },
+        killed: true
+      })
+    }
+
+    it('does not settle against an in-memory store, and settles once the real one is back', async () => {
+      const device = makeDevice()
+      await packThenDie(device, [live])
+      const realDocs = new Map(device.docs)
+
+      device.provider.storeId = null
+      device.docs.clear()
+      await runSync(device, { fresh: false, packed: [], pull: async () => true })
+      const inMemory = { owed: [...device.owed], markers: markers(device) }
+
+      device.provider.storeId = 'store-1'
+      for (const [id, doc] of realDocs) device.docs.set(id, doc)
+      await runSync(device, { fresh: false, packed: [], pull: async () => true })
+
+      expect(inMemory).toEqual({
+        owed: [],
+        markers: ['packSeedSettlePending', 'packSeeded:livenote0001']
+      })
+      expect(readVault(mocks.vaultRoot)).toEqual({ 'livenote0001.md': 'Live note body' })
+      expect(markers(device)).toEqual([])
+    })
+
+    it('stops at the next doc once the run is aborted, and the next run settles the rest', async () => {
+      let abortAfterFirst = true
+      const device = makeDevice({
+        onMaterialize: () => {
+          if (abortAfterFirst) device.abortController.abort()
+        }
+      })
+      await packThenDie(device, [live, second])
+
+      await runSync(device, { fresh: false, packed: [], pull: async () => true })
+      const afterAbort = markers(device)
+      abortAfterFirst = false
+      device.abortController = new AbortController()
+      await runSync(device, { fresh: false, packed: [], pull: async () => true })
+
+      expect(afterAbort).toEqual(['packSeedSettlePending', 'packSeeded:livenote0002'])
+      expect(readVault(mocks.vaultRoot)).toEqual({
+        'livenote0001.md': 'Live note body',
+        'livenote0002.md': 'Second body'
+      })
+      expect(markers(device)).toEqual([])
+    })
+
+    it('keeps the marker when the whole-body debt could not be persisted', async () => {
+      const device = makeDevice()
+      await packThenDie(device, [live])
+      device.docs.delete(live.id)
+      device.debtDurable = false
+
+      await runSync(device, { fresh: false, packed: [], pull: async () => true })
+
+      expect(markers(device)).toEqual(['packSeedSettlePending', 'packSeeded:livenote0001'])
     })
   })
 })
