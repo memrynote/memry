@@ -61,6 +61,32 @@ describe('calendar settings sync (spec 007 D3a)', () => {
     ).toEqual([{ path: 'calendar.defaultWriteTarget', value: null }])
   })
 
+  it('a first write of a group syncs only what moved off the defaults', () => {
+    // Saving one field writes the whole group. On a device with no stored
+    // row, the defaults it carries are not changes and must not overwrite
+    // another device's real values (e.g. onboardingCompleted).
+    expect(
+      changedCalendarFields(
+        'calendar.google',
+        null,
+        JSON.stringify({
+          defaultTargetCalendarId: null,
+          onboardingCompleted: false,
+          promoteConfirmDismissed: true,
+          pushEventsToGoogle: true,
+          agentReadEventsConsent: null
+        })
+      )
+    ).toEqual([{ path: 'calendar.google.promoteConfirmDismissed', value: true }])
+    expect(
+      changedCalendarFields(
+        'calendar',
+        null,
+        JSON.stringify({ weekStartDay: 'monday', showNotesOnCalendar: true })
+      )
+    ).toEqual([{ path: 'calendar.showNotesOnCalendar', value: true }])
+  })
+
   it('pushes every writer of a calendar group through settings sync', () => {
     const { sync, enqueue } = manager(db)
     setSettingWriteListener((_db, key, before, after) =>

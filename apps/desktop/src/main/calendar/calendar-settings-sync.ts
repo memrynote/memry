@@ -3,6 +3,12 @@ import {
   GOOGLE_CALENDAR_PROVIDER
 } from '@memry/contracts/calendar-api'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import {
+  CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+  CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS,
+  CALENDAR_SETTINGS_DEFAULTS,
+  CALENDAR_WRITABLE_PROVIDER_SETTINGS_DEFAULTS
+} from '@memry/contracts/settings-schemas'
 import type { SyncedSettings } from '@memry/contracts/settings-sync'
 import {
   deleteSetting as removeSettingRow,
@@ -102,6 +108,19 @@ function groupLeaves(key: string): readonly string[] | null {
   return PROVIDER_KEYS
 }
 
+/**
+ * What readers see for a group with no stored row (the getters' defaults).
+ * A write is compared against these, not against nothing: saving one field
+ * writes the whole group, and treating every default as a change would push
+ * defaults over another device's real values.
+ */
+function groupDefaults(key: string): Record<string, unknown> {
+  if (key === 'calendar') return CALENDAR_SETTINGS_DEFAULTS
+  if (key === `calendar.${GOOGLE_CALENDAR_PROVIDER}`) return CALENDAR_GOOGLE_SETTINGS_DEFAULTS
+  if (key === 'calendar.caldav') return CALENDAR_WRITABLE_PROVIDER_SETTINGS_DEFAULTS
+  return CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS
+}
+
 /** The synced leaves a local write changed. */
 export function changedCalendarFields(
   key: string,
@@ -116,7 +135,7 @@ export function changedCalendarFields(
   }
   const leaves = groupLeaves(key)
   if (!leaves) return []
-  const previous = parseObject(before) ?? {}
+  const previous = { ...groupDefaults(key), ...(parseObject(before) ?? {}) }
   const next = parseObject(after) ?? {}
   const fields: SyncedField[] = []
   for (const leaf of leaves) {
