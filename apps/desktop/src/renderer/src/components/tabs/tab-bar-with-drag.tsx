@@ -11,7 +11,6 @@ import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortabl
 import { ChevronLeft, ChevronRight, LayoutAlignRightIcon } from '@/lib/icons'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useTabGroup } from '@/contexts/tabs'
-import { useSidebar } from '@/components/ui/sidebar'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
 import { TabBarAction } from './tab-bar-action'
@@ -24,12 +23,14 @@ import { useT } from '@memry/i18n/renderer'
 interface TabBarWithDragProps {
   /** ID of the tab group to display */
   groupId: string
-  /** Whether to show the sidebar collapse toggle (hidden in split panes) */
-  showSidebarToggle?: boolean
   /** Whether this tab bar should reserve space for the fixed day panel */
   reserveDayPanelSpace?: boolean
   /** Whether this tab bar is the top-right one that shows the day-panel toggle */
   showDayPanelToggle?: boolean
+  /** Whether this is the top-start tab bar that hosts the window controls while the sidebar is collapsed */
+  reserveWindowControls?: boolean
+  /** Whether this tab bar touches the window top; it sits in the title row while the sidebar is collapsed (main.css) */
+  inTitleRow?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -74,9 +75,10 @@ const isTabFullyVisible = (strip: HTMLElement, tabEl: Element): boolean => {
  */
 export const TabBarWithDrag = ({
   groupId,
-  showSidebarToggle = true,
   reserveDayPanelSpace = true,
   showDayPanelToggle = true,
+  reserveWindowControls = true,
+  inTitleRow = true,
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const { t: tPhaseF } = useT('common')
@@ -98,8 +100,6 @@ export const TabBarWithDrag = ({
     width: dayPanelWidth,
     isResizing: isDayPanelResizing
   } = useDayPanel()
-  const { state: sidebarState } = useSidebar()
-  const needsChromeSpacer = sidebarState === 'collapsed' && showSidebarToggle
   const shouldReserveDayPanelSpace = reserveDayPanelSpace && isDayPanelOpen
   // Only the top-right tab bar shows the day-panel toggle (and reserves room for it)
   const showDayPanelToggleButton = !isDayPanelOpen && showDayPanelToggle
@@ -195,7 +195,6 @@ export const TabBarWithDrag = ({
             isDayPanelResizing
               ? 'transition-[padding-inline-start] duration-200 ease-linear'
               : 'transition-[padding-inline-start,margin-inline-end] duration-200 ease-linear',
-            needsChromeSpacer && 'ps-[var(--chrome-width)]',
             className
           )}
           style={{ marginInlineEnd: shouldReserveDayPanelSpace ? `${dayPanelWidth}px` : 0 }}
@@ -203,6 +202,8 @@ export const TabBarWithDrag = ({
           aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.openTabs')}
           aria-orientation="horizontal"
           data-group-id={groupId}
+          data-reserve-window-controls={reserveWindowControls || undefined}
+          data-title-row={inTitleRow || undefined}
         >
           {/* Pinned tabs section (not in sortable context) */}
           {pinnedTabs.length > 0 && (
@@ -266,6 +267,8 @@ export const TabBarWithDrag = ({
               'scroll-smooth motion-reduce:scroll-auto',
               'scrollbar-none [&::-webkit-scrollbar]:hidden',
               '[-ms-overflow-style:none] [scrollbar-width:none]',
+              // Title row: the first tab starts flush with the surface divider below it.
+              inTitleRow && 'ps-0',
               canScrollToStart && 'ps-7',
               canScrollToEnd && 'pe-7'
             )}
@@ -283,14 +286,23 @@ export const TabBarWithDrag = ({
                   <m.div
                     key={tab.id}
                     className="no-drag @container flex-[1_1_var(--tab-w-max)] overflow-hidden"
-                    initial={{ maxWidth: 0, minWidth: 0, opacity: 0 }}
+                    // minWidth needs explicit px strings: motion's px value map covers
+                    // maxWidth but not minWidth, so a bare 52 is written unitless,
+                    // rejected by CSS, and the tab is left with min-width 0 — it then
+                    // compresses forever instead of stopping at icon-only and scrolling.
+                    initial={{ maxWidth: 0, minWidth: '0px', opacity: 0 }}
                     animate={{
                       maxWidth: 240,
-                      minWidth: 52,
+                      minWidth: '52px',
                       opacity: 1,
                       transition: tabEnterTransition
                     }}
-                    exit={{ maxWidth: 0, minWidth: 0, opacity: 0, transition: tabExitTransition }}
+                    exit={{
+                      maxWidth: 0,
+                      minWidth: '0px',
+                      opacity: 0,
+                      transition: tabExitTransition
+                    }}
                   >
                     <SortableTab
                       tab={tab}
