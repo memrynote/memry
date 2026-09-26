@@ -218,6 +218,27 @@ describe('propertyDefinitionHandler', () => {
     ).toBe(0)
   })
 
+  it('never seeds a relation definition an older build left unclocked', () => {
+    testDb.db
+      .insert(propertyDefinitions)
+      .values([
+        { name: 'related', type: 'relation' },
+        { name: 'area', type: 'select', options: AREA_OPTIONS }
+      ])
+      .run()
+
+    const queue = new SyncQueueManager(testDb.db as never)
+    const seeded = propertyDefinitionHandler.seedUnclocked(
+      testDb.db as unknown as DrizzleDb,
+      'device-a',
+      queue
+    )
+
+    expect(seeded).toBe(1)
+    expect(queue.peek(10).map((item) => item.itemId)).toEqual(['area'])
+    expect(read(testDb, 'related')?.clock).toBeNull()
+  })
+
   it('pushes a definition that rebuilds intact on a second device', () => {
     propertyDefinitionHandler.applyUpsert(
       ctx,
