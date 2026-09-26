@@ -64,11 +64,9 @@ export const CanvasNoteBody = memo(function CanvasNoteBody({
         // markdown markers back into real blocks — without it a
         // `- [ ] Ship it {task:abc}` line renders as literal marker text
         // instead of the task renderer.
-        const parsed = await parseMarkdownPreservingBlanks(
-          editor,
-          normalizeMarkdownHardBreaks(markdown)
-        )
-        const blocks = sanitizeBlockIds(normalizeNoteBlocks(parsed))
+        const source = normalizeMarkdownHardBreaks(markdown)
+        const parsed = await parseMarkdownPreservingBlanks(editor, source)
+        const blocks = sanitizeBlockIds(normalizeNoteBlocks(parsed, source))
         if (cancelled) return
         editor.replaceBlocks(editor.document, blocks.length > 0 ? blocks : [{ type: 'paragraph' }])
       } catch (error) {

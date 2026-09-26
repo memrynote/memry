@@ -19,7 +19,7 @@ export async function canonicalizeMarkdown(
   notePath?: string
 ): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown, notePath)
-  return serializeBlocksPreservingBlanks(editor, normalizeNoteBlocks(parsed))
+  return serializeBlocksPreservingBlanks(editor, normalizeNoteBlocks(parsed, markdown))
 }
 
 /**

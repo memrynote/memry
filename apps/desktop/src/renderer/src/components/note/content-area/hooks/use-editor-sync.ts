@@ -510,7 +510,10 @@ export function useEditorSync({
               blocks = await editor.tryParseHTMLToBlocks(content)
             }
 
-            let normalizedBlocks = normalizeNoteBlocks(blocks)
+            let normalizedBlocks = normalizeNoteBlocks(
+              blocks,
+              contentType === 'markdown' ? content : null
+            )
 
             if (noteTags?.length && tagColorMap) {
               const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
@@ -537,7 +540,7 @@ export function useEditorSync({
             trackRendererError('editor_content_parse', error)
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
-          let normalizedBlocks = normalizeNoteBlocks(initialContent)
+          let normalizedBlocks = normalizeNoteBlocks(initialContent, null)
 
           if (noteTags?.length && tagColorMap) {
             const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))

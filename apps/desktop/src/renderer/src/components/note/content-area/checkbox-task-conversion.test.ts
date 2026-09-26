@@ -41,7 +41,7 @@ const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } 
 /** Open the line, convert its checkbox the way ContentArea does, save. */
 async function convertAndSave(line: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, line)
-  const [checkbox] = normalizeNoteBlocks(parsed as Block[])
+  const [checkbox] = normalizeNoteBlocks(parsed as Block[], line)
   const task = {
     ...checkbox,
     type: 'taskBlock',

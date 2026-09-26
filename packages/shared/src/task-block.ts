@@ -13,6 +13,7 @@
  * Obsidian. See `parseTaskBlockSuffix`.
  */
 
+import { createFenceTracker } from './markdown-fences'
 import { parseObsidianTaskFields } from './obsidian-tasks'
 
 const TASK_BLOCK_SUFFIX_OPEN = '{task:'
@@ -180,14 +181,72 @@ export function extractInlineText(content: unknown): string {
     .join('')
 }
 
+/**
+ * Each task line's title as written in `markdown`, by task id, in document
+ * order. A task block keeps its line as a plain `title` string, and by the
+ * time a checkbox reaches `normalizeTaskBlocks` the parser has already turned
+ * `**Dune** [[Dune (2021)]]` into styled and linked nodes. Only the source
+ * still holds the bytes that write the line back unchanged.
+ */
+function scanTaskLineTitles(markdown: string): Map<string, string[]> {
+  const titles = new Map<string, string[]>()
+  const fence = createFenceTracker()
+  for (const line of markdown.split('\n')) {
+    if (fence.consume(line)) continue
+    const checkbox = checkboxTextStart(line)
+    if (!checkbox) continue
+    const parsed = parseTaskBlockSuffix(line.slice(checkbox.start))
+    if (!parsed) continue
+    const queue = titles.get(parsed.taskId)
+    if (queue) queue.push(parsed.title)
+    else titles.set(parsed.taskId, [parsed.title])
+  }
+  return titles
+}
+
+function words(text: string): string[] {
+  return text.match(/[\p{L}\p{N}]+/gu) ?? []
+}
+
+/**
+ * Take the first queued source title that can be this block's line, or null.
+ *
+ * The scan is broader than the parser: a copy of the line in an HTML comment,
+ * an indented code block or a deeply indented fence is queued too, and when it
+ * comes first it would lend the real task its text. So a source title counts
+ * only when the block's own plain-text words appear in it, in order. Not an
+ * equality check: the plain text drops whatever the parser made a non-text
+ * node (links, wiki links, mentions), so it is a subsequence of the line's
+ * words, never the same list, and a stricter match would fall back to the
+ * flattened title this exists to avoid.
+ */
+function takeSourceTitle(queue: string[] | undefined, plainTitle: string): string | null {
+  if (!queue) return null
+  const wanted = words(plainTitle)
+  const index = queue.findIndex((candidate) => {
+    let next = 0
+    for (const word of words(candidate)) {
+      if (word === wanted[next]) next++
+    }
+    return next === wanted.length
+  })
+  return index === -1 ? null : queue.splice(index, 1)[0]
+}
+
+/**
+ * `source` is the markdown `blocks` were parsed from, or null for blocks that
+ * did not come from markdown. Without it a title keeps only its plain text.
+ */
 export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
-  blocks: T[]
+  blocks: T[],
+  source: string | null
 ): { blocks: T[]; didChange: boolean } {
   const blockStr = JSON.stringify(blocks)
   if (!blockStr.includes('{task:')) {
     return { blocks, didChange: false }
   }
 
+  const sourceTitles = source === null ? null : scanTaskLineTitles(source)
   let didChange = false
 
   function processBlocks(blockList: T[], parentTaskId: string): T[] {
@@ -209,6 +268,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
       if (!parsed) return block
 
       didChange = true
+      const title = takeSourceTitle(sourceTitles?.get(parsed.taskId), parsed.title) ?? parsed.title
 
       const processedChildren = block.children?.length
         ? processBlocks(block.children as T[], parsed.taskId)
@@ -222,7 +282,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
         type: 'taskBlock',
         props: {
           taskId: parsed.taskId,
-          title: parsed.title,
+          title,
           checked,
           parentTaskId
         },

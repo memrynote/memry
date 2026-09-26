@@ -65,13 +65,13 @@ const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } 
 // actually saves, with the author's bytes recorded at load (#1915).
 async function roundTrip(markdown: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-  const normalized = normalizeNoteBlocks(parsed as Block[])
+  const normalized = normalizeNoteBlocks(parsed as Block[], markdown)
   return await serializeBlocksPreservingBlanks(editor, normalized as Block[])
 }
 
 async function roundTripPreservingSource(markdown: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-  const normalized = normalizeNoteBlocks(parsed as Block[]) as Block[]
+  const normalized = normalizeNoteBlocks(parsed as Block[], markdown) as Block[]
   const canonical = await serializeBlocksPreservingBlanks(editor, normalized)
   return serializeMarkdownPreservingSource(
     editor,
@@ -145,4 +145,15 @@ describe('round-trip fuzz, renderer pipeline', () => {
       async ({ generate }) => assertFamily(generate)
     )
   }
+})
+
+describe('task titles from the source, renderer pipeline', () => {
+  it('does not give a task the text of a hidden copy of its line', async () => {
+    const markdown = '<!--\n- [ ] OLD COMMENT {task:t1}\n-->\n\n- [ ] **new** {task:t1}'
+    const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
+    const titles = normalizeNoteBlocks(parsed as Block[], markdown)
+      .filter((block) => (block.type as string) === 'taskBlock')
+      .map((block) => (block.props as { title: string }).title)
+    expect(titles).toEqual(['**new**'])
+  })
 })

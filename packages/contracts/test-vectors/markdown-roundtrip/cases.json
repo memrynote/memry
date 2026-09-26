@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 110,
+    "exportedCaseCount": 114,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 120,
+    "caseCount": 124,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -602,6 +602,34 @@
       "canonical": null,
       "pending": null,
       "sha256": "0dd6752076d0c5cbceeaa7c9ef205cb042a9e2267d91b444b0c4867de7cc9e92"
+    },
+    {
+      "name": "task line with bold and a wiki link",
+      "markdown": "- [ ] **Dune** [[Dune (2021)]] x {task:t1}",
+      "canonical": null,
+      "pending": null,
+      "sha256": "34ca2cecab563e1ca4d82cbf9277541d57321391fc5dd3a7790f969a93f12dc6"
+    },
+    {
+      "name": "task line with a link",
+      "markdown": "- [ ] Read the [lease](https://example.com/lease) {task:t1}",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4e8acb24d6ea17ff4af7ee5d31d7bd00eb9ac4575da94b88f813cf5307ae7383"
+    },
+    {
+      "name": "task line with inline code",
+      "markdown": "- [x] Run `pnpm test` first {task:t1}",
+      "canonical": null,
+      "pending": null,
+      "sha256": "23df49f1744ea10da316bc233cbd001d6337b64db4742dc795a441afe57865a9"
+    },
+    {
+      "name": "task line with a colour span",
+      "markdown": "- [ ] Buy <span style=\"color:red\">red</span> paint {task:t1}",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9f9a23a33700bf588cfd476e6b4378f317cd6531e43aaae707aacb08e4a22099"
     },
     {
       "name": "callout nested under a list item",
