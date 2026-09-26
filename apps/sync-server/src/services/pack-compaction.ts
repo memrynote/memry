@@ -145,6 +145,10 @@ export const readWatermark = async (
   return row ?? { last_sort_value: 0, last_sort_tiebreak: '' }
 }
 
+const NOTE_RECORD_ROWS = `SELECT 1 FROM sync_items r
+  WHERE r.user_id = s.user_id AND r.vault_id = s.vault_id
+    AND r.item_type IN ('note', 'journal') AND r.item_id = s.note_id`
+
 /**
  * Select up to PACK_MAX_ITEMS un-packed rows ordered ascending, capped so the
  * projected payload stays within PACK_TARGET_BYTES (itself far below
@@ -181,10 +185,18 @@ export const selectCandidates = async (
           ]
         }
       : {
+          // A deleted note keeps its snapshot row, and a packed body lands on a
+          // fresh device before the tombstone that deletes it. A note id with
+          // any live note or journal row still packs, as does one whose record
+          // has not arrived yet.
           sql: `SELECT created_at AS sort_key, note_id AS tiebreak, note_id, blob_key, size_bytes
-                FROM crdt_snapshots
+                FROM crdt_snapshots s
                 WHERE user_id = ? AND vault_id = ?
                   AND (created_at > ? OR (created_at = ? AND note_id > ?))
+                  AND NOT (
+                    EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NOT NULL)
+                    AND NOT EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NULL)
+                  )
                 ORDER BY created_at ASC, note_id ASC
                 LIMIT ?`,
           bind: [
