@@ -46,7 +46,7 @@ export async function insertTemplateBlocks({
   if (!markdown.trim()) return { ok: false, reason: 'empty' }
 
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown, notePath)
-  const blocks = normalizeNoteBlocks(parsed).map(withoutBlockIds)
+  const blocks = normalizeNoteBlocks(parsed, markdown).map(withoutBlockIds)
   if (blocks.length === 0) return { ok: false, reason: 'empty' }
 
   const reference = editor.getBlock(referenceBlockId)

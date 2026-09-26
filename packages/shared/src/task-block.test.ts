@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  normalizeTaskBlocks,
   parseTaskBlockSuffix,
   scanTaskCheckboxStates,
   serializeTaskBlock,
@@ -135,5 +136,51 @@ describe('stripTaskBlockSuffixes', () => {
   it('returns the input unchanged when there is nothing to strip', () => {
     const md = '- [ ] Buy milk {task:abc} and then some prose'
     expect(stripTaskBlockSuffixes(md)).toBe(md)
+  })
+})
+
+describe('normalizeTaskBlocks title from the source line', () => {
+  // What the parser hands over for `- [ ] **Dune** [[Dune (2021)]] x {task:…}`:
+  // the bold run is a styled text node and the wiki link a node with no text.
+  function parsedCheckbox(taskId: string) {
+    return {
+      type: 'checkListItem',
+      props: { checked: false },
+      content: [
+        { type: 'text', text: 'Dune', styles: { bold: true } },
+        { type: 'text', text: ' ', styles: {} },
+        { type: 'wikiLink', props: { target: 'Dune (2021)' } },
+        { type: 'text', text: ` x {task:${taskId}}`, styles: {} }
+      ]
+    }
+  }
+
+  function titles(blocks: Array<{ props?: Record<string, unknown> }>): unknown[] {
+    return blocks.map((block) => block.props?.title)
+  }
+
+  it('takes the title as the line spells it', () => {
+    const { blocks } = normalizeTaskBlocks(
+      [parsedCheckbox('t1')],
+      '- [ ] **Dune** [[Dune (2021)]] x {task:t1}'
+    )
+    expect(titles(blocks)).toEqual(['**Dune** [[Dune (2021)]] x'])
+  })
+
+  it('keeps the plain text when there is no source', () => {
+    const { blocks } = normalizeTaskBlocks([parsedCheckbox('t1')], null)
+    expect(titles(blocks)).toEqual(['Dune  x'])
+  })
+
+  it('gives two lines naming one task their own titles, in order', () => {
+    const source = '- [ ] **first** {task:t1}\n- [ ] _second_ {task:t1}'
+    const { blocks } = normalizeTaskBlocks([parsedCheckbox('t1'), parsedCheckbox('t1')], source)
+    expect(titles(blocks)).toEqual(['**first**', '_second_'])
+  })
+
+  it('ignores a task line inside a code fence', () => {
+    const source = '```\n- [ ] `fenced` {task:t1}\n```\n- [ ] **Dune** {task:t1}'
+    const { blocks } = normalizeTaskBlocks([parsedCheckbox('t1')], source)
+    expect(titles(blocks)).toEqual(['**Dune**'])
   })
 })

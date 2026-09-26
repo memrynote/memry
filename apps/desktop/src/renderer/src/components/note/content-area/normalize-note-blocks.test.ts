@@ -15,21 +15,24 @@ function checkListItem(text: string, checked = false): Block {
 
 describe('normalizeNoteBlocks', () => {
   it('turns a {task:id} checkbox into the taskBlock renderer', () => {
-    const [block] = normalizeNoteBlocks([checkListItem('Sync v1 {task:PBmDWa-vpELwPFvP85kD2}')])
+    const [block] = normalizeNoteBlocks(
+      [checkListItem('Sync v1 {task:PBmDWa-vpELwPFvP85kD2}')],
+      null
+    )
 
     expect(block.type).toBe('taskBlock')
     expect((block.props as Record<string, unknown>).taskId).toBe('PBmDWa-vpELwPFvP85kD2')
   })
 
   it('carries the checked state onto the task block', () => {
-    const [block] = normalizeNoteBlocks([checkListItem('Done {task:abc123}', true)])
+    const [block] = normalizeNoteBlocks([checkListItem('Done {task:abc123}', true)], null)
 
     expect(block.type).toBe('taskBlock')
     expect((block.props as Record<string, unknown>).taskId).toBe('abc123')
   })
 
   it('leaves a plain checkbox alone', () => {
-    const [block] = normalizeNoteBlocks([checkListItem('Just a checkbox')])
+    const [block] = normalizeNoteBlocks([checkListItem('Just a checkbox')], null)
 
     expect(block.type).toBe('checkListItem')
   })
@@ -43,7 +46,7 @@ describe('normalizeNoteBlocks', () => {
       children: [checkListItem('Child {task:child1}')]
     } as unknown as Block
 
-    const [block] = normalizeNoteBlocks([parent])
+    const [block] = normalizeNoteBlocks([parent], null)
 
     expect(block.type).toBe('taskBlock')
     expect(block.children[0]?.type).toBe('taskBlock')

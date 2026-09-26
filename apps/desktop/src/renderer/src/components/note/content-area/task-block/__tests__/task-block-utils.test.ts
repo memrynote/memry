@@ -107,7 +107,7 @@ describe('normalizeTaskBlocks', () => {
       }
     ] as any[]
 
-    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks, null)
     expect(didChange).toBe(true)
     expect(result[0].type).toBe('taskBlock')
     expect((result[0].props as any).taskId).toBe('abc-123')
@@ -126,7 +126,7 @@ describe('normalizeTaskBlocks', () => {
       }
     ] as any[]
 
-    const { blocks: result } = normalizeTaskBlocks(blocks)
+    const { blocks: result } = normalizeTaskBlocks(blocks, null)
     expect((result[0].props as any).checked).toBe(true)
   })
 
@@ -141,7 +141,7 @@ describe('normalizeTaskBlocks', () => {
       }
     ] as any[]
 
-    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks, null)
     expect(didChange).toBe(false)
     expect(result).toBe(blocks)
   })
@@ -157,7 +157,7 @@ describe('normalizeTaskBlocks', () => {
       }
     ] as any[]
 
-    const { didChange } = normalizeTaskBlocks(blocks)
+    const { didChange } = normalizeTaskBlocks(blocks, null)
     expect(didChange).toBe(false)
   })
 
@@ -172,7 +172,7 @@ describe('normalizeTaskBlocks', () => {
       }
     ] as any[]
 
-    const { blocks: result } = normalizeTaskBlocks(blocks)
+    const { blocks: result } = normalizeTaskBlocks(blocks, null)
     expect(result).toBe(blocks)
   })
 })
@@ -227,7 +227,7 @@ describe('normalizeTaskBlocks with nested children', () => {
       }
     ] as any[]
 
-    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks, null)
     expect(didChange).toBe(true)
     const parent = result[0]
     expect(parent.children).toHaveLength(1)
@@ -257,7 +257,7 @@ describe('normalizeTaskBlocks with nested children', () => {
       }
     ] as any[]
 
-    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks, null)
     expect(didChange).toBe(false)
     expect(result).toBe(blocks)
   })
@@ -308,7 +308,7 @@ describe('subtask round-trip: serialize → parse → normalize', () => {
       }
     ] as any[]
 
-    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks, null)
     expect(didChange).toBe(true)
     expect(result[0].children).toHaveLength(2)
 
@@ -353,7 +353,7 @@ describe('subtask round-trip: serialize → parse → normalize', () => {
     ] as any[]
 
     // #when
-    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks, null)
 
     // #then - parent converted AND children preserved + converted with correct parentTaskId
     expect(didChange).toBe(true)

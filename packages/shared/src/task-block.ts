@@ -13,6 +13,7 @@
  * Obsidian. See `parseTaskBlockSuffix`.
  */
 
+import { createFenceTracker } from './markdown-fences'
 import { parseObsidianTaskFields } from './obsidian-tasks'
 
 const TASK_BLOCK_SUFFIX_OPEN = '{task:'
@@ -180,14 +181,43 @@ export function extractInlineText(content: unknown): string {
     .join('')
 }
 
+/**
+ * Each task line's title as written in `markdown`, by task id, in document
+ * order. A task block keeps its line as a plain `title` string, and by the
+ * time a checkbox reaches `normalizeTaskBlocks` the parser has already turned
+ * `**Dune** [[Dune (2021)]]` into styled and linked nodes. Only the source
+ * still holds the bytes that write the line back unchanged.
+ */
+function scanTaskLineTitles(markdown: string): Map<string, string[]> {
+  const titles = new Map<string, string[]>()
+  const fence = createFenceTracker()
+  for (const line of markdown.split('\n')) {
+    if (fence.consume(line)) continue
+    const checkbox = checkboxTextStart(line)
+    if (!checkbox) continue
+    const parsed = parseTaskBlockSuffix(line.slice(checkbox.start))
+    if (!parsed) continue
+    const queue = titles.get(parsed.taskId)
+    if (queue) queue.push(parsed.title)
+    else titles.set(parsed.taskId, [parsed.title])
+  }
+  return titles
+}
+
+/**
+ * `source` is the markdown `blocks` were parsed from, or null for blocks that
+ * did not come from markdown. Without it a title keeps only its plain text.
+ */
 export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
-  blocks: T[]
+  blocks: T[],
+  source: string | null
 ): { blocks: T[]; didChange: boolean } {
   const blockStr = JSON.stringify(blocks)
   if (!blockStr.includes('{task:')) {
     return { blocks, didChange: false }
   }
 
+  const sourceTitles = source === null ? null : scanTaskLineTitles(source)
   let didChange = false
 
   function processBlocks(blockList: T[], parentTaskId: string): T[] {
@@ -209,6 +239,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
       if (!parsed) return block
 
       didChange = true
+      const title = sourceTitles?.get(parsed.taskId)?.shift() ?? parsed.title
 
       const processedChildren = block.children?.length
         ? processBlocks(block.children as T[], parsed.taskId)
@@ -222,7 +253,7 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
         type: 'taskBlock',
         props: {
           taskId: parsed.taskId,
-          title: parsed.title,
+          title,
           checked,
           parentTaskId
         },

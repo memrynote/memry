@@ -455,14 +455,12 @@ export async function prepareFragmentSeed(
   // definitions came back as literal paragraphs on top of the copy
   // `restoreLinkReferences` appends, and every open added another block of
   // them to the file.
-  const blocks = await markdownToBlocks(
-    inlineLinkReferences(references.markdown, references.usages),
-    notePath
-  )
+  const source = inlineLinkReferences(references.markdown, references.usages)
+  const blocks = await markdownToBlocks(source, notePath)
   if (!blocks) return null
   // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
   // binds the custom block on first paint instead of a raw checkbox.
-  const normalized = normalizeTaskBlocks(blocks).blocks
+  const normalized = normalizeTaskBlocks(blocks, source).blocks
   return {
     blocks: normalized,
     marks: parsed.marks,

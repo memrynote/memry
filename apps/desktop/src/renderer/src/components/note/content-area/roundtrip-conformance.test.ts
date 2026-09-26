@@ -65,13 +65,13 @@ const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } 
 // actually saves, with the author's bytes recorded at load (#1915).
 async function roundTrip(markdown: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-  const normalized = normalizeNoteBlocks(parsed as Block[])
+  const normalized = normalizeNoteBlocks(parsed as Block[], markdown)
   return await serializeBlocksPreservingBlanks(editor, normalized as Block[])
 }
 
 async function roundTripPreservingSource(markdown: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-  const normalized = normalizeNoteBlocks(parsed as Block[]) as Block[]
+  const normalized = normalizeNoteBlocks(parsed as Block[], markdown) as Block[]
   const canonical = await serializeBlocksPreservingBlanks(editor, normalized)
   return serializeMarkdownPreservingSource(
     editor,
