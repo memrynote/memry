@@ -418,7 +418,6 @@
           }
         }
       },
-      "rustPending": "the Rust core removes the path when the winner has no value; §6.9.0 defers removal until desktop keeps unmodelled keys (#2183)",
       "expected": {
         "settings": {
           "general": {
@@ -458,7 +457,6 @@
           }
         }
       },
-      "rustPending": "the Rust core removes the path when the winner has no value; §6.9.0 defers removal until desktop keeps unmodelled keys (#2183)",
       "expected": {
         "settings": {
           "general": {

@@ -42,17 +42,16 @@
 //! the merge unit from the clock key rather than from a table is what stops
 //! two partial sidebar orders interleaving, and it needs no list to maintain.
 //!
-//! ## Four rules that bite
+//! ## Five rules that bite
 //!
-//! - **Absent wins mean removal, not "leave the column alone".** §6.3 step 8's
-//!   spread leaves a task column untouched when the winner is `undefined`,
-//!   because an absent task field means "the sender does not model it"
-//!   (§13.4). A settings payload carries every setting its sender holds —
-//!   §13.2 preserves even the ones it cannot model — so an absent value under
-//!   a clock the sender **ticked** is a removal. §6.9.1 requires a removal to
-//!   tick and says in as many words that a removal which ticks nothing "loses
-//!   to the peer still holding the old value"; the inbound side is where that
-//!   win has to actually happen, or the two devices diverge permanently.
+//! - **An absent winner keeps the local value** (§6.9.0 as amended by #2383,
+//!   #2399), exactly as §6.3 step 8's spread leaves a task column untouched.
+//!   Desktop parses settings with a closed schema, so a build that does not
+//!   model a path strips its value, keeps its clock, and echoes that clock with
+//!   no value on its next push. Removing on absence would turn the echo into a
+//!   deletion of a setting this device wrote. Removal waits until desktop keeps
+//!   unmodelled keys (#2183); a removal still ticks (§6.9.1), so the clock is
+//!   ahead when it ships.
 //! - **Nothing is pruned.** §6.9.1 leaves the clocks under a replaced subtree
 //!   explicitly undefined and forbids inventing a rule, so every clock in
 //!   either payload comes out in the merged map, including ones for paths this
@@ -69,10 +68,11 @@
 //!   the empty map: §6.3 step 1's "a missing field clock is the empty clock",
 //!   and the committed `settings: boundary` vector is exactly that payload.
 //!
-//! **Nothing here enqueues** (§6.5.2 P3). The merging device stores the union
-//! clocks and does not re-push; an [`crate::sync::outbox::enqueue`] appearing
-//! in this file is the §6.5.1 case-3c divergence coming back, not a
-//! convenience.
+//! - **A concurrent path re-queues the merged payload** (§6.9.0, §6.5.2 P3,
+//!   #2399), in the same transaction as the write. Without it a device that
+//!   kept its own value on a concurrent pair holds it alone, while the server
+//!   keeps the peer's row (#2287). A merge with no concurrent path enqueues
+//!   nothing.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -89,8 +89,9 @@ use crate::domain::tasks::Inbound;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
-use crate::sync::clock::VectorClock;
+use crate::sync::clock::{ClockOrder, VectorClock, compare};
 use crate::sync::field_merge::merge_fields;
+use crate::sync::outbox;
 
 /// §6.8's third row, for one inbound `settings` record.
 ///
@@ -125,7 +126,7 @@ pub(crate) fn apply_remote_merged(
     };
 
     let merged = merge(local.object(), remote.object())?;
-    if !merged.changed {
+    if !merged.changed && !merged.requeue {
         // Every path the clocks arbitrate resolved to what this device already
         // holds, and the union added no tick. The local value stands, nothing
         // is written, and the pull still counts the row and advances past it
@@ -138,7 +139,6 @@ pub(crate) fn apply_remote_merged(
         ("fieldClocks", Change::Set(merged.field_clocks)),
     ];
 
-    // One transaction, and **no outbox row**: §6.5.2 P3.
     let transaction = conn.unchecked_transaction().map_err(failed)?;
     sync_items::apply_local_edit_in(
         &transaction,
@@ -162,6 +162,13 @@ pub(crate) fn apply_remote_merged(
             ],
         )
         .map_err(failed)?;
+    if merged.requeue {
+        outbox::enqueue(
+            &transaction,
+            &outbox::Change::upsert(&record.item_type, &record.item_id),
+            now_ms,
+        )?;
+    }
     transaction.commit().map_err(failed)?;
 
     // `Inbound::Merged`'s conflict set is deliberately not produced here.
@@ -171,12 +178,14 @@ pub(crate) fn apply_remote_merged(
     Ok(Inbound::Applied)
 }
 
-/// The merged `settings` object and `fieldClocks` map, and whether either
-/// differs from what this device already holds.
+/// The merged `settings` object and `fieldClocks` map, whether either
+/// differs from what this device already holds, and whether any path compared
+/// `concurrent`.
 struct MergedSettings {
     settings: Map<String, Value>,
     field_clocks: Value,
     changed: bool,
+    requeue: bool,
 }
 
 /// §6.9's merge over the union of both payloads' clocked paths.
@@ -215,19 +224,25 @@ fn merge(local: &Object, remote: &Object) -> Result<MergedSettings, StorageError
         let Ok(segments) = segments(path) else {
             continue;
         };
-        let change = match result.merged.get(*path) {
-            Some(value) => Change::Set(value.clone()),
-            // §6.9.1: an absent winner under an arbitrated clock is a removal.
-            None => Change::Remove,
-        };
-        apply_at(&mut settings, &segments, &change, path)?;
+        // §6.9.0: an absent winner keeps the local value (#2399).
+        if let Some(value) = result.merged.get(*path) {
+            apply_at(&mut settings, &segments, &Change::Set(value.clone()), path)?;
+        }
     }
 
+    let empty = VectorClock::new();
+    let requeue = paths.iter().any(|path| {
+        compare(
+            local_clocks.get(*path).unwrap_or(&empty),
+            remote_clocks.get(*path).unwrap_or(&empty),
+        ) == ClockOrder::Concurrent
+    });
     let changed = settings != local_settings || result.merged_field_clocks != local_clocks;
     Ok(MergedSettings {
         settings,
         field_clocks: as_json(&result.merged_field_clocks)?,
         changed,
+        requeue,
     })
 }
 
@@ -355,25 +370,9 @@ mod tests {
     }
 
     #[test]
-    fn a_removal_that_ticked_beats_the_peer_still_holding_the_old_value() {
-        // The seat that receives the removal. §6.9.1: with the tick, it lands.
-        let outcome = merged(
-            json!({
-                "settings": {"general": {"theme": "dark"}},
-                "fieldClocks": {"general.theme": {"device-a": 1}}
-            }),
-            json!({
-                "settings": {"general": {}},
-                "fieldClocks": {"general.theme": {"device-a": 1, "device-b": 1}}
-            }),
-        );
-        assert_eq!(outcome.settings["general"], json!({}));
-        assert_eq!(
-            outcome.field_clocks["general.theme"],
-            json!({"device-a": 1, "device-b": 1})
-        );
-
-        // And the seat that made it: the stale value must not resurrect.
+    fn a_local_removal_that_ticked_is_not_undone_by_a_stale_remote() {
+        // The seat that made the removal: its ticked clock dominates, so the
+        // stale value must not resurrect.
         let back = merged(
             json!({
                 "settings": {"general": {}},
@@ -386,6 +385,58 @@ mod tests {
         );
         assert_eq!(back.settings["general"], json!({}));
         assert!(!back.changed);
+        assert!(!back.requeue);
+    }
+
+    #[test]
+    fn an_absent_winner_keeps_the_local_value_until_removal_ships() {
+        // #2399, protocol 06 §6.9.0 as amended by #2383: desktop strips a
+        // value it does not model and echoes its clock, so a winner with no
+        // value is indistinguishable from that echo and keeps the local value.
+        let outcome = merged(
+            json!({
+                "settings": {"general": {"theme": "dark"}},
+                "fieldClocks": {"general.theme": {"device-a": 1}}
+            }),
+            json!({
+                "settings": {"general": {}},
+                "fieldClocks": {"general.theme": {"device-a": 1, "device-b": 1}}
+            }),
+        );
+        assert_eq!(outcome.settings["general"]["theme"], json!("dark"));
+        assert_eq!(
+            outcome.field_clocks["general.theme"],
+            json!({"device-a": 1, "device-b": 1})
+        );
+    }
+
+    #[test]
+    fn a_concurrent_path_requeues_and_a_dominated_one_does_not() {
+        // #2399, protocol 06 §6.9.0: a device that merged a concurrent pair
+        // re-pushes the union, or it holds its value alone (#2287).
+        let concurrent = merged(
+            json!({
+                "settings": {"general": {"theme": "light"}},
+                "fieldClocks": {"general.theme": {"device-a": 2}}
+            }),
+            json!({
+                "settings": {"general": {"theme": "dark"}},
+                "fieldClocks": {"general.theme": {"device-b": 1}}
+            }),
+        );
+        assert!(concurrent.requeue);
+
+        let dominated = merged(
+            json!({
+                "settings": {"general": {"theme": "light"}},
+                "fieldClocks": {"general.theme": {"device-a": 1}}
+            }),
+            json!({
+                "settings": {"general": {"theme": "dark"}},
+                "fieldClocks": {"general.theme": {"device-a": 2}}
+            }),
+        );
+        assert!(!dominated.requeue);
     }
 
     #[test]
@@ -463,10 +514,10 @@ mod tests {
 
     /// The shared `settings-merge` vectors (#2383), generated from desktop's
     /// merge. [`merge`] is private, so the file is read here rather than from
-    /// `tests/`. Only `settings` and `fieldClocks` are asserted: `requeue` is
-    /// §6.9.0's re-queue, which this file does not do (see the module docs).
-    /// A `rustPending` case is one this core still resolves differently and
-    /// is asserted to differ, so fixing it here forces the flag off the case.
+    /// `tests/`. `settings`, `fieldClocks` and `requeue` are all asserted
+    /// (#2399). A `rustPending` case is one this core still resolves
+    /// differently and is asserted to differ, so fixing it here forces the
+    /// flag off the case.
     #[test]
     fn the_shared_settings_merge_vectors_match_desktop() {
         let file: Value = serde_json::from_str(include_str!(
@@ -476,15 +527,14 @@ mod tests {
         let cases = file["cases"].as_array().expect("cases is an array");
         assert_eq!(cases.len() as u64, file["meta"]["caseCount"]);
 
-        let mut pending = 0;
         for case in cases {
             let name = case["name"].as_str().expect("every case is named");
             let outcome = merged(case["local"].clone(), case["remote"].clone());
             let expected = &case["expected"];
             let matches = Value::Object(outcome.settings) == expected["settings"]
-                && outcome.field_clocks == expected["fieldClocks"];
+                && outcome.field_clocks == expected["fieldClocks"]
+                && Value::Bool(outcome.requeue) == expected["requeue"];
             if case.get("rustPending").is_some() {
-                pending += 1;
                 assert!(
                     !matches,
                     "{name}: fixed here, remove its `rustPending` flag"
@@ -492,11 +542,10 @@ mod tests {
             } else {
                 assert!(
                     matches,
-                    "{name}: settings or field clocks differ from desktop"
+                    "{name}: settings, field clocks or requeue differ from desktop"
                 );
             }
         }
-        assert_eq!(pending, 2, "the two absent-winner cases");
     }
 
     #[test]

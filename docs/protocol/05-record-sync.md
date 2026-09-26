@@ -574,7 +574,9 @@ instead of two (`apps/sync-server/src/services/sync.ts:1096`).
   outside a full sync, which is the socket wake and the periodic pull; startup,
   "Sync now" and a first sync are full syncs and do not ask
   (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:292`). The Rust core
-  does not ask yet (#2304).
+  asks on the first page of a pull that starts from a stored cursor, and not
+  on a first sync or a pull from no cursor, both of which read backlog
+  (`crates/memry-core/src/sync/pull.rs` `pull_first_page`, #2304).
 - **With `note_body`.** A request may both ask `inline=1` and declare
   `note_body` (#2295, §5.3). The page is then one merged page of records and
   body rows, clamped to 100 rows, and it carries both `inline` and
@@ -643,10 +645,10 @@ every item sharing a chunk with one bad row.
   cursor; the run is refused (#2285). Such a body is a server contract
   regression, not a poisoned item: it is fixed on the server, and the page must
   still be there to re-pull when it is. Dropping it lost every item on the page.
-  Desktop: `apps/desktop/src/main/sync/engine/pull-envelope.ts`. The shared
-  pull engine (`packages/sync-client/src/pull/engine.ts:199-205`) and the Rust
-  core (`crates/memry-core/src/sync/pull.rs`) still drop and advance; #2304
-  tracks bringing them in line.
+  Desktop: `apps/desktop/src/main/sync/engine/pull-envelope.ts`; Rust core:
+  `crates/memry-core/src/sync/pull.rs`, which applies nothing from the page.
+  The shared pull engine (`packages/sync-client/src/pull/engine.ts:199-205`)
+  still drops and advances.
 - An item that fails its schema (the envelope schema, or the handler's payload
   schema) is recorded, not dropped: the cursor moves on, and the client
   re-fetches it by id after an app update (#2285).

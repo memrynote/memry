@@ -14,6 +14,8 @@
 //! | one malformed item                  | §5.14, §13.2 rule 5, FR-032, data-model §D.3 |
 //! | the page breaker                    | §5.14, both halves                          |
 //! | tombstones                          | §5.12, §5.12.1                              |
+//! | inline payloads on the first page   | §5.11.2, #2292                              |
+//! | a pull body that is not an envelope | §5.14, #2285                                |
 //! | the drawn edges of every pass       | data-model §C.3                             |
 //! | blocked policy parks the outbox     | chapter 11 §11.9                            |
 //! | two passes serialised               | §C.3, "two concurrent passes race the cursor" |
@@ -364,6 +366,252 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_decoded() {
     .expect("read back");
 }
 
+// ------------------------------------ inline payloads and a bad pull body
+
+fn seed_cursor(db: &Db, cursor: &str) {
+    let cursor = cursor.to_owned();
+    db.call_blocking(move |conn| {
+        store::write_cursor(conn, RECORD_CURSOR_SCOPE, Some(&cursor), 1)?;
+        // `run` restarts the feed when no declaration was recorded.
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+            [
+                memry_core::sync::pull::META_RECORD_DECLARATION,
+                Declaration::subscribed().header_value().as_str(),
+            ],
+        )
+        .expect("record the declaration");
+        Ok(())
+    })
+    .expect("seed the cursor");
+}
+
+fn stored_cursor(db: &Db) -> Option<String> {
+    db.call_blocking(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
+        .expect("read the cursor")
+}
+
+fn urls(transport: &FakeTransport) -> Vec<String> {
+    transport.calls().into_iter().map(|call| call.url).collect()
+}
+
+/// The ids a `POST /sync/pull` asked for.
+fn pulled_ids(transport: &FakeTransport) -> Vec<Vec<String>> {
+    transport
+        .calls_to("/sync/pull")
+        .into_iter()
+        .map(|call| {
+            let body: Json = serde_json::from_slice(&call.body.expect("a body")).expect("json");
+            serde_json::from_value(body["itemIds"].clone()).expect("itemIds")
+        })
+        .collect()
+}
+
+/// #2292: the first page of an incremental pull asks `inline=1`, applies what
+/// arrived inline, and pulls only the page ids no inline element names. An
+/// inline element that fails its envelope is corrupt, never re-pulled.
+#[tokio::test]
+async fn an_incremental_first_page_applies_inline_items_and_pulls_only_the_rest() {
+    let db = scratch_db("inline-mixed");
+    seed_cursor(&db, "10");
+    let mut broken = envelope("note-bad", "note");
+    broken.as_object_mut().unwrap().remove("signature");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({
+                "items": [
+                    {"id": "note-a", "type": "note"},
+                    {"id": "note-b", "type": "note"},
+                    {"id": "note-bad", "type": "note"},
+                ],
+                "deleted": ["note-gone"],
+                "hasMore": false,
+                "nextCursor": 20,
+                "inline": [
+                    envelope("note-a", "note"),
+                    broken,
+                    tombstone("note-gone", "note", 1_700_000_000_000i64),
+                ],
+            })
+            .to_string(),
+        ),
+        response(
+            200,
+            &json!({"items": [envelope("note-b", "note")]}).to_string(),
+        ),
+    ]);
+    let cipher = ScriptedCipher::new(&[
+        ("note-a", r#"{"title":"Inline"}"#),
+        ("note-b", r#"{"title":"Pulled"}"#),
+    ]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    let report = pull.pull_first_page().await.expect("the page");
+    assert_eq!(report.applied, 2);
+    assert_eq!(report.deleted, 1);
+    assert_eq!(report.corrupt, 1);
+    assert!(!report.refused);
+    assert_eq!(stored_cursor(&db).as_deref(), Some("20"));
+
+    assert!(
+        urls(&transport)[0].ends_with("/sync/changes?limit=500&cursor=10&inline=1"),
+        "{:?}",
+        urls(&transport)
+    );
+    assert_eq!(
+        pulled_ids(&transport),
+        vec![vec!["note-b".to_owned()]],
+        "only the id no inline element named"
+    );
+    db.call_blocking(|conn| {
+        assert!(sync_items::load(conn, "note", "note-a")?.is_some());
+        let gone = sync_items::load(conn, "note", "note-gone")?.expect("the tombstone");
+        assert_eq!(gone.deleted_at, Some(1_700_000_000_000));
+        let bad = sync_items::load(conn, "note", "note-bad")?.expect("the corrupt row");
+        assert!(bad.corrupt_reason.is_some());
+        Ok(())
+    })
+    .expect("read back");
+}
+
+/// #2292: a page that arrived entirely inline costs one request.
+#[tokio::test]
+async fn an_all_inline_page_makes_no_pull_request() {
+    let db = scratch_db("inline-all");
+    seed_cursor(&db, "10");
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({
+            "items": [{"id": "note-a", "type": "note"}],
+            "deleted": [],
+            "hasMore": false,
+            "nextCursor": 11,
+            "inline": [envelope("note-a", "note")],
+        })
+        .to_string(),
+    )]);
+    let cipher = ScriptedCipher::new(&[("note-a", r#"{"title":"Inline"}"#)]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    let report = pull.pull_first_page().await.expect("the page");
+    assert_eq!(report.applied, 1);
+    assert_eq!(transport.call_count(), 1, "no POST /sync/pull");
+    assert_eq!(stored_cursor(&db).as_deref(), Some("11"));
+}
+
+/// #2292: only a run's first page asks, and a server that ignores the query
+/// (no `inline` key) is pulled exactly as before.
+#[tokio::test]
+async fn only_the_first_page_of_an_incremental_run_asks_inline() {
+    let db = scratch_db("inline-first-page");
+    seed_cursor(&db, "10");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({
+                "items": [{"id": "note-a", "type": "note"}],
+                "deleted": [],
+                "hasMore": true,
+                "nextCursor": 20,
+            })
+            .to_string(),
+        ),
+        response(
+            200,
+            &json!({"items": [envelope("note-a", "note")]}).to_string(),
+        ),
+        response(200, &changes(&[], &[], "30")),
+    ]);
+    let cipher = ScriptedCipher::new(&[("note-a", r#"{"title":"Old server"}"#)]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    let report = pull.run(5).await.expect("the run");
+    assert_eq!(report.applied, 1);
+    assert_eq!(pulled_ids(&transport), vec![vec!["note-a".to_owned()]]);
+    let urls = urls(&transport);
+    assert!(urls[0].ends_with("&cursor=10&inline=1"), "{urls:?}");
+    assert!(urls[2].ends_with("&cursor=20"), "{urls:?}");
+    assert_eq!(stored_cursor(&db).as_deref(), Some("30"));
+}
+
+/// #2292: with no stored cursor the pull reads the feed from the start, which
+/// is backlog, so it keeps 500-ref pages (protocol 05 §5.11.2).
+#[tokio::test]
+async fn a_pull_with_no_stored_cursor_does_not_ask_inline() {
+    let db = scratch_db("inline-no-cursor");
+    let transport = FakeTransport::new(vec![response(200, &changes(&[], &[], "5"))]);
+    let pull = loop_for(transport.clone(), db.clone(), ScriptedCipher::new(&[]));
+
+    pull.pull_first_page().await.expect("the page");
+    assert!(urls(&transport)[0].ends_with("/sync/changes?limit=500"));
+}
+
+/// #2285: a `/sync/pull` body that is not a pull envelope is a server
+/// contract regression. The page is not applied, the cursor holds so the page
+/// is still there to re-pull once the server is fixed, and the run is refused.
+#[tokio::test]
+async fn a_pull_response_that_is_not_an_envelope_holds_the_cursor_and_refuses_the_run() {
+    let db = scratch_db("not-an-envelope");
+    seed_cursor(&db, "10");
+    let transport = FakeTransport::new(vec![
+        response(200, &changes(&[("note-a", "note")], &[], "20")),
+        response(200, &json!({"unexpected": true}).to_string()),
+    ]);
+    let cipher = ScriptedCipher::new(&[("note-a", r#"{"title":"x"}"#)]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    // `run` stops at the refusal: a third request would run off the script.
+    let report = pull.run(5).await.expect("the run");
+    assert!(report.refused, "the run is unsuccessful");
+    assert_eq!(report.dropped_pages, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.cursor.as_deref(), Some("10"));
+    assert_eq!(
+        stored_cursor(&db).as_deref(),
+        Some("10"),
+        "the cursor did not move past the page"
+    );
+    assert_eq!(transport.call_count(), 2);
+}
+
+/// #2285 with #2292: a bad remainder pull refuses the page even when some of
+/// it arrived inline, and nothing from the page is applied.
+#[tokio::test]
+async fn a_non_envelope_remainder_refuses_the_page_even_with_inline_items() {
+    let db = scratch_db("inline-bad-remainder");
+    seed_cursor(&db, "10");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({
+                "items": [{"id": "note-a", "type": "note"}, {"id": "note-b", "type": "note"}],
+                "deleted": [],
+                "hasMore": false,
+                "nextCursor": 20,
+                "inline": [envelope("note-a", "note")],
+            })
+            .to_string(),
+        ),
+        response(200, "[]"),
+    ]);
+    let cipher = ScriptedCipher::new(&[
+        ("note-a", r#"{"title":"x"}"#),
+        ("note-b", r#"{"title":"y"}"#),
+    ]);
+    let pull = loop_for(transport.clone(), db.clone(), cipher);
+
+    let report = pull.pull_first_page().await.expect("the page");
+    assert!(report.refused);
+    assert_eq!(report.applied, 0);
+    assert_eq!(stored_cursor(&db).as_deref(), Some("10"));
+    db.call_blocking(|conn| {
+        assert!(sync_items::load(conn, "note", "note-a")?.is_none());
+        Ok(())
+    })
+    .expect("read back");
+}
+
 #[tokio::test]
 async fn a_pass_walks_the_edges_c3_draws_and_ends_idle() {
     let db = scratch_db("engine-idle");
@@ -630,7 +878,8 @@ async fn two_concurrent_passes_serialise_so_the_second_sees_the_first_cursor() {
         "the first pass started from no cursor: {urls:?}"
     );
     assert!(
-        urls[2].ends_with("/sync/changes?limit=500&cursor=100"),
+        // #2292: a first page with a stored cursor asks for inline payloads.
+        urls[2].ends_with("/sync/changes?limit=500&cursor=100&inline=1"),
         "the second pass read the cursor the first one committed: {urls:?}"
     );
 
@@ -1469,9 +1718,10 @@ async fn a_local_settings_removal_that_ticked_beats_a_stale_remote_value() {
     assert!(projected_settings(&db).is_empty());
     assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
 
-    // And the other seat, which is where the removal has to actually land or
-    // the two devices diverge permanently: this device still holds the value,
-    // and the peer's ticked removal arrives.
+    // And the other seat: this device still holds the value, and the peer's
+    // ticked removal arrives. #2399, protocol 06 §6.9.0 as amended by #2383:
+    // an absent winner keeps the local value until desktop keeps unmodelled
+    // keys (#2183), because a desktop echo of a stripped value looks the same.
     let peer = scratch_db("pull-settings-removal-peer");
     peer.call_blocking(|conn| {
         settings::set(conn, "general.theme", json!("dark"), "device-a", MERGE_NOW)?;
@@ -1490,10 +1740,102 @@ async fn a_local_settings_removal_that_ticked_beats_a_stale_remote_value() {
     assert_eq!(report.corrupt, 0);
     let parsed = stored_payload(&peer, "settings", SETTINGS_ID);
     assert_eq!(
-        parsed["settings"]["general"].get("theme"),
-        None,
-        "§6.9.1: a removal is a write, and a ticked one beats the old value"
+        parsed["settings"]["general"]["theme"],
+        json!("dark"),
+        "removal is deferred: the local value stays"
     );
-    assert!(projected_settings(&peer).is_empty());
+    assert_eq!(
+        parsed["fieldClocks"]["general.theme"],
+        json!({"device-a": 1, "device-b": 1}),
+        "the removal's tick is kept, so the clock is ahead when removal ships"
+    );
     assert_eq!(outbox_rows(&peer, SETTINGS_ID), queued_before);
+}
+
+/// #2399's repro: iOS writes a setting desktop does not model, desktop strips
+/// the value, keeps the clock and echoes it on its next push. iOS keeps its
+/// own setting.
+#[tokio::test]
+async fn a_desktop_echo_of_a_stripped_setting_keeps_the_ios_value() {
+    let db = scratch_db("pull-settings-echo");
+    db.call_blocking(|conn| {
+        settings::set(
+            conn,
+            "experimental.agentSidebar",
+            json!(true),
+            "ios",
+            MERGE_NOW,
+        )?;
+        Ok(())
+    })
+    .expect("the iOS setting");
+
+    // Desktop edited the theme and pushed the echoed clock with no value.
+    let echo = settings_payload(
+        json!({"general": {"theme": "dark"}}),
+        json!({
+            "experimental.agentSidebar": {"ios": 1},
+            "general.theme": {"desktop": 1}
+        }),
+    );
+    let report = pull_one(&db, SETTINGS_ID, "settings", &echo, "66").await;
+
+    assert_eq!(report.applied, 1);
+    let parsed = stored_payload(&db, "settings", SETTINGS_ID);
+    assert_eq!(
+        parsed["settings"]["experimental"]["agentSidebar"],
+        json!(true),
+        "the tie goes to the remote, which has no value: the local one stays"
+    );
+    assert_eq!(parsed["settings"]["general"]["theme"], json!("dark"));
+}
+
+/// #2399, protocol 06 §6.9.0: a merge in which a path compared `concurrent`
+/// re-queues the merged settings, in the same transaction as the write, so
+/// the union clock reaches the server (#2287). A dominated path does not.
+#[tokio::test]
+async fn a_concurrent_settings_merge_requeues_the_merged_payload() {
+    let db = scratch_db("pull-settings-requeue");
+    seed_local_theme(&db);
+    // The local edits were pushed.
+    db.call_blocking(|conn| {
+        conn.execute("DELETE FROM outbox", [])
+            .expect("clear the outbox");
+        Ok(())
+    })
+    .expect("pushed");
+
+    // {device-a: 2} against {device-b: 3}: concurrent, remote total wins.
+    let remote = settings_payload(
+        json!({"general": {"theme": "dark"}}),
+        json!({"general.theme": {"device-b": 3}}),
+    );
+    let report = pull_one(&db, SETTINGS_ID, "settings", &remote, "67").await;
+
+    assert_eq!(report.applied, 1);
+    let parsed = stored_payload(&db, "settings", SETTINGS_ID);
+    assert_eq!(parsed["settings"]["general"]["theme"], json!("dark"));
+    assert_eq!(
+        parsed["fieldClocks"]["general.theme"],
+        json!({"device-a": 2, "device-b": 3})
+    );
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), 1, "the merge re-queued");
+
+    // A later payload that dominates is taken without a re-queue.
+    db.call_blocking(|conn| {
+        conn.execute("DELETE FROM outbox", [])
+            .expect("clear the outbox");
+        Ok(())
+    })
+    .expect("pushed");
+    let newer = settings_payload(
+        json!({"general": {"theme": "light"}}),
+        json!({"general.theme": {"device-a": 2, "device-b": 4}}),
+    );
+    pull_one(&db, SETTINGS_ID, "settings", &newer, "68").await;
+    assert_eq!(
+        stored_payload(&db, "settings", SETTINGS_ID)["settings"]["general"]["theme"],
+        json!("light")
+    );
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), 0);
 }

@@ -7,6 +7,7 @@
 //! | [`field_merge`]   | 06 §6.3 – §6.8         | the winner rule, the conflict set, the field lists |
 //! | [`store`]         | 05 §5.11, §5.12        | the per-scope cursor and the tombstone            |
 //! | [`pull`]          | 05                     | one page: refs, bodies, apply, advance            |
+//! | `changes_page`    | 05 §5.11.2, §5.12      | one changes page read, and its ids left to pull   |
 //! | [`apply`]         | 06 §6.8, 05 §5.12      | the apply step, and the one dispatch on item type |
 //! | [`settings_merge`] | 06 §6.9, 13 §13.7.13  | `settings` inbound: the dotted-path field clocks  |
 //! | [`state`]         | data-model §C.3        | the states and the edges drawn between them       |
@@ -18,6 +19,7 @@
 //! | [`crdt_wire`]     | 07 §7.11               | that feed's wire shapes, read tolerantly          |
 //! | [`bootstrap`]     | 10                     | the elevated window, and the silent fallback      |
 //! | [`socket`]        | 09                     | the hint channel, which is never a data path      |
+//! | `socket_frame`    | 09 §9.5, §9.12         | one socket message parsed into one hint           |
 //! | [`first_sync`]    | §C.3, FR-028           | refs, then metadata, then bodies for the window   |
 //! | [`first_sync_store`] | §A.2                | that run's two work lists and its two `meta` keys |
 //!
@@ -30,6 +32,7 @@
 pub mod apply;
 pub mod body_pull;
 pub mod bootstrap;
+mod changes_page;
 pub mod clock;
 pub mod crdt_wire;
 pub mod engine;
@@ -42,5 +45,6 @@ pub mod pull;
 pub mod push;
 pub mod settings_merge;
 pub mod socket;
+mod socket_frame;
 pub mod state;
 pub mod store;

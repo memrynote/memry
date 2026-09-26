@@ -2,9 +2,11 @@
 //!
 //! One page is: `GET /sync/changes` for the refs, `POST /sync/pull` for the
 //! bodies of those refs **unioned with the page's `deleted` ids**, apply in
-//! rank order, then advance the cursor. In that order and no other.
+//! rank order, then advance the cursor. In that order and no other. The first
+//! page of an incremental run asks for inline payloads (§5.11.2), and only the
+//! ids no inline item names go to `POST /sync/pull`.
 //!
-//! Four rules shape every branch below, and three of them are about not losing
+//! Five rules shape every branch below, and four of them are about not losing
 //! a user's data on a page that went wrong:
 //!
 //! - **One global record cursor per device** (§5.11), a decimal string,
@@ -20,6 +22,9 @@
 //!   *and* refuses the run, so no success state is written. Advancing without
 //!   refusing loses data silently; refusing without advancing wedges the device
 //!   on one poisoned page forever. Both halves or neither.
+//! - **A `/sync/pull` body that is not a pull envelope refuses the run and
+//!   holds the cursor** (§5.14, #2285). That is a server fault, not a poisoned
+//!   item: the page must still be there to re-pull once the server is fixed.
 //! - **A tombstone's body is never decoded** (§5.12). A present `deletedAt`
 //!   overrides the declared `operation`, and an id in `deleted` with no ref row
 //!   has no type on the wire at all (§5.12.1).
@@ -42,6 +47,7 @@ use crate::storage::Db;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 
 use super::apply::{self, ApplyTotals, Pending};
+use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -98,13 +104,15 @@ pub struct PullReport {
     /// Past the 90-day `task_activity` horizon (chapter 13 §13.12). **Not
     /// corrupt**: the row is expired and the cursor still advances past it.
     pub expired: usize,
-    /// Responses that were not a pull envelope at all (§5.14).
+    /// Responses that were not a pull envelope at all (§5.14). Such a page
+    /// holds the cursor and refuses the run (#2285).
     pub dropped_pages: u32,
     /// The cursor now stored, after applying.
     pub cursor: Option<String>,
     pub has_more: bool,
-    /// The breaker tripped: the run is unsuccessful and **no success state may
-    /// be written**, even though the cursor advanced.
+    /// The run is unsuccessful and **no success state may be written**:
+    /// either the breaker tripped, and the cursor advanced, or a pull response
+    /// was not an envelope, and the cursor held.
     pub refused: bool,
     /// The documents whose body log a tombstone on this pass actually emptied
     /// (chapter 07 §7.15).
@@ -117,19 +125,6 @@ pub struct PullReport {
     /// the caller believing the body was gone everywhere would be worse than
     /// one that failed loudly.
     pub purged_documents: Vec<String>,
-}
-
-/// One page of `GET /sync/changes`.
-///
-/// Only the **ids** of the ref rows are kept. A ref's type is read from the
-/// `/sync/pull` response instead, so a client never has two opinions about an
-/// item's type, and the presence of a ref row is the only thing §5.12.1 needs
-/// it for: an id in `deleted` **without** one has no type on the wire.
-struct ChangesPage {
-    ref_ids: Vec<String>,
-    deleted: Vec<String>,
-    has_more: bool,
-    next_cursor: Option<String>,
 }
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
@@ -178,12 +173,17 @@ impl PullLoop {
     ///
     /// A refusal stops the loop deliberately: the cursor has moved past a page
     /// that produced only corruption, and continuing would report a successful
-    /// run that skipped it.
+    /// run that skipped it. After a non-envelope pull body the cursor held, and
+    /// continuing would re-read the same page.
     pub async fn run(&self, max_pages: u32) -> Result<PullReport, PullError> {
         self.restart_on_new_declaration().await?;
         let mut total = PullReport::default();
-        for _ in 0..max_pages {
-            let page = self.pull_page().await?;
+        for index in 0..max_pages {
+            let page = if index == 0 {
+                self.pull_first_page().await?
+            } else {
+                self.pull_page().await?
+            };
             total.pages += page.pages;
             total.applied += page.applied;
             total.deleted += page.deleted;
@@ -202,6 +202,20 @@ impl PullLoop {
             }
         }
         Ok(total)
+    }
+
+    /// Whether the stored record cursor is at or past `cursor`. `false` when
+    /// there is no cursor or it will not read: pulling is the safe answer.
+    pub async fn has_applied_through(&self, cursor: i64) -> bool {
+        let stored = self
+            .db
+            .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
+            .await;
+        let applied = stored
+            .ok()
+            .flatten()
+            .and_then(|text| text.parse::<i64>().ok());
+        applied.is_some_and(|applied| cursor <= applied)
     }
 
     /// Starts the feed over once when the declared types grew.
@@ -234,12 +248,27 @@ impl PullLoop {
 
     /// One page: refs, bodies, apply, advance.
     pub async fn pull_page(&self) -> Result<PullReport, PullError> {
+        self.page(false).await
+    }
+
+    /// The first page of a run. When a cursor is stored the pull is
+    /// incremental, so it asks `GET /sync/changes?inline=1` (chapter 05
+    /// §5.11.2, #2292) and a small page applies without a `POST /sync/pull`.
+    /// With no cursor the feed is read from the start, which is backlog and
+    /// keeps 500-ref pages. A server that ignores the query sends no `inline`
+    /// and the page is pulled exactly as [`PullLoop::pull_page`] pulls it.
+    pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
+        self.page(true).await
+    }
+
+    async fn page(&self, ask_inline: bool) -> Result<PullReport, PullError> {
         let cursor = self
             .db
             .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
             .await?;
 
-        let page = self.fetch_changes(cursor.as_deref()).await?;
+        let inline = ask_inline && cursor.is_some();
+        let page = self.fetch_changes(cursor.as_deref(), inline).await?;
         let mut report = PullReport {
             pages: 1,
             has_more: page.has_more,
@@ -248,28 +277,24 @@ impl PullLoop {
 
         let ids = requested_ids(&page);
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
-        let mut typed: Vec<String> = Vec::new();
 
-        for chunk in ids.chunks(MAX_PULL_IDS) {
+        let fetch = uncovered_ids(&page, &ids);
+
+        self.take_items(&page.inline, &mut report, &mut pending)
+            .await?;
+        for chunk in fetch.chunks(MAX_PULL_IDS) {
             let body = self.fetch_bodies(chunk).await?;
             let Some(items) = body.get("items").and_then(Json::as_array) else {
-                // §5.14: not a pull envelope at all. The chunk is dropped and
-                // the cursor still advances past it.
+                // §5.14 (#2285): not a pull envelope at all, which is a server
+                // contract regression. Nothing from the page is applied and the
+                // cursor holds, so the page is still there to re-pull once the
+                // server is fixed; the run is refused so no success is written.
                 report.dropped_pages += 1;
-                continue;
+                report.refused = true;
+                report.cursor = cursor;
+                return Ok(report);
             };
-            for item in items {
-                match self.decode(item) {
-                    Ok(decoded) => {
-                        typed.push(decoded.item_type().to_owned());
-                        pending.push(decoded);
-                    }
-                    Err(corrupt) => {
-                        report.corrupt += 1;
-                        self.record_corrupt(item, &corrupt).await?;
-                    }
-                }
-            }
+            self.take_items(items, &mut report, &mut pending).await?;
         }
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
@@ -353,11 +378,38 @@ impl PullLoop {
         Ok(report)
     }
 
-    async fn fetch_changes(&self, cursor: Option<&str>) -> Result<ChangesPage, PullError> {
+    /// Decodes pulled items per item (§5.14): each one is pending or one
+    /// recorded corrupt item.
+    async fn take_items(
+        &self,
+        items: &[Json],
+        report: &mut PullReport,
+        pending: &mut Vec<Pending>,
+    ) -> Result<(), PullError> {
+        for item in items {
+            match self.decode(item) {
+                Ok(decoded) => pending.push(decoded),
+                Err(corrupt) => {
+                    report.corrupt += 1;
+                    self.record_corrupt(item, &corrupt).await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn fetch_changes(
+        &self,
+        cursor: Option<&str>,
+        inline: bool,
+    ) -> Result<ChangesPage, PullError> {
         let mut path = format!("/sync/changes?limit={PULL_PAGE_LIMIT}");
         if let Some(cursor) = cursor {
             path.push_str("&cursor=");
             path.push_str(cursor);
+        }
+        if inline {
+            path.push_str("&inline=1");
         }
         let body: Json = self.http.send_json(self.request("GET", &path)).await?;
         Ok(read_changes_page(&body))
@@ -482,59 +534,8 @@ pub fn apply_rank(item_type: &str) -> u8 {
     }
 }
 
-/// §5.12: the client unions `deleted` into the `/sync/pull` request for the
-/// **same** page, because tombstones arrive as full signed items.
-fn requested_ids(page: &ChangesPage) -> Vec<String> {
-    let mut ids: Vec<String> = Vec::with_capacity(page.ref_ids.len() + page.deleted.len());
-    for id in page.ref_ids.iter().chain(page.deleted.iter()) {
-        if !ids.iter().any(|kept| kept == id) {
-            ids.push(id.clone());
-        }
-    }
-    ids
-}
-
 fn typed_covers(pending: &[Pending], id: &str) -> bool {
     pending.iter().any(|item| item.item_id() == id)
-}
-
-/// Reads the page shape tolerantly: chapter 13 §13.2.2 permits ignoring an
-/// **envelope** key a client does not know, and a missing `items` or `deleted`
-/// array reads as empty rather than as a failure.
-fn read_changes_page(body: &Json) -> ChangesPage {
-    let ref_ids = body
-        .get("items")
-        .and_then(Json::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| item.get("id").and_then(Json::as_str))
-                .map(str::to_owned)
-                .collect()
-        })
-        .unwrap_or_default();
-    let deleted = body
-        .get("deleted")
-        .and_then(Json::as_array)
-        .map(|ids| {
-            ids.iter()
-                .filter_map(Json::as_str)
-                .map(str::to_owned)
-                .collect()
-        })
-        .unwrap_or_default();
-    ChangesPage {
-        ref_ids,
-        deleted,
-        has_more: body.get("hasMore").and_then(Json::as_bool).unwrap_or(false),
-        // The cursor is a decimal string on the wire; a server that sends it
-        // as a number means the same thing (§5.11).
-        next_cursor: match body.get("nextCursor") {
-            Some(Json::String(text)) => Some(text.clone()),
-            Some(Json::Number(number)) => Some(number.to_string()),
-            _ => None,
-        },
-    }
 }
 
 fn server_cursor(item: &Json) -> Option<i64> {
@@ -559,25 +560,5 @@ mod tests {
         assert_eq!(apply_rank("hologram"), 1);
         assert_eq!(apply_rank("task"), 2);
         assert_eq!(apply_rank("calendar_binding"), 3);
-    }
-
-    #[test]
-    fn the_requested_ids_union_the_refs_and_the_deleted_of_the_same_page() {
-        let page = ChangesPage {
-            ref_ids: vec!["a".into(), "b".into()],
-            deleted: vec!["b".into(), "c".into()],
-            has_more: false,
-            next_cursor: None,
-        };
-        assert_eq!(requested_ids(&page), ["a", "b", "c"]);
-    }
-
-    #[test]
-    fn a_page_shape_missing_its_arrays_reads_as_empty_rather_than_failing() {
-        let page = read_changes_page(&json!({ "nextCursor": 41, "hasMore": true }));
-        assert!(page.ref_ids.is_empty());
-        assert!(page.deleted.is_empty());
-        assert!(page.has_more);
-        assert_eq!(page.next_cursor.as_deref(), Some("41"));
     }
 }

@@ -26,7 +26,7 @@ running:
   backgrounded mobile app, so its socket cannot be serviced and every broadcast
   to it is a wasted wake. The Rust core leaves the lifecycle to the shell: it
   exposes `RealtimeClient::connect` and `RealtimeClient::disconnect`
-  (`crates/memry-core/src/sync/socket.rs:293`, `:323`) and observes no app
+  (`crates/memry-core/src/sync/socket.rs:185`, `:215`) and observes no app
   state itself. No mobile shell drives it yet
   (`apps/ios/Memry/App/ShellState.swift:173-179`).
 - **A resident desktop process keeps the socket open for as long as the process
@@ -313,8 +313,11 @@ below the applied cursor is already on the device. A broadcast without a
 `cursor` MUST still be treated as a wake. The desktop also coalesces wakes: one
 that arrives while a wake-driven pull is queued adds nothing, and any number
 that arrive while a pull runs queue exactly one trailing pull
-(`apps/desktop/src/main/sync/engine.ts` `scheduleWakePull`, #2290). The periodic
-pull stays the fallback for a missed broadcast.
+(`apps/desktop/src/main/sync/engine.ts` `scheduleWakePull`, #2290). The Rust
+core does the same in `SyncEngine::wake`
+(`crates/memry-core/src/sync/engine.rs`), fed by the `cursor` that
+`Hint::ChangesAvailable` carries (`crates/memry-core/src/sync/socket_frame.rs`). The
+periodic pull stays the fallback for a missed broadcast.
 
 **A device is excluded from its own broadcast** by `excludeDeviceId`
 (`apps/sync-server/src/durable-objects/user-sync-state.ts:188`), and a broadcast
