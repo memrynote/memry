@@ -4,7 +4,7 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { CRYPTO_VERSION } from '@memry/contracts/crypto'
 import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
 import { encodeSignaturePayload } from '../lib/cbor'
-import { AppError, ErrorCodes } from '../lib/errors'
+import { ErrorCodes } from '../lib/errors'
 import { getSnapshot, getUpdates, storeSnapshot, storeUpdates } from '../services/crdt'
 import { generateItemBlobKey } from '../services/blob'
 import {
@@ -440,22 +440,56 @@ describe('old-client compat matrix', () => {
     expect(itemRows().map((row) => row.item_id)).toEqual(['ok-1', 'ok-2'])
   })
 
-  it('throws the whole-batch quota error exactly as the serial code did, writing nothing', async () => {
+  it('refuses an item that does not fit per item, writing nothing, instead of throwing', async () => {
     harness.close()
     harness = createSqliteD1()
     signingKeys.clear()
     await seed(10)
 
-    const error = await push([await buildItem({ id: 'too-big', clock: { [DEVICE_A]: 1 } })]).catch(
-      (e: unknown) => e
-    )
+    const result = await push([await buildItem({ id: 'too-big', clock: { [DEVICE_A]: 1 } })])
 
-    expect(error).toBeInstanceOf(AppError)
-    expect((error as AppError).code).toBe(ErrorCodes.STORAGE_QUOTA_EXCEEDED)
+    expect(result.accepted).toEqual([])
+    expect(result.rejected).toEqual([{ id: 'too-big', reason: ErrorCodes.STORAGE_QUOTA_EXCEEDED }])
     expect(itemRows()).toEqual([])
     expect(storageUsed()).toBe(0)
   })
 
+  // #2303: the old JSON-length pre-estimate answered the whole batch with a
+  // request-level 413, so an account at quota could not push the deletes and
+  // shrinking updates that are its way out. Stage 5 is the quota gate.
+  it('at quota, refuses only growing items and commits deletes and shrinking updates', async () => {
+    const big = await buildItem({ id: 'big', clock: { [DEVICE_A]: 1 }, data: 'x'.repeat(4000) })
+    const doomed = await buildItem({
+      id: 'doomed',
+      clock: { [DEVICE_A]: 1 },
+      data: 'y'.repeat(4000)
+    })
+    await push([big, doomed])
+    const used = storageUsed()
+    harness.raw
+      .prepare('UPDATE sync_entitlements SET storage_limit = ? WHERE user_id = ?')
+      .run(used, USER_ID)
+
+    const grow = await buildItem({ id: 'grow', clock: { [DEVICE_A]: 1 }, data: 'new-bytes' })
+    const shrink = await buildItem({ id: 'big', clock: { [DEVICE_A]: 2 }, data: 'tiny' })
+    const remove = await buildItem({
+      id: 'doomed',
+      operation: 'delete',
+      clock: { [DEVICE_A]: 2 },
+      deletedAt: now(),
+      data: 'gone'
+    })
+    const result = await push([grow, shrink, remove])
+
+    expect(result.accepted).toEqual(['big', 'doomed'])
+    expect(result.rejected).toEqual([{ id: 'grow', reason: ErrorCodes.STORAGE_QUOTA_EXCEEDED }])
+    expect(itemRows().map((row) => row.item_id)).toEqual(['big', 'doomed'])
+    expect(storageUsed()).toBe(payloadBytes(shrink) + payloadBytes(remove))
+  })
+
+  // #2303: splitIntoWaves stays. Protocol §5.5 acks per id, so rejecting one
+  // occurrence of a duplicate id would put the same id in accepted[] and
+  // rejected[] and the client could not tell which verdict is whose.
   it('replaces a same-batch duplicate identity serially: version 2, latest bytes, old blob gone', async () => {
     const v1 = await buildItem({ id: 'dup-1', clock: { [DEVICE_A]: 1 }, data: 'dup-v1' })
     const v2 = await buildItem({ id: 'dup-1', clock: { [DEVICE_A]: 2 }, data: 'dup-v2-longer' })

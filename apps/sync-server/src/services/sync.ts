@@ -23,7 +23,7 @@ import { createLogger } from '../lib/logger'
 import { deleteBlobs, generateItemBlobKey, getBlob, putBlob } from './blob'
 import { reserveCursors } from './cursor'
 import { getDevice, type Device } from './device'
-import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
+import { adjustStorageUsed, reserveStorage } from './quota'
 
 const logger = createLogger('SyncService')
 
@@ -267,8 +267,6 @@ export const serializePayload = (item: PushItemInput): string => {
   }
   return JSON.stringify(payload, Object.keys(payload).sort())
 }
-
-const estimatePushBatchBytes = (items: PushItemInput[]): number => JSON.stringify(items).length
 
 const parseStoredClock = (itemId: string, clock: string | null): VectorClock | undefined => {
   if (!clock) {
@@ -764,8 +762,6 @@ export const processRecordPushBatch = async (
   vaultId = 'default',
   client: ClientIdentity | null = null
 ): Promise<RecordPushBatchResult> => {
-  await checkQuota(db, userId, estimatePushBatchBytes(items))
-
   const itemOutcomes = new Array<PushItemOutcome>(items.length)
   for (const wave of splitIntoWaves(items)) {
     const waveOutcomes = await processPushWave(

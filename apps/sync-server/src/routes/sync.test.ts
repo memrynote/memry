@@ -878,6 +878,26 @@ describe('sync routes', () => {
       infoSpy.mockRestore()
     })
 
+    // #2303: the push service no longer checks the entitlement itself for a
+    // batch that grows nothing, so the paid gate on /sync/push is this
+    // middleware. The assertion is on the middleware mock, which Hono invokes
+    // by registration order, so moving the route above it fails here.
+    it('is gated by paidSyncMiddleware before the push service runs', async () => {
+      vi.mocked(paidSyncMiddleware).mockImplementationOnce(async () => {
+        throw new AppError(ErrorCodes.SYNC_PAYMENT_REQUIRED, 'paid plan required', 402)
+      })
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(402)
+      expect(processRecordPushBatch).not.toHaveBeenCalled()
+    })
+
     // #2283: last_cursor_seen records how far the device has PULLED. Its own
     // accepted rows say nothing about peer rows below them.
     it('should leave the device pull cursor alone when items are accepted', async () => {
