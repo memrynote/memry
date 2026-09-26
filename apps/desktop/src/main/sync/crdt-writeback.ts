@@ -13,14 +13,7 @@ import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
-import {
-  atomicWrite,
-  safeRead,
-  fileExists,
-  generateNotePath,
-  generateUniquePath,
-  ensureDirectory
-} from '../vault/file-ops'
+import { atomicWrite, safeRead, ensureDirectory } from '../vault/file-ops'
 import {
   generateContentHash,
   parseNote,
@@ -28,19 +21,13 @@ import {
   serializeParsedNote,
   type NoteFrontmatter
 } from '../vault/frontmatter'
-import {
-  getDefaultNoteDir,
-  getVaultRoot,
-  toRelativePath,
-  toAbsolutePath,
-  maybeCreateSignificantSnapshot
-} from '../vault/notes'
+import { getVaultRoot, toAbsolutePath, maybeCreateSignificantSnapshot } from '../vault/notes'
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
 import { flushProjectionEvents } from '../projections'
 import { getIndexDatabase, getDatabase } from '../database/client'
-import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/notes'
+import { getNoteCacheById } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
@@ -91,9 +78,18 @@ const WRITEBACK_MAX_COOLDOWN_MS = 5000
 
 const IGNORED_WRITE_TTL_MS = 5000
 
+/**
+ * Whose edit a pass writes: `local` for this device's editor, `remote` for
+ * state merged from the server. Only a local edit may put the reminders it
+ * derives on the sync queue; see `performWriteback`.
+ */
+export type WritebackSource = 'local' | 'remote'
+
 interface PendingWriteback {
   timer: ReturnType<typeof setTimeout>
   doc: Y.Doc
+  /** Any update since the last pass was a local edit. */
+  local: boolean
 }
 
 interface WritebackCost {
@@ -281,19 +277,20 @@ function resolveWritebackDoc(noteId: string, captured: Y.Doc): Y.Doc {
 }
 
 /** Runs a pass and records what it cost, which is what paces the next one. */
-async function runWriteback(noteId: string, doc: Y.Doc): Promise<void> {
+async function runWriteback(noteId: string, doc: Y.Doc, local: boolean): Promise<void> {
   const startedAt = Date.now()
   try {
-    await performWriteback(noteId, resolveWritebackDoc(noteId, doc))
+    await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local)
   } finally {
     const finishedAt = Date.now()
     lastWritebackCost.set(noteId, { finishedAt, durationMs: finishedAt - startedAt })
   }
 }
 
-export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
+export function scheduleWriteback(noteId: string, doc: Y.Doc, source: WritebackSource): void {
   const existing = pendingTimers.get(noteId)
   if (existing) clearTimeout(existing.timer)
+  const local = source === 'local' || existing?.local === true
   updateDebugState(noteId, {
     pending: true,
     scheduledCount: (debugState.get(noteId)?.scheduledCount ?? 0) + 1,
@@ -303,7 +300,7 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
   const timer = setTimeout(() => {
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
-    runWriteback(noteId, doc)
+    runWriteback(noteId, doc, local)
       .catch((err) => {
         updateDebugState(noteId, {
           pending: false,
@@ -322,16 +319,15 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
       })
   }, writebackDelayMs(noteId))
 
-  pendingTimers.set(noteId, { timer, doc })
+  pendingTimers.set(noteId, { timer, doc, local })
 }
 
 /**
  * Disarm one note's pending pass, for a note that is ceasing to exist.
  *
  * The armed timer holds its own reference to the Y.Doc, so closing or purging
- * the doc does not reach it — and by the time it fires the note has no index
- * row, which is exactly the condition `writebackNewNote` treats as "a note
- * arrived from sync", re-creating the file the user just deleted.
+ * the doc does not reach it. A pass that fires while the delete is under way
+ * can still find the row, and write the file back after the delete unlinks it.
  */
 export function cancelWriteback(noteId: string): void {
   const pending = pendingTimers.get(noteId)
@@ -341,6 +337,25 @@ export function cancelWriteback(noteId: string): void {
   }
   lastWritebackCost.delete(noteId)
   debugState.delete(noteId)
+}
+
+/**
+ * Run this note's pass now, in place of any armed one, and resolve once the
+ * file is written. For a caller that must know the file matches the doc
+ * before it moves on, such as the post-pull materialize of packed bodies.
+ */
+export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
+  const pending = pendingTimers.get(noteId)
+  if (pending) {
+    clearTimeout(pending.timer)
+    pendingTimers.delete(noteId)
+  }
+  inFlightWritebacks.add(noteId)
+  try {
+    await runWriteback(noteId, doc, pending?.local === true)
+  } finally {
+    inFlightWritebacks.delete(noteId)
+  }
 }
 
 export function cancelPendingWritebacks(): void {
@@ -390,8 +405,8 @@ export async function flushPendingWritebacks(): Promise<void> {
   pendingTimers.clear()
   for (const [, { timer }] of pending) clearTimeout(timer)
   await Promise.all(
-    pending.map(([noteId, { doc }]) =>
-      runWriteback(noteId, doc).catch((err) => {
+    pending.map(([noteId, { doc, local }]) =>
+      runWriteback(noteId, doc, local).catch((err) => {
         log.error('Write-back failed during shutdown flush', { noteId, error: err })
       })
     )
@@ -404,10 +419,8 @@ export async function flushPendingWritebacks(): Promise<void> {
  * `note_metadata` (data DB) is written synchronously by the sync item handler,
  * while its `note_cache` row (index DB) only lands once the projection lane
  * drains — which `applyUpsert` does not await. A write-back firing inside that
- * gap used to see no cache row, take the `writebackNewNote` branch, and
- * overwrite the just-applied title and path with the Y.Doc meta title (the
- * literal 'Untitled' a note is born with), producing an "Untitled" note whose
- * content is correct on every receiving device.
+ * gap would see no cache row and skip the pass, leaving the just-applied
+ * note's file without the body its doc holds.
  */
 function resolveFromCanonicalMetadata(
   noteId: string
@@ -427,7 +440,21 @@ function resolveFromCanonicalMetadata(
   }
 }
 
-async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
+async function performWriteback(noteId: string, doc: Y.Doc, local: boolean): Promise<void> {
+  // A doc with no note row is never turned into a note. Its record may not
+  // have arrived yet, or it may be a tombstone this device has not pulled (a
+  // packed body applied before the first record pull), and both look the
+  // same from here. The record is what creates the file; its arrival then
+  // writes this body over it (`CrdtProvider.materialize`, or the walk the
+  // record's body debt runs).
+  const indexDb = getIndexDatabase()
+  const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
+  if (!cached) {
+    updateDebugState(noteId, { pending: false })
+    log.debug('Write-back skipped: no note row', { noteId })
+    return
+  }
+
   // Fail closed. If the doc holds a node type this build has no schema spec
   // for, every serialization of it is missing that node — writing the result
   // would make the loss the file's permanent content, and the next index pass
@@ -454,10 +481,8 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
     return
   }
 
-  const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
   const plainMarkdown = await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, {
-    notePath: cached?.path,
+    notePath: cached.path,
     onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
   })
   const markdown =
@@ -499,16 +524,18 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
   if (isJournalId(noteId)) {
     await writebackJournal(noteId, doc, markdown, cached, indexDb)
   } else {
-    if (cached) {
-      await writebackExisting(noteId, cached, doc, markdown, indexDb, isLargeFileBody)
-    } else {
-      await writebackNewNote(noteId, doc, markdown, indexDb, isLargeFileBody)
-    }
+    await writebackExisting(noteId, cached, doc, markdown, indexDb, isLargeFileBody)
+    // The reminders a body's date pills derive belong to every device that
+    // holds the body, and each derives its own. Only this device's edit may
+    // stamp and push them. A row derived from a remote body stays unclocked,
+    // so the server's row for the same id, carrying any dismissal or snooze
+    // made elsewhere, applies over it instead of merging as a conflict whose
+    // push-back would reset that state on the other devices.
     try {
       await syncNoteDateReminders(
         noteId,
         markdown,
-        createRemindersService(getDatabase(), reminderSyncHooks)
+        createRemindersService(getDatabase(), local ? reminderSyncHooks : undefined)
       )
     } catch (err) {
       log.warn('Failed to sync note_date reminders on write-back', { noteId, err })
@@ -674,222 +701,79 @@ async function writebackExisting(
   log.debug('Write-back complete', { noteId })
 }
 
-async function writebackNewNote(
-  noteId: string,
-  doc: Y.Doc,
-  markdown: string,
-  indexDb: ReturnType<typeof getIndexDatabase>,
-  isLargeFileBody: boolean
-): Promise<void> {
-  const meta = doc.getMap('meta')
-  const title = (meta.get('title') as string) || 'Untitled'
-
-  const notesDir = getDefaultNoteDir()
-  // Guard against filename collisions: distinct titles can sanitize to the same
-  // basename (e.g. `Report #1` and `Report 1`), which would otherwise overwrite
-  // an existing note's file and orphan an index row. Mirrors createNote.
-  const absolutePath = await generateUniquePath(generateNotePath(notesDir, title))
-  const relativePath = toRelativePath(absolutePath)
-
-  const { frontmatter } = mergeFrontmatter(null, doc)
-  const fileContent = serializeNote(frontmatter, markdown)
-
-  rememberIgnoredWrite(absolutePath)
-  await atomicWrite(absolutePath, fileContent)
-
-  syncNoteToCache(
-    indexDb,
-    {
-      id: noteId,
-      path: relativePath,
-      fileContent,
-      frontmatter,
-      parsedContent: markdown,
-      title,
-      createdAt: (meta.get('date') as string) || utcNow(),
-      modifiedAt: utcNow()
-    },
-    { isNew: true }
-  )
-  void flushProjectionEvents()
-
-  // The row appears either way — the file is on disk and hiding it would strand
-  // the user's data — but a large-file-class row is flagged as such, so the
-  // renderer opens the read-only view instead of seeding an editor from it.
-  emitToRenderer(NotesChannels.events.CREATED, {
-    note: isLargeFileBody
-      ? { id: noteId, path: relativePath, title, sizeClass: 'large-file', contentOmitted: true }
-      : { id: noteId, path: relativePath, title },
-    source: 'sync'
-  })
-
-  log.info('Created new note from sync', { noteId, title })
-}
-
 async function writebackJournal(
   noteId: string,
   doc: Y.Doc,
   markdown: string,
-  cached: ReturnType<typeof getNoteCacheById> | undefined,
+  cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   indexDb: ReturnType<typeof getIndexDatabase>
 ): Promise<void> {
   const date = journalIdToDate(noteId)
-  const journalPath = getJournalPath(date)
 
-  await ensureDirectory(path.dirname(journalPath))
+  await ensureDirectory(path.dirname(getJournalPath(date)))
 
-  if (cached) {
-    const absolutePath = toAbsolutePath(cached.path)
-    const existingRaw = await safeRead(absolutePath)
-    const parsed = existingRaw !== null ? parseNote(existingRaw, absolutePath) : null
+  const absolutePath = toAbsolutePath(cached.path)
+  const existingRaw = await safeRead(absolutePath)
+  const parsed = existingRaw !== null ? parseNote(existingRaw, absolutePath) : null
 
-    const { frontmatter: mergedFrontmatter, changed: frontmatterEdited } = mergeJournalFrontmatter(
-      date,
-      parsed?.frontmatter ?? null,
-      doc
-    )
-    const fileContent = parsed
-      ? serializeParsedNote({ ...parsed, frontmatter: mergedFrontmatter }, markdown, {
-          frontmatterEdited
-        })
-      : serializeNote(mergedFrontmatter, markdown)
+  const { frontmatter: mergedFrontmatter, changed: frontmatterEdited } = mergeJournalFrontmatter(
+    date,
+    parsed?.frontmatter ?? null,
+    doc
+  )
+  const fileContent = parsed
+    ? serializeParsedNote({ ...parsed, frontmatter: mergedFrontmatter }, markdown, {
+        frontmatterEdited
+      })
+    : serializeNote(mergedFrontmatter, markdown)
 
-    // No byte change → no write, no mtime churn, no snapshot, no downstream signal
-    if (existingRaw !== null && fileContent === existingRaw) {
-      log.debug('Journal write-back is a no-op, skipping', { noteId, date })
-      return
-    }
-
-    if (existingRaw !== null && parsed) {
-      try {
-        const snap = maybeCreateSignificantSnapshot(
-          noteId,
-          existingRaw,
-          parsed.content,
-          markdown,
-          cached.title
-        )
-        if (snap)
-          log.info('Journal snapshot created during writeback', { noteId, snapshotId: snap.id })
-      } catch (err) {
-        log.error('Journal snapshot creation failed during writeback', { noteId, error: err })
-      }
-    }
-
-    rememberIgnoredWrite(absolutePath)
-    await atomicWrite(absolutePath, fileContent)
-
-    // Journals hold file/image blocks like any other note — see the note path.
-    applyAttachmentRenames(noteId, existingRaw, fileContent)
-
-    syncNoteToCache(
-      indexDb,
-      {
-        id: noteId,
-        path: cached.path,
-        fileContent,
-        frontmatter: mergedFrontmatter,
-        parsedContent: markdown,
-        title: cached.title,
-        createdAt: cached.createdAt,
-        modifiedAt: utcNow(),
-        localOnly: cached.localOnly ?? false,
-        emoji: cached.emoji ?? null
-      },
-      { isNew: false }
-    )
-    void flushProjectionEvents()
-
-    log.debug('Journal write-back complete', { noteId, date })
+  // No byte change → no write, no mtime churn, no snapshot, no downstream signal
+  if (existingRaw !== null && fileContent === existingRaw) {
+    log.debug('Journal write-back is a no-op, skipping', { noteId, date })
     return
   }
 
-  if (await fileExists(journalPath)) {
-    // File identity lives in the sidecar: a cache row at this path owned by a
-    // different (or unknown) note means the date file is already claimed
-    const rowAtPath = getNoteCacheByPath(indexDb, toRelativePath(journalPath))
-    if (rowAtPath?.id !== noteId) {
-      await handleJournalCollision(noteId, date, rowAtPath?.id ?? 'unknown', doc, markdown, indexDb)
-      return
+  if (existingRaw !== null && parsed) {
+    try {
+      const snap = maybeCreateSignificantSnapshot(
+        noteId,
+        existingRaw,
+        parsed.content,
+        markdown,
+        cached.title
+      )
+      if (snap)
+        log.info('Journal snapshot created during writeback', { noteId, snapshotId: snap.id })
+    } catch (err) {
+      log.error('Journal snapshot creation failed during writeback', { noteId, error: err })
     }
   }
 
-  const relativePath = toRelativePath(journalPath)
-  const { frontmatter } = mergeJournalFrontmatter(date, null, doc)
-  const fileContent = serializeNote(frontmatter, markdown)
+  rememberIgnoredWrite(absolutePath)
+  await atomicWrite(absolutePath, fileContent)
 
-  rememberIgnoredWrite(journalPath)
-  await atomicWrite(journalPath, fileContent)
+  // Journals hold file/image blocks like any other note — see the note path.
+  applyAttachmentRenames(noteId, existingRaw, fileContent)
 
   syncNoteToCache(
     indexDb,
     {
       id: noteId,
-      path: relativePath,
+      path: cached.path,
       fileContent,
-      frontmatter,
+      frontmatter: mergedFrontmatter,
       parsedContent: markdown,
-      title: path.basename(journalPath, '.md'),
-      createdAt: utcNow(),
-      modifiedAt: utcNow()
+      title: cached.title,
+      createdAt: cached.createdAt,
+      modifiedAt: utcNow(),
+      localOnly: cached.localOnly ?? false,
+      emoji: cached.emoji ?? null
     },
-    { isNew: true }
+    { isNew: false }
   )
   void flushProjectionEvents()
 
-  emitToRenderer(JournalChannels.events.ENTRY_CREATED, {
-    date,
-    source: 'sync'
-  })
-
-  log.info('Created journal from sync', { noteId, date })
-}
-
-async function handleJournalCollision(
-  incomingId: string,
-  date: string,
-  existingId: string,
-  doc: Y.Doc,
-  markdown: string,
-  indexDb: ReturnType<typeof getIndexDatabase>
-): Promise<void> {
-  const shortId = incomingId.slice(0, 8)
-  const collisionFilename = `${date}-${shortId}.md`
-  const journalDir = path.dirname(getJournalPath(date))
-  const collisionPath = path.join(journalDir, collisionFilename)
-  const relativePath = toRelativePath(collisionPath)
-
-  const { frontmatter } = mergeJournalFrontmatter(date, null, doc)
-  const fileContent = serializeNote(frontmatter, markdown)
-
-  await ensureDirectory(journalDir)
-  rememberIgnoredWrite(collisionPath)
-  await atomicWrite(collisionPath, fileContent)
-
-  syncNoteToCache(
-    indexDb,
-    {
-      id: incomingId,
-      path: relativePath,
-      fileContent,
-      frontmatter,
-      parsedContent: markdown,
-      title: path.basename(collisionPath, '.md'),
-      createdAt: utcNow(),
-      modifiedAt: utcNow()
-    },
-    { isNew: true }
-  )
-  void flushProjectionEvents()
-
-  emitToRenderer('sync:journal-conflict', {
-    date,
-    incomingId,
-    existingId,
-    collisionPath: relativePath
-  })
-
-  log.warn('Journal date collision', { date, incomingId, existingId, collisionPath: relativePath })
+  log.debug('Journal write-back complete', { noteId, date })
 }
 
 export async function handleSyncDeletion(noteId: string): Promise<void> {

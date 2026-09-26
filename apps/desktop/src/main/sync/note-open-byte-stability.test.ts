@@ -320,7 +320,7 @@ async function openNote(absolutePath: string): Promise<Y.Doc> {
 
 /** Arm the real debounced write-back and run it now. */
 async function runWriteback(doc: Y.Doc): Promise<void> {
-  scheduleWriteback(NOTE_ID, doc)
+  scheduleWriteback(NOTE_ID, doc, 'local')
   await flushPendingWritebacks()
 }
 

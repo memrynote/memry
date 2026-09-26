@@ -100,6 +100,7 @@ const mocks = vi.hoisted(() => {
     flushPendingWritebacks: vi.fn(),
     recordNetworkUpdate: vi.fn(),
     resetWritebackState: vi.fn(),
+    writebackNow: vi.fn(),
     persistenceInstances: [] as Array<{
       getYDoc: ReturnType<typeof vi.fn>
       clearDocument: ReturnType<typeof vi.fn>
@@ -249,7 +250,8 @@ vi.mock('./crdt-writeback', () => ({
   cancelWriteback: (...args: unknown[]) => mocks.cancelWriteback(...args),
   flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
   recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args),
-  resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args)
+  resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args),
+  writebackNow: (...args: unknown[]) => mocks.writebackNow(...args)
 }))
 
 vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
@@ -413,11 +415,31 @@ describe('CrdtProvider', () => {
     })
     expect(queue.enqueue).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'local')
   })
 
   // #2297 review (B-2, A-L3): the landing resolves only on the store's own
   // answer, so a failed write is never reported as landed.
+  // A doc that took its server state before the note had a row: merging the
+  // same state again fires no update, so only this writes its body.
+  it('materializes a closed note from its doc and releases it, leaving an open one open', async () => {
+    const written: Array<[string, string]> = []
+    mocks.writebackNow.mockImplementation(async (noteId: string, doc: Y.Doc) => {
+      written.push([noteId, doc.getMap('meta').get('title') as string])
+    })
+    await provider.open('note-2', 4, { skipSeed: true })
+    provider.applyRemoteUpdate('note-2', new Uint8Array(makeRemoteUpdate('packed body')))
+
+    await provider.materialize('note-1')
+    await provider.materialize('note-2')
+
+    expect(written).toEqual([
+      ['note-1', undefined],
+      ['note-2', 'packed body']
+    ])
+    expect(provider.getOpenNoteIds()).toEqual(['note-2'])
+  })
+
   it('merges a feed update into an open doc, writes it back, and awaits its explicit store write', async () => {
     await provider.open('note-1', undefined, { skipSeed: true })
     const store = mocks.persistenceInstances[0]
@@ -428,7 +450,7 @@ describe('CrdtProvider', () => {
 
     expect(provider.getDoc('note-1')!.getMap('meta').get('title')).toBe('from the feed')
     expect(store.storeUpdate).toHaveBeenCalledWith('note-1', update)
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'remote')
     expect(queue.enqueue).not.toHaveBeenCalled()
   })
 
@@ -508,7 +530,7 @@ describe('CrdtProvider', () => {
 
     expect(queue.enqueue).not.toHaveBeenCalled()
     expect(mocks.persistenceInstances.at(-1)!.storeUpdate).toHaveBeenCalled()
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'local')
   })
 
   it('broadcasts one shared Uint8Array instead of a boxed copy per receiving window', async () => {
@@ -540,7 +562,7 @@ describe('CrdtProvider', () => {
     expect(mocks.sent).toEqual([])
     expect(queue.enqueue).not.toHaveBeenCalled()
     expect(mocks.recordNetworkUpdate).toHaveBeenCalledWith('note-1')
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'remote')
 
     await provider.close('note-1')
     expect(mocks.sent[0]).toMatchObject({
@@ -1062,7 +1084,7 @@ describe('CrdtProvider', () => {
       }
     })
     expect(queue.enqueue).toHaveBeenCalled()
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'local')
   })
 
   it('skips remote updates for unopened docs and network-origin local queueing', async () => {
@@ -1193,7 +1215,7 @@ describe('CrdtProvider', () => {
       dateAfterRestart: reloaded.getMap('meta').get('date')
     }).toEqual({
       inMemory: 'pulled during compaction',
-      writtenBackDoc: ['note-1', compactedLiveDoc],
+      writtenBackDoc: ['note-1', compactedLiveDoc, 'remote'],
       broadcastToEditor: 'pulled during compaction',
       afterRestart: 'pulled during compaction',
       dateAfterRestart: '2026-01-01'
@@ -2273,7 +2295,7 @@ describe('CrdtProvider', () => {
         channel: CRDT_EVENTS.STATE_CHANGED,
         payload: { noteId: 'note-1', origin: 'ipc' }
       })
-      expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+      expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'local')
     })
 
     it('costs an ordinary note nothing', async () => {
