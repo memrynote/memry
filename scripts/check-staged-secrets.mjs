@@ -423,7 +423,9 @@ function getChangedFiles(baseRef) {
 }
 
 function readStagedFile(filePath) {
-  const buffer = execFileSync('git', ['show', `:${filePath}`])
+  // Generated sources (the UniFFI Swift bindings) pass 1 MB, the default
+  // `maxBuffer`, and would fail the read rather than be scanned.
+  const buffer = execFileSync('git', ['show', `:${filePath}`], { maxBuffer: 64 * 1024 * 1024 })
 
   if (buffer.includes(0)) {
     return null

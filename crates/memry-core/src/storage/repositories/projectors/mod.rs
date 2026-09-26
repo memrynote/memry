@@ -52,6 +52,7 @@
 //! `sync_items.payload`, which is what keeps it self-healing. Its reader still
 //! runs, so a malformed icon payload is recorded corrupt like any other.
 
+pub mod calendar;
 pub mod filters;
 pub mod inbox;
 pub mod notes;
@@ -105,6 +106,10 @@ pub fn read(item_type: &str, parsed: &Object) -> Result<Object, ProjectionError>
         "settings" => settings::read_settings(parsed),
         "filter" => filters::read_filter(parsed),
         "inbox" => inbox::read_inbox(parsed),
+        "calendar_source" => calendar::read_source(parsed),
+        "calendar_event" => calendar::read_event(parsed),
+        "calendar_external_event" => calendar::read_external_event(parsed),
+        "calendar_binding" => calendar::read_binding(parsed),
         other => Err(ProjectionError::UnknownType {
             item_type: other.to_owned(),
         }),
@@ -135,6 +140,10 @@ pub fn project(
         "settings" => settings::project_settings(conn, item, view),
         "filter" => filters::project_filter(conn, item, view),
         "inbox" => inbox::project_inbox(conn, item, view),
+        "calendar_source" => calendar::project_source(conn, item, view),
+        "calendar_event" => calendar::project_event(conn, item, view),
+        "calendar_external_event" => calendar::project_external_event(conn, item, view),
+        "calendar_binding" => calendar::project_binding(conn, item, view),
         // Unreachable: `read` refused the type before the caller got here.
         other => Err(StorageError::Failed {
             what: format!("no projector for item type `{other}`"),
@@ -222,6 +231,10 @@ fn delete_targets(item_type: &str) -> &'static [(&'static str, Option<&'static s
         "settings" => &[("settings", None)],
         "filter" => &[("saved_filters", Some("id"))],
         "inbox" => &[("inbox_items", Some("id"))],
+        "calendar_source" => &[("calendar_sources", Some("id"))],
+        "calendar_event" => &[("calendar_events", Some("id"))],
+        "calendar_external_event" => &[("calendar_external_events", Some("id"))],
+        "calendar_binding" => &[("calendar_bindings", Some("id"))],
         _ => &[],
     }
 }

@@ -217,6 +217,11 @@ fn merge(local: &Object, remote: &Object) -> Result<MergedSettings, StorageError
         };
         let change = match result.merged.get(*path) {
             Some(value) => Change::Set(value.clone()),
+            // An absent remote value under the **same** clock is not a removal
+            // (a removal ticks): it is an older build whose schema strips the
+            // key re-uploading the clock it merged (spec 007 D7). Desktop's
+            // `mergeRemote` keeps the local value there, and so does this.
+            None if local_clocks.get(*path) == remote_clocks.get(*path) => continue,
             // §6.9.1: an absent winner under an arbitrated clock is a removal.
             None => Change::Remove,
         };

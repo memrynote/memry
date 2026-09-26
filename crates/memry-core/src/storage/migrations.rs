@@ -58,6 +58,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "inbox",
         sql: include_str!("migrations/data/0004_inbox.sql"),
     },
+    Migration {
+        version: 5,
+        name: "calendar",
+        sql: include_str!("migrations/data/0005_calendar.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -179,7 +184,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 4);
+        assert_eq!(version, 5);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -198,6 +203,11 @@ mod tests {
         }
         // Typed projections, §A.4.
         for expected in [
+            "calendar_bindings",
+            "calendar_events",
+            "calendar_external_events",
+            "calendar_local_events",
+            "calendar_sources",
             "folders",
             "inbox_item_tags",
             "inbox_items",
@@ -279,7 +289,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 4);
+        assert_eq!(version, 5);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {

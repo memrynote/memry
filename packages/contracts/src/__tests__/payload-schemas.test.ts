@@ -16,6 +16,10 @@ import type { ZodType } from 'zod'
 
 import { SettingsSyncPayloadSchema } from '../settings-sync'
 import {
+  CalendarBindingSyncPayloadSchema,
+  CalendarEventSyncPayloadSchema,
+  CalendarExternalEventSyncPayloadSchema,
+  CalendarSourceSyncPayloadSchema,
   CustomIconSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
@@ -48,7 +52,11 @@ const SCHEMAS: Record<string, ZodType> = {
   reminder: ReminderSyncPayloadSchema,
   settings: SettingsSyncPayloadSchema,
   filter: FilterSyncPayloadSchema,
-  inbox: InboxSyncPayloadSchema
+  inbox: InboxSyncPayloadSchema,
+  calendar_source: CalendarSourceSyncPayloadSchema,
+  calendar_event: CalendarEventSyncPayloadSchema,
+  calendar_external_event: CalendarExternalEventSyncPayloadSchema,
+  calendar_binding: CalendarBindingSyncPayloadSchema
 }
 
 interface Case {
@@ -87,11 +95,11 @@ describe('payload-schemas vectors', () => {
   it('carries the recorded case count, four per subscribed type', () => {
     const total = vectors.groups.reduce((n, g) => n + g.cases.length, 0)
     expect(total).toBe(vectors.meta.caseCount)
-    expect(vectors.groups).toHaveLength(15)
+    expect(vectors.groups).toHaveLength(19)
     for (const group of vectors.groups) expect(group.cases).toHaveLength(4)
   })
 
-  it('covers exactly the fifteen subscribed types', () => {
+  it('covers exactly the nineteen subscribed types', () => {
     expect(vectors.groups.map((g) => g.type).sort()).toEqual(
       [...vectors.meta.subscribedTypes].sort()
     )

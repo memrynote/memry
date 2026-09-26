@@ -44,7 +44,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
-use crate::domain::{inbox, projects, settings, tasks};
+use crate::domain::{calendar_items, inbox, projects, settings, tasks};
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
@@ -302,6 +302,10 @@ pub fn apply_inbound(
         settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
         // "absent key keeps, explicit null clears" (desktop's inbox handler).
         inbox::ITEM_TYPE => inbox::merge::apply_remote(conn, record, now_ms),
+        // Desktop's four calendar handlers (spec 007 CL010/CL011).
+        t if calendar_items::is_calendar_type(t) => {
+            calendar_items::merge::apply_remote(conn, record, now_ms)
+        }
         _ => apply_document(conn, record, now_ms),
     };
     match merged {

@@ -42,6 +42,7 @@ import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
 import { buildMarkdownSeed } from './vectors/markdown-seed'
 import { buildAttachmentManifest } from './vectors/attachment-manifest'
 import { buildBlockEdit } from './vectors/block-edit'
+import { buildCalendar } from './vectors/calendar'
 import { buildInbox } from './vectors/inbox'
 import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
@@ -89,6 +90,7 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'journal', files: [{ path: 'journal.json', build: buildJournal }] },
   { name: 'markdown-seed', files: [{ path: 'markdown-seed.json', build: buildMarkdownSeed }] },
   { name: 'inbox', files: [{ path: 'inbox.json', build: buildInbox }] },
+  { name: 'calendar', files: [{ path: 'calendar.json', build: buildCalendar }] },
   {
     name: 'attachment-manifest',
     files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]
