@@ -615,6 +615,13 @@ Notes flow through **both** sync paths:
 
 Snapshots are pushed **pre-batch** so other devices receive correct state before the sync notification reaches them.
 
+A create for a note this device knows is deleted gets no pre-batch snapshot. Known deleted means
+the note has no `note_metadata` row, or it has a recorded tombstone clock that the row's clock does
+not strictly follow. The server keeps a deleted note's CRDT state and accepts bodies for it, so a
+snapshot sent ahead of a create that the server then refuses as delete-wins would put the deleted
+body back on every device. The manifest check skips the same notes when it re-enqueues local items
+the server manifest lacks, because that manifest omits tombstoned ids.
+
 ## Local-Only Notes Keep Their Body
 
 A note marked **Local only** never sends its body to the server. The record feed has always
