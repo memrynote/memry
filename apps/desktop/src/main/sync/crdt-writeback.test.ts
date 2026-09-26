@@ -152,7 +152,8 @@ import {
   recordNetworkUpdate,
   resetWritebackState,
   scheduleWriteback,
-  wasRecentNetworkUpdate
+  wasRecentNetworkUpdate,
+  writebackNow
 } from './crdt-writeback'
 import { resetTelemetryThrottle } from '../telemetry/throttle'
 
@@ -574,6 +575,21 @@ describe('crdt writeback', () => {
     )
     expect(mocks.sent.map((s) => s.channel)).toEqual([NotesChannels.events.UPDATED])
     expect(hasPendingWriteback('note-new')).toBe(false)
+  })
+
+  it('writebackNow writes the file before it resolves and replaces the armed pass', async () => {
+    const doc = makeDoc('Existing')
+    scheduleWriteback('note-1', doc, 'remote')
+
+    await writebackNow('note-1', doc)
+    const writtenBeforeTimers = mocks.atomicWrite.mock.calls.map(([absolutePath]) => absolutePath)
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(writtenBeforeTimers).toEqual(['/vault/notes/Existing.md'])
+    expect(mocks.atomicWrite.mock.calls.map(([absolutePath]) => absolutePath)).toEqual([
+      '/vault/notes/Existing.md'
+    ])
+    expect(hasPendingWriteback('note-1')).toBe(false)
   })
 
   it('writes nothing back for a note whose armed pass was cancelled', async () => {
