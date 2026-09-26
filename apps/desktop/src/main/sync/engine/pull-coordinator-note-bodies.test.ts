@@ -1223,7 +1223,6 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
     expect(provider.recordWholeBodyMerged).toHaveBeenCalledWith('note-1')
     expect(debts()).toEqual([])
     expect(second.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
-    expect(second.getStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toBe('0')
   })
 
   // #2297: the record debt is in the database before any cursor write.

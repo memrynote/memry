@@ -238,17 +238,17 @@ describe('crdt body debts (#2297)', () => {
     expect(new Set(seen).size).toBe(seen.length)
   })
 
-  it('mirrors a non-empty table into crdtUnmergedDebt and records its own write time', () => {
+  // #2421 part c: the write-only crdtUnmergedDebt mirror is gone; the row an
+  // earlier build wrote is left as it is.
+  it('writes no crdtUnmergedDebt mirror on owe or settle', () => {
     owe(['n1', 'n2'], 'record', { now: 5_500 })
-    expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toEqual({ value: '1', at: 5 })
-    expect(state(SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)?.value).toBe('5000')
+    expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toBeUndefined()
+    expect(state(SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)).toBeUndefined()
 
-    const walk = currentCrdtBodyDebtGeneration(db())
-    settleCrdtBodyDebts(db(), ['n1'], walk, 9_000)
-    expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)?.value).toBe('1')
-    settleCrdtBodyDebts(db(), ['n2'], walk, 12_000)
-    expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toEqual({ value: '0', at: 12 })
-    expect(state(SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)?.value).toBe('12000')
+    settleCrdtBodyDebts(db(), ['n1', 'n2'], currentCrdtBodyDebtGeneration(db()))
+    expect(hasCrdtBodyDebts(db())).toBe(false)
+    expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toBeUndefined()
+    expect(state(SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)).toBeUndefined()
   })
 
   it('rolls back with an enclosing transaction', () => {
@@ -286,52 +286,64 @@ describe('crdt body debts (#2297)', () => {
           set: { value, updatedAt: new Date(atMs) }
         })
         .run()
-    const settleAll = (ids: string[], now: number) =>
-      settleCrdtBodyDebts(db(), ids, currentCrdtBodyDebtGeneration(db()), now)
+    // What an earlier build of this app wrote along with its own mirror.
+    const writeOwnMarker = (atMs: number) =>
+      db()
+        .insert(syncState)
+        .values({
+          key: SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT,
+          value: String(atMs),
+          updatedAt: new Date(atMs)
+        })
+        .onConflictDoUpdate({
+          target: syncState.key,
+          set: { value: String(atMs), updatedAt: new Date(atMs) }
+        })
+        .run()
 
+    // #2421 part c: a converted 1 is recorded by its own row time in the
+    // marker; the mirror row itself is never rewritten.
     it('owes every note once for a legacy 1 with no mirror marker', () => {
       writeLegacyDebt('1', 1_000)
-      expect(convertUnmergedDebtMirror(db(), () => ['a', 'b', 'a'], 7_000)).toBe(2)
+      expect(convertUnmergedDebtMirror(db(), () => ['a', 'b', 'a'])).toBe(2)
       expect(listCrdtBodyDebts(db()).map((d) => [d.noteId, d.reason, d.lowestCursor])).toEqual([
         ['a', 'legacy', null],
         ['b', 'legacy', null]
       ])
-      expect(state(SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)?.value).toBe('7000')
-      // Now the mirror is this build's own: a restart converts nothing.
-      expect(convertUnmergedDebtMirror(db(), () => ['c'], 9_000)).toBe(0)
+      expect(state(SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)?.value).toBe('1000')
+      expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)).toEqual({ value: '1', at: 1 })
+      // Accounted for: a restart converts nothing.
+      expect(convertUnmergedDebtMirror(db(), () => ['c'])).toBe(0)
     })
 
-    it('does not convert the mirror it wrote itself', () => {
-      owe(['a'], 'record', { now: 3_000 })
-      settleAll(['a'], 4_000)
-      owe(['b'], 'record', { now: 5_000 })
-      expect(convertUnmergedDebtMirror(db(), () => ['x', 'y'], 6_000)).toBe(0)
-      expect(listCrdtBodyDebts(db()).map((d) => d.noteId)).toEqual(['b'])
+    it('does not convert the mirror an earlier build of its own wrote', () => {
+      writeLegacyDebt('1', 3_000)
+      writeOwnMarker(3_000)
+      expect(convertUnmergedDebtMirror(db(), () => ['x', 'y'])).toBe(0)
+      expect(hasCrdtBodyDebts(db())).toBe(false)
     })
 
     it('converts a 1 written after its own mirror write (an older build after a downgrade)', () => {
-      owe(['a'], 'record', { now: 3_000 })
-      settleAll(['a'], 4_000)
+      writeLegacyDebt('1', 3_000)
+      writeOwnMarker(3_000)
       writeLegacyDebt('1', 20_000)
-      expect(convertUnmergedDebtMirror(db(), () => ['x', 'y'], 30_000)).toBe(2)
-      expect(state(SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)?.value).toBe('30000')
+      expect(convertUnmergedDebtMirror(db(), () => ['x', 'y'])).toBe(2)
+      expect(state(SYNC_STATE_KEYS.CRDT_BODY_DEBT_MIRROR_AT)?.value).toBe('20000')
     })
 
-    it('leaves a 0 alone and re-states a mirror that disagrees with the table', () => {
+    it('leaves a 0 alone and writes no mirror', () => {
       writeLegacyDebt('0', 1_000)
-      expect(convertUnmergedDebtMirror(db(), () => ['x'], 2_000)).toBe(0)
-      expect(hasCrdtBodyDebts(db())).toBe(false)
+      expect(convertUnmergedDebtMirror(db(), () => ['x'])).toBe(0)
       owe(['a'], 'record', { now: 3_000 })
-      writeLegacyDebt('0', 4_000)
-      convertUnmergedDebtMirror(db(), () => ['x'], 5_000)
-      expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)?.value).toBe('1')
+      expect(convertUnmergedDebtMirror(db(), () => ['x'])).toBe(0)
+      expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)?.value).toBe('0')
     })
 
-    it('clears a legacy 1 when there is no note to owe', () => {
+    it('records a legacy 1 with no note to owe, so it converts once', () => {
       writeLegacyDebt('1', 1_000)
-      expect(convertUnmergedDebtMirror(db(), () => [], 2_000)).toBe(0)
-      expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)?.value).toBe('0')
-      expect(convertUnmergedDebtMirror(db(), () => ['x'], 3_000)).toBe(0)
+      expect(convertUnmergedDebtMirror(db(), () => [])).toBe(0)
+      expect(convertUnmergedDebtMirror(db(), () => ['x'])).toBe(0)
+      expect(state(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT)?.value).toBe('1')
     })
   })
 })

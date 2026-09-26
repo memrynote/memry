@@ -1252,20 +1252,17 @@ the note that its doc has not merged; `crdt-body-debts.ts` owns it.
   unwired, and no flush, pump or floor timer until a later full sync, so a chunk the teardown
   aborts pulls nothing afterwards.
 
-`sync_state.crdtUnmergedDebt` is now a write-only mirror: `'1'` while the table
-has a row, `'0'` once it is empty. This build never routes on it; builds before
-the table do, so a downgrade stays safe. `crdtBodyDebtMirrorAt` records when this
-build wrote it. At engine start a `'1'` without that marker, or with a different
-row time, came from an older build or from a CRDT store whose epoch did not
-match the data DB, and is converted once into a `legacy` debt for every syncable note and
-journal of the data DB and the index cache. The vault-wide blanket
-(`crdtUnmergedStateUnknown`) is gone.
+`sync_state.crdtUnmergedDebt` is no longer written on owe or settle (#2421 part c); earlier
+builds mirrored the table into it for builds before the table, which the `minWriteVersion` gate
+has retired. At engine start a `'1'` whose row time differs from `crdtBodyDebtMirrorAt` came from
+an older build or from a CRDT store whose epoch did not match the data DB, and is converted once
+into a `legacy` debt for every syncable note and journal of the data DB and the index cache; the
+marker then records that row time. The vault-wide blanket (`crdtUnmergedStateUnknown`) is gone.
 
-#2421 removed the reconnect and vault sweeps, made `crdt_updated` a wake once the legacy
-sweep is `done`, and made the per-page CRDT batch the payer of the run's debts. Still kept,
-and removed once `minWriteVersion` guarantees every client ran the legacy sweep: the legacy
-sweep itself, the batch probe and the watermark sequence its warm pass relies on, and the
-mirror.
+#2421 removed the reconnect and vault sweeps, made `crdt_updated` a wake once the legacy sweep is
+`done`, and made the per-page CRDT batch the payer of the run's debts. The legacy sweep stays: its
+`done` is the only licence for coverage claims, and a new device, a run from cursor 0 or a store
+epoch reset needs it again. The batch probe and the watermark sequence stay with it.
 
 ## Sign-Out / Sign-In Ordering
 

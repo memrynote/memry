@@ -73,25 +73,24 @@ test.describe('CRDT store after vault adoption (#2424)', () => {
       .poll(
         async () => {
           await syncAndWait(pageB)
-          return [
-            await callHook(electronAppB, 'getSyncStateValueForTests', 'noteBodyLegacySweep'),
-            await callHook(electronAppB, 'getSyncStateValueForTests', 'crdtUnmergedDebt')
-          ]
+          return callHook(electronAppB, 'getSyncStateValueForTests', 'noteBodyLegacySweep')
         },
         { timeout: TIMEOUT, intervals: [2_000, 5_000] }
       )
-      .toEqual(['done', expect.not.stringMatching(/^1$/)])
+      .toBe('done')
+    // The raised crdtUnmergedDebt stays '1' once converted (#2421 part c: the
+    // mirror is no longer rewritten), so the epoch is what shows a reset.
+    const epoch = await callHook(electronAppB, 'getSyncStateValueForTests', 'crdtStoreEpoch')
+    expect(epoch).toBeTruthy()
 
     await callHook(electronAppB, 'restartSyncRuntimeForTests')
 
-    // An unmarked store deletes the sweep key and raises the debt as it opens,
-    // before the restart returns.
+    // An unmarked store deletes the sweep key and writes a new epoch as it
+    // opens, before the restart returns.
     expect(await callHook(electronAppB, 'getSyncStateValueForTests', 'noteBodyLegacySweep')).toBe(
       'done'
     )
-    expect(await callHook(electronAppB, 'getSyncStateValueForTests', 'crdtUnmergedDebt')).not.toBe(
-      '1'
-    )
+    expect(await callHook(electronAppB, 'getSyncStateValueForTests', 'crdtStoreEpoch')).toBe(epoch)
     // The pre-adoption store moved to the adopted name; none is left behind.
     expect(await callHook(electronAppB, 'listCrdtStoreDirsForTests')).toEqual([
       syncBootstrap.deviceB.vaultId.toLowerCase()
