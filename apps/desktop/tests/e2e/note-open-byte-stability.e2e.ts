@@ -114,6 +114,20 @@ async function waitForSeededDoc(electronApp, noteId: string): Promise<void> {
   await expect
     .poll(() => getCrdtDocBodyById(electronApp, noteId), { timeout: 30_000 })
     .not.toBeNull()
+  // A write-back the open schedules is debounced, so a byte check right after
+  // seeding could run before it. Wait until no pass has been pending for a
+  // stretch longer than the debounce, then assert on the settled file.
+  let quietSince = Date.now()
+  await expect
+    .poll(
+      async () => {
+        const pending = (await getWritebackDebugById(electronApp, noteId))?.pending ?? false
+        if (pending) quietSince = Date.now()
+        return Date.now() - quietSince
+      },
+      { timeout: 30_000, intervals: [250] }
+    )
+    .toBeGreaterThanOrEqual(2_000)
 }
 
 test.describe('Note open byte stability', () => {
