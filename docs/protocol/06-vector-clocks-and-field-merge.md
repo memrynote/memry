@@ -246,7 +246,12 @@ and a client that breaks any of them reintroduces divergence.**
   it is what makes a device's own row pulled back, and a page re-pulled after
   a crash (chapter 05 §5.11), a no-op. A client that cannot build the local
   payload for a type MUST apply. Desktop: `BaseItemHandler.resolveUpsertClock`
-  (`packages/sync-client/src/item-handlers/base-handler.ts`).
+  (`packages/sync-client/src/item-handlers/base-handler.ts`). Rust core:
+  `resolve_clock_conflict` (`crates/memry-core/src/sync/field_merge.rs`), asked
+  by `document_gate` (`crates/memry-core/src/domain/task_merge.rs`) for every
+  type but `settings`. It compares the stored `sync_items` payload, which is
+  the payload it pushes (P2), and a local row that is deleted or flagged
+  corrupt applies (#2304).
 
 In the ordinary interleavings P1 to P3 leave **at most one device running
 `mergeFields` on a given concurrent pair**; the other sees its own row (`equal` →

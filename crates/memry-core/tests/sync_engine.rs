@@ -381,6 +381,12 @@ fn seed_cursor(db: &Db, cursor: &str) {
             ],
         )
         .expect("record the declaration");
+        // ... and the one-time cursor-skip repair (#2382) ran long ago.
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, 'done')",
+            [memry_core::sync::pull::META_CURSOR_SKIP_REPAIR],
+        )
+        .expect("record the repair");
         Ok(())
     })
     .expect("seed the cursor");

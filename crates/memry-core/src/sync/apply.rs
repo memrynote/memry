@@ -48,7 +48,7 @@ use crate::domain::{inbox, projects, settings, tasks};
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
-use super::{settings_merge, store};
+use super::{body_debt, settings_merge, store};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -96,6 +96,9 @@ pub(crate) struct ApplyTotals {
     /// from disk — release these". A caller holding a registry releases each;
     /// a caller holding none has nothing resident to release.
     pub(crate) purged_documents: Vec<String>,
+    /// The `note` and `journal` records this page wrote, so the pull can tell
+    /// which of its body debts a skip made unnecessary.
+    pub(crate) applied_documents: Vec<String>,
 }
 
 /// The two item types whose bodies are CRDT documents (chapter 07, §12.3).
@@ -106,7 +109,7 @@ pub(crate) struct ApplyTotals {
 /// would delete a live note's body for a deleted tag — unrecoverable, because
 /// §7.15 leaves the server rows in place but this device would no longer be
 /// asking for them.
-const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
+pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 
 /// Applies one page's decoded items, in the order they were handed over, plus
 /// the ids §5.12.1 leaves with no type on the wire.
@@ -152,7 +155,12 @@ pub(crate) fn apply_page(
                     continue;
                 }
                 match apply_inbound(conn, &record, now_ms)? {
-                    ApplyOutcome::Applied => totals.applied += 1,
+                    ApplyOutcome::Applied => {
+                        totals.applied += 1;
+                        if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
+                            totals.applied_documents.push(record.item_id.clone());
+                        }
+                    }
                     ApplyOutcome::Skipped => totals.skipped += 1,
                     ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
                     ApplyOutcome::Expired => totals.expired += 1,
@@ -203,6 +211,9 @@ fn apply_tombstone(
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {
+        // The body debt goes with the body: a pull owed before the delete
+        // would bring the server's surviving log back (#2297).
+        body_debt::settle(&txn, item_id)?;
         update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
     } else {
         0
@@ -243,6 +254,7 @@ fn apply_untyped_tombstone(
     for item_type in &item_types {
         projectors::delete(&txn, item_type, item_id, now_ms)?;
     }
+    body_debt::settle(&txn, item_id)?;
     let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
     txn.commit().map_err(sqlite_failed)?;
     totals.deleted += 1;

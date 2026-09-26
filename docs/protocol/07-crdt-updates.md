@@ -672,3 +672,83 @@ snapshot contains the updates it prunes (§7.6).
   client never sees those writes. Before such a client ships, a rollback past
   this change is safe: nothing reads the column.
 - The `crdt_updated` broadcast (chapter 09) is unchanged and carries no cursor.
+
+### 7.17.4 The Rust core (#2304)
+
+The Rust core declares `note_body` on the feed pull of `sync_now` and applies
+`noteBodies` (`crates/memry-core/src/sync/note_body_feed.rs`). It does not
+merge a body into a resident document: it appends the update, or stores the
+snapshot, in the server namespace of its update log, as the per-note pull does
+(§7.8, §7.9), and a document merges its log on the next load. The pull report
+names the documents whose log grew.
+
+- **Entries that cost nothing.** Before any request or decrypt, three kinds of
+  entry are dropped:
+  - one for a note or journal the page deletes. A deleted tag that shares a
+    note's id deletes no body;
+  - one for a document this device holds no body state for: no
+    `crdt:<docId>` cursor and no row in either namespace of the log. That
+    document was never fetched here, or has no local record. It is fetched
+    whole when it is opened or when its record arrives, as desktop does for an
+    id with no local row. Storing a feed row for it would leave a partial body
+    that reads as present, and could land the body of a note deleted elsewhere
+    long ago on a device that never held it;
+  - an update at or below the held `crdt:<docId>` cursor, which is a replay
+    (§7.9).
+- **Before the page applies**, every other entry is parsed on its own. A ref
+  update is fetched by sequence, and a snapshot ref is fetched unless its
+  `revision` is held. The envelope is opened and the update parsed as Yjs. An
+  entry that fails any step, including a fetch that fails or a ref the server
+  pruned, costs that entry and owes its note a per-note pull. It never fails
+  the page. After the first `429` of a page, no further request is sent, and
+  every entry still needing one owes its note.
+- **One transaction** stores the bodies, records the debts, and writes the
+  record cursor last. A storage failure rolls it back and the page is pulled
+  again. A body for a note or journal deleted here is dropped (§7.15).
+- **The `crdt:<docId>` cursor moves only over a contiguous sequence.** An
+  update past a gap is stored and its note owed, so the per-note pull still
+  fetches the missing updates.
+- **A debt** is the `meta` row `sync.body_owed:<docId>`
+  (`crates/memry-core/src/sync/body_debt.rs`).
+  - Its value is `<failures>:<passes to wait>`.
+  - A tombstone settles the debt in the transaction that purges the body, and
+    a debt on a deleted document is settled rather than pulled.
+  - It is settled only by a per-note pull that reached the server's head
+    (`hasMore: false`) and stored everything on the way, with no stop and no
+    baseline it could not use. A pull that yields at the page cap keeps the
+    debt.
+  - A stop or an error answer backs the document off for
+    `2^(failures - 1)` passes, up to 32.
+- **Settled means "in the log".** A settled debt says this device's update
+  log holds every server update up to the head the pull saw. It does not say
+  a resident document has loaded them.
+  - The snapshot push refuses an owed document (§7.13.2 condition 1).
+  - It also refuses a resident document whose state and delete set would
+    change if its log were replayed over it, so it cannot prune a logged
+    update the document has not merged.
+  - It cannot close the race with the server. An update another device
+    commits after the encode is pruned if the server's watermark covers it,
+    which is the §7.6 assumption every client shares. `SnapshotPusher` has no
+    production caller yet.
+- **The body step never blocks the push**
+  (`crates/memry-core/src/sync/body_step.rs`).
+  - It runs the per-note pull for the due documents within a budget of 200
+    requests per pass, well under the server's 600 per minute for CRDT
+    pulls.
+  - An error answer owes that document and the step goes on.
+  - A `429`, no network, or a rejected session ends the step, and the
+    documents not reached keep their debts for the next pass.
+  - The push runs either way.
+- **The one-time legacy pull** is the `meta` row `sync.note_body_legacy_pull`,
+  absent until the first page that carries `noteBodies`. In that page's
+  landing transaction, every document this device holds body state for is
+  owed a per-note pull and the row becomes `done`, so the debts carry the
+  progress one document at a time. The pull exists for body rows the feed
+  never serves, those with a NULL cursor (§7.17), in documents this device
+  already holds. A document it never fetched is fetched whole when it is
+  opened, so it is not included.
+- The per-note pull after a record page (`crates/memry-core/src/sync/body_pull.rs`)
+  stays, driven by the debt `sync_now`'s feed pull records for each note or
+  journal record it applies. A body that arrives both ways converges, because
+  the log ignores a sequence it holds. Only a pull loop that lands bodies owes
+  them: a plain record pull (the CLI) records no debt it would never settle.

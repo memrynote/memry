@@ -7,6 +7,8 @@
 //! | [`field_merge`]   | 06 §6.3 – §6.8         | the winner rule, the conflict set, the field lists |
 //! | [`store`]         | 05 §5.11, §5.12        | the per-scope cursor and the tombstone            |
 //! | [`pull`]          | 05                     | one page: refs, bodies, apply, advance            |
+//! | `feed_restart`    | 05 §5.11, #2382        | when the record feed is read again from the start |
+//! | `pull_report`     | 05 §5.14               | what one pull did, in counts, or failed with      |
 //! | `changes_page`    | 05 §5.11.2, §5.12      | one changes page read, and its ids left to pull   |
 //! | [`apply`]         | 06 §6.8, 05 §5.12      | the apply step, and the one dispatch on item type |
 //! | [`settings_merge`] | 06 §6.9, 13 §13.7.13  | `settings` inbound: the dotted-path field clocks  |
@@ -16,7 +18,10 @@
 //! | [`push`]          | 05 §5.6, 07 §7.2       | one wave: order, seal, send, ack                  |
 //! | [`policy`]        | 11                     | the write gate and the entitlement, three states  |
 //! | [`body_pull`]     | 07 §7.8 – §7.11        | the downward CRDT feed: bodies into `yjs_updates` |
+//! | [`body_step`]     | 07 §7.17.4             | a pass's per-note pulls, within a budget          |
+//! | [`body_debt`]     | 05 §5.11, 07 §7.13.2   | the documents owed a whole-body pull              |
 //! | [`crdt_wire`]     | 07 §7.11               | that feed's wire shapes, read tolerantly          |
+//! | [`note_body_feed`] | 07 §7.17, 05 §5.11.1   | bodies from `noteBodies`, landed with the cursor  |
 //! | [`bootstrap`]     | 10                     | the elevated window, and the silent fallback      |
 //! | [`socket`]        | 09                     | the hint channel, which is never a data path      |
 //! | `socket_frame`    | 09 §9.5, §9.12         | one socket message parsed into one hint           |
@@ -30,18 +35,23 @@
 //! rather than a convenience.
 
 pub mod apply;
+pub mod body_debt;
 pub mod body_pull;
+pub mod body_step;
 pub mod bootstrap;
 mod changes_page;
 pub mod clock;
 pub mod crdt_wire;
 pub mod engine;
+mod feed_restart;
 pub mod field_merge;
 pub mod first_sync;
 pub mod first_sync_store;
+pub mod note_body_feed;
 pub mod outbox;
 pub mod policy;
 pub mod pull;
+mod pull_report;
 pub mod push;
 pub mod settings_merge;
 pub mod socket;
