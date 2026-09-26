@@ -249,7 +249,12 @@ own late tombstone does not delete it.
 At runtime start the desktop replays the deletes it still owes (`sync_pending_deletes`), except for
 such an id that has a live local row again: that delete is retired instead, so a re-create made
 while sync was off, or before its delete's clock was recorded, is pushed live rather than deleted on
-every device. A delete raised with no snapshot is clocked from the local row's own clock; with no
+every device. A clockless note or journal row is queued as that re-create by the retire itself.
+The start-up seed (`seedUnclocked`) does not push a clockless note or journal row whose id has a
+recorded tombstone clock: without a pending delete it cannot tell a re-create from a row the delete
+left behind, such as the rows an older build's pack write-back resurrected, and pushing one would
+bring the deleted note back on every device. The row and its file stay on the device, logged once
+per id. The next user edit of that note mints its clock past the tombstone and re-creates it. A delete raised with no snapshot is clocked from the local row's own clock; with no
 row, or a row that was never clocked, it is not pushed at all, because a clock minted from nothing
 is refused by the server as a replay.
 

@@ -12,6 +12,7 @@ import { resetTokenManagerState } from './token-manager'
 import { getValidAccessToken } from './token-manager'
 import { clearPendingSession, clearPendingLinkCompletion } from './linking-service'
 import { getCrdtProvider } from './crdt-provider'
+import { notPackSeedState } from './engine/pack-seeded-docs'
 import { clearInMemoryAuthState } from '../ipc/sync-core-handlers'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
@@ -108,7 +109,7 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
         // before or after sign-out still reaches the server on the next sign-in.
         tx.delete(syncQueue).where(ne(syncQueue.type, NOTE_BODY_QUEUE_TYPE)).run()
         tx.delete(syncDevices).run()
-        tx.delete(syncState).run()
+        tx.delete(syncState).where(notPackSeedState()).run()
         tx.delete(syncHistory).run()
       })
     }

@@ -1,6 +1,7 @@
-import { like } from 'drizzle-orm'
+import { and, like, ne, notLike, type SQL } from 'drizzle-orm'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { SYNC_STATE_KEYS } from './sync-context'
 
 /**
  * Pack-seeded docs not yet settled against their records (#1840).
@@ -30,4 +31,18 @@ export function listPackSeeded(db: DrizzleDb): string[] {
     .where(like(syncState.key, `${KEY_PREFIX}%`))
     .all()
     .map((row) => row.key.slice(KEY_PREFIX.length))
+}
+
+/**
+ * Every `sync_state` row except the settle markers and their flag. Sign-out
+ * wipes `sync_state` but keeps the per-vault CRDT store, and these rows
+ * describe that store: dropped, a packed body stays in its doc and never
+ * reaches the file, because the doc's watermark stops the next sign-in from
+ * offering the pack again.
+ */
+export function notPackSeedState(): SQL | undefined {
+  return and(
+    ne(syncState.key, SYNC_STATE_KEYS.PACK_SEED_SETTLE_PENDING),
+    notLike(syncState.key, `${KEY_PREFIX}%`)
+  )
 }

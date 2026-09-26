@@ -4,6 +4,7 @@ import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { extractFolderFromPath } from '../note-sync'
+import { seedSkipsDeletedNote } from '../pending-deletes'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { toAbsolutePath } from '../../vault/notes'
 import { parseNote } from '../../vault/frontmatter'
@@ -106,6 +107,7 @@ export function seedUnclockedNotes(deviceId: string, queue: SyncQueueManager): n
       )
     )
     .all()
+    .filter((item) => !seedSkipsDeletedNote(dataDb, item.id))
 
   for (const item of items) {
     const clock = nextLocalClock(dataDb, 'note', item.id, null, deviceId, 'create')
