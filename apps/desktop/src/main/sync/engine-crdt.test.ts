@@ -3,6 +3,7 @@ import type { SyncItemType } from '@memry/contracts/sync-api'
 import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 
 describe('SyncEngine', () => {
   const { getDb } = setupTestDb()
@@ -543,6 +544,13 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine(deps)
       ;(engine as unknown as { ctx: { abortController: AbortController } }).ctx.abortController =
         new AbortController()
+      // A queued pull merges only into a note this device has a row for (#2297).
+      for (const id of ['note-a', 'note-b', 'note-c']) {
+        getDb()
+          .db.insert(noteMetadata)
+          .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+          .run()
+      }
 
       // Cold vault: no watermarks, so no probe POST runs — the first batch
       // POST below IS the apply round.

@@ -72,11 +72,16 @@ never reaches the manifest, `POST /sync/pull`, bootstrap, or the record rows of
 `/sync/changes`. A header of only `note_body` is recognised and resolves to zero
 record types plus bodies. Declaring it does not replay body rows below the
 client's cursor, and body rows written before migration `0011` carry no cursor
-and are never in the feed (chapter 07 §7.17). Both TypeScript clients send
-`RECORD_SYNC_ITEM_TYPES`, which does not contain it. The Rust core appends it
-to its record declaration on the `GET /sync/changes` of its feed pull only, and
-records the declaration it restarts on without it, so declaring bodies does
-not re-read the record feed (chapter 07 §7.17.4, #2304).
+and are never in the feed (chapter 07 §7.17). Desktop declares
+`purged_tombstones` (#2302) on every authenticated request, and `note_body`
+(#2297) only on the `GET /sync/changes` of a pull run that starts past cursor 0,
+so a bootstrap keeps 500-row pages (`apps/desktop/src/main/sync/http-client.ts:23`,
+chapter 07 §7.17.5). `packages/sync-client` still sends `RECORD_SYNC_ITEM_TYPES`,
+which contains neither. The Rust core
+appends `note_body` to its record declaration on the `GET /sync/changes` of its
+feed pull only, and records the declaration it restarts on without it, so
+declaring bodies does not re-read the record feed (chapter 07 §7.17.4, #2304).
+A server older than #2295 ignores the unrecognised entry.
 
 **Otherwise "recognised" means a member of the twenty-five record types**, being
 the fifteen this feature subscribes to plus the ten it does not, both
@@ -429,9 +434,10 @@ cursor never moves before the last slice:
   `nextCursor` as the last statement of its own transaction, so the cursor and
   the page's last rows commit together or not at all.
 - Post-commit work is any of: a crypto or parse failure awaiting its by-id
-  re-fetch, a note or journal whose CRDT body is fetched after the commit, an
-  item deferred for an end-of-run retry, or a page transaction that could not be
-  opened (the connection was already inside another transaction). Then the
+  re-fetch, a note or journal whose CRDT body is fetched after the commit, a
+  `noteBodies` entry that still has to land in the CRDT store (#2297, chapter 07
+  §7.17.5), an item deferred for an end-of-run retry, or a page transaction that
+  could not be opened (the connection was already inside another transaction). Then the
   cursor is written after the page, once that work has run, as a separate
   statement.
 - Either way the cursor is not written when an abort stopped the item loop.

@@ -15,6 +15,8 @@ import {
   CRDT_SWEEP_CHUNK_INTERVAL_MS,
   CRDT_SWEEP_CHUNK_NOTES,
   crdtSweepChunkDelayMs,
+  NOTE_BODY_LEGACY_SWEEP_DONE,
+  NOTE_BODY_LEGACY_SWEEP_PENDING,
   PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE,
   SYNC_STATE_KEYS
 } from './sync-context'
@@ -157,6 +159,11 @@ export class FullSyncRunner {
    * it is lost, and the un-advanced persisted stamp is exactly what says so.
    */
   private unstampedSweepAt: number | null = null
+  /**
+   * The vault sweep this engine queued is the one-time note-body legacy sweep
+   * (#2297); its drain, and only its drain, records it done.
+   */
+  private legacyNoteBodySweepQueued = false
   /**
    * Does this runner own the open bootstrap telemetry window (#1835)?
    *
@@ -387,6 +394,9 @@ export class FullSyncRunner {
     // chunk still in flight re-arm the pace timer from its `finally` and keep a
     // dead engine pulling against a vault it no longer owns.
     this.pacedCrdtPullQueue.clear()
+    // A chunk still in flight stamps the drain it was cut out of; that is not
+    // a completed legacy sweep, so the next engine runs it again.
+    this.legacyNoteBodySweepQueued = false
     this.pacedCrdtPullAbort?.abort()
     this.pacedCrdtPullAbort = null
     // The telemetry window dies with the engine that armed it (#1835). Without
@@ -487,6 +497,23 @@ export class FullSyncRunner {
     // The completion time, not the enqueue time: the vault is current as of
     // now, and a drain that took minutes has earned the full interval from here.
     this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now()))
+    if (this.legacyNoteBodySweepQueued) {
+      this.legacyNoteBodySweepQueued = false
+      // A key reset while this drained (a server rollback) is not covered by it.
+      const key = SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP
+      if (this.stateManager.getStateValue(key) !== NOTE_BODY_LEGACY_SWEEP_PENDING) return
+      this.stateManager.setStateValue(key, NOTE_BODY_LEGACY_SWEEP_DONE)
+      log.info('fullSync: note-body legacy sweep complete')
+    }
+  }
+
+  /**
+   * The change feed deleted the legacy key (#2297): the server stopped serving
+   * bodies. The sweep already queued cannot cover the rows written from then
+   * on, so its drain records nothing, and the next negotiated page re-arms it.
+   */
+  resetNoteBodyLegacySweep(): void {
+    this.legacyNoteBodySweepQueued = false
   }
 
   /**
@@ -537,6 +564,9 @@ export class FullSyncRunner {
     // seen (fresh install, restored vault, rebuilt index): local CRDT state
     // cannot be trusted, so the sweep runs regardless of the throttle.
     let forceCrdtSweep = options.forceCrdtSweep === true
+    // A pull that delivered ran to the head of the feed unrefused (#1835): only
+    // then can a vault sweep cover every note whose record exists (#2297).
+    let pullDelivered = false
     try {
       // Evidence for the full-text mark: the pull REPORTED that it delivered.
       // "The await did not reject" is true on every production run — the engine
@@ -545,7 +575,7 @@ export class FullSyncRunner {
       // nothing outside a unit test whose `pull` was a bare mock.
       const repairFrom = await this.beginCursorSkipRepair()
       const changedBeforePull = this.ctx.applier.changedCount
-      const pullDelivered = await this.actions.pull()
+      pullDelivered = await this.actions.pull()
       if (pullDelivered) {
         this.bootstrapPullSucceeded = true
         if (repairFrom !== null) {
@@ -645,7 +675,8 @@ export class FullSyncRunner {
         this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
         // Same evidence rule: the re-pull can deliver where the first one was
         // refused, and that is a delivery like any other.
-        if (await this.actions.pull()) this.bootstrapPullSucceeded = true
+        pullDelivered = await this.actions.pull()
+        if (pullDelivered) this.bootstrapPullSucceeded = true
       }
 
       this.pushCoordinator.clearPendingAfterFullSync()
@@ -689,8 +720,16 @@ export class FullSyncRunner {
       // empty paced queue is not evidence that bodies are current — that case
       // stays unsettled exactly as before.
       const canSweep = this.ctx.deps.crdtProvider != null && isIndexDatabaseInitialized()
-      if (canSweep && this.shouldSweepAllCrdtNotes(forceCrdtSweep)) {
+      // Forced until one drains, like a manifest re-pull: the change feed will
+      // never serve the body rows this sweep exists for (#2297 review).
+      const legacyNoteBodySweep =
+        pullDelivered &&
+        !this.legacyNoteBodySweepQueued &&
+        this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) ===
+          NOTE_BODY_LEGACY_SWEEP_PENDING
+      if (canSweep && this.shouldSweepAllCrdtNotes(forceCrdtSweep || legacyNoteBodySweep)) {
         this.sweepAllCrdtNotes()
+        if (legacyNoteBodySweep) this.legacyNoteBodySweepQueued = true
       } else if (canSweep && this.ctx.deps.network.online) {
         // ONLINE and the throttle declined: nothing is outstanding, because a
         // sweep ran recently enough for the interval to still be closed.

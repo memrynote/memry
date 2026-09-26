@@ -7,6 +7,7 @@ import {
   type RecordPullItemResponse,
   type VectorClock
 } from '@memry/contracts/sync-api'
+import { isBinaryFileType } from '@memry/shared/file-types'
 import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import { createLogger } from '../../lib/logger'
 import type { DrizzleDb } from '../item-handlers'
@@ -206,4 +207,22 @@ export function purgedTombstoneApplyItems(
   return applicablePurgedTombstones(db, envelope.purgedTombstones, skip).apply.map(
     purgedTombstoneToApplyItem
   )
+}
+
+/**
+ * A note or journal that is not deleted and not a binary file has a CRDT body
+ * the pull merges after its record. A payload that does not parse is treated
+ * as text.
+ */
+export function carriesCrdtBody(
+  item: { type: string; content: string },
+  operation: string
+): boolean {
+  if ((item.type !== 'note' && item.type !== 'journal') || operation === 'delete') return false
+  try {
+    const { fileType } = JSON.parse(item.content) as { fileType?: string }
+    return !(fileType && isBinaryFileType(fileType))
+  } catch {
+    return true
+  }
 }

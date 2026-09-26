@@ -7,7 +7,9 @@ Note and journal **bodies** travel here. A record push for a body edit carries
 `content: null` (`packages/sync-client/src/pull/crdt-pull.ts:9-10`), so a client
 that implements only the record feed (chapter 05) never sees a body change. A
 client that declares `note_body` also receives the body rows stored here in
-`GET /sync/changes` (§7.17); the routes below are unchanged either way.
+`GET /sync/changes` (§7.17; the Rust core since #2304, §7.17.4, and desktop
+since #2297 on runs past cursor 0, §7.17.5); the routes below
+are unchanged either way.
 
 ## 7.1 A journal body is a CRDT document — Q07.1
 
@@ -669,8 +671,9 @@ snapshot contains the updates it prunes (§7.6).
 - **Rolling the Worker back past this change is unsafe once a client depends on
   the feed for bodies** (#2297). Old Worker code writes updates with a NULL
   cursor and upserts snapshots without moving their cursor, so a feed-only
-  client never sees those writes. Before such a client ships, a rollback past
-  this change is safe: nothing reads the column.
+  client never sees those writes. Desktop reads the feed since #2297 part a but
+  still runs the `crdt_updated`, per-note pull and sweep paths, so a rollback is
+  still safe for it; it stops being safe once those paths are removed.
 - The `crdt_updated` broadcast (chapter 09) is unchanged and carries no cursor.
 
 ### 7.17.4 The Rust core (#2304)
@@ -752,3 +755,184 @@ names the documents whose log grew.
   journal record it applies. A body that arrives both ways converges, because
   the log ignores a sequence it holds. Only a pull loop that lands bodies owes
   them: a plain record pull (the CLI) records no debt it would never settle.
+
+### 7.17.5 Desktop applies bodies from the feed (#2297)
+
+**Declaration.** Desktop declares `note_body` only on the `GET /sync/changes`
+of a pull run that starts past cursor 0
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:396`,
+`apps/desktop/src/main/sync/http-client.ts:23`; chapter 05 §5.3). A run from
+cursor 0, which is a bootstrap or any reset of the cursor to 0, keeps the
+500-row record pages. Every note and journal record it applies pulls its whole
+body (`applyCrdtBatch`), and the legacy sweep below covers the rest. A page of
+a run that did not declare is read as a page without bodies.
+
+Per page of a declaring run
+(`apps/desktop/src/main/sync/engine/note-body-feed.ts`, class `NoteBodyFeed`):
+
+- **Which entries are read** (`:120`). An entry is used only for a note or
+  journal that has a row here, is not local-only, and whose record is not on
+  this page.
+  - A note whose record is on the page gets its whole body from that record.
+  - An id with no row gets nothing (see below).
+  - Of several snapshot entries of one note, only the newest (highest `cursor`)
+    is kept (`:138`). Every snapshot GET returns the note's current snapshot,
+    and the newest entry's `revision` is the one compared with the watermark.
+- **Fetched and verified before the page transaction** (`:104`). Each entry is
+  validated with `NoteBodyChangeSchema` on its own, and inline `data` is used
+  as is.
+  - Ref updates and snapshots are fetched through §7.2: one attempt each, at
+    most four at a time (`:27`), and the pull's abort signal cancels the
+    request in flight. A 401 is retried once with a refreshed session.
+  - A page issues at most 16 of these GETs (`:34`), so it spends at most 16 of
+    the `crdt_pull` budget it shares with the record pages' CRDT batch. Entries
+    past that are owed; the paced sweep that pays owed pulls charges its own
+    GETs.
+  - The signer key is resolved, the payload decrypted (on the crypto worker
+    when it runs), and the plaintext decoded once with `Y.decodeUpdate`
+    (`:405`). All of this happens before any slice transaction opens, because
+    the apply loop inside it stays synchronous.
+- **Every failure is per entry; none fails the page.** Each entry ends in one
+  of four outcomes:
+  - **Refused:** a fault of the entry. That is a schema failure, a signer that
+    cannot be resolved (or whose lookup fails), a ciphertext that does not
+    verify, bytes Yjs cannot decode, or a fetch the server answers with a 4xx
+    other than 401 and 429. The note goes to the schema-invalid ledger as
+    `note_body:<noteId>`, is flagged as holding unmerged remote state (§7.13.2),
+    and is owed a whole-body pull.
+  - **Owed:** the entry's state is not here and nothing is wrong with it. The
+    note is flagged and owed a whole-body pull, and never ledgered. This covers:
+    - a ref update pruned since the page was read;
+    - a snapshot GET with no blob. The covering snapshot (§7.17.2) may sit on a
+      page the run never reaches;
+    - an entry past the page's GET budget;
+    - every entry from the first transport failure on: a `429`, a network
+      failure or timeout, a 5xx, or a 401 after the refresh. The first one
+      stops the page's GETs (`:353`), and that entry and every entry not yet
+      fetched are owed. A rate limit or an outage says nothing about the entry.
+  - **Skipped:** a snapshot whose `revision` equals the persisted watermark's.
+  - **Dropped:** every entry that is not read (above).
+
+  Only an abort throws. Refusals and debts are recorded inside the last slice's
+  transaction, after its records applied and before any cursor write (`:179`).
+
+- **The vault-key guard.** If every body on the page fails to decrypt, the same
+  account-key check the record path uses runs (`:425`). On `mismatch` or
+  `transition` the page stops before any slice, the cursor holds, and nothing
+  is ledgered (`pull-coordinator.ts:426`).
+- **Landed after the commit, before the cursor.** After the page commits and
+  its note files land, the bodies land in the CRDT store (`:191`;
+  `pull-coordinator.ts:1007`). Landing is post-commit work (chapter 05 §5.11),
+  so `LAST_CURSOR` is written only after it (`pull-coordinator.ts:975`).
+  - Nothing about the bodies is written to disk before the landing. A crash
+    before it re-pulls the page, and re-applying a Yjs update is a no-op.
+  - A document whose landing rejects is refused as above, before the cursor
+    write.
+  - An abort (a vault close or switch) stops the landing and refuses nothing.
+    The cursor holds, so the page is pulled again.
+- **How a body lands** (`apps/desktop/src/main/sync/note-body-apply.ts:45`).
+  Only a note or journal with a row here, whose doc already holds persisted
+  state, takes a body.
+  - It is opened without a markdown seed and merged live, so an open editor
+    and the markdown write-back see it.
+  - An update that changed the doc is also stored explicitly. The landing
+    awaits that write and rejects if it fails
+    (`apps/desktop/src/main/sync/crdt-provider.ts:718`). An update that
+    changed nothing, such as this device's own echo, is not stored again.
+
+  Nothing else is ever stored. Bytes the store holds but no live doc merged
+  make every later merge of the same state a no-op, so the write-back that
+  writes the vault file would never run:
+  - **An id with no row:** dropped, neither stored nor owed. It may belong to a
+    note deleted on an earlier page. It may be deleted on this page, by a
+    signed tombstone or a purged-tombstone marker (chapter 05 §5.12.3), both
+    applied in the slice transaction before the landing. Or it may be deleted
+    while the open awaited the store; the row is checked again after the open.
+    Owing it a pull would let that pull's merge write a deleted note back.
+  - **A known note whose doc holds nothing:** owed its whole body, and nothing
+    is stored. A delta merged into an empty doc can integrate in part and write
+    a partial body over the file.
+  - **A body the doc cannot integrate (pending structs):** the note is owed a
+    whole-body pull.
+  - **No store at all (in-memory mode):** nothing is fetched, and every entry
+    that is read is owed to the CRDT pull (`note-body-feed.ts:148`).
+
+- **Every path that applies a note or journal record pulls its whole body.**
+  That is how a dropped body arrives. The paths are:
+  - the record page (`applyCrdtBatch` after each slice);
+  - the corrupt re-fetch after a page;
+  - the ledger retry at pull start;
+  - the deferred retry after the last page;
+  - the orphan repair.
+
+  The last four run the CRDT batch before the pull ends
+  (`pull-coordinator.ts:185`, `:682`). A replacement for `applyCrdtBatch`
+  (#2297 part b) MUST keep this rule for every one of these paths.
+
+- **No id without a row is ever owed or pulled.** Two places keep this:
+  - `NoteBodyFeed` ledgers and owes only a note that still has a row when the
+    debt is recorded (`note-body-feed.ts:255`).
+  - A queued pull, from the pending pulls or the paced sweep, drops an id with
+    no row before it opens a doc and clears its flag
+    (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:1391`). A note
+    deleted after it was owed is therefore never merged and written back as a
+    new file.
+
+  The delete paths themselves record nothing.
+
+- **Healing a refused body.** At pull start, after the pending sync intents
+  drain (chapter 05, #2301), the ledger retry merges the note's whole body
+  through §7.2, at most 10 notes per pull
+  (`apps/desktop/src/main/sync/engine/item-recovery.ts:193`). A failed heal
+  waits out the cooldown again.
+  - An id with no row, or a local-only note, is resolved without a pull
+    (`note-body-feed.ts:235`).
+  - A heal that still left an update unverified keeps the entry.
+  - A `note_body:<id>` entry is its own ledger entry (kind `envelope`), apart
+    from the note record's own `blob_missing` or `pending_intent` entry.
+    - The manifest's quarantine check asks for the record type, so a refused
+      body never hides the note record.
+    - The `pending_intent` re-fetch never asks `/sync/pull` for a body.
+    - The entry heals by itself and asks nothing of the user, so it is not
+      listed as a quarantined item
+      (`apps/desktop/src/main/sync/engine/schema-invalid-ledger.ts:104`).
+- **Snapshot revisions.** The note's watermark records:
+  - the revision of a snapshot merged into a doc. One that was dropped or only
+    owed is not recorded, since the CRDT pull would then skip the baseline the
+    note is owed;
+  - the revision the server returns for a snapshot this device pushed
+    (`crdt-provider.ts:742`; `apps/desktop/src/main/sync/runtime.ts:681`,
+    `apps/desktop/src/main/sync/crdt-snapshot-batch.ts:162`). This device's own
+    snapshot then comes back through the feed as a skipped entry, not a
+    download.
+- **Journals.** A journal body is the same CRDT document under the journal
+  record's id (§7.1), so `note_body` carries it with no extra handling.
+- **Both paths apply the same bytes.** The `crdt_updated` pull, the per-note
+  reconnect pull and the vault sweep still run (#2297 part b removes them).
+  Applying a Yjs update that a doc already holds is a no-op, so a body that
+  arrives by both paths converges; the cost is one duplicate fetch.
+- **The legacy sweep.** Rows written before migration `0011` carry no cursor,
+  and rows below the device cursor at first negotiation were never served as
+  bodies.
+  - The first page that carries a `noteBodies` array sets the sync-state key
+    `noteBodyLegacySweep` to `pending` (`note-body-feed.ts:267`).
+  - A full sync whose pull delivered (ran to `hasMore: false` without a refused
+    page) then forces the vault-wide sweep
+    (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:725`).
+  - Only that sweep's drain, with nothing owed back, records `done`, and only
+    if the key still reads `pending` (`full-sync-runner.ts:492`). An
+    interrupted or partly failed sweep stays `pending`.
+  - A page without `noteBodies` while the key is set means the server stopped
+    serving bodies (§7.17.3). The page deletes the key and discards the sweep
+    this engine queued (`full-sync-runner.ts:515`), so that drain records
+    nothing. The next negotiated page forces a new sweep.
+  - A device that was offline for the whole of a server rollback never sees a
+    page without `noteBodies`. It cannot tell that the rollback wrote rows with
+    no cursor, so its `done` stands. Detecting this needs a server signal, such
+    as a feed epoch, which this part does not have.
+- **Bootstrap after `applyCrdtBatch` goes.** A run from cursor 0 gets bodies
+  only through the records it applies and the sweeps. Once #2297 part b
+  removes `applyCrdtBatch` and the sweeps, it MUST give that run another body
+  path. It can declare `note_body` from cursor 0 as well and accept the 100-row
+  pages. Or it can keep a whole-body pull for every note and journal record the
+  run applies.

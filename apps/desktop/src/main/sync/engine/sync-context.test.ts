@@ -88,7 +88,10 @@ describe('SYNC_STATE_KEYS', () => {
         // the answer that leaves the item-granular bootstrap untouched.
         PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor',
         CURSOR_SKIP_REPAIR: 'cursorSkipRepair',
-        SCHEMA_INVALID_ITEMS: 'schemaInvalidItems'
+        SCHEMA_INVALID_ITEMS: 'schemaInvalidItems',
+        // #2297: absent, `pending` or `done`; an install without it has not
+        // been served bodies by the feed yet.
+        NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep'
       })
     })
 

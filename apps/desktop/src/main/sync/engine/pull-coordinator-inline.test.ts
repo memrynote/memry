@@ -74,7 +74,9 @@ describe('PullCoordinator with inline changes pages (#2292)', () => {
 
     expect(getSpy).toHaveBeenCalledWith(
       '/sync/changes?limit=500&cursor=3&inline=1',
-      expect.any(String)
+      expect.any(String),
+      undefined,
+      expect.anything()
     )
     expect(postSpy).not.toHaveBeenCalledWith('/sync/pull', expect.anything(), expect.anything())
     expect(applySpy.mock.calls.map(([input]) => input.itemId)).toEqual(['task-1'])
@@ -144,7 +146,12 @@ describe('PullCoordinator with inline changes pages (#2292)', () => {
       engine['ctx'].fullSyncActive = false
     }
 
-    expect(getSpy).toHaveBeenCalledWith('/sync/changes?limit=500', expect.any(String))
+    expect(getSpy).toHaveBeenCalledWith(
+      '/sync/changes?limit=500',
+      expect.any(String),
+      undefined,
+      expect.anything()
+    )
   })
 
   // #2292 with #2285: inline items do not make a broken /sync/pull body acceptable.

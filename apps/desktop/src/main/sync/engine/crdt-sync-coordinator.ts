@@ -144,9 +144,21 @@ export class CrdtSyncCoordinator {
   /** Last value handed to `onUnmergedDebtChange`, so only transitions are sent. */
   private reportedUnmergedDebt = false
 
-  constructor(ctx: SyncContext, resolveDeviceKey: ResolveDeviceKey) {
+  /**
+   * A note or journal row exists on this device. A queued pull of an id with
+   * none is dropped (#2297): the owed note was deleted after it was queued,
+   * and merging its server body would let the write-back re-create it.
+   */
+  private hasNoteRow: (noteId: string) => boolean
+
+  constructor(
+    ctx: SyncContext,
+    resolveDeviceKey: ResolveDeviceKey,
+    hasNoteRow: (noteId: string) => boolean = () => true
+  ) {
     this.ctx = ctx
     this.resolveDeviceKey = resolveDeviceKey
+    this.hasNoteRow = hasNoteRow
   }
 
   /**
@@ -1376,7 +1388,12 @@ export class CrdtSyncCoordinator {
    * retry rather than dropped: the sweep hands this method the whole vault, so
    * silently returning would strand every stale body until the next sweep.
    */
-  async pullCrdtForNotes(noteIds: string[], signal?: AbortSignal): Promise<CrdtPullCost> {
+  async pullCrdtForNotes(queued: string[], signal?: AbortSignal): Promise<CrdtPullCost> {
+    const noteIds = queued.filter((noteId) => this.hasNoteRow(noteId))
+    // Nothing will ever pull a dropped id, so no flag of its may stand.
+    for (const noteId of queued) {
+      if (!noteIds.includes(noteId)) this.clearUnmergedIfClean(noteId, false)
+    }
     if (noteIds.length === 0) return noCost()
     log.debug('pullCrdtForNotes entered', { count: noteIds.length })
 

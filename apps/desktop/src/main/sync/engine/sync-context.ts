@@ -133,8 +133,34 @@ export const SYNC_STATE_KEYS = {
    */
   CURSOR_SKIP_REPAIR: 'cursorSkipRepair',
   /** JSON map of items this build's schema refused; see `SchemaInvalidLedger` (#2285). */
-  SCHEMA_INVALID_ITEMS: 'schemaInvalidItems'
+  SCHEMA_INVALID_ITEMS: 'schemaInvalidItems',
+  /**
+   * The one full CRDT sweep owed by the first launch whose server serves note
+   * bodies in the change feed (#2297). Body rows written before migration 0011
+   * carry no cursor, and rows below this device's cursor at first negotiation
+   * were never served as bodies, so only a sweep of every note delivers them.
+   *
+   * Missing: the feed has not served bodies yet. `pending`: a page carried
+   * `noteBodies`; every full sync whose pull delivered to the head of the feed
+   * forces the vault sweep until one drains. `done`: such a sweep drained with
+   * nothing owed back. A page without `noteBodies` (the server stopped serving
+   * them) deletes the key, so the next negotiated page re-arms the sweep.
+   */
+  NOTE_BODY_LEGACY_SWEEP: 'noteBodyLegacySweep'
 } as const
+
+/** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */
+export const NOTE_BODY_ITEM_TYPE = 'note_body'
+
+/**
+ * Whole-body heals of refused change-feed bodies one pull start may run. Each
+ * is a doc open and at least two CRDT GETs ahead of the pull's first page; the
+ * rest wait for the next pull, and every refused note is owed to the sweep too.
+ */
+export const MAX_NOTE_BODY_HEALS_PER_PULL = 10
+
+export const NOTE_BODY_LEGACY_SWEEP_PENDING = 'pending'
+export const NOTE_BODY_LEGACY_SWEEP_DONE = 'done'
 
 // Item ids are NOT unique across item types (default project id 'inbox', tag
 // ids are tag names, folder_config ids are folder paths), so every piece of

@@ -92,6 +92,10 @@ export class SyncStateManager {
     return rows[0]?.value
   }
 
+  deleteStateValue(key: string): void {
+    this.ctx.deps.db.delete(syncState).where(eq(syncState.key, key)).run()
+  }
+
   setStateValue(key: string, value: string): void {
     // Write-through: every pause and resume in the app lands here, so the
     // cached answer flips with the row rather than after it.

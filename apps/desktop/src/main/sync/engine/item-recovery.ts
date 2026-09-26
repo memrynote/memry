@@ -12,7 +12,7 @@ import type { CorruptItemTracker, ItemRef, RecoveredItem } from './corrupt-item-
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 import type { OrphanRef } from './orphan-repair'
 import { PendingSyncIntentError } from '../pending-sync-intent-error'
-import type { SyncContext } from './sync-context'
+import { MAX_NOTE_BODY_HEALS_PER_PULL, NOTE_BODY_ITEM_TYPE, type SyncContext } from './sync-context'
 
 const log = createLogger('ItemRecovery')
 
@@ -21,6 +21,11 @@ export interface ItemRecoveryDeps {
   tracker: CorruptItemTracker
   ledger: SchemaInvalidLedger
   onChanged: (item: RecoveredItem, operation: 'create' | 'update' | 'delete') => void
+  /**
+   * Heal a refused change-feed body (#2297), which has no record to re-fetch
+   * by id; true resolves the entry. See `NoteBodyFeed.heal`.
+   */
+  pullNoteBody?: (noteId: string, token: string, vaultKey: Uint8Array) => Promise<boolean>
 }
 
 /**
@@ -182,7 +187,15 @@ export async function retrySchemaInvalidItems(
   token: string,
   vaultKey: Uint8Array
 ): Promise<void> {
-  const retryable = deps.ledger.retryable()
+  const all = deps.ledger.retryable()
+  const retryable = all.filter((ref) => ref.type !== NOTE_BODY_ITEM_TYPE)
+  const bodies = all.filter((ref) => ref.type === NOTE_BODY_ITEM_TYPE)
+  for (const ref of deps.pullNoteBody ? bodies.slice(0, MAX_NOTE_BODY_HEALS_PER_PULL) : []) {
+    // A failed heal is recorded again, so it waits out the cooldown instead of
+    // running ahead of every pull.
+    if (await deps.pullNoteBody!(ref.id, token, vaultKey)) deps.ledger.resolve([ref])
+    else deps.ledger.record([ref], 'envelope')
+  }
   if (retryable.length === 0) return
   const { recovered, missing, invalid, blobMissing } = await deps.tracker.refetch(
     retryable,

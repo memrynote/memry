@@ -663,7 +663,8 @@ record rows so one page never skips a row committed between two reads. An update
 its bytes inline; a larger one and every snapshot are refs the client fetches from the CRDT routes.
 A page that carries bodies is capped at 100 rows. `note_body` is not a record type: it never reaches
 the manifest, `/sync/pull`, bootstrap or `/sync/push`, and a client that does not declare it gets the
-same response as before. No shipped client declares it yet.
+same response as before. The desktop declares it (#2297); see
+[CRDT & Notes Sync](./crdt.md#note-bodies-from-the-change-feed) for how it applies bodies.
 
 ## End-to-End Latency Trace
 

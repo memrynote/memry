@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import { NEGOTIABLE_SYNC_TYPES, RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import * as schema from '@memry/db-schema/data-schema'
 
 const mockFetch = vi.fn()
@@ -44,7 +44,8 @@ import {
   SyncServerError,
   NetworkError,
   RateLimitError,
-  parseRetryAfterHeader
+  parseRetryAfterHeader,
+  NOTE_BODY_FEED_HEADERS
 } from './http-client'
 import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
 import { resetVaultUuidCache } from '../agent/storage/vault-id'
@@ -202,8 +203,9 @@ describe('http-client', () => {
       )
     })
 
-    // #2302: the build that applies purged-tombstone markers says so.
-    it('declares the supported record sync types and purged_tombstones when token provided', async () => {
+    // #2302: the build declares purged_tombstones beside the record types.
+    // #2297 round 2: note_body only rides on the change-feed GET that asks for it.
+    it('declares the record sync types and purged_tombstones when token provided', async () => {
       // #given
       mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
 
@@ -219,6 +221,40 @@ describe('http-client', () => {
           })
         })
       )
+    })
+
+    // #2297 round 2 (A-M2, B-M1)
+    it('adds note_body for a change-feed GET that declares it', async () => {
+      mockFetch.mockResolvedValue(createJsonResponse({ success: true }))
+
+      await getFromServer('/sync/changes', 'my-token-123', undefined, {
+        headers: NOTE_BODY_FEED_HEADERS
+      })
+
+      const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>
+      expect(headers['X-Memry-Sync-Types']).toBe(NEGOTIABLE_SYNC_TYPES.join(','))
+    })
+
+    // #2297 round 2 (B-L2): a caller's abort reaches the request in flight.
+    it('aborts a request in flight when the caller aborts', async () => {
+      // What fetch does with its signal, aborted before or during the request.
+      mockFetch.mockImplementation(
+        (_url: string, init: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            const abort = (): void =>
+              reject(new DOMException('The operation was aborted.', 'AbortError'))
+            if (init.signal.aborted) abort()
+            init.signal.addEventListener('abort', abort)
+          })
+      )
+      const controller = new AbortController()
+
+      const request = getFromServer('/sync/crdt/snapshot/note-1', 'my-token-123', undefined, {
+        signal: controller.signal
+      })
+      controller.abort()
+
+      await expect(request).rejects.toMatchObject({ name: 'AbortError' })
     })
 
     it('does not declare sync types on unauthenticated calls', async () => {

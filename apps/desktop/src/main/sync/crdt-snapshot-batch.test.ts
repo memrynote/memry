@@ -113,6 +113,23 @@ describe('createCrdtSnapshotBatchPush', () => {
     expect([...results.values()].every(Boolean)).toBe(true)
   })
 
+  // #2297 review (A-M6, B-7): the revision each accepted snapshot got is handed
+  // back, so the provider can record it and skip this device's own echo.
+  it('reports the revision of every accepted snapshot', async () => {
+    pushCrdtSnapshotBatchMock.mockResolvedValue({
+      results: [
+        { noteId: 'note-a', accepted: true, sequenceNum: 4, revision: 'rev-a' },
+        { noteId: 'note-b', accepted: false, reason: 'too large' }
+      ]
+    })
+    const onPushed = vi.fn()
+    const { deps } = createDeps({ onPushed })
+
+    await createCrdtSnapshotBatchPush(deps)([entry('note-a'), entry('note-b')])
+
+    expect(onPushed.mock.calls).toEqual([['note-a', { sequenceNum: 4, revision: 'rev-a' }]])
+  })
+
   it('reports a per-note rejection as false so the note stays retryable', async () => {
     // #given a 200 response in which one entry failed. HTTP-level success is
     // not per-note success, and reading it as one silently drops a body.

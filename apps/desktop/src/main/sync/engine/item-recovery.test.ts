@@ -8,7 +8,11 @@ import { SchemaInvalidLedger } from './schema-invalid-ledger'
 import { PendingSyncIntentError } from '../pending-sync-intent-error'
 import { trackMainLog } from '../../telemetry/diagnostics'
 import type { CorruptItemTracker, RecoveredItem, RefetchResult } from './corrupt-item-tracker'
-import { CORRUPT_ITEM_COOLDOWN_MS, type SyncContext } from './sync-context'
+import {
+  CORRUPT_ITEM_COOLDOWN_MS,
+  MAX_NOTE_BODY_HEALS_PER_PULL,
+  type SyncContext
+} from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 
 vi.mock('../../lib/logger', () => {
@@ -54,13 +58,15 @@ function harness(results: Record<string, string | Error>, refetch: Partial<Refet
     clearExpired: vi.fn()
   }
   const onChanged = vi.fn()
+  const pullNoteBody = vi.fn(async (noteId: string) => noteId !== 'note-still-bad')
   const deps: ItemRecoveryDeps = {
     ctx: { applier: { apply }, deps: { emitToRenderer: vi.fn() } } as unknown as SyncContext,
     tracker: tracker as unknown as CorruptItemTracker,
     ledger,
-    onChanged
+    onChanged,
+    pullNoteBody
   }
-  return { deps, ledger, tracker, version, applied, onChanged }
+  return { deps, ledger, tracker, version, applied, onChanged, pullNoteBody }
 }
 
 // #2285
@@ -191,5 +197,81 @@ describe('retrySchemaInvalidItems', () => {
     expect(trackMainLog).not.toHaveBeenCalled()
     expect(h.ledger.has('task', 'task-waiting')).toBe(true)
     expect(h.ledger.retryable()).toEqual([{ id: 'task-waiting', type: 'task' }])
+  })
+
+  // #2297: a note body has no record to re-fetch by id. /sync/pull would answer
+  // the note record, so the entry is healed by a whole-body pull instead.
+  it('re-pulls a note body entry whole and never asks /sync/pull for it', async () => {
+    const h = harness({}, {})
+    h.ledger.record(
+      [
+        { id: 'note-fixed', type: 'note_body' },
+        { id: 'note-still-bad', type: 'note_body' }
+      ],
+      'payload'
+    )
+    h.version.current = '1.1.0'
+
+    await retrySchemaInvalidItems(h.deps, 'token', new Uint8Array(32))
+
+    expect(h.tracker.refetch).not.toHaveBeenCalled()
+    expect(h.pullNoteBody.mock.calls.map(([noteId]) => noteId)).toEqual([
+      'note-fixed',
+      'note-still-bad'
+    ])
+    expect(h.ledger.has('note_body', 'note-fixed')).toBe(false)
+    expect(h.ledger.has('note_body', 'note-still-bad')).toBe(true)
+  })
+
+  // #2297 review (A-L2): a failed heal waits out the cooldown again.
+  it('refreshes the cooldown of a note body entry whose heal failed', async () => {
+    const h = harness({}, {})
+    h.ledger.record([{ id: 'note-still-bad', type: 'note_body' }], 'payload')
+    h.version.current = '1.1.0'
+    const now = vi.spyOn(Date, 'now').mockReturnValue(5_000_000)
+
+    await retrySchemaInvalidItems(h.deps, 'token', new Uint8Array(32))
+
+    expect(h.pullNoteBody).toHaveBeenCalledOnce()
+    expect(h.ledger.has('note_body', 'note-still-bad')).toBe(true)
+    // Same version, inside the cooldown: not retried.
+    await retrySchemaInvalidItems(h.deps, 'token', new Uint8Array(32))
+    expect(h.pullNoteBody).toHaveBeenCalledOnce()
+    now.mockRestore()
+  })
+
+  // #2297 review (B-5): whole-body heals are bounded per pull.
+  it('heals at most MAX_NOTE_BODY_HEALS_PER_PULL note bodies per pull', async () => {
+    const h = harness({}, {})
+    const refs = Array.from({ length: MAX_NOTE_BODY_HEALS_PER_PULL + 5 }, (_, i) => ({
+      id: `note-${i}`,
+      type: 'note_body'
+    }))
+    h.ledger.record(refs, 'payload')
+    h.version.current = '1.1.0'
+
+    await retrySchemaInvalidItems(h.deps, 'token', new Uint8Array(32))
+
+    expect(h.pullNoteBody).toHaveBeenCalledTimes(MAX_NOTE_BODY_HEALS_PER_PULL)
+    expect(refs.filter((ref) => h.ledger.has('note_body', ref.id))).toHaveLength(5)
+  })
+
+  // #2297 with #2301: note bodies are healed whole; a pending-intent record of
+  // the same note still goes to the /sync/pull re-fetch, without the body ref.
+  it('splits note_body heals from the pending_intent re-fetch of the same note', async () => {
+    const h = harness({}, {})
+    h.ledger.record([{ id: 'note-1', type: 'note' }], 'pending_intent')
+    h.ledger.record([{ id: 'note-1', type: 'note_body' }], 'payload')
+    h.version.current = '1.1.0'
+
+    await retrySchemaInvalidItems(h.deps, 'token', new Uint8Array(32))
+
+    expect(h.pullNoteBody.mock.calls.map(([noteId]) => noteId)).toEqual(['note-1'])
+    expect(h.tracker.refetch).toHaveBeenCalledWith(
+      [{ id: 'note-1', type: 'note' }],
+      'token',
+      expect.any(Uint8Array)
+    )
+    expect(h.ledger.has('note_body', 'note-1')).toBe(false)
   })
 })

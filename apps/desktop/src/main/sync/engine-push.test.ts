@@ -105,7 +105,12 @@ describe('SyncEngine', () => {
       expect(engine.getStateValue('lastCursor')).toBe('12')
 
       await engine.pull()
-      expect(getSpy).toHaveBeenCalledWith(expect.stringContaining('&cursor=12'), 'test-token')
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.stringContaining('&cursor=12'),
+        'test-token',
+        undefined,
+        expect.anything()
+      )
 
       vi.restoreAllMocks()
     })
