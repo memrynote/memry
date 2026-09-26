@@ -7,26 +7,28 @@ The payload is the plaintext inside the record envelope of chapter 04: UTF-8
 JSON. This chapter specifies what it contains per type, and — more importantly —
 how a client is required to store it.
 
-## 13.1 The fifteen subscribed types
+## 13.1 The nineteen subscribed types
 
-**Normative.** This feature's client declares exactly these fifteen in
+**Normative.** This feature's client declares exactly these nineteen in
 `X-Memry-Sync-Types` (chapter 05 §5.3), in this order:
 
 `note`, `journal`, `folder_config`, `custom_icon`, `tag_definition`,
 `tag_category`, `property_definition`, `template`, `task`, `project`,
-`task_activity`, `reminder`, `settings`, `filter`, `inbox`.
+`task_activity`, `reminder`, `settings`, `filter`, `inbox`, `calendar_source`,
+`calendar_event`, `calendar_external_event`, `calendar_binding`.
 
 `filter` (saved task filters, §13.7.14) was added by spec 004 TP022 and is
 appended last, so the first thirteen keep their order. `inbox` (captures,
-§13.7.15) was added by spec 006 IB012 and is appended after it.
+§13.7.15) was added by spec 006 IB012 and is appended after it. The four
+calendar types (§13.7.16–§13.7.19) were added by spec 007 CL010 and are appended
+last, in chapter 05's apply order (source, event, external event, binding).
 
-Ten more **record types** are served by the server and **not** subscribed to
-here: `calendar_event`, `calendar_source`, `calendar_binding`,
-`calendar_external_event`, `agent_conversation`, `agent_message`, `canvas`,
-`canvas_folder`, `bookmark`, `home_page`. **A conforming client omits them from
+Six more **record types** are served by the server and **not** subscribed to
+here: `agent_conversation`, `agent_message`, `canvas`, `canvas_folder`,
+`bookmark`, `home_page`. **A conforming client omits them from
 the header and never sees them** (chapter 05 §5.3.1).
 
-Fifteen plus ten is the **twenty-five record types**, which is the set
+Nineteen plus six is the **twenty-five record types**, which is the set
 chapter 05 §5.3 calls recognised. `attachment` is the twenty-sixth member of
 `SYNC_ITEM_TYPES` and is **not** one of them: it never travels as a record at
 all (§13.8), so it is neither subscribed nor declarable.
@@ -414,6 +416,23 @@ device that never displayed it. **Dismiss and snooze state does sync.**
 `{ settings, fieldClocks }` where `fieldClocks` is keyed by **dotted path**
 (`packages/contracts/src/settings-sync.ts:113-116`; chapter 06 §6.9).
 
+**The `calendar` group** (spec 007 D3a) carries `weekStartDay`,
+`showNotesOnCalendar`, `defaultWriteTarget` (`{ provider, remoteCalendarId }`, or
+`null` for none), `google.{defaultTargetCalendarId, onboardingCompleted,
+promoteConfirmDismissed, pushEventsToGoogle, agentReadEventsConsent}` and
+`<provider>.{agentReadEventsConsent, pushEventsToProvider}` for other providers,
+one field clock per leaf (`calendar.google.pushEventsToGoogle`). Every key is
+optional, and the group accepts provider keys it does not name. Device-local
+and never here: the desktop day-panel click settings, the `apple-eventkit`
+group, provider credentials and cursors.
+
+**Normative, compat (D7).** An older build whose schema lacks a key strips its
+value on parse but keeps its field clock, so it re-uploads the clock with no
+value. **An absent value under a field clock equal to the local one is not a
+removal** (a removal ticks the clock): the receiver keeps its value. A device
+seeds a key from its own device-local value only while no device has clocked
+that path.
+
 ### 13.7.14 `filter` — `:69-75`
 
 `name`, `config`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
@@ -446,6 +465,75 @@ key the remote omits keeps the local value; a key it sends as `null` clears it
 (unsnooze, unarchive and unfile push explicit `null`s); `title` and `type` keep
 the local value on `null` too. `metadata` is `z.unknown()` and replaced whole.
 
+### 13.7.16 `calendar_source` — `:410-428`
+
+`provider`, `kind` (`account` | `calendar`), `accountId`, `remoteId`, `title`,
+`timezone`, `color`, `isPrimary`, `isSelected`, `isMemryManaged`, `syncCursor`,
+`syncStatus` (`idle` | `ok` | `error` | `pending`), `lastSyncedAt`, `metadata`,
+`archivedAt`, `clock`, `createdAt`, `modifiedAt`. Document-level resolver.
+Desktop's push is its whole `calendar_sources` row
+(`packages/sync-client/src/calendar-source-sync.ts:76`), so `lastError` (an ICS
+feed's error code, localized by each reader) and `syncedAt` arrive as unmodelled
+keys. **Selection travels here**: showing or hiding a calendar writes
+`isSelected`. Rows of a device-local provider (`apple-eventkit`) never leave the
+device (`calendar-api.ts` `DEVICE_LOCAL_CALENDAR_PROVIDERS`).
+
+**Normative apply rule** (`calendar-source-handler.ts`): after the document
+gate, every key is read as `data.x ?? existing.x`, so a `null` **keeps** the local
+value. Insert defaults: `provider 'google'`, `kind 'calendar'`, `remoteId` = the
+item id, `title 'Untitled calendar'`, `syncStatus 'idle'`, flags `false`.
+
+### 13.7.17 `calendar_event` — `:371-408`
+
+`title`, `description`, `location`, `startAt`, `endAt`, `timezone`, `isAllDay`,
+`recurrenceRule`, `recurrenceExceptions`, `attendees`, `reminders`, `visibility`
+(`default` | `public` | `private` | `confidential`), `colorId` (Google's event
+colour id `"1"`..`"11"`), `conferenceData`, `parentEventId`, `originalStartTime`,
+`targetCalendarId`, `archivedAt`, `clock`, `fieldClocks`, `createdAt`,
+`modifiedAt`. **Field-level** over the fourteen
+`CALENDAR_EVENT_SYNCABLE_FIELDS` (`title` … `conferenceData`,
+`apps/desktop/src/main/calendar/field-merge-calendar.ts:4`); the routing and
+recurrence-identity keys and `archivedAt` are not field-clocked.
+
+**Normative apply rule** (`calendar-event-handler.ts`): on `concurrent`, a field
+the remote omits is read as the local value before `mergeFields`; a side with no
+`fieldClocks` seeds all fourteen from its document clock; `targetCalendarId`,
+`parentEventId`, `originalStartTime` merge **by presence** (absent keeps,
+`null` clears) and `archivedAt` by `??`. On `apply`, `title` …
+`recurrenceExceptions` and `archivedAt` use `??`, the rich fields and routing keys
+use presence, and the stored field clocks are the remote's or seeded from its
+clock. A create ticks every field clock; an update ticks the changed fields only
+(never `targetCalendarId`), and re-saving the same colour is not a change.
+
+### 13.7.18 `calendar_external_event` — `:447-470`
+
+`sourceId`, `remoteEventId`, `remoteEtag`, `remoteUpdatedAt`, `title`,
+`description`, `location`, `startAt`, `endAt`, `timezone`, `isAllDay`, `status`
+(`confirmed` | `tentative` | `cancelled`), `recurrenceRule`, `attendees`,
+`reminders`, `visibility`, `colorId`, `conferenceData`, `rawPayload`,
+`archivedAt`, `clock`, `createdAt`, `modifiedAt`. Document-level resolver.
+Events of a device-local mirror (`ics`, `apple-eventkit`) never sync: each device
+reads the feed itself.
+
+**Normative apply rule** (`calendar-external-event-handler.ts`): `??` for every
+key except `attendees`, `reminders`, `visibility`, `colorId`, `conferenceData`,
+which merge by presence. An event whose `sourceId` has not landed is not shown
+until it does (desktop parks and replays it; the phone stores it and its
+projection joins the source). Promotion archives the mirror.
+
+### 13.7.19 `calendar_binding` — `:431-445`
+
+`sourceType` (`event` | `task` | `reminder` | `inbox_snooze`), `sourceId`,
+`provider`, `remoteCalendarId`, `remoteEventId`, `ownershipMode`
+(`memry_managed` | `provider_managed`), `writebackMode` (`schedule_only` |
+`time_and_text` | `broad`), `remoteVersion`, `lastLocalSnapshot`, `archivedAt`,
+`clock`, `createdAt`, `modifiedAt`. Document-level resolver, `??` for every key.
+Insert defaults: `event`, `sourceId` = item id, `google`, `primary`,
+`remoteEventId` = item id, `memry_managed`, `broad`. **The oldest live binding of
+an item (by `createdAt`, then id) decides which provider writes it**
+(`provider/write-routing.ts`); a promote writes one `provider_managed` /
+`time_and_text` binding beside the new event.
+
 ## 13.8 `attachment` is not a record type
 
 **Normative.** `attachment` is in `SYNC_ITEM_TYPES`
@@ -461,6 +549,7 @@ the local value on `null` too. `metadata` is `z.unknown()` and replaced whole.
 | --------------------------- | ------------------------ | -------------------------------------------------- |
 | `task`                      | field-level              | yes (`packages/contracts/src/sync-payloads.ts:45`) |
 | `project`                   | field-level              | yes (`:247`)                                       |
+| `calendar_event`            | field-level              | yes (`:405`)                                       |
 | `settings`                  | dotted-path field clocks | yes, its own key space                             |
 | every other subscribed type | document-level resolver  | no                                                 |
 

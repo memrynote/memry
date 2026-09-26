@@ -443,16 +443,18 @@ a client uses when a row has a document clock but no field clocks yet
 
 **Normative.**
 
-| Type                            | Algorithm                                        |
-| ------------------------------- | ------------------------------------------------ |
-| `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`    |
-| `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS` |
-| `settings`                      | dotted-path field clocks, §6.9                   |
-| **every other subscribed type** | the document-level resolver of §6.3.1            |
+| Type                            | Algorithm                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------ |
+| `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`                                              |
+| `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`                                           |
+| `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
+| `settings`                      | dotted-path field clocks, §6.9                                                             |
+| **every other subscribed type** | the document-level resolver of §6.3.1                                                      |
 
 The field-level path exists only where a payload carries `fieldClocks`
-(chapter 13 §13.5); the two lists above are the only two in the tree
-(`packages/sync-client/src/field-merge.ts:11-39`). Every other type carries only
+(chapter 13 §13.5); the task and project lists live in
+`packages/sync-client/src/field-merge.ts:11-39`, the calendar event list in
+`apps/desktop/src/main/calendar/field-merge-calendar.ts:4`. Every other type carries only
 `clock` and takes the `resolveClockConflict` path
 (`packages/sync-client/src/item-handlers/types.ts:58-68`).
 
