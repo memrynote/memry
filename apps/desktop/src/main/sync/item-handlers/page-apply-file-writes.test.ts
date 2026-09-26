@@ -144,6 +144,62 @@ describe('journal handler inside a page transaction (#2284)', () => {
     expect(rowOf()).toMatchObject({ clock: { 'device-b': 2 }, createdAt })
     expect(fs.readFileSync(journalFile, 'utf-8')).toContain('Edited on B')
   })
+
+  const deleteInPage = async () => {
+    const first = applyInPage()
+    first.page.commit()
+    await first.page.flushFiles()
+    const before = (Date.now() - 60_000) / 1000
+    fs.utimesSync(journalFile, before, before)
+
+    const page = beginPageApply(asSyncDb(testDb.db))
+    const result = journalHandler.applyDelete({ db: page.db, emit: vi.fn() }, ITEM_ID, {
+      'device-b': 2
+    })
+    return { page, result }
+  }
+
+  // #2385: the remote delete's unlink is journaled with the page, so a crash
+  // after the commit cannot leave the file behind for the indexer to re-adopt.
+  it('removes the file on replay after a crash between commit and flush', async () => {
+    const { page, result } = await deleteInPage()
+    expect(result).toBe('applied')
+    expect(fs.existsSync(journalFile)).toBe(true)
+    page.commit()
+    expect(fs.existsSync(journalFile)).toBe(true)
+
+    _resetBulkApplyForTests()
+    replayBulkApplyJournal()
+
+    expect(fs.existsSync(journalFile)).toBe(false)
+  })
+
+  // #2385: a local re-create after the crash is newer than the journaled delete.
+  it('keeps a file re-created locally after the crash', async () => {
+    const { page } = await deleteInPage()
+    page.commit()
+    fs.writeFileSync(journalFile, 'written again today', 'utf-8')
+    const later = (Date.now() + 60_000) / 1000
+    fs.utimesSync(journalFile, later, later)
+
+    _resetBulkApplyForTests()
+    replayBulkApplyJournal()
+
+    expect(fs.readFileSync(journalFile, 'utf-8')).toBe('written again today')
+  })
+
+  it('unlinks the file on flush and keeps it when the page rolls back', async () => {
+    const rolledBack = await deleteInPage()
+    rolledBack.page.rollback()
+    expect(fs.existsSync(journalFile)).toBe(true)
+
+    const page = beginPageApply(asSyncDb(testDb.db))
+    journalHandler.applyDelete({ db: page.db, emit: vi.fn() }, ITEM_ID, { 'device-b': 2 })
+    page.commit()
+    await page.flushFiles()
+
+    expect(fs.existsSync(journalFile)).toBe(false)
+  })
 })
 
 describe('property definition delete inside a page transaction (#2284)', () => {

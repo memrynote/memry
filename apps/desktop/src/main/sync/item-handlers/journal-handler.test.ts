@@ -13,7 +13,7 @@ const {
   mockUpdateNoteMetadata,
   mockSaveCanonicalNote,
   mockBuildJournalEntryWrite,
-  mockDeleteJournalEntryFile,
+  mockDeleteSyncedVaultFile,
   mockSyncNoteToCache,
   mockDeleteNoteFromCache,
   mockFlushProjectionEvents,
@@ -26,7 +26,7 @@ const {
   mockUpdateNoteMetadata: vi.fn(),
   mockSaveCanonicalNote: vi.fn(),
   mockBuildJournalEntryWrite: vi.fn(),
-  mockDeleteJournalEntryFile: vi.fn(),
+  mockDeleteSyncedVaultFile: vi.fn(),
   mockSyncNoteToCache: vi.fn(),
   mockDeleteNoteFromCache: vi.fn(),
   mockFlushProjectionEvents: vi.fn(),
@@ -52,7 +52,6 @@ vi.mock('@memry/domain-notes', () => ({
 }))
 
 vi.mock('../../vault/journal', () => ({
-  deleteJournalEntryFile: (...args: unknown[]) => mockDeleteJournalEntryFile(...args),
   extractJournalProperties: vi.fn(() => ({ Mood: 'focused' })),
   getJournalPath: vi.fn(() => journalFilePath),
   getJournalRelativePath: vi.fn((date: string) => `journals/${date}.md`),
@@ -68,7 +67,8 @@ vi.mock('../../vault/journal', () => ({
 }))
 
 vi.mock('../bulk-apply', () => ({
-  writeSyncedVaultFile: (...args: unknown[]) => mockWriteSyncedNoteFile(...args)
+  writeSyncedVaultFile: (...args: unknown[]) => mockWriteSyncedNoteFile(...args),
+  deleteSyncedVaultFile: (...args: unknown[]) => mockDeleteSyncedVaultFile(...args)
 }))
 
 vi.mock('../../vault/note-sync', () => ({
@@ -104,7 +104,6 @@ async function flushPromises(): Promise<void> {
 describe('journalHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDeleteJournalEntryFile.mockResolvedValue(undefined)
     mockBuildJournalEntryWrite.mockReturnValue({
       absolutePath: '/vault/journals/2026-05-10.md',
       entry: {
@@ -231,7 +230,7 @@ describe('journalHandler', () => {
 
     expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-a': 2 })).toBe('applied')
 
-    expect(mockDeleteJournalEntryFile).toHaveBeenCalledWith('2026-05-10')
+    expect(mockDeleteSyncedVaultFile).toHaveBeenCalledWith(journalFilePath)
     // A journal entry carries a Y.Doc exactly as a note does, so the same
     // sweep resurrects it if the delete leaves the doc behind.
     expect(mockPurgeCrdtDoc).toHaveBeenCalledWith('journal-1')
@@ -306,7 +305,7 @@ describe('journalHandler', () => {
       clock: { 'device-a': 1 }
     })
     expect(journalHandler.applyDelete(ctx, 'journal-1', { 'device-a': 2 })).toBe('applied')
-    expect(mockDeleteJournalEntryFile).toHaveBeenCalledWith('2026-05-10')
+    expect(mockDeleteSyncedVaultFile).toHaveBeenCalledWith(journalFilePath)
     expect(mockDeleteNoteFromCache).toHaveBeenCalledWith({ index: true }, 'journal-1')
     expect(mockFlushProjectionEvents).toHaveBeenCalled()
     expect(ctx.emit).toHaveBeenCalledWith(JournalChannels.events.ENTRY_DELETED, {

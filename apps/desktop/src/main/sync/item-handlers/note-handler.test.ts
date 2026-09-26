@@ -115,6 +115,15 @@ vi.mock('../crdt-writeback', () => ({
 }))
 
 const mockPurgeCrdtDoc = vi.fn(() => Promise.resolve())
+const mockDeleteSyncedVaultFile = vi.fn()
+vi.mock('../bulk-apply', async () => {
+  const actual = await vi.importActual<typeof import('../bulk-apply')>('../bulk-apply')
+  return {
+    ...actual,
+    deleteSyncedVaultFile: (...args: unknown[]) => mockDeleteSyncedVaultFile(...args)
+  }
+})
+
 vi.mock('../crdt-provider', () => ({
   getCrdtProvider: () => ({ purge: mockPurgeCrdtDoc })
 }))
@@ -135,8 +144,7 @@ vi.mock('../../vault/file-ops', async () => {
     await vi.importActual<typeof import('../../vault/file-ops')>('../../vault/file-ops')
   return {
     ...actual,
-    atomicWrite: vi.fn().mockResolvedValue(undefined),
-    deleteFile: vi.fn().mockResolvedValue(undefined)
+    atomicWrite: vi.fn().mockResolvedValue(undefined)
   }
 })
 
@@ -157,7 +165,6 @@ import {
   resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
 import { createTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
-import { deleteFile } from '../../vault/file-ops'
 import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
 import { deleteNoteFromCache, syncFileToCache, syncNoteToCache } from '../../vault/note-sync'
 import {
@@ -612,7 +619,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     // #then
     expect(applied).toBe('applied')
     expect(deleteNoteFromCache).toHaveBeenCalledWith({}, 'note-1')
-    expect(deleteFile).toHaveBeenCalledWith(path.join(VAULT_ROOT, 'a1', 'a1.md'))
+    expect(mockDeleteSyncedVaultFile).toHaveBeenCalledWith(path.join(VAULT_ROOT, 'a1', 'a1.md'))
     expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.DELETED, {
       id: 'note-1',
       path: path.join('a1', 'a1.md'),
