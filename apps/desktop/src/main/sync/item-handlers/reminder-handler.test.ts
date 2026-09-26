@@ -419,7 +419,7 @@ describe('reminderHandler', () => {
     })
 
     it('seedUnclocked omits remindAt for a note_date row', () => {
-      seedLocalNoteDateRow('2026-08-03T06:00:00.000Z')
+      seedLocalNoteDateRow('2026-08-03T06:00:00.000Z', 'dismissed')
       testDb.db.update(reminders).set({ clock: null }).where(eq(reminders.id, noteDateId)).run()
 
       const queue = new SyncQueueManager(asSyncDb(testDb.db))
@@ -427,6 +427,22 @@ describe('reminderHandler', () => {
 
       const [queued] = queue.dequeue(1)
       expect(JSON.parse(queued.payload)).not.toHaveProperty('remindAt')
+    })
+
+    // Reconciler output with no user intent: pushing it could only race the
+    // server's row and reset a dismissal made on another device.
+    it('seedUnclocked leaves a pending derived note_date row unpushed', () => {
+      seedLocalNoteDateRow('2026-08-03T06:00:00.000Z', 'pending')
+      testDb.db.update(reminders).set({ clock: null }).where(eq(reminders.id, noteDateId)).run()
+
+      const queue = new SyncQueueManager(asSyncDb(testDb.db))
+      expect(reminderHandler.seedUnclocked(ctx.db, 'device-a', queue)).toBe(0)
+
+      const row = testDb.db.select().from(reminders).where(eq(reminders.id, noteDateId)).get()
+      expect({ clock: row?.clock, queued: queue.getPendingCount() }).toEqual({
+        clock: null,
+        queued: 0
+      })
     })
   })
 

@@ -551,6 +551,14 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     runtimeMocks.fetchCrdtSnapshot.mockResolvedValue(null)
   })
 
+  // A per-note pull merges only into a note this device has a row for.
+  function seedNoteRow(id: string): void {
+    runtimeMocks
+      .db!.db.insert(noteMetadata)
+      .values({ id, path: `${id}.md`, title: id, createdAt: 'x', modifiedAt: 'x' })
+      .run()
+  }
+
   async function bootRuntime(): Promise<{
     engine: { mergeRemoteCrdtForNote: (noteId: string) => Promise<boolean> }
     snapshotPush: (noteId: string, state: Uint8Array) => Promise<void>
@@ -579,6 +587,7 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   }
 
   it('sends a note whose pull genuinely failed to the endpoint that prunes nothing', async () => {
+    seedNoteRow('note-unmerged')
     const { engine, snapshotPush, stop } = await bootRuntime()
 
     // #given the server sheds this note's incrementals. A rate-limited pull is
@@ -614,6 +623,7 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   })
 
   it('still snapshots a note whose pull merged end to end', async () => {
+    seedNoteRow('note-merged')
     const { engine, snapshotPush, stop } = await bootRuntime()
 
     // #given the pull completes
@@ -644,6 +654,7 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   // #2299: the reader the provider calls at the encode answers from the same
   // real coordinator, so a note flagged there never claims a cursor.
   it('reads a flagged note as unmerged at the encode, and a clean one as claiming nothing yet', async () => {
+    seedNoteRow('note-unmerged')
     const { engine, readCoverage, stop } = await bootRuntime()
     runtimeMocks.getFromServer.mockRejectedValue(new runtimeMocks.SyncServerError(429))
     await engine.mergeRemoteCrdtForNote('note-unmerged')
@@ -715,6 +726,7 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
   })
 
   it('returns the note to the snapshot endpoint once a later pass does merge it', async () => {
+    seedNoteRow('note-retried')
     const { engine, snapshotPush, stop } = await bootRuntime()
 
     // #given a pull that failed, so the note is routed away from the prune

@@ -24,7 +24,8 @@ import {
   cancelWriteback,
   flushPendingWritebacks,
   recordNetworkUpdate,
-  resetWritebackState
+  resetWritebackState,
+  writebackNow
 } from './crdt-writeback'
 import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
 import {
@@ -846,6 +847,29 @@ export class CrdtProvider {
   }
 
   /**
+   * Write the note's doc to its vault file now. For a doc that took its
+   * server state before the note had a row: that apply's write-back found
+   * no row and wrote nothing, and merging the same state again fires no
+   * update, so nothing else would ever write this body.
+   *
+   * `false`, and nothing written, when the doc holds no state: serializing it
+   * would put an empty body over the file the record wrote.
+   */
+  async materialize(noteId: string): Promise<boolean> {
+    const wasOpen = this.docs.has(noteId)
+    const doc = await this.open(noteId, undefined, { skipSeed: true })
+    try {
+      // An empty doc's state vector is the single varint 0; two bytes is the
+      // threshold the pack applier and the CRDT pull use too.
+      if (Y.encodeStateVector(doc).length <= 2) return false
+      await writebackNow(noteId, doc)
+      return true
+    } finally {
+      if (!wasOpen) await this.closeIfInactive(noteId)
+    }
+  }
+
+  /**
    * Release every doc reference held by a window that no longer exists.
    *
    * The CLOSE_DOC invoke, sent from the renderer's React cleanup, is the only
@@ -882,8 +906,8 @@ export class CrdtProvider {
    * nothing downstream can rebuild the note out of its doc.
    *
    * Each line ahead of `close()` closes a route that survives the doc itself.
-   * The armed write-back keeps its own reference to the Y.Doc and, with the
-   * note's index row already gone, would re-create the file from `meta.title`.
+   * The armed write-back keeps its own reference to the Y.Doc and could write
+   * the file back after the delete unlinks it.
    * The note's queued body rows are not reachable from the doc at all. And the
    * snapshot debt would make `close()` push the body of a note that no longer
    * exists — a snapshot asserts completeness, so that push is what puts the
@@ -1624,8 +1648,10 @@ export class CrdtProvider {
       recordNetworkUpdate(noteId)
     }
 
-    if (origin === ORIGIN_NETWORK || isIpcOrigin(origin)) {
-      scheduleWriteback(noteId, entry.doc)
+    if (origin === ORIGIN_NETWORK) {
+      scheduleWriteback(noteId, entry.doc, 'remote')
+    } else if (isIpcOrigin(origin)) {
+      scheduleWriteback(noteId, entry.doc, 'local')
     }
   }
 
