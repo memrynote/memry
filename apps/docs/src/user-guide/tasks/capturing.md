@@ -200,6 +200,8 @@ A checklist line is only a task once memrynote has a task for it. Two cases wher
 
 A **plain checkbox with no `{task:…}` suffix** — the shape Obsidian and most other editors write — is turned into a task as you go, once it has something on it to name the task with. An empty `- [ ]` you have just typed is left as a checkbox until you write the title; a line of nothing but markers (`- [ ] #errand`) stays a checkbox too, since there is no title left after the markers are read off. If the task cannot be saved — no project to create it in, or the vault is not open — the line stays a plain checklist item, keeping its text and its tick, and memrynote tries again on your next edit. It never sits there looking like a task you cannot touch.
 
+Turning the line into a task only adds the `{task:…}` suffix. Everything already on the line stays as written, including `[[wiki links]]`, links, and **bold** or _italic_ text, and the task takes that same text as its title. Opening a note that holds plain checkboxes, including one that just synced in from another device, never strips them.
+
 A **`{task:…}` suffix naming a task that is not in this vault** — usually a note copied out of another install, where the ids belong to that install's tasks — shows as "Task deleted", with a button to take the line out of the note. Its text and its tick are left exactly as they are in the file; nothing is rewritten and nothing is deleted until you ask.
 
 ## Deleting a Task You Wrote in a Note
