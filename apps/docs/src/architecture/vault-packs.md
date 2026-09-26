@@ -268,7 +268,11 @@ touch.
    The settle is durable. Before an apply records its watermark, it writes a
    `packSeeded:<noteId>` row to `sync_state` (and `packSeedSettlePending` once per run), and the
    settle removes a row only after its doc is settled. A run killed after pack apply, or mid-settle,
-   is finished by the next full sync whose pull delivers, on the same device. A pull that does not
+   is finished by the next full sync whose pull delivers, on the same device. Sign-out keeps these
+   rows along with the per-vault CRDT store they describe, so a sign-out during the first sync is
+   finished after the next sign-in. The settle does nothing while the CRDT store is not open (the
+   provider runs in memory), stops at the next doc once the run is aborted, and keeps a row whose
+   whole-body debt could not be persisted. A pull that does not
    deliver settles nothing, so no packed doc is purged before its record could land. A doc that
    comes back empty is never written over the record's file; its watermark is dropped instead, so
    the record's walk fetches the whole body.
