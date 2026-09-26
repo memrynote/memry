@@ -217,7 +217,10 @@ trigger a full re-pull. Orphan repair never tombstones a child whose parent the 
 even when this build cannot apply the parent.
 
 A changes page of up to 500 refs is pulled and applied in slices of at most 100 ids, one
-transaction per slice, and `LAST_CURSOR` never moves before the last slice. When nothing has to run
+transaction per slice, and `LAST_CURSOR` never moves before the last slice. Up to
+`PULL_SLICE_FETCH_WINDOW` (2) slice POSTs are in flight at once, so the next slice downloads while
+the current one applies. Slices still apply in page order, and a stop leaves at most one fetched
+slice unread. When nothing has to run
 after the last slice commits, the cursor is written as the last statement of that slice's
 transaction, so the cursor and the page's last rows commit together or not at all. A page with a
 by-id re-fetch pending, notes whose CRDT bodies are fetched after the commit, an item deferred for a
@@ -527,7 +530,9 @@ alone.
 Some rows carry foreign keys — a task references its project and its status — and the data DB
 enforces them. Server cursor order is last-update order, not dependency order, so pulled items are
 sorted so FK parents apply before their children, and anything that still fails is retried once after
-every page has landed.
+every page has landed. The retried items' `ITEM_SYNCED` events go out after the whole retry loop, not
+one per item inside it. Each event can make the renderer refetch over IPC, and in one fresh-device
+bootstrap the retry of 126 items took 7 seconds, almost all of it spent waiting at the loop's yields.
 
 That covers a parent that simply arrived late. It does not cover a parent that is **gone**, which is
 what a cascade delete produces: deleting a project removes its tasks locally through SQLite

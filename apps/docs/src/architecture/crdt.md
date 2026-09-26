@@ -886,9 +886,17 @@ through the batch bucket. A fixed 6.4 s interval with two rounds would have been
 across 200 s — 64 % of the bucket, silently.
 
 Only the _rate_ matters, not the total: cost per minute is constant in vault size and only
-the duration grows, so no vault can reproduce the 242-requests-in-4-seconds storm. For the
-same reason the per-note snapshot GETs inside a chunk stay **serial**; firing them in
-parallel is that storm again, whatever the chunk size.
+the duration grows, so no vault can reproduce the 242-requests-in-4-seconds storm.
+
+The per-note snapshot GETs inside a sub-chunk are **fetched ahead in a bounded window** and
+still applied one note at a time, in chunk order. `CRDT_SNAPSHOT_GET_WINDOW` (2) are in
+flight, or `BOOTSTRAP_CRDT_SNAPSHOT_GET_WINDOW` (6) under a bootstrap session, whose
+`crdt_pull` bucket is five times larger. The window changes how soon a chunk finishes, not
+what it costs. Every GET is still charged to the next interval, so the sweep stays within
+its 50 % margin, and the server counts requests per fixed 60 s window, so a burst inside
+one chunk does not trip it. The un-paced record-page batch is where the width matters: 2 in
+flight at ~230 ms a GET is ~520/min against the 600/min bucket. Serial GETs made an 80-note
+cold batch take 18 s in a fresh-device bootstrap.
 
 The drain is paced, never **selective**. Every note queued (a debt, or the legacy sweep's
 whole vault) is still pulled; these numbers decide what a note costs, never whether it is
