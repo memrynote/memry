@@ -68,9 +68,10 @@ struct CalendarEventEditor: View {
     var body: some View {
         NavigationStack {
             Form {
+                // Paper 13: the title sits on the sheet, not in a card.
                 Section {
-                    TextField(CalendarCopy.titlePlaceholder, text: $request.title)
-                        .font(Tokens.Typography.body.font.weight(.semibold))
+                    TextField(CalendarCopy.titlePlaceholder, text: $request.title, axis: .vertical)
+                        .font(Tokens.Typography.sectionTitle.font)
                         .focused($titleFocused)
                         .accessibilityIdentifier("calendar.editor.title")
                     if let error {
@@ -79,13 +80,24 @@ struct CalendarEventEditor: View {
                             .foregroundStyle(Tokens.Interaction.destructive.color)
                     }
                 }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: Tokens.Space.inset, bottom: 0, trailing: Tokens.Space.inset))
                 Section {
                     Toggle(CalendarCopy.allDay, isOn: $request.isAllDay)
+                        .tint(Tokens.Tint.base.color)
                         .accessibilityIdentifier("calendar.editor.allDay")
                     DatePicker(CalendarCopy.starts, selection: startBinding, displayedComponents: components)
-                    DatePicker(CalendarCopy.ends, selection: $request.end, in: request.start..., displayedComponents: components)
-                    if !request.isAllDay {
-                        LabeledContent(CalendarCopy.durationLabel, value: CalendarCopy.duration(minutes: max(Int(request.end.timeIntervalSince(request.start) / 60), 0)))
+                    // Ends carries the duration (Paper 13 "Ends 1h"); a same-day
+                    // timed end shows only its time.
+                    DatePicker(selection: $request.end, in: request.start..., displayedComponents: endComponents) {
+                        HStack(spacing: Tokens.Space.small) {
+                            Text(CalendarCopy.ends)
+                            if !request.isAllDay {
+                                Text(CalendarCopy.duration(minutes: max(Int(request.end.timeIntervalSince(request.start) / 60), 0)))
+                                    .font(Tokens.Typography.caption.font)
+                                    .foregroundStyle(Tokens.Text.secondary.color)
+                            }
+                        }
                     }
                 }
                 Section {
@@ -93,17 +105,24 @@ struct CalendarEventEditor: View {
                     CalendarEditorProjectRow(store: store, projectId: $request.projectId)
                     CalendarColorPicker(selection: $request.color)
                 }
+                .tint(Tokens.Text.secondary.color)
                 Section {
                     TextField(CalendarCopy.notesPlaceholder, text: $request.notes, axis: .vertical)
                         .lineLimit(3 ... 8)
                         .accessibilityIdentifier("calendar.editor.notes")
+                } footer: {
+                    Text(CalendarCopy.editorFooter)
                 }
             }
+            .listSectionSpacing(Tokens.Space.medium)
             .navigationTitle(request.eventId == nil ? CalendarCopy.newEventTitle : CalendarCopy.editEventTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.cancel)
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").foregroundStyle(Tokens.Text.primary.color)
+                    }
+                    .accessibilityLabel(CalendarCopy.cancel)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     SheetConfirmButton(label: CalendarCopy.save, isEnabled: canSave) { Task { await save() } }
@@ -120,6 +139,10 @@ struct CalendarEventEditor: View {
     }
 
     private var components: DatePickerComponents { request.isAllDay ? .date : [.date, .hourAndMinute] }
+    private var endComponents: DatePickerComponents {
+        if request.isAllDay { return .date }
+        return CalendarDates.key(request.end) == CalendarDates.key(request.start) ? .hourAndMinute : [.date, .hourAndMinute]
+    }
     private var canSave: Bool { !saving && !request.title.trimmingCharacters(in: .whitespaces).isEmpty }
 
     /// Moving the start keeps the duration, as desktop's form does.

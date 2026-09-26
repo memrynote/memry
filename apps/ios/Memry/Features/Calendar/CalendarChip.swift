@@ -176,3 +176,15 @@ extension View {
         modifier(CalendarItemMenu(menu: menu, item: item))
     }
 }
+
+/// A sheet's close button: an ink glyph on the glass (00 rule 6).
+struct CalendarCloseButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark").foregroundStyle(Tokens.Text.primary.color)
+        }
+        .accessibilityLabel(CalendarCopy.close)
+    }
+}

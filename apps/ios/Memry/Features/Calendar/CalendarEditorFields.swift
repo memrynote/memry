@@ -47,25 +47,45 @@ struct CalendarEditorProjectRow: View {
     }
 }
 
-/// Default + Google's eleven event colours.
+/// Default + Google's eleven event colours as one row of swatches (Paper 13).
 struct CalendarColorPicker: View {
     @Binding var selection: String?
 
     var body: some View {
-        Picker(CalendarCopy.color, selection: $selection) {
-            Label { Text(CalendarCopy.defaultColor) } icon: { swatch(nil) }.tag(String?.none)
-            ForEach(Tokens.Calendar.eventColors, id: \.name) { color in
-                Label { Text(CalendarCopy.colorName(color.name)) } icon: { swatch(color.hex) }.tag(Optional(color.name))
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            Text(CalendarCopy.color)
+            TaskFlowLayout(horizontal: 2, vertical: 2) {
+                swatch(name: nil, hex: nil)
+                ForEach(Tokens.Calendar.eventColors, id: \.name) { color in
+                    swatch(name: color.name, hex: color.hex)
+                }
             }
         }
-        .pickerStyle(.navigationLink)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.editor.color")
     }
 
-    private func swatch(_ hex: UInt32?) -> some View {
-        Circle()
-            .fill(hex.map { Color(uiColor: AdaptiveColor.RGB(hex: $0).uiColor) } ?? Tokens.Calendar.indigo.rail.color)
-            .frame(width: 14, height: 14)
+    private func swatch(name: String?, hex: UInt32?) -> some View {
+        let isOn = selection == name
+        return Button { selection = name } label: {
+            ZStack {
+                Circle()
+                    .fill(hex.map { Color(uiColor: AdaptiveColor.RGB(hex: $0).uiColor) } ?? Tokens.Canvas.background.color)
+                    .overlay { if hex == nil { Circle().strokeBorder(Tokens.Line.border.color) } }
+                if isOn {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(hex == nil ? Tokens.Text.primary.color : .white)
+                }
+            }
+            .frame(width: 20, height: 20)
+            .frame(width: 24, height: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(name.map(CalendarCopy.colorName) ?? CalendarCopy.defaultColor)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+        .accessibilityIdentifier("calendar.editor.color.\(name ?? "default")")
     }
 }
 
@@ -125,13 +145,17 @@ struct CalendarProjectPicker: View {
                     }
                 }
             }
+            .listStyle(.plain)
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: CalendarCopy.searchProjects)
             .navigationTitle(CalendarCopy.addToProject)
             .navigationSubtitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").foregroundStyle(Tokens.Text.primary.color)
+                    }
+                    .accessibilityLabel(CalendarCopy.close)
                 }
             }
         }
@@ -147,7 +171,9 @@ struct CalendarProjectPicker: View {
     private var filtered: [ProjectItem] {
         let all = (store.tasks?.projects ?? []).filter { $0.archivedAt == nil && !$0.isInbox }
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
-        return needle.isEmpty ? all : all.filter { $0.name.lowercased().contains(needle) }
+        let matches = needle.isEmpty ? all : all.filter { $0.name.lowercased().contains(needle) }
+        // Paper 23: the current project leads, ticked.
+        return matches.filter { $0.id == current?.id } + matches.filter { $0.id != current?.id }
     }
 
     private func pick(_ projectId: String?) async {

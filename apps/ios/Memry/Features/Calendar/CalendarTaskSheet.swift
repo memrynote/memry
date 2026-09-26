@@ -177,7 +177,7 @@ struct CalendarTaskSheet: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+            CalendarCloseButton { dismiss() }
         }
         ToolbarItemGroup(placement: .confirmationAction) {
             Menu {

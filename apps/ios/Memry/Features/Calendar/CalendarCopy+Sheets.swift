@@ -170,6 +170,9 @@ extension CalendarCopy {
     static let subscribedKind = "Subscribed calendar"
     static let thisIPhone = "This iPhone"
     static let joinMeeting = "Join meeting"
+    static let join = "Join"
+    static let videoCall = "Video call"
+    static let moreFields = "More fields"
     static let joinByPhone = "Join by phone"
     static let attendees = "Attendees"
     static let reminders = "Reminders"
@@ -211,8 +214,9 @@ extension CalendarCopy {
 
     // MARK: Editor (13, `form.*`)
 
-    static let newEventTitle = "New Event"
-    static let editEventTitle = "Edit Event"
+    static let newEventTitle = "New event"
+    static let editEventTitle = "Edit event"
+    static let editorFooter = "Default goes to your default calendar (Settings › Calendar). Project links after the event is saved."
     static let titlePlaceholder = "New Event"
     static let notesPlaceholder = "Add notes or URL"
     static let starts = "Starts"
@@ -223,7 +227,7 @@ extension CalendarCopy {
     static let color = "Color"
     static let defaultColor = "Default color"
     static let useDefaultCalendar = "Use default calendar"
-    static let memryCalendarDefault = "Use memrynote calendar (default)"
+    static let memryCalendarDefault = "Default (memrynote)"
     static func removeFrom(_ project: String) -> String { "Remove from \(project)" }
     static let searchProjects = "Search projects…"
 

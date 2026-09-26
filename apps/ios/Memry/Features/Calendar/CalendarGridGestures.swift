@@ -147,14 +147,19 @@ struct CalendarGridChip: View {
             onComplete: item.visualType == "task" ? { actions.complete(item) } : nil
         )
         .offset(y: dragging && dragState?.edge == .move ? CGFloat(liveDelta) / 60 * hourHeight : 0)
+        .overlay { if dragging, dragState?.edge != .move { resizeOutline } }
+        // Paper 16: handles on the top and bottom edges resize.
+        // A chip under 45 minutes is all move: its edges would cover it.
+        .overlay(alignment: .top) { if canResize, endMinute - startMinute >= 45 { handle(.top) } }
+        .overlay(alignment: .bottom) { if canResize, endMinute - startMinute >= 45 { handle(.bottom) } }
         .overlay(alignment: .topTrailing) {
             if dragging {
-                Text(CalendarSelectionBlock.clock(CalendarDates.minutes(item.startDate) + liveDelta))
+                Text(CalendarSelectionBlock.clock(labelMinute))
                     .font(Tokens.Calendar.chipMeta.font.weight(.semibold))
                     .foregroundStyle(Tokens.Tint.foreground.color)
                     .padding(.horizontal, Tokens.Space.tight)
                     .background(Tokens.Tint.base.color, in: .capsule)
-                    .offset(y: CGFloat(liveDelta) / 60 * hourHeight - 18)
+                    .offset(y: labelOffset - 18)
             }
         }
         .background {
@@ -179,6 +184,78 @@ struct CalendarGridChip: View {
                 let start = CalendarDates.minutes(item.startDate)
                 Button(CalendarCopy.moveEarlier) { move(item, day, start - 15, nil) }
                 Button(CalendarCopy.moveLater) { move(item, day, start + 15, nil) }
+            }
+        }
+    }
+
+    private var canResize: Bool { item.editability.canResize && item.sourceType == "event" && item.endDate != nil && actions.move != nil }
+    private var startMinute: Int { CalendarDates.minutes(item.startDate) }
+    private var endMinute: Int {
+        item.endDate.map { startMinute + Int($0.timeIntervalSince(item.startDate) / 60) } ?? startMinute + 30
+    }
+
+    /// The snap label follows the edge being dragged.
+    private var labelMinute: Int {
+        switch dragState?.edge {
+        case .bottom: endMinute + liveDelta
+        case .top, .move, nil: startMinute + liveDelta
+        }
+    }
+
+    private var labelOffset: CGFloat {
+        switch dragState?.edge {
+        case .bottom: CGFloat(endMinute - startMinute + liveDelta) / 60 * hourHeight
+        case .top, .move, nil: CGFloat(liveDelta) / 60 * hourHeight
+        }
+    }
+
+    /// Where a resize lands, drawn over the chip until the finger lifts.
+    private var resizeOutline: some View {
+        let top = dragState?.edge == .top ? min(liveDelta, endMinute - startMinute - 15) : 0
+        let bottom = dragState?.edge == .bottom ? max(liveDelta, startMinute + 15 - endMinute) : 0
+        let height = CGFloat(endMinute - startMinute - top + bottom) / 60 * hourHeight
+        return GeometryReader { _ in
+            RoundedRectangle(cornerRadius: Tokens.Calendar.chipRadius)
+                .strokeBorder(Tokens.Tint.base.color, lineWidth: 1.5)
+                .frame(height: max(height, 12))
+                .offset(y: CGFloat(top) / 60 * hourHeight)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func handle(_ edge: CalendarDragState.Edge) -> some View {
+        let active = dragState?.projectionId == item.projectionId
+        return Circle()
+            .fill(Tokens.Canvas.background.color)
+            .overlay { Circle().strokeBorder(Tokens.Tint.base.color, lineWidth: 1.5) }
+            .frame(width: 9, height: 9)
+            .opacity(active ? 1 : 0)
+            .frame(maxWidth: .infinity, minHeight: 14)
+            .contentShape(.rect)
+            .offset(y: edge == .top ? -5 : 5)
+            .gesture(resizeGesture(edge))
+            .accessibilityHidden(true)
+    }
+
+    private func resizeGesture(_ edge: CalendarDragState.Edge) -> CalendarHoldDrag {
+        CalendarHoldDrag(minimumDuration: 0.3, space: .named(CalendarGridSpace.name), isEnabled: canResize) { phase in
+            switch phase {
+            case .began:
+                dragState = CalendarDragState(projectionId: item.projectionId, edge: edge, deltaMinutes: 0)
+            case let .changed(start, location):
+                let raw = Int((location.y - start.y) / hourHeight * 60)
+                liveDelta = Int((Double(raw) / 15).rounded()) * 15
+            case let .ended(_, _, completed):
+                let delta = liveDelta
+                liveDelta = 0
+                dragState = nil
+                guard completed, delta != 0 else { return }
+                let day = CalendarDates.key(item.startDate)
+                if edge == .top {
+                    actions.move?(item, day, min(startMinute + delta, endMinute - 15), endMinute)
+                } else {
+                    actions.move?(item, day, startMinute, max(endMinute + delta, startMinute + 15))
+                }
             }
         }
     }

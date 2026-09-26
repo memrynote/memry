@@ -39,7 +39,7 @@ struct CalendarNoteSheet: View {
             .padding(Tokens.Space.inset)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                    CalendarCloseButton { dismiss() }
                 }
             }
         }
@@ -95,7 +95,7 @@ struct CalendarSnoozeSheet: View {
             .padding(Tokens.Space.inset)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                    CalendarCloseButton { dismiss() }
                 }
             }
             .sheet(isPresented: $picking) {
@@ -128,7 +128,7 @@ struct CalendarReminderSheet: View {
             .padding(Tokens.Space.inset)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                    CalendarCloseButton { dismiss() }
                 }
             }
         }
@@ -205,7 +205,7 @@ struct CalendarGoToDateSheet: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                        CalendarCloseButton { dismiss() }
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         SheetConfirmButton(label: CalendarCopy.goToDate) { pick(CalendarDates.key(date)) }

@@ -78,6 +78,13 @@ enum CalendarSheetText {
         guard let end = item.endDate else { return "\(day) · \(CalendarItemStyle.time(item.startDate))" }
         return "\(day) · \(CalendarItemStyle.time(item.startDate)) – \(CalendarItemStyle.time(end))"
     }
+
+    /// Paper 14: "Thu, Sep 24 · 16:00 – 17:30 · 1h 30m".
+    static func whenWithDuration(_ item: CalendarItem) -> String {
+        guard !item.isAllDay, let end = item.endDate else { return when(item) }
+        let minutes = Int(end.timeIntervalSince(item.startDate) / 60)
+        return "\(when(item)) · \(CalendarCopy.duration(minutes: max(minutes, 0)))"
+    }
 }
 
 struct CalendarEventSheet: View {
@@ -88,27 +95,40 @@ struct CalendarEventSheet: View {
     @State private var record: CalendarEventRecord?
     @State private var projects: [CalendarLinkedProject] = []
     @State private var editing: CalendarEditorRequest?
+    @State private var title = ""
+    @State private var saving = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
+    /// Paper 14: the title edits in place, set fields show as pills, + opens
+    /// the rest (the full sheet, 13); the checkmark saves.
     var body: some View {
         NavigationStack {
             List {
-                Section { CalendarSheetHeader(item: item, kind: CalendarCopy.eventKind) }
+                Section { header }
                     .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: Tokens.Space.inset, bottom: 0, trailing: Tokens.Space.inset))
                 if let record {
-                    pills(record)
                     if let join = CalendarEventMetadata.joinURL(record.conferenceDataJson) {
                         Section {
-                            Button { openURL(join) } label: {
-                                Label(CalendarCopy.joinMeeting, systemImage: "video.fill").frame(maxWidth: .infinity)
+                            HStack(spacing: Tokens.Space.medium) {
+                                Image(systemName: "video").foregroundStyle(Tokens.Text.secondary.color)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(CalendarEventMetadata.conferenceName(record.conferenceDataJson) ?? CalendarCopy.videoCall)
+                                        .foregroundStyle(Tokens.Text.primary.color)
+                                    Text(join.host() ?? join.absoluteString)
+                                        .font(Tokens.Typography.caption.font)
+                                        .foregroundStyle(Tokens.Text.secondary.color)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                                Button(CalendarCopy.join) { openURL(join) }
+                                    .buttonStyle(.glassProminent)
+                                    .tint(Tokens.Calendar.indigo.rail.color)
+                                    .accessibilityLabel(CalendarCopy.joinMeeting)
+                                    .accessibilityIdentifier("calendar.sheet.join")
                             }
-                            .buttonStyle(.glassProminent)
-                            .tint(Tokens.Tint.base.color)
-                            .foregroundStyle(Tokens.Tint.foreground.color)
-                            .accessibilityIdentifier("calendar.sheet.join")
                         }
-                        .listRowBackground(Color.clear)
                     }
                     CalendarEventMetadataSections(
                         attendeesJson: record.attendeesJson, remindersJson: record.remindersJson,
@@ -116,22 +136,36 @@ struct CalendarEventSheet: View {
                     )
                 }
             }
+            .listSectionSpacing(Tokens.Space.medium)
+            .contentMargins(.top, 0, for: .scrollContent)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").foregroundStyle(Tokens.Text.primary.color)
+                    }
+                    .accessibilityLabel(CalendarCopy.close)
+                }
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: Tokens.Space.tight + 2) {
+                        Circle().fill(CalendarItemStyle.hue(item).rail.color).frame(width: 7, height: 7)
+                        Text(CalendarCopy.eventKind).font(Tokens.Typography.body.font.weight(.semibold))
+                    }
+                    .accessibilityElement(children: .combine)
                 }
                 ToolbarItemGroup(placement: .confirmationAction) {
                     Menu {
                         Button { addToProject(item) } label: { Label(CalendarCopy.addToProject, systemImage: "folder") }
                         Button(role: .destructive) { delete(item) } label: { Label(CalendarCopy.delete, systemImage: "trash") }
-                    } label: { Image(systemName: "ellipsis") }
-                        .accessibilityLabel(CalendarCopy.moreActions)
-                        .accessibilityIdentifier("calendar.sheet.more")
-                    SheetConfirmButton(label: CalendarCopy.editEventTitle, isEnabled: record != nil) {
-                        if let record { editing = .edit(record) }
+                    } label: {
+                        Image(systemName: "ellipsis").foregroundStyle(Tokens.Text.primary.color)
                     }
-                    .accessibilityIdentifier("calendar.sheet.edit")
+                    .accessibilityLabel(CalendarCopy.moreActions)
+                    .accessibilityIdentifier("calendar.sheet.more")
+                    SheetConfirmButton(label: CalendarCopy.save, isEnabled: record != nil && !saving) {
+                        Task { await save() }
+                    }
+                    .accessibilityIdentifier("calendar.sheet.save")
                 }
             }
             .sheet(item: $editing) { request in
@@ -145,34 +179,97 @@ struct CalendarEventSheet: View {
         .accessibilityIdentifier("calendar.sheet.event")
     }
 
+    private var header: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            TextField(CalendarCopy.titlePlaceholder, text: $title, axis: .vertical)
+                .font(Tokens.Typography.sectionTitle.font)
+                .foregroundStyle(Tokens.Text.primary.color)
+                .submitLabel(.done)
+                .accessibilityIdentifier("calendar.sheet.title")
+            Text(CalendarSheetText.whenWithDuration(item))
+                .font(Tokens.Typography.supporting.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+            TaskFlowLayout(horizontal: Tokens.Space.small, vertical: Tokens.Space.small) {
+                ForEach(pills, id: \.text) { pill in
+                    Button { openEditor() } label: {
+                        HStack(spacing: Tokens.Space.tight + 2) {
+                            if let color = pill.color { Circle().fill(color).frame(width: 7, height: 7) }
+                            Text(pill.text)
+                        }
+                        .font(Tokens.Typography.supporting.font)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                        .padding(.horizontal, Tokens.Space.medium)
+                        .frame(minHeight: Tokens.Size.pill)
+                        .background(Tokens.Canvas.surface.color, in: .capsule)
+                        .frame(minHeight: Tokens.Size.minimumHitArea)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button { openEditor() } label: {
+                    Image(systemName: "plus")
+                        .font(Tokens.Typography.supporting.font.weight(.semibold))
+                        .foregroundStyle(Tokens.Text.primary.color)
+                        .frame(width: Tokens.Size.pill, height: Tokens.Size.pill)
+                        .background(Tokens.Canvas.surface.color, in: .circle)
+                        .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(CalendarCopy.moreFields)
+                .accessibilityIdentifier("calendar.sheet.moreFields")
+            }
+        }
+        .padding(.bottom, Tokens.Space.small)
+    }
+
+    /// Calendar, project, colour and place, each only when set (Paper 14).
+    private var pills: [(text: String, color: Color?)] {
+        var result: [(text: String, color: Color?)] = []
+        if !item.source.title.isEmpty { result.append((item.source.title, CalendarItemStyle.hue(item).rail.color)) }
+        if let project = projects.first {
+            result.append((project.name, project.color.flatMap { Tokens.Calendar.hue(hex: $0)?.rail.color } ?? Tokens.Text.tertiary.color))
+        }
+        // Events store Google's colour name ("tomato"); older rows may hold a hex.
+        if let color = record?.color {
+            let named = Tokens.Calendar.eventColors.first { $0.name == color }
+                .map { Color(uiColor: AdaptiveColor.RGB(hex: $0.hex).uiColor) }
+            if let swatch = named ?? Tokens.Calendar.hue(hex: color)?.rail.color {
+                result.append((CalendarCopy.colorName(color), swatch))
+            }
+        }
+        if let location = record?.location, !location.isEmpty { result.append((location, nil)) }
+        return result
+    }
+
+    private func openEditor() {
+        if let record { editing = .edit(record) }
+    }
+
     private func load() async {
         let core = store.core
         let id = item.sourceId
         record = await store.read { try core.event(id: id) } ?? nil
         projects = await store.read { try core.linkedProjects(eventId: id) } ?? []
+        if let record { title = record.title }
     }
 
-    /// Pills for the fields that are set (location, colour, project).
-    @ViewBuilder
-    private func pills(_ record: CalendarEventRecord) -> some View {
-        let values = [record.location, record.color.map(CalendarCopy.colorName), projects.first?.name]
-            .compactMap { $0 }.filter { !$0.isEmpty }
-        if !values.isEmpty {
-            Section {
-                ScrollView(.horizontal) {
-                    HStack(spacing: Tokens.Space.small) {
-                        ForEach(values, id: \.self) { value in
-                            Text(value)
-                                .font(Tokens.Typography.supporting.font)
-                                .padding(.horizontal, Tokens.Space.medium)
-                                .frame(minHeight: Tokens.Size.pill)
-                                .background(Tokens.Canvas.surface.color, in: .capsule)
-                        }
-                    }
-                }
-                .scrollIndicators(.hidden)
-            }
-            .listRowBackground(Color.clear)
+    private func save() async {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let record, !trimmed.isEmpty, trimmed != record.title else {
+            dismiss()
+            return
+        }
+        saving = true
+        defer { saving = false }
+        let id = record.id
+        let changes = CalendarEventChanges(
+            title: trimmed, description: .keep, location: .keep, startAt: nil, endAt: .keep,
+            timezone: nil, isAllDay: nil, targetCalendarId: .keep, color: .keep
+        )
+        if await store.write({ try $0.updateEvent(id: id, changes: changes) }) != nil {
+            dismiss()
+        } else {
+            store.clearFailure()
+            store.showToast(CalendarCopy.couldNotSave)
         }
     }
 }

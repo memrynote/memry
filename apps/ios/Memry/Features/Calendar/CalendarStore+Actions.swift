@@ -31,7 +31,11 @@ extension CalendarStore {
             let id = item.sourceId
             let changes = Self.timeChanges(start: newStart, end: newEnd)
             guard await write({ try $0.updateEvent(id: id, changes: changes) }) != nil else { return }
-            showToast(CalendarCopy.eventMoved) { [weak self] in
+            let startDate = CalendarDates.date(newStart) ?? item.startDate
+            let message = endMinute == nil
+                ? CalendarCopy.movedTo(CalendarItemStyle.time(startDate))
+                : CalendarCopy.resizedTo(CalendarItemStyle.time(startDate), newEnd.flatMap(CalendarDates.date).map(CalendarItemStyle.time) ?? "")
+            showToast(message) { [weak self] in
                 let revert = Self.timeChanges(start: oldStart, end: oldEnd)
                 await self?.write { try $0.updateEvent(id: id, changes: revert) }
             }

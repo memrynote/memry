@@ -135,7 +135,7 @@ struct CalendarDayPeekSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                    CalendarCloseButton { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(CalendarCopy.openDay, action: openDay).accessibilityIdentifier("calendar.peek.openDay")

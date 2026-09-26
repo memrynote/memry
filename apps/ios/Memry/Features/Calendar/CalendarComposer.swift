@@ -68,7 +68,7 @@ struct CalendarComposer: View {
                             }
                         }
                     } label: {
-                        chip(systemImage: "calendar", text: targetTitle)
+                        chip(systemImage: nil, text: targetTitle)
                     }
                     .accessibilityIdentifier("calendar.composer.calendar")
                     Button {
@@ -77,7 +77,7 @@ struct CalendarComposer: View {
                         draft.targetCalendarId = target
                         more(draft)
                     } label: {
-                        chip(systemImage: "ellipsis", text: CalendarCopy.more)
+                        chip(systemImage: nil, text: CalendarCopy.more)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("calendar.composer.more")
@@ -95,8 +95,12 @@ struct CalendarComposer: View {
         .accessibilityIdentifier("calendar.composer")
     }
 
-    private func chip(systemImage: String, text: String) -> some View {
-        Label(text, systemImage: systemImage)
+    /// Paper 12: the range chip carries a clock, the others are words.
+    private func chip(systemImage: String?, text: String) -> some View {
+        HStack(spacing: Tokens.Space.tight + 2) {
+            if let systemImage { Image(systemName: systemImage) }
+            Text(text)
+        }
             .font(Tokens.Typography.supporting.font)
             .foregroundStyle(Tokens.Text.primary.color)
             .padding(.horizontal, Tokens.Space.medium)
@@ -112,7 +116,9 @@ struct CalendarComposer: View {
             let lastText = CalendarDates.start(of: last).formatted(.dateTime.month(.abbreviated).day())
             return "\(day) – \(lastText)"
         }
-        return "\(day) · \(CalendarSelectionBlock.clock(request.startMinute)) – \(CalendarSelectionBlock.clock(request.endMinute))"
+        // "Thu 14:15 – 15:15": the week strip above already shows the date.
+        let weekday = CalendarDates.start(of: request.day).formatted(.dateTime.weekday(.abbreviated))
+        return "\(weekday) \(CalendarSelectionBlock.clock(request.startMinute)) – \(CalendarSelectionBlock.clock(request.endMinute))"
     }
 
     private var targetTitle: String {

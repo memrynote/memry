@@ -340,7 +340,7 @@ struct CalendarTimelineDateSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                    CalendarCloseButton { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     SheetConfirmButton(label: CalendarCopy.save) {

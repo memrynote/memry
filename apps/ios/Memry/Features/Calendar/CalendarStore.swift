@@ -141,7 +141,15 @@ final class CalendarStore {
                 to: CalendarDates.date(window.endAt) ?? clock(),
                 zone: zone.identifier
             )
-            windows[window] = local.isEmpty ? items : (items + local).sorted { $0.startAt < $1.startAt }
+            let merged = local.isEmpty ? items : (items + local).sorted { $0.startAt < $1.startAt }
+            // Every list keys its rows by `projectionId`; a repeat would make
+            // SwiftUI's diff undefined, so the first one wins.
+            var seen = Set<String>()
+            let unique = merged.filter { seen.insert($0.projectionId).inserted }
+            if unique.count != merged.count {
+                Log.core.fault("calendar range repeated a projection id", .count(merged.count - unique.count))
+            }
+            windows[window] = unique
             touch(window)
             failure = nil
         } catch {

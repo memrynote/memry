@@ -47,6 +47,11 @@ enum CalendarEventMetadata {
         return (video?["uri"] as? String).flatMap(URL.init(string:))
     }
 
+    /// "Google Meet", "Zoom": `conferenceSolution.name`.
+    static func conferenceName(_ json: String?) -> String? {
+        ((object(json) as? [String: Any])?["conferenceSolution"] as? [String: Any])?["name"] as? String
+    }
+
     /// A phone entry point and its PIN, when the call has one.
     static func phone(_ json: String?) -> (uri: URL, label: String, pin: String?)? {
         let points = (object(json) as? [String: Any])?["entryPoints"] as? [[String: Any]] ?? []
@@ -191,7 +196,7 @@ struct CalendarReadOnlySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel(CalendarCopy.close)
+                    CalendarCloseButton { dismiss() }
                 }
             }
         }

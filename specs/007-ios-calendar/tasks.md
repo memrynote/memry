@@ -297,14 +297,16 @@ range)`. Vectors from desktop projection for a fixed fixture (tasks,
       item sheet, Open day → Day, tap month name → Month.
       Evidence: CL05-year.png, CL06-peek.png.
       Evidence: CL05-year.png (three columns, tint month names, today, dots), CL06-peek.png; driver: tap Aug name → Month Aug; peek row "Coffee with M." → Day Sep 26 + its event sheet.
-- [ ] CL034 **07 Timeline**: zoom segmented, pinned title column, grouped
+- [x] CL034 **07 Timeline**: zoom segmented, pinned title column, grouped
       rows, bars / due diamonds / overdue / undated hint, today line, hold +
       drag bar and ends, tap undated day to date it, Undo.
       Evidence: CL07-timeline.png.
-- [ ] CL035 **08 Display** and **09 bar actions**: every action of
+      Evidence: CL07-timeline.png, CL07-timeline-drag.png; driver on `[agent] Timeline task` / `[agent] Undated task` (project `[agent] Calendar project`): zoom segmented, pinned title column, grouped rows with dot + count, bars / diamonds / overdue red, today line; tap selects, drag moved Oct 4 → Sep 30 with "Reschedule …" + Undo; Clear dates → undated row, a tap on its day dated it; Undo restored Sep 30 → Oct 7. `CalendarTimelineTests` 8/8.
+- [x] CL035 **08 Display** and **09 bar actions**: every action of
       `timeline-action-panel` (open, open in Tasks, set start, set due, week
       earlier / later, clear dates, complete / uncomplete, change project).
       Evidence: CL08-display.png, CL09-actions.png.
+      Evidence: CL08-display.png (Group by / Order by with current value, Show toggles), CL09-actions.png (preview card, 1 week earlier / later / Complete, Open task, Open in Tasks, Set start / due with dates, Change project, Clear dates); driver: 1 week later Sep 30 → Oct 7, 1 week earlier + Undo, Complete hid the row (completed off) + Undo brought it back, Clear dates.
 - [x] CL036 **10 Filter sheet**: sources switches, 7 type chips, per-provider
       calendar list, tick a not-syncing calendar subscribes it (CL013),
       refresh, Manage accounts → 27. Evidence: CL10-filter.png.
@@ -312,27 +314,33 @@ range)`. Vectors from desktop projection for a fixed fixture (tasks,
 - [x] CL037 **11 Search**: results grouped, tap → Day on date + item sheet.
       Evidence: CL11-search.png.
       Evidence: CL11-search.png (field focused, keyboard up, grouped This week / Later / Earlier, detail line per Paper 11); driver: tap "Coffee with M." → Day Sep 26 + event sheet.
-- [ ] CL038 Phase commit.
+- [x] CL038 Phase commit.
+      Evidence: phase commit after CL034/CL035 (see git log).
 
 ## Phase 4: create and edit
 
-- [ ] CL040 **12 Quick create**: long press + drag on Day / Week grid with
+- [x] CL040 **12 Quick create**: long press + drag on Day / Week grid with
       15-min snap, handles, haptic per snap; Month range → all-day; composer
       above keyboard (title, time chip, calendar chip, More… → 13); save
       error keeps composer. Evidence: CL12-quick-create.png.
-- [ ] CL041 **13 New event sheet**: title, all-day toggle (desktop date
+      Evidence: CL12-quick-create.png: long press + drag on Day grid → composer above the keyboard with "Thu 14:15 – 15:15", calendar chip, More…; send created `[agent] Quick create test` (pushed, `calendar sync pass pushed [count=1]`); Month long press + drag → all-day composer (CL032). Hold uses `CalendarHoldDrag` (15-min snap, `.sensoryFeedback(.selection)` per snap). A failed create sets the inline error and keeps the composer (`send()` path, desktop parity).
+- [x] CL041 **13 New event sheet**: title, all-day toggle (desktop date
       conversion), starts / ends with duration, calendar picker grouped by
       provider with default, project, color (default + 11), notes / URL;
       project link after create, link failure keeps event + toast.
       Evidence: CL13-new-event.png.
-- [ ] CL042 **14 Event sheet**: edit + pills + "+", … menu, Join, read-only
+      Evidence: CL13-new-event.png: + opens 9–10 on the anchor day, title focused; Paper 13 layout (title on the sheet, All-day, Starts, Ends with duration, Calendar picker with default, Project, 12 swatches, notes, footer); saved `[agent] Plus event` with project `[agent] Calendar project` → the event sheet shows the project pill (link after create through `relink`, failure → toast).
+- [x] CL042 **14 Event sheet**: edit + pills + "+", … menu, Join, read-only
       attendees / reminders / visibility. Evidence: CL14-event.png.
-- [ ] CL043 **15 Event menu** + **22 Delete** + **23 Add to project**:
+      Evidence: CL14-event.png: centred "• Event", title edits in place (saved a rename through `updateEvent`), "Sat, Sep 26 · 09:00 – 10:00 · 1h", pills (calendar, project, colour Tomato after the editor set it), + opens the full sheet; Join row reads `conferenceData` (name + host, filled Join); attendees / reminders / visibility read-only sections.
+- [x] CL043 **15 Event menu** + **22 Delete** + **23 Add to project**:
       memrynote events only; Google-bound wording. Evidence: CL15-menu.png,
       CL22-delete.png, CL23-project.png.
-- [ ] CL044 **16 Move / resize**: hold + drag, edge handles, snap label,
+      Evidence: CL15-menu.png (Open, Add to project, Delete event), CL22-delete.png (desktop wording, destructive Delete), CL23-project.png (search, dots, current project first and ticked, Remove from …); the sheet … menu holds the same two actions.
+- [x] CL044 **16 Move / resize**: hold + drag, edge handles, snap label,
       events and timed tasks only, Undo toast restores both.
       Evidence: CL16-move.png.
+      Evidence: CL16-move.png: hold + drag moved `[agent] Plus event` 09:00 → 10:00 ("Moved to 10:00" + Undo); bottom handle resized 11:00 → 11:30 ("Now 10:00 – 11:30"), a second resize to 12:00 undone back to 11:30; timed tasks move through `setDue` with "Task rescheduled" + Undo; imported / read-only chips get no hold gesture (`canDrag`).
 - [ ] CL045 **18 Promote**: routing (ask / skip rule with AI access), writes
       per CL013, opens 14 on the linked copy. Evidence: CL18-promote.png.
 - [ ] CL046 Phase commit.
@@ -705,6 +713,18 @@ onboardingCompleted, promoteConfirmDismissed, pushEventsToGoogle, agentReadEvent
 - 2026-09-26 — CL035 — Bar menu per Paper 09: labelled control group (1 week earlier / 1 week
   later / Complete), plain rows, set start / due carry the current date as a subtitle, the
   lifted preview card (project, title, bar, dates · N days).
+
+- 2026-09-26 — CL044 — A movable chip cannot carry the system context menu and a hold + drag at
+  once (both claim the long press). Movable chips (memrynote events, timed tasks) show the
+  same actions in a confirmation dialog when the hold ends without movement; every other chip
+  keeps the system context menu (Paper 15's preview card). Resize handles show on chips of 45
+  minutes or more; shorter ones only move. Toasts follow Paper 16: "Moved to 10:00", resize
+  "Now 10:00 – 11:30".
+- 2026-09-26 — CL045 — Promote needs an imported Google event; the account has none until
+  Google connects on this phone (CL071). Deferred to Phase 6.
+- 2026-09-26 — CL042 — The event sheet edits the title in place and saves it with the
+  checkmark; every other field opens the full sheet (13) from its pill or +, as Paper 14's "+
+  reveals the rest" reads. Sheet close buttons draw an ink glyph (00 rule 6).
 
 ## 7. Blockers
 

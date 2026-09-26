@@ -112,7 +112,9 @@ enum CalendarCopy {
     static let delete = "Delete event"
     static let addToProject = "Add to project"
     static func newEventAt(_ time: String) -> String { "New event at \(time)" }
-    static let eventMoved = "Event moved"
+    /// Paper 16: "Moved to 12:00".
+    static func movedTo(_ time: String) -> String { "Moved to \(time)" }
+    static func resizedTo(_ start: String, _ end: String) -> String { "Now \(start) – \(end)" }
     static let taskRescheduled = "Task rescheduled"
     static let moveEvent = "Move event"
     static let rescheduleTask = "Reschedule task"
