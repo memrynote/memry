@@ -479,6 +479,35 @@ describe('pack build', () => {
     expect(extractEntry(bytes, parsed.entries[1])).toEqual(snapB)
   })
 
+  it('leaves out snapshots of notes whose only record rows are tombstones', async () => {
+    seedRecord({ cursor: 1, type: 'note', id: 'note-deleted', deleted: true })
+    seedRecord({ cursor: 2, type: 'journal', id: 'note-retyped', deleted: true })
+    seedRecord({ cursor: 3, type: 'note', id: 'note-retyped' })
+    seedRecord({ cursor: 4, type: 'note', id: 'note-live' })
+    seedSnapshot('note-deleted', 1000)
+    seedSnapshot('note-retyped', 1001)
+    seedSnapshot('note-live', 1002)
+    seedSnapshot('note-record-pending', 1003)
+
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'crdt_snapshot'
+    )
+
+    const parsed = await parsePack(await packOf(result.packKey))
+    expect(parsed.entries.map((e) => e.id)).toEqual([
+      'note-retyped',
+      'note-live',
+      'note-record-pending'
+    ])
+    expect(watermarkOf('crdt_snapshot')).toEqual({
+      last_sort_value: 1003,
+      last_sort_tiebreak: 'note-record-pending'
+    })
+  })
+
   it('advances watermarks per kind without cross-kind interference', async () => {
     seedRecord({ cursor: 10 })
     seedSnapshot('note-z', 5000)
