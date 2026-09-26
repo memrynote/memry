@@ -60,6 +60,17 @@ import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('MarkdownUtils')
 
+/** The block's line as markdown sees it, without the `- [ ] ` marker. */
+export function checkboxLineText(block: { content?: unknown }): string {
+  const content = block.content as (string | { text?: string })[] | undefined
+  return (
+    content
+      ?.map((c) => (typeof c === 'string' ? c : (c.text ?? '')))
+      .join('')
+      .trim() ?? ''
+  )
+}
+
 export function isEmptyParagraph(block: Block): boolean {
   if (block.type !== 'paragraph') return false
   if (block.children?.length) return false
