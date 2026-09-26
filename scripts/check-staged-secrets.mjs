@@ -188,7 +188,7 @@ function isRustDeclarationValue(filePath, value) {
     // or a trailing call is required, so a bare `hunter2secretvalue` — which
     // arrives here with its opening quote already consumed by the assignment
     // pattern — still reads as a literal rather than as an identifier.
-    /^[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\.[A-Za-z_]\w*(?:\([^;"'`]*\))?)+$/.test(normalized) ||
+    /^[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*(?:\.[A-Za-z_]\w*(?:\([^;"'`()]*\))?)+$/.test(normalized) ||
     /^[a-z_]\w*(?:::[A-Za-z_]\w*)*\([^;"'`]*\)$/.test(normalized) ||
     // A variant or tuple-struct call wrapping a code reference:
     // `Some(token)`, `Ok(secret_key)`, `Zeroizing::new(bytes)`. Quotes are

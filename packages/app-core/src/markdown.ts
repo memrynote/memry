@@ -1,5 +1,6 @@
 import matter from 'gray-matter'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
+import { stripHtmlComments } from '@memry/shared/html-comments'
 import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
 
 export type Eol = '\n' | '\r\n'
@@ -135,16 +136,8 @@ export function snippet(content: string): string {
 }
 
 function stripMarkup(markdown: string): string {
-  // Remove HTML comments in a loop until stable: one pass can re-form `<!-- -->`
-  // from the text left on either side of a removed comment.
-  let withoutComments = markdown
-  let previous: string
-  do {
-    previous = withoutComments
-    withoutComments = withoutComments.replace(/<!--[\s\S]*?-->/g, '') // memry block/colors/file markers + any HTML comment
-  } while (withoutComments !== previous)
-
-  return replaceWikiLinks(withoutComments) // wiki link → alias, else the note half
+  // memry block/colors/file markers + any HTML comment
+  return replaceWikiLinks(stripHtmlComments(markdown)) // wiki link → alias, else the note half
     .replace(/```[\s\S]*?```/g, (block) => block.replace(/```/g, '')) // fenced code → inner text
     .replace(/`([^`]+)`/g, '$1') // inline code
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1') // image → alt
