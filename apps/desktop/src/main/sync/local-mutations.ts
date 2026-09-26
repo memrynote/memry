@@ -7,6 +7,7 @@ import { trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
 import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
+import { getNoteMetadataById } from '@memry/storage-data'
 import {
   buildContentDeletePayload,
   clearPendingDelete,
@@ -218,6 +219,20 @@ export function recordDeleteTombstone(
  * retires a tombstone, once the server no longer lists the item, and this pass
  * retires one whose id is live here again (#2423).
  */
+/**
+ * A note or journal deleted and then re-created while sync was off has no
+ * clock, and the start-up seed skips a clockless row whose id has a recorded
+ * tombstone: it cannot tell a re-create from a row a delete left behind. This
+ * device's own pending delete is what tells them apart, so the re-create is
+ * pushed here, past the tombstone.
+ */
+function pushClocklessContentRecreate(db: DrizzleDb, itemId: string): void {
+  const row = getNoteMetadataById(db, itemId)
+  if (!row || row.clock) return
+  if (row.journalDate) enqueueLocalSyncCreate('journal', itemId, row.journalDate)
+  else enqueueLocalSyncCreate('note', itemId)
+}
+
 export function flushPendingLocalDeletes(db: DrizzleDb): number {
   const pending = listPendingDeletes(db)
   if (pending.length === 0) return 0
@@ -230,6 +245,7 @@ export function flushPendingLocalDeletes(db: DrizzleDb): number {
       // start-up seed queues it.
       if (isSupersededByLiveRow(db, item.type, item.itemId)) {
         clearPendingDelete(db, item.type, item.itemId)
+        pushClocklessContentRecreate(db, item.itemId)
         log.info('Retired a pending delete; the item is live locally again', {
           type: item.type,
           itemId: item.itemId
