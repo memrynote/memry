@@ -64,11 +64,21 @@ const CrdtUpdatedSchema = z.object({
   vaultId: z.string().optional(),
   noteId: z.string().min(1)
 })
+const CalendarChangesAvailableSchema = z.object({ sourceId: z.string().min(1) })
+const LinkingRequestSchema = z.object({
+  sessionId: z.string(),
+  newDeviceName: z.string(),
+  newDevicePlatform: z.string()
+})
+const LinkingApprovedSchema = z.object({ sessionId: z.string() })
 const AuthOkSchema = z.object({ exp: z.number().optional() })
 const ErrorSchema = z.object({ code: z.string().optional(), message: z.string().optional() })
 
 /**
  * A frame narrowed to what a client can act on.
+ *
+ * Payload schemas strip unknown keys rather than rejecting them, so a server
+ * that adds a payload field does not turn a known frame into `ignored`.
  *
  * `ignored` is a real outcome rather than an error: it covers the keepalive
  * answer, the message types this client has no handler for, and a known type
@@ -79,6 +89,14 @@ const ErrorSchema = z.object({ code: z.string().optional(), message: z.string().
 export type SyncSocketEvent =
   | { kind: 'changes_available'; vaultId?: string; cursor?: number }
   | { kind: 'crdt_updated'; vaultId?: string; noteId: string }
+  | { kind: 'calendar_changes_available'; sourceId: string }
+  | {
+      kind: 'linking_request'
+      sessionId: string
+      newDeviceName: string
+      newDevicePlatform: string
+    }
+  | { kind: 'linking_approved'; sessionId: string }
   | { kind: 'auth_ok'; exp?: number }
   | { kind: 'error'; code?: string; message?: string }
   | { kind: 'ignored'; type: string }
@@ -116,6 +134,18 @@ export function parseSyncSocketFrame(raw: string): SyncSocketEvent | null {
     case 'crdt_updated': {
       const parsed = CrdtUpdatedSchema.safeParse(payload ?? {})
       return parsed.success ? { kind: 'crdt_updated', ...parsed.data } : ignored
+    }
+    case 'calendar_changes_available': {
+      const parsed = CalendarChangesAvailableSchema.safeParse(payload ?? {})
+      return parsed.success ? { kind: 'calendar_changes_available', ...parsed.data } : ignored
+    }
+    case 'linking_request': {
+      const parsed = LinkingRequestSchema.safeParse(payload ?? {})
+      return parsed.success ? { kind: 'linking_request', ...parsed.data } : ignored
+    }
+    case 'linking_approved': {
+      const parsed = LinkingApprovedSchema.safeParse(payload ?? {})
+      return parsed.success ? { kind: 'linking_approved', ...parsed.data } : ignored
     }
     case 'auth_ok': {
       const parsed = AuthOkSchema.safeParse(payload ?? {})

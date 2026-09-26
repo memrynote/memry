@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { SyncItemType } from '@memry/contracts/sync-api'
+import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
 
@@ -413,10 +414,9 @@ describe('SyncEngine', () => {
       // #when the server tells this device a peer wrote the note. The handler is
       // private and only bound inside `start()`, which brings up the socket, so
       // this drives the branch directly rather than standing the socket up.
-      ;(engine as unknown as { handleWsMessage: (message: unknown) => void }).handleWsMessage({
-        type: 'crdt_updated',
-        payload: { noteId: 'note-ws' }
-      })
+      ;(
+        engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
+      ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws' })
 
       // #then the note is unmerged from this moment, not from whenever
       // `scheduleSync` gets around to the pull. In between, the 30s snapshot

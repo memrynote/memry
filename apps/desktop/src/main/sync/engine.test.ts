@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { SyncEngine, SYNC_LOCK_STALE_MS, PERIODIC_PULL_MAX_QUIET_MS } from './engine'
-import type { WebSocketMessage } from './websocket'
+import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
+import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import {
   createMockDeps,
   createMockNetwork,
@@ -315,10 +316,7 @@ describe('SyncEngine', () => {
         }
       })
 
-      deps.ws.emit('message', {
-        type: 'changes_available',
-        payload: {}
-      } as WebSocketMessage)
+      deps.ws.emit('message', { kind: 'changes_available' } satisfies SyncSocketEvent)
 
       await pullDone
 
@@ -344,37 +342,86 @@ describe('SyncEngine', () => {
 
       // #when
       deps.ws.emit('message', {
-        type: 'calendar_changes_available',
-        payload: { sourceId: 'google:primary@group.calendar.google.com' }
-      } as WebSocketMessage)
+        kind: 'calendar_changes_available',
+        sourceId: 'google:primary@group.calendar.google.com'
+      } satisfies SyncSocketEvent)
 
       // #then
       expect(calendarSyncOneSource).toHaveBeenCalledWith('google:primary@group.calendar.google.com')
       await engine.stop()
       vi.restoreAllMocks()
     })
+  })
 
-    it('#then ignores the message when payload.sourceId is missing', async () => {
-      // #given
+  // #2291: linking frames arrive narrowed by parseSyncSocketFrame; the renderer
+  // still gets the LinkingRequestEvent / LinkingApprovedEvent shapes.
+  describe('#given connected engine #when WS receives linking frames', () => {
+    it('#then forwards them to the renderer as linking events', async () => {
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
         items: [],
         deleted: [],
         hasMore: false,
         nextCursor: 0
       })
-      const calendarSyncOneSource = vi.fn()
-      const deps = createMockDeps(getDb(), { calendarSyncOneSource })
+      const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
       await engine.start()
 
-      // #when
       deps.ws.emit('message', {
-        type: 'calendar_changes_available',
-        payload: {}
-      } as WebSocketMessage)
+        kind: 'linking_request',
+        sessionId: 's1',
+        newDeviceName: 'Laptop',
+        newDevicePlatform: 'macos'
+      } satisfies SyncSocketEvent)
+      deps.ws.emit('message', {
+        kind: 'linking_approved',
+        sessionId: 's1'
+      } satisfies SyncSocketEvent)
 
-      // #then
-      expect(calendarSyncOneSource).not.toHaveBeenCalled()
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(EVENT_CHANNELS.LINKING_REQUEST, {
+        sessionId: 's1',
+        newDeviceName: 'Laptop',
+        newDevicePlatform: 'macos'
+      })
+      expect(deps.emitToRenderer).toHaveBeenCalledWith(EVENT_CHANNELS.LINKING_APPROVED, {
+        sessionId: 's1'
+      })
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
+  // #2291: auth_ok and error frames arrive with their fields flattened by
+  // parseSyncSocketFrame; only AUTH_DEVICE_REVOKED revokes the device.
+  describe('#given connected engine #when WS receives auth_ok and error frames', () => {
+    it('#then only an AUTH_DEVICE_REVOKED error revokes the device', async () => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      await engine.start()
+      const handleDeviceRevoked = vi
+        .spyOn(engine as unknown as { handleDeviceRevoked: () => void }, 'handleDeviceRevoked')
+        .mockImplementation(() => {})
+
+      deps.ws.emit('message', { kind: 'auth_ok', exp: 123 } satisfies SyncSocketEvent)
+      deps.ws.emit('message', {
+        kind: 'error',
+        code: 'RATE_LIMITED',
+        message: 'slow down'
+      } satisfies SyncSocketEvent)
+      expect(handleDeviceRevoked).not.toHaveBeenCalled()
+
+      deps.ws.emit('message', {
+        kind: 'error',
+        code: 'AUTH_DEVICE_REVOKED'
+      } satisfies SyncSocketEvent)
+      expect(handleDeviceRevoked).toHaveBeenCalledTimes(1)
+
       await engine.stop()
       vi.restoreAllMocks()
     })

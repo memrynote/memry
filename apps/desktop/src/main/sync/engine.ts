@@ -2,7 +2,12 @@ import { SyncEventEmitter } from '@memry/sync-client/emitter'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { createLogger } from '../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
-import type { CertificatePinFailedEvent, QuarantinedItemInfo } from '@memry/contracts/ipc-events'
+import type {
+  CertificatePinFailedEvent,
+  LinkingApprovedEvent,
+  LinkingRequestEvent,
+  QuarantinedItemInfo
+} from '@memry/contracts/ipc-events'
 import type {
   GetSyncStatusResult,
   PauseSyncResult,
@@ -10,7 +15,7 @@ import type {
   SyncStatusValue
 } from '@memry/contracts/ipc-sync-ops'
 import type { QueueStats } from '@memry/sync-client/queue'
-import type { WebSocketMessage } from './websocket'
+import type { SyncSocketEvent } from '@memry/contracts/sync-socket'
 import { secureCleanup } from '../crypto/index'
 import { getFromServer } from './http-client'
 import { classifyError } from './sync-errors'
@@ -797,8 +802,8 @@ export class SyncEngine extends SyncEventEmitter {
     this.errorRecovery.handleCertPinFailed(event)
   }
 
-  private handleWsMessage = (message: WebSocketMessage): void => {
-    switch (message.type) {
+  private handleWsMessage = (message: Exclude<SyncSocketEvent, { kind: 'ignored' }>): void => {
+    switch (message.kind) {
       case 'changes_available':
         if (!this.stateManager.isPaused()) {
           this.scheduleSync(async () => {
@@ -807,8 +812,8 @@ export class SyncEngine extends SyncEventEmitter {
         }
         break
       case 'crdt_updated': {
-        const noteId = message.payload?.noteId as string | undefined
-        if (!noteId || !this.ctx.deps.crdtProvider || this.stateManager.isPaused()) break
+        const { noteId } = message
+        if (!this.ctx.deps.crdtProvider || this.stateManager.isPaused()) break
         if (this.ctx.fullSyncActive) {
           this.crdtSync.addPendingPull(noteId)
         } else {
@@ -827,37 +832,31 @@ export class SyncEngine extends SyncEventEmitter {
         }
         break
       }
-      case 'calendar_changes_available': {
-        const sourceId = message.payload?.sourceId
-        if (typeof sourceId === 'string' && sourceId.length > 0) {
-          this.ctx.deps.calendarSyncOneSource?.(sourceId)
-        } else {
-          log.debug('calendar_changes_available message missing sourceId', {
-            payload: message.payload
-          })
-        }
-        break
-      }
-      case 'heartbeat':
+      case 'calendar_changes_available':
+        this.ctx.deps.calendarSyncOneSource?.(message.sourceId)
         break
       case 'auth_ok':
-        log.debug('WS auth refreshed', { exp: message.payload?.exp })
+        log.debug('WS auth refreshed', { exp: message.exp })
         break
       case 'error':
-        if (message.payload?.code === 'AUTH_DEVICE_REVOKED') {
+        if (message.code === 'AUTH_DEVICE_REVOKED') {
           this.handleDeviceRevoked()
         } else {
-          log.warn('Server-sent WS error', { payload: message.payload })
+          log.warn('Server-sent WS error', { code: message.code, message: message.message })
         }
         break
       case 'linking_request':
-        this.ctx.deps.emitToRenderer(EVENT_CHANNELS.LINKING_REQUEST, message.payload)
+        this.ctx.deps.emitToRenderer(EVENT_CHANNELS.LINKING_REQUEST, {
+          sessionId: message.sessionId,
+          newDeviceName: message.newDeviceName,
+          newDevicePlatform: message.newDevicePlatform
+        } satisfies LinkingRequestEvent)
         break
       case 'linking_approved':
-        this.ctx.deps.emitToRenderer(EVENT_CHANNELS.LINKING_APPROVED, message.payload)
+        this.ctx.deps.emitToRenderer(EVENT_CHANNELS.LINKING_APPROVED, {
+          sessionId: message.sessionId
+        } satisfies LinkingApprovedEvent)
         break
-      default:
-        log.debug('Unknown WS message type', { type: (message as { type: string }).type })
     }
   }
 

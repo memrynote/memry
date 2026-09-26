@@ -170,10 +170,83 @@ describe('WebSocketManager', () => {
       lastWs().simulateOpen()
       lastWs().simulateMessage({ type: 'changes_available', payload: { cursor: 5 } })
 
-      expect(spy).toHaveBeenCalledWith({
-        type: 'changes_available',
-        payload: { cursor: 5 }
+      expect(spy).toHaveBeenCalledWith({ kind: 'changes_available', cursor: 5 })
+    })
+
+    // #2291: docs/protocol/09 §9.4 — a client MUST NOT reject a frame for an
+    // unknown `type`; a newer server may add one.
+    it('#then ignores an unknown frame type without an error event', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      const messageSpy = vi.fn()
+      const errorSpy = vi.fn()
+      manager.on('message', messageSpy)
+      manager.on('error', errorSpy)
+
+      await manager.connect()
+      lastWs().simulateOpen()
+      lastWs().simulateMessage({ type: 'future_type', payload: {} })
+
+      expect(errorSpy).not.toHaveBeenCalled()
+      expect(messageSpy).not.toHaveBeenCalled()
+    })
+
+    // #2291: known frames still dispatch after an ignored one.
+    it('#then dispatches known frames after ignoring an unknown one', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      const messageSpy = vi.fn()
+      const errorSpy = vi.fn()
+      manager.on('message', messageSpy)
+      manager.on('error', errorSpy)
+
+      await manager.connect()
+      lastWs().simulateOpen()
+      lastWs().simulateMessage({ type: 'future_type', payload: {} })
+      lastWs().simulateMessage({ type: 'crdt_updated', payload: { noteId: 'n1' } })
+      lastWs().simulateMessage({
+        type: 'calendar_changes_available',
+        payload: { sourceId: 'google:primary' }
       })
+      lastWs().simulateMessage({ type: 'linking_approved', payload: { sessionId: 's1' } })
+
+      expect(errorSpy).not.toHaveBeenCalled()
+      expect(messageSpy.mock.calls.map(([event]) => event)).toEqual([
+        { kind: 'crdt_updated', noteId: 'n1' },
+        { kind: 'calendar_changes_available', sourceId: 'google:primary' },
+        { kind: 'linking_approved', sessionId: 's1' }
+      ])
+    })
+
+    // #2291: the payload check moved from the engine into the parser.
+    it('#then drops a calendar frame without a sourceId without an error event', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      const messageSpy = vi.fn()
+      const errorSpy = vi.fn()
+      manager.on('message', messageSpy)
+      manager.on('error', errorSpy)
+
+      await manager.connect()
+      lastWs().simulateOpen()
+      lastWs().simulateMessage({ type: 'calendar_changes_available', payload: {} })
+
+      expect(messageSpy).not.toHaveBeenCalled()
+      expect(errorSpy).not.toHaveBeenCalled()
+    })
+
+    it('#then emits error for a frame that is not a message envelope', async () => {
+      const manager = new WebSocketManager(createMockDeps())
+      const messageSpy = vi.fn()
+      const errorSpy = vi.fn()
+      manager.on('message', messageSpy)
+      manager.on('error', errorSpy)
+
+      await manager.connect()
+      lastWs().simulateOpen()
+      lastWs().simulateTextMessage('not json')
+
+      expect(messageSpy).not.toHaveBeenCalled()
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Invalid WebSocket message format' })
+      )
     })
 
     it('#then resets heartbeat timer', async () => {
@@ -217,7 +290,7 @@ describe('WebSocketManager', () => {
       lastWs().simulateMessage({ type: 'auth_ok', payload: { exp: 123 } })
 
       expect(errorSpy).not.toHaveBeenCalled()
-      expect(messageSpy).toHaveBeenCalledWith({ type: 'auth_ok', payload: { exp: 123 } })
+      expect(messageSpy).toHaveBeenCalledWith({ kind: 'auth_ok', exp: 123 })
     })
 
     it('#then does nothing when the socket is not open', async () => {
