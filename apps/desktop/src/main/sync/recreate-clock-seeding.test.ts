@@ -488,10 +488,28 @@ describe('re-create clock seeding (#2409)', () => {
 
     it.each(CONTENT_TYPES)('%s: the start-up seed leaves it unpushed and in place', (type) => {
       leaveGhostRow(type)
+      const neverSynced = type === 'journal' ? 'j2026-04-17' : 'note-never-synced'
+      db.insert(noteMetadata)
+        .values({
+          id: neverSynced,
+          path: type === 'journal' ? 'journals/2026-04-17.md' : `${neverSynced}.pdf`,
+          title: neverSynced,
+          ...(type === 'journal' ? { journalDate: '2026-04-17' } : { fileType: 'pdf' }),
+          createdAt: '2026-04-17T00:00:00Z',
+          modifiedAt: '2026-04-17T00:00:00Z',
+          clock: null
+        })
+        .run()
 
       runInitialSeed({ db, queue, deviceId: DEVICE, adapters: [getRemoteSyncAdapter(type)!] })
 
-      expect(db.select().from(syncQueue).all()).toEqual([])
+      expect(
+        db
+          .select()
+          .from(syncQueue)
+          .all()
+          .map((row) => [row.itemId, row.operation])
+      ).toEqual([[neverSynced, 'create']])
       expect(rowClock(type)).toBeNull()
     })
 
