@@ -1309,6 +1309,22 @@ Two notes never ride a batch:
   A 413 also falls back per note but does not latch: the aggregate body being too large says nothing
   about which note is oversized, and only the per-note path can name it to the user.
 
+#### Deferred snapshots ride the batch too
+
+The desktop's snapshot scheduler (30 s quiet period, 120 s ceiling) sends the notes that come due
+within a 2-second window as one call, which the provider packs into batch requests. A doc the LRU
+evicts hands its pending snapshot to that scheduler instead of pushing it on the spot.
+
+Both used to send one `POST /sync/crdt/snapshot` per note. Eviction is one doc per open, so a vault
+written in bulk (an import, a seed) pushed a snapshot for nearly every note it wrote: 200 notes
+spent about 120 requests in ten seconds, on the same per-device `crdt_push` budget (300/min) as
+`/sync/crdt/updates`, and drew 429s. The same 200 notes now take a handful of batch requests.
+
+Nothing is weakened by deferring. The body already reached the server through
+`/sync/crdt/updates`; the snapshot is only a compaction point, and a close-time push that failed was
+dropped anyway. A close an editor or teardown asks for still pushes before it returns, and the
+shutdown flush clears the deferral first, so an eviction during teardown pushes directly.
+
 ### CRDT update sizing
 
 `POST /sync/crdt/updates` is bounded by two different server limits, and the client
