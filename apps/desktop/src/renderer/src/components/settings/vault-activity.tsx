@@ -63,7 +63,7 @@ const TONE_ICON_CLASS: Record<VaultActivityTone, string> = {
 }
 
 const TOGGLE_ITEM_CLASS =
-  'h-6 rounded-[5px] border-none px-2.5 text-xs/4 font-medium text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm'
+  'h-6 rounded-[5px] border-none px-2.5 text-xs/4 font-medium text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm'
 
 const QUIET_ACTION_CLASS =
   'text-xs/4 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50 disabled:hover:text-muted-foreground'

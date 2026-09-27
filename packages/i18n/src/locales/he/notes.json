@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "זרוק כאן",
-      "editProject": "ערוך פרויקט"
+      "editProject": "ערוך פרויקט",
+      "settings": "הגדרות"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "מחק תג #",

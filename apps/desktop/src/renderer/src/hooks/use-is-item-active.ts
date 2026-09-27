@@ -11,7 +11,7 @@
  * By tracking just the identity fields, we minimize the re-render trigger surface.
  */
 
-import { useCallback, useRef, useEffect, useMemo } from 'react'
+import { useCallback, useRef, useMemo } from 'react'
 import { useTabs } from '@/contexts/tabs'
 import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
 import type { SidebarItem } from '@/contexts/tabs/types'
@@ -51,13 +51,12 @@ export const useIsItemActive = () => {
     }
   }, [state.tabGroups, state.activeGroupId])
 
-  // Store identity in ref for stable callback access
+  // Store identity in ref for stable callback access. Written during render,
+  // not in an effect: callers invoke isActiveItem while rendering, and an
+  // effect-synced ref still held the previous tab on the render that follows a
+  // tab switch, so the rail only highlighted the new page one render later.
   const identityRef = useRef<ActiveTabIdentity | null>(activeTabIdentity)
-
-  // Keep ref in sync (runs after render, before effects)
-  useEffect(() => {
-    identityRef.current = activeTabIdentity
-  })
+  identityRef.current = activeTabIdentity
 
   // Return stable callback that reads from ref
   // This callback NEVER changes reference, preventing cascade re-renders

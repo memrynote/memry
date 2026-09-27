@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FileText, BookOpen, CheckSquare, Inbox, X, Filter, Tag, Calendar } from '@/lib/icons'
+import { FileText, X, Filter, Tag, Calendar } from '@/lib/icons'
+import { PageInboxIcon, PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import type { ContentType, DateRange } from '@memry/contracts/search-api'
 import { searchService } from '@/services/search-service'
 import { localDayRange } from '@/lib/local-day-range'
@@ -23,9 +24,9 @@ const TYPE_CONFIG: Array<{
   shortcut: string
 }> = [
   { type: 'note', label: 'Notes', icon: FileText, shortcut: '1' },
-  { type: 'journal', label: 'Journal', icon: BookOpen, shortcut: '2' },
-  { type: 'task', label: 'Tasks', icon: CheckSquare, shortcut: '3' },
-  { type: 'inbox', label: 'Inbox', icon: Inbox, shortcut: '4' }
+  { type: 'journal', label: 'Journal', icon: PageJournalIcon, shortcut: '2' },
+  { type: 'task', label: 'Tasks', icon: PageTasksIcon, shortcut: '3' },
+  { type: 'inbox', label: 'Inbox', icon: PageInboxIcon, shortcut: '4' }
 ]
 
 const DATE_PRESETS = [

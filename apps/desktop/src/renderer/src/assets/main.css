@@ -2,13 +2,84 @@
 @import './emoji-font.css';
 
 :root {
-  --chrome-width: 180px;
+  /* Window-control buttons in the h-9 title row, after the native traffic lights:
+     ps-1 + ms-1 + 4 icon buttons (4x28 + 3x2 gap) + pe-2. */
+  --chrome-buttons-width: 136px;
   --direction: 1;
 
   /* Tab strip sizing — tabs share the strip evenly, growing to --tab-w-max and
      compressing to --tab-w-min (icon-only) before the strip starts scrolling. */
   --tab-w-min: 52px;
   --tab-w-max: 240px;
+}
+
+/* One surface below the h-9 title row: the sidebar panel (rounded top-start,
+   inline-end divider; app-sidebar.tsx) plus the workspace card, flush with the
+   window's end and bottom edges. The card itself spans the full height with no
+   surface of its own, so the tab bars touching the window top sit in the title
+   row; its visible surface is drawn by ::before from the title row down. Split
+   panes further down keep their tab bars inside that surface.
+   `.peer` is the shadcn Sidebar root carrying data-state; the card is its sibling. */
+[data-workspace-card] {
+  isolation: isolate;
+  background-color: transparent;
+}
+
+[data-workspace-card]::before {
+  content: '';
+  position: absolute;
+  inset: 36px 0 0;
+  z-index: -1;
+  border-top: 1px solid var(--border);
+  background-color: var(--background);
+  pointer-events: none;
+}
+
+/* Collapsed: the card owns the surface's start edge and rounded corner. The 1px
+   padding keeps pane content off that border. */
+.peer[data-state='collapsed'] ~ [data-workspace-card] {
+  padding-inline-start: 1px;
+}
+
+.peer[data-state='collapsed'] ~ [data-workspace-card]::before {
+  border-inline-start: 1px solid var(--border);
+  border-start-start-radius: var(--radius-xl);
+}
+
+.peer[data-state='collapsed'] ~ [data-workspace-card] [data-window-controls-pane] {
+  border-start-start-radius: calc(var(--radius-xl) - 1px);
+}
+
+/* Title-row tab bars: the surface's top border replaces their bottom border. */
+[data-workspace-card] [data-title-row] {
+  border-bottom-color: transparent;
+}
+
+/* Collapsed, the top-start tab bar starts at the rail edge (52px + 1px padding);
+   its tabs follow the window-control buttons, which end at 68px + their width.
+   See window-controls.tsx. */
+.peer[data-state='collapsed'] ~ * [data-reserve-window-controls] {
+  padding-inline-start: calc(var(--chrome-buttons-width) + 15px);
+}
+
+/* The Day Panel spans the card's full height so its h-9 header sits in the title
+   row like the tab bars. Its body takes the card's surface (::before above), so
+   the panel has no fill of its own and its start border only runs below the
+   title row. */
+[data-workspace-card] [data-slot='day-panel-container'] {
+  background-color: transparent;
+  border-inline-start-color: transparent;
+}
+
+[data-workspace-card] [data-slot='day-panel-container']::after {
+  content: '';
+  position: absolute;
+  top: 36px;
+  bottom: 0;
+  inset-inline-start: -1px;
+  width: 1px;
+  background-color: var(--border);
+  pointer-events: none;
 }
 
 [dir='rtl'] {

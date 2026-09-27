@@ -15,6 +15,8 @@ import {
 import { Loader2 } from '@/lib/icons'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { APP_RAIL_WIDTH_PX } from '@/components/sidebar/app-rail'
+import { WorkspaceDragStrip } from '@/components/sidebar/workspace-drag-strip'
 import { WindowControls } from '@/components/window-controls'
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
@@ -63,7 +65,7 @@ import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
 import { CommandPalette } from '@/components/search/command-palette'
 import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
 import { onOpenSettingsRequested } from '@/lib/settings-navigation'
-import { SettingsModal } from '@/components/settings-modal'
+import { SettingsView } from '@/components/settings-view'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
 import { useJournalChangeEvents } from '@/hooks/use-journal-change-events'
@@ -266,7 +268,7 @@ const AppContent = (): React.JSX.Element => {
   useTabKeyboardShortcuts()
   useMouseNavButtons()
   const isChordActive = useChordShortcuts()
-  const { open: openSettings } = useSettingsModal()
+  const { open: openSettings, isOpen: isSettingsOpen } = useSettingsModal()
   useSettingsShortcut(openSettings)
   useSwitchVaultShortcut(requestVaultSwitcherOpen)
   useNewNoteShortcut(() => void handleNewNote())
@@ -406,10 +408,14 @@ const AppContent = (): React.JSX.Element => {
       <AgentTabTitleSync />
       <CanvasTabTitleSync />
       <HomeTabTitleSync />
-      <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
+      {/* No background: the workspace card's ::before draws the surface below the title
+          row (main.css); a fill here would cover the title row and the rounded corner.
+          Settings takes the workspace while open. The panes stay mounted (hidden) so
+          editors, scroll positions and unsaved state are untouched on the way back. */}
+      <div className={isSettingsOpen ? 'hidden' : 'flex flex-1 overflow-hidden'} id="main-content">
         <SplitViewContainer />
       </div>
-      <GlobalDayPanel />
+      {isSettingsOpen ? <SettingsView /> : <GlobalDayPanel />}
 
       {/* Chord Indicator */}
       <ChordIndicator isActive={isChordActive} />
@@ -426,9 +432,6 @@ const AppContent = (): React.JSX.Element => {
 
       {/* Global Search Command Palette */}
       <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
-
-      {/* Settings Modal */}
-      <SettingsModal />
     </TabDragProvider>
   )
 }
@@ -566,10 +569,17 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
                             <SelectedFolderProvider>
                               <SidebarDrillDownProvider>
                                 <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                                <SidebarInset className="flex flex-col overflow-hidden">
+                                {/* Sidebar and workspace read as one surface below the h-9
+                                    title row; the workspace's top-row tab bars sit in that
+                                    row (main.css, data-workspace-card). */}
+                                <SidebarInset
+                                  data-workspace-card=""
+                                  className="flex min-w-0 flex-col overflow-hidden"
+                                >
                                   <AppContent />
                                   <VaultSwitchContentCover />
                                 </SidebarInset>
+                                <WorkspaceDragStrip />
                                 {/* Opens the ephemeral read-only release-notes tab after an
                                     update+restart. Lives inside TabProvider for openTab(). */}
                                 <UpdateReleaseNotesTabOpener />
@@ -582,7 +592,7 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
                                   tab-bar's drag-region (OS-level -webkit-app-region hit test picks
                                   the topmost layer; a drag-region painted over no-drag children eats
                                   clicks). Lives inside TabProvider for useTabs() back/forward nav. */}
-                              <WindowControls className="pointer-events-auto fixed top-0 start-0 z-[60] w-[var(--chrome-width)]" />
+                              <WindowControls className="pointer-events-auto z-[60]" />
                             </SelectedFolderProvider>
                           </SettingsModalProvider>
                         </TabPersistenceManager>
@@ -600,7 +610,10 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
 
   return (
     <ThemeSyncManager>
-      <SidebarProvider>
+      <SidebarProvider
+        className="bg-sidebar-rail"
+        style={{ '--sidebar-offset': `${APP_RAIL_WIDTH_PX}px` } as React.CSSProperties}
+      >
         <DragProvider
           tasks={tasks}
           selectedIds={selectedTaskIds}

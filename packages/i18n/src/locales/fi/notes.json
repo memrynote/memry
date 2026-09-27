@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Pudota tänne",
-      "editProject": "Muokkaa projektia"
+      "editProject": "Muokkaa projektia",
+      "settings": "Asetukset"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Poista tunniste #",

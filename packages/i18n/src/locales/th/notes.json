@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "วางที่นี่",
-      "editProject": "แก้ไขโครงการ"
+      "editProject": "แก้ไขโครงการ",
+      "settings": "การตั้งค่า"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "ลบแท็ก #",

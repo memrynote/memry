@@ -69,13 +69,7 @@ vi.mock('@/contexts/tabs', () => ({
 }))
 
 vi.mock('@/components/tabs', () => ({
-  TabBarWithDrag: ({
-    groupId,
-    showSidebarToggle
-  }: {
-    groupId: string
-    showSidebarToggle: boolean
-  }) => <div>tabbar:{`${groupId}:${showSidebarToggle}`}</div>
+  TabBarWithDrag: ({ groupId }: { groupId: string }) => <div>tabbar:{groupId}</div>
 }))
 
 vi.mock('./split-view/empty-pane-state', () => ({
@@ -105,10 +99,10 @@ describe('small zero-line renderer surfaces', () => {
       tabs: [{ id: 'tab-1', title: 'Note' }]
     }
     mocks.dayPanel = { isOpen: true, width: 320, isResizing: false }
-    rerender(<TabPane groupId="group-1" isActive={false} showSidebarToggle={false} />)
+    rerender(<TabPane groupId="group-1" isActive={false} />)
     fireEvent.click(screen.getByTestId('tab-pane'))
 
-    expect(screen.getByText('tabbar:group-1:false')).toBeInTheDocument()
+    expect(screen.getByText('tabbar:group-1')).toBeInTheDocument()
     expect(screen.getByText('content:group-1:tab-1')).toBeInTheDocument()
     expect(mocks.dispatch).toHaveBeenCalledWith({
       type: 'SET_ACTIVE_GROUP',

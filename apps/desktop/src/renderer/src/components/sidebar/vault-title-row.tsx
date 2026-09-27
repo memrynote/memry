@@ -18,7 +18,7 @@ interface VaultTitleRowProps {
 /**
  * A vault's name as a stand-in page: drawn for a vault being swiped in that
  * has no sidebar snapshot yet, and on the switch screen when the pager left no
- * frame. The open vault's own name lives in the footer pill, not here.
+ * frame. The open vault's own name is in the panel header (`SidebarVaultHeader`).
  */
 export function VaultTitleRow({ name, dotColor, className }: VaultTitleRowProps) {
   return (

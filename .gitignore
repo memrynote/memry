@@ -72,6 +72,7 @@ Thumbs.db
 .env*.local
 
 .feedback
+.user-insights
 
 .release-state/
 # Built by crates/memry-core/build-xcframework.sh; the generated Swift next to it

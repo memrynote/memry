@@ -1060,7 +1060,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Drop here",
-      "editProject": "Edit project"
+      "editProject": "Edit project",
+      "settings": "Settings"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Delete tag #",

@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { SidebarMenuItem } from '@/components/ui/sidebar'
 import { BOOKMARK_SORT_DRAG_TYPE } from './sidebar-drag-types'
+import { cn } from '@/lib/utils'
 
 interface SortableBookmarkItemProps {
   id: string
@@ -32,7 +33,8 @@ export function SortableBookmarkItem({
     <SidebarMenuItem
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? 'opacity-50' : undefined}
+      // Matches the notes tree row rhythm: 4px inset + 1px gutter between rows
+      className={cn('ms-1 pb-px', isDragging && 'opacity-50')}
       {...attributes}
       {...listeners}
     >

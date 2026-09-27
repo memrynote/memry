@@ -1,12 +1,5 @@
-import {
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Inbox,
-  TrendingUp,
-  TrendingDown,
-  Minus
-} from '@/lib/icons'
+import { Clock, CheckCircle, AlertCircle, TrendingUp, TrendingDown, Minus } from '@/lib/icons'
+import { PageInboxIcon } from '@/lib/icons/page-icons'
 import type { InboxStats } from '@memry/rpc/inbox'
 import { cn } from '@/lib/utils'
 
@@ -40,7 +33,7 @@ export function InboxStatsCards({ stats }: InboxStatsCardsProps): React.JSX.Elem
     {
       label: 'Total Items',
       value: stats.totalItems,
-      icon: Inbox,
+      icon: PageInboxIcon,
       trend: stats.capturedToday > 0 ? 'up' : 'neutral',
       trendValue: `+${stats.capturedToday} today`,
       iconColor: 'text-muted-foreground'

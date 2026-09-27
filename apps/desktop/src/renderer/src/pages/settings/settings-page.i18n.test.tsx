@@ -40,11 +40,30 @@ vi.mock('@/hooks/use-feature-flags', () => ({
 vi.mock('./command-line-section', () => ({
   CommandLineSettings: () => <div data-testid="command-line-panel" />
 }))
+vi.mock('@/components/ui/sidebar', () => ({
+  useSidebar: () => ({ open: true, setOpen: vi.fn() })
+}))
+const activeTab = { id: 'tab-1' }
+vi.mock('@/contexts/tabs', () => ({ useActiveTab: () => activeTab }))
 
-import { SettingsPage } from '../settings'
-import { SettingsModal } from '@/components/settings-modal'
+import { SettingsContent, SettingsNav } from '../settings'
+import { SettingsView } from '@/components/settings-view'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useEffect } from 'react'
+
+function SettingsPage() {
+  return (
+    <>
+      <SettingsNav />
+      <SettingsContent />
+    </>
+  )
+}
+
+function OpenState() {
+  const { isOpen } = useSettingsModal()
+  return <span data-testid="settings-open">{String(isOpen)}</span>
+}
 
 function renderPage(ui: React.ReactNode = <SettingsPage />) {
   return render(
@@ -133,7 +152,7 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Import' }))
     expect(screen.getByTestId('import-panel')).toBeInTheDocument()
     expect(screen.queryByTestId('vault-panel')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Back to/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Back to (?!app$)/ })).not.toBeInTheDocument()
   })
 
   it('keeps legacy section targets working', () => {
@@ -146,7 +165,8 @@ describe('SettingsPage', () => {
     renderPage(
       <>
         <OpenLegacy section="tasks" />
-        <SettingsModal />
+        <SettingsNav />
+        <SettingsView />
       </>
     )
     expect(screen.getByTestId('tasks-panel')).toBeInTheDocument()
@@ -164,15 +184,61 @@ describe('SettingsPage', () => {
     renderPage(
       <>
         <OpenLegacy />
-        <SettingsModal />
+        <OpenState />
+        <SettingsNav />
+        <SettingsView />
       </>
     )
     expect(screen.getByTestId('tasks-panel')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
     expect(screen.getByRole('switch', { name: 'Graph' })).toBeInTheDocument()
+    expect(screen.getByTestId('settings-open')).toHaveTextContent('true')
 
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('switch', { name: 'Graph' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('settings-open')).toHaveTextContent('false')
+  })
+
+  it('clears a search on Escape without leaving settings', async () => {
+    const user = userEvent.setup()
+    function Open() {
+      const { open } = useSettingsModal()
+      useEffect(() => open('general'), [open])
+      return null
+    }
+
+    renderPage(
+      <>
+        <Open />
+        <OpenState />
+        <SettingsNav />
+        <SettingsView />
+      </>
+    )
+    const search = screen.getByRole('searchbox', { name: 'Search settings' })
+    await user.type(search, 'lang')
+    await user.keyboard('{Escape}')
+    expect(search).toHaveValue('')
+    expect(screen.getByTestId('settings-open')).toHaveTextContent('true')
+  })
+
+  it('leaves settings from the back button', async () => {
+    const user = userEvent.setup()
+    function Open() {
+      const { open } = useSettingsModal()
+      useEffect(() => open('general'), [open])
+      return null
+    }
+
+    renderPage(
+      <>
+        <Open />
+        <OpenState />
+        <SettingsNav />
+      </>
+    )
+    expect(screen.getByTestId('settings-open')).toHaveTextContent('true')
+    await user.click(screen.getByRole('button', { name: 'Back to app' }))
+    expect(screen.getByTestId('settings-open')).toHaveTextContent('false')
   })
 })

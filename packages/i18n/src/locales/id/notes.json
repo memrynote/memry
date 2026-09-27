@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Jatuhkan di sini",
-      "editProject": "Sunting proyek"
+      "editProject": "Sunting proyek",
+      "settings": "Pengaturan"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Hapus tag #",

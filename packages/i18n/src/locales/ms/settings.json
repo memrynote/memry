@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "tetapan",
+    "backToApp": "Kembali ke aplikasi",
     "nav": {
       "groups": {
         "account": "Akaun",

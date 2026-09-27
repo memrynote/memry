@@ -1,0 +1,1044 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>memrynote · App Store screenshots</title>
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(../explainer-30s/fonts/dm-sans-opsz-normal.woff2) format('woff2');
+        font-weight: 100 1000;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(../explainer-30s/fonts/dm-sans-opsz-italic.woff2) format('woff2');
+        font-weight: 100 1000;
+        font-style: italic;
+      }
+      @font-face {
+        font-family: 'Space Grotesk';
+        src: url(../explainer-30s/fonts/space-grotesk.woff2) format('woff2');
+        font-weight: 300 700;
+      }
+      @font-face {
+        font-family: 'Crimson Pro';
+        src: url(../explainer-30s/fonts/crimson-pro-normal.woff2) format('woff2');
+        font-weight: 200 900;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'Crimson Pro';
+        src: url(../explainer-30s/fonts/crimson-pro-italic.woff2) format('woff2');
+        font-weight: 200 900;
+        font-style: italic;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url(../explainer-30s/fonts/jetbrains-mono.woff2) format('woff2');
+        font-weight: 100 800;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #000;
+      }
+      #stage {
+        position: relative;
+        width: 7920px;
+        height: 2868px;
+        overflow: hidden;
+        background: #fbf9f5;
+        font-family: 'DM Sans', system-ui, sans-serif;
+        color: #1f2937;
+        -webkit-font-smoothing: antialiased;
+      }
+      .panel {
+        position: absolute;
+        top: 0;
+        width: 1320px;
+        height: 2868px;
+        overflow: visible;
+      }
+      .bgp {
+        position: absolute;
+        top: 0;
+        height: 2868px;
+        width: 1320px;
+      }
+      .dots {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(31, 41, 55, 0.085) 1.6px, transparent 1.7px);
+        background-size: 44px 44px;
+        background-position: 22px 22px;
+      }
+      .dark .dots {
+        background-image: radial-gradient(rgba(255, 240, 225, 0.07) 1.6px, transparent 1.7px);
+      }
+      .warm {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+
+      /* ---------- copy ---------- */
+      .copy {
+        position: absolute;
+        left: 110px;
+        top: 170px;
+        width: 1100px;
+        z-index: 6;
+      }
+      .lbl {
+        font:
+          500 34px 'JetBrains Mono',
+          monospace;
+        letter-spacing: 0.16em;
+        color: #e8590c;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+      .lbl i {
+        font-style: normal;
+        color: #c9bfb2;
+      }
+      .h {
+        font-weight: 600;
+        letter-spacing: -0.043em;
+        line-height: 0.97;
+        font-size: 150px;
+        color: #1f2937;
+        margin-top: 34px;
+      }
+      .h em {
+        font-style: italic;
+        color: #ff671a;
+        letter-spacing: -0.055em;
+        padding-inline-end: 0.02em;
+      }
+      .sub {
+        font-size: 48px;
+        line-height: 1.28;
+        color: #6b6560;
+        margin-top: 38px;
+        letter-spacing: -0.012em;
+        font-weight: 420;
+      }
+      .dark .h {
+        color: #f6f1ea;
+      }
+      .dark .sub {
+        color: #a8a099;
+      }
+      .dark .lbl {
+        color: #ff7a33;
+      }
+      .dark .lbl i {
+        color: #4a433d;
+      }
+      .stop {
+        display: inline-block;
+        width: 0.2em;
+        height: 0.2em;
+        border-radius: 50%;
+        background: #ff671a;
+        margin-inline-start: 0.03em;
+        vertical-align: baseline;
+      }
+
+      .lockup {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+      .lockup svg {
+        display: block;
+      }
+
+      /* ---------- thread ---------- */
+      #thread,
+      #nodes {
+        position: absolute;
+        left: 0;
+        top: 0;
+        pointer-events: none;
+      }
+      #thread {
+        z-index: 1;
+      }
+      #nodes {
+        z-index: 5;
+      }
+
+      /* ---------- phone ---------- */
+      .phone {
+        position: absolute;
+        z-index: 2;
+        border-radius: 15.2%/7.2%;
+        background: linear-gradient(
+          145deg,
+          #56534f 0%,
+          #2b2927 18%,
+          #1b1a19 50%,
+          #2e2c2a 82%,
+          #5a5752 100%
+        );
+        box-shadow:
+          0 120px 160px -70px rgba(60, 38, 18, 0.55),
+          0 40px 70px -30px rgba(60, 38, 18, 0.35),
+          inset 0 0 0 2px rgba(255, 255, 255, 0.14),
+          inset 0 0 0 5px #0d0c0c;
+      }
+      .dark .phone {
+        box-shadow:
+          0 120px 180px -60px rgba(0, 0, 0, 0.9),
+          0 0 0 1px rgba(255, 255, 255, 0.06),
+          0 0 140px -20px rgba(255, 103, 26, 0.22),
+          inset 0 0 0 2px rgba(255, 255, 255, 0.16),
+          inset 0 0 0 5px #0d0c0c;
+      }
+      .phone .btn {
+        position: absolute;
+        width: 7px;
+        background: linear-gradient(90deg, #3a3835, #6a6660);
+        border-radius: 3px;
+      }
+      .screen {
+        position: absolute;
+        width: 440px;
+        height: 956px;
+        overflow: hidden;
+        border-radius: 62px;
+        background: #fff;
+        font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif;
+        color: #1c1b19;
+        letter-spacing: -0.01em;
+      }
+      .screen.dk {
+        background: #0f0f0f;
+        color: #e9e6e1;
+      }
+      .island {
+        position: absolute;
+        left: 157px;
+        top: 11px;
+        width: 126px;
+        height: 37px;
+        border-radius: 19px;
+        background: #000;
+        z-index: 30;
+      }
+      .sbar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 54px;
+        z-index: 29;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 34px 0 52px;
+        font-weight: 600;
+        font-size: 17px;
+        letter-spacing: -0.02em;
+      }
+      .sbar .r {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .dk .sbar {
+        color: #fff;
+      }
+
+      .nav {
+        position: absolute;
+        top: 62px;
+        left: 16px;
+        right: 16px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 20;
+      }
+      .gb {
+        height: 44px;
+        min-width: 44px;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow:
+          0 2px 14px rgba(0, 0, 0, 0.08),
+          inset 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        padding: 0 13px;
+        color: #1c1b19;
+      }
+      .dk .gb {
+        background: rgba(40, 40, 40, 0.85);
+        color: #edeae6;
+        box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+      }
+      .gb svg {
+        width: 21px;
+        height: 21px;
+      }
+      .ic {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .tabbar {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        bottom: 24px;
+        height: 64px;
+        border-radius: 32px;
+        background: rgba(250, 250, 249, 0.86);
+        box-shadow:
+          0 10px 30px rgba(0, 0, 0, 0.1),
+          inset 0 0 0 0.5px rgba(0, 0, 0, 0.07);
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 6px;
+        z-index: 25;
+        backdrop-filter: blur(12px);
+      }
+      .dk .tabbar {
+        background: rgba(32, 32, 32, 0.9);
+        box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+      }
+      .tab {
+        width: 74px;
+        height: 54px;
+        border-radius: 27px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        font-size: 10px;
+        font-weight: 600;
+        color: #1c1b19;
+      }
+      .dk .tab {
+        color: #e9e6e1;
+      }
+      .tab svg {
+        width: 25px;
+        height: 25px;
+      }
+      .tab.on {
+        background: rgba(0, 0, 0, 0.055);
+        color: #ea6a12;
+      }
+      .tab svg [stroke='#fff'] {
+        stroke: #fafaf9;
+      }
+      .dk .tab svg [stroke='#fff'] {
+        stroke: #202020;
+      }
+      .dk .tab.on {
+        background: rgba(255, 255, 255, 0.09);
+        color: #ff8a3d;
+      }
+
+      .ttl {
+        font:
+          700 33px/1.1 -apple-system,
+          system-ui;
+        letter-spacing: -0.025em;
+      }
+      .muted {
+        color: #8a857e;
+      }
+      .dk .muted {
+        color: #8c8781;
+      }
+      .sep {
+        height: 0.5px;
+        background: #e6e2dc;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        font-weight: 500;
+      }
+      .rose {
+        background: #f9e1e3;
+        color: #9b3b47;
+      }
+      .sky {
+        background: #e0ebf4;
+        color: #2e5a78;
+      }
+      .sage {
+        background: #e3ece1;
+        color: #3e6a4c;
+      }
+      .lilac {
+        background: #ece5f6;
+        color: #5b4a8a;
+      }
+      .peach {
+        background: #fde6d7;
+        color: #a1461a;
+      }
+      .ghost {
+        color: #b2ada6;
+      }
+
+      /* ---------- breakout cards ---------- */
+      .cw {
+        position: absolute;
+        z-index: 4;
+      }
+      .card {
+        position: relative;
+        background: #fff;
+        border-radius: 20px;
+        box-shadow:
+          0 60px 90px -40px rgba(70, 45, 20, 0.45),
+          0 10px 30px -8px rgba(70, 45, 20, 0.12),
+          0 0 0 1.5px rgba(70, 45, 20, 0.07);
+        font-family: -apple-system, system-ui, sans-serif;
+        color: #1c1b19;
+        letter-spacing: -0.01em;
+      }
+      .dark .card {
+        background: #1f1e1c;
+        color: #efeae4;
+        box-shadow:
+          0 60px 90px -40px rgba(0, 0, 0, 0.9),
+          0 0 0 1.5px rgba(255, 255, 255, 0.08);
+      }
+      .mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      #grain {
+        position: absolute;
+        inset: 0;
+        z-index: 50;
+        pointer-events: none;
+        mix-blend-mode: overlay;
+        opacity: 0.28;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="bgs"></div>
+      <svg id="thread" width="7920" height="2868"></svg>
+      <div id="panels"></div>
+      <svg id="nodes" width="7920" height="2868"></svg>
+      <svg id="grain" width="7920" height="2868">
+        <filter id="gn">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency=".9"
+            numOctaves="2"
+            stitchTiles="stitch"
+          />
+          <feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .55 0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#gn)" />
+      </svg>
+    </div>
+    <script src="icons.js"></script>
+    <script src="../explainer-30s/brand.js"></script>
+    <script>
+      'use strict'
+      const PW = 1320,
+        PH = 2868,
+        BR = '#FF671A'
+      const I = (n, s = 20, extra = '') =>
+        `<svg class="ic" viewBox="0 0 24 24" style="width:${s}px;height:${s}px;${extra}">${ICONS[n]}</svg>`
+
+      // ---------- shared iOS pieces ----------
+      const statusBar = (
+        dark
+      ) => `<div class="island"></div><div class="sbar"><span>9:41</span><span class="r">
+  <svg width="19" height="12" viewBox="0 0 19 12" fill="currentColor"><rect x="0" y="8" width="3.2" height="4" rx="1"/><rect x="5" y="5.5" width="3.2" height="6.5" rx="1"/><rect x="10" y="3" width="3.2" height="9" rx="1"/><rect x="15" y="0" width="3.2" height="12" rx="1"/></svg>
+  <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 2.3c2.4 0 4.6.9 6.3 2.5l1.2-1.2C14 1.6 11.4.5 8.5.5S3 1.6 1 3.6l1.2 1.2C3.9 3.2 6.1 2.3 8.5 2.3z"/><path d="M8.5 5.7c1.5 0 2.9.6 4 1.5l1.2-1.2C12.3 4.7 10.5 4 8.5 4S4.7 4.7 3.3 6l1.2 1.2c1.1-.9 2.5-1.5 4-1.5z"/><path d="M8.5 9 11 6.9c-.7-.5-1.6-.9-2.5-.9s-1.8.4-2.5.9z" transform="translate(0 2.6)"/></svg>
+  <svg width="28" height="13" viewBox="0 0 28 13"><rect x=".5" y=".5" width="24" height="12" rx="3.8" fill="none" stroke="currentColor" opacity=".4"/><rect x="2.3" y="2.3" width="20.4" height="8.4" rx="2.4" fill="currentColor"/><path d="M26 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg>
+</span></div>`
+
+      const TABICON = {
+        notes:
+          '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 2h7.2c.5 0 1 .2 1.4.6l4.8 4.8c.4.4.6.9.6 1.4V20a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M8.6 12.5h7M8.6 16h7M8.6 9h3.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>',
+        home: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M11.1 2.6a1.4 1.4 0 0 1 1.8 0l8.2 7a1 1 0 0 1-.7 1.8H19v8.3c0 .9-.7 1.6-1.6 1.6h-3.2v-5.6c0-.6-.4-1-1-1h-2.4c-.6 0-1 .4-1 1v5.6H6.6c-.9 0-1.6-.7-1.6-1.6v-8.3H3.6a1 1 0 0 1-.7-1.8z"/></svg>',
+        tasks:
+          '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m7.6 12.2 3 3 5.8-6.2" stroke="#fff" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        journal:
+          '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M2 5.2c0-.6.4-1.1 1-1.2 3.1-.5 5.9.1 8.2 1.8V21c-2.3-1.6-5-2.1-8.2-1.6a.9.9 0 0 1-1-.9zM22 5.2c0-.6-.4-1.1-1-1.2-3.1-.5-5.9.1-8.2 1.8V21c2.3-1.6 5-2.1 8.2-1.6.5.1 1-.3 1-.9z"/></svg>',
+        more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/></svg>'
+      }
+      const tabBar = (on) =>
+        `<div class="tabbar">${[
+          ['notes', 'Notes'],
+          ['home', 'Home'],
+          ['tasks', 'Tasks'],
+          ['journal', 'Journal'],
+          ['more', 'More']
+        ]
+          .map(
+            ([k, l]) =>
+              `<div class="tab ${k === on ? 'on' : ''}">${TABICON[k]}<span>${l}</span></div>`
+          )
+          .join('')}</div>`
+
+      // phone at (x,y) body width w, rotation r deg. content = inner screen html
+      function phone(x, y, w, content, { dark = false, rot = 0, id = '' } = {}) {
+        const bez = Math.round(w * 0.024),
+          sw = w - bez * 2,
+          k = sw / 440,
+          h = Math.round(956 * k + bez * 2)
+        return `<div class="phone" ${id ? `id="${id}"` : ''} style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;transform:rotate(${rot}deg)">
+    <div class="btn" style="left:-5px;top:${h * 0.2}px;height:${h * 0.045}px"></div>
+    <div class="btn" style="left:-5px;top:${h * 0.28}px;height:${h * 0.075}px"></div>
+    <div class="btn" style="left:-5px;top:${h * 0.37}px;height:${h * 0.075}px"></div>
+    <div class="btn" style="right:-5px;top:${h * 0.3}px;height:${h * 0.11}px"></div>
+    <div class="screen ${dark ? 'dk' : ''}" style="left:${bez}px;top:${bez}px;zoom:${k}">${statusBar(dark)}${content}</div>
+  </div>`
+      }
+
+      // ---------- illustrations ----------
+      const azulejo = (
+        id,
+        w,
+        h,
+        r = 12
+      ) => `<svg width="${w}" height="${h}" style="display:block;border-radius:${r}px">
+  <defs><pattern id="${id}" width="56" height="56" patternUnits="userSpaceOnUse">
+    <rect width="56" height="56" fill="#F7F4EC"/>
+    <path d="M28 6c4 7 4 15 0 22-4-7-4-15 0-22zM28 50c-4-7-4-15 0-22 4 7 4 15 0 22zM6 28c7-4 15-4 22 0-7 4-15 4-22 0zM50 28c-7 4-15 4-22 0 7-4 15-4 22 0z" fill="#2F5596"/>
+    <circle cx="28" cy="28" r="4.5" fill="#E9A23B"/><circle cx="28" cy="28" r="1.8" fill="#F7F4EC"/>
+    <path d="M0 0h10q-2 8-10 10zM56 0H46q2 8 10 10zM0 56h10q-2-8-10-10zM56 56H46q2-8 10-10z" fill="#2F5596"/>
+    <path d="M13 13l4 4M43 13l-4 4M13 43l4-4M43 43l-4-4" stroke="#6E8FC7" stroke-width="2.4" stroke-linecap="round"/>
+    <rect x=".5" y=".5" width="55" height="55" fill="none" stroke="#D9D2C2" stroke-width="1"/>
+  </pattern></defs><rect width="100%" height="100%" fill="url(#${id})"/></svg>`
+
+      const sunset = (
+        id,
+        w,
+        h,
+        r = 12
+      ) => `<svg width="${w}" height="${h}" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" style="display:block;border-radius:${r}px">
+  <defs>
+    <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3E2A5C"/><stop offset=".38" stop-color="#C4506A"/><stop offset=".7" stop-color="#FF8A3D"/><stop offset="1" stop-color="#FFC36E"/></linearGradient>
+    <radialGradient id="${id}g" cx=".62" cy=".72" r=".45"><stop offset="0" stop-color="#FFE3A3" stop-opacity=".9"/><stop offset="1" stop-color="#FFE3A3" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="400" height="240" fill="url(#${id}s)"/><rect width="400" height="240" fill="url(#${id}g)"/>
+  <circle cx="248" cy="168" r="26" fill="#FFE8B0"/>
+  <path d="M0 176h400v64H0z" fill="#E7824A" opacity=".55"/>
+  <path d="M0 190l30-6 20 4 18-10 22 6 16-8 24 10 20-4 26 8 18-12 30 10 26-6 24 8 22-10 26 8 30-4 28 8 30-6v72H0z" fill="#4A2A3F"/>
+  <g fill="#3A2033"><rect x="36" y="172" width="18" height="22"/><rect x="58" y="164" width="14" height="30"/><path d="M58 164l7-8 7 8z"/><rect x="92" y="176" width="22" height="20"/><rect x="300" y="170" width="16" height="26"/><rect x="320" y="160" width="12" height="36"/><path d="M320 160l6-10 6 10z"/><rect x="346" y="174" width="24" height="22"/><rect x="150" y="180" width="30" height="16"/><rect x="186" y="170" width="10" height="26"/><path d="M184 170l7-14 7 14z"/></g>
+  <g fill="#FFD27A" opacity=".85"><rect x="40" y="178" width="3" height="4"/><rect x="47" y="184" width="3" height="4"/><rect x="96" y="182" width="3" height="4"/><rect x="104" y="186" width="3" height="4"/><rect x="350" y="180" width="3" height="4"/><rect x="360" y="186" width="3" height="4"/><rect x="304" y="176" width="3" height="4"/></g>
+  <path d="M0 214l40-4 40 6 50-8 40 6 50-6 40 8 50-6 40 4 50-6v36H0z" fill="#2B1726"/>
+  <g transform="translate(212 196)"><rect x="0" y="0" width="54" height="22" rx="4" fill="#F4C430"/><rect x="0" y="14" width="54" height="8" fill="#D9A21E"/><g fill="#5A3A1A" opacity=".75"><rect x="5" y="4" width="8" height="7" rx="1"/><rect x="16" y="4" width="8" height="7" rx="1"/><rect x="27" y="4" width="8" height="7" rx="1"/><rect x="38" y="4" width="8" height="7" rx="1"/></g><path d="M27 0l-6-10M21-10h12" stroke="#2B1726" stroke-width="1.6"/></g>
+</svg>`
+
+      const wave = (n, h, color, seed = 3, done = 1) => {
+        let s = seed,
+          o = ''
+        for (let i = 0; i < n; i++) {
+          s = (s * 9301 + 49297) % 233280
+          const v = 0.25 + 0.75 * Math.abs(Math.sin(i * 0.55 + seed)) * (0.55 + (0.45 * s) / 233280)
+          o += `<i style="display:block;width:3px;border-radius:2px;height:${Math.max(3, v * h)}px;background:${color};opacity:${i / n < done ? 1 : 0.28}"></i>`
+        }
+        return `<div style="display:flex;align-items:center;gap:2.5px;height:${h}px">${o}</div>`
+      }
+
+      const markSvg = (size, col = BR) =>
+        `<svg width="${size}" height="${(size * 1031) / 1280}" viewBox="0 0 1280 1031"><path d="${BRAND.markTop}" fill="${col}"/><path d="${BRAND.bar}" fill="${col}"/></svg>`
+      const wordSvg = (h, col) =>
+        `<svg height="${h}" viewBox="0 -17.5 146 23" style="height:${h}px;width:${(h * 146) / 23}px">${BRAND.wordmark.map((d) => `<path d="${d}" fill="${col}"/>`).join('')}</svg>`
+
+      const check = (on, s = 22) =>
+        on
+          ? `<span style="width:${s}px;height:${s}px;border-radius:50%;background:#F97316;display:grid;place-items:center;flex:none"><svg width="${s * 0.6}" height="${s * 0.6}" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`
+          : `<span style="display:inline-block;vertical-align:middle;width:${s}px;height:${s}px;border-radius:50%;border:1.6px solid #BDB7AE;flex:none"></span>`
+      const pri = (n, c = '#F97316') =>
+        `<span style="display:inline-flex;align-items:flex-end;gap:1.6px;height:11px">${[4, 7, 10].map((hh, i) => `<i style="display:block;width:3px;height:${hh}px;border-radius:1px;background:${i < n ? c : '#D6D1CA'}"></i>`).join('')}</span>`
+
+      // ================= SCREENS =================
+      const scrNote = `
+<div class="nav"><div class="gb" style="padding:0">${I('chevron-left', 24)}</div><div class="gb">${I('paperclip')}${I('smile')}${I('plus', 22)}</div></div>
+<div style="position:absolute;left:22px;right:22px;top:128px">
+  <div class="muted" style="font-size:13px;display:flex;gap:6px;align-items:center">${I('folder', 14)} Travel <span style="opacity:.5">/</span> Lisbon</div>
+  <div style="font:600 36px/1.08 'Space Grotesk',sans-serif;letter-spacing:-.03em;margin:10px 0 12px">Lisbon, finally.</div>
+  <div style="display:flex;gap:6px;align-items:center"><span class="chip rose">travel</span><span class="chip sky">lisbon</span><span class="chip sage">may</span><span class="chip ghost">Add a tag</span></div>
+  <div style="font-size:17px;line-height:1.5;margin-top:18px">Three days in May. No laptop, no plan. Just the city and a good pair of shoes.</div>
+  <div style="font-weight:650;font-size:20px;margin:20px 0 8px;letter-spacing:-.02em">Don't miss</div>
+  ${['Get lost in Alfama', 'Sunset at Senhora do Monte', 'Pastéis de nata, every single day'].map((t) => `<div style="display:flex;align-items:center;gap:12px;font-size:17px;line-height:1.75"><i style="width:5.5px;height:5.5px;border-radius:50%;background:#1C1B19;margin-inline-start:6px"></i>${t}</div>`).join('')}
+  <div style="margin-top:16px;position:relative">${azulejo('az1', 396, 170, 14)}<div style="position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.9);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:600;color:#2F5596">azulejo-shop.jpg</div></div>
+  <div style="font-weight:650;font-size:20px;margin:20px 0 6px;letter-spacing:-.02em">Before we go</div>
+  <div style="display:flex;align-items:center;gap:12px;font-size:17px;height:36px">${check(1)}<span style="text-decoration:line-through;color:#A19D97">Book flights</span></div>
+  <div style="display:flex;align-items:center;gap:12px;font-size:17px;height:36px">${check(1)}<span style="text-decoration:line-through;color:#A19D97">Renew passport</span></div>
+  <div style="display:flex;align-items:center;gap:12px;font-size:17px;height:36px">${check(0)}<span>Tram 28 tickets</span></div>
+</div>
+${tabBar('notes')}`
+
+      const inboxRow = (
+        icon,
+        color,
+        title,
+        meta,
+        thumb = ''
+      ) => `<div style="display:flex;gap:13px;padding:13px 0;border-bottom:.5px solid #E6E2DC;align-items:flex-start">
+  <span style="color:${color};margin-top:2px">${I(icon, 20)}</span>
+  <div style="flex:1;min-width:0"><div style="font-size:16.5px;line-height:1.3">${title}</div><div class="muted" style="font-size:13px;margin-top:3px">${meta}</div></div>${thumb}</div>`
+      const scrInbox = `
+<div class="nav"><div class="gb" style="padding:0">${I('chevron-left', 24)}</div><div class="gb">${I('list-filter')}${I('ellipsis', 22)}</div></div>
+<div style="position:absolute;left:20px;right:20px;top:122px">
+  <div class="ttl" style="display:flex;align-items:center;gap:8px">Inbox <span class="muted">${I('chevron-down', 20)}</span></div>
+  <div class="muted" style="font-size:14px;margin-top:4px">5 to process · 2 filed today</div>
+  <div style="font-size:14px;font-weight:600;margin:22px 0 2px">Today <span class="muted" style="font-weight:500">5</span></div>
+  ${inboxRow('link', '#3B82F6', '48 hours in Lisbon: the slow way', 'Link · 2m')}
+  ${inboxRow('audio-lines', '#8B5CF6', 'Voice memo (0:22)', '“Ask Mina about the ferry to Cacilhas…” · 14m')}
+  ${inboxRow('image', '#10B981', 'Photo: the tile shop on Rua de São Miguel', 'Image · 1h', `<div style="width:62px;height:62px;border-radius:10px;overflow:hidden;flex:none">${azulejo('th2', 62, 62, 10)}</div>`)}
+  ${inboxRow('scissors', '#F97316', 'Excerpt: “Ride the 28 before nine. After that, walk.”', 'Clip · Safari · 3h')}
+  ${inboxRow('bell', '#EAB308', 'Check in online', 'Reminder · Thu 18:00')}
+  <div style="font-size:14px;font-weight:600;margin:18px 0 2px">Yesterday <span class="muted" style="font-weight:500">1</span></div>
+  ${inboxRow('file-text', '#64748B', 'Mina’s list: places that aren’t on Instagram', 'Note · Mon')}
+</div>
+<div style="position:absolute;left:12px;right:12px;bottom:12px;height:250px;border-radius:44px;background:#fff;box-shadow:0 -8px 40px rgba(0,0,0,.14),0 0 0 .5px rgba(0,0,0,.06);z-index:26;padding:22px 24px">
+  <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600"><i style="width:8px;height:8px;border-radius:50%;background:#EF4444"></i>Recording<span class="muted" style="margin-inline-start:auto;font-variant-numeric:tabular-nums;font-weight:500">0:06</span></div>
+  <div style="display:flex;justify-content:center;margin-top:22px">${wave(52, 34, '#1C1B19', 7)}</div>
+  <div class="muted" style="text-align:center;font-size:13px;margin-top:16px;display:flex;align-items:center;justify-content:center;gap:6px">${I('lock', 13)} Transcribed on this iPhone after you stop</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px">
+    <div style="width:48px;height:48px;border-radius:50%;background:#F1EFEC;display:grid;place-items:center"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19" stroke="#1C1B19" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+    <div style="width:66px;height:66px;border-radius:50%;background:#F97316;display:grid;place-items:center;box-shadow:0 8px 20px rgba(249,115,22,.4)"><i style="width:22px;height:22px;border-radius:5px;background:#1C1B19"></i></div>
+    <div style="width:48px"></div>
+  </div>
+</div>`
+
+      const prop = (icon, k, v) =>
+        `<div style="display:flex;align-items:center;height:30px;font-size:14px"><span class="muted" style="display:flex;align-items:center;gap:8px;width:118px">${I(icon, 15)}${k}</span>${v}</div>`
+      const scrItin = `
+<div class="nav"><div class="gb" style="padding:0">${I('chevron-left', 24)}</div><div class="gb">${I('paperclip')}${I('smile')}${I('plus', 22)}</div></div>
+<div style="position:absolute;left:22px;right:22px;top:126px">
+  <div style="font:600 34px/1.08 'Space Grotesk',sans-serif;letter-spacing:-.03em;margin-bottom:12px">Lisbon itinerary</div>
+  <div style="display:flex;gap:6px;margin-bottom:12px"><span class="chip sky">lisbon</span><span class="chip lilac">plans</span></div>
+  <div class="muted" style="font-size:13px;display:flex;align-items:center;gap:4px;margin-bottom:4px">${I('chevron-down', 14)} Properties · 4</div>
+  ${prop('calendar', 'dates', '<span>May 15 → May 17</span>')}
+  ${prop('map-pin', 'base', '<span>Alfama, Lisbon</span>')}
+  ${prop('at-sign', 'with', '<span class="chip peach">Mina</span>')}
+  ${prop('list-checks', 'status', '<span class="chip sage">booked</span>')}
+  <div class="sep" style="margin:14px 0 16px"></div>
+  <div style="font-size:17px;line-height:1.5">Slow mornings, one plan a day. Everything else is optional. Packing lives in <span style="color:#EA6A12;font-weight:600;background:#FEF1E7;border-radius:6px;padding:1px 6px">Packing list</span>.</div>
+  <div style="margin-top:16px;border:.5px solid #DDD8D0;border-radius:12px;overflow:hidden;font-size:14.5px">
+    <div style="display:grid;grid-template-columns:62px 1fr;background:#F7F5F1;font-weight:600"><div style="padding:9px 12px">Day</div><div style="padding:9px 12px;border-inline-start:.5px solid #DDD8D0">Plan</div></div>
+    ${[
+      ['Fri', 'Land 10:40 · tram 28 · Alfama'],
+      ['Sat', 'Tile shop · sunset at Senhora do Monte'],
+      ['Sun', 'Belém, pastéis, fly home 19:10']
+    ]
+      .map(
+        ([d, p]) =>
+          `<div style="display:grid;grid-template-columns:62px 1fr;border-top:.5px solid #DDD8D0"><div style="padding:9px 12px;font-weight:600">${d}</div><div style="padding:9px 12px;border-inline-start:.5px solid #DDD8D0">${p}</div></div>`
+      )
+      .join('')}
+  </div>
+  <div style="margin-top:16px;border-inline-start:3px solid #E4DED4;padding:2px 0 2px 14px;font-size:16px;line-height:1.45;color:#5D5852">“The best trips leave room for wandering.”</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px"><div style="font-weight:650;font-size:17px">Linked from</div><span style="color:#EA6A12;font-size:15px;display:flex;align-items:center;gap:2px">Recent ${I('chevron-down', 14)}</span></div>
+  ${[
+    ['file-text', 'Lisbon, finally.', 'Travel · edited 2h ago'],
+    ['book-open', 'Saturday, May 16', 'Journal']
+  ]
+    .map(
+      ([ic, t, m]) =>
+        `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:.5px solid #E6E2DC"><span class="muted">${I(ic, 18)}</span><div><div style="font-size:15.5px;font-weight:500">${t}</div><div class="muted" style="font-size:12.5px;margin-top:1px">${m}</div></div></div>`
+    )
+    .join('')}
+</div>
+${tabBar('notes')}`
+
+      const trow = (
+        done,
+        t,
+        meta,
+        p = 0
+      ) => `<div style="display:flex;gap:13px;padding:13px 0;border-bottom:.5px solid #E6E2DC;align-items:flex-start">
+  <span style="margin-top:1px">${check(done)}</span>
+  <div style="flex:1"><div style="font-size:16.5px;${done ? 'text-decoration:line-through;color:#A19D97' : ''}">${t}</div>${meta ? `<div style="font-size:13px;margin-top:4px;display:flex;align-items:center;gap:7px">${meta}</div>` : ''}</div>${p ? `<span style="margin-top:4px">${pri(p)}</span>` : ''}</div>`
+      const proj =
+        '<span style="display:inline-flex;align-items:center;gap:5px;color:#8A857E"><i style="width:7px;height:7px;border-radius:50%;background:#F97316"></i>Lisbon trip</span>'
+      const scrTasks = `
+<div class="nav"><div></div><div class="gb">${I('list-filter')}${I('ellipsis', 22)}</div></div>
+<div style="position:absolute;left:20px;right:20px;top:122px">
+  <div class="ttl" style="display:flex;align-items:center;gap:8px">Today <span class="muted">${I('chevron-down', 20)}</span></div>
+  <div class="muted" style="font-size:14px;margin-top:4px">Tuesday, May 12 · 3 of 6 done</div>
+  <div style="height:4px;border-radius:2px;background:#EEEBE6;margin:14px 0 6px"><div style="width:50%;height:100%;border-radius:2px;background:#F97316"></div></div>
+  ${trow(0, 'Book tram 28 tickets', `<span style="color:#EA6A12">Fri 9:00</span>${proj}`, 2)}
+  ${trow(0, 'Reserve dinner in Alfama', `<span style="color:#8A857E">Sat 20:00</span>${I('repeat', 12, 'color:#A19D97')}${proj}`, 3)}
+  ${trow(0, 'Download offline maps', proj, 1)}
+  ${trow(1, 'Book flights to Lisbon', '')}
+  ${trow(1, 'Renew passport', '')}
+  ${trow(1, 'Exchange some euros', '')}
+  ${['Tomorrow 2', 'This week 4'].map((s) => `<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;padding:13px 0 0">${I('chevron-right', 14)}${s.replace(/ (\d)$/, ' <span class="muted" style="font-weight:500">$1</span>')}</div>`).join('')}
+</div>
+<div style="position:absolute;left:12px;right:12px;bottom:102px;border-radius:30px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.14),0 0 0 .5px rgba(0,0,0,.07);z-index:26;padding:16px 16px 14px">
+  <div style="display:flex;gap:12px;align-items:flex-start"><span style="margin-top:2px">${check(0)}</span><div style="font-size:17px;line-height:1.45">Ferry with Mina <span style="color:#EA6A12;background:#FEF1E7;border-radius:5px;padding:0 3px">@friday 10am</span> <span style="color:#EA6A12;background:#FEF1E7;border-radius:5px;padding:0 3px">!high</span><i style="display:inline-block;width:2px;height:20px;background:#F97316;vertical-align:-4px;margin-inline-start:2px"></i></div></div>
+  <div style="display:flex;gap:7px;margin-top:13px;align-items:center">
+    <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:16px;background:#FEF1E7;color:#C2410C;font-size:14px;font-weight:600">${I('calendar', 15)}Fri 10:00</span>
+    <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:16px;background:#FEF1E7;color:#C2410C;font-size:14px;font-weight:600">${pri(3, '#C2410C')}High</span>
+    <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:16px;background:#F3F1EE;font-size:14px;font-weight:500"><i style="width:8px;height:8px;border-radius:50%;background:#F97316"></i>Lisbon</span>
+    <span style="margin-inline-start:auto;width:34px;height:34px;border-radius:50%;background:#F97316;color:#fff;display:grid;place-items:center">${I('arrow-up', 19, 'stroke-width:2.6')}</span>
+  </div>
+</div>
+${tabBar('tasks')}`
+
+      const scrJournal = `
+<div style="position:absolute;left:0;right:0;top:0;height:270px;background:radial-gradient(ellipse 90% 100% at 70% 0%,rgba(255,170,110,.42),rgba(255,200,160,.12) 55%,rgba(255,255,255,0) 80%)"></div>
+<div class="nav"><div style="display:flex;gap:10px"><div class="gb" style="padding:0">${I('chevron-left', 24)}</div><div class="gb" style="gap:24px">${I('chevron-left', 22)}${I('chevron-right', 22)}</div></div><div class="gb" style="gap:24px"><span style="color:#EA6A12">${I('bell', 21)}</span>${I('ellipsis', 22)}</div></div>
+<div style="position:absolute;left:24px;right:24px;top:128px">
+  <div style="display:flex;align-items:center;gap:8px;font-size:14px" class="muted">Saturday <span style="background:#FEE7D6;color:#C2410C;font-weight:700;font-size:11px;letter-spacing:.06em;border-radius:5px;padding:2px 6px">TODAY</span></div>
+  <div style="font:500 40px/1.1 'Crimson Pro',serif;letter-spacing:-.01em;margin-top:4px;display:flex;align-items:center;gap:8px">May 16 <span class="muted">${I('chevron-down', 20)}</span></div>
+  <div style="display:flex;gap:6px;margin-top:12px"><span class="chip lilac">daily</span><span class="chip sky">lisbon</span></div>
+  <div style="font:400 21px/1.5 'Crimson Pro',serif;margin-top:20px;color:#27241F">
+    <p style="margin:0 0 12px">Got completely lost in Alfama. Best wrong turn of my life.</p>
+    <p style="margin:0 0 12px">A tiny shop sold me one blue tile for four euros. It's going on my desk.</p>
+    <p style="margin:0">At Senhora do Monte the whole city went orange, and for once I didn't reach for my phone.</p>
+  </div>
+  <div style="margin-top:16px">${sunset('js1', 392, 176, 14)}</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px"><div style="font-weight:650;font-size:17px">Linked from</div><span style="color:#EA6A12;font-size:15px">2</span></div>
+  <div style="display:flex;gap:8px;margin-top:10px">${['Lisbon, finally.', 'Lisbon itinerary'].map((t) => `<span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:9px;background:#F5F3EF;font-size:14px;font-weight:500">${I('file-text', 14)}${t}</span>`).join('')}</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px"><div style="font-weight:650;font-size:17px">Due today <span class="muted" style="font-weight:500">1</span></div></div>
+  <div style="display:flex;gap:12px;align-items:center;margin-top:10px">${check(1)}<div><div style="font-size:16px;text-decoration:line-through;color:#A19D97">Reserve dinner in Alfama</div><div class="muted" style="font-size:12.5px;margin-top:2px">20:00 · Lisbon trip</div></div></div>
+</div>
+${tabBar('journal')}`
+
+      const CIPHER =
+        'eyJ2IjoyLCJuIjoiN3FYcTJmWmtRdz09IiwiYyI6Ijl6K1BwS1dyYmZ0Q3lEa3hHNVdOb1lnVnBKZUhhM3M4L0x1U2RqMWNtRk9YVGtRbnpQcVc1Y3JyYTdKV0JrZzJWczBaVUhtN2x4TjlmWDN1TnRRcS9oUGU0cU1ZcUc4dz09Iiwic2lnIjoiRWQyNTUxOTpmcFE0eHo3TnZqUGhhUlZyNm1Ld3ZTV3UyUkQ5a2NCZ1phUG9TbDFtWU14c2hOZkJqT2FWb0kzZFZXTnB6RzBVcXJFVWx6Y2dBPT0ifQ'
+      const scrPrivate = `
+<div class="nav"><div class="gb" style="padding:0">${I('chevron-left', 24)}</div><div class="gb">${I('paperclip')}${I('smile')}${I('plus', 22)}</div></div>
+<div style="position:absolute;left:22px;right:22px;top:128px">
+  <div class="muted" style="font-size:13px;display:flex;gap:6px;align-items:center">${I('folder', 14)} Travel <span style="opacity:.5">/</span> Lisbon</div>
+  <div style="font:600 36px/1.08 'Space Grotesk',sans-serif;letter-spacing:-.03em;margin:10px 0 12px;color:#F3EFE9">Lisbon, finally.</div>
+  <div style="display:flex;gap:6px"><span class="chip" style="background:#3A2327;color:#F2A7B0">travel</span><span class="chip" style="background:#1F2D38;color:#9CC3E0">lisbon</span><span class="chip" style="background:#243026;color:#A7CBAE">may</span></div>
+  <div style="font-size:17px;line-height:1.5;margin-top:18px;color:#DAD6D0">Three days in May. No laptop, no plan. Just the city and a good pair of shoes.</div>
+  <div style="font-weight:650;font-size:20px;margin:20px 0 8px;color:#F3EFE9">Don't miss</div>
+  ${['Get lost in Alfama', 'Sunset at Senhora do Monte'].map((t) => `<div style="display:flex;align-items:center;gap:12px;font-size:17px;line-height:1.75;color:#DAD6D0"><i style="width:5.5px;height:5.5px;border-radius:50%;background:#DAD6D0;margin-inline-start:6px"></i>${t}</div>`).join('')}
+</div>
+<div style="position:absolute;left:0;right:0;top:486px;bottom:0;background:linear-gradient(180deg,rgba(15,15,15,0),#0F0F0F 60px)"></div>
+<div style="position:absolute;left:22px;right:22px;top:520px;height:1.5px;background:linear-gradient(90deg,rgba(255,122,51,0),#FF7A33 20%,#FF7A33 80%,rgba(255,122,51,0))"></div>
+<div id="lockchip" style="position:absolute;left:50%;top:497px;transform:translateX(-50%);height:48px;padding:0 18px 0 14px;border-radius:24px;background:#1C1A18;box-shadow:0 0 0 1.5px #FF7A33,0 0 30px rgba(255,103,26,.45);display:flex;align-items:center;gap:9px;color:#FFB085;font-size:14.5px;font-weight:600;white-space:nowrap;z-index:5"><span style="color:#FF7A33">${I('lock-keyhole', 19, 'stroke-width:2.3')}</span>What the server sees</div>
+<div style="position:absolute;left:22px;right:22px;top:566px;bottom:100px;overflow:hidden;font:400 13.4px/1.62 'JetBrains Mono',monospace;color:#6E4A34;word-break:break-all;-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent)">
+  <span style="color:#FF8A4C">${CIPHER.slice(0, 78)}</span>${(CIPHER + CIPHER.split('').reverse().join('') + CIPHER).slice(78, 900)}
+</div>
+${tabBar('notes')}`
+
+      // ================= PANELS =================
+      const Z = 1.9 // breakout cards are designed in pt, like the phone screens
+      const card = (
+        id,
+        x,
+        y,
+        w,
+        inner,
+        { rot = 0, pad = '16px 18px', radius = 20, extra = '' } = {}
+      ) =>
+        `<div class="cw" id="${id}" style="left:${x}px;top:${y}px;transform:rotate(${rot}deg)"><div class="card" style="zoom:${Z};width:${w}px;padding:${pad};border-radius:${radius}px;${extra}">${inner}</div></div>`
+      const copy = (label, head, sub) =>
+        `<div class="copy"><div class="lbl">${label}</div><div class="h">${head}</div><div class="sub">${sub}</div></div>`
+      const lockup = (dark) =>
+        `<div class="lockup">${markSvg(74, BR)}${wordSvg(48, dark ? '#F6F1EA' : '#212121')}</div>`
+      const pill = (id, x, y, icon, text) =>
+        card(
+          id,
+          x,
+          y,
+          0,
+          `<span style="color:#FF8A4C;display:flex">${I(icon, 19, 'stroke-width:2.2')}</span>${text}`,
+          {
+            pad: '0 18px 0 15px',
+            radius: 999,
+            extra:
+              'width:auto;height:46px;display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600;white-space:nowrap'
+          }
+        )
+
+      const P = []
+      // 1 hero
+      P.push({
+        html: `
+  <div class="copy" style="top:150px">${lockup(false)}
+    <div class="h" style="margin-top:84px;font-size:156px">Your thoughts,<br><em>beautifully</em><br>organized<span class="stop" id="origin"></span></div>
+    <div class="sub" style="margin-top:40px">Notes, tasks, journal and inbox.<br>One calm, private place.</div></div>
+  ${phone(380, 1000, 860, scrNote, { id: 'ph1' })}
+  ${card(
+    'c1a',
+    30,
+    1330,
+    212,
+    `
+    <div style="display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;color:#7C3AED">${I('audio-lines', 18)}Voice memo<span style="margin-inline-start:auto;color:#A19D97;font-weight:500;font-variant-numeric:tabular-nums">0:22</span></div>
+    <div style="margin-top:12px">${wave(30, 28, '#7C3AED', 2, 0.62)}</div>
+    <div style="font-size:15px;margin-top:11px;line-height:1.35">“Ask Mina about the ferry to Cacilhas.”</div>
+    <div style="font-size:11.5px;color:#A19D97;margin-top:8px;display:flex;align-items:center;gap:5px">${I('lock', 11)}Transcribed on this iPhone</div>`,
+    { rot: -3 }
+  )}
+  ${card('c1b', 50, 2240, 196, `<div style="display:flex;gap:12px;align-items:center">${check(1, 28)}<div><div style="font-size:17px;font-weight:600">Book flights</div><div style="font-size:13px;color:#EA6A12;margin-top:2px;font-weight:500">Lisbon trip · done</div></div></div>`, { rot: 2.5 })}`,
+        warm: [[800, 1900, 1500, 0.55]]
+      })
+      // 2 capture
+      P.push({
+        html: `
+  ${copy('01 <i>·</i> CAPTURE', '<em>Catch</em> it before<br>it’s gone.', 'Links, photos, voice memos.<br>Sort them when you’re ready.')}
+  ${phone(60, 820, 900, scrInbox, { id: 'ph2' })}
+  ${card(
+    'c2a',
+    872,
+    990,
+    220,
+    `
+    <div style="margin:-16px -18px 0;overflow:hidden;border-radius:20px 20px 0 0">${sunset('c2s', 220, 104, 0)}</div>
+    <div style="font-size:12px;color:#A19D97;display:flex;align-items:center;gap:6px;margin-top:12px">${I('link', 13)}Shared from Safari</div>
+    <div style="font-size:17px;font-weight:650;margin-top:5px;line-height:1.22;letter-spacing:-.02em">48 hours in Lisbon: the slow way</div>`,
+    { rot: 3 }
+  )}`,
+        warm: [[520, 1850, 1500, 0.5]]
+      })
+      // 3 notes
+      P.push({
+        html: `
+  ${copy('02 <i>·</i> NOTES', '<em>Write</em> it down.', 'A quiet editor where every idea links to the next.')}
+  ${phone(60, 740, 900, scrItin, { id: 'ph3' })}
+  ${card(
+    'c3a',
+    872,
+    2100,
+    220,
+    `
+    <div style="font-size:12px;color:#A19D97;display:flex;align-items:center;gap:6px">${I('file-text', 13)}Travel / Lisbon</div>
+    <div style="font:600 22px/1.1 'Space Grotesk',sans-serif;letter-spacing:-.03em;margin-top:6px">Packing list</div>
+    <div style="margin-top:12px;display:grid;gap:9px;font-size:15px">
+      <div style="display:flex;gap:10px;align-items:center">${check(1, 20)}<span style="color:#A19D97;text-decoration:line-through">Passport</span></div>
+      <div style="display:flex;gap:10px;align-items:center">${check(1, 20)}<span style="color:#A19D97;text-decoration:line-through">Walking shoes</span></div>
+      <div style="display:flex;gap:10px;align-items:center">${check(0, 20)}<span>Film camera</span></div></div>
+    <div style="margin-top:14px;height:4px;border-radius:2px;background:#EEEBE6"><div style="width:75%;height:100%;border-radius:2px;background:#F97316"></div></div>
+    <div style="font-size:12px;color:#8A857E;margin-top:7px">9 of 12 packed</div>`,
+    { rot: -2.5 }
+  )}`,
+        warm: [[520, 1800, 1500, 0.5]]
+      })
+      // 4 tasks
+      P.push({
+        html: `
+  ${copy('03 <i>·</i> TASKS', '<em>Break</em> it down.', 'Type it the way you’d say it. The date sorts itself out.')}
+  ${phone(360, 740, 900, scrTasks, { id: 'ph4' })}
+  ${card(
+    'c4a',
+    28,
+    1890,
+    214,
+    `
+    <div class="mono" style="font-size:12px;letter-spacing:.08em;color:#EA6A12;background:#FEF1E7;border-radius:6px;padding:3px 7px;width:fit-content">@friday 10am</div>
+    <div style="display:flex;align-items:center;gap:11px;margin-top:12px"><span style="width:40px;height:40px;border-radius:11px;background:#FEF1E7;color:#EA6A12;display:grid;place-items:center">${I('calendar', 21)}</span>
+    <div><div style="font-size:18px;font-weight:650;letter-spacing:-.02em">Fri, May 15</div><div style="font-size:13px;color:#8A857E;margin-top:1px">10:00 · High priority</div></div></div>`,
+    { rot: -3 }
+  )}`,
+        warm: [[800, 1850, 1500, 0.5]]
+      })
+      // 5 journal
+      P.push({
+        html: `
+  ${copy('04 <i>·</i> JOURNAL', '<em>Live</em> it.<br>Then relive it.', 'One quiet page a day, and<br>everything that happened on it.')}
+  ${phone(60, 840, 900, scrJournal, { id: 'ph5' })}
+  ${card(
+    'c5a',
+    872,
+    1890,
+    220,
+    `
+    <div style="display:flex;align-items:baseline;justify-content:space-between"><div style="font:500 25px 'Crimson Pro',serif">May</div><div style="font-size:12px;color:#A19D97">2026</div></div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px 0;margin-top:8px;text-align:center;font-size:12.5px;font-variant-numeric:tabular-nums">
+      ${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => `<div style="color:#B8B2AA;font-size:10px;font-weight:600">${d}</div>`).join('')}
+      ${Array.from({ length: 4 }, () => '<div></div>').join('')}
+      ${Array.from({ length: 31 }, (_, i) => {
+        const d = i + 1,
+          on = d === 16,
+          e = [2, 4, 5, 8, 9, 11, 12, 14, 15, 17].includes(d),
+          fut = d > 17
+        return `<div style="height:25px;display:grid;place-items:center;position:relative;${fut ? 'color:#C9C3BB' : ''}"><span style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;${on ? 'background:#F97316;color:#fff;font-weight:700' : ''}">${d}</span>${e ? '<i style="position:absolute;bottom:0;width:3.5px;height:3.5px;border-radius:50%;background:#F4A26A"></i>' : ''}</div>`
+      }).join('')}
+    </div>
+    <div style="font-size:12px;color:#8A857E;margin-top:8px">11 entries this month</div>`,
+    { rot: 2.5 }
+  )}`,
+        warm: [[520, 1900, 1500, 0.55]]
+      })
+      // 6 private
+      P.push({
+        dark: true,
+        html: `
+  <div class="copy" style="top:150px">${lockup(true)}
+  <div class="lbl" style="margin-top:84px">05 <i>·</i> PRIVATE BY DESIGN</div>
+  <div class="h">Only <em>you</em> can<br>read it.</div>
+  <div class="sub">End-to-end encrypted. Works offline.<br>Syncs to your other devices.</div></div>
+  ${phone(230, 1010, 860, scrPrivate, { dark: true, id: 'ph6' })}
+  ${pill('c6b', 900, 1640, 'key-round', 'Your keys only')}
+  ${pill('c6a', 34, 2330, 'wifi-off', 'Works offline')}
+  ${pill('c6c', 820, 2560, 'smartphone', 'Syncs across devices')}`,
+        warm: [[660, 2000, 1800, 1]]
+      })
+
+      // ---------- mount ----------
+      const bgs = document.getElementById('bgs'),
+        panels = document.getElementById('panels')
+      P.forEach((p, i) => {
+        const x = i * PW
+        const glows = (p.warm || [])
+          .map(([cx, cy, r, a]) =>
+            p.dark
+              ? `<div class="warm" style="left:${cx - r / 2}px;top:${cy - r / 2}px;width:${r}px;height:${r}px;background:radial-gradient(closest-side,rgba(255,103,26,${0.2 * a}),rgba(255,103,26,0))"></div>`
+              : `<div class="warm" style="left:${cx - r / 2}px;top:${cy - r / 2}px;width:${r}px;height:${r}px;background:radial-gradient(closest-side,rgba(255,176,120,${0.34 * a}),rgba(255,190,140,0))"></div>`
+          )
+          .join('')
+        bgs.insertAdjacentHTML(
+          'beforeend',
+          `<div class="bgp ${p.dark ? 'dark' : ''}" style="left:${x}px;background:${p.dark ? '#121110' : '#FBF9F5'}"><div class="dots"></div>${glows}</div>`
+        )
+        panels.insertAdjacentHTML(
+          'beforeend',
+          `<div class="panel ${p.dark ? 'dark' : ''}" style="left:${x}px">${p.html}</div>`
+        )
+      })
+
+      // ---------- thread ----------
+      // Catmull-Rom through waypoints -> cubic beziers
+      function smooth(pts, t = 0.5) {
+        let d = `M${pts[0][0]},${pts[0][1]}`
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p0 = pts[i - 1] || pts[i],
+            p1 = pts[i],
+            p2 = pts[i + 1],
+            p3 = pts[i + 2] || p2
+          const c1 = [p1[0] + ((p2[0] - p0[0]) * t) / 3, p1[1] + ((p2[1] - p0[1]) * t) / 3]
+          const c2 = [p2[0] - ((p3[0] - p1[0]) * t) / 3, p2[1] - ((p3[1] - p1[1]) * t) / 3]
+          d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`
+        }
+        return d
+      }
+      const stageR = document.getElementById('stage').getBoundingClientRect()
+      const box = (id) => {
+        const r = document.getElementById(id).getBoundingClientRect()
+        return {
+          l: r.left - stageR.left,
+          t: r.top - stageR.top,
+          r: r.right - stageR.left,
+          b: r.bottom - stageR.top,
+          cx: (r.left + r.right) / 2 - stageR.left,
+          cy: (r.top + r.bottom) / 2 - stageR.top
+        }
+      }
+      const X = (i, x) => i * PW + x
+      const strand = (d, glow = 0.16) =>
+        `<path d="${d}" fill="none" stroke="#FF671A" stroke-width="24" stroke-linecap="round" opacity="${glow}" filter="url(#blur)"/><path d="${d}" fill="none" stroke="#FF671A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`
+      const node = ([x, y]) =>
+        `<circle cx="${x}" cy="${y}" r="26" fill="#FF671A" opacity=".16"/><circle cx="${x}" cy="${y}" r="12" fill="#FF671A"/><circle cx="${x}" cy="${y}" r="4.5" fill="#fff"/>`
+
+      window.ready = document.fonts.ready.then(() => {
+        const o = box('origin'),
+          a = box('c1a'),
+          b = box('c1b'),
+          c2 = box('c2a'),
+          c3 = box('c3a'),
+          c4 = box('c4a'),
+          c5 = box('c5a'),
+          c6 = box('c6a'),
+          lk = box('lockchip')
+        const n1 = [a.l + 90, a.t + 8],
+          n2 = [b.l + 60, b.t + 8],
+          n3 = [c2.r - 60, c2.b - 10],
+          n4 = [c3.l + 70, c3.t + 8],
+          n5 = [c4.cx, c4.b - 4],
+          n6 = [c5.r - 80, c5.t + 6],
+          n7 = [c6.cx, c6.b - 2]
+        const pts = [
+          [o.cx, o.cy],
+          // hero: swing right, run the corridor between copy and phone, drop down the left gutter
+          [X(0, 1000), o.cy + 36],
+          [X(0, 1185), 860],
+          [X(0, 1000), 952],
+          [X(0, 500), 956],
+          [X(0, 190), 1080],
+          n1,
+          [X(0, 110), 1900],
+          n2,
+          [X(0, 320), 2620],
+          [X(0, 1290), 2660],
+          // capture: under the phone, up the right gutter into the link card
+          [X(1, 500), 2800],
+          [X(1, 1100), 2620],
+          [X(1, 1235), 2100],
+          [X(1, 1215), 1600],
+          n3,
+          // out over the card and across the corridor above the notes phone
+          [X(1, 1250), 850],
+          [X(2, 100), 640],
+          [X(2, 700), 650],
+          [X(2, 1150), 710],
+          [X(2, 1235), 1150],
+          [X(2, 1205), 1800],
+          n4,
+          // behind the packing card, along the bottom into tasks
+          [X(2, 1150), 2650],
+          [X(2, 1300), 2790],
+          [X(3, 100), 2760],
+          [X(3, 150), 2400],
+          n5,
+          [X(3, 180), 1500],
+          [X(3, 200), 900],
+          [X(3, 420), 660],
+          [X(3, 1000), 645],
+          [X(3, 1290), 700],
+          // journal: corridor, then down the right gutter to the calendar
+          [X(4, 300), 772],
+          [X(4, 900), 778],
+          [X(4, 1180), 905],
+          [X(4, 1232), 1500],
+          n6,
+          [X(4, 1235), 2600],
+          [X(4, 1300), 2800],
+          [X(5, 60), 2780],
+          [X(5, 90), 2600],
+          n7
+        ]
+        // final approach sits above the phone: the thread becomes the seal line and ends in the lock
+        const fin = [
+          [c6.cx, c6.t + 2],
+          [X(5, 150), 2160],
+          [X(5, 270), lk.cy + 2],
+          [lk.l + 8, lk.cy]
+        ]
+        document.getElementById('thread').innerHTML =
+          `<defs><filter id="blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter></defs>${strand(smooth(pts, 0.75))}`
+        document.getElementById('nodes').innerHTML =
+          `<defs><filter id="blur2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="10"/></filter></defs>${strand(smooth(fin, 0.8), 0.3).replaceAll('url(#blur)', 'url(#blur2)')}${[n1, n2, n3, n4, n5, n6, n7, [c6.cx, c6.t + 2]].map(node).join('')}`
+      })
+    </script>
+  </body>
+</html>

@@ -41,7 +41,7 @@ export function LargeNotesWarning(): React.JSX.Element | null {
   const isExpanded = expanded ?? data.notes.some((note) => note.status === 'over')
 
   return (
-    <div className="border-b border-border" data-testid="large-notes-warning">
+    <div data-testid="large-notes-warning">
       <button
         type="button"
         onClick={() => setExpanded(!isExpanded)}

@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Beállítások elemre",
+    "backToApp": "Vissza az alkalmazásba",
     "nav": {
       "groups": {
         "account": "fiók",

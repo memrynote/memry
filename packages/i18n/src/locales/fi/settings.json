@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Asetukset",
+    "backToApp": "Takaisin sovellukseen",
     "nav": {
       "groups": {
         "account": "Tili",

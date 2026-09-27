@@ -226,17 +226,22 @@ export function SidebarBookmarkList({
                     onClick={handleBookmarkClick(bookmark)}
                     onMouseDown={handleBookmarkMiddleClick(sidebarItem)}
                     isActive={isActiveItem(sidebarItem)}
-                    className="group pe-8"
+                    className="group h-7 gap-1.5 rounded-[5px] py-0 ps-1 pe-8"
                   >
-                    {/* Icon or emoji */}
-                    {emoji ? (
-                      <NoteIconDisplay
-                        value={emoji}
-                        className="size-4 flex items-center justify-center text-sm shrink-0"
-                      />
-                    ) : (
-                      <Icon className={cn('size-4 shrink-0', iconColor)} aria-hidden="true" />
-                    )}
+                    {/* Leading block mirrors the notes tree: expander slot + icon slot */}
+                    <span className="flex shrink-0 items-center gap-0.5" aria-hidden="true">
+                      <span className="size-4" />
+                      <span className="flex size-5 items-center justify-center">
+                        {emoji ? (
+                          <NoteIconDisplay
+                            value={emoji}
+                            className="size-4 flex items-center justify-center text-sm shrink-0"
+                          />
+                        ) : (
+                          <Icon className={cn('size-4 shrink-0', iconColor)} />
+                        )}
+                      </span>
+                    </span>
 
                     <span className="sidebar-label-fade flex-1 text-[13px] text-sidebar-text-folder font-medium">
                       {title}
@@ -252,7 +257,7 @@ export function SidebarBookmarkList({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuAction
-                    className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity"
+                    className="top-1 opacity-0 group-hover/menu-item:opacity-100 transition-opacity"
                     showOnHover
                   >
                     <MoreHorizontal className="size-4" />

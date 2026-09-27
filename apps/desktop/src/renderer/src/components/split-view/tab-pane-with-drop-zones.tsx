@@ -20,12 +20,14 @@ interface TabPaneWithDropZonesProps {
   groupId: string
   /** Whether this is the active/focused pane */
   isActive: boolean
-  /** Whether to show the sidebar collapse toggle (hidden in split panes) */
-  showSidebarToggle?: boolean
   /** Whether this pane should reserve space for the fixed day panel */
   reserveDayPanelSpace?: boolean
   /** Whether this pane is the top-right one that shows the day-panel toggle */
   showDayPanelToggle?: boolean
+  /** Whether this is the top-start pane whose tab bar hosts the window controls */
+  reserveWindowControls?: boolean
+  /** Whether this pane touches the window top (see SplitLayoutRenderer) */
+  inTitleRow?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -36,9 +38,10 @@ interface TabPaneWithDropZonesProps {
 export const TabPaneWithDropZones = ({
   groupId,
   isActive,
-  showSidebarToggle = true,
   reserveDayPanelSpace = true,
   showDayPanelToggle = true,
+  reserveWindowControls = true,
+  inTitleRow = true,
   className
 }: TabPaneWithDropZonesProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
@@ -166,13 +169,16 @@ export const TabPaneWithDropZones = ({
       {/* Tab bar */}
       <TabBarWithDrag
         groupId={groupId}
-        showSidebarToggle={showSidebarToggle}
         reserveDayPanelSpace={reserveDayPanelSpace}
         showDayPanelToggle={showDayPanelToggle}
+        reserveWindowControls={reserveWindowControls}
+        inTitleRow={inTitleRow}
       />
 
-      {/* Content area */}
+      {/* Content area. data-window-controls-pane: the top-start pane's content takes the
+          surface's rounded corner while the sidebar is collapsed (main.css). */}
       <div
+        data-window-controls-pane={reserveWindowControls || undefined}
         className={cn(
           'flex-1 overflow-hidden relative',
           !dayPanelResizing && 'transition-[margin] duration-200 ease-linear'

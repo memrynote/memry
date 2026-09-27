@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Pusti sem",
-      "editProject": "Upraviť projekt"
+      "editProject": "Upraviť projekt",
+      "settings": "Nastavenia"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Odstrániť značku #",

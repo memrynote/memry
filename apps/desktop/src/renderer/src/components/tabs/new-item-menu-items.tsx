@@ -1,4 +1,10 @@
-import { FileText, BookOpen, Calendar, Inbox, ListTodo, Tags } from '@/lib/icons'
+import { FileText, Tags } from '@/lib/icons'
+import {
+  PageCalendarIcon,
+  PageInboxIcon,
+  PageJournalIcon,
+  PageTasksIcon
+} from '@/lib/icons/page-icons'
 import { Picker } from '@/components/ui/picker'
 import { useT } from '@memry/i18n/renderer'
 
@@ -29,25 +35,25 @@ export function NewItemMenuItems({ actions }: NewItemMenuItemsProps): React.JSX.
       <Picker.Item
         value="journal"
         label={tPhaseF('phaseF.componentsTabsNewTabMenu.journal')}
-        icon={<BookOpen className="size-4" />}
+        icon={<PageJournalIcon className="size-4" />}
         onClick={actions.onJournal}
       />
       <Picker.Item
         value="calendar"
         label={tPhaseF('phaseF.componentsTabsNewTabMenu.calendar')}
-        icon={<Calendar className="size-4" />}
+        icon={<PageCalendarIcon className="size-4" />}
         onClick={actions.onCalendar}
       />
       <Picker.Item
         value="inbox"
         label={tPhaseF('phaseF.componentsTabsNewTabMenu.inboxCapture')}
-        icon={<Inbox className="size-4" />}
+        icon={<PageInboxIcon className="size-4" />}
         onClick={actions.onInbox}
       />
       <Picker.Item
         value="tasks"
         label={tPhaseF('phaseF.componentsTabsNewTabMenu.tasks')}
-        icon={<ListTodo className="size-4" />}
+        icon={<PageTasksIcon className="size-4" />}
         onClick={actions.onTasks}
       />
       <Picker.Item

@@ -1,5 +1,6 @@
 import { Command } from 'cmdk'
-import { FileText, BookOpen, CheckSquare, Inbox, Trash2 } from '@/lib/icons'
+import { FileText, Trash2 } from '@/lib/icons'
+import { PageInboxIcon, PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import type { SearchReason } from '@memry/contracts/search-api'
 import { useT } from '@memry/i18n/renderer'
 
@@ -11,9 +12,9 @@ interface RecentReasonsProps {
 
 const TYPE_ICONS = {
   note: FileText,
-  journal: BookOpen,
-  task: CheckSquare,
-  inbox: Inbox
+  journal: PageJournalIcon,
+  task: PageTasksIcon,
+  inbox: PageInboxIcon
 } as const
 
 export function RecentReasons({

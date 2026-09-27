@@ -17,7 +17,7 @@ import { DockButton } from '@/components/sidebar/footer-dock'
  */
 export function SidebarSettingsButton(): React.JSX.Element {
   const { t } = useT('common')
-  const { open: openSettings } = useSettingsModal()
+  const { open: openSettings, isOpen: isSettingsOpen, close: closeSettings } = useSettingsModal()
   const { state } = useAppUpdater()
   const [open, setOpen] = useState(false)
 
@@ -28,7 +28,11 @@ export function SidebarSettingsButton(): React.JSX.Element {
     return (
       <DockButton
         data-tour="settings"
-        onClick={() => openSettings()}
+        // Raised like an open menu's trigger while settings is showing; a second
+        // click leaves settings.
+        data-state={isSettingsOpen ? 'open' : undefined}
+        aria-pressed={isSettingsOpen}
+        onClick={() => (isSettingsOpen ? closeSettings() : openSettings())}
         aria-label={settingsLabel}
         title={settingsLabel}
       >

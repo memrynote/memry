@@ -12,8 +12,11 @@ export interface YjsIpcProviderConfig {
    * workspace the user left sees every PROVIDER_READY main broadcasts, and the
    * one after a switch belongs to the other vault: rebinding then would open
    * this note in the wrong vault's CRDT store. Defaults to always.
+   *
+   * `readyVaultPath` is the vault named by the latest PROVIDER_READY since the
+   * last reset: `undefined` when none arrived or an older main sent no payload.
    */
-  canRebind?: () => boolean
+  canRebind?: (readyVaultPath: string | null | undefined) => boolean
 }
 
 export class YjsIpcProvider extends Observable<string> {
@@ -34,7 +37,9 @@ export class YjsIpcProvider extends Observable<string> {
   private stale = false
   /** Serialises rebinds so two ready events in a row cannot interleave handshakes. */
   private rebinding: Promise<void> | null = null
-  private readonly canRebind: () => boolean
+  private readonly canRebind: (readyVaultPath: string | null | undefined) => boolean
+  /** Vault of the provider main last announced ready; cleared on reset. */
+  private readyVaultPath: string | null | undefined = undefined
 
   constructor(config: YjsIpcProviderConfig) {
     super()
@@ -90,8 +95,14 @@ export class YjsIpcProvider extends Observable<string> {
     // old provider destroyed and no replacement initialized, so re-opening here
     // returns 'CRDT provider not initialized' — every time, on every device.
     // Record the death; act on the recovery.
-    this.resetCleanup = window.api.onCrdtProviderReset(() => this.markStale())
-    this.readyCleanup = window.api.onCrdtProviderReady(() => this.scheduleRebind())
+    this.resetCleanup = window.api.onCrdtProviderReset(() => {
+      this.readyVaultPath = undefined
+      this.markStale()
+    })
+    this.readyCleanup = window.api.onCrdtProviderReady((data) => {
+      this.readyVaultPath = data?.vaultPath
+      this.scheduleRebind()
+    })
 
     await this.openDoc()
     if (this.destroyed) return
@@ -170,7 +181,7 @@ export class YjsIpcProvider extends Observable<string> {
   private scheduleRebind(): void {
     // Held back: `stale` stays set, so `resumeRebind` or the next ready event
     // picks it up once rebinding is allowed.
-    if (this.destroyed || !this.stale || !this.canRebind()) return
+    if (this.destroyed || !this.stale || !this.canRebind(this.readyVaultPath)) return
     this.rebinding = (this.rebinding ?? Promise.resolve()).catch(() => {}).then(() => this.rebind())
   }
 
@@ -190,7 +201,7 @@ export class YjsIpcProvider extends Observable<string> {
    */
   private async rebind(): Promise<void> {
     // Checked again: a queued rebind can start after the workspace was hidden.
-    if (this.destroyed || !this.stale || !this.canRebind()) return
+    if (this.destroyed || !this.stale || !this.canRebind(this.readyVaultPath)) return
     this.synced = false
     try {
       await this.openDoc()

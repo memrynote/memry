@@ -3,7 +3,8 @@
  * Placeholder shown when a pane has no tabs
  */
 
-import { FileText, Inbox } from '@/lib/icons'
+import { FileText } from '@/lib/icons'
+import { PageInboxIcon } from '@/lib/icons/page-icons'
 import { useTabs } from '@/contexts/tabs'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -96,7 +97,7 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
             'transition-all duration-150 ease-out'
           )}
         >
-          <Inbox className="w-4 h-4" />
+          <PageInboxIcon className="w-4 h-4" />
 
           {tPhaseF('phaseF.componentsSplitViewEmptyPaneState.openInbox')}
         </button>

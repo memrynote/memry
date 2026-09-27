@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Pusťte se sem",
-      "editProject": "Upravit projekt"
+      "editProject": "Upravit projekt",
+      "settings": "Nastavení"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Smazat tag #",

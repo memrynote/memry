@@ -133,9 +133,14 @@ test.describe('Google calendar push channels (M4b round-trip)', () => {
     // Disconnect doesn't need OAuth — it just revokes tokens and drains channels — so this
     // half of the connect/disconnect UX is exercisable end-to-end.
     await page.keyboard.press('Meta+,')
-    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
-    await page.getByRole('button', { name: 'Calendar', exact: true }).click()
-    await page.getByRole('button', { name: 'Disconnect', exact: true }).click()
+    const settings = page.getByTestId('settings-view')
+    await expect(settings).toBeVisible()
+    await page
+      .getByTestId('settings-nav')
+      .getByRole('button', { name: 'Modules', exact: true })
+      .click()
+    await settings.getByRole('button', { name: 'Configure Calendar' }).click()
+    await settings.getByRole('button', { name: 'Disconnect', exact: true }).click()
 
     // #then every channel has been stopped on Google and deleted on sync-server
     await expect

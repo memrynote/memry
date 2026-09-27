@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Ihulog dito",
-      "editProject": "I-edit ang proyekto"
+      "editProject": "I-edit ang proyekto",
+      "settings": "Mga Setting"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Tanggalin ang tag na #",

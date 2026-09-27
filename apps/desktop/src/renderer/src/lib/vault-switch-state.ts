@@ -131,7 +131,7 @@ export function resetVaultSwitchState(): void {
 // =============================================================================
 
 /**
- * The pager (sidebar content) and the vault pill (sidebar footer) render in
+ * The pager (sidebar content) and the vault pill (under the panel) render in
  * different subtrees but move on one progress value, so nothing animates on its
  * own clock. Published at most once per animation frame.
  */

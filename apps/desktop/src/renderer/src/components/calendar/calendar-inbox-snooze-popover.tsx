@@ -3,7 +3,8 @@ import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
 import { SnoozePicker } from '@/components/snooze/snooze-picker'
-import { Inbox, Bell, Clock } from '@/lib/icons'
+import { Bell, Clock } from '@/lib/icons'
+import { PageInboxIcon } from '@/lib/icons/page-icons'
 import { cn } from '@/lib/utils'
 
 import type { AnchorRect } from './types'
@@ -93,7 +94,7 @@ export function CalendarInboxSnoozePopover({
           className="justify-start"
           onClick={() => onOpenInInbox(item.sourceId)}
         >
-          <Inbox className="me-2 h-4 w-4" />
+          <PageInboxIcon className="me-2 h-4 w-4" />
           {t('phaseI.inboxSnoozePopover.openInInbox')}
         </Button>
 

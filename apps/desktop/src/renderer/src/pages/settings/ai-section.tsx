@@ -492,13 +492,7 @@ export function AISettings({
           </TabsList>
 
           <TabsContent value="models" className="mt-6">
-            <div className="flex items-baseline gap-2 pb-1.5">
-              <h4 className="font-semibold text-xs/4 text-foreground">
-                {t('ai.v2.onDevice.label')}
-              </h4>
-              <span className="text-xs/4 text-muted-foreground">{t('ai.v2.onDevice.hint')}</span>
-            </div>
-            <SettingsGroup>
+            <SettingsGroup label={t('ai.v2.onDevice.label')} description={t('ai.v2.onDevice.hint')}>
               <div data-testid="embedding-model-row">
                 <LocalModelRow
                   label={t('ai.v2.embedding.label')}
@@ -643,7 +637,7 @@ export function AISettings({
                         className={cn(
                           'rounded-[5px] px-2.5 py-0.5 text-xs/4 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                           isActive
-                            ? 'bg-background text-foreground shadow-sm'
+                            ? 'bg-card text-foreground shadow-sm'
                             : 'text-muted-foreground hover:text-foreground'
                         )}
                       >

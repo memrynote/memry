@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Mga setting",
+    "backToApp": "Bumalik sa app",
     "nav": {
       "groups": {
         "account": "Account",

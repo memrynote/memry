@@ -155,7 +155,7 @@
       "alwaysInChat": "Always allow in this chat",
       "alwaysInChatHint": "Ends when the conversation ends",
       "alwaysInVault": "Always allow in this vault",
-      "alwaysInVaultHint": "Revocable in Settings \u203a Agent",
+      "alwaysInVaultHint": "Revocable in Settings › Agent",
       "deletesAlwaysAsk": "Deletes always ask"
     },
     "diff": {
@@ -1144,5 +1144,10 @@
     "star": "Star",
     "later": "Not now",
     "thanks": "Thank you. That means a lot."
+  },
+  "sidebar": {
+    "railLabel": "Sections",
+    "search": "Search or jump to…",
+    "vaultMenu": "{name}. Open the vault list"
   }
 }

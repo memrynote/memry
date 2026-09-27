@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "postavke",
+    "backToApp": "Natrag u aplikaciju",
     "nav": {
       "groups": {
         "account": "Račun",

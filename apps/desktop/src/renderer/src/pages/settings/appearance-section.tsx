@@ -255,7 +255,7 @@ function SegmentedControl({
             className={cn(
               'flex items-center gap-1.5 rounded-[5px] py-0.75 px-2.5 text-xs/4 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
               isActive
-                ? 'bg-background font-medium text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
+                ? 'bg-card font-medium text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -538,12 +538,12 @@ export function AppearanceSettings() {
                 type="button"
                 aria-label={t(preset.labelKey)}
                 onClick={() => void handleAccentChange(preset.value)}
-                className="size-4 rounded-full shrink-0 transition-transform duration-150 cursor-pointer hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="size-4 rounded-full shrink-0 transition-transform duration-150 cursor-pointer hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                 style={{
                   backgroundColor: preset.value,
                   boxShadow:
                     settings.accentColor === preset.value
-                      ? `var(--background) 0px 0px 0px 2px, ${preset.value} 0px 0px 0px 3.5px`
+                      ? `var(--card) 0px 0px 0px 2px, ${preset.value} 0px 0px 0px 3.5px`
                       : 'none'
                 }}
                 title={t(preset.labelKey)}

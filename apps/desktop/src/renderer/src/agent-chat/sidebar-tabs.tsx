@@ -75,11 +75,18 @@ export function SidebarTabs({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className={cn('flex h-9 shrink-0 items-center gap-3 ps-3', !endAccessory && 'pe-3')}>
+      {/* The header sits in the window title row (main.css), so its empty space drags the
+          window; the controls opt out with no-drag. */}
+      <div
+        className={cn(
+          'drag-region flex h-9 shrink-0 items-center gap-3 ps-3',
+          !endAccessory && 'pe-3'
+        )}
+      >
         <div
           role="tablist"
           aria-label={t('agentChat.sidebar.label')}
-          className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-transparent bg-sidebar-surface p-0.5 hover:border-sidebar-border focus-within:border-sidebar-border"
+          className="no-drag inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-transparent bg-sidebar-surface p-0.5 hover:border-sidebar-border focus-within:border-sidebar-border"
         >
           <SidebarTabButton
             active={resolvedActive === 'day'}
@@ -115,7 +122,7 @@ export function SidebarTabs({
         </div>
         <div
           data-slot="day-panel-header-actions"
-          className="ms-auto flex shrink-0 items-center gap-2"
+          className="no-drag ms-auto flex shrink-0 items-center gap-2"
         >
           <div className="flex h-9 min-w-0 items-center gap-1.5 pt-0.5">
             {resolvedActive !== 'agent' ? (

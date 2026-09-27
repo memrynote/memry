@@ -786,8 +786,8 @@ function createWindow(): void {
     ...(process.platform === 'darwin'
       ? {
           titleBarStyle: 'hidden',
-          // Hide native traffic lights - we use custom ones
-          trafficLightPosition: { x: -100, y: -100 }
+          // Native traffic lights, vertically centered in the 36px (h-9) chrome row.
+          trafficLightPosition: { x: 12, y: 12 }
         }
       : {}),
     webPreferences: {

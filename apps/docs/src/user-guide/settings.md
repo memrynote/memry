@@ -1,8 +1,10 @@
 # Settings Reference
 
-Every panel in the memrynote settings modal, in one searchable page. Open with <kbd>Cmd</kbd>+<kbd>,</kbd> or from the sidebar menu.
+Every panel in memrynote Settings, in one searchable page. Open with <kbd>Cmd</kbd>+<kbd>,</kbd> or the Settings gear at the foot of the rail.
 
-The sidebar lists **Account** on its own, then three groups:
+Settings opens inside the window, not over it: the workspace shows the selected page, and the sidebar panel swaps its vault tree for the settings list. Leave with the back arrow beside the **Settings** title, <kbd>Esc</kbd>, the gear again, or any page on the rail. Your tabs, open notes, and sidebar tree are exactly as you left them. If the sidebar was collapsed, it opens for the visit and collapses again on the way out.
+
+The settings sidebar lists **Account** on its own, then three groups:
 
 - **Workspace** — General, Appearance, Editor (with Templates below it), Shortcuts
 - **Features** — Modules (on/off toggles; Journal, Tasks, Inbox and Calendar open as sub-pages with a back link, and <kbd>Esc</kbd> steps back), AI & Agents (Models, Agents, and Connect tabs, including Command Line)
@@ -14,11 +16,11 @@ The search field at the top of the sidebar finds a setting by name, section, or 
 
 - <kbd>↑</kbd> / <kbd>↓</kbd> move to another match and highlight it
 - <kbd>Enter</kbd> focuses the highlighted setting's control
-- <kbd>Esc</kbd> clears the search; a second <kbd>Esc</kbd> closes Settings
+- <kbd>Esc</kbd> clears the search; a second <kbd>Esc</kbd> leaves Settings
 
 Matching ignores case and punctuation, so `up-date` finds **Updates**.
 
-<!-- screenshot: settings modal with sidebar of sections -->
+<!-- screenshot: settings page with the settings list in the sidebar -->
 
 ---
 
@@ -85,7 +87,7 @@ project or sending product feedback.
 
 Shows the installed version. If a newer version is available, a button lets you check, download, and install.
 
-An update never takes the window. It announces itself as one quiet row in the sidebar footer, above the sync and settings row, and nothing else happens until you act on it.
+An update never takes the window. It announces itself as one quiet row at the foot of the sidebar panel, beside the Settings gear on the rail, and nothing else happens until you act on it.
 
 With **Automatically download & install updates** on, which is the default, you never see the download at all. The first thing you meet is **Update ready**, meaning the new version is already on disk and only needs a restart. Turn the setting off and an earlier **Update available** row appears instead, with a **Download** action, and a thin progress line along the bottom edge of the row while it fetches. memrynote only shows progress for a download you started; one it started on your own behalf stays silent.
 
@@ -177,7 +179,7 @@ diagnostic report** button that opens the consent dialog first.
 
 ## Send Feedback
 
-The speech-bubble button in the sidebar footer, next to Settings, opens a feedback dialog. The
+The speech-bubble button at the foot of the rail, above Settings, opens a feedback dialog. The
 message is required; everything else is optional. Submissions are emailed to the team, and the
 dialog lists exactly what is sent so nothing is collected out of sight:
 

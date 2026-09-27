@@ -162,12 +162,12 @@ test.describe('Tag icon picker', () => {
     await expect(tagRow.locator('svg')).toHaveCount(1, { timeout: 15000 })
   })
 
-  test('settings: picking an icon inside the modal persists and re-displays it', async ({
+  test('settings: picking an icon inside settings persists and re-displays it', async ({
     page
   }) => {
-    // Regression: Settings is a modal Radix Dialog. A picker portaled to
-    // document.body inherits the dialog's pointer-events:none, so it shows but
-    // clicks never land. Hosting it in a Radix Popover (modal) restores clicks.
+    // Regression: Settings used to be a modal Radix Dialog. A picker portaled to
+    // document.body inherited the dialog's pointer-events:none, so it showed but
+    // clicks never landed. Kept so the picker stays clickable from settings.
     const tag = `modalpick${UNIQUE}`
     await seedNoteWithTag(page, tag)
     await openTagsSettings(page)

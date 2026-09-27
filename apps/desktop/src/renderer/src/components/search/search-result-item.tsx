@@ -1,5 +1,6 @@
 import { Command } from 'cmdk'
-import { FileText, BookOpen, CheckSquare, Inbox, Calendar, Tag, ExternalLink } from '@/lib/icons'
+import { FileText, Calendar, Tag, ExternalLink } from '@/lib/icons'
+import { PageInboxIcon, PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import type {
   SearchResultItem as SearchResultItemType,
   ContentType,
@@ -20,9 +21,9 @@ interface SearchResultItemProps {
 
 const TYPE_ICONS: Record<ContentType, typeof FileText> = {
   note: FileText,
-  journal: BookOpen,
-  task: CheckSquare,
-  inbox: Inbox
+  journal: PageJournalIcon,
+  task: PageTasksIcon,
+  inbox: PageInboxIcon
 }
 
 const priorityColors: Record<number, string> = {

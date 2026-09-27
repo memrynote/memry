@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Search } from '@/lib/icons'
 import { TrafficLights } from '@/components/traffic-lights'
 import { TabIcon } from '@/components/tabs/tab-icon'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
+import { APP_RAIL_WIDTH_PX } from '@/components/sidebar/app-rail'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   ContextMenu,
@@ -21,6 +22,17 @@ interface WindowControlsProps {
   className?: string
 }
 
+/**
+ * Native macOS traffic lights (main/index.ts trafficLightPosition x: 12) span ~54px and
+ * overflow the 52px rail, so the buttons start after them.
+ */
+const NATIVE_LIGHTS_END_PX = 68
+
+/**
+ * Viewport-fixed h-9 title row. The native traffic lights sit at its start; the
+ * buttons follow them in both sidebar states. The sidebar panel and, when
+ * collapsed, the workspace card start below this row.
+ */
 export function WindowControls({ className }: WindowControlsProps): React.JSX.Element {
   const { t: tPhaseF } = useT('common')
   const { t } = useT('common')
@@ -47,106 +59,128 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
   }
 
   return (
-    <div className={cn('drag-region flex items-center gap-2 shrink-0 h-9 ps-3 pe-2', className)}>
-      <TrafficLights />
-
-      <div className="no-drag flex items-center gap-0.5 ms-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            {sidebarTooltip}
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
-              aria-label={t('action.search')}
-              className="flex items-center justify-center size-7 rounded text-text-tertiary hover:text-foreground hover:bg-sidebar-accent transition-colors duration-150"
-            >
-              <Search className="size-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            {tPhaseF('phaseF.componentsWindowControls.searchK')}
-          </TooltipContent>
-        </Tooltip>
-
-        <ContextMenu>
-          <ContextMenuTrigger asChild disabled={!canNavBack}>
-            <button
-              type="button"
-              onClick={() => navBack()}
-              disabled={!canNavBack}
-              aria-disabled={!canNavBack}
-              aria-label={tPhaseF('phaseF.componentsWindowControls.browserBack')}
-              title={tPhaseF('phaseF.componentsWindowControls.back')}
-              className={cn(
-                'flex items-center justify-center size-7 rounded transition-colors duration-150',
-                canNavBack
-                  ? 'text-text-tertiary hover:text-foreground hover:bg-sidebar-accent'
-                  : 'text-text-tertiary/40 cursor-default'
-              )}
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-          </ContextMenuTrigger>
-          <ContextMenuContent className="w-64">
-            {backEntries.map((e) => (
-              <ContextMenuItem key={`${e.tab.id}-${e.steps}`} onSelect={() => goBackSteps(e.steps)}>
-                <TabIcon
-                  type={e.tab.type}
-                  icon={e.tab.icon}
-                  emoji={e.tab.emoji}
-                  className="size-4 me-2"
-                />
-                <span className="truncate">{e.tab.title}</span>
-              </ContextMenuItem>
-            ))}
-          </ContextMenuContent>
-        </ContextMenu>
-
-        <ContextMenu>
-          <ContextMenuTrigger asChild disabled={!canNavForward}>
-            <button
-              type="button"
-              onClick={() => navForward()}
-              disabled={!canNavForward}
-              aria-disabled={!canNavForward}
-              aria-label={tPhaseF('phaseF.componentsWindowControls.browserForward')}
-              title={tPhaseF('phaseF.componentsWindowControls.forward')}
-              className={cn(
-                'flex items-center justify-center size-7 rounded transition-colors duration-150',
-                canNavForward
-                  ? 'text-text-tertiary hover:text-foreground hover:bg-sidebar-accent'
-                  : 'text-text-tertiary/40 cursor-default'
-              )}
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </ContextMenuTrigger>
-          <ContextMenuContent className="w-64">
-            {forwardEntries.map((e) => (
-              <ContextMenuItem
-                key={`${e.tab.id}-${e.steps}`}
-                onSelect={() => goForwardSteps(e.steps)}
-              >
-                <TabIcon
-                  type={e.tab.type}
-                  icon={e.tab.icon}
-                  emoji={e.tab.emoji}
-                  className="size-4 me-2"
-                />
-                <span className="truncate">{e.tab.title}</span>
-              </ContextMenuItem>
-            ))}
-          </ContextMenuContent>
-        </ContextMenu>
+    <>
+      <div
+        className={cn(
+          'fixed top-0 start-0 drag-region flex items-center justify-center h-9',
+          className
+        )}
+        style={{ width: APP_RAIL_WIDTH_PX }}
+      >
+        <TrafficLights />
       </div>
-    </div>
+      <div
+        className={cn(
+          'fixed drag-region flex items-center gap-2 shrink-0 h-9 ps-1 pe-2',
+          className
+        )}
+        style={{
+          top: 0,
+          insetInlineStart: NATIVE_LIGHTS_END_PX,
+          width: 'var(--chrome-buttons-width)'
+        }}
+      >
+        <div className="no-drag flex items-center gap-0.5 ms-1">
+          <ContextMenu>
+            <ContextMenuTrigger asChild disabled={!canNavBack}>
+              <button
+                type="button"
+                onClick={() => navBack()}
+                disabled={!canNavBack}
+                aria-disabled={!canNavBack}
+                aria-label={tPhaseF('phaseF.componentsWindowControls.browserBack')}
+                title={tPhaseF('phaseF.componentsWindowControls.back')}
+                className={cn(
+                  'flex items-center justify-center size-7 rounded transition-colors duration-150',
+                  canNavBack
+                    ? 'text-text-tertiary hover:text-foreground hover:bg-sidebar-accent'
+                    : 'text-text-tertiary/40 cursor-default'
+                )}
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+            </ContextMenuTrigger>
+            <ContextMenuContent className="w-64">
+              {backEntries.map((e) => (
+                <ContextMenuItem
+                  key={`${e.tab.id}-${e.steps}`}
+                  onSelect={() => goBackSteps(e.steps)}
+                >
+                  <TabIcon
+                    type={e.tab.type}
+                    icon={e.tab.icon}
+                    emoji={e.tab.emoji}
+                    className="size-4 me-2"
+                  />
+                  <span className="truncate">{e.tab.title}</span>
+                </ContextMenuItem>
+              ))}
+            </ContextMenuContent>
+          </ContextMenu>
+
+          <ContextMenu>
+            <ContextMenuTrigger asChild disabled={!canNavForward}>
+              <button
+                type="button"
+                onClick={() => navForward()}
+                disabled={!canNavForward}
+                aria-disabled={!canNavForward}
+                aria-label={tPhaseF('phaseF.componentsWindowControls.browserForward')}
+                title={tPhaseF('phaseF.componentsWindowControls.forward')}
+                className={cn(
+                  'flex items-center justify-center size-7 rounded transition-colors duration-150',
+                  canNavForward
+                    ? 'text-text-tertiary hover:text-foreground hover:bg-sidebar-accent'
+                    : 'text-text-tertiary/40 cursor-default'
+                )}
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </ContextMenuTrigger>
+            <ContextMenuContent className="w-64">
+              {forwardEntries.map((e) => (
+                <ContextMenuItem
+                  key={`${e.tab.id}-${e.steps}`}
+                  onSelect={() => goForwardSteps(e.steps)}
+                >
+                  <TabIcon
+                    type={e.tab.type}
+                    icon={e.tab.icon}
+                    emoji={e.tab.emoji}
+                    className="size-4 me-2"
+                  />
+                  <span className="truncate">{e.tab.title}</span>
+                </ContextMenuItem>
+              ))}
+            </ContextMenuContent>
+          </ContextMenu>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {sidebarTooltip}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
+                aria-label={t('action.search')}
+                className="flex items-center justify-center size-7 rounded text-text-tertiary hover:text-foreground hover:bg-sidebar-accent transition-colors duration-150"
+              >
+                <Search className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {tPhaseF('phaseF.componentsWindowControls.searchK')}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    </>
   )
 }

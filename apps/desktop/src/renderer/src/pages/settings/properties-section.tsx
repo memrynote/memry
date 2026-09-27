@@ -32,7 +32,7 @@ import {
 } from '@/components/note/tags-row/tag-colors'
 import { cn } from '@/lib/utils'
 import { getStatusCategoryLabel } from '@/lib/contract-display-names'
-import { SettingsHeader } from '@/components/settings/settings-primitives'
+import { SettingsHeader, SETTINGS_CARD } from '@/components/settings/settings-primitives'
 import { PROPERTY_TYPE_CONFIG } from '@/components/note/info-section/types'
 import { useT } from '@memry/i18n/renderer'
 import type {
@@ -270,13 +270,13 @@ function PropertyManager() {
         />
       </div>
 
-      <div className="flex flex-col overflow-y-auto max-h-[60vh] border-y border-border">
+      <div className={cn(SETTINGS_CARD, 'max-h-[60vh] overflow-y-auto')}>
         {selectDefs.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
             {t('properties.noMatch', { query: search })}
           </p>
         )}
-        {selectDefs.map((def, i) => {
+        {selectDefs.map((def) => {
           const isExpanded = expandedDef === def.name
           const config = PROPERTY_TYPE_CONFIG[def.type as keyof typeof PROPERTY_TYPE_CONFIG]
           const options = parseOptions(def.options)
@@ -290,7 +290,6 @@ function PropertyManager() {
 
           return (
             <div key={def.name}>
-              {i > 0 && <div className="h-px bg-border" />}
               <div
                 className="flex items-center justify-between min-h-11 py-2 shrink-0 group cursor-pointer"
                 onClick={() => setExpandedDef(isExpanded ? null : def.name)}

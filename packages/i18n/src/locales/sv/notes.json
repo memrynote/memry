@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Släpp här",
-      "editProject": "Redigera projekt"
+      "editProject": "Redigera projekt",
+      "settings": "Inställningar"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Ta bort tagg #",

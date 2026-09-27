@@ -90,7 +90,7 @@ describe('VaultPager', () => {
     localStorage.clear()
   })
 
-  it('shows the list without the open vault name, which lives in the footer pill', () => {
+  it('draws only its children, leaving the vault name to the panel header', () => {
     renderPager()
     expect(screen.queryByText('Work')).not.toBeInTheDocument()
     expect(screen.getByText('list')).toBeInTheDocument()

@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "การตั้งค่า",
+    "backToApp": "กลับไปที่แอป",
     "nav": {
       "groups": {
         "account": "บัญชี",

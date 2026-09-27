@@ -30,7 +30,8 @@ import {
   SettingsGroup,
   SettingRow,
   ACCENT_SWITCH,
-  SETTINGS_GROUP_LABEL
+  SETTINGS_CARD,
+  SettingsGroupHeading
 } from '@/components/settings/settings-primitives'
 
 const MEMRY_REPOSITORY_URL = 'https://github.com/memrynote/memry'
@@ -507,107 +508,110 @@ export function AccountSettings() {
     <div className="flex flex-col text-xs/4">
       <SettingsHeader title={t('account.header.title')} subtitle={t('account.header.subtitle')} />
 
-      <div className="flex items-center gap-3 pb-6">
-        <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold text-white"
-          style={{ backgroundColor: 'var(--tint)' }}
-        >
-          {initial}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-[15px]/5 font-semibold text-foreground">
-            {email ?? t('account.identity.unknown')}
-          </span>
-          <span className="inline-flex items-center gap-1 text-xs/4 text-muted-foreground">
-            <Lock className="size-3 shrink-0" aria-hidden="true" />
-            {t('account.identity.encrypted')}
-          </span>
-        </div>
-        <span className="shrink-0 whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-[11px]/4 font-medium text-muted-foreground">
-          {billing ? t(`account.billing.plans.${billing.plan}`) : t('account.billing.checking')}
-        </span>
-      </div>
-
-      <div
-        className="mb-8 grid grid-cols-3 border-y border-border"
-        data-testid="account-stats-strip"
-      >
-        <div className="flex min-w-0 flex-col gap-1 py-3 pe-4">
-          <span className="text-xs/4 text-muted-foreground">{t('account.groups.sync')}</span>
-          <span className="inline-flex min-w-0 items-center gap-1.5 text-[13px]/4 text-foreground">
-            <span
-              className={`size-1.5 shrink-0 rounded-full ${syncStatus.dotColor} ${
-                syncStatus.isAnimating ? 'motion-safe:animate-pulse' : ''
-              }`}
-            />
-            <span className="truncate">{syncStatus.label}</span>
-          </span>
-          <span className="truncate text-xs/4 text-muted-foreground">
-            {t('account.sync.lastSynced', { time: syncStatus.lastSyncLabel })}
-          </span>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-1 border-s border-border py-3 px-4">
-          <span className="text-xs/4 text-muted-foreground">
-            {t('account.billing.labels.storage')}
-          </span>
-          {storage ? (
-            <>
-              <span className="truncate text-[13px]/4 text-foreground tabular-nums">
-                {t('account.storage.used', {
-                  used: formatBytes(storage.used),
-                  limit: formatBytes(storage.limit)
-                })}
-              </span>
-              <div className="mt-1 flex h-1 overflow-hidden rounded-full bg-muted">
-                {Object.entries(storage.breakdown).map(([key, bytes]) => {
-                  const pct = storage.limit > 0 ? (bytes / storage.limit) * 100 : 0
-                  return (
-                    <div
-                      key={key}
-                      title={`${storageCategoryLabels[key] ?? key} · ${formatBytes(bytes)}`}
-                      className="h-full"
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
-                      }}
-                    />
-                  )
-                })}
-              </div>
-            </>
-          ) : (
-            <span className="text-[13px]/4 text-muted-foreground">—</span>
-          )}
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-1 border-s border-border py-3 ps-4">
-          <span className="text-xs/4 text-muted-foreground">{t('account.v2.stats.plan')}</span>
-          <span className="truncate text-[13px]/4 text-foreground">
-            {billing ? t(`account.billing.plans.${billing.plan}`) : t('account.billing.planStatus')}
-          </span>
-          <span className="truncate text-xs/4 text-muted-foreground">
-            {billing
-              ? t(`account.billing.statuses.${billing.status}`)
-              : t('account.billing.checking')}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-col pb-8">
-        <div className="flex items-end justify-between gap-3 pb-1.5">
-          <h4 className={cn(SETTINGS_GROUP_LABEL, 'pb-0')}>{t('account.groups.devices')}</h4>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowLinkingQr(true)}
-            className="h-6 px-2 text-xs/4"
+      <div className={cn(SETTINGS_CARD, 'mb-9')}>
+        <div className="flex items-center gap-3 py-3.5">
+          <div
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold text-white"
+            style={{ backgroundColor: 'var(--tint)' }}
           >
-            {t('devices.linkNew')}
-          </Button>
+            {initial}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="truncate text-[15px]/5 font-semibold text-foreground">
+              {email ?? t('account.identity.unknown')}
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs/4 text-muted-foreground">
+              <Lock className="size-3 shrink-0" aria-hidden="true" />
+              {t('account.identity.encrypted')}
+            </span>
+          </div>
+          <span className="shrink-0 whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-[11px]/4 font-medium text-muted-foreground">
+            {billing ? t(`account.billing.plans.${billing.plan}`) : t('account.billing.checking')}
+          </span>
         </div>
-        <DeviceList />
+
+        <div className="grid grid-cols-3" data-testid="account-stats-strip">
+          <div className="flex min-w-0 flex-col gap-1 py-3 pe-4">
+            <span className="text-xs/4 text-muted-foreground">{t('account.groups.sync')}</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5 text-[13px]/4 text-foreground">
+              <span
+                className={`size-1.5 shrink-0 rounded-full ${syncStatus.dotColor} ${
+                  syncStatus.isAnimating ? 'motion-safe:animate-pulse' : ''
+                }`}
+              />
+              <span className="truncate">{syncStatus.label}</span>
+            </span>
+            <span className="truncate text-xs/4 text-muted-foreground">
+              {t('account.sync.lastSynced', { time: syncStatus.lastSyncLabel })}
+            </span>
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-1 border-s border-border py-3 px-4">
+            <span className="text-xs/4 text-muted-foreground">
+              {t('account.billing.labels.storage')}
+            </span>
+            {storage ? (
+              <>
+                <span className="truncate text-[13px]/4 text-foreground tabular-nums">
+                  {t('account.storage.used', {
+                    used: formatBytes(storage.used),
+                    limit: formatBytes(storage.limit)
+                  })}
+                </span>
+                <div className="mt-1 flex h-1 overflow-hidden rounded-full bg-muted">
+                  {Object.entries(storage.breakdown).map(([key, bytes]) => {
+                    const pct = storage.limit > 0 ? (bytes / storage.limit) * 100 : 0
+                    return (
+                      <div
+                        key={key}
+                        title={`${storageCategoryLabels[key] ?? key} · ${formatBytes(bytes)}`}
+                        className="h-full"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              </>
+            ) : (
+              <span className="text-[13px]/4 text-muted-foreground">—</span>
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-1 border-s border-border py-3 ps-4">
+            <span className="text-xs/4 text-muted-foreground">{t('account.v2.stats.plan')}</span>
+            <span className="truncate text-[13px]/4 text-foreground">
+              {billing
+                ? t(`account.billing.plans.${billing.plan}`)
+                : t('account.billing.planStatus')}
+            </span>
+            <span className="truncate text-xs/4 text-muted-foreground">
+              {billing
+                ? t(`account.billing.statuses.${billing.status}`)
+                : t('account.billing.checking')}
+            </span>
+          </div>
+        </div>
       </div>
+
+      <section className="flex flex-col pb-9">
+        <SettingsGroupHeading
+          label={t('account.groups.devices')}
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLinkingQr(true)}
+              className="h-6 px-2 text-xs/4"
+            >
+              {t('devices.linkNew')}
+            </Button>
+          }
+        />
+        <DeviceList />
+      </section>
 
       <SettingsGroup label={t('account.groups.sync')}>
         {isSyncLocked ? (
@@ -748,18 +752,20 @@ export function AccountSettings() {
         )}
       </SettingsGroup>
 
-      <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
-        <span className="text-xs/4 text-muted-foreground">
-          {t('account.security.signOut.description')}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowSignOutDialog(true)}
-          className="h-7 shrink-0 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-        >
-          {t('account.security.signOut.action')}
-        </Button>
+      <div className={SETTINGS_CARD}>
+        <div className="flex items-center justify-between gap-4 py-2.5">
+          <span className="text-xs/4 text-muted-foreground">
+            {t('account.security.signOut.description')}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSignOutDialog(true)}
+            className="h-7 shrink-0 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+          >
+            {t('account.security.signOut.action')}
+          </Button>
+        </div>
       </div>
 
       <AccountCommunityFooter />

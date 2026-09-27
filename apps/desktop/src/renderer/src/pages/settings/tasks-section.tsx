@@ -16,7 +16,9 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
-  COMPACT_SELECT
+  COMPACT_SELECT,
+  SEGMENTED,
+  SEGMENT_ITEM
 } from '@/components/settings/settings-primitives'
 
 const SORT_OPTIONS = [
@@ -33,9 +35,6 @@ const DEFAULT_VIEW_OPTIONS = [
   { value: 'tomorrow', labelKey: 'tasks.defaultView.options.tomorrow' },
   { value: 'next7', labelKey: 'tasks.defaultView.options.next7' }
 ] as const
-
-const SEGMENT_ITEM =
-  'h-auto min-w-0 rounded-[5px] border-none py-0.75 px-2.5 text-xs/4 text-muted-foreground shadow-none hover:bg-transparent data-[state=on]:bg-background data-[state=on]:font-medium data-[state=on]:text-foreground data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
 
 export function TasksSettings() {
   const { t } = useT('settings')
@@ -154,7 +153,7 @@ export function TasksSettings() {
               if (value) void handleDefaultViewChange(value)
             }}
             aria-label={t('tasks.defaultView.label')}
-            className="gap-0 rounded-[7px] bg-muted p-0.5"
+            className={SEGMENTED}
           >
             {DEFAULT_VIEW_OPTIONS.map((opt) => (
               <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM}>

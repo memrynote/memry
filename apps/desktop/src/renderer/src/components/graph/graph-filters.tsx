@@ -1,15 +1,6 @@
 import type { Dispatch } from 'react'
-import {
-  FileText,
-  BookOpen,
-  ListChecks,
-  FolderOpen,
-  Tag,
-  Unlink,
-  X,
-  RotateCcw,
-  Focus
-} from '@/lib/icons'
+import { FileText, FolderOpen, Tag, Unlink, X, RotateCcw, Focus } from '@/lib/icons'
+import { PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import { Toggle } from '@/components/ui/toggle'
 import { Button } from '@/components/ui/button'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'
@@ -31,13 +22,13 @@ const ENTITY_TOGGLES = [
   },
   {
     type: 'journal' as const,
-    icon: BookOpen,
+    icon: PageJournalIcon,
     labelKey: 'filter.journals',
     colorClass: 'text-[var(--graph-node-journal)]'
   },
   {
     type: 'task' as const,
-    icon: ListChecks,
+    icon: PageTasksIcon,
     labelKey: 'filter.tasks',
     colorClass: 'text-[var(--graph-node-task)]'
   },
@@ -72,7 +63,7 @@ export function GraphFilters({
   const { t } = useT('graph')
 
   return (
-    <div className="absolute left-3 top-3 z-40 flex flex-col gap-2">
+    <div className="absolute start-3 top-3 z-40 flex flex-col gap-2">
       <div className="rounded-md border border-border bg-popover/95 backdrop-blur-sm p-2 shadow-card">
         <div className="flex items-center gap-1">
           {ENTITY_TOGGLES.map(({ type, icon: Icon, labelKey, colorClass }) => {
@@ -132,7 +123,7 @@ export function GraphFilters({
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 ml-auto"
+            className="h-5 w-5 p-0 ms-auto"
             onClick={() => dispatch({ type: 'CLEAR_FOCUS' })}
             aria-label={t('control.clear-focus')}
           >

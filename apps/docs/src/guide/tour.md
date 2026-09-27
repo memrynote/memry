@@ -10,40 +10,25 @@ A 60-second lap through the parts of the app you'll use most.
 
 ## The Sidebar
 
-The left sidebar is your primary navigation.
+The left edge holds two columns: a narrow icon rail and the sidebar panel beside it.
 
-At the very top, the **New** button creates a note in one click. Click the chevron on its right to open the create menu — New Note, Journal, Calendar, Inbox, Tasks, or Tags — the same menu as the **+** on the tab bar. Some create-menu entries open ready to act: **Calendar** pops the new-event popover, **Inbox** focuses the capture field, and **Tasks** opens your default project with the quick-add input focused. **Tags** opens the tag hub, where your tag categories live.
+The **rail** carries the top-level pages — Home, Inbox, Journal, Calendar, Tasks and Graph — as icons. Hover one to see its name and shortcut (<kbd>⌘</kbd>+<kbd>1</kbd> through <kbd>⌘</kbd>+<kbd>9</kbd>, in rail order); hold <kbd>⌘</kbd> and each icon shows its number. Inbox and Tasks carry a small count of waiting items and tasks due today. Right-click an icon to open that page to the side. The rail stays on screen when you hide the panel with <kbd>⌘</kbd>+<kbd>B</kbd>, so every page is still one click away. Sync status, feedback and **Settings** sit at the foot of the rail.
 
-Opening the same views from the sidebar sections below focuses the input too (Inbox capture, Tasks quick-add), but the sidebar's **Calendar** just opens the calendar without the new-event popover — the popover is reserved for the create menu and the tab-bar **+**.
+At the top of the panel sit the open vault's name, the **New** button and a search field. Click the vault name to open the list of vaults. The pen button creates a note in one click. Click the chevron on its right to open the create menu — New Note, Journal, Calendar, Inbox, Tasks, or Tags — the same menu as the **+** on the tab bar. Some create-menu entries open ready to act: **Calendar** pops the new-event popover, **Inbox** focuses the capture field, and **Tasks** opens your default project with the quick-add input focused. **Tags** opens the tag hub, where your tag categories live.
+
+The search field opens global search, the same as <kbd>⌘</kbd>+<kbd>K</kbd>.
+
+Opening the same views from the rail focuses the input too (Inbox capture, Tasks quick-add), but the rail's **Calendar** just opens the calendar without the new-event popover — the popover is reserved for the create menu and the tab-bar **+**.
 
 Sections from top to bottom:
 
-- **Notes** — recent and pinned notes
+- **Collections** — your notes and folders
 - **Projects** — task projects with their incomplete-task counts
-- **Tags** — your tag vocabulary
 - **Bookmarks** — notes you've marked
-- **Graph** — visual map of how notes link
-- **Journal** — opens today's entry
-- **Inbox** — capture surface
+- **Canvases** — your canvases
+- **Tags** — your tag vocabulary
 
 Drag any section item to reorder, or right-click for a context menu.
-
-### Folding the navigation rows away
-
-The rows at the top — Home, Inbox, Journal and the rest — sit under a
-**Navigation** header. Click that header to fold them away. The tree below
-grows into the space they leave, so Collections, Projects, Bookmarks and
-Canvases get the whole sidebar, which makes long lists easier to read and to
-reorder. Click the header again to bring the rows back; on the keyboard,
-<kbd>←</kbd> folds and <kbd>→</kbd> unfolds.
-
-Folding the rows away does not take the destinations away. The numbered
-shortcuts (<kbd>⌘</kbd>+<kbd>1</kbd> through <kbd>⌘</kbd>+<kbd>9</kbd>, in the
-order the rows are listed) still open each one, and so does the tab bar's
-**+**.
-
-Like sort modes, this is saved per vault and syncs, so another device that
-opens the same vault folds its rows away too.
 
 Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping _into_ a folder works whatever the sort. A moved folder takes everything inside it along, subfolders included. If a folder cannot be moved, for example because a folder with the same name is already there, a message says so and the folder stays where it was.
 
@@ -133,22 +118,24 @@ unchanged until you pick something else.
 
 The **Notes** tree loads 10,000 notes at a time, most recently modified first. If your vault holds more than that, a footer row under the tree says how many older notes it is not showing and offers **Load more** to pull in the next batch. Notes past the ceiling are never hidden silently — and they stay reachable through search either way.
 
-At the bottom of the sidebar, one tray holds the footer controls:
+At the foot of the rail:
 
 - **Sync status** — shows whether sync is connected; click it to open account settings (or to sign in when you're signed out).
-- **Vault dots** — one dot per vault, the open one highlighted in its accent color. Click a dot to switch to that vault; open the vault menu from the tray to **Open vault** or **Sign in to sync**.
+- **Feedback** — report a bug or suggest a feature.
 - **Settings** (gear) — opens the settings modal, the same as <kbd>⌘</kbd>+<kbd>,</kbd>.
 
 ### Switching vaults
 
-With more than one vault, the sidebar pages between them. Swipe sideways with two fingers on the
-trackpad over the sidebar list and the neighbouring vault's page follows your fingers in; let go
+With more than one vault, the sidebar panel pages between them. Swipe sideways with two fingers on the
+trackpad over the panel and the neighbouring vault's page follows your fingers in, its name at the top; let go
 past the middle to switch, or short of it to spring back.
 <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on
 Windows and Linux) play the same move.
 
-The open vault's color and name sit in a pill in the sidebar footer. While you swipe it blends
-toward the incoming vault, and clicking it opens the list of every vault.
+Under the panel, one dot per vault shows where you are, the open vault's dot in its accent color.
+The dots stay put while the pages move and blend toward the incoming vault as you swipe; clicking
+them opens the list of every vault. The rail never moves. With the panel hidden, switch vaults
+with the shortcuts above or <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>O</kbd>.
 
 Vaults you visited recently come back the way you left them, with the same tabs, scroll position
 and open note, so going back and forth is instant. The first visit to a vault in a session loads

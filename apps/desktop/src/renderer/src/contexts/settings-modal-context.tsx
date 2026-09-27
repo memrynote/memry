@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
 import { trackTelemetry } from '@/lib/telemetry'
 
@@ -28,6 +28,7 @@ export type SettingsFocusTarget = 'voice-local-model' | 'vault-activity'
 const DEFAULT_SECTION: SettingsSection = 'account'
 
 interface SettingsModalContextValue {
+  /** Settings is showing in place of the workspace, with its nav in the sidebar. */
   isOpen: boolean
   activeSection: SettingsSection
   focusTarget: SettingsFocusTarget | null
@@ -35,6 +36,12 @@ interface SettingsModalContextValue {
   setActiveSection: (section: SettingsSection) => void
   open: (section?: string) => void
   close: () => void
+  /**
+   * The settings content pane. The nav (in the sidebar) and the content (in the
+   * workspace) render in different subtrees; search highlights and focuses rows
+   * in the content through this ref.
+   */
+  contentRef: React.RefObject<HTMLDivElement | null>
 }
 
 const SettingsModalContext = createContext<SettingsModalContextValue | null>(null)
@@ -58,6 +65,7 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
   const [activeSection, setActiveSectionState] = useState<SettingsSection>(DEFAULT_SECTION)
   const [focusTarget, setFocusTarget] = useState<SettingsFocusTarget | null>(null)
   const [focusRequestId, setFocusRequestId] = useState(0)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const setActiveSection = useCallback((section: SettingsSection) => {
     setActiveSectionState(section)
@@ -72,7 +80,7 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
       setFocusRequestId((id) => id + 1)
     }
     setIsOpen(true)
-    // Settings is a modal, not a tab, so App's tab-driven page_viewed never
+    // Settings is not a tab, so App's tab-driven page_viewed never
     // fires for it — emit here. Section names are a closed set of code tokens.
     void trackTelemetry('page_viewed', {
       surface: 'settings',
@@ -87,7 +95,16 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
   }, [])
 
   const value = useMemo<SettingsModalContextValue>(
-    () => ({ isOpen, activeSection, focusTarget, focusRequestId, setActiveSection, open, close }),
+    () => ({
+      isOpen,
+      activeSection,
+      focusTarget,
+      focusRequestId,
+      setActiveSection,
+      open,
+      close,
+      contentRef
+    }),
     [isOpen, activeSection, focusTarget, focusRequestId, setActiveSection, open, close]
   )
 

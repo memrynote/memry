@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Turun sini",
-      "editProject": "Edit projek"
+      "editProject": "Edit projek",
+      "settings": "Tetapan"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Padamkan teg #",

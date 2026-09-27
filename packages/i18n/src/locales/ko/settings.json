@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "설정",
+    "backToApp": "앱으로 돌아가기",
     "nav": {
       "groups": {
         "account": "계정",

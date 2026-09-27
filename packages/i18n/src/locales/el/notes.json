@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Πέτα εδώ",
-      "editProject": "Επεξεργασία έργου"
+      "editProject": "Επεξεργασία έργου",
+      "settings": "Ρυθμίσεις"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Διαγραφή ετικέτας #",

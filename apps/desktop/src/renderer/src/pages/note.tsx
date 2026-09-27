@@ -84,7 +84,6 @@ import {
   AlarmClock,
   Monitor,
   Maximize,
-  ChartRelationship,
   Hierarchy,
   LayoutTemplate,
   PenLine,
@@ -99,6 +98,7 @@ import {
   Paperclip,
   Trash2
 } from '@/lib/icons'
+import { PageGraphIcon } from '@/lib/icons/page-icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
 import { Switch } from '@/components/ui/switch'
@@ -1637,7 +1637,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   ? t('editor.toolbar.hideLocalGraph')
                   : t('editor.toolbar.showLocalGraph')
               }
-              icon={<ChartRelationship className="size-4" />}
+              icon={<PageGraphIcon className="size-4" />}
             />
             <Picker.Item
               value="find"

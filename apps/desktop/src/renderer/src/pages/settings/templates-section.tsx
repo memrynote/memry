@@ -23,7 +23,11 @@ import { useTabs } from '@/contexts/tabs'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import { SettingsHeader, SETTINGS_GROUP_LABEL } from '@/components/settings/settings-primitives'
+import {
+  SettingsHeader,
+  SettingsGroupHeading,
+  SETTINGS_CARD
+} from '@/components/settings/settings-primitives'
 
 export function TemplatesSettings() {
   const { t } = useT('settings')
@@ -223,14 +227,9 @@ function TemplateGroup({
   children: ReactNode
 }) {
   return (
-    <section aria-label={label} className="flex flex-col pb-8">
-      <div className="flex items-end justify-between gap-4 pb-1.5">
-        <h4 className={`${SETTINGS_GROUP_LABEL} pb-0`}>{label}</h4>
-        {action}
-      </div>
-      <div className="flex flex-col border-t border-border [&>*]:border-b [&>*]:border-border">
-        {children}
-      </div>
+    <section aria-label={label} className="flex flex-col pb-9">
+      <SettingsGroupHeading label={label} action={action} />
+      <div className={SETTINGS_CARD}>{children}</div>
     </section>
   )
 }

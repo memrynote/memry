@@ -60,7 +60,7 @@ interface DocEntry extends DocEntryHandle {
   getSnapshot: () => EntrySnapshot
   subscribe: (listener: () => void) => () => void
   /** See `YjsIpcProviderConfig.canRebind`; set by the consumer that acquires the entry. */
-  setRebindGate: (gate: () => boolean) => void
+  setRebindGate: (gate: (readyVaultPath: string | null | undefined) => boolean) => void
   resumeRebind: () => void
 }
 
@@ -100,8 +100,12 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     isRemoteUpdateRef.current = false
   })
 
-  let rebindGate: () => boolean = () => true
-  const provider = new YjsIpcProvider({ noteId, doc, canRebind: () => rebindGate() })
+  let rebindGate: (readyVaultPath: string | null | undefined) => boolean = () => true
+  const provider = new YjsIpcProvider({
+    noteId,
+    doc,
+    canRebind: (readyVaultPath) => rebindGate(readyVaultPath)
+  })
 
   const listeners = new Set<() => void>()
   let snapshot: EntrySnapshot = CONNECTING_SNAPSHOT
@@ -210,8 +214,13 @@ export function useYjsCollaboration(
     // switch. A doc kept for a hidden or leaving workspace must wait until its
     // own vault is the open one before it rebinds, or it would open this note
     // in the other vault's store. Outside a workspace there is one vault only.
-    const mayRebind = (): boolean => {
+    //
+    // The renderer's view of the switch (hidden flag, pending switch, cached
+    // status) can lag main on a fast swipe back, so the vault named by main's
+    // ready event is checked first: it is the store the rebind would open in.
+    const mayRebind = (readyVaultPath: string | null | undefined): boolean => {
       if (scope === null) return true
+      if (typeof readyVaultPath === 'string' && readyVaultPath !== scope) return false
       if (lifecycle?.hidden) return false
       const { pending } = getVaultSwitchState()
       if (pending && pending.path !== scope) return false

@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "拖放到此處",
-      "editProject": "編輯專案"
+      "editProject": "編輯專案",
+      "settings": "設定"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "刪除標籤 #",

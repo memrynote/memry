@@ -170,17 +170,17 @@ vi.mock('./split-view/split-pane', () => ({
 }))
 
 vi.mock('./split-view/tab-pane', () => ({
-  TabPane: ({ groupId, isActive, showSidebarToggle }: any) => (
+  TabPane: ({ groupId, isActive }: any) => (
     <div>
-      pane:{groupId}:{String(isActive)}:{String(showSidebarToggle)}
+      pane:{groupId}:{String(isActive)}
     </div>
   )
 }))
 
 vi.mock('./split-view/tab-pane-with-drop-zones', () => ({
-  TabPaneWithDropZones: ({ groupId, isActive, showSidebarToggle }: any) => (
+  TabPaneWithDropZones: ({ groupId, isActive }: any) => (
     <div>
-      pane:{groupId}:{String(isActive)}:{String(showSidebarToggle)}
+      pane:{groupId}:{String(isActive)}
     </div>
   )
 }))
@@ -447,8 +447,8 @@ describe('remaining zero renderer surfaces', () => {
       type: 'RESIZE_SPLIT',
       payload: { path: [], ratio: 0.65 }
     })
-    expect(screen.getByText('pane:group-1:true:true')).toBeInTheDocument()
-    expect(screen.getByText('pane:group-2:false:false')).toBeInTheDocument()
+    expect(screen.getByText('pane:group-1:true')).toBeInTheDocument()
+    expect(screen.getByText('pane:group-2:false')).toBeInTheDocument()
 
     render(
       <Breadcrumb>

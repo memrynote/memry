@@ -248,11 +248,10 @@ export function AgentProvidersSection({
         />
       )}
 
-      <GroupHeading
+      <SettingsGroup
         label={t('agentProviders.v2.permissions.group')}
-        hint={t('agentProviders.v2.permissions.hint')}
-      />
-      <SettingsGroup>
+        description={t('agentProviders.v2.permissions.hint')}
+      >
         <SettingRow
           label={t('agentProviders.v2.permissions.access')}
           description={t('agentProviders.permissions.access.description')}
@@ -289,11 +288,10 @@ export function AgentProvidersSection({
         </SettingRow>
       </SettingsGroup>
 
-      <GroupHeading
+      <SettingsGroup
         label={t('agentProviders.v2.runtimes.group')}
-        hint={t('agentProviders.v2.runtimes.hint')}
-      />
-      <SettingsGroup>
+        description={t('agentProviders.v2.runtimes.hint')}
+      >
         {CLI_AGENT_ROWS.map((row) => {
           const cli = backendStatuses?.[row.backend]
           const tone = cliStatusTone(cli)
@@ -465,11 +463,10 @@ export function AgentProvidersSection({
         </Collapsible>
       </SettingsGroup>
 
-      <GroupHeading
+      <SettingsGroup
         label={t('agentProviders.v2.alwaysAllowed.group')}
-        hint={t('agentProviders.alwaysAllowed.description')}
-      />
-      <SettingsGroup>
+        description={t('agentProviders.alwaysAllowed.description')}
+      >
         {alwaysAllowed.length === 0 ? (
           <div className="flex min-h-11 items-center py-2.5 text-xs/4 text-muted-foreground">
             {t('agentProviders.alwaysAllowed.empty')}
@@ -529,15 +526,6 @@ function StatusDot({ tone }: { tone: StatusTone }): React.JSX.Element {
   )
 }
 
-function GroupHeading({ label, hint }: { label: string; hint?: string }): React.JSX.Element {
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-2 pb-1.5">
-      <h4 className="font-semibold text-xs/4 text-foreground">{label}</h4>
-      {hint && <span className="text-xs/4 text-muted-foreground">{hint}</span>}
-    </div>
-  )
-}
-
 function FieldRow({
   label,
   hint,
@@ -585,7 +573,7 @@ function SegmentedControl<T extends string>({
             className={cn(
               'rounded-[5px] px-2.5 py-1 text-xs/4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               active
-                ? 'bg-background text-foreground shadow-xs'
+                ? 'bg-card text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >

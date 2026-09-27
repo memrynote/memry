@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "ここにドロップしてください",
-      "editProject": "プロジェクトの編集"
+      "editProject": "プロジェクトの編集",
+      "settings": "設定"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "タグ#の削除",

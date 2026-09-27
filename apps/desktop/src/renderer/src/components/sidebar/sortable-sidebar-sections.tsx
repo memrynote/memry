@@ -75,7 +75,9 @@ function SortableSidebarSection({
       data-drop-edge={dropEdge ?? undefined}
       style={{ transition }}
       className={cn(
-        'group/section-drag relative',
+        // pb-4: 16px between sections, so collapsed headers read as separate
+        // groups instead of one dense list.
+        'group/section-drag relative pb-4',
         // Section bodies render nothing while the sidebar is in icon mode, so the
         // handle must go with them instead of floating over an empty rail.
         'group-data-[collapsible=icon]:hidden'

@@ -43,7 +43,7 @@ export function SidebarDrillDownContainer({
       {/* Detail view */}
       <div
         className={cn(
-          'absolute inset-0 transition-transform duration-200 ease-out bg-sidebar overflow-y-auto',
+          'absolute inset-0 transition-transform duration-200 ease-out bg-sidebar overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]',
           isMainView && 'pointer-events-none',
           animationDirection === 'left' && !isMainView && 'translate-x-0',
           animationDirection === 'right' && !isMainView && 'translate-x-full',

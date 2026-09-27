@@ -87,11 +87,9 @@ test.describe('i18n', () => {
     await chooseLanguage(page, 'Türkçe')
     await expect(page.getByText('Dil', { exact: true })).toBeVisible()
 
-    // Close Settings so the app shell's accessibility tree is queryable again.
-    // (Radix dialog applies aria-hidden to siblings while open, hiding the
-    // WindowControls Search button from getByRole.)
+    // Leave Settings (Escape) and check a string in the app shell.
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog', { name: 'Settings' })).toHaveCount(0)
+    await expect(page.getByTestId('settings-view')).toHaveCount(0)
 
     // Phase B assertion: WindowControls' search button uses
     // aria-label={t('action.search')} from common.json. Turkish maps to "Ara".

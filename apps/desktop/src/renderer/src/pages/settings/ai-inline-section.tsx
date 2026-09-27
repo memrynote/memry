@@ -218,7 +218,7 @@ export function AIInlineSettings(): React.JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="pb-6">
+      <div className="pb-9">
         <h4 className={SETTINGS_GROUP_LABEL}>{t('ai.v2.inline.group')}</h4>
         <p className="text-xs/4 text-muted-foreground">{t('ai.inline.loading')}</p>
       </div>

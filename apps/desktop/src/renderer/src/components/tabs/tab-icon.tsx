@@ -6,22 +6,16 @@
 
 import { memo } from 'react'
 import {
-  Inbox,
-  Home,
-  CheckSquare3,
   Star,
-  Calendar2,
   CheckCircle,
   Folder,
   FileText,
-  BookOpen,
   Search,
   Settings,
   Bookmark,
   File,
   LayoutTemplate,
   FileType2,
-  ChartRelationship,
   Image,
   Music,
   Video,
@@ -29,6 +23,14 @@ import {
   PenTool,
   Tag
 } from '@/lib/icons'
+import {
+  PageCalendarIcon,
+  PageGraphIcon,
+  PageHomeIcon,
+  PageInboxIcon,
+  PageJournalIcon,
+  PageTasksIcon
+} from '@/lib/icons/page-icons'
 import type { TabType } from '@/contexts/tabs/types'
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -53,15 +55,15 @@ interface TabIconProps {
  */
 const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }>> = {
   // Core icons
-  inbox: Inbox,
-  home: Home,
-  'list-checks': CheckSquare3,
+  inbox: PageInboxIcon,
+  home: PageHomeIcon,
+  'list-checks': PageTasksIcon,
   star: Star,
-  calendar: Calendar2,
+  calendar: PageCalendarIcon,
   'check-circle': CheckCircle,
   folder: Folder,
   'file-text': FileText,
-  'book-open': BookOpen,
+  'book-open': PageJournalIcon,
   search: Search,
   settings: Settings,
   bookmark: Bookmark,
@@ -72,7 +74,7 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   'file-image': Image,
   'file-audio': Music,
   'file-video': Video,
-  graph: ChartRelationship,
+  graph: PageGraphIcon,
   bot: Bot,
   'pen-tool': PenTool,
   tag: Tag

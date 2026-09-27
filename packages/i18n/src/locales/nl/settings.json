@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Instellingen",
+    "backToApp": "Terug naar app",
     "nav": {
       "groups": {
         "account": "Rekening",

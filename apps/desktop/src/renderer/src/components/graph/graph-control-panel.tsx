@@ -6,13 +6,12 @@ import {
   ChevronRight,
   Focus,
   FileText,
-  BookOpen,
-  ListChecks,
   FolderOpen,
   Tag,
   Unlink,
   Settings
 } from '@/lib/icons'
+import { PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -41,13 +40,13 @@ const ENTITY_FILTERS = [
   {
     key: 'showJournals' as const,
     labelKey: 'filter.journals',
-    icon: BookOpen,
+    icon: PageJournalIcon,
     colorVar: '--graph-node-journal'
   },
   {
     key: 'showTasks' as const,
     labelKey: 'filter.tasks',
-    icon: ListChecks,
+    icon: PageTasksIcon,
     colorVar: '--graph-node-task'
   },
   {

@@ -4,7 +4,7 @@
  */
 
 import { useT } from '@memry/i18n/renderer'
-import { CheckSquare, Inbox } from '@/lib/icons'
+import { PageInboxIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import { cn } from '@/lib/utils'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import type { Tag } from '@/components/note/tags-row/TagChip'
@@ -61,7 +61,7 @@ export function NoteCardKindIcon({
 
   if (!kind || kind === 'note') return null
 
-  const Icon = kind === 'task' ? CheckSquare : Inbox
+  const Icon = kind === 'task' ? PageTasksIcon : PageInboxIcon
   const label = tPhaseF(
     `phaseF.componentsFolderViewFolderTableView.kind.${kind.charAt(0).toUpperCase()}${kind.slice(1)}`
   )

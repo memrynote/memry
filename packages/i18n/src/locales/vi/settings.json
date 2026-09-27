@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Cài đặt",
+    "backToApp": "Quay lại ứng dụng",
     "nav": {
       "groups": {
         "account": "Tài khoản",

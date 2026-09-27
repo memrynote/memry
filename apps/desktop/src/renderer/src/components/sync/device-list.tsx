@@ -170,13 +170,13 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
 
   if (devices.length === 0) {
     return (
-      <div className="flex flex-col rounded-lg border border-border overflow-clip">
+      <div className="flex flex-col rounded-xl border border-border bg-card overflow-clip [--muted:var(--surface-active)]">
         <div className="flex items-center justify-center h-12 px-4 text-xs text-muted-foreground">
           {t('devices.none')}
         </div>
         {onLinkDevice && (
           <>
-            <div className="h-px bg-border shrink-0" />
+            <div className="mx-4 h-px bg-border shrink-0" />
             <button
               type="button"
               onClick={onLinkDevice}
@@ -193,7 +193,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
 
   return (
     <>
-      <div className="flex flex-col rounded-lg border border-border overflow-clip">
+      <div className="flex flex-col rounded-xl border border-border bg-card overflow-clip [--muted:var(--surface-active)]">
         {visibleDevices.map((device, i) => {
           const Icon = PLATFORM_ICONS[device.platform] ?? Monitor
           const syncLabel = device.lastSyncAt
@@ -206,7 +206,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
 
           return (
             <Fragment key={device.id}>
-              {i > 0 && <div className="h-px bg-border shrink-0" />}
+              {i > 0 && <div className="mx-4 h-px bg-border shrink-0" />}
               <div className="flex items-center justify-between h-12 px-4 shrink-0 group">
                 <div className="flex items-center gap-2.5">
                   <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -266,7 +266,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
 
         {hasMore && (
           <>
-            <div className="h-px bg-border shrink-0" />
+            <div className="mx-4 h-px bg-border shrink-0" />
             <button
               type="button"
               className="flex items-center justify-center gap-1.5 h-10 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -293,7 +293,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
 
         {onLinkDevice && (
           <>
-            <div className="h-px bg-border shrink-0" />
+            <div className="mx-4 h-px bg-border shrink-0" />
             <button
               type="button"
               onClick={onLinkDevice}

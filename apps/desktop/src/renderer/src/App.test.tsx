@@ -13,7 +13,7 @@ const { createdQueryClients } = vi.hoisted(() => ({
 }))
 
 /** Render tallies for the app tree, used to prove updater ticks do not fan out. */
-const treeRenders = { appSidebar: 0, splitView: 0, settingsModal: 0, taskDragOverlay: 0 }
+const treeRenders = { appSidebar: 0, splitView: 0, taskDragOverlay: 0 }
 
 const openTab = vi.fn()
 // `useTabActions` is a separate subscription from `useTabs` (actions only, so
@@ -389,11 +389,8 @@ vi.mock('@/components/search/command-palette', () => ({
   )
 }))
 
-vi.mock('@/components/settings-modal', () => ({
-  SettingsModal: () => {
-    treeRenders.settingsModal += 1
-    return <div data-testid="settings-modal" />
-  }
+vi.mock('@/components/settings-view', () => ({
+  SettingsView: () => <div data-testid="settings-view" />
 }))
 
 vi.mock('@/components/vault-onboarding', () => ({
@@ -687,7 +684,6 @@ describe('App', () => {
 
     expect(treeRenders.splitView - baseline.splitView).toBe(0)
     expect(treeRenders.appSidebar - baseline.appSidebar).toBe(0)
-    expect(treeRenders.settingsModal - baseline.settingsModal).toBe(0)
     expect(treeRenders.taskDragOverlay - baseline.taskDragOverlay).toBe(0)
 
     // The installing screen still replaces the tree when main says so.

@@ -123,10 +123,11 @@
    Same three defects on the dark side: brown 3.69, purple 3.73 and pink 4.09
    missed AA; green again had no chroma (0.037); and gray #bebdb8 sat 0.009 from
    the #bcbab6 body text, close enough that "gray" was not a distinguishable
-   colour at all. */
+   colour at all. Brown was lifted again when the dark canvas moved from
+   #121212 to #181818; it must stay AA there and darker than orange. */
 :root .bn-root[data-color-scheme='dark'] {
   --bn-colors-highlights-gray-text: #838383;
-  --bn-colors-highlights-brown-text: #aa6f55;
+  --bn-colors-highlights-brown-text: #b17457;
   --bn-colors-highlights-red-text: #da5c52;
   --bn-colors-highlights-orange-text: #c07104;
   --bn-colors-highlights-yellow-text: #998800;
@@ -1968,12 +1969,12 @@
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
-    --background: #121212;
-    --foreground: #bcbab6;
-    --surface: #202020;
-    --surface-active: #2a2a2a;
-    --critic-review-card-hover-background: #202020;
-    --critic-review-actions-background: #121212;
+    --background: #181818;
+    --foreground: #dedede;
+    --surface: #212121;
+    --surface-active: #313131;
+    --critic-review-card-hover-background: #212121;
+    --critic-review-actions-background: #181818;
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
     --card-sage: #1e261e;
@@ -1983,10 +1984,10 @@
     --card-grey: #202020;
 
     /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
-    --text-primary: #bcbab6;
-    --text-secondary: #bcbab6;
-    --text-tertiary: #ada9a3;
-    --text-bright: #dadada;
+    --text-primary: #dedede;
+    --text-secondary: #cdcdcd;
+    --text-tertiary: #9a9a9a;
+    --text-bright: #ffffff;
 
     /* ===== ACCENT COLORS (Same in dark mode) ===== */
     --accent-cyan: #22d3ee;
@@ -1995,20 +1996,20 @@
     --accent-orange: #fb923c;
 
     /* ===== UI SEMANTIC COLORS - Dark Mode ===== */
-    --muted: #202020;
-    --muted-foreground: #ada9a3;
-    --popover: #202020;
-    --popover-foreground: #bcbab6;
-    --border: #2a2a2a;
-    --input: #333333;
-    --card: #202020;
-    --card-foreground: #bcbab6;
-    --primary: #e8e6e1;
-    --primary-foreground: #121212;
-    --secondary: #202020;
-    --secondary-foreground: #bcbab6;
-    --accent: #2a2a2a;
-    --accent-foreground: #bcbab6;
+    --muted: #212121;
+    --muted-foreground: #9a9a9a;
+    --popover: #212121;
+    --popover-foreground: #dedede;
+    --border: #2e2e2e;
+    --input: #363636;
+    --card: #212121;
+    --card-foreground: #dedede;
+    --primary: #ededed;
+    --primary-foreground: #181818;
+    --secondary: #212121;
+    --secondary-foreground: #dedede;
+    --accent: #313131;
+    --accent-foreground: #dedede;
     --destructive: #dc2626;
     --destructive-foreground: #fafafa;
     --ring: #6b6b6b;
@@ -2046,7 +2047,7 @@
     --graph-dimmed-node: #2a2830;
     --graph-edge-soft: #6b6966;
     --graph-bg: #0e0e10;
-    --graph-label-color: #bcbab6;
+    --graph-label-color: #dedede;
 
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #161618;
@@ -2877,6 +2878,14 @@ del.bn-inline-content {
   --sidebar-text-child: #5c5850;
   --sidebar-dot-inactive: #d9d5ce;
   --sidebar-surface: rgba(0, 0, 0, 0.04);
+  /* App rail (the icon column). Light themes share the sidebar surface and
+     mark the active item with the canvas colour; .dark gives the rail its own
+     lighter band. Declared on :root so var(--sidebar) resolves per theme. */
+  --sidebar-rail: var(--sidebar);
+  --sidebar-rail-foreground: var(--sidebar-foreground);
+  --sidebar-rail-active: var(--background);
+  /* Fill of the active rail icon: the theme's ink. */
+  --sidebar-rail-active-foreground: var(--sidebar-primary);
 }
 
 .white {
@@ -2901,22 +2910,27 @@ del.bn-inline-content {
 
 .dark {
   /* ===== SIDEBAR THEME - Neutral Charcoal ===== */
-  --sidebar: #1a1a1a;
-  --sidebar-foreground: #b5b3ae;
-  --sidebar-primary: #e8e5df;
-  --sidebar-primary-foreground: #202020;
-  --sidebar-accent: #2a2a2a;
+  --sidebar: #1f1f1f;
+  --sidebar-foreground: #dedede;
+  --sidebar-primary: #ededed;
+  --sidebar-primary-foreground: #181818;
+  --sidebar-accent: #313131;
   --sidebar-accent-foreground: var(--sidebar-primary);
-  --sidebar-border: #333333;
+  --sidebar-border: #2e2e2e;
   --sidebar-ring: var(--tint);
-  --sidebar-muted: #6b6b6b;
-  /* 6.42:1 on --sidebar, 6.01:1 on --muted. See the :root block. */
+  --sidebar-muted: #727272;
+  /* 6.07:1 on --sidebar, 5.93:1 on --muted. See the :root block. */
   --sidebar-section-heading: #9d9d9d;
   --sidebar-terracotta: var(--tint);
-  --sidebar-text-folder: #c5c0b8;
-  --sidebar-text-child: #9a958d;
+  --sidebar-text-folder: #dedede;
+  --sidebar-text-child: #9a9a9a;
   --sidebar-dot-inactive: #444444;
-  --sidebar-surface: #2a2a2a;
+  --sidebar-surface: #313131;
+  /* Rail foreground 4.80:1 on --sidebar-rail. */
+  --sidebar-rail: #282828;
+  --sidebar-rail-foreground: #939393;
+  --sidebar-rail-active: #393939;
+  --sidebar-rail-active-foreground: #ffffff;
 }
 
 @theme inline {
@@ -3027,6 +3041,10 @@ del.bn-inline-content {
   --color-sidebar-text-child: var(--sidebar-text-child);
   --color-sidebar-dot-inactive: var(--sidebar-dot-inactive);
   --color-sidebar-surface: var(--sidebar-surface);
+  --color-sidebar-rail: var(--sidebar-rail);
+  --color-sidebar-rail-foreground: var(--sidebar-rail-foreground);
+  --color-sidebar-rail-active: var(--sidebar-rail-active);
+  --color-sidebar-rail-active-foreground: var(--sidebar-rail-active-foreground);
 
   /* ===== BORDER RADIUS ===== */
   --radius-sm: var(--radius-sm);

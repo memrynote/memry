@@ -19,7 +19,12 @@ import {
   getGroupedShortcuts,
   type ShortcutEntry
 } from '@/lib/shortcut-registry'
-import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SEGMENTED,
+  SEGMENT_ITEM
+} from '@/components/settings/settings-primitives'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -30,15 +35,12 @@ const ALL_CATEGORIES = 'all'
 const KEYCAP =
   'h-auto min-w-5 rounded-[5px] border border-b-2 border-border bg-background px-1.5 py-px font-mono text-xs/4 font-normal text-foreground'
 
-const SEGMENT_ITEM =
-  'h-auto min-w-0 rounded-[5px] border-none py-0.75 px-2.5 text-xs/4 text-muted-foreground shadow-none hover:bg-transparent data-[state=on]:bg-background data-[state=on]:font-medium data-[state=on]:text-foreground data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
-
 const QUIET_BUTTON =
   'rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
 const ROW = 'relative flex items-center justify-between min-h-11 py-2.5 shrink-0 group'
 
-const RECORDING_ROW = '-mx-2 px-2 bg-tint-light'
+const RECORDING_ROW = '-mx-4 px-4 bg-tint-light'
 
 function RecordingBar(): React.JSX.Element {
   return <span aria-hidden="true" className="absolute inset-y-0 start-0 w-0.5 bg-tint" />
@@ -603,7 +605,7 @@ export function ShortcutsSettings() {
             if (value) setCategory(value)
           }}
           aria-label={t('shortcuts.v2.categoryFilter')}
-          className="shrink-0 gap-0 rounded-[7px] bg-muted p-0.5"
+          className={cn(SEGMENTED, 'shrink-0')}
         >
           <ToggleGroupItem value={ALL_CATEGORIES} className={SEGMENT_ITEM}>
             {t('shortcuts.v2.all')}

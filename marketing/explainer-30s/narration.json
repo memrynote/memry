@@ -1,0 +1,97 @@
+{
+  "voice": {
+    "designs": [
+      "A young woman in her late twenties with a soft, warm and gentle voice, calm and intimate, speaking slowly with a subtle smile",
+      "A gentle, soothing female narrator, warm and slightly breathy, unhurried and reassuring",
+      "A young woman, gentle and sweet voice, clear American English, relaxed and friendly"
+    ],
+    "reference_text": "Some ideas arrive quietly, on a walk, or just before sleep. I keep them somewhere calm, where nothing gets lost, and everything is waiting when I come back.",
+    "style": "",
+    "continuation": true
+  },
+  "lines": [
+    {
+      "id": "thought",
+      "text": "You had a thought.",
+      "at": "intro.words",
+      "max": 1.15
+    },
+    {
+      "id": "where",
+      "text": "Where did it go?",
+      "at": "where-0.06",
+      "max": 1.0,
+      "release": 0.12
+    },
+    {
+      "id": "name",
+      "text": "memrynote.",
+      "say": "Memry note.",
+      "at": "drop+0.25",
+      "max": 0.78,
+      "duck": 1.5
+    },
+    {
+      "id": "place",
+      "text": "It all stays in one place.",
+      "at": "tagline+0.5",
+      "max": 1.72
+    },
+    {
+      "id": "write",
+      "text": "Write it down.",
+      "at": "stations.0+0.15",
+      "max": 1.65
+    },
+    {
+      "id": "break",
+      "text": "Break it down.",
+      "at": "stations.1+0.15",
+      "max": 1.65
+    },
+    {
+      "id": "pin",
+      "text": "Pin it down.",
+      "at": "stations.2+0.15",
+      "max": 1.65
+    },
+    {
+      "id": "live",
+      "text": "Live it.",
+      "at": "stations.3+0.15",
+      "max": 1.65
+    },
+    {
+      "id": "relive",
+      "text": "And relive it.",
+      "at": "stations.4+0.12",
+      "max": 1.7
+    },
+    {
+      "id": "sealed",
+      "text": "Encrypted, end to end.",
+      "at": "privacy.start+0.12",
+      "max": 1.82
+    },
+    {
+      "id": "only",
+      "text": "Only you can read it.",
+      "at": "privacy.lock+0.08",
+      "max": 1.4
+    },
+    {
+      "id": "name2",
+      "text": "memrynote.",
+      "say": "Memry note.",
+      "at": "wordmark2.0+0.05",
+      "max": 0.8,
+      "duck": 1.5
+    },
+    {
+      "id": "tagline",
+      "text": "Your thoughts, beautifully organized.",
+      "at": "tagline2+0.15",
+      "max": 2.4
+    }
+  ]
+}

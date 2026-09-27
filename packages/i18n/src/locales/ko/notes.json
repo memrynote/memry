@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "여기에 드롭",
-      "editProject": "프로젝트 편집"
+      "editProject": "프로젝트 편집",
+      "settings": "설정"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "# 태그 삭제",

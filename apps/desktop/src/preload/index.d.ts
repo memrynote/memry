@@ -2013,7 +2013,9 @@ interface API extends WindowAPI, GeneratedRpcApi {
     callback: (data: { noteId: string; update: Uint8Array; origin: string }) => void
   ) => () => void
   onCrdtProviderReset: (callback: () => void) => () => void
-  onCrdtProviderReady: (callback: () => void) => () => void
+  onCrdtProviderReady: (
+    callback: (data: { vaultPath: string | null } | undefined) => void
+  ) => () => void
   onFlushRequested: (callback: (requestId?: string) => void) => () => void
   notifyFlushDone: (requestId?: string) => void
 }

@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Paramètres",
+    "backToApp": "Retour à l'application",
     "nav": {
       "groups": {
         "account": "Compte",

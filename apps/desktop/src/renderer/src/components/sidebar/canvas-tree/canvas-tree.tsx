@@ -921,7 +921,13 @@ export function CanvasTree({
         </div>
       )}
 
-      <div ref={listRef} className={cn('max-h-[40vh] overflow-y-auto', className)}>
+      <div
+        ref={listRef}
+        className={cn(
+          'max-h-[40vh] overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]',
+          className
+        )}
+      >
         {rows.length === 0 && (
           <span className="block px-2 py-1.5 text-xs text-muted-foreground">
             {t('canvas.filterNoMatches')}

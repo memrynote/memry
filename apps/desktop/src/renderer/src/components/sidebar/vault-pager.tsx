@@ -164,8 +164,9 @@ interface VaultPagerProps {
  *
  * Only the open vault has live data, so the neighbour's page is the sidebar it
  * drew when it was last open (see `vault-sidebar-snapshot`), falling back to
- * its name for a vault never opened here. The open vault's name is not drawn
- * on the page; it lives in the footer pill, which follows the swipe. The same snapshot covers the list
+ * its name for a vault never opened here. The page's own header names its
+ * vault (see `SidebarPanelHeader`), so a swipe shows where it leads; the page
+ * dots under the panel follow the swipe. The same snapshot covers the list
  * right after a switch until the new vault's queries have loaded, so the page
  * the user swiped to is the page they land on.
  */

@@ -3,7 +3,8 @@ import type { InboxListInput } from '@memry/rpc/inbox'
 import { useInboxList } from '@/hooks/use-inbox-queries'
 import { useArchiveInboxItem } from '@/hooks/use-inbox-mutations'
 import { useTabActions } from '@/contexts/tabs/context'
-import { Archive, Inbox } from '@/lib/icons/icon-map'
+import { Archive } from '@/lib/icons/icon-map'
+import { PageInboxIcon } from '@/lib/icons/page-icons'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InboxTypeIcon } from '@/components/inbox/inbox-type-icon'
 import { formatTimeAgo } from '@/services/inbox-service'
@@ -59,7 +60,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
     )
 
   if (items.length === 0)
-    return <WidgetEmptyState icon={Inbox} label={tInbox('empty.noItemsYet')} />
+    return <WidgetEmptyState icon={PageInboxIcon} label={tInbox('empty.noItemsYet')} />
 
   return (
     <ul className="flex flex-col gap-0.5">

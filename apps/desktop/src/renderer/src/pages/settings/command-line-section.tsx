@@ -107,20 +107,19 @@ export function CommandLineSettings({
         />
       )}
 
-      <div className="flex items-baseline justify-between gap-4 pb-1.5">
-        <h4 className="font-semibold text-xs/4 text-foreground">
-          {t(embedded ? 'commandLine.header.title' : 'commandLine.groups.terminal')}
-        </h4>
-        <button
-          type="button"
-          className="shrink-0 rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-          disabled={isLoading || isChanging}
-          onClick={() => void refresh()}
-        >
-          {t('commandLine.actions.refresh')}
-        </button>
-      </div>
-      <SettingsGroup>
+      <SettingsGroup
+        label={t(embedded ? 'commandLine.header.title' : 'commandLine.groups.terminal')}
+        action={
+          <button
+            type="button"
+            className="shrink-0 rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+            disabled={isLoading || isChanging}
+            onClick={() => void refresh()}
+          >
+            {t('commandLine.actions.refresh')}
+          </button>
+        }
+      >
         <div className="flex min-h-14 items-center justify-between gap-4 py-2.5">
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="text-[13px]/4 text-foreground">{t('commandLine.command.label')}</span>
@@ -159,8 +158,8 @@ export function CommandLineSettings({
           <Select
             value={defaultVaultPath}
             // Don't disable on isChanging: flipping disabled mid-select releases the
-            // trigger's pointer capture, so the pointerup leaks to the settings Dialog
-            // overlay and dismisses it. (Same class as the self-disabling-button gotcha.)
+            // trigger's pointer capture, so the pointerup leaks to whatever sits under
+            // it. (Same class as the self-disabling-button gotcha.)
             disabled={isLoading || vaults.length === 0}
             onValueChange={(value) => void handleDefaultVaultChange(value)}
           >

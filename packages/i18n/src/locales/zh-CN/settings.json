@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "设置",
+    "backToApp": "返回应用",
     "nav": {
       "groups": {
         "account": "账户",

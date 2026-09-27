@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   PenLine,
@@ -47,22 +47,21 @@ import {
 import { useSettingsModal, type SettingsSection } from '@/contexts/settings-modal-context'
 import { useT } from '@memry/i18n/renderer'
 
-const ICON = 'w-3.5 h-3.5'
+const ICON = 'size-4'
 
-export function SettingsPage() {
-  const { activeSection, focusTarget, focusRequestId, setActiveSection } = useSettingsModal()
+const FOCUS_RING =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary'
+
+/**
+ * Settings navigation. Renders in the sidebar panel in place of the vault tree
+ * while settings is open; the matching content renders in the workspace
+ * (`SettingsContent`). Search lives here and marks rows over there through the
+ * shared `contentRef`.
+ */
+export function SettingsNav() {
+  const { activeSection, setActiveSection, close, contentRef } = useSettingsModal()
   const { t } = useT('settings')
   const activePage = getSettingsPage(activeSection)
-  const parent = getSettingsParent(activeSection)
-  const contentRef = useRef<HTMLDivElement>(null)
-
-  // Merged pages: jump to the anchor of the legacy section, or back to the top.
-  useEffect(() => {
-    const anchorId = SECTION_ANCHORS[activeSection]
-    const target = (anchorId && document.getElementById(anchorId)) || contentRef.current
-    // Optional call: jsdom does not implement scrollIntoView.
-    target?.scrollIntoView?.({ block: 'start' })
-  }, [activeSection])
 
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -89,8 +88,12 @@ export function SettingsPage() {
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
-      // The dialog ignores this Escape while the query is non-empty (see settings-modal).
-      if (query) setQuery('')
+      // Clearing the query consumes Escape; the settings view skips prevented
+      // events, so it does not also leave settings.
+      if (query) {
+        event.preventDefault()
+        setQuery('')
+      }
       return
     }
     if (results.length === 0) return
@@ -114,32 +117,52 @@ export function SettingsPage() {
   )
 
   return (
-    <div className="flex-1 min-h-0 flex">
-      <nav
-        aria-label={t('page.title')}
-        className="w-60 shrink-0 pt-3.5 pb-4 overflow-y-auto min-h-0 bg-sidebar border-e border-border text-xs/4 font-[family-name:var(--font-sans)]"
-      >
-        <div className="px-2.5 pb-3.5">
-          <label className="flex items-center h-7.5 px-2.5 gap-2 rounded-[7px] border border-border bg-background focus-within:border-foreground focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--foreground)_8%,transparent)] transition-[border-color,box-shadow]">
-            <Search className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <input
-              type="search"
-              data-settings-search=""
-              value={query}
-              onChange={(event) => handleQueryChange(event.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder={t('page.search.placeholder')}
-              aria-label={t('page.search.placeholder')}
-              aria-controls="settings-search-results"
-              aria-activedescendant={
-                selected ? `settings-search-result-${selectedIndex}` : undefined
-              }
-              className="flex-1 min-w-0 bg-transparent outline-none text-[13px]/4 text-foreground placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-            />
-            {query && <kbd className="font-mono text-[11px]/3.5 text-muted-foreground">esc</kbd>}
-          </label>
+    <nav
+      aria-label={t('page.title')}
+      data-testid="settings-nav"
+      className="flex min-h-0 flex-1 flex-col text-xs/4"
+    >
+      <div className="flex shrink-0 flex-col gap-2.5 px-3 pt-1 pb-3">
+        <div className="flex h-[30px] items-center gap-1">
+          <button
+            type="button"
+            onClick={close}
+            aria-label={t('page.backToApp')}
+            title={t('page.backToApp')}
+            className={cn(
+              'flex size-[30px] shrink-0 items-center justify-center rounded-[7px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-primary',
+              FOCUS_RING
+            )}
+          >
+            <ChevronLeft className="size-4 rtl:rotate-180" aria-hidden="true" />
+          </button>
+          <h2 className="min-w-0 truncate text-[15px]/5 font-semibold text-sidebar-primary">
+            {t('page.title')}
+          </h2>
         </div>
+        <label className="flex h-8 items-center gap-2 rounded-[7px] bg-sidebar-accent px-2.5 ring-sidebar-primary transition-shadow focus-within:ring-1">
+          <Search className="size-3.5 shrink-0 text-sidebar-foreground" aria-hidden="true" />
+          <input
+            type="search"
+            data-settings-search=""
+            value={query}
+            onChange={(event) => handleQueryChange(event.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            placeholder={t('page.search.placeholder')}
+            aria-label={t('page.search.placeholder')}
+            aria-controls="settings-search-results"
+            aria-activedescendant={selected ? `settings-search-result-${selectedIndex}` : undefined}
+            className="min-w-0 flex-1 bg-transparent text-[13px]/4 text-sidebar-primary outline-none placeholder:text-sidebar-foreground [&::-webkit-search-cancel-button]:hidden"
+          />
+          {query && (
+            <kbd className="rounded-[4px] bg-background px-1 font-mono text-[10px]/4.5 text-sidebar-foreground">
+              esc
+            </kbd>
+          )}
+        </label>
+      </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4 scrollbar-thin [scrollbar-gutter:stable]">
         {query ? (
           <SettingsSearchResults
             results={results}
@@ -148,7 +171,7 @@ export function SettingsPage() {
           />
         ) : (
           <>
-            <div className="flex flex-col px-2 gap-px">
+            <div className="flex flex-col gap-px px-2">
               {navItem('account', <User className={ICON} />, t('page.nav.items.account'))}
             </div>
 
@@ -171,27 +194,46 @@ export function SettingsPage() {
             </SettingsNavGroup>
           </>
         )}
-      </nav>
-
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div ref={contentRef} className="p-6 max-w-3xl mx-auto">
-            {parent && (
-              <DrillInBar
-                parentLabel={t(PARENT_LABEL_KEY[activePage])}
-                currentLabel={t(`page.nav.items.${activeSection}`)}
-                onBack={() => setActiveSection(parent)}
-              />
-            )}
-            <SettingsPageContent
-              section={activeSection}
-              page={activePage}
-              focusTarget={focusTarget}
-              focusRequestId={focusRequestId}
-            />
-          </div>
-        </ScrollArea>
       </div>
+    </nav>
+  )
+}
+
+/** The active settings page, in a centered reading column. */
+export function SettingsContent() {
+  const { activeSection, focusTarget, focusRequestId, setActiveSection, contentRef } =
+    useSettingsModal()
+  const { t } = useT('settings')
+  const activePage = getSettingsPage(activeSection)
+  const parent = getSettingsParent(activeSection)
+
+  // Merged pages: jump to the anchor of the legacy section, or back to the top.
+  useEffect(() => {
+    const anchorId = SECTION_ANCHORS[activeSection]
+    const target = (anchorId && document.getElementById(anchorId)) || contentRef.current
+    // Optional call: jsdom does not implement scrollIntoView.
+    target?.scrollIntoView?.({ block: 'start' })
+  }, [activeSection, contentRef])
+
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <ScrollArea className="h-full">
+        <div ref={contentRef} className="mx-auto max-w-[46rem] px-8 pt-12 pb-16">
+          {parent && (
+            <DrillInBar
+              parentLabel={t(PARENT_LABEL_KEY[activePage])}
+              currentLabel={t(`page.nav.items.${activeSection}`)}
+              onBack={() => setActiveSection(parent)}
+            />
+          )}
+          <SettingsPageContent
+            section={activeSection}
+            page={activePage}
+            focusTarget={focusTarget}
+            focusRequestId={focusRequestId}
+          />
+        </div>
+      </ScrollArea>
     </div>
   )
 }
@@ -388,8 +430,11 @@ function SettingsSearchResults({
   const { t } = useT('settings')
 
   return (
-    <div className="flex flex-col px-2.5 gap-px">
-      <span className="px-2 pb-1.5 text-[11px]/3.5 font-medium text-muted-foreground" role="status">
+    <div className="flex flex-col gap-px px-2">
+      <span
+        className="px-2.5 pb-1 text-xs/4 font-medium text-sidebar-section-heading"
+        role="status"
+      >
         {results.length > 0
           ? t('page.search.count', { count: results.length })
           : t('page.search.empty')}
@@ -409,19 +454,19 @@ function SettingsSearchResults({
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => onSelect(index)}
               className={cn(
-                'flex flex-col gap-px px-2 py-1.5 rounded-md text-start transition-colors',
+                'flex flex-col gap-px rounded-[7px] px-2.5 py-1.5 text-start transition-colors',
                 isSelected ? 'bg-sidebar-accent' : 'hover:bg-sidebar-accent/60'
               )}
             >
               <span
                 className={cn(
                   'text-[13px]/4 truncate w-full',
-                  isSelected ? 'font-medium text-foreground' : 'text-foreground/85'
+                  isSelected ? 'font-medium text-sidebar-primary' : 'text-sidebar-foreground'
                 )}
               >
                 {result.label}
               </span>
-              <span className="text-[11px]/3.5 text-muted-foreground truncate w-full">
+              <span className="w-full truncate text-[11px]/3.5 text-sidebar-section-heading">
                 {result.path}
               </span>
             </button>
@@ -429,7 +474,7 @@ function SettingsSearchResults({
         })}
       </div>
       {results.length > 0 && (
-        <div className="flex items-center gap-1.5 px-2 pt-3.5 text-[11px]/3.5 text-muted-foreground">
+        <div className="flex items-center gap-1.5 px-2.5 pt-3.5 text-[11px]/3.5 text-sidebar-section-heading">
           <kbd className="font-mono px-1 rounded-[3px] border border-border">↑↓</kbd>
           <span>{t('page.search.move')}</span>
           <kbd className="font-mono px-1 rounded-[3px] border border-border">↵</kbd>
@@ -442,8 +487,8 @@ function SettingsSearchResults({
 
 function SettingsNavGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col mt-4 px-2 gap-px">
-      <span className="uppercase pb-1.5 px-3 text-[11px]/3.5 font-medium tracking-[0.05em] text-muted-foreground/60">
+    <div className="mt-4 flex flex-col gap-px px-2">
+      <span className="px-2.5 pb-1 text-xs/4 font-medium text-sidebar-section-heading">
         {label}
       </span>
       {children}
@@ -465,19 +510,15 @@ function SettingsNavItem({ icon, label, isActive, onClick }: SettingsNavItemProp
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'relative flex items-center h-7 shrink-0 rounded-[5px] px-3 transition-colors',
+        'flex h-8 shrink-0 items-center gap-2.5 rounded-[7px] px-2.5 text-[13px]/4 transition-colors',
         isActive
-          ? 'bg-sidebar-accent text-foreground font-medium'
-          : 'text-muted-foreground hover:bg-sidebar-accent'
+          ? 'bg-sidebar-accent font-medium text-sidebar-primary'
+          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary',
+        FOCUS_RING
       )}
     >
-      <span className="shrink-0 text-muted-foreground">{icon}</span>
-      <span className="ps-2 text-[13px]/4 font-medium">{label}</span>
-      {isActive && (
-        <span className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[var(--tint)] rounded-e-sm" />
-      )}
+      <span className="shrink-0">{icon}</span>
+      <span className="min-w-0 truncate">{label}</span>
     </button>
   )
 }
-
-export default SettingsPage

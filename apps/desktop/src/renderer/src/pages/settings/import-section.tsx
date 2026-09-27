@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { SETTINGS_GROUP_LABEL, SettingsHeader } from '@/components/settings/settings-primitives'
+import {
+  SETTINGS_CARD,
+  SETTINGS_GROUP_LABEL,
+  SettingsHeader
+} from '@/components/settings/settings-primitives'
 import { Input } from '@/components/ui/input'
 import { ChevronRight, FileCode, FileSpreadsheet, FileText, Search } from '@/lib/icons'
 import { ImportDialog } from '@/components/settings/import-dialog'
@@ -161,13 +165,13 @@ export function ImportSettings() {
       {groups.map((group) => (
         <section
           key={group.id}
-          className="flex flex-col pb-8"
+          className="flex flex-col pb-9"
           data-testid={`import-group-${group.id}`}
         >
           <h4 className={SETTINGS_GROUP_LABEL}>{t(`import.v2.groups.${group.id}`)}</h4>
-          <ul className="flex flex-col border-t border-border">
+          <ul className={SETTINGS_CARD}>
             {group.items.map((item) => (
-              <li key={item.id} className="border-b border-border">
+              <li key={item.id}>
                 <button
                   type="button"
                   onClick={() => setActive(item)}

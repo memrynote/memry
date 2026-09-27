@@ -948,5 +948,10 @@
     "star": "Yıldızla",
     "later": "Şimdi değil",
     "thanks": "Teşekkürler, çok şey ifade ediyor."
+  },
+  "sidebar": {
+    "railLabel": "Bölümler",
+    "search": "Ara veya git…",
+    "vaultMenu": "{name}. Kasa listesini aç"
   }
 }

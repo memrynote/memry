@@ -1,50 +1,9 @@
-import { forwardRef } from 'react'
-import { Book2, CheckSquare3, Inbox } from './icon-map'
-import type { AppIcon } from './types'
-
-type SvgProps = React.ComponentPropsWithRef<'svg'> & {
-  size?: string | number
-}
-
-function createSvgIcon(path: React.ReactNode, displayName: string, viewBox = '0 0 15 15'): AppIcon {
-  const Icon = forwardRef<SVGSVGElement, SvgProps>(({ size = 15, className, ...rest }, ref) => (
-    <svg
-      ref={ref}
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox={viewBox}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.4}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      {...rest}
-    >
-      {path}
-    </svg>
-  ))
-  Icon.displayName = displayName
-  return Icon as AppIcon
-}
-
-export const SidebarInbox = Inbox
-
-export const SidebarJournal = Book2
-
-export const SidebarCalendar = createSvgIcon(
-  <>
-    <rect x="2" y="3" width="11" height="10" rx="2" />
-    <path d="M5 1.5v3" />
-    <path d="M10 1.5v3" />
-    <path d="M2 6.5h11" />
-    <path d="M5 9h.01" />
-    <path d="M8 9h.01" />
-    <path d="M5 11.5h.01" />
-    <path d="M8 11.5h.01" />
-  </>,
-  'SidebarCalendar'
-)
-
-export const SidebarTasks = CheckSquare3
+// Entity icons for agent-chat mentions, memry links, and the canvas link dialog.
+// They reuse the page glyphs so an inbox item, task, journal day, or event reads
+// the same everywhere it appears.
+export {
+  PageInboxIcon as SidebarInbox,
+  PageJournalIcon as SidebarJournal,
+  PageCalendarIcon as SidebarCalendar,
+  PageTasksIcon as SidebarTasks
+} from './page-icons'

@@ -14,7 +14,7 @@ export const CALENDAR_DESTRUCTIVE_BUTTON =
   'rounded-sm text-xs/4 text-destructive transition-colors hover:text-destructive/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
 
 export const CALENDAR_BORDERED_BUTTON =
-  'h-7 shrink-0 rounded-md border border-border bg-transparent px-2.5 text-xs/4 font-medium text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
+  'h-7 shrink-0 rounded-md border border-border bg-transparent px-2.5 text-xs/4 font-medium text-foreground transition-colors hover:bg-surface-active focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
 
 /** Lets "+ Add calendar" ask a provider row to open and start its connect flow. */
 export interface CalendarConnectRegistry {
@@ -258,7 +258,7 @@ export function CalendarCheckRow({
           )}
           <span className="truncate">{title}</span>
           {isDefault && (
-            <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px]/4 text-muted-foreground">
+            <span className="shrink-0 rounded-full bg-surface-active px-1.5 text-[11px]/4 text-muted-foreground">
               {t('calendar.v2.defaultPill')}
             </span>
           )}

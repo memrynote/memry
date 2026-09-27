@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Setări",
+    "backToApp": "Înapoi la aplicație",
     "nav": {
       "groups": {
         "account": "Cont",

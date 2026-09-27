@@ -12,7 +12,7 @@ import {
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { SettingsModalProvider } from '@/contexts/settings-modal-context'
 import { IncidentReportProvider } from '@/components/diagnostics/incident-report-provider'
-import { SidebarNav } from '@/components/sidebar/sidebar-nav'
+import { AppRail } from '@/components/sidebar/app-rail'
 import { NewTabMenu } from '@/components/tabs/new-tab-menu'
 import { TabContent } from '@/components/split-view/tab-content'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
@@ -122,21 +122,22 @@ function SidebarCalendarHarness() {
       <button type="button" onClick={() => secondaryGroupId && setActiveGroup(secondaryGroupId)}>
         Focus Secondary
       </button>
-      <SidebarNav
+      <AppRail
         items={[
           {
             title: 'Calendar',
             page: 'calendar' as never,
-            icon: () => <span data-testid="calendar-nav-icon" />,
-            shortcut: '⌘⌥3'
+            icon: () => <span data-testid="calendar-nav-icon" />
           }
         ]}
         isActive={() => false}
-        isDisabled={() => false}
         onNavClick={() => () => openSidebarItem(CALENDAR_ITEM)}
         onNavMiddleClick={() => () => {}}
+        isModifierHeld={false}
         inboxCount={0}
         todayTasksCount={0}
+        onOpenJournalSettings={() => {}}
+        dock={null}
       />
       <TabStateSummary />
     </>

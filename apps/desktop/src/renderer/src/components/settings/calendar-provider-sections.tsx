@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { SETTINGS_GROUP_LABEL } from '@/components/settings/settings-primitives'
+import { SETTINGS_CARD, SettingsGroupHeading } from '@/components/settings/settings-primitives'
 import {
   CALENDAR_BORDERED_BUTTON,
   CalendarConnectRegistryProvider,
@@ -136,43 +136,41 @@ export function CalendarProviderSections(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="flex flex-col pb-8">
-      <div className="flex items-center justify-between gap-3 pb-1.5">
-        <h4 className={cn(SETTINGS_GROUP_LABEL, 'pb-0')}>{t('calendar.v2.groups.connected')}</h4>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className={cn(CALENDAR_BORDERED_BUTTON, 'inline-flex h-6 items-center gap-1 px-2')}
-            data-testid="calendar-add-calendar"
-          >
-            <Plus className="size-3" aria-hidden />
-            {t('calendar.v2.addCalendar')}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {providers.map((provider) => (
-              <DropdownMenuItem
-                key={provider.id}
-                data-testid={`calendar-add-calendar-${provider.id}`}
-                onSelect={() => connectHandlers.current.get(provider.id)?.()}
-              >
-                {providerName(provider.id)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <CalendarConnectRegistryProvider value={connectRegistry}>
-        <div className="flex flex-col">
-          {providers.map((provider) => (
-            <div
-              key={provider.id}
-              className="border-b border-border"
-              data-testid={`calendar-provider-section-${provider.id}`}
+    <section className="flex flex-col pb-9">
+      <SettingsGroupHeading
+        label={t('calendar.v2.groups.connected')}
+        action={
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(CALENDAR_BORDERED_BUTTON, 'inline-flex h-6 items-center gap-1 px-2')}
+              data-testid="calendar-add-calendar"
             >
+              <Plus className="size-3" aria-hidden />
+              {t('calendar.v2.addCalendar')}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {providers.map((provider) => (
+                <DropdownMenuItem
+                  key={provider.id}
+                  data-testid={`calendar-add-calendar-${provider.id}`}
+                  onSelect={() => connectHandlers.current.get(provider.id)?.()}
+                >
+                  {providerName(provider.id)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
+      <CalendarConnectRegistryProvider value={connectRegistry}>
+        <div className={SETTINGS_CARD}>
+          {providers.map((provider) => (
+            <div key={provider.id} data-testid={`calendar-provider-section-${provider.id}`}>
               {providerSettingsBody(provider, providerName(provider.id))}
             </div>
           ))}
         </div>
       </CalendarConnectRegistryProvider>
-    </div>
+    </section>
   )
 }

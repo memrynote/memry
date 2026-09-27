@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Caer aquí",
-      "editProject": "Editar proyecto"
+      "editProject": "Editar proyecto",
+      "settings": "Configuración"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Eliminar etiqueta #",

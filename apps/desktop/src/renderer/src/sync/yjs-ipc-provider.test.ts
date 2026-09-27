@@ -51,14 +51,15 @@ function broadcastProviderReset(): void {
  * The counterpart signal: a provider in main finished initializing and will
  * serve `crdt:open-doc` again. Also note-less — one provider serves every doc.
  */
-const readySubscribers = new Set<() => void>()
-const mockOnCrdtProviderReady = vi.fn((callback: () => void) => {
+type ReadyPayload = { vaultPath: string | null } | undefined
+const readySubscribers = new Set<(data: ReadyPayload) => void>()
+const mockOnCrdtProviderReady = vi.fn((callback: (data: ReadyPayload) => void) => {
   readySubscribers.add(callback)
   return () => readySubscribers.delete(callback)
 })
 
-function broadcastProviderReady(): void {
-  for (const callback of [...readySubscribers]) callback()
+function broadcastProviderReady(data?: ReadyPayload): void {
+  for (const callback of [...readySubscribers]) callback(data)
 }
 
 /**
@@ -402,6 +403,43 @@ describe('YjsIpcProvider provider reset', () => {
     provider.destroy()
     doc.destroy()
     other.destroy()
+  })
+
+  it('hands canRebind the vault named by the latest ready, cleared by a reset', async () => {
+    // #given a doc bound to vault A
+    const seen: Array<string | null | undefined> = []
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({
+      noteId: 'note-42',
+      doc,
+      canRebind: (readyVaultPath) => {
+        seen.push(readyVaultPath)
+        return readyVaultPath === '/vaults/a'
+      }
+    })
+    await provider.connect()
+    broadcastProviderReset()
+    mockOpenDoc.mockClear()
+
+    // #when vault B's provider comes up (fast swipe back before A)
+    broadcastProviderReady({ vaultPath: '/vaults/b' })
+    await flushMicrotasks()
+
+    // #then the note is not opened in B's store
+    expect(mockOpenDoc).not.toHaveBeenCalled()
+
+    // #and a reset forgets B, so a resume before the next ready sees no vault
+    broadcastProviderReset()
+    provider.resumeRebind()
+    expect(seen.at(-1)).toBeUndefined()
+
+    // #and vault A's ready rebinds
+    broadcastProviderReady({ vaultPath: '/vaults/a' })
+    await vi.waitFor(() => expect(provider.isSynced).toBe(true))
+    expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-42' })
+
+    provider.destroy()
+    doc.destroy()
   })
 
   it('holds a rebind back while canRebind says no, and resumes it on request', async () => {

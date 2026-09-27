@@ -36,12 +36,14 @@ import { useT } from '@memry/i18n/renderer'
 interface VaultSwitcherProps {
   /**
    * Replaces the default name button as the element that opens the vault list.
-   * The sidebar footer passes the vault pill.
+   * The sidebar panel passes its vault header.
    */
   renderTrigger?: (state: { isLoading: boolean; name: string }) => ReactElement
+  /** Where the list opens relative to a custom trigger. Defaults to above it, centred. */
+  placement?: { side: 'top' | 'bottom'; align: 'start' | 'center' | 'end' }
 }
 
-export function VaultSwitcher({ renderTrigger }: VaultSwitcherProps = {}) {
+export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps = {}) {
   const { t: tPhaseF } = useT('common')
   const { isMobile, open: sidebarOpen, setOpen: setSidebarOpen, setOpenMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
@@ -223,8 +225,8 @@ export function VaultSwitcher({ renderTrigger }: VaultSwitcherProps = {}) {
             onOpenAutoFocus={handleOpenAutoFocus}
             onCloseAutoFocus={(e) => e.preventDefault()}
             className="min-w-56"
-            align={renderTrigger ? 'center' : 'start'}
-            side={isMobile ? 'bottom' : renderTrigger ? 'top' : 'right'}
+            align={renderTrigger ? (placement?.align ?? 'center') : 'start'}
+            side={isMobile ? 'bottom' : renderTrigger ? (placement?.side ?? 'top') : 'right'}
             sideOffset={8}
           >
             <Picker.List>

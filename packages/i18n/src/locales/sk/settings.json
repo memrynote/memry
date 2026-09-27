@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Nastavenia",
+    "backToApp": "Späť do aplikácie",
     "nav": {
       "groups": {
         "account": "Účet",

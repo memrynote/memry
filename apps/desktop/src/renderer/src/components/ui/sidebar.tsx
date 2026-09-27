@@ -308,8 +308,11 @@ function Sidebar({
           'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) md:flex',
           !isResizing &&
             'transition-[inset-inline-start,inset-inline-end,width] duration-200 ease-linear',
+          // `--sidebar-offset` is room held at the inline start for a column that
+          // stays when the sidebar collapses (the app's icon rail). The collapsed
+          // sidebar slides under that column rather than off the window edge.
           side === 'left'
-            ? 'start-0 group-data-[collapsible=offcanvas]:start-[calc(var(--sidebar-width)*-1)]'
+            ? 'start-[var(--sidebar-offset,0px)] group-data-[collapsible=offcanvas]:start-[calc(var(--sidebar-offset,0px)-var(--sidebar-width))]'
             : 'end-0 group-data-[collapsible=offcanvas]:end-[calc(var(--sidebar-width)*-1)]',
           // Adjust the padding for floating and inset variants.
           variant === 'floating' || variant === 'inset'

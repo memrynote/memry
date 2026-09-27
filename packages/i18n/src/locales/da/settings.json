@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Indstillinger",
+    "backToApp": "Tilbage til appen",
     "nav": {
       "groups": {
         "account": "Konto",

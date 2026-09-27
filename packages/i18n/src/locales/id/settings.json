@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Pengaturan",
+    "backToApp": "Kembali ke aplikasi",
     "nav": {
       "groups": {
         "account": "Akun",

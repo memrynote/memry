@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "拖到这里",
-      "editProject": "编辑项目"
+      "editProject": "编辑项目",
+      "settings": "设置"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "删除标签 #",

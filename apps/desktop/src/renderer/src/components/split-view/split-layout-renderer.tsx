@@ -6,10 +6,13 @@ import { TabPaneWithDropZones } from './tab-pane-with-drop-zones'
 interface SplitLayoutRendererProps {
   layout: SplitLayout
   path: number[]
-  showSidebarToggle?: boolean
   reserveDayPanelSpace?: boolean
   /** Whether this branch contains the single top-right pane (only it shows the day-panel toggle) */
   showDayPanelToggle?: boolean
+  /** Whether this branch contains the top-start pane (its tab bar hosts the window controls) */
+  reserveWindowControls?: boolean
+  /** Whether this branch touches the window top (its tab bars move into the title row while the sidebar is collapsed) */
+  inTitleRow?: boolean
 }
 
 /**
@@ -26,9 +29,10 @@ const getLayoutDirection = (layout: SplitLayout): SplitDirection => {
 export const SplitLayoutRenderer = ({
   layout,
   path,
-  showSidebarToggle = true,
   reserveDayPanelSpace = true,
-  showDayPanelToggle = true
+  showDayPanelToggle = true,
+  reserveWindowControls = true,
+  inTitleRow = true
 }: SplitLayoutRendererProps): React.JSX.Element | null => {
   const { state, dispatch } = useTabs()
 
@@ -40,9 +44,10 @@ export const SplitLayoutRenderer = ({
       <TabPaneWithDropZones
         groupId={layout.tabGroupId}
         isActive={state.activeGroupId === layout.tabGroupId}
-        showSidebarToggle={showSidebarToggle}
         reserveDayPanelSpace={reserveDayPanelSpace}
         showDayPanelToggle={showDayPanelToggle}
+        reserveWindowControls={reserveWindowControls}
+        inTitleRow={inTitleRow}
       />
     )
   }
@@ -63,16 +68,18 @@ export const SplitLayoutRenderer = ({
       <SplitLayoutRenderer
         layout={layout.first}
         path={[...path, 0]}
-        showSidebarToggle={showSidebarToggle}
         reserveDayPanelSpace={direction === 'horizontal' ? false : reserveDayPanelSpace}
         showDayPanelToggle={direction === 'vertical' ? showDayPanelToggle : false}
+        reserveWindowControls={reserveWindowControls}
+        inTitleRow={inTitleRow}
       />
       <SplitLayoutRenderer
         layout={layout.second}
         path={[...path, 1]}
-        showSidebarToggle={false}
         reserveDayPanelSpace={reserveDayPanelSpace}
         showDayPanelToggle={direction === 'horizontal' ? showDayPanelToggle : false}
+        reserveWindowControls={false}
+        inTitleRow={direction === 'horizontal' ? inTitleRow : false}
       />
     </SplitPane>
   )

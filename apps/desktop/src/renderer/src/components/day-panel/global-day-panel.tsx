@@ -108,7 +108,9 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       data-slot="day-panel-container"
       style={{ width: isOpen ? `${width}px` : 0 }}
       className={cn(
-        'fixed top-0 bottom-0 end-0 z-10',
+        // Pinned inside the workspace card (SidebarInset is `relative` and clips to
+        // its radius), not to the window: the card's rounded edge wraps it too.
+        'absolute top-0 bottom-0 end-0 z-10',
         !isResizing && 'transition-[width] duration-200 ease-linear',
         'flex flex-col border-s border-border bg-background',
         className

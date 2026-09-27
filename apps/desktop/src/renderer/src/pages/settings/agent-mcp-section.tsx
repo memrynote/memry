@@ -55,11 +55,7 @@ export function AgentMcpSection({ embedded = false }: { embedded?: boolean }) {
         />
       )}
 
-      <div className="flex flex-wrap items-baseline gap-x-2 pb-1.5">
-        <h4 className="font-semibold text-xs/4 text-foreground">{t('agentMcp.header.title')}</h4>
-        <span className="text-xs/4 text-muted-foreground">{t('agentMcp.v2.hint')}</span>
-      </div>
-      <SettingsGroup>
+      <SettingsGroup label={t('agentMcp.header.title')} description={t('agentMcp.v2.hint')}>
         <div className="flex min-h-11 items-center gap-2 py-2.5">
           <span
             aria-hidden

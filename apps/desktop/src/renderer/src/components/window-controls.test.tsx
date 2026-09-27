@@ -109,11 +109,11 @@ function renderWithSidebar(ui: React.ReactElement) {
 }
 
 describe('WindowControls', () => {
-  it('renders three traffic-light buttons (close, minimize, maximize)', () => {
+  it('hides custom traffic-light buttons on macOS (native lights are shown)', () => {
     renderWithSidebar(<WindowControls />)
-    expect(screen.getByLabelText('Close window')).toBeInTheDocument()
-    expect(screen.getByLabelText('Minimize window')).toBeInTheDocument()
-    expect(screen.getByLabelText('Maximize window')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Close window')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Minimize window')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Maximize window')).not.toBeInTheDocument()
   })
 
   it('hides traffic-light buttons on non-macOS (native frame provides them)', () => {
@@ -181,12 +181,5 @@ describe('WindowControls', () => {
     renderWithSidebar(<WindowControls />)
     fireEvent.contextMenu(screen.getByLabelText('Browser back'))
     expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
-  })
-
-  it('calls windowClose when the close button is clicked', async () => {
-    const user = userEvent.setup()
-    renderWithSidebar(<WindowControls />)
-    await user.click(screen.getByLabelText('Close window'))
-    expect(windowApiMock.windowClose).toHaveBeenCalledTimes(1)
   })
 })

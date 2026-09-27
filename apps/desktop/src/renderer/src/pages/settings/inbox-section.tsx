@@ -12,11 +12,10 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
-  ACCENT_SWITCH
+  ACCENT_SWITCH,
+  SEGMENTED,
+  SEGMENT_ITEM
 } from '@/components/settings/settings-primitives'
-
-const SEGMENT_ITEM =
-  'h-auto min-w-0 rounded-[5px] border-none py-0.75 px-2.5 text-xs/4 text-muted-foreground shadow-none hover:bg-transparent data-[state=on]:bg-background data-[state=on]:font-medium data-[state=on]:text-foreground data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
 
 export function InboxSettings() {
   const { t } = useT('settings')
@@ -145,7 +144,7 @@ export function InboxSettings() {
               if (value) void handleImageModeChange(value as ImageFilingMode)
             }}
             aria-label={t('inbox.imageFiling.mode.label')}
-            className="gap-0 rounded-[7px] bg-muted p-0.5"
+            className={SEGMENTED}
           >
             {(['embed', 'link'] as const).map((mode) => (
               <ToggleGroupItem

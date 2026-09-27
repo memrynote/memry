@@ -15,7 +15,7 @@ Default shortcuts. Entries in the Navigation, Tabs, and View categories are rebi
 | Switch vault          | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>O</kbd>                 |
 | Next / previous vault | <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd>  |
 
-> **Switch vault** opens the vault switcher in the sidebar footer from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. It opens on the vault you are in: <kbd>↓</kbd> and <kbd>↑</kbd> move through the list (wrapping at either end) and <kbd>Enter</kbd> switches to the highlighted vault, so a switch never needs the mouse. Like the other app shortcuts it stands down while you are typing in a field or in the note editor.
+> **Switch vault** opens the vault switcher at the top of the sidebar panel from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. It opens on the vault you are in: <kbd>↓</kbd> and <kbd>↑</kbd> move through the list (wrapping at either end) and <kbd>Enter</kbd> switches to the highlighted vault, so a switch never needs the mouse. Like the other app shortcuts it stands down while you are typing in a field or in the note editor.
 
 > **Next / previous vault** moves the sidebar to the neighbouring vault with the same slide as a trackpad swipe (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on Windows and Linux). The arrows follow the page layout, so in right-to-left languages the next vault is to the left. See [Switching vaults](/guide/tour#switching-vaults).
 
@@ -97,7 +97,7 @@ cell on <kbd>Esc</kbd>. See
 Memry remembers whether the sidebar is open. Close it and it stays closed when you
 switch vaults and when you next start the app, until you open it again.
 
-The same shortcut reference opens from the question-mark button in the sidebar footer.
+The same shortcut reference opens from **Help → Keyboard Shortcuts** in the menu bar.
 It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,
 and Settings sections so you can scan by workflow.
 

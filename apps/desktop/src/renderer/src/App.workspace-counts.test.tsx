@@ -313,7 +313,7 @@ vi.mock('@/components/hint-overlay', () => ({
 }))
 
 vi.mock('@/components/search/command-palette', () => ({ CommandPalette: () => <div /> }))
-vi.mock('@/components/settings-modal', () => ({ SettingsModal: () => <div /> }))
+vi.mock('@/components/settings-view', () => ({ SettingsView: () => <div /> }))
 vi.mock('@/components/vault-onboarding', () => ({ VaultOnboarding: () => <div /> }))
 
 describe('App workspace count computation', () => {

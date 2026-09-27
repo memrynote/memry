@@ -49,8 +49,8 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
 }))
 
-vi.mock('@/components/sidebar/sidebar-nav', () => ({
-  SidebarNav: () => <nav>Sidebar nav</nav>
+vi.mock('@/components/sidebar/app-rail', () => ({
+  AppRail: () => <nav>Sidebar nav</nav>
 }))
 
 vi.mock('@/components/sidebar-section', () => ({

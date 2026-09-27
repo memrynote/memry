@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Baci ovdje",
-      "editProject": "Uredi projekt"
+      "editProject": "Uredi projekt",
+      "settings": "Postavke"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Izbriši oznaku #",

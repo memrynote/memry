@@ -3,43 +3,33 @@
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
 import { getI18n } from 'react-i18next'
+import { ChevronsDown, ChevronsUp, FilePlus, FolderPlus, CloudOff, Plus, Upload } from '@/lib/icons'
 import {
-  Calendar2,
-  ChevronDown,
-  ChevronsDown,
-  ChevronsUp,
-  FilePlus,
-  FolderPlus,
-  ChartRelationship,
-  CloudOff,
-  Home,
-  Plus,
-  Upload
-} from '@/lib/icons'
-import { SidebarInbox, SidebarJournal, SidebarTasks } from '@/lib/icons/sidebar-nav-icons'
+  PageCalendarIcon,
+  PageGraphIcon,
+  PageHomeIcon,
+  PageInboxIcon,
+  PageJournalIcon,
+  PageTasksIcon
+} from '@/lib/icons/page-icons'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
 import {
+  SidebarVaultDots,
   SidebarVaultPager,
-  SidebarVaultSwitcher,
   useSidebarVaultPages
 } from '@/components/sidebar/sidebar-vault-paging'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail
-} from '@/components/ui/sidebar'
-import { SidebarNav } from '@/components/sidebar/sidebar-nav'
+import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from '@/components/ui/sidebar'
+import { AppRail, type AppRailItem } from '@/components/sidebar/app-rail'
+import { SidebarPanelHeader } from '@/components/sidebar/sidebar-panel-header'
 import { SidebarSection } from '@/components/sidebar-section'
 import { NotesTree, type NotesTreeActions } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarUpdateRow } from '@/components/sidebar/sidebar-update-row'
 import { SidebarFeedbackButton } from '@/components/sidebar/sidebar-feedback-button'
 import { SidebarSettingsButton } from '@/components/sidebar/sidebar-settings-button'
-import { FooterDock, DockButton } from '@/components/sidebar/footer-dock'
+import { DockButton } from '@/components/sidebar/footer-dock'
 import { GithubStarCard } from '@/components/onboarding/github-star-card'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { CanvasTree, type CanvasTreeActions } from '@/components/sidebar/canvas-tree/canvas-tree'
@@ -54,8 +44,6 @@ import { SortableSidebarSections } from '@/components/sidebar/sortable-sidebar-s
 import { resolveSidebarSectionOrder } from '@/components/sidebar/sidebar-section-order'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
-import { Picker } from '@/components/ui/picker'
-import { NewItemMenuItems } from '@/components/tabs/new-item-menu-items'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarSectionOrder } from '@/hooks/use-sidebar-section-order'
@@ -67,6 +55,7 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboar
 import { useModifierHeld } from '@/hooks/use-modifier-held'
 import { newItemViewState } from '@/contexts/tabs/helpers'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { SettingsNav } from '@/pages/settings'
 import { notesService } from '@/services/notes-service'
 import { canvasService, type CanvasSummary } from '@/services/canvas-service'
 import { useTasksOptional } from '@/contexts/tasks'
@@ -89,26 +78,14 @@ import { useFirstRunTour } from '@/components/onboarding/use-first-run-tour'
 
 const log = createLogger('Component:AppSidebar')
 
-const mainNav: {
-  title: string
-  page: AppPage
-  icon: typeof SidebarInbox
-}[] = [
-  { title: 'Home', page: 'home', icon: Home },
-  { title: 'Inbox', page: 'inbox', icon: SidebarInbox },
-  { title: 'Journal', page: 'journal', icon: SidebarJournal },
-  { title: 'Calendar', page: 'calendar', icon: Calendar2 },
-  { title: 'Tasks', page: 'tasks', icon: SidebarTasks },
-  { title: 'Graph', page: 'graph', icon: ChartRelationship }
+const mainNav: AppRailItem[] = [
+  { title: 'Home', page: 'home', icon: PageHomeIcon },
+  { title: 'Inbox', page: 'inbox', icon: PageInboxIcon },
+  { title: 'Journal', page: 'journal', icon: PageJournalIcon },
+  { title: 'Calendar', page: 'calendar', icon: PageCalendarIcon },
+  { title: 'Tasks', page: 'tasks', icon: PageTasksIcon },
+  { title: 'Graph', page: 'graph', icon: PageGraphIcon }
 ]
-
-function SidebarHeaderContent() {
-  // Empty h-9 spacer to reserve room for the viewport-fixed WindowControls
-  // overlay (see App.tsx). Sidebar content starts below the chrome row.
-  // drag-region: the chrome overlay is only --chrome-width (180px) wide, so the
-  // strip from there to the sidebar's right edge must drag the window itself.
-  return <SidebarHeader className="drag-region h-9 shrink-0" />
-}
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   currentPage: AppPage
@@ -215,6 +192,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // Tab actions for opening new notes (stable reference, won't cause re-renders)
 
   const { settings: generalSettings } = useGeneralSettings()
+  const { open: openSettings, isOpen: isSettingsOpen, close: closeSettings } = useSettingsModal()
   const { order: sectionOrder, setOrder: setSectionOrder } = useSidebarSectionOrder()
 
   // Handle creating a new note (⌘N shortcut target)
@@ -261,6 +239,10 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // ⌘/Ctrl+number shortcuts so both land the user in exactly the same state.
   const navigateToPage = useCallback(
     (page: AppPage, options?: OpenSidebarItemOptions) => {
+      // Settings covers the workspace; going to a page leaves it, even when the
+      // page's tab is already the active one.
+      if (isSettingsOpen) closeSettings()
+
       // Map page to tab type and title
       const pageToTabType: Record<AppPage, TabType> = {
         home: 'home',
@@ -296,7 +278,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       }
       openSidebarItem(item, options)
     },
-    [openSidebarItem]
+    [openSidebarItem, isSettingsOpen, closeSettings]
   )
 
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
@@ -758,9 +740,6 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // Main sidebar content (shown when not drilling down)
   const mainContent = (
     <>
-      {/* Separator between nav and collections */}
-      <div className="h-px bg-sidebar-border shrink-0 mx-3 my-2 group-data-[collapsible=icon]:mx-1.5" />
-
       {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags — entire area is drop target */}
       <div
         ref={sidebarScrollRef}
@@ -768,7 +747,11 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         // `scroll-pt-6` matches the sticky section header (SidebarSection,
         // h-6): a row focused or scrolled into view natively lands below it
         // instead of under it.
-        className="relative flex-1 min-h-0 overflow-y-auto scroll-pt-6 scrollbar-thin group-data-[collapsible=icon]:overflow-hidden"
+        // `scrollbar-gutter: stable` reserves the scrollbar's width up front.
+        // Without it, content that grows just past the fold (e.g. expanding
+        // Tags) makes the scrollbar appear, the rows narrow by its width, and
+        // the layout can flip back and forth between the two widths.
+        className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] scroll-pt-6 scrollbar-thin group-data-[collapsible=icon]:overflow-hidden"
         // Anything dropped outside a folder row lands in the vault root.
         {...{ [FILE_DROP_FOLDER_ATTR]: '' }}
         {...dropHandlers}
@@ -805,7 +788,6 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   )
 
   const { state: authState } = useAuth()
-  const { open: openSettings } = useSettingsModal()
 
   const handleSyncClick = useCallback(() => {
     openSettings('account')
@@ -813,112 +795,109 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
   const vaultPages = useSidebarVaultPages()
 
+  const dock = (
+    <>
+      {authState.status === 'authenticated' ? (
+        <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
+      ) : authState.status === 'checking' ? null : (
+        <DockButton
+          data-tour="sync-status"
+          onClick={handleSyncClick}
+          aria-label={tPhaseF('phaseF.componentsAppSidebar.syncDisabled')}
+          title={tPhaseF('phaseF.componentsAppSidebar.syncDisabled2')}
+        >
+          <CloudOff aria-hidden="true" />
+        </DockButton>
+      )}
+      <SidebarFeedbackButton />
+      <SidebarSettingsButton />
+    </>
+  )
+
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeaderContent />
-      <SidebarContent className="flex flex-col overflow-hidden gap-0">
-        <SidebarVaultPager pages={vaultPages}>
-          {/* Quick Action: New — persistent, stays visible during drill-down */}
-          <div className="shrink-0 flex items-center px-3 pt-2 pb-0 group-data-[collapsible=icon]:hidden">
-            <div className="flex flex-1 items-center h-[30px] rounded-[5px] bg-sidebar-surface overflow-hidden">
-              <button
-                type="button"
-                data-tour="new-note"
-                onClick={() => void handleNewNote()}
-                className="flex flex-1 items-center justify-center gap-2 h-full hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-                title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
-              >
-                <Plus className="size-[15px] text-muted-foreground/70" />
-                <span className="text-[13px] text-muted-foreground/70 font-normal">
-                  {tPhaseF('phaseF.componentsAppSidebar.new')}
-                </span>
-              </button>
-              <Picker>
-                <Picker.Trigger asChild>
-                  <button
-                    type="button"
-                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newItemMenu')}
-                    className="flex h-full w-7 shrink-0 items-center justify-center border-s border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-                  >
-                    <ChevronDown className="size-3.5 text-muted-foreground/70" />
-                  </button>
-                </Picker.Trigger>
-                <Picker.Content width={200} align="end" side="bottom">
-                  <NewItemMenuItems
-                    actions={{
-                      onNewNote: () => void handleNewNote(),
-                      onJournal: () =>
-                        openSidebarItem({ type: 'journal', title: 'Journal', path: '/journal' }),
-                      onCalendar: () =>
-                        openSidebarItem({
-                          type: 'calendar',
-                          title: 'Calendar',
-                          path: '/calendar',
-                          viewState: newItemViewState('calendar')
-                        }),
-                      onInbox: () =>
-                        openSidebarItem({
-                          type: 'inbox',
-                          title: 'Inbox',
-                          path: '/inbox',
-                          viewState: newItemViewState('inbox')
-                        }),
-                      onTasks: () =>
-                        openSidebarItem({
-                          type: 'tasks',
-                          title: 'Tasks',
-                          path: '/tasks',
-                          viewState: newItemViewState('tasks')
-                        }),
-                      onTags: () => openSidebarItem({ type: 'tags', title: 'Tags', path: '/tags' })
-                    }}
-                  />
-                </Picker.Content>
-              </Picker>
-            </div>
-          </div>
-          <SidebarNav
-            items={visibleNav}
-            isActive={isActiveItem}
-            onNavClick={handleNavClick}
-            onNavMiddleClick={handleNavMiddleClick}
-            isModifierHeld={isModifierHeld}
-            inboxCount={inboxCount}
-            todayTasksCount={todayTasksCount}
-            onOpenJournalSettings={() => openSettings('journal')}
-          />
-          <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
-        </SidebarVaultPager>
-      </SidebarContent>
-      <SidebarFooter className="gap-0 p-2">
-        <GithubStarCard />
-        <SidebarUpdateRow />
-        <FooterDock>
-          {authState.status === 'authenticated' ? (
-            <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
-          ) : authState.status === 'checking' ? null : (
-            <DockButton
-              data-tour="sync-status"
-              onClick={handleSyncClick}
-              aria-label={tPhaseF('phaseF.componentsAppSidebar.syncDisabled')}
-              title={tPhaseF('phaseF.componentsAppSidebar.syncDisabled2')}
-            >
-              <CloudOff aria-hidden="true" />
-            </DockButton>
-          )}
-          <SidebarVaultSwitcher pages={vaultPages} />
-          <SidebarFeedbackButton />
-          <SidebarSettingsButton />
-        </FooterDock>
-      </SidebarFooter>
-      <SidebarRail />
-      <ProjectModal
-        isOpen={isProjectModalOpen}
-        onClose={handleProjectModalClose}
-        onSave={(project) => void handleSaveProject(project)}
-        onDelete={handleDeleteProject}
-        project={editingProject}
+    <>
+      <AppRail
+        items={visibleNav}
+        // Settings covers the workspace, so no page reads as the current one.
+        isActive={isSettingsOpen ? () => false : isActiveItem}
+        onNavClick={handleNavClick}
+        onNavMiddleClick={handleNavMiddleClick}
+        isModifierHeld={isModifierHeld}
+        inboxCount={inboxCount}
+        todayTasksCount={todayTasksCount}
+        onOpenJournalSettings={() => openSettings('journal')}
+        dock={dock}
       />
-    </Sidebar>
+      {/* The panel starts below the h-9 title row (WindowControls + WorkspaceDragStrip).
+          With the workspace card beside it, it forms one surface: the panel owns the
+          rounded top-start corner and its inline-end border divides it from the card. */}
+      <Sidebar
+        collapsible="offcanvas"
+        {...props}
+        className={cn(
+          'top-9 h-[calc(100svh-2.25rem)] overflow-hidden rounded-ss-xl border-t border-s border-border group-data-[side=left]:border-border',
+          props.className
+        )}
+      >
+        <SidebarContent className="flex flex-col overflow-hidden gap-0">
+          {isSettingsOpen && <SettingsNav />}
+          {/* Hidden, not unmounted, while settings is open: the tree keeps its
+              expansion and scroll position for the way back. */}
+          <div className={isSettingsOpen ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>
+            <SidebarVaultPager pages={vaultPages}>
+              <SidebarPanelHeader
+                pages={vaultPages}
+                onNewNote={() => void handleNewNote()}
+                newItemActions={{
+                  onNewNote: () => void handleNewNote(),
+                  onJournal: () =>
+                    openSidebarItem({
+                      type: 'journal',
+                      title: 'Journal',
+                      path: '/journal'
+                    }),
+                  onCalendar: () =>
+                    openSidebarItem({
+                      type: 'calendar',
+                      title: 'Calendar',
+                      path: '/calendar',
+                      viewState: newItemViewState('calendar')
+                    }),
+                  onInbox: () =>
+                    openSidebarItem({
+                      type: 'inbox',
+                      title: 'Inbox',
+                      path: '/inbox',
+                      viewState: newItemViewState('inbox')
+                    }),
+                  onTasks: () =>
+                    openSidebarItem({
+                      type: 'tasks',
+                      title: 'Tasks',
+                      path: '/tasks',
+                      viewState: newItemViewState('tasks')
+                    }),
+                  onTags: () => openSidebarItem({ type: 'tags', title: 'Tags', path: '/tags' })
+                }}
+              />
+              <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
+            </SidebarVaultPager>
+          </div>
+        </SidebarContent>
+        <SidebarFooter className={cn('gap-2 p-2', isSettingsOpen && 'hidden')}>
+          <GithubStarCard />
+          <SidebarUpdateRow />
+          <SidebarVaultDots pages={vaultPages} />
+        </SidebarFooter>
+        <SidebarRail />
+        <ProjectModal
+          isOpen={isProjectModalOpen}
+          onClose={handleProjectModalClose}
+          onSave={(project) => void handleSaveProject(project)}
+          onDelete={handleDeleteProject}
+          project={editingProject}
+        />
+      </Sidebar>
+    </>
   )
 }

@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "場景設定",
+    "backToApp": "返回應用程式",
     "nav": {
       "groups": {
         "account": "帳戶",

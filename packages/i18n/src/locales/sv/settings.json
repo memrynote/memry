@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Inställningar",
+    "backToApp": "Tillbaka till appen",
     "nav": {
       "groups": {
         "account": "Konto",

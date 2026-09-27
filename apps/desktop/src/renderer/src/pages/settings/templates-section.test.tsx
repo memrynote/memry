@@ -69,7 +69,13 @@ vi.mock('@/components/settings/settings-primitives', () => ({
       {action}
     </header>
   ),
-  SETTINGS_GROUP_LABEL: 'group-label'
+  SettingsGroupHeading: ({ label, action }: { label: string; action?: React.ReactNode }) => (
+    <div>
+      <h4>{label}</h4>
+      {action}
+    </div>
+  ),
+  SETTINGS_CARD: 'settings-card'
 }))
 
 vi.mock('@/components/ui/dropdown-menu', () => ({

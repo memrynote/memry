@@ -4,6 +4,7 @@
   },
   "page": {
     "title": "Ayarlar",
+    "backToApp": "Uygulamaya dön",
     "nav": {
       "groups": {
         "account": "Hesap",

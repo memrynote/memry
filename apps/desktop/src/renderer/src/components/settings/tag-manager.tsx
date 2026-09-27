@@ -42,6 +42,7 @@ import { getTagColors, COLOR_ROWS, TAG_COLORS } from '@/components/note/tags-row
 import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
 import { TagIconChip } from './tag-icon-chip'
 import { cn } from '@/lib/utils'
+import { SETTINGS_CARD } from './settings-primitives'
 import { useT } from '@memry/i18n/renderer'
 
 export function TagManager() {
@@ -187,18 +188,17 @@ export function TagManager() {
         />
       </div>
 
-      <div className="flex flex-col overflow-y-auto max-h-[60vh] border-y border-border">
+      <div className={cn(SETTINGS_CARD, 'max-h-[60vh] overflow-y-auto')}>
         {filteredTags.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
             {t('tags.noMatch', { query: search })}
           </p>
         )}
-        {filteredTags.map((tag, i) => {
+        {filteredTags.map((tag) => {
           const colors = getTagColors(tag.color ?? '', tag.name)
 
           return (
             <div key={tag.name}>
-              {i > 0 && <div className="h-px bg-border" />}
               <div className="flex items-center justify-between min-h-11 py-2 shrink-0 group">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <TagIconChip

@@ -13,7 +13,13 @@ import {
   SidebarMenuItem,
   useSidebar
 } from '@/components/ui/sidebar'
-import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger
+} from '@/components/ui/context-menu'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useOpenTarget } from '@/hooks/use-open-target'
@@ -219,6 +225,11 @@ export const SortableProjectItem = ({
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
           <OpenTargetMenuItems tab={projectTab} />
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => onEdit(project)}>
+            <Settings className="me-2 h-4 w-4" />
+            {tPhaseF('phaseF.componentsSidebarSortableProjectItem.settings')}
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
 

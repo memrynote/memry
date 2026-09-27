@@ -37,7 +37,7 @@ import {
 import { recordCrdtPersistenceOutcome } from '../store'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
-import { toAbsolutePath } from '../vault/notes'
+import { getVaultRoot, toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
@@ -457,6 +457,14 @@ export class CrdtProvider {
     // date-based ids (`j2026-08-13`), so two vaults' journals for the same day
     // shared a key — the collision sign-out used to "contain" by deleting the
     // whole store, and with it every note's merge history.
+    // Captured before the awaits: the ready broadcast names the vault this
+    // store was opened for, so an editor kept for another vault can ignore it.
+    let vaultPath: string | null = null
+    try {
+      vaultPath = getVaultRoot()
+    } catch {
+      vaultPath = null
+    }
     const target = await prepareVaultCrdtStore()
     if (!target) {
       // No vault is open: main initializes the provider before
@@ -500,7 +508,7 @@ export class CrdtProvider {
     // over again. Whatever else main attaches to a fresh provider (init()'s
     // body outbox and snapshot push) lands in the same microtask as this
     // resolve, so a renderer's IPC round-trip can never beat it.
-    broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY)
+    broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY, { vaultPath })
     log.info('CRDT provider ready, asked stranded editors to rebind')
   }
 

@@ -9,8 +9,8 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
-  SETTINGS_GROUP_LABEL,
-  SETTINGS_LIST
+  SETTINGS_CARD,
+  SettingsGroupHeading
 } from '@/components/settings/settings-primitives'
 import { LargeNotesWarning } from '@/components/settings/large-notes-warning'
 import { DownloadVaultDialog } from '@/components/download-vault-dialog'
@@ -140,10 +140,12 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
     <div className="flex flex-col text-xs/4">
       <SettingsHeader title={t('vault.header.title')} subtitle={t('vault.header.subtitle')} />
 
-      <div className="flex flex-col pb-8">
-        <h4 className={SETTINGS_GROUP_LABEL}>{t('vault.v2.groups.thisVault')}</h4>
-        <div className={SETTINGS_LIST}>
-          <div className="flex min-h-14 items-center justify-between gap-4 border-b border-border py-2.5">
+      <section className="flex flex-col pb-9">
+        <SettingsGroupHeading label={t('vault.v2.groups.thisVault')} />
+        {/* A plain card rather than SettingsGroup: LargeNotesWarning usually
+            renders nothing and must not leave an empty divided row behind. */}
+        <div className={SETTINGS_CARD}>
+          <div className="flex min-h-14 items-center justify-between gap-4 py-2.5">
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate text-[13px]/4 text-foreground">
                 {currentVaultName ?? t('vault.vaultPath')}
@@ -162,10 +164,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
             </button>
           </div>
 
-          <div
-            className="flex flex-col gap-2.5 border-b border-border py-3"
-            data-testid="vault-storage"
-          >
+          <div className="flex flex-col gap-2.5 py-3" data-testid="vault-storage">
             <div className="flex items-center justify-between gap-4">
               <span className="text-[13px]/4 text-foreground">{t('vault.storage.title')}</span>
               {data && !loading && (
@@ -243,7 +242,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
           {/* Renders nothing unless a note is at or over the per-note sync ceiling. */}
           <LargeNotesWarning />
         </div>
-      </div>
+      </section>
 
       <SettingsGroup label={t('vault.groups.accountVaults')}>
         {isUnsyncedVault && suggestedVault && (

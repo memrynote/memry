@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Kommen Sie hier vorbei",
-      "editProject": "Projekt bearbeiten"
+      "editProject": "Projekt bearbeiten",
+      "settings": "Einstellungen"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Tag # löschen",

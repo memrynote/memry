@@ -44,6 +44,7 @@ export const DockButton = forwardRef<HTMLButtonElement, DockButtonProps>(functio
     <button
       ref={ref}
       type="button"
+      data-slot="dock-button"
       className={cn(
         'relative flex size-7 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors',
         'hover:bg-background/70 hover:text-foreground',

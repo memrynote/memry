@@ -150,7 +150,7 @@ const MODES = [
     mode: 'dark' as const,
     selector: DARK_SELECTOR,
     themes: ['.dark'] as ThemeSelector[],
-    body: '#bcbab6'
+    body: '#dedede'
   }
 ]
 

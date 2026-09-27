@@ -76,17 +76,19 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
 }))
 
-vi.mock('@/components/sidebar/sidebar-nav', () => ({
-  SidebarNav: ({
+vi.mock('@/components/sidebar/app-rail', () => ({
+  AppRail: ({
     items,
     onNavClick,
     inboxCount,
-    todayTasksCount
+    todayTasksCount,
+    dock
   }: {
     items: Array<{ title: string; page: string }>
     onNavClick: (page: never) => (event: React.MouseEvent) => void
     inboxCount: number
     todayTasksCount: number
+    dock: ReactNode
   }) => (
     <nav>
       <span>Inbox count {inboxCount}</span>
@@ -96,6 +98,7 @@ vi.mock('@/components/sidebar/sidebar-nav', () => ({
           {item.title}
         </button>
       ))}
+      {dock}
     </nav>
   )
 }))
@@ -421,7 +424,7 @@ describe('AppSidebar', () => {
       { inNewTab: false, inBackground: false }
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'new' }))
+    fireEvent.click(screen.getByRole('button', { name: 'newNoteN' }))
     await waitFor(() => {
       expect(mocks.createNote).toHaveBeenCalledWith({
         title: 'Untitled Note',

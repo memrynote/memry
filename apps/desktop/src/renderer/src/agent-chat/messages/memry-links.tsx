@@ -10,8 +10,6 @@ import { NoteIconDisplay } from '@/lib/render-note-icon'
 import {
   AlarmClock,
   Bell,
-  Calendar2,
-  CheckSquare3,
   FilePdf,
   FileText,
   Folder,
@@ -202,9 +200,9 @@ const INBOX_VISUAL_TYPE_ICONS: Record<string, LinkIconComponent> = {
 }
 
 const CALENDAR_VISUAL_TYPE_ICONS: Record<string, LinkIconComponent> = {
-  event: Calendar2,
-  external_event: Calendar2,
-  task: CheckSquare3,
+  event: SidebarCalendar,
+  external_event: SidebarCalendar,
+  task: SidebarTasks,
   reminder: AlarmClock,
   snooze: NotificationSnooze
 }

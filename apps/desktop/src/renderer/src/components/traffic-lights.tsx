@@ -4,6 +4,10 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
+// macOS now shows its native traffic lights (main/index.ts trafficLightPosition).
+// The custom controls are kept but hidden; flip this to bring them back.
+const USE_NATIVE_TRAFFIC_LIGHTS = true
+
 interface TrafficLightsProps {
   className?: string
   compact?: boolean
@@ -27,6 +31,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
 
   // Only macOS hides its native frame (titleBarStyle: 'hidden'). On Windows/Linux the
   // native window buttons remain, so these mac-style controls would just duplicate them.
+  if (USE_NATIVE_TRAFFIC_LIGHTS) return null
   if (navigator.platform.toUpperCase().indexOf('MAC') < 0) return null
 
   const buttonSize = compact ? 'size-2.5' : 'size-3.5'

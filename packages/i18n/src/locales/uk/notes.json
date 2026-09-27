@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Перетягніть сюди",
-      "editProject": "Редагувати проєкт"
+      "editProject": "Редагувати проєкт",
+      "settings": "Налаштування"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Видалити тег #",

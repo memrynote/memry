@@ -92,7 +92,7 @@ describe('review UI', () => {
 
     expect(cardBlock).toContain('will-change: transform')
     expect(cardBlock).toContain('transform 200ms ease')
-    expect(css).toContain('--critic-review-card-hover-background: #202020;')
+    expect(css).toContain('--critic-review-card-hover-background: #212121;')
     expect(css).toContain('--critic-review-card-hover-background: var(--surface-active);')
     expect(hoverBlock).toContain('background-color: var(--critic-review-card-hover-background)')
     expect(hoverBlock).toContain('transform: translateX(-20px)')

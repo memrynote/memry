@@ -8,14 +8,12 @@ import { cn } from '@/lib/utils'
 interface TabPaneProps {
   groupId: string
   isActive: boolean
-  showSidebarToggle?: boolean
   className?: string
 }
 
 export const TabPane = ({
   groupId,
   isActive,
-  showSidebarToggle = true,
   className
 }: TabPaneProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
@@ -44,7 +42,7 @@ export const TabPane = ({
       data-pane-id={groupId}
       data-pane-active={isActive}
     >
-      <TabBarWithDrag groupId={groupId} showSidebarToggle={showSidebarToggle} />
+      <TabBarWithDrag groupId={groupId} />
 
       <div
         className={cn(

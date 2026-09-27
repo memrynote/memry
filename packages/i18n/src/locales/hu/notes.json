@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Dobj ide",
-      "editProject": "Projekt szerkesztése"
+      "editProject": "Projekt szerkesztése",
+      "settings": "Beállítások"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "# címke törlése",

@@ -653,7 +653,8 @@
     },
     "componentsSidebarSortableProjectItem": {
       "dropHere": "Thả vào đây",
-      "editProject": "Chỉnh sửa dự án"
+      "editProject": "Chỉnh sửa dự án",
+      "settings": "Cài đặt"
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Xóa thẻ #",

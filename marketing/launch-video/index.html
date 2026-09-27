@@ -1,0 +1,1082 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>memrynote launch film</title>
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(../../apps/landing/public/fonts/dm-sans-latin.woff2) format('woff2');
+        font-weight: 100 1000;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url(../../apps/landing/public/fonts/jetbrains-mono-latin.woff2) format('woff2');
+        font-weight: 100 800;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #000;
+      }
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        font-family: 'DM Sans', sans-serif;
+        color: #1f2937;
+        background: #141210;
+        -webkit-font-smoothing: antialiased;
+      }
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: none;
+        overflow: hidden;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .m {
+        display: inline-block;
+        overflow: hidden;
+        vertical-align: top;
+        padding: 0 0.04em 0.14em;
+        margin: 0 -0.04em -0.14em;
+      }
+      .i {
+        display: inline-block;
+      }
+      .chip {
+        position: absolute;
+        left: 0;
+        top: 0;
+        padding: 16px 24px;
+        border-radius: 16px;
+        background: #1e1b18;
+        border: 1px solid #2e2a25;
+        color: #f5f0ea;
+        font-size: 26px;
+        font-weight: 500;
+        white-space: nowrap;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 24px;
+        border-radius: 999px;
+        border: 1.5px solid #e6e1d8;
+        background: #fff;
+        font-size: 26px;
+        font-weight: 500;
+        color: #1f2937;
+        margin: 0 12px 14px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <script>
+      const BR = '#ff671a',
+        INK = '#1f2937',
+        PAPER = '#fbf9f5',
+        DARK = '#141210',
+        MUTED = '#6b6560'
+      const FPS = 60,
+        DUR = 40
+      const A = '../../apps/landing/public/'
+      const S = document.getElementById('stage')
+
+      // ---------- math ----------
+      const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
+      const p = (t, a, b) => cl((t - a) / (b - a))
+      const lerp = (a, b, x) => a + (b - a) * x
+      const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
+      const eout = (x) => 1 - Math.pow(1 - x, 3)
+      const ein = (x) => x * x * x
+      const expo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x))
+      const back = (x) => {
+        const c = 1.70158
+        return x <= 0 ? 0 : 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2)
+      }
+      function rng(seed) {
+        return () => {
+          seed |= 0
+          seed = (seed + 0x6d2b79f5) | 0
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+      const R = rng(7)
+
+      // ---------- dom ----------
+      function h(tag, css, parent, html) {
+        const e = document.createElement(tag)
+        if (css) e.style.cssText = css
+        if (html != null) e.innerHTML = html
+        ;(parent || S).appendChild(e)
+        return e
+      }
+      function svg(tag, attrs, parent) {
+        const e = document.createElementNS('http://www.w3.org/2000/svg', tag)
+        for (const k in attrs) e.setAttribute(k, attrs[k])
+        parent.appendChild(e)
+        return e
+      }
+      function scene(bg) {
+        const e = h('div', 'background:' + bg, S)
+        e.className = 'scene'
+        return e
+      }
+      function show(el, t, a, b) {
+        el.style.display = t >= a && t < b ? 'block' : 'none'
+        return t >= a && t < b
+      }
+      // words: "*x*" = accent italic
+      function words(parent, text, accent = BR) {
+        const out = []
+        const ws = text.split(' ')
+        ws.forEach((w, i) => {
+          const m = h('span', '', parent)
+          m.className = 'm'
+          const em = w.includes('*')
+          const inn = h('span', '', m, w.replace(/\*/g, ''))
+          inn.className = 'i'
+          if (em) {
+            inn.style.fontStyle = 'italic'
+            inn.style.color = accent
+          }
+          out.push(inn)
+          if (i < ws.length - 1) parent.appendChild(document.createTextNode(' '))
+        })
+        return out
+      }
+      function letters(parent, text) {
+        return [...text].map((c) => {
+          const m = h('span', '', parent)
+          m.className = 'm'
+          const i = h('span', '', m, c === ' ' ? '&nbsp;' : c)
+          i.className = 'i'
+          return i
+        })
+      }
+      // animate a set of masked spans: in at `a`, out at `b`
+      function rise(arr, t, a, st = 0.05, d = 0.7, b = 1e9, bst = 0.025) {
+        arr.forEach((e, i) => {
+          const x = expo(p(t, a + i * st, a + i * st + d))
+          const y = ein(p(t, b + i * bst, b + i * bst + 0.45))
+          e.style.transform = `translateY(${(1 - x) * 115 - y * 115}%) rotate(${(1 - x) * 7}deg)`
+        })
+      }
+      function logoSVG(parent, size) {
+        const s = svg(
+          'svg',
+          {
+            viewBox: '-40 -40 400 338',
+            width: size,
+            height: (size * 338) / 400,
+            overflow: 'visible'
+          },
+          parent
+        )
+        const l = svg('g', {}, s),
+          r = svg('g', {}, s),
+          b = svg('g', {}, s)
+        svg('path', { d: 'M0 80 A80 80 0 0 1 160 80 L160 160 Z', fill: BR }, l)
+        svg('path', { d: 'M160 80 A80 80 0 0 1 320 80 L160 160 Z', fill: BR }, r)
+        svg('rect', { x: 0, y: 172, width: 320, height: 86, rx: 18, fill: BR }, b)
+        return { s, l, r, b }
+      }
+      function assemble(L, t, a, spd = 1) {
+        const q = (k) => back(p(t, a + k * 0.1 * spd, a + (k * 0.1 + 0.75) * spd))
+        const x1 = q(0),
+          x2 = q(1),
+          x3 = q(2)
+        L.l.setAttribute(
+          'transform',
+          `translate(${(1 - x1) * -520} ${(1 - x1) * -300}) rotate(${(1 - x1) * -140} 80 110)`
+        )
+        L.r.setAttribute(
+          'transform',
+          `translate(${(1 - x2) * 520} ${(1 - x2) * -300}) rotate(${(1 - x2) * 140} 240 110)`
+        )
+        L.b.setAttribute(
+          'transform',
+          `translate(0 ${(1 - x3) * 420}) scale(${lerp(0.3, 1, cl(x3))} 1)`
+        )
+        L.b.firstChild.setAttribute('x', 0)
+        L.s.style.opacity = cl(p(t, a, a + 0.15))
+      }
+
+      // =====================================================================
+      // SCENE 1 — the noise (0 – 4.5)
+      // =====================================================================
+      const s1 = scene(DARK)
+      const CH = [
+        ['Notes', '#f5c542'],
+        ['To-do', '#4a9eff'],
+        ['Calendar', '#ff5a5a'],
+        ['Mail · 214', '#7a8cff'],
+        ['Docs', '#4ac2ff'],
+        ['Reminders', '#ff9f1a'],
+        ['Journal', '#b07aff'],
+        ['Bookmarks', '#5bd18b'],
+        ['Chat · 38 unread', '#e05ad1'],
+        ['37 tabs open', '#9aa3ad'],
+        ['Read later', '#ff7a59'],
+        ['Whiteboard', '#ffd166'],
+        ['Voice memo', '#06d6a0'],
+        ['Spreadsheet', '#2ec27e'],
+        ['Sticky notes', '#f9e04b'],
+        ['Kanban', '#5b8def']
+      ]
+      const NT = [
+        ['Meeting in 5 min', 'Design sync · Zoom'],
+        ['3 tasks overdue', 'From last week'],
+        ['Where did I save that?', 'Searching 4 apps'],
+        ['New message', '#general · 12 unread'],
+        ['Reminder', 'Call the landlord'],
+        ['Sync conflict', 'Pick a version'],
+        ['Storage almost full', 'Clear old files'],
+        ['Session expired', 'Sign in again']
+      ]
+      const chips = []
+      ;[...CH.map((c) => ({ c })), ...NT.map((n) => ({ n }))]
+        .sort(() => R() - 0.5)
+        .forEach((d, i) => {
+          const e = h('div', '', s1)
+          e.className = 'chip'
+          if (d.c) e.innerHTML = `<span class="dot" style="background:${d.c[1]}"></span>${d.c[0]}`
+          else {
+            e.style.flexDirection = 'column'
+            e.style.alignItems = 'flex-start'
+            e.style.gap = '4px'
+            e.style.padding = '18px 26px'
+            e.innerHTML = `<span style="font-weight:600">${d.n[0]}</span><span style="font-size:20px;color:#8a8279">${d.n[1]}</span>`
+          }
+          let x, y
+          do {
+            x = 120 + R() * 1680
+            y = 90 + R() * 900
+          } while ((x > 380 && x < 1540 && y > 400 && y < 690) || (x < 560 && y < 230))
+          chips.push({
+            e,
+            x,
+            y,
+            r: (R() - 0.5) * 16,
+            ti: 0.05 + i * 0.075,
+            ph: R() * 9,
+            f: 9 + R() * 8
+          })
+        })
+      const cnt = h(
+        'div',
+        'position:absolute;left:96px;top:80px;color:#8a8279;font-size:18px;letter-spacing:.14em',
+        s1,
+        'APP SWITCHES TODAY<div id="cn" style="font-size:56px;color:#ff671a;letter-spacing:0;margin-top:6px;font-weight:600">0</div>'
+      )
+      cnt.className = 'mono'
+      const cn = cnt.querySelector('#cn')
+      const L1 = ['A note *here.*', 'A task *there.*', 'An event somewhere *else.*'].map((tx) => {
+        const d = h(
+          'div',
+          'position:absolute;left:0;right:0;top:470px;text-align:center;font-size:124px;font-weight:600;letter-spacing:-.045em;color:#f5f0ea;line-height:1',
+          s1
+        )
+        return { d, w: words(d, tx) }
+      })
+      const orange = h('div', 'position:absolute;inset:0;background:' + BR + ';display:none', S)
+
+      function r1(t) {
+        if (!show(s1, t, 0, 4.6)) return
+        chips.forEach((c, i) => {
+          const a = back(p(t, c.ti, c.ti + 0.45))
+          const amp = 1.5 + 14 * ein(p(t, 1, 3.1))
+          const k = ein(p(t, 2.95 + i * 0.012, 3.85))
+          const x = lerp(c.x + Math.sin(t * c.f + c.ph) * amp, 960, k),
+            y = lerp(c.y + Math.cos(t * c.f * 1.1 + c.ph) * amp, 540, k)
+          c.e.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%) scale(${a * lerp(1, 0.05, k)}) rotate(${c.r + Math.sin(t * c.f * 0.7) * amp * 0.3 + k * 180}deg)`
+          c.e.style.opacity = cl(a) * (1 - p(t, 3.7, 3.9))
+        })
+        cn.textContent = Math.floor(Math.pow(p(t, 0.2, 3.2), 2) * 146)
+        cnt.style.opacity = 1 - p(t, 2.9, 3.3)
+        L1.forEach((l, j) => {
+          const a = 0.25 + j * 0.9,
+            b = j < 2 ? a + 0.8 : 3.0
+          rise(l.w, t, a, 0.06, 0.6, b, 0.02)
+          l.d.style.display = t > a - 0.1 && t < b + 0.7 ? 'block' : 'none'
+        })
+        L1[2].d.style.transform = `scale(${lerp(1, 0.6, ein(p(t, 2.95, 3.6)))})`
+        L1[2].d.style.filter = `blur(${p(t, 3, 3.5) * 10}px)`
+      }
+
+      // =====================================================================
+      // SCENE 2 — the calm (4.2 – 10.9)
+      // =====================================================================
+      const s2 = scene(PAPER)
+      const lg = h('div', 'position:absolute;left:0;top:0;width:200px', s2)
+      const LG = logoSVG(lg, 200)
+      const ripple = h(
+        'div',
+        'position:absolute;left:0;top:0;width:10px;height:10px;border-radius:50%;border:3px solid ' +
+          BR,
+        s2
+      )
+      const wm = h(
+        'div',
+        'position:absolute;left:0;top:0;font-size:168px;font-weight:600;letter-spacing:-.055em;line-height:1;white-space:nowrap',
+        s2
+      )
+      const WM = letters(wm, 'memrynote')
+      const tag = h(
+        'div',
+        'position:absolute;left:0;right:0;top:700px;text-align:center;font-size:56px;font-weight:500;letter-spacing:-.025em;color:' +
+          INK,
+        s2
+      )
+      const TG = words(tag, 'One calm place for all *your* things.')
+      const fm1 = h(
+        'div',
+        'position:absolute;left:0;right:0;top:330px;text-align:center;font-size:190px;font-weight:600;letter-spacing:-.055em;line-height:1',
+        s2
+      )
+      const FM1 = words(fm1, 'Five modules.')
+      const fm2 = h(
+        'div',
+        'position:absolute;left:0;right:0;top:545px;text-align:center;font-size:190px;font-weight:600;letter-spacing:-.055em;line-height:1',
+        s2
+      )
+      const FM2 = words(fm2, 'One *window.*')
+      let wmW = 0
+
+      function r2(t) {
+        if (!show(s2, t, 4.2, 10.9)) return
+        const rr = t < 5.2 ? lerp(0, 1250, eio(p(t, 4.25, 5.1))) : null
+        s2.style.clipPath = rr == null ? 'none' : `circle(${rr}px at 50% 50%)`
+        orange.style.display = t > 3.72 && t < 5.2 ? 'block' : 'none'
+        orange.style.clipPath = `circle(${t < 4 ? back(p(t, 3.72, 4)) * 26 : lerp(26, 1250, eio(p(t, 3.98, 4.7)))}px at 50% 50%)`
+        assemble(LG, t, 4.7)
+        const sq = Math.sin(p(t, 5.5, 5.85) * Math.PI) * 0.1
+        const mv = eio(p(t, 6.0, 6.8))
+        const total = 170 + 48 + wmW,
+          left = 960 - total / 2
+        const lx = lerp(960, left + 85, mv),
+          ly = lerp(520, 470, mv),
+          ls = lerp(1.35, 0.85, mv)
+        const out = ein(p(t, 9.0, 9.45))
+        lg.style.transform = `translate(${lx - 100}px,${ly - 85}px) scale(${ls * (1 + sq) * (1 - out * 0.5)},${ls * (1 - sq) * (1 - out * 0.5)})`
+        lg.style.opacity = 1 - out
+        const rp = p(t, 5.5, 6.6)
+        ripple.style.transform = `translate(${lx - 5}px,${ly - 5}px) scale(${eout(rp) * 140})`
+        ripple.style.opacity = (1 - rp) * (rp > 0 ? 1 : 0)
+        ripple.style.borderWidth = 3 / Math.max(0.2, eout(rp) * 14) + 'px'
+        wm.style.transform = `translate(${left + 170 + 48}px,${ly - 100}px)`
+        rise(WM, t, 6.25, 0.04, 0.8, 9.0, 0.02)
+        rise(TG, t, 7.1, 0.07, 0.8, 9.05, 0.02)
+        rise(FM1, t, 9.35, 0.1, 0.8, 10.4, 0.03)
+        rise(FM2, t, 9.75, 0.1, 0.8, 10.45, 0.03)
+      }
+
+      // =====================================================================
+      // SCENE 3 — modules (10.85 – 24.35)
+      // =====================================================================
+      const s3 = scene(PAPER)
+      const M0 = 10.85,
+        MD = 2.7
+      const MODS = [
+        [
+          'Inbox',
+          'Every loose thought lands here first. Snooze it, file it, or clear it in one pass.',
+          'inbox_white',
+          'Snoozed until tomorrow',
+          'left:-70px;bottom:110px'
+        ],
+        [
+          'Journal',
+          'One page a day, with your schedule and tasks right beside it.',
+          'journal_white',
+          'Today · 2 events · 5 tasks',
+          'right:-60px;top:120px'
+        ],
+        [
+          'Notes',
+          'Plain Markdown files you own. Wiki-links out, backlinks in.',
+          'note_white',
+          '[[Packing List]] · 3 backlinks',
+          'left:-80px;top:160px'
+        ],
+        [
+          'Tasks',
+          'The same tasks as a list, a board, or a calendar.',
+          'task_white',
+          'List · Board · Calendar',
+          'right:-70px;bottom:130px'
+        ],
+        [
+          'Calendar',
+          'Meetings, deadlines, tasks and journal days on one grid.',
+          'calendar_white',
+          'Google Calendar · two-way sync',
+          'left:-70px;bottom:120px'
+        ]
+      ]
+      const mini = h(
+        'div',
+        'position:absolute;left:120px;top:78px;display:flex;align-items:center;gap:14px;font-size:30px;font-weight:600;letter-spacing:-.04em',
+        s3
+      )
+      logoSVG(mini, 40)
+      mini.appendChild(document.createTextNode('memrynote'))
+      const persp = h('div', 'position:absolute;inset:0;perspective:2200px', s3)
+      const M = MODS.map((m, k) => {
+        const ghost = h(
+          'div',
+          'position:absolute;left:70px;top:120px;font-size:620px;font-weight:700;letter-spacing:-.07em;color:#f1ebe1;line-height:1',
+          s3,
+          '0' + (k + 1)
+        )
+        const col = h('div', 'position:absolute;left:120px;top:330px;width:640px', s3)
+        const idx = h(
+          'div',
+          'font-size:22px;color:' + BR + ';letter-spacing:.1em;margin-bottom:22px',
+          col
+        )
+        idx.className = 'mono'
+        const IX = words(idx, `0${k + 1} / 05`)
+        const nm = h(
+          'div',
+          'font-size:168px;font-weight:600;letter-spacing:-.055em;line-height:1;margin-bottom:34px',
+          col
+        )
+        const NM = letters(nm, m[0])
+        const ds = h(
+          'div',
+          'font-size:34px;line-height:1.35;color:' + MUTED + ';letter-spacing:-.01em',
+          col
+        )
+        const DS = words(ds, m[1])
+        const wrap = h(
+          'div',
+          'position:absolute;left:830px;top:180px;width:1000px;height:720px;transform-style:preserve-3d',
+          persp
+        )
+        const card = h(
+          'div',
+          'position:absolute;inset:0;border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 60px 120px -30px rgba(60,35,10,.35),0 0 0 1px rgba(0,0,0,.07)',
+          wrap
+        )
+        const img = h(
+          'img',
+          'width:100%;height:100%;object-fit:cover;object-position:left top;transform-origin:30% 20%',
+          card
+        )
+        img.src = A + 'screenshots/' + m[2] + '.png'
+        const co = h(
+          'div',
+          'position:absolute;' +
+            m[4] +
+            ';padding:20px 28px;border-radius:16px;background:#fff;font-size:26px;font-weight:600;display:flex;gap:14px;align-items:center;box-shadow:0 30px 60px -12px rgba(60,35,10,.3),0 0 0 1px rgba(0,0,0,.06);white-space:nowrap',
+          wrap,
+          `<span class="dot" style="background:${BR}"></span>${m[3]}`
+        )
+        return { ghost, col, IX, NM, DS, wrap, img, co }
+      })
+      const rail = h('div', 'position:absolute;left:120px;top:950px;display:flex;gap:0', s3)
+      const RI = MODS.map((m) =>
+        h(
+          'div',
+          'width:170px;font-size:20px;letter-spacing:.08em;color:#b8b0a5',
+          rail,
+          m[0].toUpperCase()
+        )
+      )
+      RI.forEach((e) => (e.className = 'mono'))
+      const bar = h(
+        'div',
+        'position:absolute;left:0;top:36px;height:3px;width:60px;background:' +
+          BR +
+          ';border-radius:2px',
+        rail
+      )
+
+      function r3(t) {
+        if (!show(s3, t, M0, 24.36)) return
+        mini.style.opacity = p(t, M0 + 0.2, M0 + 0.6)
+        M.forEach((m, k) => {
+          const s = M0 + k * MD,
+            u = t - s,
+            last = k === 4,
+            on = u > -0.5 && u < 3.1
+          ;[m.ghost, m.col, m.wrap].forEach((e) => (e.style.display = on ? 'block' : 'none'))
+          if (!on) return
+          const ex = last ? 99 : 2.35
+          rise(m.IX, t, s + 0.05, 0.05, 0.6, s + ex, 0.01)
+          rise(m.NM, t, s + 0.1, 0.035, 0.75, s + ex, 0.02)
+          rise(m.DS, t, s + 0.35, 0.025, 0.7, s + ex + 0.05, 0.008)
+          const ga = eout(p(u, 0, 1)),
+            gb = ein(p(u, ex, ex + 0.5))
+          m.ghost.style.transform = `translateX(${(1 - ga) * -120 + gb * -120 + u * -14}px)`
+          m.ghost.style.opacity = ga * (1 - gb)
+          const e = expo(p(u, -0.35, 0.6)),
+            x = eio(p(u, ex, ex + 0.6))
+          m.wrap.style.transform = `translateY(${(1 - e) * 950 - x * 1000}px) rotateX(${(1 - e) * 28 - x * 24}deg) rotateY(${-13 + u * 2.2}deg) rotateZ(${(1 - e) * 4}deg) scale(${0.9 + 0.1 * e + u * 0.012})`
+          m.img.style.transform = `scale(${1.02 + u * 0.035}) translate(${-u * 6}px,${-u * 4}px)`
+          const c = back(p(u, 0.75, 1.2))
+          m.co.style.transform = `translateZ(120px) scale(${c}) translateY(${Math.sin(u * 2.2) * 6}px)`
+          m.co.style.opacity = cl(c)
+        })
+        let pos = 0
+        for (let k = 1; k < 5; k++) pos += eio(p(t, M0 + k * MD - 0.15, M0 + k * MD + 0.45))
+        const w = Math.sin((pos % 1) * Math.PI)
+        bar.style.transform = `translateX(${pos * 170}px) scaleX(${1 + w * 1.6})`
+        bar.style.transformOrigin = 'left'
+        RI.forEach((e, i) => (e.style.color = Math.abs(pos - i) < 0.5 ? INK : '#b8b0a5'))
+        rail.style.opacity = p(t, M0 + 0.3, M0 + 0.8)
+      }
+
+      // =====================================================================
+      // SCENE 4 — connected (24.35 – 28.85)
+      // =====================================================================
+      const G0 = 24.35
+      const s4 = scene('#f5f1ea')
+      const gsv = svg('svg', { width: 1920, height: 1080, style: 'position:absolute;inset:0' }, s4)
+      const gg = svg('g', {}, gsv)
+      const eG = svg('g', {}, gg),
+        pG = svg('g', {}, gg),
+        nG = svg('g', {}, gg)
+      const CX = 1270,
+        CY = 540,
+        N = 58,
+        Rg = rng(3)
+      const nodes = []
+      for (let i = 0; i < N; i++) {
+        const r = i ? 60 + 420 * Math.sqrt(i / N) : 0,
+          a = i * 2.39996
+        nodes.push({
+          x: CX + Math.cos(a) * r * 1.12 + (Rg() - 0.5) * 30,
+          y: CY + Math.sin(a) * r * 0.92 + (Rg() - 0.5) * 30,
+          r
+        })
+      }
+      nodes.forEach((n, i) => (n.a = G0 + 0.25 + (n.r / 480) * 1.5 + Rg() * 0.15))
+      const edges = []
+      nodes.forEach((n, i) => {
+        if (!i) return
+        const d = nodes
+          .slice(0, i)
+          .map((m, j) => [Math.hypot(m.x - n.x, m.y - n.y), j])
+          .sort((a, b) => a[0] - b[0])
+        edges.push([d[0][1], i])
+        if (d[1] && Rg() < 0.45) edges.push([d[1][1], i])
+      })
+      const LBL = {
+        0: 'Weekend in Rome',
+        5: 'Packing List',
+        9: 'Food Diary',
+        17: '2026-07-10',
+        23: 'Istanbul',
+        31: 'Tokyo Trip',
+        40: 'Books',
+        47: 'Reading list'
+      }
+      const EL = edges.map(([a, b]) => {
+        const A_ = nodes[a],
+          B = nodes[b],
+          len = Math.hypot(A_.x - B.x, A_.y - B.y)
+        const l = svg(
+          'line',
+          {
+            x1: A_.x,
+            y1: A_.y,
+            x2: B.x,
+            y2: B.y,
+            stroke: '#cfc5b6',
+            'stroke-width': 2,
+            'stroke-dasharray': len,
+            'stroke-dashoffset': len
+          },
+          eG
+        )
+        return { l, len, s: Math.max(A_.a, B.a), A: A_, B }
+      })
+      const PU = EL.filter((_, i) => i % 5 === 1).map((e, i) => ({
+        e,
+        c: svg('circle', { r: 5, fill: BR }, pG),
+        o: i * 0.37
+      }))
+      const NO = nodes.map((n, i) => {
+        const hub = i === 0,
+          big = i % 8 === 0
+        const g = svg('g', {}, nG)
+        svg(
+          'circle',
+          { cx: n.x, cy: n.y, r: hub ? 18 : big ? 11 : 6, fill: hub || big ? BR : INK },
+          g
+        )
+        if (LBL[i]) {
+          const tx = svg(
+            'text',
+            {
+              x: n.x + (hub ? 30 : 20),
+              y: n.y + 7,
+              'font-size': hub ? 26 : 21,
+              'font-weight': 600,
+              fill: INK,
+              'font-family': 'DM Sans'
+            },
+            g
+          )
+          tx.textContent = LBL[i]
+        }
+        return g
+      })
+      const rings = [0, 1, 2].map(() =>
+        svg('circle', { cx: CX, cy: CY, r: 18, fill: 'none', stroke: BR, 'stroke-width': 2 }, gg)
+      )
+      const gt = h(
+        'div',
+        'position:absolute;left:120px;top:190px;font-size:132px;font-weight:600;letter-spacing:-.055em;line-height:1.02',
+        s4
+      )
+      const GT1 = words(h('div', '', gt), "Everything's")
+      const GT2 = words(h('div', '', gt), '*connected.*')
+      const gs = h(
+        'div',
+        'position:absolute;left:120px;top:490px;width:600px;font-size:34px;line-height:1.35;color:' +
+          MUTED,
+        s4
+      )
+      const GS = words(
+        gs,
+        'One local vault, many front doors. All reading the same Markdown you own.'
+      )
+      const gc = h('div', 'position:absolute;left:120px;top:690px;width:720px', s4)
+      const GC = [
+        'MCP agent',
+        'Terminal CLI',
+        'Web clipper',
+        'Graph view',
+        'Folder views',
+        'Home dashboard'
+      ].map((x) => {
+        const e = h('div', '', gc, `<span class="dot" style="background:${BR}"></span>${x}`)
+        e.className = 'pill'
+        return e
+      })
+
+      function r4(t) {
+        if (!show(s4, t, G0 - 0.05, 28.9)) return
+        const u = t - G0,
+          z = ein(p(t, 28.3, 28.85))
+        gg.setAttribute(
+          'transform',
+          `translate(${CX} ${CY}) scale(${lerp(0.92, 1.06, p(u, 0, 4.5)) + z * 2.2}) rotate(${lerp(-8, 4, eio(p(u, 0, 4.5)))}) translate(${-CX} ${-CY})`
+        )
+        gsv.style.opacity = 1 - z
+        NO.forEach((g, i) => {
+          const n = nodes[i],
+            a = back(p(t, n.a, n.a + 0.45))
+          g.setAttribute(
+            'transform',
+            `translate(${n.x} ${n.y}) scale(${a}) translate(${-n.x} ${-n.y})`
+          )
+        })
+        EL.forEach((e) =>
+          e.l.setAttribute('stroke-dashoffset', e.len * (1 - eout(p(t, e.s, e.s + 0.5))))
+        )
+        PU.forEach((q) => {
+          const on = t > q.e.s + 0.5
+          const f = (t * 0.9 + q.o) % 1
+          q.c.setAttribute('cx', lerp(q.e.A.x, q.e.B.x, f))
+          q.c.setAttribute('cy', lerp(q.e.A.y, q.e.B.y, f))
+          q.c.setAttribute('opacity', on ? Math.sin(f * Math.PI) : 0)
+        })
+        rings.forEach((r, i) => {
+          const f = ((u - 0.4) / 1.4 + i / 3) % 1
+          r.setAttribute('r', 18 + f * 120)
+          r.setAttribute('opacity', u > 0.4 ? (1 - f) * 0.6 : 0)
+        })
+        rise(GT1, t, G0 + 0.15, 0.1, 0.8, 28.3)
+        rise(GT2, t, G0 + 0.35, 0.1, 0.8, 28.32)
+        rise(GS, t, G0 + 0.8, 0.025, 0.7, 28.35, 0.005)
+        GC.forEach((e, i) => {
+          const a = back(p(t, G0 + 1.5 + i * 0.12, G0 + 1.95 + i * 0.12)),
+            o = ein(p(t, 28.25 + i * 0.02, 28.6))
+          e.style.transform = `scale(${a * (1 - o)})`
+          e.style.opacity = cl(a) * (1 - o)
+        })
+      }
+
+      // =====================================================================
+      // SCENE 5 — privacy (28.85 – 33.85)
+      // =====================================================================
+      const P0 = 28.85
+      const s5 = scene(DARK)
+      const pt = h(
+        'div',
+        'position:absolute;left:120px;top:250px;font-size:100px;font-weight:600;letter-spacing:-.05em;line-height:1.05;color:#f5f0ea',
+        s5
+      )
+      const PT1 = words(h('div', '', pt), 'Sealed before it')
+      const PT2 = words(h('div', '', pt), '*leaves* *your* *device.*')
+      const ps = h(
+        'div',
+        'position:absolute;left:120px;top:560px;width:760px;font-size:34px;line-height:1.4;color:#c9c0b5',
+        s5
+      )
+      const PS = words(ps, 'Keys are derived on your machine. Sync carries only ciphertext.')
+      const pm = h(
+        'div',
+        'position:absolute;left:120px;top:720px;font-size:22px;letter-spacing:.06em;color:#8a8279',
+        s5
+      )
+      pm.className = 'mono'
+      const PM = words(pm, 'XChaCha20-Poly1305  ·  Ed25519  ·  Argon2id')
+      const pc = h(
+        'div',
+        'position:absolute;left:1030px;top:250px;width:760px;height:560px;border-radius:26px;background:#1e1b18;border:1.5px solid #2e2a25;box-sizing:border-box;padding:60px 56px',
+        s5
+      )
+      const ph = h(
+        'div',
+        'font-size:18px;letter-spacing:.14em;color:#8a8279;margin-bottom:34px',
+        pc,
+        'WHAT YOU WRITE'
+      )
+      ph.className = 'mono'
+      const pre = h('div', 'font-size:34px;line-height:1.55;color:#f5f0ea;white-space:pre', pc)
+      pre.className = 'mono'
+      const scan = h(
+        'div',
+        'position:absolute;left:0;right:0;height:3px;background:' +
+          BR +
+          ';box-shadow:0 0 30px 8px rgba(255,103,26,.55)',
+        pc
+      )
+      const lock = h(
+        'div',
+        'position:absolute;left:1700px;top:196px;width:108px;height:108px;border-radius:50%;background:#2e2a25;display:grid;place-items:center',
+        s5,
+        `<svg width="54" height="62" viewBox="0 0 54 62"><path id="sh" d="M13 28 V18 a14 14 0 0 1 28 0 V28" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><rect x="4" y="27" width="46" height="33" rx="8" fill="#fff"/></svg>`
+      )
+      const sh = lock.querySelector('#sh')
+      const lring = h(
+        'div',
+        'position:absolute;left:1700px;top:196px;width:108px;height:108px;border-radius:50%;border:3px solid ' +
+          BR +
+          ';box-sizing:border-box',
+        s5
+      )
+      const pf = h(
+        'div',
+        'position:absolute;left:1030px;top:850px;font-size:20px;letter-spacing:.08em;color:' + BR,
+        s5
+      )
+      pf.className = 'mono'
+      const PF = words(pf, 'ENCRYPTED ON-DEVICE  →  SENT AS CIPHERTEXT')
+      const DIARY = [
+        'Dear diary,',
+        '',
+        'Today I finally figured out',
+        'the perfect recipe for',
+        'Sunday morning pancakes...'
+      ]
+      const CS = '0123456789abcdef+/=ABCDEFGHJKLMNPQRSTUVWXYZ'
+      const hash = (a, b) => ((a * 73856093) ^ (b * 19349663)) >>> 0
+
+      function r5(t, frame) {
+        if (!show(s5, t, P0 - 0.05, 34.2)) return
+        rise(PT1, t, P0 + 0.2, 0.08, 0.8)
+        rise(PT2, t, P0 + 0.4, 0.08, 0.8)
+        rise(PS, t, P0 + 0.9, 0.03, 0.7)
+        rise(PM, t, P0 + 1.3, 0.06, 0.6)
+        rise(PF, t, 32.25, 0.05, 0.6)
+        const ca = expo(p(t, P0 + 0.1, P0 + 0.8))
+        pc.style.transform = `translateY(${(1 - ca) * 120}px) scale(${0.94 + 0.06 * ca})`
+        pc.style.opacity = ca
+        const total = DIARY.join('').length,
+          typed = Math.floor(eout(p(t, 29.3, 30.8)) * total)
+        const sp = p(t, 31.0, 32.0) * DIARY.length
+        let n = 0,
+          html = ''
+        DIARY.forEach((ln, j) => {
+          let row = ''
+          for (let c = 0; c < ln.length; c++) {
+            if (n >= typed) break
+            const g = j + c / Math.max(1, ln.length)
+            const ch = ln[c]
+            if (g < sp && ch !== ' ') {
+              const near = sp - g < 0.6
+              row += `<span style="color:${near ? '#fff' : '#ff894d'}">${CS[(hash(j, c) + (near ? frame * 7 : 0)) % CS.length]}</span>`
+            } else row += ch.replace('<', '&lt;')
+            n++
+          }
+          if (
+            n >= typed &&
+            n < total &&
+            j === DIARY.findIndex((l, k) => DIARY.slice(0, k + 1).join('').length >= typed) &&
+            Math.floor(t * 2.5) % 2 === 0
+          )
+            row += '<span style="color:' + BR + '">▍</span>'
+          html += row + '\n'
+        })
+        pre.innerHTML = html
+        const sv = t > 30.95 && t < 32.1
+        scan.style.display = sv ? 'block' : 'none'
+        scan.style.top = 60 + 52 + p(t, 31.0, 32.0) * DIARY.length * 52.7 + 'px'
+        const sealed = eout(p(t, 31.95, 32.25))
+        ph.textContent = t > 31.5 ? 'WHAT THE SERVER SEES' : 'WHAT YOU WRITE'
+        ph.style.color = t > 31.5 ? BR : '#8a8279'
+        pc.style.borderColor = sealed > 0 ? `rgba(255,103,26,${0.25 + sealed * 0.6})` : '#2e2a25'
+        pc.style.boxShadow = `0 0 ${sealed * 120}px ${-20}px rgba(255,103,26,${sealed * 0.6})`
+        const la = back(p(t, P0 + 0.6, P0 + 1.1))
+        const sq = Math.sin(p(t, 32.0, 32.35) * Math.PI) * 0.18
+        lock.style.transform = `scale(${la * (1 + sq)})`
+        lock.style.background = sealed > 0.5 ? BR : '#2e2a25'
+        sh.setAttribute('transform', `translate(0 ${lerp(-10, 0, back(p(t, 31.95, 32.25)))})`)
+        const rp = p(t, 32.05, 33.0)
+        lring.style.transform = `scale(${1 + eout(rp) * 2.6})`
+        lring.style.opacity = rp > 0 ? 1 - rp : 0
+      }
+
+      // =====================================================================
+      // SCENE 6 — toggles (33.85 – 36.9)
+      // =====================================================================
+      const T0 = 33.85
+      const s6 = scene(PAPER)
+      const tt = h(
+        'div',
+        'position:absolute;left:120px;top:290px;font-size:128px;font-weight:600;letter-spacing:-.055em;line-height:1.02',
+        s6
+      )
+      const TT1 = words(h('div', '', tt), 'Every feature')
+      const TT2 = words(h('div', '', tt), 'is a *toggle.*')
+      const tb = h('div', 'position:absolute;left:120px;top:600px;width:820px', s6)
+      const TB = ['Offline-first', 'Local SQLite', 'Markdown you own', 'End-to-end encrypted'].map(
+        (x) => {
+          const e = h('div', '', tb, `<span class="dot" style="background:${BR}"></span>${x}`)
+          e.className = 'pill'
+          return e
+        }
+      )
+      const tc = h(
+        'div',
+        'position:absolute;left:1090px;top:170px;width:680px;border-radius:26px;background:#fff;box-shadow:0 60px 120px -30px rgba(60,35,10,.28),0 0 0 1px rgba(0,0,0,.06);padding:26px 36px;box-sizing:border-box',
+        s6
+      )
+      h(
+        'div',
+        'font-size:18px;letter-spacing:.14em;color:#8a8279;padding:12px 0 18px',
+        tc,
+        'SETTINGS  ·  MODULES'
+      ).className = 'mono'
+      const FLIPS = {
+        5: [
+          [34.9, 0],
+          [35.95, 1]
+        ],
+        4: [[35.3, 0]]
+      }
+      const TR = ['Inbox', 'Journal', 'Notes', 'Tasks', 'Calendar', 'AI agent'].map((x, i) => {
+        const row = h(
+          'div',
+          'display:flex;align-items:center;height:100px;border-top:1px solid #efe9df;font-size:34px;font-weight:500;letter-spacing:-.02em',
+          tc
+        )
+        const ic = h(
+          'div',
+          'width:44px;height:44px;border-radius:12px;background:#f6f0e2;margin-inline-end:22px;display:grid;place-items:center',
+          row,
+          `<span class="dot" style="background:${BR}"></span>`
+        )
+        h('div', 'flex:1', row, x)
+        const sw = h('div', 'width:80px;height:44px;border-radius:22px;position:relative', row)
+        const kn = h(
+          'div',
+          'position:absolute;top:4px;left:4px;width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.2)',
+          sw
+        )
+        return { row, sw, kn, f: FLIPS[i] || [] }
+      })
+      function r6(t) {
+        if (!show(s6, t, T0 - 0.05, 37.1)) return
+        const o = eio(p(t, 36.45, 36.95))
+        s6.style.opacity = 1 - o
+        s6.style.transform = `scale(${1 - o * 0.04})`
+        s6.style.filter = `blur(${o * 10}px)`
+        rise(TT1, t, T0 + 0.1, 0.09, 0.8)
+        rise(TT2, t, T0 + 0.3, 0.09, 0.8)
+        TB.forEach((e, i) => {
+          const a = back(p(t, T0 + 1.4 + i * 0.12, T0 + 1.85 + i * 0.12))
+          e.style.transform = `scale(${a})`
+          e.style.opacity = cl(a)
+        })
+        const ca = expo(p(t, T0, T0 + 0.7))
+        tc.style.transform = `translateX(${(1 - ca) * 200}px) rotate(${(1 - ca) * 4}deg)`
+        tc.style.opacity = ca
+        TR.forEach((r, i) => {
+          const a = expo(p(t, T0 + 0.2 + i * 0.07, T0 + 0.8 + i * 0.07))
+          r.row.style.transform = `translateX(${(1 - a) * 80}px)`
+          r.row.style.opacity = a
+          let st = 1
+          r.f.forEach(([ft, v]) => {
+            const k = eio(p(t, ft, ft + 0.28))
+            st = lerp(st, v, k)
+          })
+          r.kn.style.transform = `translateX(${st * 36}px) scaleX(${1 + Math.sin(st * Math.PI) * 0.25})`
+          r.sw.style.background = `rgb(${lerp(230, 255, st)},${lerp(225, 103, st)},${lerp(216, 26, st)})`
+          r.row.style.opacity = a * lerp(0.4, 1, st)
+        })
+      }
+
+      // =====================================================================
+      // SCENE 7 — end card (36.55 – 40)
+      // =====================================================================
+      const E0 = 36.6
+      const s7 = scene(PAPER)
+      const glow = h(
+        'div',
+        'position:absolute;left:460px;top:40px;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(255,103,26,.16),rgba(255,103,26,0) 65%)',
+        s7
+      )
+      const el = h('div', 'position:absolute;left:885px;top:190px;width:150px', s7)
+      const EL7 = logoSVG(el, 150)
+      const eh = h(
+        'div',
+        'position:absolute;left:0;right:0;top:390px;text-align:center;font-size:118px;font-weight:600;letter-spacing:-.055em;line-height:1',
+        s7
+      )
+      const EH = words(eh, 'One window for your *whole* *day.*')
+      const es = h(
+        'div',
+        'position:absolute;left:0;right:0;top:545px;text-align:center;font-size:36px;color:' +
+          MUTED +
+          ';letter-spacing:-.01em',
+        s7
+      )
+      const ES = words(es, 'Free to start. Private by default. Yours forever.')
+      const ctaW = h(
+        'div',
+        'position:absolute;left:0;right:0;top:668px;display:flex;justify-content:center',
+        s7
+      )
+      const cta = h(
+        'div',
+        'position:relative;overflow:hidden;padding:26px 54px;border-radius:999px;background:' +
+          BR +
+          ';color:#fff;font-size:38px;font-weight:600;letter-spacing:-.01em;box-shadow:0 30px 60px -20px rgba(255,103,26,.6)',
+        ctaW,
+        'memrynote.com'
+      )
+      const shine = h(
+        'div',
+        'position:absolute;top:-20px;bottom:-20px;width:90px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg)',
+        cta
+      )
+      const ew = h(
+        'div',
+        'position:absolute;left:0;right:0;top:900px;text-align:center;font-size:20px;letter-spacing:.2em;color:#b8b0a5',
+        s7
+      )
+      ew.className = 'mono'
+      const EW = words(ew, 'OFFLINE-FIRST  ·  END-TO-END  ENCRYPTED  ·  YOURS')
+      function r7(t) {
+        if (!show(s7, t, E0, 99)) return
+        s7.style.opacity = eout(p(t, E0, E0 + 0.4))
+        glow.style.transform = `scale(${lerp(0.6, 1.1, eout(p(t, E0, 40)))})`
+        assemble(EL7, t, E0 + 0.1, 0.8)
+        const sq = Math.sin(p(t, E0 + 0.75, E0 + 1.05) * Math.PI) * 0.1
+        el.style.transform = `scale(${1 + sq},${1 - sq})`
+        rise(EH, t, E0 + 0.55, 0.08, 0.85)
+        rise(ES, t, E0 + 1.2, 0.04, 0.7)
+        rise(EW, t, E0 + 2.2, 0.06, 0.7)
+        const c = back(p(t, E0 + 1.6, E0 + 2.1))
+        ctaW.style.transform = `scale(${c})`
+        ctaW.style.opacity = cl(c)
+        shine.style.left = lerp(-140, 440, eio(p(t, E0 + 2.3, E0 + 3.0))) + 'px'
+      }
+
+      // =====================================================================
+      // wipes + grain
+      // =====================================================================
+      const wA = h(
+        'div',
+        'position:absolute;inset:0;background:' + BR + ';z-index:50;display:none',
+        S
+      )
+      const wB = h('div', 'position:absolute;inset:0;background:#b33c00;z-index:49;display:none', S)
+      const WIPES = [
+        [10.85, 'y'],
+        [24.35, 'x'],
+        [28.85, 'y'],
+        [33.85, 'x']
+      ]
+      function rw(t) {
+        wA.style.display = wB.style.display = 'none'
+        for (const [c, d] of WIPES) {
+          const a = p(t, c - 0.34, c + 0.26),
+            b = p(t, c - 0.26, c + 0.34)
+          if (t < c - 0.36 || t > c + 0.36) continue
+          wA.style.display = wB.style.display = 'block'
+          const ax = lerp(100, -100, eio(a)),
+            bx = lerp(100, -100, eio(b))
+          wA.style.transform = d === 'y' ? `translateY(${ax}%)` : `translateX(${-ax}%)`
+          wB.style.transform = d === 'y' ? `translateY(${bx}%)` : `translateX(${-bx}%)`
+        }
+      }
+      const grain = h(
+        'div',
+        "position:absolute;inset:-100px;z-index:60;pointer-events:none;opacity:.10;mix-blend-mode:overlay;background-image:url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
+        S
+      )
+
+      window.render = (t) => {
+        const frame = Math.round(t * FPS)
+        r1(t)
+        r2(t)
+        r3(t)
+        r4(t)
+        r5(t, frame)
+        r6(t)
+        r7(t)
+        rw(t)
+        const g = rng(frame)()
+        grain.style.transform = `translate(${(g * 100) | 0}px,${((g * 7919) % 100) | 0}px)`
+      }
+      window.ready = (async () => {
+        await document.fonts.ready
+        await Promise.all([...document.images].map((i) => i.decode().catch(() => {})))
+        s2.style.display = 'block'
+        wmW = wm.offsetWidth
+        s2.style.display = 'none'
+        window.render(0)
+        return true
+      })()
+
+      // live preview when opened in a browser: ?t=12 freezes a frame
+      if (!navigator.webdriver) {
+        const q = new URLSearchParams(location.search).get('t')
+        window.ready.then(() => {
+          if (q != null) return render(+q)
+          const st = performance.now()
+          ;(function loop() {
+            render(((performance.now() - st) / 1000) % DUR)
+            requestAnimationFrame(loop)
+          })()
+        })
+      }
+    </script>
+  </body>
+</html>

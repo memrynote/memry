@@ -31,6 +31,9 @@ export const CRDT_EVENTS = {
    * and again each time one is brought up after a reset (post-sign-in / vault
    * open, via the sync runtime). A renderer whose binding was marked stale
    * re-opens its note and redoes the sync handshake here.
+   *
+   * Payload: `{ vaultPath: string | null }`, the vault the provider was opened
+   * for. Older mains sent no payload; treat a missing one as unknown.
    */
   PROVIDER_READY: 'crdt:provider-ready'
 } as const

@@ -28,16 +28,15 @@ import {
   SettingsGroup,
   SettingRow,
   ACCENT_SWITCH,
-  COMPACT_SELECT
+  COMPACT_SELECT,
+  SEGMENTED,
+  SEGMENT_ITEM
 } from '@/components/settings/settings-primitives'
 
 type SettingsT = ReturnType<typeof useT>['t']
 
 // Radix Select reserves '' so the vault root needs a sentinel value.
 const ROOT_FOLDER_VALUE = '__root__'
-
-const SEGMENT_ITEM =
-  'h-auto min-w-0 rounded-[5px] border-none py-0.75 px-2.5 text-xs/4 text-muted-foreground shadow-none hover:bg-transparent data-[state=on]:bg-background data-[state=on]:font-medium data-[state=on]:text-foreground data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
 
 export function GeneralSettings() {
   const { t, i18n } = useT('settings')
@@ -318,7 +317,7 @@ export function GeneralSettings() {
               if (value) void handleClockFormatChange(value as '12h' | '24h')
             }}
             aria-label={t('general.clockFormat.label')}
-            className="gap-0 rounded-[7px] bg-muted p-0.5"
+            className={SEGMENTED}
           >
             <ToggleGroupItem value="12h" className={SEGMENT_ITEM}>
               {t('general.clockFormat.options.12h')}
@@ -462,10 +461,10 @@ export function GeneralSettings() {
           <Button
             type="button"
             size="sm"
-            variant={updateState.status === 'downloaded' ? 'default' : 'ghost'}
+            variant={updateState.status === 'downloaded' ? 'default' : 'outline'}
             disabled={isUpdateActionDisabled}
             onClick={() => void handleUpdateAction()}
-            className="h-auto py-1 px-2 text-xs/4 font-normal"
+            className="h-auto py-1.25 px-2.5 text-xs/4"
           >
             {updateActionLabel}
           </Button>
