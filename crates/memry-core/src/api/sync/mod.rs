@@ -374,6 +374,12 @@ impl VaultSync {
         let cipher = self.cipher().await?;
         let http = self.session.http();
 
+        // Chapter 10 §10.6: a client SHOULD open an elevated window, and every
+        // failure of it is silent — a 501 from a deployment that has none
+        // (§10.12) changes nothing except how long the run takes.
+        let bootstrap =
+            Arc::new(BootstrapClient::new(Arc::clone(&http)).with_vault(&self.vault_id));
+
         let pull = Arc::new(
             PullLoop::new(
                 Arc::clone(&http),
@@ -390,14 +396,11 @@ impl VaultSync {
                 Declaration::subscribed(),
                 cipher,
             )
-            .with_vault(&self.vault_id),
+            .with_vault(&self.vault_id)
+            // The body pass is most of a first sync's requests, and its
+            // `crdt_pull` bucket is the one the session widens most (x5).
+            .with_bootstrap(Arc::clone(&bootstrap)),
         );
-
-        // Chapter 10 §10.6: a client SHOULD open an elevated window, and every
-        // failure of it is silent — a 501 from a deployment that has none
-        // (§10.12) changes nothing except how long the run takes.
-        let bootstrap =
-            Arc::new(BootstrapClient::new(Arc::clone(&http)).with_vault(&self.vault_id));
 
         let mut run = FirstSync::new(pull, bodies, self.db.clone()).with_bootstrap(bootstrap);
         if let Some(listener) = progress {
