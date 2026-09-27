@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "前進",
           "description": "重做返回操作"
+        },
+        "newTab": {
+          "label": "新分頁",
+          "description": "開啟新分頁選單"
+        },
+        "closeAll": {
+          "label": "關閉窗格中的所有分頁",
+          "description": "關閉窗格中的所有分頁"
+        },
+        "pin": {
+          "label": "固定或取消固定分頁",
+          "description": "固定或取消固定分頁"
+        },
+        "duplicate": {
+          "label": "複製分頁",
+          "description": "複製分頁"
+        },
+        "splitRight": {
+          "label": "向右拆分",
+          "description": "向右拆分"
+        },
+        "splitDown": {
+          "label": "向下拆分",
+          "description": "向下拆分"
+        },
+        "closeSplit": {
+          "label": "關閉拆分窗格",
+          "description": "關閉拆分窗格"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "底線",
           "description": "切換底線格式"
+        },
+        "strikethrough": {
+          "label": "刪除線",
+          "description": "刪除線"
+        },
+        "code": {
+          "label": "程式碼",
+          "description": "程式碼"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "鍵盤快速鍵幫助",
           "description": "顯示鍵盤快速鍵參考"
+        },
+        "zoomIn": {
+          "label": "放大",
+          "description": "放大所有內容"
+        },
+        "zoomOut": {
+          "label": "縮小",
+          "description": "縮小所有內容"
+        },
+        "actualSize": {
+          "label": "實際大小",
+          "description": "將縮放重設為 100%"
         }
       }
     }

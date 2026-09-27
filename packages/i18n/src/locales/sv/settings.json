@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigera framåt",
           "description": "Gör om en tillbaka-navigering"
+        },
+        "newTab": {
+          "label": "Ny flik",
+          "description": "Öppna menyn för ny flik"
+        },
+        "closeAll": {
+          "label": "Stäng alla flikar i panelen",
+          "description": "Stäng alla flikar i panelen"
+        },
+        "pin": {
+          "label": "Fäst eller lossa flik",
+          "description": "Fäst eller lossa flik"
+        },
+        "duplicate": {
+          "label": "Duplicera flik",
+          "description": "Duplicera flik"
+        },
+        "splitRight": {
+          "label": "Dela till höger",
+          "description": "Dela till höger"
+        },
+        "splitDown": {
+          "label": "Dela nedåt",
+          "description": "Dela nedåt"
+        },
+        "closeSplit": {
+          "label": "Stäng delad panel",
+          "description": "Stäng delad panel"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Understruken",
           "description": "Växla understruken formatering"
+        },
+        "strikethrough": {
+          "label": "Genomstruken",
+          "description": "Genomstruken"
+        },
+        "code": {
+          "label": "Kod",
+          "description": "Kod"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Tangentbordsgenvägar Hjälp",
           "description": "Visa referens för tangentbordsgenvägar"
+        },
+        "zoomIn": {
+          "label": "Zooma in",
+          "description": "Gör allt större"
+        },
+        "zoomOut": {
+          "label": "Zooma ut",
+          "description": "Gör allt mindre"
+        },
+        "actualSize": {
+          "label": "Verklig storlek",
+          "description": "Återställ zoom till 100 %"
         }
       }
     }

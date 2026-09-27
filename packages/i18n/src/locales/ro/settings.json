@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigați înainte",
           "description": "Refaceți o navigare din spate"
+        },
+        "newTab": {
+          "label": "Filă nouă",
+          "description": "Deschide meniul pentru filă nouă"
+        },
+        "closeAll": {
+          "label": "Închide toate filele din panou",
+          "description": "Închide toate filele din panou"
+        },
+        "pin": {
+          "label": "Fixează sau anulează fixarea filei",
+          "description": "Fixează sau anulează fixarea filei"
+        },
+        "duplicate": {
+          "label": "Duplică fila",
+          "description": "Duplică fila"
+        },
+        "splitRight": {
+          "label": "Divizează la dreapta",
+          "description": "Divizează la dreapta"
+        },
+        "splitDown": {
+          "label": "Divizează în jos",
+          "description": "Divizează în jos"
+        },
+        "closeSplit": {
+          "label": "Închide panoul divizat",
+          "description": "Închide panoul divizat"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Subliniați",
           "description": "Comutați formatarea sublinierii"
+        },
+        "strikethrough": {
+          "label": "Tăiat",
+          "description": "Tăiat"
+        },
+        "code": {
+          "label": "Cod",
+          "description": "Cod"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Ajutor pentru comenzi rapide de la tastatură",
           "description": "Afișați referința pentru comenzile rapide de la tastatură"
+        },
+        "zoomIn": {
+          "label": "Mărire",
+          "description": "Mărește totul"
+        },
+        "zoomOut": {
+          "label": "Micșorare",
+          "description": "Micșorează totul"
+        },
+        "actualSize": {
+          "label": "Dimensiune reală",
+          "description": "Resetează zoomul la 100%"
         }
       }
     }

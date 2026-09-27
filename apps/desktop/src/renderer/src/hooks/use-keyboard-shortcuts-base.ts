@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react'
 import { hintModeActiveRef } from '@/contexts/hint-mode'
 import { getVaultSwitchState } from '@/lib/vault-switch-state'
+import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 
 // =============================================================================
 // TYPES
@@ -66,6 +67,91 @@ export const getModifierSymbol = (modifier: 'meta' | 'ctrl' | 'shift' | 'alt'): 
 // MATCHING
 // =============================================================================
 
+const PUNCTUATION_BY_CODE: Record<string, string> = {
+  Backslash: '\\',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Minus: '-',
+  Equal: '=',
+  Slash: '/',
+  Comma: ',',
+  Period: '.',
+  Semicolon: ';',
+  Quote: "'",
+  Backquote: '`'
+}
+
+/** The US-layout character printed on a physical key, e.g. `KeyW` -> `w`. */
+export const physicalKey = (code: string): string | null => {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase()
+  if (/^Digit\d$/.test(code)) return code.slice(5)
+  return PUNCTUATION_BY_CODE[code] ?? null
+}
+
+/**
+ * `e.key` that no chord could name: an Option-composed character on macOS
+ * (⌥⌘W reports `∑`), a dead key, or a letter from a non-Latin layout.
+ */
+export const isComposedKey = (key: string): boolean =>
+  key === 'Dead' || (key.length === 1 && (key < ' ' || key > '~'))
+
+/**
+ * The key a recorded chord should store: `e.key`, unless the layout composed
+ * it into a character that would only ever match on the same layout.
+ */
+export const chordKeyFromEvent = (e: KeyboardEvent): string =>
+  isComposedKey(e.key) ? (physicalKey(e.code) ?? e.key) : e.key
+
+/**
+ * The chord a keystroke records in Settings → Shortcuts. `meta` is the
+ * platform's command key (⌘ on macOS, Ctrl elsewhere), exactly as
+ * `matchesShortcut` reads it back. On macOS Ctrl is its own modifier, so ⌃⌘→
+ * does not collapse into ⌘→ (line end).
+ */
+export const bindingFromKeyboardEvent = (e: KeyboardEvent): ShortcutBinding => ({
+  key: chordKeyFromEvent(e),
+  modifiers: {
+    meta: (isMac ? e.metaKey : e.ctrlKey) || undefined,
+    ctrl: (isMac && e.ctrlKey) || undefined,
+    shift: e.shiftKey || undefined,
+    alt: e.altKey || undefined
+  }
+})
+
+const keyMatches = (e: KeyboardEvent, key: string, modifiers: ShortcutModifiers): boolean => {
+  const wanted = key.toLowerCase()
+  if (e.key.toLowerCase() === wanted) return true
+  const physical = physicalKey(e.code)
+  if (physical !== wanted) return false
+  // Fall back to the physical key only where `e.key` cannot carry the chord's
+  // key: a composed character, or a Shift-ed punctuation key (⌘⇧\ reports `|`).
+  // A plain ASCII letter always wins, so ⌘Z on AZERTY (physical W) stays undo.
+  if (isComposedKey(e.key)) return true
+  return Boolean(modifiers.shift) && e.shiftKey && !/^[a-z]$/.test(wanted)
+}
+
+/**
+ * Whether a chord may fire while the caret is in a text field or the note
+ * editor. Only chords held with ⌘/Ctrl qualify: they never type a character,
+ * and the editor's own ⌘ keys (B, I, U, E, Z, ⇧S, ...) do not overlap the
+ * app's. A plain key, or ⌥ alone (which types ∑, å, ... on macOS), would eat
+ * what the user is typing.
+ */
+export const chordAllowedInInput = (binding: ShortcutBinding): boolean =>
+  Boolean(binding.modifiers.meta || binding.modifiers.ctrl)
+
+let shortcutRecording = false
+
+/**
+ * Settings → Shortcuts is recording a keystroke. Every app shortcut stands down
+ * meanwhile, so pressing ⌘K to record it does not also open search.
+ */
+export const setShortcutRecording = (recording: boolean): void => {
+  shortcutRecording = recording
+}
+
+export const isShortcutRecording = (): boolean => shortcutRecording
+
 /**
  * Does this keydown match the given chord?
  *
@@ -77,17 +163,19 @@ export const matchesShortcut = (
   key: string,
   modifiers: ShortcutModifiers = {}
 ): boolean => {
-  // Key match (case insensitive for letters)
-  if (!key) return false
-  if (e.key.toLowerCase() !== key.toLowerCase()) return false
+  if (!key || shortcutRecording) return false
+  if (!keyMatches(e, key, modifiers)) return false
 
   // Meta modifier (Cmd on Mac, Ctrl on Windows)
   const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey
   if (modifiers.meta && !metaOrCtrl) return false
   if (!modifiers.meta && metaOrCtrl && !modifiers.ctrl) return false
 
-  // Ctrl modifier (always Ctrl, e.g., Ctrl+Tab)
+  // Ctrl modifier (always Ctrl, e.g., Ctrl+Tab). On macOS it is a distinct
+  // key, so a held Ctrl the chord does not ask for is a different chord
+  // (⌃⌘→ switches vaults; ⌘→ is line end).
   if (modifiers.ctrl && !e.ctrlKey) return false
+  if (isMac && !modifiers.ctrl && e.ctrlKey) return false
 
   // Shift modifier
   if (modifiers.shift !== undefined) {

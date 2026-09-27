@@ -766,9 +766,7 @@
         "bold": "A kijelölt szöveg félkövérré tétele",
         "find": "Keresés a naplóban",
         "italic": "A kijelölt szöveg dőltté tétele",
-        "link": "Hivatkozás hozzáadása vagy szerkesztése",
         "returnFromOverview": "Visszatérés a havi vagy éves nézetből",
-        "toggleFullWidth": "Teljes szélességű napló be- és kikapcsolása",
         "underline": "A kijelölt szöveg aláhúzása"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Jegyzet létrehozása",
         "find": "Keresés a jegyzetben",
         "italic": "Dőlt",
-        "link": "Hivatkozás hozzáadása vagy szerkesztése",
-        "saveNote": "Az aktuális jegyzet mentése",
         "underline": "Aláhúzott"
       },
       "settings": {

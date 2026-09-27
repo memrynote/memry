@@ -34,7 +34,7 @@ import {
 } from '@/lib/vault-sidebar-snapshot'
 import { pendingWorkspaceLoads, subscribeWorkspaceLoads } from '@/lib/workspace-load-tracker'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
-import { matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
+import { chordAllowedInInput, matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
 import { isPlainTextInputFocused } from '@/hooks/use-keyboard-shortcuts'
 
 /** Motion values from DESIGN.md: settle is `--duration-slow`, cancel `--duration-normal`. */
@@ -630,7 +630,8 @@ function useAdjacentVaultShortcuts(): void {
       const isNext = matchesShortcut(event, next.key, next.modifiers)
       const isPrev = !isNext && matchesShortcut(event, prev.key, prev.modifiers)
       if (!isNext && !isPrev) return
-      if (isPlainTextInputFocused()) return
+      // ⌃⌘←/→ (Ctrl+Alt off macOS) moves no caret, so it works from any field.
+      if (!chordAllowedInInput(isNext ? next : prev) && isPlainTextInputFocused()) return
       event.preventDefault()
       event.stopPropagation()
       // The arrows are spatial: in RTL the next vault sits to the left.

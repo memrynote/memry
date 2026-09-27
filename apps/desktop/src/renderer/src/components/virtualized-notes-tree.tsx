@@ -73,7 +73,7 @@ import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position
 import { isTreeNavKey, resolveTreeNavIntent, type TreeNavRow } from '@/lib/tree-keyboard-nav'
 import { useT } from '@memry/i18n/renderer'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
-import { handleInlineRenameBlur } from '@/lib/inline-rename-focus'
+import { handleInlineRenameBlur, stopInlineRenameKeyPropagation } from '@/lib/inline-rename-focus'
 
 // ============================================================================
 // Types
@@ -541,7 +541,7 @@ function FolderRow({
                   e.preventDefault()
                   onFolderRenameCancel?.()
                 }
-                e.stopPropagation()
+                stopInlineRenameKeyPropagation(e)
               }}
               onBlur={(e) =>
                 handleInlineRenameBlur(e, () => onFolderRenameSubmit?.(item.folder.path))
@@ -873,7 +873,7 @@ function NoteRow({
                   e.preventDefault()
                   onRenameCancel?.(item.note.id)
                 }
-                e.stopPropagation()
+                stopInlineRenameKeyPropagation(e)
               }}
               onBlur={(e) =>
                 handleInlineRenameBlur(e, () => onRenameSubmit?.(item.note.id, item.note.path))

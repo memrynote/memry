@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigovať dopredu",
           "description": "Znova vykonať spätnú navigáciu"
+        },
+        "newTab": {
+          "label": "Nová záložka",
+          "description": "Otvoriť ponuku novej karty"
+        },
+        "closeAll": {
+          "label": "Zavrieť všetky karty v paneli",
+          "description": "Zavrieť všetky karty v paneli"
+        },
+        "pin": {
+          "label": "Pripnúť alebo odopnúť kartu",
+          "description": "Pripnúť alebo odopnúť kartu"
+        },
+        "duplicate": {
+          "label": "Duplikovať kartu",
+          "description": "Duplikovať kartu"
+        },
+        "splitRight": {
+          "label": "Rozdeliť napravo",
+          "description": "Rozdeliť napravo"
+        },
+        "splitDown": {
+          "label": "Rozdeliť nadol",
+          "description": "Rozdeliť nadol"
+        },
+        "closeSplit": {
+          "label": "Zavrieť rozdelený panel",
+          "description": "Zavrieť rozdelený panel"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Podčiarknuté",
           "description": "Prepnúť podčiarknutie"
+        },
+        "strikethrough": {
+          "label": "Prečiarknuté",
+          "description": "Prečiarknuté"
+        },
+        "code": {
+          "label": "Kód",
+          "description": "Kód"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Pomoc s klávesovými skratkami",
           "description": "Zobraziť referenciu klávesových skratiek"
+        },
+        "zoomIn": {
+          "label": "Priblížiť",
+          "description": "Zväčšiť všetko"
+        },
+        "zoomOut": {
+          "label": "Oddialiť",
+          "description": "Zmenšiť všetko"
+        },
+        "actualSize": {
+          "label": "Skutočná veľkosť",
+          "description": "Obnoviť priblíženie na 100 %"
         }
       }
     }

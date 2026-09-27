@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
-import { matchesShortcut } from './use-keyboard-shortcuts-base'
+import { chordAllowedInInput, matchesShortcut } from './use-keyboard-shortcuts-base'
 import { isPlainTextInputFocused } from './use-keyboard-shortcuts'
 import { getVaultSwitchState } from '@/lib/vault-switch-state'
 
@@ -9,10 +9,9 @@ import { getVaultSwitchState } from '@/lib/vault-switch-state'
  * anywhere, so switching no longer means reopening the sidebar by hand.
  *
  * The chord does not collide with any BlockNote/ProseMirror command, so it
- * must fire even while the caret sits in a note body — that is the whole
- * point of a global "jump elsewhere" shortcut. It only stands down over a
- * plain text input, textarea, or select, where typing the letter O is the
- * expected outcome (e.g. renaming a note).
+ * fires wherever the caret is — note body, title, or any other field — which
+ * is the whole point of a global "jump elsewhere" shortcut. Only a rebind
+ * without ⌘/Ctrl stands down over a plain field, where it would eat typing.
  */
 export function useSwitchVaultShortcut(onOpen: () => void): void {
   const binding = useShortcutBinding('nav.switchVault')
@@ -20,7 +19,7 @@ export function useSwitchVaultShortcut(onOpen: () => void): void {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!matchesShortcut(e, binding.key, binding.modifiers)) return
-      if (isPlainTextInputFocused()) return
+      if (!chordAllowedInInput(binding) && isPlainTextInputFocused()) return
 
       e.preventDefault()
       e.stopPropagation()

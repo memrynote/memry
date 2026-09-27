@@ -766,9 +766,7 @@
         "bold": "Podebljaj odabrani tekst",
         "find": "Pronađi u dnevniku",
         "italic": "Ukosi odabrani tekst",
-        "link": "Dodaj ili uredi poveznicu",
         "returnFromOverview": "Vrati se s mjesečnog ili godišnjeg prikaza",
-        "toggleFullWidth": "Uključi/isključi dnevnik pune širine",
         "underline": "Podcrtaj odabrani tekst"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Stvori bilješku",
         "find": "Pronađi u bilješci",
         "italic": "Kurziv",
-        "link": "Dodaj ili uredi poveznicu",
-        "saveNote": "Spremi trenutnu bilješku",
         "underline": "Podcrtano"
       },
       "settings": {

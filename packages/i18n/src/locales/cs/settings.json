@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Přejít vpřed",
           "description": "Opakujte navigaci zpět"
+        },
+        "newTab": {
+          "label": "Nová karta",
+          "description": "Otevřít nabídku nové karty"
+        },
+        "closeAll": {
+          "label": "Zavřít všechny karty v panelu",
+          "description": "Zavřít všechny karty v panelu"
+        },
+        "pin": {
+          "label": "Připnout nebo odepnout kartu",
+          "description": "Připnout nebo odepnout kartu"
+        },
+        "duplicate": {
+          "label": "Duplikovat kartu",
+          "description": "Duplikovat kartu"
+        },
+        "splitRight": {
+          "label": "Rozdělit doprava",
+          "description": "Rozdělit doprava"
+        },
+        "splitDown": {
+          "label": "Rozdělit dolů",
+          "description": "Rozdělit dolů"
+        },
+        "closeSplit": {
+          "label": "Zavřít rozdělený panel",
+          "description": "Zavřít rozdělený panel"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Podtrhněte",
           "description": "Přepnout formátování podtržení"
+        },
+        "strikethrough": {
+          "label": "Přeškrtnutí",
+          "description": "Přeškrtnutí"
+        },
+        "code": {
+          "label": "Kód",
+          "description": "Kód"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Nápověda ke klávesovým zkratkám",
           "description": "Zobrazit odkaz na klávesové zkratky"
+        },
+        "zoomIn": {
+          "label": "Zvětšit",
+          "description": "Zvětšit vše"
+        },
+        "zoomOut": {
+          "label": "Zmenšit",
+          "description": "Zmenšit vše"
+        },
+        "actualSize": {
+          "label": "Skutečná velikost",
+          "description": "Obnovit přiblížení na 100 %"
         }
       }
     }

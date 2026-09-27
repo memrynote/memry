@@ -766,9 +766,7 @@
         "bold": "Îngroașă textul selectat",
         "find": "Caută în jurnal",
         "italic": "Înclină textul selectat",
-        "link": "Adaugă sau editează un link",
         "returnFromOverview": "Revino din vizualizarea pe lună sau an",
-        "toggleFullWidth": "Comută jurnalul pe lățime completă",
         "underline": "Subliniază textul selectat"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Creează o notă",
         "find": "Caută în notă",
         "italic": "Cursiv",
-        "link": "Adaugă sau editează un link",
-        "saveNote": "Salvează nota curentă",
         "underline": "Subliniat"
       },
       "settings": {

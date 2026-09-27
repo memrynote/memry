@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { hintModeActiveRef, useHintModeActions } from '@/contexts/hint-mode'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import { isShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
 
 export const useHintActivation = (): void => {
   // Actions only: the hint state object changes on every typed character, and
@@ -12,7 +13,7 @@ export const useHintActivation = (): void => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.isComposing || e.keyCode === 229) return
+      if (e.isComposing || e.keyCode === 229 || isShortcutRecording()) return
 
       if (hintModeActiveRef.current) {
         if (e.key === 'Escape') {

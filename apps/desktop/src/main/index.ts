@@ -39,6 +39,8 @@ import { registerAllHandlers } from './ipc'
 import {
   applyGlobalCaptureShortcut,
   getMinimizeToTraySetting,
+  readKeyboardOverrides,
+  setKeyboardOverridesListener,
   setQuickCaptureShortcutHost
 } from './ipc/settings-handlers'
 import {
@@ -470,8 +472,24 @@ async function bootI18n(): Promise<I18nInstance> {
   return createMainI18n({ locale: initialLocale })
 }
 
+/** Rebinds the current menu was built with; `null` until the first build. */
+let appliedMenuOverrides: string | null = null
+
+/**
+ * Build the app menu against the open vault's shortcut rebinds. Converges, so
+ * the repeat calls every vault status change produces are no-ops; `force`
+ * rebuilds anyway (a locale change relabels every item).
+ */
+function applyAppMenu(force = false): void {
+  const overrides = readKeyboardOverrides()
+  const signature = JSON.stringify(overrides)
+  if (!force && signature === appliedMenuOverrides) return
+  appliedMenuOverrides = signature
+  Menu.setApplicationMenu(buildAppMenu(mainI18n, overrides))
+}
+
 function rebuildMenu(_locale: Locale): void {
-  Menu.setApplicationMenu(buildAppMenu(mainI18n))
+  applyAppMenu(true)
 }
 
 registerTestHooks()
@@ -843,10 +861,12 @@ function createWindow(): void {
     if (mainWindow.isDestroyed()) return
     if (status.isOpen) {
       // Settings live in the vault's database, so this is the first point the
-      // tray preference and the saved global capture binding can be read. Both
-      // converge, so the repeat calls a vault switch produces are no-ops.
+      // tray preference, the saved global capture binding and the menu's
+      // shortcut rebinds can be read. All three converge, so the repeat calls a
+      // vault switch produces are no-ops.
       applyTraySetting(getMinimizeToTraySetting())
       applyGlobalCaptureShortcut()
+      applyAppMenu()
       // Grow from the compact picker to the app window, but never fight a window
       // the user has already sized/moved/maximized (or that we just restored):
       // only act on the genuine picker → main transition.
@@ -1576,7 +1596,8 @@ const appReady = app.whenReady().then(async () => {
       copyright: `© ${new Date().getFullYear()} MemryNote`
     })
   }
-  Menu.setApplicationMenu(buildAppMenu(mainI18n))
+  applyAppMenu(true)
+  setKeyboardOverridesListener(() => applyAppMenu())
 
   // Initialize telemetry runtime before handlers so registerTelemetryHandlers
   // can resolve `getTelemetryRuntime()` to the live instance.

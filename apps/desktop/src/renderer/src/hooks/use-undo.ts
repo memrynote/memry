@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { createLogger } from '@/lib/logger'
+import { isShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 
@@ -261,6 +262,7 @@ export const useUndoKeyboardShortcut = (): void => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isShortcutRecording()) return
       // Cmd+Z on Mac, Ctrl+Z on Windows/Linux
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const modifier = isMac ? e.metaKey : e.ctrlKey

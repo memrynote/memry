@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
 import { useAppZoom } from './use-app-zoom'
 
 const mocks = vi.hoisted(() => {
@@ -50,6 +51,7 @@ describe('useAppZoom', () => {
     mocks.isLoading = false
     mocks.updateSettings.mockResolvedValue(true)
     window.api = { setZoomFactor: mocks.setZoomFactor } as unknown as typeof window.api
+    __setShortcutOverridesForTests({})
   })
 
   it('#given ⌘- #then the interface shrinks one stop and the stop is persisted', () => {
@@ -156,6 +158,39 @@ describe('useAppZoom', () => {
     expect(mocks.setZoomFactor).toHaveBeenLastCalledWith(1.1)
 
     result.current.resetZoom()
+    expect(mocks.setZoomFactor).toHaveBeenLastCalledWith(1)
+  })
+
+  it('#given zoom in rebound to ⌘⌥I #then the new chord zooms and ⌘= / ⌘⇧+ no longer do', () => {
+    __setShortcutOverridesForTests({
+      'view.zoomIn': { key: 'i', modifiers: { meta: true, alt: true } }
+    })
+    mocks.settings = { zoomFactor: 1.2 }
+    renderHook(() => useAppZoom())
+
+    press('=')
+    press('+', { shiftKey: true })
+    expect(mocks.setZoomFactor).not.toHaveBeenCalled()
+
+    press('ˆ', { code: 'KeyI', altKey: true })
+    expect(mocks.setZoomFactor).toHaveBeenCalledWith(1.3)
+  })
+
+  it('#given zoom out and actual size rebound #then they follow the new chords', () => {
+    __setShortcutOverridesForTests({
+      'view.zoomOut': { key: 'j', modifiers: { meta: true, shift: true } },
+      'view.actualSize': { key: '9', modifiers: { meta: true } }
+    })
+    mocks.settings = { zoomFactor: 1.2 }
+    renderHook(() => useAppZoom())
+
+    press('-')
+    press('0')
+    expect(mocks.setZoomFactor).not.toHaveBeenCalled()
+
+    press('J', { shiftKey: true })
+    expect(mocks.setZoomFactor).toHaveBeenCalledWith(1.1)
+    press('9')
     expect(mocks.setZoomFactor).toHaveBeenLastCalledWith(1)
   })
 })

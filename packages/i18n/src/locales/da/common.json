@@ -766,9 +766,7 @@
         "bold": "Gør den markerede tekst fed",
         "find": "Find i journalen",
         "italic": "Gør den markerede tekst kursiv",
-        "link": "Tilføj eller redigér link",
         "returnFromOverview": "Vend tilbage fra måneds- eller årsvisning",
-        "toggleFullWidth": "Vis journalen i fuld bredde",
         "underline": "Understreg den markerede tekst"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Opret en note",
         "find": "Find i noten",
         "italic": "Kursiv",
-        "link": "Tilføj eller redigér link",
-        "saveNote": "Gem den aktuelle note",
         "underline": "Understreg"
       },
       "settings": {

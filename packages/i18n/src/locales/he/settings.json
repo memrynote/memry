@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "נווט קדימה",
           "description": "בצע שוב ניווט אחורה"
+        },
+        "newTab": {
+          "label": "כרטיסייה חדשה",
+          "description": "פתח את תפריט הכרטיסייה החדשה"
+        },
+        "closeAll": {
+          "label": "סגור את כל הכרטיסיות בחלונית",
+          "description": "סגור את כל הכרטיסיות בחלונית"
+        },
+        "pin": {
+          "label": "הצמד או בטל הצמדה של כרטיסייה",
+          "description": "הצמד או בטל הצמדה של כרטיסייה"
+        },
+        "duplicate": {
+          "label": "שכפל כרטיסייה",
+          "description": "שכפל כרטיסייה"
+        },
+        "splitRight": {
+          "label": "פצל ימינה",
+          "description": "פצל ימינה"
+        },
+        "splitDown": {
+          "label": "פצל למטה",
+          "description": "פצל למטה"
+        },
+        "closeSplit": {
+          "label": "סגור את החלונית המפוצלת",
+          "description": "סגור את החלונית המפוצלת"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "קו תחתון",
           "description": "החלף את העיצוב של קו תחתון"
+        },
+        "strikethrough": {
+          "label": "קו חוצה",
+          "description": "קו חוצה"
+        },
+        "code": {
+          "label": "קוד",
+          "description": "קוד"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "קיצורי מקשים עזרה",
           "description": "הצג הפניה לקיצורי מקלדת"
+        },
+        "zoomIn": {
+          "label": "הגדל",
+          "description": "הגדלת הכול"
+        },
+        "zoomOut": {
+          "label": "הקטן",
+          "description": "הקטנת הכול"
+        },
+        "actualSize": {
+          "label": "גודל ממשי",
+          "description": "איפוס הזום ל-100%"
         }
       }
     }

@@ -17,7 +17,8 @@ const mockPanePositions = vi.hoisted(() => ({
 const mockHintModeActiveRef = vi.hoisted(() => ({ current: false }))
 
 vi.mock('./use-keyboard-shortcuts-base', () => ({
-  isMac: true
+  isMac: true,
+  isShortcutRecording: () => false
 }))
 
 vi.mock('@/contexts/hint-mode', () => ({

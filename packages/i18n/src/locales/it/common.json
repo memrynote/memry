@@ -766,9 +766,7 @@
         "bold": "Grassetto sul testo selezionato",
         "find": "Trova nel diario",
         "italic": "Corsivo sul testo selezionato",
-        "link": "Aggiungi o modifica un link",
         "returnFromOverview": "Torna dalla vista mese o anno",
-        "toggleFullWidth": "Attiva/disattiva il diario a tutta larghezza",
         "underline": "Sottolinea il testo selezionato"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Crea una nota",
         "find": "Trova nella nota",
         "italic": "Corsivo",
-        "link": "Aggiungi o modifica un link",
-        "saveNote": "Salva la nota corrente",
         "underline": "Sottolineato"
       },
       "settings": {

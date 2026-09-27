@@ -1186,6 +1186,34 @@
         "navForward": {
           "label": "İleri Git",
           "description": "Geri navigasyonu yinele"
+        },
+        "newTab": {
+          "label": "Yeni Tab",
+          "description": "Yeni sekme menüsünü aç"
+        },
+        "closeAll": {
+          "label": "Bölmedeki tüm sekmeleri kapat",
+          "description": "Bölmedeki tüm sekmeleri kapat"
+        },
+        "pin": {
+          "label": "Sekmeyi sabitle veya sabitlemeyi kaldır",
+          "description": "Sekmeyi sabitle veya sabitlemeyi kaldır"
+        },
+        "duplicate": {
+          "label": "Sekmeyi çoğalt",
+          "description": "Sekmeyi çoğalt"
+        },
+        "splitRight": {
+          "label": "Sağa böl",
+          "description": "Sağa böl"
+        },
+        "splitDown": {
+          "label": "Aşağı böl",
+          "description": "Aşağı böl"
+        },
+        "closeSplit": {
+          "label": "Bölünmüş bölmeyi kapat",
+          "description": "Bölünmüş bölmeyi kapat"
         }
       },
       "editor": {
@@ -1204,6 +1232,14 @@
         "underline": {
           "label": "Altı çizili",
           "description": "Altı çizili biçimlendirmeyi değiştir"
+        },
+        "strikethrough": {
+          "label": "Üstü Çizili",
+          "description": "Üstü Çizili"
+        },
+        "code": {
+          "label": "Kod",
+          "description": "Kod"
         }
       },
       "view": {
@@ -1214,6 +1250,18 @@
         "shortcuts": {
           "label": "Klavye Kısayolları Yardımı",
           "description": "Klavye kısayolları referansını göster"
+        },
+        "zoomIn": {
+          "label": "Yakınlaştır",
+          "description": "Her şeyi büyüt"
+        },
+        "zoomOut": {
+          "label": "Uzaklaştır",
+          "description": "Her şeyi küçült"
+        },
+        "actualSize": {
+          "label": "Gerçek Boyut",
+          "description": "Yakınlaştırmayı %100'e sıfırla"
         }
       }
     }

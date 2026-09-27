@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Đi về phía trước",
           "description": "Thực hiện lại thao tác quay lại"
+        },
+        "newTab": {
+          "label": "Tab Mới",
+          "description": "Mở menu tab mới"
+        },
+        "closeAll": {
+          "label": "Đóng tất cả tab trong ngăn",
+          "description": "Đóng tất cả tab trong ngăn"
+        },
+        "pin": {
+          "label": "Ghim hoặc bỏ ghim tab",
+          "description": "Ghim hoặc bỏ ghim tab"
+        },
+        "duplicate": {
+          "label": "Nhân bản tab",
+          "description": "Nhân bản tab"
+        },
+        "splitRight": {
+          "label": "Chia sang phải",
+          "description": "Chia sang phải"
+        },
+        "splitDown": {
+          "label": "Chia xuống",
+          "description": "Chia xuống"
+        },
+        "closeSplit": {
+          "label": "Đóng ngăn chia",
+          "description": "Đóng ngăn chia"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Gạch chân",
           "description": "Chuyển đổi định dạng chữ gạch chân"
+        },
+        "strikethrough": {
+          "label": "Gạch ngang",
+          "description": "Gạch ngang"
+        },
+        "code": {
+          "label": "Mã",
+          "description": "Mã"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Trợ giúp Phím tắt bàn phím",
           "description": "Hiển thị tham chiếu phím tắt bàn phím"
+        },
+        "zoomIn": {
+          "label": "Phóng to",
+          "description": "Phóng to mọi thứ"
+        },
+        "zoomOut": {
+          "label": "Thu nhỏ",
+          "description": "Thu nhỏ mọi thứ"
+        },
+        "actualSize": {
+          "label": "Kích thước thực",
+          "description": "Đặt lại thu phóng về 100%"
         }
       }
     }

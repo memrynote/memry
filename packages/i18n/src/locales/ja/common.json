@@ -766,9 +766,7 @@
         "bold": "選択したテキストを太字にする",
         "find": "ジャーナル内を検索",
         "italic": "選択したテキストを斜体にする",
-        "link": "リンクを追加または編集",
         "returnFromOverview": "月表示・年表示から戻る",
-        "toggleFullWidth": "ジャーナルの全幅表示を切り替え",
         "underline": "選択したテキストに下線を引く"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "メモを作成",
         "find": "メモ内を検索",
         "italic": "斜体",
-        "link": "リンクを追加または編集",
-        "saveNote": "現在のメモを保存",
         "underline": "下線"
       },
       "settings": {

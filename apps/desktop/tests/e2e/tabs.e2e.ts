@@ -104,8 +104,11 @@ test.describe('Tab System', () => {
       await expect(tabBar).toBeVisible()
 
       const strip = page.locator('[data-testid="tab-strip"]').first()
+      // Past a tab's minimum width, not a hairline: overflow of a pixel or two
+      // lives in the end padding, where the last tab is still fully visible and
+      // nothing needs to scroll.
       const isOverflowing = () =>
-        strip.evaluate((el) => el.scrollWidth > el.clientWidth + 1).catch(() => false)
+        strip.evaluate((el) => el.scrollWidth > el.clientWidth + 40).catch(() => false)
 
       // Open tabs until they are compressed to their minimum width and the strip overflows
       for (let i = 0; i < 40 && !(await isOverflowing()); i++) {

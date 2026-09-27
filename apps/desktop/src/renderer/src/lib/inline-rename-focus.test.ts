@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import type { FocusEvent } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+import type { FocusEvent, KeyboardEvent } from 'react'
 
-import { isMenuFocusSteal } from './inline-rename-focus'
+import { isMenuFocusSteal, stopInlineRenameKeyPropagation } from './inline-rename-focus'
 
 /** A blur event carrying `relatedTarget`, which is all the helper reads. */
 function blurTo(relatedTarget: EventTarget | null): FocusEvent<HTMLElement> {
@@ -42,5 +42,30 @@ describe('isMenuFocusSteal', () => {
 
   it('treats a blur with no related target as an ordinary commit', () => {
     expect(isMenuFocusSteal(blurTo(null))).toBe(false)
+  })
+})
+
+describe('stopInlineRenameKeyPropagation', () => {
+  const press = (init: { key: string; metaKey?: boolean; ctrlKey?: boolean }) => {
+    const stopPropagation = vi.fn()
+    stopInlineRenameKeyPropagation({
+      metaKey: false,
+      ctrlKey: false,
+      ...init,
+      stopPropagation
+    } as unknown as KeyboardEvent<HTMLInputElement>)
+    return stopPropagation
+  }
+
+  it('keeps typing, Enter, Escape and Space inside the field', () => {
+    for (const key of ['a', 'Enter', 'Escape', ' ', 'ArrowDown']) {
+      expect(press({ key })).toHaveBeenCalled()
+    }
+    expect(press({ key: 'Enter', metaKey: true })).toHaveBeenCalled()
+  })
+
+  it('lets app chords reach the window shortcut listeners', () => {
+    expect(press({ key: 'w', metaKey: true })).not.toHaveBeenCalled()
+    expect(press({ key: 'n', ctrlKey: true })).not.toHaveBeenCalled()
   })
 })

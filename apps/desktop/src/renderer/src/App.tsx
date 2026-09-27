@@ -58,7 +58,7 @@ import {
   useHintActivation,
   isInputFocused
 } from '@/hooks'
-import { matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
+import { isShortcutRecording, matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { requestVaultSwitcherOpen } from '@/lib/vault-switcher-open'
 import { HintModeProvider } from '@/contexts/hint-mode'
@@ -325,6 +325,7 @@ const AppContent = (): React.JSX.Element => {
       )
 
       if (!isQuestionShortcut && !isBoundShortcut) return
+      if (isShortcutRecording()) return
       if (isQuestionShortcut && isInputFocused()) return
 
       event.preventDefault()

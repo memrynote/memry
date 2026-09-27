@@ -1224,6 +1224,7 @@ export function registerSettingsHandlers(): void {
       if ('globalCapture' in updates) {
         applyGlobalCaptureShortcut()
       }
+      if ('overrides' in updates) keyboardOverridesListener?.()
       return result
     }
   )
@@ -1362,6 +1363,7 @@ export function registerSettingsHandlers(): void {
     }
 
     deleteSetting(db, 'keyboard')
+    keyboardOverridesListener?.()
 
     broadcastToAllWindows(SettingsChannels.events.CHANGED, {
       key: 'keyboard',
@@ -1419,6 +1421,21 @@ export function setQuickCaptureShortcutHost(host: QuickCaptureShortcutHost | nul
  * drop the quick capture fallback shortcut owned by `main/index.ts`.
  */
 let registeredGlobalCaptureAccelerator: string | null = null
+
+let keyboardOverridesListener: (() => void) | null = null
+
+/**
+ * Called after the open vault's shortcut rebinds change (save or reset), so
+ * main-owned surfaces that print or register chords (the app menu) can follow.
+ */
+export function setKeyboardOverridesListener(listener: (() => void) | null): void {
+  keyboardOverridesListener = listener
+}
+
+/** Rebinds from Settings → Shortcuts for the open vault; empty with no vault. */
+export function readKeyboardOverrides(): KeyboardShortcuts['overrides'] {
+  return readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS).overrides
+}
 
 /**
  * Read keyboard.globalCapture from settings and register/unregister OS shortcut.

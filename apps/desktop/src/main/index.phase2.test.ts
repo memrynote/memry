@@ -38,6 +38,8 @@ const onVaultStatusChangedMock = vi.fn((listener: (status: VaultStatus) => void)
 const createMainI18nMock = vi.fn(async () => ({ t: (key: string) => key }))
 const setMainI18nMock = vi.fn()
 const buildAppMenuMock = vi.fn(() => ({ id: 'menu' }))
+const readKeyboardOverridesMock = vi.fn(() => ({}) as Record<string, unknown>)
+const setKeyboardOverridesListenerMock = vi.fn()
 const editableContextMenuPopupMock = vi.fn()
 const buildEditableTextContextMenuMock = vi.fn(() => ({ popup: editableContextMenuPopupMock }))
 const getCurrentVaultPathMock = vi.fn(() => null as string | null)
@@ -181,6 +183,8 @@ vi.mock('./ipc', () => ({
 vi.mock('./ipc/settings-handlers', () => ({
   applyGlobalCaptureShortcut: applyGlobalCaptureShortcutMock,
   getMinimizeToTraySetting: () => false,
+  readKeyboardOverrides: readKeyboardOverridesMock,
+  setKeyboardOverridesListener: setKeyboardOverridesListenerMock,
   setQuickCaptureShortcutHost: setQuickCaptureShortcutHostMock
 }))
 
@@ -662,6 +666,41 @@ describe('main index phase2 exports', () => {
     }
     registration.rebuildMenu('tr')
     expect(menuSetApplicationMenuMock).toHaveBeenCalledWith({ id: 'menu' })
+  })
+
+  it("builds the app menu with the open vault's shortcut rebinds and follows later rebinds", async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    readKeyboardOverridesMock.mockReturnValue({})
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const rebinds = { 'tabs.closeTab': { key: 'e', modifiers: { meta: true, alt: true } } }
+    readKeyboardOverridesMock.mockReturnValue(rebinds)
+    buildAppMenuMock.mockClear()
+
+    const openStatus = {
+      isOpen: true,
+      path: '/vault',
+      isIndexing: false,
+      indexProgress: 0,
+      error: null
+    }
+    vaultStatusChangedListeners[0]?.(openStatus)
+    expect(buildAppMenuMock).toHaveBeenCalledTimes(1)
+    expect(buildAppMenuMock).toHaveBeenLastCalledWith(expect.anything(), rebinds)
+
+    // Index progress repeats the same status: the menu is left alone.
+    vaultStatusChangedListeners[0]?.({ ...openStatus, isIndexing: true, indexProgress: 40 })
+    expect(buildAppMenuMock).toHaveBeenCalledTimes(1)
+
+    // A save in Settings -> Shortcuts rebuilds it.
+    readKeyboardOverridesMock.mockReturnValue({})
+    const onKeyboardOverridesChanged = setKeyboardOverridesListenerMock.mock.calls.at(-1)?.[0] as
+      (() => void) | undefined
+    onKeyboardOverridesChanged?.()
+    expect(buildAppMenuMock).toHaveBeenCalledTimes(2)
+    expect(buildAppMenuMock).toHaveBeenLastCalledWith(expect.anything(), {})
   })
 
   it('boots i18n from stored app locale when no vault is open', async () => {

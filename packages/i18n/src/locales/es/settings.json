@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navegar hacia adelante",
           "description": "Rehacer una navegación hacia atrás"
+        },
+        "newTab": {
+          "label": "Nueva pestaña",
+          "description": "Abrir el menú de nueva pestaña"
+        },
+        "closeAll": {
+          "label": "Cerrar todas las pestañas del panel",
+          "description": "Cerrar todas las pestañas del panel"
+        },
+        "pin": {
+          "label": "Fijar o dejar de fijar la pestaña",
+          "description": "Fijar o dejar de fijar la pestaña"
+        },
+        "duplicate": {
+          "label": "Duplicar la pestaña",
+          "description": "Duplicar la pestaña"
+        },
+        "splitRight": {
+          "label": "Dividir a la derecha",
+          "description": "Dividir a la derecha"
+        },
+        "splitDown": {
+          "label": "Dividir hacia abajo",
+          "description": "Dividir hacia abajo"
+        },
+        "closeSplit": {
+          "label": "Cerrar el panel dividido",
+          "description": "Cerrar el panel dividido"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "subrayado",
           "description": "Alternar formato de subrayado"
+        },
+        "strikethrough": {
+          "label": "Tachado",
+          "description": "Tachado"
+        },
+        "code": {
+          "label": "Código",
+          "description": "Código"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Ayuda de atajos de teclado",
           "description": "Mostrar referencia de atajos de teclado"
+        },
+        "zoomIn": {
+          "label": "Aumentar zoom",
+          "description": "Agrandar todo"
+        },
+        "zoomOut": {
+          "label": "Reducir zoom",
+          "description": "Reducir todo"
+        },
+        "actualSize": {
+          "label": "Tamaño real",
+          "description": "Restablecer el zoom al 100 %"
         }
       }
     }

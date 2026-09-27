@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigasi ke Hadapan",
           "description": "Buat semula navigasi belakang"
+        },
+        "newTab": {
+          "label": "Tab Baharu",
+          "description": "Buka menu tab baharu"
+        },
+        "closeAll": {
+          "label": "Tutup semua tab dalam anak tetingkap",
+          "description": "Tutup semua tab dalam anak tetingkap"
+        },
+        "pin": {
+          "label": "Semat atau nyahsemat tab",
+          "description": "Semat atau nyahsemat tab"
+        },
+        "duplicate": {
+          "label": "Gandakan tab",
+          "description": "Gandakan tab"
+        },
+        "splitRight": {
+          "label": "Belah ke kanan",
+          "description": "Belah ke kanan"
+        },
+        "splitDown": {
+          "label": "Belah ke bawah",
+          "description": "Belah ke bawah"
+        },
+        "closeSplit": {
+          "label": "Tutup anak tetingkap belahan",
+          "description": "Tutup anak tetingkap belahan"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Garis bawah",
           "description": "Togol pemformatan garis bawah"
+        },
+        "strikethrough": {
+          "label": "Coret",
+          "description": "Coret"
+        },
+        "code": {
+          "label": "Kod",
+          "description": "Kod"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Bantuan Pintasan Papan Kekunci",
           "description": "Tunjukkan rujukan pintasan papan kekunci"
+        },
+        "zoomIn": {
+          "label": "Zum Masuk",
+          "description": "Besarkan semua"
+        },
+        "zoomOut": {
+          "label": "Zum Keluar",
+          "description": "Kecilkan semua"
+        },
+        "actualSize": {
+          "label": "Saiz Sebenar",
+          "description": "Tetapkan semula zum kepada 100%"
         }
       }
     }

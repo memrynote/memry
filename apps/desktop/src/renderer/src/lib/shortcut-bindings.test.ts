@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import {
   __setShortcutOverridesForTests,
@@ -45,5 +45,38 @@ describe('shortcut bindings store', () => {
     })
 
     expect(result.current).toEqual({ key: 'j', modifiers: { meta: true, shift: true } })
+  })
+
+  it("reloads rebinds when a vault switch brings another vault's settings", async () => {
+    vi.resetModules()
+    let onVaultStatus: ((status: { isOpen: boolean; path: string | null }) => void) | null = null
+    const vaultA = { overrides: { 'nav.search': { key: 'a', modifiers: { meta: true } } } }
+    const getKeyboardSettings = vi
+      .fn()
+      .mockResolvedValueOnce(vaultA)
+      .mockResolvedValueOnce(vaultA)
+      .mockResolvedValue({ overrides: {} })
+    ;(window as unknown as { api: unknown }).api = {
+      settings: { getKeyboardSettings },
+      onSettingsChanged: vi.fn(() => vi.fn()),
+      onVaultStatusChanged: vi.fn((cb: typeof onVaultStatus) => {
+        onVaultStatus = cb
+        return vi.fn()
+      })
+    }
+    const fresh = await import('./shortcut-bindings')
+    const { result } = renderHook(() => fresh.useShortcutBinding('nav.search'))
+
+    await vi.waitFor(() => expect(result.current.key).toBe('a'))
+
+    // The first status names the open vault; repeats (index progress) do not reload.
+    act(() => onVaultStatus?.({ isOpen: true, path: '/vault-a' }))
+    act(() => onVaultStatus?.({ isOpen: true, path: '/vault-a' }))
+    await vi.waitFor(() => expect(getKeyboardSettings).toHaveBeenCalledTimes(2))
+    expect(result.current.key).toBe('a')
+
+    act(() => onVaultStatus?.({ isOpen: true, path: '/vault-b' }))
+    await vi.waitFor(() => expect(result.current).toEqual({ key: 'k', modifiers: { meta: true } }))
+    expect(getKeyboardSettings).toHaveBeenCalledTimes(3)
   })
 })

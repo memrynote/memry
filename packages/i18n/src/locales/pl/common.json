@@ -766,9 +766,7 @@
         "bold": "Pogrub zaznaczony tekst",
         "find": "Znajdź w dzienniku",
         "italic": "Zaznaczony tekst kursywą",
-        "link": "Dodaj lub edytuj link",
         "returnFromOverview": "Wróć z widoku miesiąca lub roku",
-        "toggleFullWidth": "Przełącz dziennik na pełną szerokość",
         "underline": "Podkreśl zaznaczony tekst"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Utwórz notatkę",
         "find": "Znajdź w notatce",
         "italic": "Kursywa",
-        "link": "Dodaj lub edytuj link",
-        "saveNote": "Zapisz bieżącą notatkę",
         "underline": "Podkreślenie"
       },
       "settings": {

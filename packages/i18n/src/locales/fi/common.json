@@ -766,9 +766,7 @@
         "bold": "Lihavoi valittu teksti",
         "find": "Etsi päiväkirjasta",
         "italic": "Kursivoi valittu teksti",
-        "link": "Lisää tai muokkaa linkkiä",
         "returnFromOverview": "Palaa kuukausi- tai vuosinäkymästä",
-        "toggleFullWidth": "Näytä päiväkirja täysleveänä",
         "underline": "Alleviivaa valittu teksti"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Luo muistiinpano",
         "find": "Etsi muistiinpanosta",
         "italic": "Kursivointi",
-        "link": "Lisää tai muokkaa linkkiä",
-        "saveNote": "Tallenna nykyinen muistiinpano",
         "underline": "Alleviivaus"
       },
       "settings": {

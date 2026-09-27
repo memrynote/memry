@@ -7,6 +7,7 @@ import {
   useRef,
   type RefObject
 } from 'react'
+import { isShortcutRecording } from './use-keyboard-shortcuts-base'
 
 /**
  * How long the find bar waits after the last keystroke before searching.
@@ -255,6 +256,7 @@ export function useFindInPage(
     if (!enabled) return
 
     const handler = (e: KeyboardEvent) => {
+      if (isShortcutRecording()) return
       const isMac = navigator.platform.toUpperCase().includes('MAC')
       const modifier = isMac ? e.metaKey : e.ctrlKey
       if (modifier && e.key.toLowerCase() === 'f') {

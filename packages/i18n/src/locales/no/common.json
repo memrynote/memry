@@ -766,9 +766,7 @@
         "bold": "Sett merket tekst i fet",
         "find": "Finn i journalen",
         "italic": "Sett merket tekst i kursiv",
-        "link": "Legg til eller rediger lenke",
         "returnFromOverview": "Gå tilbake fra måneds- eller årsvisning",
-        "toggleFullWidth": "Slå av eller på journal i full bredde",
         "underline": "Understrek merket tekst"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Opprett et notat",
         "find": "Finn i notatet",
         "italic": "Kursiv",
-        "link": "Legg til eller rediger lenke",
-        "saveNote": "Lagre gjeldende notat",
         "underline": "Understreking"
       },
       "settings": {

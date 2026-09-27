@@ -8,6 +8,7 @@ import {
   type WebContents
 } from 'electron'
 import { AppChannels } from '@memry/contracts/ipc-channels'
+import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 import type { I18nInstance } from '@memry/i18n/main'
 import { sendAppNavigationDirection } from './app-navigation-command'
 
@@ -59,9 +60,53 @@ function sendMenuCommand(command: string): void {
   window.webContents.send(AppChannels.events.MENU_COMMAND, { command })
 }
 
-export function buildAppMenu(i18n: I18nInstance): Menu {
+const ACCELERATOR_KEYS: Record<string, string> = {
+  '+': 'Plus',
+  ' ': 'Space',
+  ArrowUp: 'Up',
+  ArrowDown: 'Down',
+  ArrowLeft: 'Left',
+  ArrowRight: 'Right'
+}
+
+const NAMED_ACCELERATOR_KEY =
+  /^(Plus|Space|Tab|Enter|Escape|Backspace|Delete|Insert|Home|End|PageUp|PageDown|Up|Down|Left|Right|F([1-9]|1\d|2[0-4]))$/
+
+/**
+ * Electron accelerator for a Settings → Shortcuts binding. `meta` is the
+ * platform command key (CmdOrCtrl); `ctrl` is the literal Control key, which
+ * off macOS is the same key, so it is not listed twice.
+ */
+export function bindingToAccelerator(binding: ShortcutBinding): string | null {
+  const key = ACCELERATOR_KEYS[binding.key] ?? binding.key
+  if (!/^[\x21-\x7e]$/.test(key) && !NAMED_ACCELERATOR_KEY.test(key)) return null
+  const { meta, ctrl, alt, shift } = binding.modifiers
+  const parts: string[] = []
+  if (meta) parts.push('CmdOrCtrl')
+  if (ctrl && (process.platform === 'darwin' || !meta)) parts.push('Control')
+  if (alt) parts.push('Alt')
+  if (shift) parts.push('Shift')
+  parts.push(key.length === 1 ? key.toUpperCase() : key)
+  return parts.join('+')
+}
+
+/**
+ * Rebinds from Settings → Shortcuts, keyed by shortcut id (`tabs.closeTab`).
+ * The menu mirrors them because on macOS a menu accelerator is a live key
+ * equivalent even with `registerAccelerator: false` (that flag is Windows/Linux
+ * only): a stale ⌘W here would keep closing tabs after the user rebinds it.
+ */
+export type ShortcutOverrides = Record<string, ShortcutBinding>
+
+export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = {}): Menu {
   const t = i18n.getFixedT(null, 'menu')
   const isMac = process.platform === 'darwin'
+  // A rebind the menu cannot express drops the accelerator rather than keep
+  // the default live.
+  const shortcut = (id: string, fallback: string): string | undefined => {
+    const override = overrides[id]
+    return override ? (bindingToAccelerator(override) ?? undefined) : fallback
+  }
 
   // Bridge item: a click that dispatches a command to the renderer. When an
   // accelerator is given it is display-only (registerAccelerator: false) — the
@@ -130,14 +175,14 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         cmd('file.newNote', t('file.newNote')),
         {
           label: t('navigation.back'),
-          accelerator: 'CmdOrCtrl+[',
+          accelerator: shortcut('tabs.navBack', 'CmdOrCtrl+['),
           visible: false,
           acceleratorWorksWhenHidden: true,
           click: () => sendNavigationToFocusedWindow('back')
         },
         {
           label: t('navigation.forward'),
-          accelerator: 'CmdOrCtrl+]',
+          accelerator: shortcut('tabs.navForward', 'CmdOrCtrl+]'),
           visible: false,
           acceleratorWorksWhenHidden: true,
           click: () => sendNavigationToFocusedWindow('forward')
@@ -146,7 +191,7 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         { type: 'separator' },
         cmd('file.exportPdf', t('file.exportPdf')),
         { type: 'separator' },
-        cmd('file.closeTab', t('file.closeTab'), 'CmdOrCtrl+W'),
+        cmd('file.closeTab', t('file.closeTab'), shortcut('tabs.closeTab', 'CmdOrCtrl+W')),
         // Not role 'close': a role defaults its accelerator to CmdOrCtrl+W, and
         // registerAccelerator only suppresses that on Windows/Linux — so on macOS
         // the role owned ⌘W and closed the window instead of the active tab. The
@@ -245,9 +290,9 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         // zoom, which nothing persists, so the level was lost on every restart.
         // The renderer owns these keystrokes (see use-app-zoom), so the
         // accelerators here are labels only, like every other cmd() item.
-        cmd('view.actualSize', t('view.actualSize'), 'CmdOrCtrl+0'),
-        cmd('view.zoomIn', t('view.zoomIn'), 'CmdOrCtrl+Plus'),
-        cmd('view.zoomOut', t('view.zoomOut'), 'CmdOrCtrl+-'),
+        cmd('view.actualSize', t('view.actualSize'), shortcut('view.actualSize', 'CmdOrCtrl+0')),
+        cmd('view.zoomIn', t('view.zoomIn'), shortcut('view.zoomIn', 'CmdOrCtrl+Plus')),
+        cmd('view.zoomOut', t('view.zoomOut'), shortcut('view.zoomOut', 'CmdOrCtrl+-')),
         { type: 'separator' },
         { label: t('view.toggleFullscreen'), role: 'togglefullscreen' },
         { type: 'separator' },

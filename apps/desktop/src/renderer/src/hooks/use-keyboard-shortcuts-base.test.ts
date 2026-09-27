@@ -9,6 +9,8 @@ import {
   useKeyboardShortcuts,
   isMac,
   getModifierSymbol,
+  matchesShortcut,
+  bindingFromKeyboardEvent,
   type KeyboardShortcut
 } from './use-keyboard-shortcuts-base'
 import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
@@ -572,5 +574,66 @@ describe('getModifierSymbol', () => {
   it('should return Ctrl for ctrl', () => {
     const symbol = getModifierSymbol('ctrl')
     expect(symbol).toBe('Ctrl')
+  })
+})
+
+describe('matchesShortcut key resolution', () => {
+  // The platform command key as the matcher reads it in this environment.
+  const cmd: Partial<KeyboardEventInit> = isMac ? { metaKey: true } : { ctrlKey: true }
+
+  it('matches an Option-composed character by its physical key (⌥⌘W reports ∑)', () => {
+    const event = createKeyboardEvent('∑', { code: 'KeyW', altKey: true, ...cmd })
+
+    expect(matchesShortcut(event, 'w', { meta: true, alt: true })).toBe(true)
+  })
+
+  it('matches a non-Latin layout letter by its physical key', () => {
+    const event = createKeyboardEvent('ц', { code: 'KeyW', ...cmd })
+
+    expect(matchesShortcut(event, 'w', { meta: true })).toBe(true)
+  })
+
+  it('matches Shift-ed punctuation by its physical key (⌘⇧\\ reports |)', () => {
+    const event = createKeyboardEvent('|', { code: 'Backslash', shiftKey: true, ...cmd })
+
+    expect(matchesShortcut(event, '\\', { meta: true, shift: true })).toBe(true)
+    expect(matchesShortcut(event, '\\', { meta: true })).toBe(false)
+  })
+
+  it('lets the printed ASCII letter win over the physical key (AZERTY ⌘Z sits on KeyW)', () => {
+    const event = createKeyboardEvent('z', { code: 'KeyW', ...cmd })
+
+    expect(matchesShortcut(event, 'w', { meta: true })).toBe(false)
+    expect(matchesShortcut(event, 'z', { meta: true })).toBe(true)
+  })
+
+  it('never matches an empty chord', () => {
+    expect(matchesShortcut(createKeyboardEvent('a'), '', {})).toBe(false)
+  })
+})
+
+describe('bindingFromKeyboardEvent', () => {
+  const cmd: Partial<KeyboardEventInit> = isMac ? { metaKey: true } : { ctrlKey: true }
+
+  it('records the platform command key as meta', () => {
+    expect(bindingFromKeyboardEvent(createKeyboardEvent('j', cmd))).toEqual({
+      key: 'j',
+      modifiers: { meta: true, ctrl: undefined, shift: undefined, alt: undefined }
+    })
+  })
+
+  it('records the physical key when the layout composed the character', () => {
+    const event = createKeyboardEvent('∑', { code: 'KeyW', altKey: true, ...cmd })
+
+    expect(bindingFromKeyboardEvent(event).key).toBe('w')
+  })
+
+  it('keeps named keys as reported', () => {
+    const event = createKeyboardEvent('ArrowRight', { code: 'ArrowRight', altKey: true, ...cmd })
+
+    expect(bindingFromKeyboardEvent(event)).toMatchObject({
+      key: 'ArrowRight',
+      modifiers: { meta: true, alt: true }
+    })
   })
 })

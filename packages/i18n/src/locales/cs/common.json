@@ -766,9 +766,7 @@
         "bold": "Ztučnit vybraný text",
         "find": "Najít v deníku",
         "italic": "Nastavit kurzívu vybraného textu",
-        "link": "Přidat nebo upravit odkaz",
         "returnFromOverview": "Návrat ze zobrazení měsíce nebo roku",
-        "toggleFullWidth": "Přepnout deník na plnou šířku",
         "underline": "Podtrhnout vybraný text"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Vytvořit poznámku",
         "find": "Najít v poznámce",
         "italic": "Kurzíva",
-        "link": "Přidat nebo upravit odkaz",
-        "saveNote": "Uložit aktuální poznámku",
         "underline": "Podtržení"
       },
       "settings": {

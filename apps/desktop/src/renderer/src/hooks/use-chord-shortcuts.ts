@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabs } from '@/contexts/tabs'
-import { isMac } from './use-keyboard-shortcuts-base'
+import { isMac, isShortcutRecording } from './use-keyboard-shortcuts-base'
 import { calculateGroupPositions, type GroupPosition } from './use-pane-navigation'
 import { hintModeActiveRef } from '@/contexts/hint-mode'
 import { createLogger } from '@/lib/logger'
@@ -241,7 +241,7 @@ export const useChordShortcuts = (): boolean => {
   )
 
   const handleKeyDown = (e: KeyboardEvent): void => {
-    if (hintModeActiveRef.current) return
+    if (hintModeActiveRef.current || isShortcutRecording()) return
 
     const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey
 

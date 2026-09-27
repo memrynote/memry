@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigacija naprijed",
           "description": "Ponovi navigaciju unazad"
+        },
+        "newTab": {
+          "label": "Nova kartica",
+          "description": "Otvori izbornik nove kartice"
+        },
+        "closeAll": {
+          "label": "Zatvori sve kartice u oknu",
+          "description": "Zatvori sve kartice u oknu"
+        },
+        "pin": {
+          "label": "Prikvači ili otkvači karticu",
+          "description": "Prikvači ili otkvači karticu"
+        },
+        "duplicate": {
+          "label": "Dupliciraj karticu",
+          "description": "Dupliciraj karticu"
+        },
+        "splitRight": {
+          "label": "Podijeli udesno",
+          "description": "Podijeli udesno"
+        },
+        "splitDown": {
+          "label": "Podijeli prema dolje",
+          "description": "Podijeli prema dolje"
+        },
+        "closeSplit": {
+          "label": "Zatvori podijeljeno okno",
+          "description": "Zatvori podijeljeno okno"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Podcrtano",
           "description": "Uključi/isključi oblikovanje podcrtavanja"
+        },
+        "strikethrough": {
+          "label": "Precrtano",
+          "description": "Precrtano"
+        },
+        "code": {
+          "label": "Kod",
+          "description": "Kod"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Pomoć za tipkovničke prečace",
           "description": "Prikaži referencu tipkovničkih prečaca"
+        },
+        "zoomIn": {
+          "label": "Povećaj",
+          "description": "Povećaj sve"
+        },
+        "zoomOut": {
+          "label": "Smanji",
+          "description": "Smanji sve"
+        },
+        "actualSize": {
+          "label": "Stvarna veličina",
+          "description": "Vrati zumiranje na 100 %"
         }
       }
     }

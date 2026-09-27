@@ -33,7 +33,9 @@ vi.mock('@/contexts/tabs', () => ({
   })
 }))
 
-vi.mock('./use-keyboard-shortcuts-base', () => ({
+vi.mock('./use-keyboard-shortcuts-base', async (importOriginal) => ({
+  chordAllowedInInput: (await importOriginal<typeof import('./use-keyboard-shortcuts-base')>())
+    .chordAllowedInInput,
   useKeyboardShortcuts: (shortcuts: any[]) => {
     mocks.shortcuts = shortcuts
   }
@@ -107,10 +109,12 @@ describe('useTabKeyboardShortcuts', () => {
     window.removeEventListener('memry:new-tab-menu', newTabMenu)
   })
 
-  it('closes the tab while typing, so the editor and capture bar cannot swallow ⌘W', () => {
+  it('fires every tab chord while typing, so the editor and fields cannot swallow them', () => {
     renderHook(() => useTabKeyboardShortcuts())
 
-    expect(shortcut('Close tab').allowInInput).toBe(true)
+    for (const item of mocks.shortcuts) {
+      expect(item.allowInInput, item.description).toBe(true)
+    }
   })
 
   it.each([
@@ -220,18 +224,22 @@ describe('useTabKeyboardShortcuts', () => {
     expect(mocks.pinTab).toHaveBeenCalledWith('note-1', 'main')
 
     shortcut('Duplicate tab').action()
-    expect(mocks.openTab).toHaveBeenCalledWith({
-      type: 'note',
-      title: 'Note',
-      icon: 'file',
-      emoji: 'spark',
-      path: '/notes/note.md',
-      entityId: 'note-1',
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false
-    })
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      {
+        type: 'note',
+        title: 'Note',
+        icon: 'file',
+        emoji: 'spark',
+        path: '/notes/note.md',
+        entityId: 'note-1',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      },
+      // A duplicate is a second tab on the same entity; dedup would swallow it.
+      { forceNew: true }
+    )
 
     shortcut('Split right').action()
     shortcut('Split down').action()

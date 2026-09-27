@@ -163,6 +163,17 @@ export const TabBarWithDrag = ({
     tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: scrollBehavior() })
   }, [activeTabId, regularTabsLength, activeDragItem, canScrollToStart, canScrollToEnd])
 
+  // A new tab enters at width 0 and grows, so the scroll above lands while it is
+  // still a sliver; at full width it sits past the end edge. Settle it once its
+  // enter animation finishes.
+  const revealSettledTab = (tabId: string): void => {
+    if (tabId !== activeTabId || activeDragItem) return
+    const strip = scrollRef.current
+    const tabEl = strip?.querySelector(`[data-tab-id="${CSS.escape(tabId)}"]`)
+    if (!strip || !tabEl || isTabFullyVisible(strip, tabEl)) return
+    tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: scrollBehavior() })
+  }
+
   // If group doesn't exist, don't render (after all hooks)
   if (!group) return null
 
@@ -303,6 +314,7 @@ export const TabBarWithDrag = ({
                       opacity: 0,
                       transition: tabExitTransition
                     }}
+                    onAnimationComplete={() => revealSettledTab(tab.id)}
                   >
                     <SortableTab
                       tab={tab}

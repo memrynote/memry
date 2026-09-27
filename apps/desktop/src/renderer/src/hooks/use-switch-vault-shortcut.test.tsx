@@ -89,7 +89,7 @@ describe('useSwitchVaultShortcut', () => {
     ['input', () => document.createElement('input')],
     ['textarea', () => document.createElement('textarea')],
     ['select', () => document.createElement('select')]
-  ])('stays inert while a %s owns focus', async (_name, create) => {
+  ])('fires while a %s owns focus, since ⌘⇧O types nothing', async (_name, create) => {
     const { hook } = await loadForPlatform('MacIntel')
     const onOpen = vi.fn()
     renderHook(() => hook.useSwitchVaultShortcut(onOpen))
@@ -100,7 +100,27 @@ describe('useSwitchVaultShortcut', () => {
 
     press(element, { key: 'o', metaKey: true, shiftKey: true })
 
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a rebind without ⌘/Ctrl out of text fields, where it would eat typing', async () => {
+    const { hook, bindings } = await loadForPlatform('MacIntel')
+    bindings.__setShortcutOverridesForTests({
+      'nav.switchVault': { key: 'F2', modifiers: {} }
+    })
+    const onOpen = vi.fn()
+    renderHook(() => hook.useSwitchVaultShortcut(onOpen))
+
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+    press(input, { key: 'F2' })
     expect(onOpen).not.toHaveBeenCalled()
+
+    input.blur()
+    press(window, { key: 'F2' })
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    bindings.__setShortcutOverridesForTests({})
   })
 
   it('fires while a rich-text editor owns focus (does not collide with an editor command)', async () => {

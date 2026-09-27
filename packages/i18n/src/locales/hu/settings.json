@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigáljon előre",
           "description": "Hajtson újra egy visszafelé navigációt"
+        },
+        "newTab": {
+          "label": "Új lap",
+          "description": "Az új lap menü megnyitása"
+        },
+        "closeAll": {
+          "label": "A panel összes lapjának bezárása",
+          "description": "A panel összes lapjának bezárása"
+        },
+        "pin": {
+          "label": "Lap rögzítése vagy feloldása",
+          "description": "Lap rögzítése vagy feloldása"
+        },
+        "duplicate": {
+          "label": "Lap megkettőzése",
+          "description": "Lap megkettőzése"
+        },
+        "splitRight": {
+          "label": "Felosztás jobbra",
+          "description": "Felosztás jobbra"
+        },
+        "splitDown": {
+          "label": "Felosztás lefelé",
+          "description": "Felosztás lefelé"
+        },
+        "closeSplit": {
+          "label": "Az osztott panel bezárása",
+          "description": "Az osztott panel bezárása"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Aláhúzás",
           "description": "Az aláhúzott formázás be- és kikapcsolása"
+        },
+        "strikethrough": {
+          "label": "Áthúzott",
+          "description": "Áthúzott"
+        },
+        "code": {
+          "label": "Kód",
+          "description": "Kód"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Billentyűparancsok súgója",
           "description": "A billentyűparancsok hivatkozásának megjelenítése"
+        },
+        "zoomIn": {
+          "label": "Nagyítás",
+          "description": "Minden nagyítása"
+        },
+        "zoomOut": {
+          "label": "Kicsinyítés",
+          "description": "Minden kicsinyítése"
+        },
+        "actualSize": {
+          "label": "Eredeti méret",
+          "description": "Nagyítás visszaállítása 100%-ra"
         }
       }
     }

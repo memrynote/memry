@@ -766,9 +766,7 @@
         "bold": "Colocar o texto selecionado a negrito",
         "find": "Localizar no diário",
         "italic": "Colocar o texto selecionado em itálico",
-        "link": "Adicionar ou editar ligação",
         "returnFromOverview": "Voltar da vista de mês ou ano",
-        "toggleFullWidth": "Alternar o diário em largura total",
         "underline": "Sublinhar o texto selecionado"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Criar uma nota",
         "find": "Localizar na nota",
         "italic": "Itálico",
-        "link": "Adicionar ou editar ligação",
-        "saveNote": "Guardar a nota atual",
         "underline": "Sublinhado"
       },
       "settings": {

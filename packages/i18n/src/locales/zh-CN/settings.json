@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "向前导航",
           "description": "重做向后导航"
+        },
+        "newTab": {
+          "label": "新标签",
+          "description": "打开新建标签页菜单"
+        },
+        "closeAll": {
+          "label": "关闭面板中的所有标签页",
+          "description": "关闭面板中的所有标签页"
+        },
+        "pin": {
+          "label": "固定或取消固定标签页",
+          "description": "固定或取消固定标签页"
+        },
+        "duplicate": {
+          "label": "复制标签页",
+          "description": "复制标签页"
+        },
+        "splitRight": {
+          "label": "向右拆分",
+          "description": "向右拆分"
+        },
+        "splitDown": {
+          "label": "向下拆分",
+          "description": "向下拆分"
+        },
+        "closeSplit": {
+          "label": "关闭分屏面板",
+          "description": "关闭分屏面板"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "下划线",
           "description": "切换下划线格式"
+        },
+        "strikethrough": {
+          "label": "删除线",
+          "description": "删除线"
+        },
+        "code": {
+          "label": "代码",
+          "description": "代码"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "键盘快捷键帮助",
           "description": "显示键盘快捷键参考"
+        },
+        "zoomIn": {
+          "label": "放大",
+          "description": "放大所有内容"
+        },
+        "zoomOut": {
+          "label": "缩小",
+          "description": "缩小所有内容"
+        },
+        "actualSize": {
+          "label": "实际大小",
+          "description": "将缩放重置为 100%"
         }
       }
     }

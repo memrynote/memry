@@ -766,9 +766,7 @@
         "bold": "Tebalkan teks yang dipilih",
         "find": "Cari dalam jurnal",
         "italic": "Condongkan teks yang dipilih",
-        "link": "Tambah atau edit pautan",
         "returnFromOverview": "Kembali daripada paparan bulan atau tahun",
-        "toggleFullWidth": "Togol jurnal lebar penuh",
         "underline": "Gariskan bawah teks yang dipilih"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Cipta nota",
         "find": "Cari dalam nota",
         "italic": "Condong",
-        "link": "Tambah atau edit pautan",
-        "saveNote": "Simpan nota semasa",
         "underline": "Garis bawah"
       },
       "settings": {

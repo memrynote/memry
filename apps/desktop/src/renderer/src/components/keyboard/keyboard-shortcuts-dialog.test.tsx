@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog'
 
 vi.mock('@memry/i18n/renderer', () => {
@@ -27,6 +28,10 @@ vi.mock('@memry/i18n/renderer', () => {
 })
 
 describe('KeyboardShortcutsDialog', () => {
+  afterEach(() => {
+    __setShortcutOverridesForTests({})
+  })
+
   it('renders the full shortcut section catalog', () => {
     render(<KeyboardShortcutsDialog isOpen onClose={vi.fn()} />)
 
@@ -51,5 +56,30 @@ describe('KeyboardShortcutsDialog', () => {
     expect(within(dialog).getAllByText('?').length).toBeGreaterThan(0)
     expect(within(dialog).getAllByText('/').length).toBeGreaterThan(0)
     expect(within(dialog).getAllByText(/⌘|Ctrl/).length).toBeGreaterThan(0)
+  })
+
+  it('shows a rebound chord instead of the default', () => {
+    __setShortcutOverridesForTests({
+      'tabs.splitRight': { key: 'y', modifiers: { meta: true, alt: true } }
+    })
+
+    render(<KeyboardShortcutsDialog isOpen onClose={vi.fn()} />)
+
+    const row = screen.getByText('shortcuts.items.tabs.splitRight').closest('div')!.parentElement!
+    expect(within(row).getByText('Y')).toBeInTheDocument()
+    expect(within(row).queryByText('\\')).toBeNull()
+  })
+
+  it('does not advertise shortcuts nothing handles', () => {
+    render(<KeyboardShortcutsDialog isOpen onClose={vi.fn()} />)
+
+    for (const phantom of [
+      'shortcuts.items.journal.toggleFullWidth',
+      'shortcuts.items.journal.link',
+      'shortcuts.items.notes.saveNote',
+      'shortcuts.items.notes.link'
+    ]) {
+      expect(screen.queryByText(phantom)).toBeNull()
+    }
   })
 })

@@ -1,4 +1,4 @@
-import type { FocusEvent } from 'react'
+import type { FocusEvent, KeyboardEvent } from 'react'
 
 /**
  * A Radix menu that is animating out is still mounted and still answering
@@ -37,4 +37,15 @@ export function handleInlineRenameBlur(
     return
   }
   commit()
+}
+
+/**
+ * Keep an inline rename field's keystrokes away from the tree rows around it
+ * (Enter opens a row, Space toggles a folder), but let app chords through.
+ * Stopping every key made the field swallow ⌘W / ⌘N / ⌘, while it had
+ * focus, and ⌘N itself leaves the new note's row in rename.
+ */
+export function stopInlineRenameKeyPropagation(event: KeyboardEvent<HTMLInputElement>): void {
+  const isAppChord = (event.metaKey || event.ctrlKey) && event.key !== 'Enter'
+  if (!isAppChord) event.stopPropagation()
 }

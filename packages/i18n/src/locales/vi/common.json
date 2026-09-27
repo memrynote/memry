@@ -766,9 +766,7 @@
         "bold": "In đậm văn bản đã chọn",
         "find": "Tìm trong nhật ký",
         "italic": "In nghiêng văn bản đã chọn",
-        "link": "Thêm hoặc sửa liên kết",
         "returnFromOverview": "Quay lại từ chế độ xem tháng hoặc năm",
-        "toggleFullWidth": "Bật/tắt nhật ký toàn chiều rộng",
         "underline": "Gạch chân văn bản đã chọn"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Tạo một ghi chú",
         "find": "Tìm trong ghi chú",
         "italic": "Nghiêng",
-        "link": "Thêm hoặc sửa liên kết",
-        "saveNote": "Lưu ghi chú hiện tại",
         "underline": "Gạch chân"
       },
       "settings": {

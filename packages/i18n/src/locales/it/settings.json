@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Vai avanti",
           "description": "Ripeti la navigazione all'indietro"
+        },
+        "newTab": {
+          "label": "Nuova scheda",
+          "description": "Apri il menu Nuova scheda"
+        },
+        "closeAll": {
+          "label": "Chiudi tutte le schede del riquadro",
+          "description": "Chiudi tutte le schede del riquadro"
+        },
+        "pin": {
+          "label": "Fissa o sblocca la scheda",
+          "description": "Fissa o sblocca la scheda"
+        },
+        "duplicate": {
+          "label": "Duplica la scheda",
+          "description": "Duplica la scheda"
+        },
+        "splitRight": {
+          "label": "Dividi a destra",
+          "description": "Dividi a destra"
+        },
+        "splitDown": {
+          "label": "Dividi in basso",
+          "description": "Dividi in basso"
+        },
+        "closeSplit": {
+          "label": "Chiudi il riquadro diviso",
+          "description": "Chiudi il riquadro diviso"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Sottolineare",
           "description": "Attiva/disattiva la formattazione della sottolineatura"
+        },
+        "strikethrough": {
+          "label": "Barrato",
+          "description": "Barrato"
+        },
+        "code": {
+          "label": "Codice",
+          "description": "Codice"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Aiuto per le scorciatoie da tastiera",
           "description": "Mostra il riferimento alle scorciatoie da tastiera"
+        },
+        "zoomIn": {
+          "label": "Aumenta zoom",
+          "description": "Ingrandisci tutto"
+        },
+        "zoomOut": {
+          "label": "Riduci zoom",
+          "description": "Riduci tutto"
+        },
+        "actualSize": {
+          "label": "Dimensioni reali",
+          "description": "Reimposta lo zoom al 100%"
         }
       }
     }

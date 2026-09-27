@@ -1041,21 +1041,17 @@
       },
       "journal": {
         "returnFromOverview": "Return from month or year view",
-        "toggleFullWidth": "Toggle full-width journal",
         "find": "Find in journal",
         "bold": "Bold selected text",
         "italic": "Italic selected text",
-        "underline": "Underline selected text",
-        "link": "Add or edit link"
+        "underline": "Underline selected text"
       },
       "notes": {
         "createNote": "Create a note",
-        "saveNote": "Save current note",
         "find": "Find in note",
         "bold": "Bold",
         "italic": "Italic",
         "underline": "Underline",
-        "link": "Add or edit link",
         "commandMenu": "Open editor command menu",
         "closeOverlays": "Close editor overlays"
       },
