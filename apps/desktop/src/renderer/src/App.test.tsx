@@ -534,6 +534,20 @@ describe('App', () => {
     expect(clientB.getQueryState(rowsKey)?.isInvalidated).toBe(false)
   })
 
+  it('does not keep rows the leaving vault fetches after main switched but before the reveal', async () => {
+    render(<App />)
+    const [clientA] = createdQueryClients
+    const rowsKey = ['rows']
+
+    // Pager flow: the switch ends while the reveal is held, so App still has
+    // vault A as the active path and its workspace keeps running effects.
+    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
+    act(() => endVaultSwitch(true))
+
+    await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
+    expect(clientA.getQueryData(rowsKey)).toBeUndefined()
+  })
+
   it('refetches what the cache fence emptied when a switch fails and the vault stays open', async () => {
     render(<App />)
     const [clientA] = createdQueryClients
