@@ -313,8 +313,6 @@ final class NoteReadViewModel {
         }
     }
 
-    /// The row's placeholder, matched exactly. An id identifies content and
-    /// reads as noise, so an untitled note says so in words on both screens.
     /// Every note in this vault, for the wiki-link search (N602).
     ///
     /// Read once when the note opens rather than on every keystroke in the
