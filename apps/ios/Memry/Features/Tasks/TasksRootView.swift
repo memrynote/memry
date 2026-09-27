@@ -124,6 +124,7 @@ struct VaultTasksScope<Content: View>: View {
     var body: some View {
         content(store, failure)
             .environment(\.requestVaultSync, syncRequest)
+            .environment(\.vaultSyncPasses, store?.syncPasses ?? 0)
             // Pull and push on every return to the foreground, whichever tab
             // shows: a tab's own views miss scene changes while hidden. The
             // pass for the vault opening runs from `make()`, because the
@@ -190,4 +191,8 @@ extension EnvironmentValues {
     /// store). A write made outside the Tasks tab, such as ticking a task line
     /// in a note, would otherwise wait in the outbox until the next pass.
     @Entry var requestVaultSync: (@MainActor () -> Void)?
+
+    /// How many sync passes have finished in this vault. A screen that shows
+    /// a record or body another device edits re-reads when it changes.
+    @Entry var vaultSyncPasses: Int = 0
 }

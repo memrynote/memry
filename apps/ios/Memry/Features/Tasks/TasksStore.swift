@@ -270,6 +270,8 @@ final class TasksStore {
     // MARK: Sync
 
     private var syncTask: Task<Void, Never>?
+    /// Finished passes, so a screen showing synced data can re-read after each.
+    private(set) var syncPasses = 0
     /// Told when a pass ends (`true` = it reached the server). Settings keeps
     /// "last synced" and re-reads synced settings from it (spec 006).
     var syncFinished: (@MainActor (Bool) -> Void)?
@@ -302,6 +304,7 @@ final class TasksStore {
             syncFinished?(false)
         }
         await refresh()
+        syncPasses += 1
     }
 
     // MARK: Clock

@@ -146,6 +146,26 @@ final class NoteReadViewModel {
         await load()
     }
 
+    /// Pulls this note's body, then re-reads the note in place.
+    ///
+    /// Runs when the page appears and after every sync pass. Desktop pushes a
+    /// body edit as CRDT updates with no record, so the sync pass never pulls
+    /// it; and a record the pass applied (title, properties) only shows once
+    /// the screen reads again. A body that was never pulled stays behind the
+    /// explicit fetch button. Offline is not an error: the local copy stays.
+    func refreshFromRemote() async {
+        guard hasLoaded else { return }
+        if let filler, fetch != .fetching,
+           case let .ready(detail) = phase, detail.body.present {
+            do {
+                _ = try await filler.fetchNoteBody(noteId: route.id)
+            } catch {
+                Log.sync.debug("a note body could not be pulled")
+            }
+        }
+        await load(quietly: true)
+    }
+
     /// The rendered body, read after the summary so the title and the dates
     /// are on screen while the blocks are still being walked.
     ///
@@ -325,9 +345,11 @@ final class NoteReadViewModel {
         await load()
     }
 
-    private func load() async {
+    /// `quietly` keeps the current page on screen while it re-reads, so a
+    /// refresh after a sync pass does not flash the loading state.
+    private func load(quietly: Bool = false) async {
         hasLoaded = true
-        phase = .loading
+        if !quietly { phase = .loading }
         let detail: NoteDetail?
         do {
             detail = try await reader.read(id: route.id)
