@@ -91,6 +91,18 @@
       "addTags": "Adicionar tags…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Adicionar propriedade",
+    "dates": "Datas",
+    "datesAria": "Datas: {value}",
+    "start": "Início",
+    "due": "Prazo",
+    "dueDate": "Data de vencimento",
+    "remindMe": "Lembrar-me",
+    "linkItem": "Vincular nota ou tela",
+    "relatedAria": "Itens relacionados: {count}",
+    "shorthandPreview": "Definido por atalho"
+  },
   "drawer": {
     "close": "Fechar detalhes da tarefa",
     "subIssues": "Sub-questões",

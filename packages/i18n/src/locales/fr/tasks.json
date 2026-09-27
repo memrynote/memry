@@ -91,6 +91,18 @@
       "addTags": "Ajouter des tags…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Ajouter une propriété",
+    "dates": "Dates",
+    "datesAria": "Dates : {value}",
+    "start": "Début",
+    "due": "Échéance",
+    "dueDate": "Date d'échéance",
+    "remindMe": "Me rappeler",
+    "linkItem": "Lier une note ou un canevas",
+    "relatedAria": "Éléments liés : {count}",
+    "shorthandPreview": "Défini par raccourci"
+  },
   "drawer": {
     "close": "Fermer les détails de la tâche",
     "subIssues": "Sous-questions",

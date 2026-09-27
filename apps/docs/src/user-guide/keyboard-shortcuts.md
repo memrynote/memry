@@ -190,6 +190,17 @@ you've typed is a complete badge, that element is clicked and focused and hint
 mode exits. Only the badge overlay repaints as you type, so hint mode stays
 responsive on screens with a lot of targets.
 
+## Tasks in Notes
+
+When a task in a note is selected — click its row's empty space, or press
+<kbd>Esc</kbd> in its title — single keys open its property pickers: <kbd>S</kbd>
+status, <kbd>P</kbd> priority, <kbd>⇧</kbd>+<kbd>P</kbd> project, <kbd>D</kbd> due
+date, <kbd>⇧</kbd>+<kbd>D</kbd> start date, <kbd>R</kbd> repeat, <kbd>H</kbd>
+reminder, <kbd>L</kbd> tags, <kbd>E</kbd> description, <kbd>⇧</kbd>+<kbd>L</kbd>
+related items. <kbd>Enter</kbd> edits the title and <kbd>⌘</kbd>+<kbd>Enter</kbd>
+opens the task in Tasks. See
+[Editing a Task From the Note](/user-guide/tasks/capturing#editing-a-task-from-the-note).
+
 ## Global Undo (Tasks)
 
 <kbd>⌘</kbd>+<kbd>Z</kbd> undoes recent task changes within a 10-second window. Coverage includes status, priority, due date, deletion, and bulk actions.

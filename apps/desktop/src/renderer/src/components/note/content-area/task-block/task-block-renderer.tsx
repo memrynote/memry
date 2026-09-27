@@ -3,14 +3,23 @@ import { AlertTriangle, ArrowUpRight, Loader2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
 import { useTaskPrefetch } from './task-prefetch-context'
-import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'
+import { serviceTaskToDisplayTask } from './task-block-utils'
+import { hasPendingQuickAddSyntax, parseQuickAddEdit } from './quick-add-edit'
+import { TaskBlockProperties, missingTaskProperties } from './properties/task-block-properties'
+import { AddPropertyMenu } from './properties/add-property-menu'
+import { QuickAddPreview } from './properties/quick-add-preview'
+import { resolvePropertyShortcut, type TaskPropertyId } from './properties/task-property-ids'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import { tasksService } from '@/services/tasks-service'
+import { toTaskUpdateInput } from '@/features/tasks/task-update-input'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
+import { canvasTabData } from '@/lib/sidebar-tab-data'
 import type { Task as DisplayTask } from '@/data/task-model'
 import { defaultStatuses, type Project, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
+import type { RelatedRef } from '@/components/tasks/use-related-item-info'
 import { useT } from '@memry/i18n/renderer'
 
 export interface TaskBlockProps {
@@ -22,11 +31,12 @@ export interface TaskBlockProps {
 
 /** Row edits made before the block had a task id, replayed once it has one. */
 interface PendingTaskUpdates {
-  statusId?: string
-  priority?: number
-  projectId?: string
+  changes: Partial<DisplayTask>
   completed?: boolean
 }
+
+/** Anything in the row that takes its own clicks and keys. */
+const INTERACTIVE_SELECTOR = 'button, input, textarea, a, [role="button"]'
 
 export type TaskBlockInlineContent = string | { text?: string }
 
@@ -141,9 +151,10 @@ const makePlaceholderTask = (
 export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: editorInput }) => {
   const editor = editorInput as TaskBlockEditor
   const { t: tPhaseF } = useT('notes')
+  const { t: tCommon } = useT('common')
   const { taskId, title, checked, parentTaskId } = block.props
   const { task, isLoading: _isLoading, isDeleted } = useTaskBlockData(taskId)
-  const { draftProjectId } = useTaskPrefetch()
+  const { draftProjectId, noteId: hostNoteId, hasActiveReminder } = useTaskPrefetch()
   const tasksCtx = useTasksOptional()
   const { openTab } = useTabActions()
   const syncingRef = useRef(false)
@@ -162,7 +173,26 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   // used to drop the change on the floor in that window (#2271). Held here and
   // applied the moment the id lands, so a project picked one keystroke too
   // early is still the project the task is created into.
-  const pendingUpdatesRef = useRef<PendingTaskUpdates>({})
+  const pendingUpdatesRef = useRef<PendingTaskUpdates>({ changes: {} })
+
+  // Which picker is open, the one piece of state for every property control
+  // in the row. Opening one closes the last, so one popover is ever on screen.
+  const [openProperty, setOpenProperty] = useState<TaskPropertyId | null>(null)
+  const handlePropertyOpenChange = useCallback((id: TaskPropertyId, open: boolean) => {
+    setOpenProperty((prev) => (open ? id : prev === id ? null : prev))
+  }, [])
+
+  // The block itself takes focus (Esc from the title, a click on the row's
+  // empty space), and while it has it the property keys work: D for due, L for
+  // tags and so on.
+  const rowRef = useRef<HTMLDivElement>(null)
+  const focusRowSoon = useCallback(() => {
+    // Double rAF, same as the title input: ProseMirror restores its own focus
+    // on the frame after a click inside the editor.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => rowRef.current?.focus())
+    })
+  }, [])
 
   const { projects, project, statuses } = resolveBlockProject(
     tasksCtx?.projects,
@@ -181,6 +211,17 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     [task, statuses]
   )
 
+  // Shorthand typed into the title, parsed against what the task already says
+  // so only new tokens count. Drives the dashed preview while typing; the same
+  // parse is applied when the edit is committed.
+  const quickAddEdit = useMemo(
+    () =>
+      isEditingTitle
+        ? parseQuickAddEdit(editTitle, task?.title ?? '', displayTask, projects)
+        : null,
+    [isEditingTitle, editTitle, task?.title, displayTask, projects]
+  )
+
   // Auto-enter edit mode for newly created blocks. The cancellation flag +
   // cleanup return mark this as a synchronization effect (so the
   // unnecessary-effect lints recognize it as legitimate) and lets us drop the
@@ -195,7 +236,13 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       isNewBlockRef.current = false
       if (wasDraftRef.current) {
         wasDraftRef.current = false
-        if (editTitle.trim() && task.title !== editTitle.trim()) {
+        // Shorthand still being typed is the commit's to apply; writing it now
+        // would put the raw tokens in the title.
+        if (
+          editTitle.trim() &&
+          task.title !== editTitle.trim() &&
+          !hasPendingQuickAddSyntax(editTitle, task.title)
+        ) {
           void tasksService.update({ id: taskId, title: editTitle.trim() })
           queueMicrotask(() => {
             if (cancelled) return
@@ -262,6 +309,41 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     }
   }, [])
 
+  // --- Property writes ---
+
+  // Every property edit from the row goes through here. Without a task id yet
+  // the edit is held and replayed when the id lands (see the replay effect).
+  const applyUpdates = useCallback(
+    async (updates: Partial<DisplayTask>): Promise<void> => {
+      if (Object.keys(updates).length === 0) return
+      if (!taskId) {
+        Object.assign(pendingUpdatesRef.current.changes, updates)
+        return
+      }
+      const result = await tasksService.update(toTaskUpdateInput(taskId, updates))
+      if (result && !result.success) {
+        trackRendererError(
+          'task_block_update',
+          new Error(result.error ?? 'Task update returned success:false')
+        )
+      }
+    },
+    [taskId]
+  )
+
+  const handleUpdate = useCallback(
+    (updates: Partial<DisplayTask>) => void applyUpdates(updates),
+    [applyUpdates]
+  )
+  const handleDescriptionChange = useCallback(
+    (description: string) => void applyUpdates({ description }),
+    [applyUpdates]
+  )
+  const handleTagsChange = useCallback(
+    (tags: string[]) => void applyUpdates({ tags }),
+    [applyUpdates]
+  )
+
   // --- Title editing handlers ---
 
   const saveTitleToDb = useCallback(
@@ -282,13 +364,32 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     [taskId, block, editor]
   )
 
+  /**
+   * The title a committed edit leaves, with any shorthand in it applied: `Buy
+   * milk #groceries @fri` saves as "Buy milk" and sets the tag and the date
+   * (#2241). Returns the title to write, or '' when there is nothing to name
+   * the task with.
+   */
+  const commitTitleEdit = useCallback(
+    (raw: string): string => {
+      const edit = parseQuickAddEdit(raw, task?.title ?? '', displayTask, projects)
+      if (edit) void applyUpdates(edit.changes)
+      return edit ? edit.title : raw.trim()
+    },
+    [task?.title, displayTask, projects, applyUpdates]
+  )
+
   const handleTitleChange = useCallback(
     (value: string) => {
       setEditTitle(value)
       if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+      // Shorthand in progress is held back until the commit parses it; saving
+      // it here would write `!hi` into the title, and for a draft hand the raw
+      // tokens to the create.
+      if (hasPendingQuickAddSyntax(value, task?.title ?? '')) return
       titleSaveTimeoutRef.current = setTimeout(() => void saveTitleToDb(value), 600)
     },
-    [saveTitleToDb]
+    [saveTitleToDb, task?.title]
   )
 
   const handleTitleBlur = useCallback(() => {
@@ -297,18 +398,51 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       return
     }
     if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-    if (editTitle.trim()) void saveTitleToDb(editTitle)
+    if (editTitle.trim()) {
+      const committed = commitTitleEdit(editTitle)
+      if (committed) {
+        setEditTitle(committed)
+        void saveTitleToDb(committed)
+      }
+    }
     setIsEditingTitle(false)
-  }, [editTitle, saveTitleToDb])
+    // Esc reaches the title as this blur, not as a key: the app's capture-phase
+    // Escape handler (use-hint-activation) blurs inputs before React sees the
+    // key, and the input is gone by then. Focus that went nowhere, as it does
+    // after Esc, leaves the task selected so its property keys keep working.
+    // Focus that went somewhere (the editor, another pane, another app) stays.
+    if (taskId) {
+      requestAnimationFrame(() => {
+        if (document.hasFocus() && document.activeElement === document.body) {
+          rowRef.current?.focus()
+        }
+      })
+    }
+  }, [editTitle, saveTitleToDb, commitTitleEdit, taskId])
 
   const handleTitleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        skipBlurRef.current = true
-        if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        if (editTitle.trim()) void saveTitleToDb(editTitle)
+        // The app's capture-phase Escape handler (use-hint-activation) blurs a
+        // focused input before this runs, and that blur already committed the
+        // edit. Committing again would write it twice, and arming the blur
+        // skip here would swallow the next session's blur instead.
+        if (document.activeElement === e.currentTarget) {
+          skipBlurRef.current = true
+          if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+          if (editTitle.trim()) {
+            const committed = commitTitleEdit(editTitle)
+            if (committed) {
+              setEditTitle(committed)
+              void saveTitleToDb(committed)
+            }
+          }
+        }
         setIsEditingTitle(false)
+        // Esc leaves the task selected, like Linear: the property keys work
+        // from here without reaching for the mouse.
+        if (taskId) focusRowSoon()
         return
       }
 
@@ -329,7 +463,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
 
         skipBlurRef.current = true
         if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        const trimmedTitle = editTitle.trim()
+        const trimmedTitle = commitTitleEdit(editTitle)
         if (trimmedTitle && taskId && task && task.title !== trimmedTitle) {
           void tasksService.update({ id: taskId, title: trimmedTitle })
         }
@@ -370,7 +504,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
 
         skipBlurRef.current = true
         if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-        const trimmedTitle = editTitle.trim()
+        const trimmedTitle = commitTitleEdit(editTitle)
         if (trimmedTitle && taskId && task && task.title !== trimmedTitle) {
           void tasksService.update({ id: taskId, title: trimmedTitle })
         }
@@ -447,7 +581,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         const trimmed = editTitle.trim()
         if (trimmed) {
           isNewBlockRef.current = false
-          void saveTitleToDb(trimmed)
+          const committed = commitTitleEdit(editTitle) || trimmed
+          setEditTitle(committed)
+          void saveTitleToDb(committed)
           setIsEditingTitle(false)
           editor.insertBlocks(
             [{ type: 'taskBlock', props: { taskId: '', title: '', checked: false } }],
@@ -479,7 +615,17 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         }
       }
     },
-    [editor, block, taskId, task, parentTaskId, editTitle, saveTitleToDb]
+    [
+      editor,
+      block,
+      taskId,
+      task,
+      parentTaskId,
+      editTitle,
+      saveTitleToDb,
+      commitTitleEdit,
+      focusRowSoon
+    ]
   )
 
   // --- Task action handlers ---
@@ -516,31 +662,13 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   )
 
   const handleUpdateTask = useCallback(
-    async (_taskId: string, updates: Partial<DisplayTask>) => {
-      const changes = {
-        ...(updates.statusId !== undefined && { statusId: updates.statusId }),
-        ...(updates.priority !== undefined && {
-          priority: PRIORITY_REVERSE[updates.priority] ?? 0
-        })
-      }
-      if (!taskId) {
-        Object.assign(pendingUpdatesRef.current, changes)
-        return
-      }
-      await tasksService.update({ id: taskId, ...changes })
-    },
-    [taskId]
+    (_taskId: string, updates: Partial<DisplayTask>) => applyUpdates(updates),
+    [applyUpdates]
   )
 
   const handleProjectChange = useCallback(
-    async (projectId: string) => {
-      if (!taskId) {
-        pendingUpdatesRef.current.projectId = projectId
-        return
-      }
-      await tasksService.update({ id: taskId, projectId })
-    },
-    [taskId]
+    (projectId: string) => applyUpdates({ projectId }),
+    [applyUpdates]
   )
 
   // Replay of the above. Runs on the id, not on the loaded task: the row
@@ -548,15 +676,20 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   // for the fetch would race the title write that follows it.
   useEffect(() => {
     if (!taskId) return
-    const { completed, projectId, ...updates } = pendingUpdatesRef.current
-    pendingUpdatesRef.current = {}
+    const {
+      completed,
+      changes: { projectId, ...updates }
+    } = pendingUpdatesRef.current
+    pendingUpdatesRef.current = { changes: {} }
     void (async () => {
       // The project move goes first and alone. `updateTask` rewrites `statusId`
       // to the destination project's equivalent status whenever `projectId`
       // changes, so a combined payload would throw away the status the user
       // picked in the same window.
       if (projectId !== undefined) await tasksService.update({ id: taskId, projectId })
-      if (Object.keys(updates).length > 0) await tasksService.update({ id: taskId, ...updates })
+      if (Object.keys(updates).length > 0) {
+        await tasksService.update(toTaskUpdateInput(taskId, updates))
+      }
       if (completed === true) await tasksService.complete({ id: taskId })
       else if (completed === false) await tasksService.uncomplete(taskId)
     })()
@@ -566,28 +699,41 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     editor.removeBlocks([block])
   }, [block, editor])
 
+  const openInTasks = useCallback(() => {
+    openTab({
+      type: 'tasks',
+      title: 'Tasks',
+      icon: 'list-checks',
+      path: '/tasks',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false,
+      viewState: {
+        openTaskId: taskId,
+        selectedProjectId: task?.projectId ?? undefined,
+        activeTab: 'all'
+      }
+    })
+  }, [openTab, taskId, task?.projectId])
+
+  const handleOpenRelatedItem = useCallback(
+    (ref: RelatedRef, itemTitle: string | null) => {
+      if (ref.kind === 'canvas') {
+        openTab(canvasTabData({ id: ref.id, title: itemTitle }, tCommon('canvas.untitled')))
+        return
+      }
+      void openRelatedVaultItem(ref.id, openTab)
+    },
+    [openTab, tCommon]
+  )
+
   const navigateArrow = useMemo(
     () => (
       <button
         type="button"
-        onClick={() => {
-          openTab({
-            type: 'tasks',
-            title: 'Tasks',
-            icon: 'list-checks',
-            path: '/tasks',
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false,
-            viewState: {
-              openTaskId: taskId,
-              selectedProjectId: task?.projectId ?? undefined,
-              activeTab: 'all'
-            }
-          })
-        }}
-        className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent/80"
+        onClick={openInTasks}
+        className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-focus/taskblock:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-accent/80"
         title={tPhaseF(
           'phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.openInTaskPanel'
         )}
@@ -595,7 +741,57 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         <ArrowUpRight className="size-3 text-muted-foreground" />
       </button>
     ),
-    [tPhaseF, openTab, taskId, task?.projectId]
+    [tPhaseF, openInTasks]
+  )
+
+  // Keys on the block itself, never on a field inside it or a popover that
+  // React bubbles up from its portal.
+  const handleRowKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!task) return
+      const target = e.target as HTMLElement
+      if (!e.currentTarget.contains(target)) return
+      if (target.closest('input, textarea, [contenteditable="true"]')) return
+
+      const onBlock = target === e.currentTarget
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        openInTasks()
+        return
+      }
+      if (onBlock && e.key === 'Enter') {
+        e.preventDefault()
+        setIsEditingTitle(true)
+        return
+      }
+      if (onBlock && e.key === 'Escape') {
+        e.preventDefault()
+        e.currentTarget.blur()
+        return
+      }
+      const property = resolvePropertyShortcut(e)
+      if (!property) return
+      e.preventDefault()
+      e.stopPropagation()
+      setOpenProperty(property)
+    },
+    [task, openInTasks]
+  )
+
+  // A click on the row's own surface (the gaps between its controls) selects
+  // the task; a click on a control is that control's.
+  const handleRowClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!task) return
+      // React bubbles clicks out of portals too: a pick in the `+` menu or a
+      // click inside a chip's picker arrives here. Focusing the row then would
+      // pull focus out of the picker that just opened and close it.
+      if (!e.currentTarget.contains(e.target as Node)) return
+      const interactive = (e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)
+      if (interactive && interactive !== e.currentTarget.firstElementChild) return
+      focusRowSoon()
+    },
+    [task, focusRowSoon]
   )
 
   const titleInput = useCallback(
@@ -607,7 +803,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         onChange={(e) => handleTitleChange(e.target.value)}
         onBlur={handleTitleBlur}
         onKeyDown={handleTitleKeyDown}
-        className="grow shrink min-w-0 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
+        className="grow shrink min-w-24 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
         placeholder={tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName')}
         aria-label={tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName')}
       />
@@ -635,7 +831,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           }
         }}
         className={cn(
-          'grow shrink min-w-0 truncate cursor-text',
+          'grow shrink min-w-24 truncate cursor-text',
           'text-[13px] font-medium',
           isEmpty
             ? 'text-muted-foreground/70 italic'
@@ -707,10 +903,74 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     )
   }
 
+  const reminderSet = displayTask ? hasActiveReminder(displayTask.id) : false
+  const shorthandPreview = quickAddEdit ? (
+    <QuickAddPreview
+      changes={quickAddEdit.changes}
+      projects={projects}
+      existingTags={displayTask?.tags ?? []}
+    />
+  ) : null
+
+  // Set properties as chips, plus a dashed preview of shorthand being typed. A
+  // draft or an unresolved block has no row to write to yet, so it gets the
+  // preview alone.
+  const meta = displayTask ? (
+    <>
+      <TaskBlockProperties
+        task={displayTask}
+        isCompleted={isCompleted}
+        hasActiveReminder={reminderSet}
+        hostNoteId={hostNoteId}
+        projectColor={project.color}
+        onUpdate={handleUpdate}
+        onDescriptionChange={handleDescriptionChange}
+        onTagsChange={handleTagsChange}
+        onOpenRelatedItem={handleOpenRelatedItem}
+        open={openProperty}
+        onOpenChange={handlePropertyOpenChange}
+      />
+      {shorthandPreview}
+    </>
+  ) : (
+    shorthandPreview
+  )
+
+  const actions = displayTask ? (
+    <div className="flex shrink-0 items-center gap-1">
+      <AddPropertyMenu
+        items={missingTaskProperties({
+          task: displayTask,
+          hasActiveReminder: reminderSet,
+          hostNoteId
+        })}
+        onPick={(id) => handlePropertyOpenChange(id, true)}
+        className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 group-focus/taskblock:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+      />
+      {navigateArrow}
+    </div>
+  ) : null
+
   return (
     <div contentEditable={false} className="w-full outline-none [&_*]:outline-none">
       <style>{BLOCKNOTE_OVERRIDES}</style>
-      <div className={cn(parentTaskId && 'ms-7')}>
+      {/* The block's own focus target: selected-but-not-editing, where the
+          property keys live. Mouse and Esc reach it; keyboard users get the
+          same keys from the title, which is in the tab order. */}
+      <div
+        ref={rowRef}
+        tabIndex={-1}
+        role="group"
+        aria-label={rowTask.title}
+        aria-keyshortcuts="S P Shift+P D Shift+D R H L E Shift+L"
+        onKeyDown={handleRowKeyDown}
+        onClick={handleRowClick}
+        className={cn(
+          'group/taskblock rounded-md transition-colors',
+          'focus:bg-surface-active/60 focus:shadow-[inset_0_0_0_1px_var(--border)]',
+          parentTaskId && 'ms-7'
+        )}
+      >
         <TaskRow
           task={rowTask}
           project={project}
@@ -721,7 +981,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           onToggleComplete={(...args) => void handleToggleComplete(...args)}
           onUpdateTask={(...args) => void handleUpdateTask(...args)}
           onProjectChange={(...args) => void handleProjectChange(...args)}
-          actions={hasResolvedTask ? navigateArrow : null}
+          actions={actions}
+          meta={meta}
+          pickerControl={{ open: openProperty, onOpenChange: handlePropertyOpenChange }}
           renderTitle={isEditingTitle ? titleInput : clickableTitle}
           className="px-0"
         />

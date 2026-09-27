@@ -128,6 +128,18 @@
       "addTags": "Add tags…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Add property",
+    "dates": "Dates",
+    "datesAria": "Dates: {value}",
+    "start": "Start",
+    "due": "Due",
+    "dueDate": "Due date",
+    "remindMe": "Remind me",
+    "linkItem": "Link note or canvas",
+    "relatedAria": "Related items: {count}",
+    "shorthandPreview": "Set by shorthand"
+  },
   "drawer": {
     "close": "Close task details",
     "resize": "Resize panel",

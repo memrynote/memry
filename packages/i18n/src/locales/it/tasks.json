@@ -91,6 +91,18 @@
       "addTags": "Aggiungi tag…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Aggiungi proprietà",
+    "dates": "Date",
+    "datesAria": "Date: {value}",
+    "start": "Inizio",
+    "due": "Scadenza",
+    "dueDate": "Data di scadenza",
+    "remindMe": "Ricordamelo",
+    "linkItem": "Collega nota o canvas",
+    "relatedAria": "Elementi correlati: {count}",
+    "shorthandPreview": "Impostato con scorciatoia"
+  },
   "drawer": {
     "close": "Chiudi i dettagli dell'attività",
     "subIssues": "Sotto-problemi",

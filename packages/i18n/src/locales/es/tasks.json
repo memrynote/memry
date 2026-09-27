@@ -91,6 +91,18 @@
       "addTags": "Añadir etiquetas…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Añadir propiedad",
+    "dates": "Fechas",
+    "datesAria": "Fechas: {value}",
+    "start": "Inicio",
+    "due": "Vence",
+    "dueDate": "Fecha de vencimiento",
+    "remindMe": "Recordarme",
+    "linkItem": "Vincular nota o lienzo",
+    "relatedAria": "Elementos relacionados: {count}",
+    "shorthandPreview": "Definido con atajo"
+  },
   "drawer": {
     "close": "Cerrar detalles de la tarea",
     "subIssues": "Subtemas",

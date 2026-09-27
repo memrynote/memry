@@ -91,6 +91,18 @@
       "addTags": "เพิ่มแท็ก…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "เพิ่มคุณสมบัติ",
+    "dates": "วันที่",
+    "datesAria": "วันที่: {value}",
+    "start": "เริ่ม",
+    "due": "ครบกำหนด",
+    "dueDate": "วันครบกำหนด",
+    "remindMe": "เตือนฉัน",
+    "linkItem": "ลิงก์โน้ตหรือแคนวาส",
+    "relatedAria": "รายการที่เกี่ยวข้อง: {count}",
+    "shorthandPreview": "ตั้งค่าด้วยคำย่อ"
+  },
   "drawer": {
     "close": "ปิดรายละเอียดงาน",
     "subIssues": "ประเด็นย่อย",

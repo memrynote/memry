@@ -32,7 +32,14 @@ const createMockDb = () => ({
   prepare: vi.fn().mockReturnValue(createMockStatement())
 })
 
-import { listDevices, getDevice, updateDevice, revokeDevice, type Device } from './device'
+import {
+  listDevices,
+  listDeviceSigningKeys,
+  getDevice,
+  updateDevice,
+  revokeDevice,
+  type Device
+} from './device'
 
 // ============================================================================
 // Tests: listDevices
@@ -83,6 +90,32 @@ describe('listDevices', () => {
 
     // #then
     expect(result).toEqual([])
+  })
+})
+
+// ============================================================================
+// Tests: listDeviceSigningKeys
+// ============================================================================
+
+describe('listDeviceSigningKeys', () => {
+  it('includes revoked devices so their earlier signatures stay verifiable', async () => {
+    // #given
+    const rows = [
+      { id: 'dev-1', name: 'Mac', platform: 'macos', auth_public_key: 'pk-1', revoked_at: null },
+      { id: 'dev-2', name: 'Old', platform: 'macos', auth_public_key: 'pk-2', revoked_at: 900 }
+    ]
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({ results: rows })
+    const db = createMockDb()
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    const result = await listDeviceSigningKeys(db as unknown as D1Database, 'user-1')
+
+    // #then
+    expect(result).toEqual(rows)
+    expect(db.prepare).toHaveBeenCalledWith(expect.not.stringContaining('revoked_at IS NULL'))
+    expect(stmt.bind).toHaveBeenCalledWith('user-1')
   })
 })
 

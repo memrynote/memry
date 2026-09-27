@@ -91,6 +91,18 @@
       "addTags": "Προσθήκη ετικετών…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Προσθήκη ιδιότητας",
+    "dates": "Ημερομηνίες",
+    "datesAria": "Ημερομηνίες: {value}",
+    "start": "Έναρξη",
+    "due": "Λήξη",
+    "dueDate": "Ημερομηνία λήξης",
+    "remindMe": "Υπενθύμισέ μου",
+    "linkItem": "Σύνδεση σημείωσης ή καμβά",
+    "relatedAria": "Σχετικά στοιχεία: {count}",
+    "shorthandPreview": "Ορίστηκε με συντόμευση"
+  },
   "drawer": {
     "close": "Κλείστε τα στοιχεία της εργασίας",
     "subIssues": "Υποθέματα",

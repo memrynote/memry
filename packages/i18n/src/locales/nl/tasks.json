@@ -91,6 +91,18 @@
       "addTags": "Tags toevoegen…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Eigenschap toevoegen",
+    "dates": "Datums",
+    "datesAria": "Datums: {value}",
+    "start": "Start",
+    "due": "Deadline",
+    "dueDate": "Deadline",
+    "remindMe": "Herinner me",
+    "linkItem": "Notitie of canvas koppelen",
+    "relatedAria": "Gerelateerde items: {count}",
+    "shorthandPreview": "Ingesteld met sneltekst"
+  },
   "drawer": {
     "close": "Sluit taakdetails",
     "subIssues": "Deelkwesties",

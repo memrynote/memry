@@ -91,6 +91,18 @@
       "addTags": "Dodaj tagi…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Dodaj właściwość",
+    "dates": "Daty",
+    "datesAria": "Daty: {value}",
+    "start": "Początek",
+    "due": "Termin",
+    "dueDate": "Termin wykonania",
+    "remindMe": "Przypomnij mi",
+    "linkItem": "Połącz notatkę lub kanwę",
+    "relatedAria": "Powiązane elementy: {count}",
+    "shorthandPreview": "Ustawione skrótem"
+  },
   "drawer": {
     "close": "Zamknij szczegóły zadania",
     "subIssues": "Podzagadnienia",

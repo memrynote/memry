@@ -91,6 +91,18 @@
       "addTags": "Lisää tunnisteita…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Lisää ominaisuus",
+    "dates": "Päivämäärät",
+    "datesAria": "Päivämäärät: {value}",
+    "start": "Alku",
+    "due": "Määräaika",
+    "dueDate": "Määräpäivä",
+    "remindMe": "Muistuta minua",
+    "linkItem": "Linkitä muistiinpano tai kangas",
+    "relatedAria": "Liittyvät kohteet: {count}",
+    "shorthandPreview": "Asetettu pikakirjoituksella"
+  },
   "drawer": {
     "close": "Sulje tehtävän tiedot",
     "subIssues": "Alakysymykset",

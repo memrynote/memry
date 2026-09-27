@@ -91,6 +91,18 @@
       "addTags": "Legg til tagger…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Legg til egenskap",
+    "dates": "Datoer",
+    "datesAria": "Datoer: {value}",
+    "start": "Start",
+    "due": "Frist",
+    "dueDate": "Forfallsdato",
+    "remindMe": "Påminn meg",
+    "linkItem": "Koble notat eller lerret",
+    "relatedAria": "Relaterte elementer: {count}",
+    "shorthandPreview": "Satt med snarvei"
+  },
   "drawer": {
     "close": "Lukk oppgavedetaljer",
     "subIssues": "Underutgaver",

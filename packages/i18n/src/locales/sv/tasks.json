@@ -91,6 +91,18 @@
       "addTags": "Lägg till taggar…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Lägg till egenskap",
+    "dates": "Datum",
+    "datesAria": "Datum: {value}",
+    "start": "Start",
+    "due": "Förfaller",
+    "dueDate": "Förfallodatum",
+    "remindMe": "Påminn mig",
+    "linkItem": "Länka anteckning eller canvas",
+    "relatedAria": "Relaterade objekt: {count}",
+    "shorthandPreview": "Satt med kortkommando"
+  },
   "drawer": {
     "close": "Detaljer om slutuppgifter",
     "subIssues": "Delnummer",

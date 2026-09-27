@@ -26,6 +26,31 @@ export const listDevices = async (db: D1Database, userId: string): Promise<Devic
   return result.results
 }
 
+export type DeviceSigningKeyRow = Pick<
+  Device,
+  'id' | 'name' | 'platform' | 'auth_public_key' | 'revoked_at'
+>
+
+/**
+ * Every device of the user, revoked ones included, for signature verification.
+ * Revoking stops a device from writing (push rejects a revoked signer and auth
+ * rejects its tokens), so everything it signed was accepted before revocation.
+ * Omitting its key made that history unverifiable on every other device: a new
+ * install pulled the vault and rejected each item with "No public key for signer".
+ */
+export const listDeviceSigningKeys = async (
+  db: D1Database,
+  userId: string
+): Promise<DeviceSigningKeyRow[]> => {
+  const result = await db
+    .prepare(
+      'SELECT id, name, platform, auth_public_key, revoked_at FROM devices WHERE user_id = ? ORDER BY created_at ASC'
+    )
+    .bind(userId)
+    .all<DeviceSigningKeyRow>()
+  return result.results
+}
+
 export const getDevice = async (
   db: D1Database,
   deviceId: string,

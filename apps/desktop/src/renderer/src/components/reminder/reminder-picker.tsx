@@ -59,6 +59,9 @@ export interface ReminderPickerProps {
    * apps/docs/src/architecture/observability.md.
    */
   telemetrySurface?: TelemetrySurface
+  /** Controlled open state, for a host that opens the picker from the keyboard. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 type PickerMode = 'presets' | 'custom' | 'edit'
@@ -84,13 +87,20 @@ export function ReminderPicker({
   reminders,
   onEdit,
   onDelete,
-  telemetrySurface
+  telemetrySurface,
+  open: controlledOpen,
+  onOpenChange
 }: ReminderPickerProps): React.ReactElement {
   const { t: tPhaseF } = useT('inbox')
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = (next: boolean): void => {
+    if (controlledOpen === undefined) setInternalOpen(next)
+    onOpenChange?.(next)
+  }
   const [mode, setMode] = useState<PickerMode>('presets')
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState('09:00')

@@ -91,6 +91,18 @@
       "addTags": "Dodaj oznake…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Dodaj svojstvo",
+    "dates": "Datumi",
+    "datesAria": "Datumi: {value}",
+    "start": "Početak",
+    "due": "Rok",
+    "dueDate": "Datum roka",
+    "remindMe": "Podsjeti me",
+    "linkItem": "Poveži bilješku ili platno",
+    "relatedAria": "Povezane stavke: {count}",
+    "shorthandPreview": "Postavljeno kraticom"
+  },
   "drawer": {
     "close": "Zatvori detalje zadatka",
     "subIssues": "Podbrojevi",

@@ -47,13 +47,20 @@ vi.mock('../services/auth', () => ({
 }))
 
 vi.mock('../services/device', () => ({
-  listDevices: vi.fn().mockResolvedValue([
+  listDeviceSigningKeys: vi.fn().mockResolvedValue([
     {
       id: 'device-1',
       name: 'Mac',
       platform: 'macos',
       auth_public_key: 'public-key-1',
       revoked_at: null
+    },
+    {
+      id: 'device-old',
+      name: 'Old Mac',
+      platform: 'macos',
+      auth_public_key: 'public-key-old',
+      revoked_at: 1790508405
     }
   ])
 }))
@@ -1520,7 +1527,7 @@ describe('auth routes', () => {
   })
 
   describe('GET /auth/devices', () => {
-    it('should list active devices for the authenticated user', async () => {
+    it('lists revoked devices too so their earlier signatures stay verifiable', async () => {
       const res = await app.request('/auth/devices', { method: 'GET' }, env)
 
       expect(res.status).toBe(200)
@@ -1532,6 +1539,13 @@ describe('auth routes', () => {
             platform: 'macos',
             signingPublicKey: 'public-key-1',
             revokedAt: null
+          },
+          {
+            id: 'device-old',
+            name: 'Old Mac',
+            platform: 'macos',
+            signingPublicKey: 'public-key-old',
+            revokedAt: 1790508405
           }
         ]
       })
