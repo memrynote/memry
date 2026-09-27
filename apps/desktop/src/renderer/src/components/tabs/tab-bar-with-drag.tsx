@@ -70,6 +70,17 @@ const isTabFullyVisible = (strip: HTMLElement, tabEl: Element): boolean => {
 }
 
 /**
+ * A new tab enters at width 0 and grows, so the scroll that follows its
+ * activation lands while it is still a sliver; at full width it sits past the
+ * end edge. Called once its enter animation finishes to settle it into view.
+ */
+const revealTabIfClipped = (strip: HTMLElement | null, tabId: string): void => {
+  const tabEl = strip?.querySelector(`[data-tab-id="${CSS.escape(tabId)}"]`)
+  if (!strip || !tabEl || isTabFullyVisible(strip, tabEl)) return
+  tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: scrollBehavior() })
+}
+
+/**
  * Tab bar with drag-to-reorder support and context menu
  * DndContext is provided by SplitViewContainer for cross-panel support
  */
@@ -162,17 +173,6 @@ export const TabBarWithDrag = ({
     // scrollIntoView is not implemented in jsdom
     tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: scrollBehavior() })
   }, [activeTabId, regularTabsLength, activeDragItem, canScrollToStart, canScrollToEnd])
-
-  // A new tab enters at width 0 and grows, so the scroll above lands while it is
-  // still a sliver; at full width it sits past the end edge. Settle it once its
-  // enter animation finishes.
-  const revealSettledTab = (tabId: string): void => {
-    if (tabId !== activeTabId || activeDragItem) return
-    const strip = scrollRef.current
-    const tabEl = strip?.querySelector(`[data-tab-id="${CSS.escape(tabId)}"]`)
-    if (!strip || !tabEl || isTabFullyVisible(strip, tabEl)) return
-    tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: scrollBehavior() })
-  }
 
   // If group doesn't exist, don't render (after all hooks)
   if (!group) return null
@@ -314,7 +314,11 @@ export const TabBarWithDrag = ({
                       opacity: 0,
                       transition: tabExitTransition
                     }}
-                    onAnimationComplete={() => revealSettledTab(tab.id)}
+                    onAnimationComplete={() => {
+                      if (tab.id === activeTabId && !activeDragItem) {
+                        revealTabIfClipped(scrollRef.current, tab.id)
+                      }
+                    }}
                   >
                     <SortableTab
                       tab={tab}
