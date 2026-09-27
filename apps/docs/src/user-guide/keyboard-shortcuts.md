@@ -1,8 +1,10 @@
 # Keyboard Shortcuts
 
-Default shortcuts. Entries in the Navigation, Tabs, and View categories are rebindable in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts); Editor formatting keys belong to the note editor and are listed there read-only.
+Default shortcuts. Navigation, tab, split-view (except the <kbd>⌘</kbd>+<kbd>K</kbd> chords), zoom, sidebar and help shortcuts are rebindable in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts); Editor formatting keys belong to the note editor and are listed there read-only.
 
 > macOS uses <kbd>⌘</kbd>; Windows / Linux use <kbd>Ctrl</kbd> for the same action. <kbd>Ctrl</kbd>+<kbd>Tab</kbd> always uses <kbd>Ctrl</kbd> on every platform.
+
+> Navigation, tab, split-view, vault and zoom shortcuts work while the cursor is in the note editor or a text field, too — they never type anything there. The exceptions are <kbd>⌘</kbd>+<kbd>B</kbd>, which is Bold inside a note, and the <kbd>⌘</kbd>+<kbd>K</kbd> chords, since <kbd>⌘</kbd>+<kbd>K</kbd> opens search. A shortcut you rebind to a key without <kbd>⌘</kbd> / <kbd>Ctrl</kbd> stays out of text fields so it cannot eat what you type.
 
 ## Navigation
 
@@ -15,7 +17,7 @@ Default shortcuts. Entries in the Navigation, Tabs, and View categories are rebi
 | Switch vault          | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>O</kbd>                 |
 | Next / previous vault | <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd>  |
 
-> **Switch vault** opens the vault switcher at the top of the sidebar panel from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. It opens on the vault you are in: <kbd>↓</kbd> and <kbd>↑</kbd> move through the list (wrapping at either end) and <kbd>Enter</kbd> switches to the highlighted vault, so a switch never needs the mouse. Like the other app shortcuts it stands down while you are typing in a field or in the note editor.
+> **Switch vault** opens the vault switcher at the top of the sidebar panel from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. It opens on the vault you are in: <kbd>↓</kbd> and <kbd>↑</kbd> move through the list (wrapping at either end) and <kbd>Enter</kbd> switches to the highlighted vault, so a switch never needs the mouse. It works from anywhere, including while you are typing in a field or in the note editor.
 
 > **Next / previous vault** moves the sidebar to the neighbouring vault with the same slide as a trackpad swipe (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on Windows and Linux). The arrows follow the page layout, so in right-to-left languages the next vault is to the left. See [Switching vaults](/guide/tour#switching-vaults).
 
@@ -33,6 +35,8 @@ Default shortcuts. Entries in the Navigation, Tabs, and View categories are rebi
 | Previous tab      | <kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>Tab</kbd> |
 | Pin / unpin tab   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>P</kbd>      |
 | Duplicate tab     | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>      |
+
+> **Duplicate tab** opens a second tab on the same note or page.
 
 > **Reopen closed tab** brings back the most recently closed tab at its original position and focus. Press it repeatedly to walk back through closed tabs, most recent first — it also recovers tabs closed in bulk by **Close all tabs**. The history is kept for the current session only.
 
@@ -63,6 +67,8 @@ A chord indicator briefly flashes when the prefix is active.
 | Bold             | <kbd>⌘</kbd>+<kbd>B</kbd>              |
 | Italic           | <kbd>⌘</kbd>+<kbd>I</kbd>              |
 | Underline        | <kbd>⌘</kbd>+<kbd>U</kbd>              |
+| Strikethrough    | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>S</kbd> |
+| Inline code      | <kbd>⌘</kbd>+<kbd>E</kbd>              |
 | Insert wiki link | Type `[[`                              |
 | Open block menu  | Type `/`                               |
 | Indent block     | <kbd>Tab</kbd>                         |
@@ -85,10 +91,13 @@ cell on <kbd>Esc</kbd>. See
 
 ## View
 
-| Action                         | Shortcut                                  |
-| ------------------------------ | ----------------------------------------- |
-| Toggle sidebar                 | <kbd>⌘</kbd>+<kbd>B</kbd>                 |
-| Show keyboard shortcuts dialog | <kbd>⌘</kbd>+<kbd>/</kbd> or <kbd>?</kbd> |
+| Action                         | Shortcut                                               |
+| ------------------------------ | ------------------------------------------------------ |
+| Toggle sidebar                 | <kbd>⌘</kbd>+<kbd>B</kbd>                              |
+| Show keyboard shortcuts dialog | <kbd>⌘</kbd>+<kbd>/</kbd> or <kbd>?</kbd>              |
+| Zoom in                        | <kbd>⌘</kbd>+<kbd>=</kbd> or <kbd>⌘</kbd>+<kbd>+</kbd> |
+| Zoom out                       | <kbd>⌘</kbd>+<kbd>-</kbd>                              |
+| Actual size                    | <kbd>⌘</kbd>+<kbd>0</kbd>                              |
 
 > <kbd>⌘</kbd>+<kbd>B</kbd> is shared on purpose: with the caret in a note it bolds
 > the selection and nothing else, and everywhere else it toggles the sidebar. Rebind
@@ -99,7 +108,8 @@ switch vaults and when you next start the app, until you open it again.
 
 The same shortcut reference opens from **Help → Keyboard Shortcuts** in the menu bar.
 It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,
-and Settings sections so you can scan by workflow.
+and Settings sections so you can scan by workflow, and shows your own bindings once
+you have rebound any.
 
 ## Help
 
@@ -207,8 +217,12 @@ opens the task in Tasks. See
 
 ## Customizing
 
-Open [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts), find a row, and click to capture a new binding. A rebind applies immediately — no restart. Conflicts are flagged inline. **Reset All** restores defaults; it's only visible if you've made changes.
+Open [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts), find a row, and click to capture a new binding. A rebind applies immediately — no restart — and the old chord stops working, including the one shown next to the matching menu-bar item. Conflicts are flagged inline. While a row is waiting for keys, the app's own shortcuts pause, so pressing <kbd>⌘</kbd>+<kbd>K</kbd> to record it does not also open search. **Reset All** restores defaults; it's only visible if you've made changes.
 
-Editor formatting rows (Bold, Italic, Underline) are shown for reference and cannot be reassigned: the note editor owns those keys.
+Rebinds are saved per vault: switching vaults switches to that vault's bindings.
+
+The <kbd>⌘</kbd>+<kbd>+</kbd> alias for zoom in only applies while Zoom In keeps its default binding. <kbd>⌘</kbd>+<kbd>P</kbd> always opens search, whatever Search is bound to.
+
+Editor formatting rows (Bold, Italic, Underline, Strikethrough, Inline code) are shown for reference and cannot be reassigned: the note editor owns those keys.
 
 You can also set a **Global Capture** hotkey there to open quick capture from any app (macOS requires Accessibility permission).

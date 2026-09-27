@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "انتقل إلى الأمام",
           "description": "إعادة التنقل الخلفي"
+        },
+        "newTab": {
+          "label": "علامة تبويب جديدة",
+          "description": "فتح قائمة علامة التبويب الجديدة"
+        },
+        "closeAll": {
+          "label": "إغلاق كل علامات التبويب في الجزء",
+          "description": "إغلاق كل علامات التبويب في الجزء"
+        },
+        "pin": {
+          "label": "تثبيت علامة التبويب أو إلغاء تثبيتها",
+          "description": "تثبيت علامة التبويب أو إلغاء تثبيتها"
+        },
+        "duplicate": {
+          "label": "تكرار علامة التبويب",
+          "description": "تكرار علامة التبويب"
+        },
+        "splitRight": {
+          "label": "تقسيم إلى اليمين",
+          "description": "تقسيم إلى اليمين"
+        },
+        "splitDown": {
+          "label": "تقسيم إلى الأسفل",
+          "description": "تقسيم إلى الأسفل"
+        },
+        "closeSplit": {
+          "label": "إغلاق الجزء المقسوم",
+          "description": "إغلاق الجزء المقسوم"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "تسطير",
           "description": "تبديل تنسيق التسطير"
+        },
+        "strikethrough": {
+          "label": "يتوسطه خط",
+          "description": "يتوسطه خط"
+        },
+        "code": {
+          "label": "شفرة",
+          "description": "شفرة"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "مساعدة في اختصارات لوحة المفاتيح",
           "description": "إظهار مرجع اختصارات لوحة المفاتيح"
+        },
+        "zoomIn": {
+          "label": "تكبير",
+          "description": "تكبير كل العناصر"
+        },
+        "zoomOut": {
+          "label": "تصغير",
+          "description": "تصغير كل العناصر"
+        },
+        "actualSize": {
+          "label": "الحجم الفعلي",
+          "description": "إعادة التكبير إلى 100%"
         }
       }
     }

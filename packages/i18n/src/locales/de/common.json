@@ -766,9 +766,7 @@
         "bold": "Markierten Text fett formatieren",
         "find": "Im Tagebuch suchen",
         "italic": "Markierten Text kursiv formatieren",
-        "link": "Link hinzufügen oder bearbeiten",
         "returnFromOverview": "Aus der Monats- oder Jahresansicht zurückkehren",
-        "toggleFullWidth": "Tagebuch in voller Breite umschalten",
         "underline": "Markierten Text unterstreichen"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Eine Notiz erstellen",
         "find": "In der Notiz suchen",
         "italic": "Kursiv",
-        "link": "Link hinzufügen oder bearbeiten",
-        "saveNote": "Aktuelle Notiz speichern",
         "underline": "Unterstrichen"
       },
       "settings": {

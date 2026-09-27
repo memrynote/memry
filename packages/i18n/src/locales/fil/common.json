@@ -766,9 +766,7 @@
         "bold": "Gawing makapal ang napiling teksto",
         "find": "Maghanap sa journal",
         "italic": "Gawing italiko ang napiling teksto",
-        "link": "Magdagdag o mag-edit ng link",
         "returnFromOverview": "Bumalik mula sa buwan o taon na view",
-        "toggleFullWidth": "I-toggle ang buong-lapad na journal",
         "underline": "Salungguhitan ang napiling teksto"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Lumikha ng tala",
         "find": "Maghanap sa tala",
         "italic": "Italiko",
-        "link": "Magdagdag o mag-edit ng link",
-        "saveNote": "I-save ang kasalukuyang tala",
         "underline": "Salungguhit"
       },
       "settings": {

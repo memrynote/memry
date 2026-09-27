@@ -766,9 +766,7 @@
         "bold": "Tebalkan teks terpilih",
         "find": "Cari di jurnal",
         "italic": "Miringkan teks terpilih",
-        "link": "Tambah atau sunting tautan",
         "returnFromOverview": "Kembali dari tampilan bulan atau tahun",
-        "toggleFullWidth": "Alihkan jurnal lebar penuh",
         "underline": "Garis bawahi teks terpilih"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Buat catatan",
         "find": "Cari di catatan",
         "italic": "Miring",
-        "link": "Tambah atau sunting tautan",
-        "saveNote": "Simpan catatan saat ini",
         "underline": "Garis bawah"
       },
       "settings": {

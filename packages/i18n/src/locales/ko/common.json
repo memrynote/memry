@@ -766,9 +766,7 @@
         "bold": "선택한 텍스트 굵게",
         "find": "저널에서 찾기",
         "italic": "선택한 텍스트 기울임",
-        "link": "링크 추가 또는 편집",
         "returnFromOverview": "월 또는 연 보기에서 돌아가기",
-        "toggleFullWidth": "저널 전체 너비 전환",
         "underline": "선택한 텍스트 밑줄"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "메모 만들기",
         "find": "메모에서 찾기",
         "italic": "기울임",
-        "link": "링크 추가 또는 편집",
-        "saveNote": "현재 메모 저장",
         "underline": "밑줄"
       },
       "settings": {

@@ -70,6 +70,17 @@ const isTabFullyVisible = (strip: HTMLElement, tabEl: Element): boolean => {
 }
 
 /**
+ * A new tab enters at width 0 and grows, so the scroll that follows its
+ * activation lands while it is still a sliver; at full width it sits past the
+ * end edge. Called once its enter animation finishes to settle it into view.
+ */
+const revealTabIfClipped = (strip: HTMLElement | null, tabId: string): void => {
+  const tabEl = strip?.querySelector(`[data-tab-id="${CSS.escape(tabId)}"]`)
+  if (!strip || !tabEl || isTabFullyVisible(strip, tabEl)) return
+  tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: scrollBehavior() })
+}
+
+/**
  * Tab bar with drag-to-reorder support and context menu
  * DndContext is provided by SplitViewContainer for cross-panel support
  */
@@ -302,6 +313,11 @@ export const TabBarWithDrag = ({
                       minWidth: '0px',
                       opacity: 0,
                       transition: tabExitTransition
+                    }}
+                    onAnimationComplete={() => {
+                      if (tab.id === activeTabId && !activeDragItem) {
+                        revealTabIfClipped(scrollRef.current, tab.id)
+                      }
                     }}
                   >
                     <SortableTab

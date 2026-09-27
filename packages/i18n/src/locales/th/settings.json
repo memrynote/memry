@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "ไปข้างหน้า",
           "description": "ทำการย้อนกลับใหม่"
+        },
+        "newTab": {
+          "label": "แท็บใหม่",
+          "description": "เปิดเมนูแท็บใหม่"
+        },
+        "closeAll": {
+          "label": "ปิดแท็บทั้งหมดในบานหน้าต่าง",
+          "description": "ปิดแท็บทั้งหมดในบานหน้าต่าง"
+        },
+        "pin": {
+          "label": "ปักหมุดหรือเลิกปักหมุดแท็บ",
+          "description": "ปักหมุดหรือเลิกปักหมุดแท็บ"
+        },
+        "duplicate": {
+          "label": "ทำสำเนาแท็บ",
+          "description": "ทำสำเนาแท็บ"
+        },
+        "splitRight": {
+          "label": "แยกด้านขวา",
+          "description": "แยกด้านขวา"
+        },
+        "splitDown": {
+          "label": "แยกลง",
+          "description": "แยกลง"
+        },
+        "closeSplit": {
+          "label": "ปิดบานหน้าต่างที่แบ่งไว้",
+          "description": "ปิดบานหน้าต่างที่แบ่งไว้"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "ขีดเส้นใต้",
           "description": "สลับการจัดรูปแบบตัวขีดเส้นใต้"
+        },
+        "strikethrough": {
+          "label": "ขีดฆ่า",
+          "description": "ขีดฆ่า"
+        },
+        "code": {
+          "label": "โค้ด",
+          "description": "โค้ด"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "ช่วยเหลือคีย์ลัด",
           "description": "แสดงการอ้างอิงคีย์ลัด"
+        },
+        "zoomIn": {
+          "label": "ซูมเข้า",
+          "description": "ขยายทุกอย่าง"
+        },
+        "zoomOut": {
+          "label": "ซูมออก",
+          "description": "ย่อทุกอย่าง"
+        },
+        "actualSize": {
+          "label": "ขนาดจริง",
+          "description": "รีเซ็ตการซูมเป็น 100%"
         }
       }
     }

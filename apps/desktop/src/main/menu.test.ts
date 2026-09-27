@@ -15,7 +15,7 @@ vi.mock('electron', () => ({
   shell: { openExternal }
 }))
 
-import { buildAppMenu, buildEditableTextContextMenu } from './menu'
+import { bindingToAccelerator, buildAppMenu, buildEditableTextContextMenu } from './menu'
 
 interface TemplateItem {
   label?: string
@@ -114,6 +114,33 @@ describe('buildAppMenu', () => {
         })
       ])
     )
+  })
+
+  it('mirrors shortcut rebinds so a rebound chord stops firing the menu item', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildAppMenu(i18n, {
+      'tabs.closeTab': { key: 'e', modifiers: { meta: true, alt: true } },
+      'tabs.navBack': { key: 'ArrowLeft', modifiers: { meta: true, alt: true } },
+      'view.zoomIn': { key: '=', modifiers: { meta: true, shift: true } },
+      'view.actualSize': { key: '9', modifiers: { meta: true } }
+    })
+
+    expect(findMenuItem('Close Tab')).toMatchObject({ accelerator: 'CmdOrCtrl+Alt+E' })
+    expect(findMenuItem('Back')).toMatchObject({ accelerator: 'CmdOrCtrl+Alt+Left' })
+    expect(findMenuItem('Zoom In')).toMatchObject({ accelerator: 'CmdOrCtrl+Shift+=' })
+    expect(findMenuItem('Actual Size')).toMatchObject({ accelerator: 'CmdOrCtrl+9' })
+    // Untouched items keep their defaults.
+    expect(findMenuItem('Forward')).toMatchObject({ accelerator: 'CmdOrCtrl+]' })
+    expect(findMenuItem('Zoom Out')).toMatchObject({ accelerator: 'CmdOrCtrl+-' })
+  })
+
+  it('drops the accelerator of a rebind Electron cannot express instead of keeping the default', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildAppMenu(i18n, { 'tabs.closeTab': { key: '∑', modifiers: { meta: true } } })
+
+    expect(findMenuItem('Close Tab')?.accelerator).toBeUndefined()
   })
 
   it('opens the online docs from Help → Documentation via F1', async () => {
@@ -484,5 +511,23 @@ describe('buildAppMenu', () => {
     const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
     expect(template[0]).toMatchObject({ label: 'Undo', role: 'undo' })
     expect(template.map((item) => item.label)).not.toContain('Add to Dictionary')
+  })
+})
+
+describe('bindingToAccelerator', () => {
+  it('maps the command key, named keys and Plus', () => {
+    expect(bindingToAccelerator({ key: 'w', modifiers: { meta: true } })).toBe('CmdOrCtrl+W')
+    expect(bindingToAccelerator({ key: '+', modifiers: { meta: true, shift: true } })).toBe(
+      'CmdOrCtrl+Shift+Plus'
+    )
+    expect(bindingToAccelerator({ key: 'ArrowRight', modifiers: { meta: true, alt: true } })).toBe(
+      'CmdOrCtrl+Alt+Right'
+    )
+    expect(bindingToAccelerator({ key: 'Tab', modifiers: { ctrl: true } })).toBe('Control+Tab')
+  })
+
+  it('rejects keys an accelerator cannot name', () => {
+    expect(bindingToAccelerator({ key: '∑', modifiers: { meta: true } })).toBeNull()
+    expect(bindingToAccelerator({ key: 'Dead', modifiers: { meta: true } })).toBeNull()
   })
 })

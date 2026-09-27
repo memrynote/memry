@@ -12,7 +12,7 @@ import type { ShortcutBindingDTO } from '../../../../preload/index.d'
 import {
   SHORTCUT_REGISTRY,
   CATEGORY_ORDER,
-  formatBinding,
+  bindingParts,
   resolveBinding,
   findConflicts,
   bindingsEqual,
@@ -25,6 +25,7 @@ import {
   SEGMENTED,
   SEGMENT_ITEM
 } from '@/components/settings/settings-primitives'
+import { bindingFromKeyboardEvent, setShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -64,6 +65,15 @@ const CATEGORY_I18N_KEYS: Record<string, string> = {
   View: 'view'
 }
 
+/** While a row records, the app's own shortcuts stand down (see `setShortcutRecording`). */
+function useShortcutRecordingFlag(isCapturing: boolean): void {
+  useEffect(() => {
+    if (!isCapturing) return
+    setShortcutRecording(true)
+    return () => setShortcutRecording(false)
+  }, [isCapturing])
+}
+
 function shortcutLabel(t: SettingsT, entry: ShortcutEntry): string {
   return t(`shortcuts.entries.${entry.i18nKey}.label`)
 }
@@ -98,6 +108,7 @@ function ShortcutRow({
   const [isCapturing, setIsCapturing] = useState(false)
   const [conflict, setConflict] = useState<string | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
+  useShortcutRecordingFlag(isCapturing)
 
   const startCapture = useCallback(() => {
     if (entry.rebindable === false) return
@@ -124,14 +135,7 @@ function ShortcutRow({
 
       if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return
 
-      const newBinding: ShortcutBinding = {
-        key: e.key,
-        modifiers: {
-          meta: e.metaKey || e.ctrlKey,
-          shift: e.shiftKey || undefined,
-          alt: e.altKey || undefined
-        }
-      }
+      const newBinding = bindingFromKeyboardEvent(e)
 
       const conflicts = findConflicts(entry.id, newBinding, overrides)
       if (conflicts.length > 0) {
@@ -156,13 +160,11 @@ function ShortcutRow({
   // Editor formatting keys belong to the note editor; a rebind here would be
   // recorded and then ignored at runtime, so the row is read-only.
   const canRebind = entry.rebindable !== false
-  const keyCaps = formatBinding(effectiveBinding)
-    .split(' ')
-    .map((part) => (
-      <Kbd key={part} className={KEYCAP}>
-        {part}
-      </Kbd>
-    ))
+  const keyCaps = bindingParts(effectiveBinding).map((part) => (
+    <Kbd key={part} className={KEYCAP}>
+      {part}
+    </Kbd>
+  ))
 
   useEffect(() => {
     if (!isCapturing) return
@@ -353,6 +355,7 @@ function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): 
   const [isCapturing, setIsCapturing] = useState(false)
   const [status, setStatus] = useState<GlobalCaptureRowStatus>({ kind: 'unknown' })
   const captureRef = useRef<HTMLDivElement>(null)
+  useShortcutRecordingFlag(isCapturing)
 
   useEffect(() => {
     let cancelled = false

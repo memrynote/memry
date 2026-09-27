@@ -766,9 +766,7 @@
         "bold": "將選取文字設為粗體",
         "find": "在日誌中尋找",
         "italic": "將選取文字設為斜體",
-        "link": "新增或編輯連結",
         "returnFromOverview": "從月檢視或年檢視返回",
-        "toggleFullWidth": "切換全寬日誌",
         "underline": "為選取文字加底線"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "建立筆記",
         "find": "在筆記中尋找",
         "italic": "斜體",
-        "link": "新增或編輯連結",
-        "saveNote": "儲存目前筆記",
         "underline": "底線"
       },
       "settings": {

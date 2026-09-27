@@ -766,9 +766,7 @@
         "bold": "Geselecteerde tekst vet maken",
         "find": "Zoeken in journaal",
         "italic": "Geselecteerde tekst cursief maken",
-        "link": "Link toevoegen of bewerken",
         "returnFromOverview": "Terug uit maand- of jaarweergave",
-        "toggleFullWidth": "Journaal op volle breedte in-/uitschakelen",
         "underline": "Geselecteerde tekst onderstrepen"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Een notitie maken",
         "find": "Zoeken in notitie",
         "italic": "Cursief",
-        "link": "Link toevoegen of bewerken",
-        "saveNote": "Huidige notitie opslaan",
         "underline": "Onderstrepen"
       },
       "settings": {

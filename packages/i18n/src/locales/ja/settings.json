@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "前に進む",
           "description": "戻るナビゲーションをやり直す"
+        },
+        "newTab": {
+          "label": "新しいタブ",
+          "description": "新規タブメニューを開く"
+        },
+        "closeAll": {
+          "label": "ペイン内のすべてのタブを閉じる",
+          "description": "ペイン内のすべてのタブを閉じる"
+        },
+        "pin": {
+          "label": "タブをピン留め / 解除",
+          "description": "タブをピン留め / 解除"
+        },
+        "duplicate": {
+          "label": "タブを複製",
+          "description": "タブを複製"
+        },
+        "splitRight": {
+          "label": "右に分割",
+          "description": "右に分割"
+        },
+        "splitDown": {
+          "label": "下に分割",
+          "description": "下に分割"
+        },
+        "closeSplit": {
+          "label": "分割ペインを閉じる",
+          "description": "分割ペインを閉じる"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "下線",
           "description": "下線の書式設定を切り替える"
+        },
+        "strikethrough": {
+          "label": "取り消し線",
+          "description": "取り消し線"
+        },
+        "code": {
+          "label": "コード",
+          "description": "コード"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "キーボード ショートカットのヘルプ",
           "description": "キーボード ショートカットのリファレンスを表示"
+        },
+        "zoomIn": {
+          "label": "拡大",
+          "description": "すべてを拡大"
+        },
+        "zoomOut": {
+          "label": "縮小",
+          "description": "すべてを縮小"
+        },
+        "actualSize": {
+          "label": "実際のサイズ",
+          "description": "ズームを100%に戻す"
         }
       }
     }

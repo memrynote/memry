@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { readdirSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 import {
   SHORTCUT_REGISTRY,
@@ -60,6 +63,28 @@ describe('shortcut-registry', () => {
       expect(ids).not.toContain('nav.goToNotes')
       expect(ids).not.toContain('nav.goToTasks')
       expect(ids).not.toContain('editor.save')
+    })
+
+    it('every rebindable shortcut has a runtime owner reading its binding', () => {
+      const rendererRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+      const sources: string[] = []
+      const walk = (dir: string): void => {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          const path = join(dir, entry.name)
+          if (entry.isDirectory()) walk(path)
+          else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+            sources.push(readFileSync(path, 'utf8'))
+          }
+        }
+      }
+      walk(rendererRoot)
+      const corpus = sources.join('\n')
+
+      const unowned = SHORTCUT_REGISTRY.filter((entry) => entry.rebindable !== false)
+        .map((entry) => entry.id)
+        .filter((id) => !corpus.includes(`useShortcutBinding('${id}')`))
+
+      expect(unowned).toEqual([])
     })
 
     it('uses the search chord the app actually listens for', () => {

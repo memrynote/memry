@@ -63,13 +63,16 @@ test.describe('Switch vault shortcut', () => {
     await expect(picker(page)).toHaveCount(0)
   })
 
-  test('stays inert while the note editor owns the chord', async ({ page }) => {
-    const editor = page.locator('[contenteditable="true"]').first()
-    if ((await editor.count()) === 0) test.skip(true, 'No editor surface on the current view')
-
+  test('opens from inside the note editor, which has no ⌘⇧O of its own', async ({ page }) => {
+    await page.keyboard.press(`${MOD}+n`)
+    const editor = page.locator('[aria-label="Rich text editor"] [contenteditable="true"]').first()
     await editor.click()
+    await expect(editor).toBeFocused()
+
     await page.keyboard.press(SWITCH_VAULT)
 
+    await expect(picker(page).first()).toBeVisible()
+    await page.keyboard.press('Escape')
     await expect(picker(page)).toHaveCount(0)
   })
 })

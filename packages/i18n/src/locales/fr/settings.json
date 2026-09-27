@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Naviguer vers l'avant",
           "description": "Refaire une navigation arrière"
+        },
+        "newTab": {
+          "label": "Nouvel onglet",
+          "description": "Ouvrir le menu Nouvel onglet"
+        },
+        "closeAll": {
+          "label": "Fermer tous les onglets du volet",
+          "description": "Fermer tous les onglets du volet"
+        },
+        "pin": {
+          "label": "Épingler ou désépingler l'onglet",
+          "description": "Épingler ou désépingler l'onglet"
+        },
+        "duplicate": {
+          "label": "Dupliquer l'onglet",
+          "description": "Dupliquer l'onglet"
+        },
+        "splitRight": {
+          "label": "Diviser à droite",
+          "description": "Diviser à droite"
+        },
+        "splitDown": {
+          "label": "Diviser vers le bas",
+          "description": "Diviser vers le bas"
+        },
+        "closeSplit": {
+          "label": "Fermer le volet divisé",
+          "description": "Fermer le volet divisé"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Souligner",
           "description": "Activer/désactiver le formatage du soulignement"
+        },
+        "strikethrough": {
+          "label": "Barré",
+          "description": "Barré"
+        },
+        "code": {
+          "label": "Code",
+          "description": "Code"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Aide sur les raccourcis clavier",
           "description": "Afficher la référence des raccourcis clavier"
+        },
+        "zoomIn": {
+          "label": "Zoom avant",
+          "description": "Tout agrandir"
+        },
+        "zoomOut": {
+          "label": "Zoom arrière",
+          "description": "Tout réduire"
+        },
+        "actualSize": {
+          "label": "Taille réelle",
+          "description": "Rétablir le zoom à 100 %"
         }
       }
     }

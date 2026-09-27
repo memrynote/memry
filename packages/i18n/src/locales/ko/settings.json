@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "앞으로 탐색",
           "description": "뒤로 탐색 다시 실행"
+        },
+        "newTab": {
+          "label": "새 탭",
+          "description": "새 탭 메뉴 열기"
+        },
+        "closeAll": {
+          "label": "패널의 모든 탭 닫기",
+          "description": "패널의 모든 탭 닫기"
+        },
+        "pin": {
+          "label": "탭 고정 또는 고정 해제",
+          "description": "탭 고정 또는 고정 해제"
+        },
+        "duplicate": {
+          "label": "탭 복제",
+          "description": "탭 복제"
+        },
+        "splitRight": {
+          "label": "오른쪽으로 분할",
+          "description": "오른쪽으로 분할"
+        },
+        "splitDown": {
+          "label": "아래로 분할",
+          "description": "아래로 분할"
+        },
+        "closeSplit": {
+          "label": "분할 패널 닫기",
+          "description": "분할 패널 닫기"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "밑줄",
           "description": "밑줄 서식 전환"
+        },
+        "strikethrough": {
+          "label": "취소선",
+          "description": "취소선"
+        },
+        "code": {
+          "label": "코드",
+          "description": "코드"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "키보드 단축키 도움말",
           "description": "키보드 단축키 참조 표시"
+        },
+        "zoomIn": {
+          "label": "확대",
+          "description": "모든 요소 확대"
+        },
+        "zoomOut": {
+          "label": "축소",
+          "description": "모든 요소 축소"
+        },
+        "actualSize": {
+          "label": "실제 크기",
+          "description": "확대/축소를 100%로 재설정"
         }
       }
     }

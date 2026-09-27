@@ -82,7 +82,9 @@ export const TabContextMenu = ({
             type: 'OPEN_TAB',
             payload: {
               tab: { ...tab, isPinned: false, isPreview: false, isModified: false },
-              groupId
+              groupId,
+              // Without forceNew the entity dedup just re-activates this tab.
+              forceNew: true
             }
           })
           break

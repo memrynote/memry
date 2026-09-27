@@ -881,9 +881,7 @@
         "bold": "Seçili metni kalın yap",
         "find": "Günlükte bul",
         "italic": "Seçili metni italik yap",
-        "link": "Bağlantı ekle veya düzenle",
         "returnFromOverview": "Ay veya yıl görünümünden dön",
-        "toggleFullWidth": "Tam genişlikte günlüğü aç/kapat",
         "underline": "Seçili metnin altını çiz"
       },
       "notes": {
@@ -893,8 +891,6 @@
         "createNote": "Not oluştur",
         "find": "Notta bul",
         "italic": "İtalik",
-        "link": "Bağlantı ekle veya düzenle",
-        "saveNote": "Geçerli notu kaydet",
         "underline": "Altı çizili"
       },
       "settings": {

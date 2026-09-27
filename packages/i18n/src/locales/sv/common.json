@@ -766,9 +766,7 @@
         "bold": "Fetstila markerad text",
         "find": "Sök i journalen",
         "italic": "Kursivera markerad text",
-        "link": "Lägg till eller redigera länk",
         "returnFromOverview": "Återgå från månads- eller årsvy",
-        "toggleFullWidth": "Växla journal i full bredd",
         "underline": "Understryk markerad text"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Skapa en anteckning",
         "find": "Sök i anteckningen",
         "italic": "Kursiv",
-        "link": "Lägg till eller redigera länk",
-        "saveNote": "Spara aktuell anteckning",
         "underline": "Understruken"
       },
       "settings": {

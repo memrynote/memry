@@ -42,13 +42,30 @@ function start(): void {
   if (!api) return
 
   const getKeyboardSettings = api.settings?.getKeyboardSettings
-  if (typeof getKeyboardSettings === 'function') {
+  let latestLoad = 0
+  const load = (): void => {
+    if (typeof getKeyboardSettings !== 'function') return
+    const request = ++latestLoad
     void Promise.resolve(getKeyboardSettings.call(api.settings))
-      .then((settings) => setOverrides(settings.overrides ?? {}))
+      .then((settings) => {
+        // A slower read from the vault we just left must not win.
+        if (request === latestLoad) setOverrides(settings.overrides ?? {})
+      })
       .catch(() => {
         // Settings unavailable — registry defaults stay in effect.
       })
   }
+  load()
+
+  // Rebinds live in the vault's database, and a vault switch keeps this
+  // renderer (and this store) alive. Without a reload here the previous
+  // vault's chords would stay in effect until the next launch.
+  let vaultPath: string | null = null
+  api.onVaultStatusChanged?.((status) => {
+    if (!status.isOpen || status.path === vaultPath) return
+    vaultPath = status.path
+    load()
+  })
 
   api.onSettingsChanged?.((event) => {
     if (event.key !== 'keyboard') return

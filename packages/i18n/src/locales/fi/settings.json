@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigoi eteenpäin",
           "description": "Tee takaisin navigointi uudelleen"
+        },
+        "newTab": {
+          "label": "Uusi välilehti",
+          "description": "Avaa uuden välilehden valikko"
+        },
+        "closeAll": {
+          "label": "Sulje ruudun kaikki välilehdet",
+          "description": "Sulje ruudun kaikki välilehdet"
+        },
+        "pin": {
+          "label": "Kiinnitä tai irrota välilehti",
+          "description": "Kiinnitä tai irrota välilehti"
+        },
+        "duplicate": {
+          "label": "Monista välilehti",
+          "description": "Monista välilehti"
+        },
+        "splitRight": {
+          "label": "Jaa oikealle",
+          "description": "Jaa oikealle"
+        },
+        "splitDown": {
+          "label": "Jaa alaspäin",
+          "description": "Jaa alaspäin"
+        },
+        "closeSplit": {
+          "label": "Sulje jaettu ruutu",
+          "description": "Sulje jaettu ruutu"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Alleviivaus",
           "description": "Vaihda alleviivausmuotoilu"
+        },
+        "strikethrough": {
+          "label": "Yliviivaus",
+          "description": "Yliviivaus"
+        },
+        "code": {
+          "label": "Koodi",
+          "description": "Koodi"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Pikanäppäinten ohje",
           "description": "Näytä pikanäppäimet"
+        },
+        "zoomIn": {
+          "label": "Lähennä",
+          "description": "Suurenna kaikkea"
+        },
+        "zoomOut": {
+          "label": "Loitonna",
+          "description": "Pienennä kaikkea"
+        },
+        "actualSize": {
+          "label": "Todellinen koko",
+          "description": "Palauta zoomaus 100 %:iin"
         }
       }
     }

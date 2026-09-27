@@ -766,9 +766,7 @@
         "bold": "Mettre le texte sélectionné en gras",
         "find": "Rechercher dans le journal",
         "italic": "Mettre le texte sélectionné en italique",
-        "link": "Ajouter ou modifier un lien",
         "returnFromOverview": "Revenir de la vue mois ou année",
-        "toggleFullWidth": "Basculer le journal en pleine largeur",
         "underline": "Souligner le texte sélectionné"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "Créer une note",
         "find": "Rechercher dans la note",
         "italic": "Italique",
-        "link": "Ajouter ou modifier un lien",
-        "saveNote": "Enregistrer la note en cours",
         "underline": "Souligné"
       },
       "settings": {

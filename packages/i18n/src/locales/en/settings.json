@@ -1959,6 +1959,34 @@
         "navForward": {
           "label": "Navigate Forward",
           "description": "Redo a back navigation"
+        },
+        "newTab": {
+          "label": "New Tab",
+          "description": "Open the new tab menu"
+        },
+        "closeAll": {
+          "label": "Close All Tabs",
+          "description": "Close every tab in the current pane"
+        },
+        "pin": {
+          "label": "Pin Tab",
+          "description": "Pin or unpin the current tab"
+        },
+        "duplicate": {
+          "label": "Duplicate Tab",
+          "description": "Open a copy of the current tab"
+        },
+        "splitRight": {
+          "label": "Split Right",
+          "description": "Split the current pane side by side"
+        },
+        "splitDown": {
+          "label": "Split Down",
+          "description": "Split the current pane top and bottom"
+        },
+        "closeSplit": {
+          "label": "Close Split Pane",
+          "description": "Close the current split pane"
         }
       },
       "editor": {
@@ -1977,6 +2005,14 @@
         "underline": {
           "label": "Underline",
           "description": "Toggle underline formatting"
+        },
+        "strikethrough": {
+          "label": "Strikethrough",
+          "description": "Toggle strikethrough formatting"
+        },
+        "code": {
+          "label": "Inline Code",
+          "description": "Toggle inline code formatting"
         }
       },
       "view": {
@@ -1987,6 +2023,18 @@
         "shortcuts": {
           "label": "Keyboard Shortcuts Help",
           "description": "Show keyboard shortcuts reference"
+        },
+        "zoomIn": {
+          "label": "Zoom In",
+          "description": "Make everything larger"
+        },
+        "zoomOut": {
+          "label": "Zoom Out",
+          "description": "Make everything smaller"
+        },
+        "actualSize": {
+          "label": "Actual Size",
+          "description": "Reset zoom to 100%"
         }
       }
     },

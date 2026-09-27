@@ -25,11 +25,23 @@ export type ShortcutId =
   | 'tabs.reopenTab'
   | 'tabs.navBack'
   | 'tabs.navForward'
+  | 'tabs.newTab'
+  | 'tabs.closeAllTabs'
+  | 'tabs.pinTab'
+  | 'tabs.duplicateTab'
+  | 'tabs.splitRight'
+  | 'tabs.splitDown'
+  | 'tabs.closeSplit'
   | 'editor.bold'
   | 'editor.italic'
   | 'editor.underline'
+  | 'editor.strikethrough'
+  | 'editor.code'
   | 'view.toggleSidebar'
   | 'view.shortcuts'
+  | 'view.zoomIn'
+  | 'view.zoomOut'
+  | 'view.actualSize'
 
 export interface ShortcutEntry {
   id: ShortcutId
@@ -170,6 +182,62 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     category: 'Tabs',
     defaultBinding: { key: ']', modifiers: { meta: true } }
   },
+  {
+    id: 'tabs.newTab',
+    i18nKey: 'tabs.newTab',
+    label: 'New Tab',
+    description: 'Open the new tab menu',
+    category: 'Tabs',
+    defaultBinding: { key: 't', modifiers: { meta: true } }
+  },
+  {
+    id: 'tabs.closeAllTabs',
+    i18nKey: 'tabs.closeAll',
+    label: 'Close All Tabs',
+    description: 'Close every tab in the current pane',
+    category: 'Tabs',
+    defaultBinding: { key: 'w', modifiers: { meta: true, shift: true } }
+  },
+  {
+    id: 'tabs.pinTab',
+    i18nKey: 'tabs.pin',
+    label: 'Pin Tab',
+    description: 'Pin or unpin the current tab',
+    category: 'Tabs',
+    defaultBinding: { key: 'p', modifiers: { meta: true, shift: true } }
+  },
+  {
+    id: 'tabs.duplicateTab',
+    i18nKey: 'tabs.duplicate',
+    label: 'Duplicate Tab',
+    description: 'Open a copy of the current tab',
+    category: 'Tabs',
+    defaultBinding: { key: 'd', modifiers: { meta: true, shift: true } }
+  },
+  {
+    id: 'tabs.splitRight',
+    i18nKey: 'tabs.splitRight',
+    label: 'Split Right',
+    description: 'Split the current pane side by side',
+    category: 'Tabs',
+    defaultBinding: { key: '\\', modifiers: { meta: true } }
+  },
+  {
+    id: 'tabs.splitDown',
+    i18nKey: 'tabs.splitDown',
+    label: 'Split Down',
+    description: 'Split the current pane top and bottom',
+    category: 'Tabs',
+    defaultBinding: { key: '\\', modifiers: { meta: true, shift: true } }
+  },
+  {
+    id: 'tabs.closeSplit',
+    i18nKey: 'tabs.closeSplit',
+    label: 'Close Split Pane',
+    description: 'Close the current split pane',
+    category: 'Tabs',
+    defaultBinding: { key: 'w', modifiers: { meta: true, alt: true } }
+  },
 
   // Editor — owned by the note editor, listed for reference only
   {
@@ -199,6 +267,24 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     defaultBinding: { key: 'u', modifiers: { meta: true } },
     rebindable: false
   },
+  {
+    id: 'editor.strikethrough',
+    i18nKey: 'editor.strikethrough',
+    label: 'Strikethrough',
+    description: 'Toggle strikethrough formatting',
+    category: 'Editor',
+    defaultBinding: { key: 's', modifiers: { meta: true, shift: true } },
+    rebindable: false
+  },
+  {
+    id: 'editor.code',
+    i18nKey: 'editor.code',
+    label: 'Inline Code',
+    description: 'Toggle inline code formatting',
+    category: 'Editor',
+    defaultBinding: { key: 'e', modifiers: { meta: true } },
+    rebindable: false
+  },
 
   // View
   {
@@ -216,6 +302,30 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     description: 'Show keyboard shortcuts reference',
     category: 'View',
     defaultBinding: { key: '/', modifiers: { meta: true } }
+  },
+  {
+    id: 'view.zoomIn',
+    i18nKey: 'view.zoomIn',
+    label: 'Zoom In',
+    description: 'Make everything larger',
+    category: 'View',
+    defaultBinding: { key: '=', modifiers: { meta: true } }
+  },
+  {
+    id: 'view.zoomOut',
+    i18nKey: 'view.zoomOut',
+    label: 'Zoom Out',
+    description: 'Make everything smaller',
+    category: 'View',
+    defaultBinding: { key: '-', modifiers: { meta: true } }
+  },
+  {
+    id: 'view.actualSize',
+    i18nKey: 'view.actualSize',
+    label: 'Actual Size',
+    description: 'Reset zoom to 100%',
+    category: 'View',
+    defaultBinding: { key: '0', modifiers: { meta: true } }
   }
 ]
 
@@ -230,13 +340,28 @@ export const CATEGORY_ORDER = ['Navigation', 'Tabs', 'Editor', 'View']
  * Format a ShortcutBinding as a human-readable string (e.g., "⌘ Shift N")
  */
 export function formatBinding(binding: ShortcutBinding): string {
+  return bindingParts(binding).join(' ')
+}
+
+/**
+ * The keycaps of a binding, in the platform's modifier order (macOS: ⌃ ⌥ ⇧ ⌘).
+ */
+export function bindingParts(binding: ShortcutBinding): string[] {
+  const { meta, ctrl, alt, shift } = binding.modifiers
   const parts: string[] = []
-  if (binding.modifiers.meta) parts.push(isMac ? '⌘' : 'Ctrl')
-  if (binding.modifiers.ctrl) parts.push('Ctrl')
-  if (binding.modifiers.alt) parts.push(isMac ? '⌥' : 'Alt')
-  if (binding.modifiers.shift) parts.push('Shift')
+  if (isMac) {
+    if (ctrl) parts.push('⌃')
+    if (alt) parts.push('⌥')
+    if (shift) parts.push('⇧')
+    if (meta) parts.push('⌘')
+  } else {
+    // Off macOS `meta` already is Ctrl.
+    if (meta || ctrl) parts.push('Ctrl')
+    if (alt) parts.push('Alt')
+    if (shift) parts.push('Shift')
+  }
   parts.push(formatKey(binding.key))
-  return parts.join(' ')
+  return parts
 }
 
 /**
@@ -253,7 +378,8 @@ function formatKey(key: string): string {
     Backspace: '⌫',
     Delete: '⌦',
     Tab: '⇥',
-    Space: '␣'
+    Space: '␣',
+    ' ': '␣'
   }
   return map[key] ?? key.toUpperCase()
 }

@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Nawiguj do przodu",
           "description": "Wykonaj ponownie nawigację wstecz"
+        },
+        "newTab": {
+          "label": "Nowa karta",
+          "description": "Otwórz menu nowej karty"
+        },
+        "closeAll": {
+          "label": "Zamknij wszystkie karty w okienku",
+          "description": "Zamknij wszystkie karty w okienku"
+        },
+        "pin": {
+          "label": "Przypnij lub odepnij kartę",
+          "description": "Przypnij lub odepnij kartę"
+        },
+        "duplicate": {
+          "label": "Duplikuj kartę",
+          "description": "Duplikuj kartę"
+        },
+        "splitRight": {
+          "label": "Podziel w prawo",
+          "description": "Podziel w prawo"
+        },
+        "splitDown": {
+          "label": "Podziel w dół",
+          "description": "Podziel w dół"
+        },
+        "closeSplit": {
+          "label": "Zamknij podzielone okienko",
+          "description": "Zamknij podzielone okienko"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Podkreśl",
           "description": "Przełącz formatowanie podkreślenia"
+        },
+        "strikethrough": {
+          "label": "Przekreślenie",
+          "description": "Przekreślenie"
+        },
+        "code": {
+          "label": "Kod",
+          "description": "Kod"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Pomoc dotycząca skrótów klawiaturowych",
           "description": "Pokaż odniesienie do skrótów klawiaturowych"
+        },
+        "zoomIn": {
+          "label": "Powiększ",
+          "description": "Powiększ wszystko"
+        },
+        "zoomOut": {
+          "label": "Pomniejsz",
+          "description": "Pomniejsz wszystko"
+        },
+        "actualSize": {
+          "label": "Rzeczywisty rozmiar",
+          "description": "Przywróć powiększenie 100%"
         }
       }
     }

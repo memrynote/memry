@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigieren Sie vorwärts",
           "description": "Führen Sie eine Rückwärtsnavigation erneut durch"
+        },
+        "newTab": {
+          "label": "Neuer Tab",
+          "description": "Menü für neue Tabs öffnen"
+        },
+        "closeAll": {
+          "label": "Alle Tabs im Bereich schließen",
+          "description": "Alle Tabs im Bereich schließen"
+        },
+        "pin": {
+          "label": "Tab anheften oder lösen",
+          "description": "Tab anheften oder lösen"
+        },
+        "duplicate": {
+          "label": "Tab duplizieren",
+          "description": "Tab duplizieren"
+        },
+        "splitRight": {
+          "label": "Nach rechts teilen",
+          "description": "Nach rechts teilen"
+        },
+        "splitDown": {
+          "label": "Nach unten teilen",
+          "description": "Nach unten teilen"
+        },
+        "closeSplit": {
+          "label": "Geteilten Bereich schließen",
+          "description": "Geteilten Bereich schließen"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Unterstreichen",
           "description": "Unterstreichungsformatierung umschalten"
+        },
+        "strikethrough": {
+          "label": "Durchgestrichen",
+          "description": "Durchgestrichen"
+        },
+        "code": {
+          "label": "Code",
+          "description": "Code"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Hilfe zu Tastaturkürzeln",
           "description": "Referenz zu Tastaturkürzeln anzeigen"
+        },
+        "zoomIn": {
+          "label": "Vergrößern",
+          "description": "Alles größer darstellen"
+        },
+        "zoomOut": {
+          "label": "Verkleinern",
+          "description": "Alles kleiner darstellen"
+        },
+        "actualSize": {
+          "label": "Originalgröße",
+          "description": "Zoom auf 100 % zurücksetzen"
         }
       }
     }

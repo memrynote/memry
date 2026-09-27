@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Navigeer vooruit",
           "description": "Voer een terugnavigatie opnieuw uit"
+        },
+        "newTab": {
+          "label": "Nieuw tabblad",
+          "description": "Menu voor nieuw tabblad openen"
+        },
+        "closeAll": {
+          "label": "Alle tabbladen in het paneel sluiten",
+          "description": "Alle tabbladen in het paneel sluiten"
+        },
+        "pin": {
+          "label": "Tabblad vastzetten of losmaken",
+          "description": "Tabblad vastzetten of losmaken"
+        },
+        "duplicate": {
+          "label": "Tabblad dupliceren",
+          "description": "Tabblad dupliceren"
+        },
+        "splitRight": {
+          "label": "Naar rechts splitsen",
+          "description": "Naar rechts splitsen"
+        },
+        "splitDown": {
+          "label": "Omlaag splitsen",
+          "description": "Omlaag splitsen"
+        },
+        "closeSplit": {
+          "label": "Gesplitst paneel sluiten",
+          "description": "Gesplitst paneel sluiten"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Onderstreep",
           "description": "Schakel onderstrepingsopmaak in of uit"
+        },
+        "strikethrough": {
+          "label": "Doorhalen",
+          "description": "Doorhalen"
+        },
+        "code": {
+          "label": "Code",
+          "description": "Code"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Hulp bij sneltoetsen",
           "description": "Toon referentie voor sneltoetsen"
+        },
+        "zoomIn": {
+          "label": "Zoom in",
+          "description": "Alles groter maken"
+        },
+        "zoomOut": {
+          "label": "Zoom uit",
+          "description": "Alles kleiner maken"
+        },
+        "actualSize": {
+          "label": "Werkelijke grootte",
+          "description": "Zoom terugzetten naar 100%"
         }
       }
     }

@@ -7,13 +7,19 @@ import { useMemo } from 'react'
 import { useTabs } from '@/contexts/tabs'
 import { isLastHomeTab } from '@/contexts/tabs/helpers'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
-import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shortcuts-base'
+import {
+  chordAllowedInInput,
+  useKeyboardShortcuts,
+  type KeyboardShortcut
+} from './use-keyboard-shortcuts-base'
 
 /**
  * Hook providing all tab-related keyboard shortcuts
  *
- * Chords listed in Settings → Shortcuts are read from the binding store so a
- * rebind applies here; the rest (⌘T, ⌘⇧W, ⌘⇧P, ⌘⇧D, ⌘\) are fixed.
+ * Every chord is read from the binding store, so a rebind in Settings →
+ * Shortcuts applies here immediately. Each one also fires with the caret in
+ * the note editor or a text field, like a browser's tab keys, as long as it is
+ * held with ⌘/Ctrl (see `chordAllowedInInput`).
  */
 export const useTabKeyboardShortcuts = (): void => {
   const closeTabBinding = useShortcutBinding('tabs.closeTab')
@@ -22,6 +28,13 @@ export const useTabKeyboardShortcuts = (): void => {
   const prevTabBinding = useShortcutBinding('tabs.prevTab')
   const navBackBinding = useShortcutBinding('tabs.navBack')
   const navForwardBinding = useShortcutBinding('tabs.navForward')
+  const newTabBinding = useShortcutBinding('tabs.newTab')
+  const closeAllTabsBinding = useShortcutBinding('tabs.closeAllTabs')
+  const pinTabBinding = useShortcutBinding('tabs.pinTab')
+  const duplicateTabBinding = useShortcutBinding('tabs.duplicateTab')
+  const splitRightBinding = useShortcutBinding('tabs.splitRight')
+  const splitDownBinding = useShortcutBinding('tabs.splitDown')
+  const closeSplitBinding = useShortcutBinding('tabs.closeSplit')
 
   const {
     state,
@@ -47,12 +60,13 @@ export const useTabKeyboardShortcuts = (): void => {
 
       // New tab (⌘T) — opens the new-tab dropdown menu
       {
-        key: 't',
-        modifiers: { meta: true },
+        key: newTabBinding.key,
+        modifiers: newTabBinding.modifiers,
         action: () => {
           window.dispatchEvent(new CustomEvent('memry:new-tab-menu'))
         },
-        description: 'New tab'
+        description: 'New tab',
+        allowInInput: chordAllowedInInput(newTabBinding)
       },
 
       // Close tab (⌘W) — closes the window only once Home is all that is left
@@ -71,20 +85,21 @@ export const useTabKeyboardShortcuts = (): void => {
         description: 'Close tab',
         // ⌘W must still close the tab while the caret sits in the note editor,
         // the capture bar, or any other field — same as a browser.
-        allowInInput: true
+        allowInInput: chordAllowedInInput(closeTabBinding)
       },
 
       // Close all tabs (⌘⇧W)
       {
-        key: 'w',
-        modifiers: { meta: true, shift: true },
+        key: closeAllTabsBinding.key,
+        modifiers: closeAllTabsBinding.modifiers,
         action: () => {
           dispatch({
             type: 'CLOSE_ALL_TABS',
             payload: { groupId: state.activeGroupId }
           })
         },
-        description: 'Close all tabs'
+        description: 'Close all tabs',
+        allowInInput: chordAllowedInInput(closeAllTabsBinding)
       },
 
       // Reopen closed tab (⌘⇧T) — like Chrome
@@ -94,7 +109,8 @@ export const useTabKeyboardShortcuts = (): void => {
         action: () => {
           reopenClosedTab()
         },
-        description: 'Reopen closed tab'
+        description: 'Reopen closed tab',
+        allowInInput: chordAllowedInInput(reopenTabBinding)
       },
 
       // =====================================================================
@@ -111,7 +127,8 @@ export const useTabKeyboardShortcuts = (): void => {
             payload: { groupId: state.activeGroupId }
           })
         },
-        description: 'Next tab'
+        description: 'Next tab',
+        allowInInput: chordAllowedInInput(nextTabBinding)
       },
 
       // Previous tab (Ctrl+Shift+Tab)
@@ -124,7 +141,8 @@ export const useTabKeyboardShortcuts = (): void => {
             payload: { groupId: state.activeGroupId }
           })
         },
-        description: 'Previous tab'
+        description: 'Previous tab',
+        allowInInput: chordAllowedInInput(prevTabBinding)
       },
 
       // Navigate back in tab history (⌘[)
@@ -132,7 +150,8 @@ export const useTabKeyboardShortcuts = (): void => {
         key: navBackBinding.key,
         modifiers: navBackBinding.modifiers,
         action: () => navBack(state.activeGroupId),
-        description: 'Navigate back'
+        description: 'Navigate back',
+        allowInInput: chordAllowedInInput(navBackBinding)
       },
 
       // Navigate forward in tab history (⌘])
@@ -140,7 +159,8 @@ export const useTabKeyboardShortcuts = (): void => {
         key: navForwardBinding.key,
         modifiers: navForwardBinding.modifiers,
         action: () => navForward(state.activeGroupId),
-        description: 'Navigate forward'
+        description: 'Navigate forward',
+        allowInInput: chordAllowedInInput(navForwardBinding)
       },
 
       // NOTE: ⌘1-9 are intentionally NOT bound here. They now open the Nth
@@ -153,8 +173,8 @@ export const useTabKeyboardShortcuts = (): void => {
 
       // Pin/Unpin tab (⌘⇧P)
       {
-        key: 'p',
-        modifiers: { meta: true, shift: true },
+        key: pinTabBinding.key,
+        modifiers: pinTabBinding.modifiers,
         action: () => {
           if (activeTab) {
             if (activeTab.isPinned) {
@@ -164,30 +184,36 @@ export const useTabKeyboardShortcuts = (): void => {
             }
           }
         },
-        description: 'Pin/Unpin tab'
+        description: 'Pin/Unpin tab',
+        allowInInput: chordAllowedInInput(pinTabBinding)
       },
 
       // Duplicate tab (⌘⇧D)
       {
-        key: 'd',
-        modifiers: { meta: true, shift: true },
+        key: duplicateTabBinding.key,
+        modifiers: duplicateTabBinding.modifiers,
         action: () => {
           if (activeTab) {
-            openTab({
-              type: activeTab.type,
-              title: activeTab.title,
-              icon: activeTab.icon,
-              emoji: activeTab.emoji,
-              path: activeTab.path,
-              entityId: activeTab.entityId,
-              isPinned: false,
-              isModified: false,
-              isPreview: false,
-              isDeleted: false
-            })
+            // forceNew: without it the entity dedup just re-activates this tab.
+            openTab(
+              {
+                type: activeTab.type,
+                title: activeTab.title,
+                icon: activeTab.icon,
+                emoji: activeTab.emoji,
+                path: activeTab.path,
+                entityId: activeTab.entityId,
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false
+              },
+              { forceNew: true }
+            )
           }
         },
-        description: 'Duplicate tab'
+        description: 'Duplicate tab',
+        allowInInput: chordAllowedInInput(duplicateTabBinding)
       },
 
       // =====================================================================
@@ -196,28 +222,30 @@ export const useTabKeyboardShortcuts = (): void => {
 
       // Split right (⌘\)
       {
-        key: '\\',
-        modifiers: { meta: true },
+        key: splitRightBinding.key,
+        modifiers: splitRightBinding.modifiers,
         action: () => {
           splitView('horizontal', state.activeGroupId)
         },
-        description: 'Split right'
+        description: 'Split right',
+        allowInInput: chordAllowedInInput(splitRightBinding)
       },
 
       // Split down (⌘⇧\)
       {
-        key: '\\',
-        modifiers: { meta: true, shift: true },
+        key: splitDownBinding.key,
+        modifiers: splitDownBinding.modifiers,
         action: () => {
           splitView('vertical', state.activeGroupId)
         },
-        description: 'Split down'
+        description: 'Split down',
+        allowInInput: chordAllowedInInput(splitDownBinding)
       },
 
       // Close split (⌘⌥W)
       {
-        key: 'w',
-        modifiers: { meta: true, alt: true },
+        key: closeSplitBinding.key,
+        modifiers: closeSplitBinding.modifiers,
         action: () => {
           if (Object.keys(state.tabGroups).length > 1) {
             dispatch({
@@ -227,6 +255,7 @@ export const useTabKeyboardShortcuts = (): void => {
           }
         },
         description: 'Close split pane',
+        allowInInput: chordAllowedInInput(closeSplitBinding),
         when: () => Object.keys(state.tabGroups).length > 1
       }
     ]
@@ -237,6 +266,13 @@ export const useTabKeyboardShortcuts = (): void => {
     prevTabBinding,
     navBackBinding,
     navForwardBinding,
+    newTabBinding,
+    closeAllTabsBinding,
+    pinTabBinding,
+    duplicateTabBinding,
+    splitRightBinding,
+    splitDownBinding,
+    closeSplitBinding,
     state,
     dispatch,
     openTab,

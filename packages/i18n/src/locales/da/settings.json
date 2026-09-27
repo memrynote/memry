@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Naviger frem",
           "description": "Gentag en tilbagenavigation"
+        },
+        "newTab": {
+          "label": "Ny fane",
+          "description": "Åbn menuen for nyt faneblad"
+        },
+        "closeAll": {
+          "label": "Luk alle faneblade i ruden",
+          "description": "Luk alle faneblade i ruden"
+        },
+        "pin": {
+          "label": "Fastgør eller frigør faneblad",
+          "description": "Fastgør eller frigør faneblad"
+        },
+        "duplicate": {
+          "label": "Dublér faneblad",
+          "description": "Dublér faneblad"
+        },
+        "splitRight": {
+          "label": "Opdel til højre",
+          "description": "Opdel til højre"
+        },
+        "splitDown": {
+          "label": "Opdel nedad",
+          "description": "Opdel nedad"
+        },
+        "closeSplit": {
+          "label": "Luk den opdelte rude",
+          "description": "Luk den opdelte rude"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Understreg",
           "description": "Skift understregningsformatering"
+        },
+        "strikethrough": {
+          "label": "Gennemstregning",
+          "description": "Gennemstregning"
+        },
+        "code": {
+          "label": "Kode",
+          "description": "Kode"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Hjælp til tastaturgenveje",
           "description": "Vis tastaturgenvejsreference"
+        },
+        "zoomIn": {
+          "label": "Zoom ind",
+          "description": "Gør alt større"
+        },
+        "zoomOut": {
+          "label": "Zoom ud",
+          "description": "Gør alt mindre"
+        },
+        "actualSize": {
+          "label": "Faktisk størrelse",
+          "description": "Nulstil zoom til 100 %"
         }
       }
     }

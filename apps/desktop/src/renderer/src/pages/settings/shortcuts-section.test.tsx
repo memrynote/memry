@@ -120,13 +120,14 @@ describe('ShortcutsSettings', () => {
     expect(newNoteRow).not.toBeNull()
 
     await userEvent.click(within(newNoteRow as HTMLElement).getByTitle('Click to rebind'))
-    fireEvent.keyDown(window, { key: 'j', metaKey: true })
+    // jsdom is not macOS, so the platform command key is Ctrl.
+    fireEvent.keyDown(window, { key: 'j', ctrlKey: true })
 
     expect(updateSettings).toHaveBeenCalledWith({
       overrides: {
         'nav.newNote': {
           key: 'j',
-          modifiers: { meta: true, shift: undefined, alt: undefined }
+          modifiers: { meta: true, ctrl: undefined, shift: undefined, alt: undefined }
         }
       }
     })
@@ -174,7 +175,7 @@ describe('ShortcutsSettings', () => {
     expect(newNoteRow.className).toContain('bg-tint-light')
     expect(within(newNoteRow).getByText('Press shortcut…')).toBeInTheDocument()
 
-    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
 
     expect(within(newNoteRow).getByText('Conflicts with: Search')).toHaveClass('text-destructive')
     expect(updateSettings).not.toHaveBeenCalled()

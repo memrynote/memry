@@ -11,6 +11,8 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
+import { getShortcutBinding } from '@/lib/shortcut-bindings'
+import { bindingParts, type ShortcutId } from '@/lib/shortcut-registry'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import type { TFunction } from 'i18next'
@@ -34,10 +36,15 @@ interface KeyboardShortcutsDialogProps {
   onClose: () => void
 }
 
-const getShortcutGroups = (t: TFunction<'common'>): ShortcutGroup[] => {
+/** Keycaps for a registry shortcut as it is bound right now, rebinds included. */
+const bound = (id: ShortcutId): string[] => bindingParts(getShortcutBinding(id))
+
+const getShortcutGroups = (
+  t: TFunction<'common'>,
+  tSettings: TFunction<'settings'>
+): ShortcutGroup[] => {
   const mod = isMac ? '⌘' : 'Ctrl'
   const shift = isMac ? '⇧' : 'Shift'
-  const alt = isMac ? '⌥' : 'Alt'
   const backspace = isMac ? '⌫' : 'Backspace'
 
   return [
@@ -46,51 +53,82 @@ const getShortcutGroups = (t: TFunction<'common'>): ShortcutGroup[] => {
       description: t('shortcuts.groups.general.description'),
       shortcuts: [
         {
-          combos: [
-            [mod, 'K'],
-            [mod, 'P']
-          ],
+          // ⌘P is a fixed alias kept for muscle memory from other editors.
+          combos: [bound('nav.search'), [mod, 'P']],
           description: t('shortcuts.items.general.quickSearch')
         },
-        { combos: [[mod, 'N']], description: t('shortcuts.items.general.createNote') },
-        { combos: [[mod, ',']], description: t('shortcuts.items.general.openSettings') },
-        { combos: [[mod, shift, 'O']], description: t('shortcuts.items.general.switchVault') },
+        { combos: [bound('nav.newNote')], description: t('shortcuts.items.general.createNote') },
         {
-          combos: isMac
-            ? [
-                ['\u2303', mod, '\u2190'],
-                ['\u2303', mod, '\u2192']
-              ]
-            : [
-                [mod, alt, '\u2190'],
-                [mod, alt, '\u2192']
-              ],
+          combos: [bound('nav.settings')],
+          description: t('shortcuts.items.general.openSettings')
+        },
+        {
+          combos: [bound('nav.switchVault')],
+          description: t('shortcuts.items.general.switchVault')
+        },
+        {
+          combos: [bound('nav.prevVault'), bound('nav.nextVault')],
           description: t('shortcuts.items.general.adjacentVault')
         },
         {
-          combos: [['?'], [mod, '/']],
+          combos: [['?'], bound('view.shortcuts')],
           description: t('shortcuts.items.general.keyboardShortcuts')
         },
         { combos: [[mod, 'Z']], description: t('shortcuts.items.general.undoTaskAction') },
-        { combos: [[mod, 'B']], description: t('shortcuts.items.general.toggleSidebar') },
-        { combos: [[mod, '1-6']], description: t('shortcuts.items.general.sidebarSection') }
+        {
+          combos: [bound('view.toggleSidebar')],
+          description: t('shortcuts.items.general.toggleSidebar')
+        },
+        { combos: [[mod, '1-6']], description: t('shortcuts.items.general.sidebarSection') },
+        {
+          combos: [bound('view.zoomIn')],
+          description: tSettings('shortcuts.entries.view.zoomIn.label')
+        },
+        {
+          combos: [bound('view.zoomOut')],
+          description: tSettings('shortcuts.entries.view.zoomOut.label')
+        },
+        {
+          combos: [bound('view.actualSize')],
+          description: tSettings('shortcuts.entries.view.actualSize.label')
+        }
       ]
     },
     {
       title: t('shortcuts.groups.tabs.title'),
       description: t('shortcuts.groups.tabs.description'),
       shortcuts: [
-        { combos: [[mod, 'T']], description: t('shortcuts.items.tabs.newTabMenu') },
-        { combos: [[mod, 'W']], description: t('shortcuts.items.tabs.closeTab') },
-        { combos: [[mod, shift, 'W']], description: t('shortcuts.items.tabs.closeAllInPane') },
-        { combos: [[mod, shift, 'T']], description: t('shortcuts.items.tabs.reopenClosedTab') },
-        { combos: [['Ctrl', 'Tab']], description: t('shortcuts.items.tabs.nextTab') },
-        { combos: [['Ctrl', shift, 'Tab']], description: t('shortcuts.items.tabs.previousTab') },
-        { combos: [[mod, shift, 'P']], description: t('shortcuts.items.tabs.pinTab') },
-        { combos: [[mod, shift, 'D']], description: t('shortcuts.items.tabs.duplicateTab') },
-        { combos: [[mod, '\\']], description: t('shortcuts.items.tabs.splitRight') },
-        { combos: [[mod, shift, '\\']], description: t('shortcuts.items.tabs.splitDown') },
-        { combos: [[mod, alt, 'W']], description: t('shortcuts.items.tabs.closeSplitPane') },
+        { combos: [bound('tabs.newTab')], description: t('shortcuts.items.tabs.newTabMenu') },
+        { combos: [bound('tabs.closeTab')], description: t('shortcuts.items.tabs.closeTab') },
+        {
+          combos: [bound('tabs.closeAllTabs')],
+          description: t('shortcuts.items.tabs.closeAllInPane')
+        },
+        {
+          combos: [bound('tabs.reopenTab')],
+          description: t('shortcuts.items.tabs.reopenClosedTab')
+        },
+        { combos: [bound('tabs.nextTab')], description: t('shortcuts.items.tabs.nextTab') },
+        { combos: [bound('tabs.prevTab')], description: t('shortcuts.items.tabs.previousTab') },
+        {
+          combos: [bound('tabs.navBack')],
+          description: tSettings('shortcuts.entries.tabs.navBack.label')
+        },
+        {
+          combos: [bound('tabs.navForward')],
+          description: tSettings('shortcuts.entries.tabs.navForward.label')
+        },
+        { combos: [bound('tabs.pinTab')], description: t('shortcuts.items.tabs.pinTab') },
+        {
+          combos: [bound('tabs.duplicateTab')],
+          description: t('shortcuts.items.tabs.duplicateTab')
+        },
+        { combos: [bound('tabs.splitRight')], description: t('shortcuts.items.tabs.splitRight') },
+        { combos: [bound('tabs.splitDown')], description: t('shortcuts.items.tabs.splitDown') },
+        {
+          combos: [bound('tabs.closeSplit')],
+          description: t('shortcuts.items.tabs.closeSplitPane')
+        },
         {
           combos: [[mod, 'K', 'then', mod, '←/→/↑/↓']],
           description: t('shortcuts.items.tabs.focusPane')
@@ -130,25 +168,29 @@ const getShortcutGroups = (t: TFunction<'common'>): ShortcutGroup[] => {
       description: t('shortcuts.groups.journal.description'),
       shortcuts: [
         { combos: [['Esc']], description: t('shortcuts.items.journal.returnFromOverview') },
-        { combos: [[mod, '\\']], description: t('shortcuts.items.journal.toggleFullWidth') },
         { combos: [[mod, 'F']], description: t('shortcuts.items.journal.find') },
-        { combos: [[mod, 'B']], description: t('shortcuts.items.journal.bold') },
-        { combos: [[mod, 'I']], description: t('shortcuts.items.journal.italic') },
-        { combos: [[mod, 'U']], description: t('shortcuts.items.journal.underline') },
-        { combos: [[mod, 'K']], description: t('shortcuts.items.journal.link') }
+        { combos: [bound('editor.bold')], description: t('shortcuts.items.journal.bold') },
+        { combos: [bound('editor.italic')], description: t('shortcuts.items.journal.italic') },
+        { combos: [bound('editor.underline')], description: t('shortcuts.items.journal.underline') }
       ]
     },
     {
       title: t('shortcuts.groups.notes.title'),
       description: t('shortcuts.groups.notes.description'),
       shortcuts: [
-        { combos: [[mod, 'N']], description: t('shortcuts.items.notes.createNote') },
-        { combos: [[mod, 'S']], description: t('shortcuts.items.notes.saveNote') },
+        { combos: [bound('nav.newNote')], description: t('shortcuts.items.notes.createNote') },
         { combos: [[mod, 'F']], description: t('shortcuts.items.notes.find') },
-        { combos: [[mod, 'B']], description: t('shortcuts.items.notes.bold') },
-        { combos: [[mod, 'I']], description: t('shortcuts.items.notes.italic') },
-        { combos: [[mod, 'U']], description: t('shortcuts.items.notes.underline') },
-        { combos: [[mod, 'K']], description: t('shortcuts.items.notes.link') },
+        { combos: [bound('editor.bold')], description: t('shortcuts.items.notes.bold') },
+        { combos: [bound('editor.italic')], description: t('shortcuts.items.notes.italic') },
+        { combos: [bound('editor.underline')], description: t('shortcuts.items.notes.underline') },
+        {
+          combos: [bound('editor.strikethrough')],
+          description: tSettings('shortcuts.entries.editor.strikethrough.label')
+        },
+        {
+          combos: [bound('editor.code')],
+          description: tSettings('shortcuts.entries.editor.code.label')
+        },
         { combos: [['/']], description: t('shortcuts.items.notes.commandMenu') },
         { combos: [['Esc']], description: t('shortcuts.items.notes.closeOverlays') }
       ]
@@ -171,7 +213,10 @@ const getShortcutGroups = (t: TFunction<'common'>): ShortcutGroup[] => {
       title: t('shortcuts.groups.settings.title'),
       description: t('shortcuts.groups.settings.description'),
       shortcuts: [
-        { combos: [[mod, ',']], description: t('shortcuts.items.settings.openSettings') },
+        {
+          combos: [bound('nav.settings')],
+          description: t('shortcuts.items.settings.openSettings')
+        },
         {
           combos: [[t('shortcuts.combos.shortcutsTab')]],
           description: t('shortcuts.items.settings.customizeShortcuts')
@@ -243,7 +288,7 @@ export const KeyboardShortcutsDialog = ({
 }: KeyboardShortcutsDialogProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('settings')
   const { t } = useT('common')
-  const shortcutGroups = getShortcutGroups(t)
+  const shortcutGroups = getShortcutGroups(t, tPhaseF)
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -293,7 +338,7 @@ export const KeyboardShortcutsDialog = ({
 
         <div className="flex items-center justify-center gap-2 border-t border-border bg-muted/20 px-6 py-3 text-xs text-muted-foreground">
           <span>{tPhaseF('phaseF.componentsKeyboardKeyboardShortcutsDialog.press')}</span>
-          <ShortcutCombos combos={[[isMac ? '⌘' : 'Ctrl', '/'], ['?']]} />
+          <ShortcutCombos combos={[bound('view.shortcuts'), ['?']]} />
           <span>
             {tPhaseF('phaseF.componentsKeyboardKeyboardShortcutsDialog.toToggleThisDialog')}
           </span>

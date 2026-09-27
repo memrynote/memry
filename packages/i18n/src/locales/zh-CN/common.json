@@ -766,9 +766,7 @@
         "bold": "将选中文本加粗",
         "find": "在日记中查找",
         "italic": "将选中文本设为斜体",
-        "link": "添加或编辑链接",
         "returnFromOverview": "从月视图或年视图返回",
-        "toggleFullWidth": "切换整宽日记",
         "underline": "为选中文本加下划线"
       },
       "notes": {
@@ -778,8 +776,6 @@
         "createNote": "新建笔记",
         "find": "在笔记中查找",
         "italic": "斜体",
-        "link": "添加或编辑链接",
-        "saveNote": "保存当前笔记",
         "underline": "下划线"
       },
       "settings": {

@@ -1120,6 +1120,34 @@
         "navForward": {
           "label": "Mag-navigate sa Pasulong",
           "description": "Gawin muli ang back navigation"
+        },
+        "newTab": {
+          "label": "Bagong Tab",
+          "description": "Buksan ang menu ng bagong tab"
+        },
+        "closeAll": {
+          "label": "Isara ang lahat ng tab sa pane",
+          "description": "Isara ang lahat ng tab sa pane"
+        },
+        "pin": {
+          "label": "I-pin o i-unpin ang tab",
+          "description": "I-pin o i-unpin ang tab"
+        },
+        "duplicate": {
+          "label": "I-duplicate ang tab",
+          "description": "I-duplicate ang tab"
+        },
+        "splitRight": {
+          "label": "Hatiin pakanan",
+          "description": "Hatiin pakanan"
+        },
+        "splitDown": {
+          "label": "Hatiin pababa",
+          "description": "Hatiin pababa"
+        },
+        "closeSplit": {
+          "label": "Isara ang split pane",
+          "description": "Isara ang split pane"
         }
       },
       "editor": {
@@ -1138,6 +1166,14 @@
         "underline": {
           "label": "Salungguhitan",
           "description": "I-toggle ang underline na pag-format"
+        },
+        "strikethrough": {
+          "label": "Guhit-pantawid",
+          "description": "Guhit-pantawid"
+        },
+        "code": {
+          "label": "Code",
+          "description": "Code"
         }
       },
       "view": {
@@ -1148,6 +1184,18 @@
         "shortcuts": {
           "label": "Tulong sa Mga Keyboard Shortcut",
           "description": "Ipakita ang sanggunian ng mga keyboard shortcut"
+        },
+        "zoomIn": {
+          "label": "Palakihin",
+          "description": "Palakihin ang lahat"
+        },
+        "zoomOut": {
+          "label": "Paliitin",
+          "description": "Paliitin ang lahat"
+        },
+        "actualSize": {
+          "label": "Aktwal na Laki",
+          "description": "Ibalik ang zoom sa 100%"
         }
       }
     }
