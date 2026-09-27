@@ -148,11 +148,10 @@ final class NoteReadViewModel {
 
     /// Pulls this note's body, then re-reads the note in place.
     ///
-    /// Runs when the page appears and after every sync pass. Desktop pushes a
-    /// body edit as CRDT updates with no record, so the sync pass never pulls
-    /// it; and a record the pass applied (title, properties) only shows once
-    /// the screen reads again. A body that was never pulled stays behind the
-    /// explicit fetch button. Offline is not an error: the local copy stays.
+    /// Runs on appear and after every sync pass: a desktop body edit is CRDT
+    /// updates with no record, so the pass never pulls it, and applied records
+    /// only show on a re-read. A never-pulled body stays behind the fetch
+    /// button. Offline is not an error: the local copy stays.
     func refreshFromRemote() async {
         guard hasLoaded else { return }
         if let filler, fetch != .fetching,
@@ -345,8 +344,7 @@ final class NoteReadViewModel {
         await load()
     }
 
-    /// `quietly` keeps the current page on screen while it re-reads, so a
-    /// refresh after a sync pass does not flash the loading state.
+    /// `quietly` keeps the page on screen, so a post-sync refresh does not flash.
     private func load(quietly: Bool = false) async {
         hasLoaded = true
         if !quietly { phase = .loading }
