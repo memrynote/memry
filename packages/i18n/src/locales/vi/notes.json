@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, other {# mục}}",
     "itemsCountFiltered": "{shown} trong {total, plural, other {# mục}}",
-    "renameViewUnavailableForTags": "Chưa thể đổi tên chế độ xem đã lưu cho thẻ",
     "tagFilterLabel": "thẻ = {tag}"
   },
   "tree": {

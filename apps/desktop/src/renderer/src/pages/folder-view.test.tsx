@@ -336,13 +336,11 @@ vi.mock('@/components/folder-view/view-switcher', () => ({
   ViewSwitcher: ({
     onViewChange,
     onAddView,
-    onUpdateView,
     onSetViewAsDefault,
     onDeleteView
   }: {
     onViewChange: (index: number) => void
     onAddView: () => void
-    onUpdateView: (id: string, updates: unknown) => void
     onSetViewAsDefault: (id: string) => void
     onDeleteView: (id: string) => void
   }) => (
@@ -352,9 +350,6 @@ vi.mock('@/components/folder-view/view-switcher', () => ({
       </button>
       <button type="button" onClick={onAddView}>
         Add view
-      </button>
-      <button type="button" onClick={() => onUpdateView('default', { name: 'Renamed' })}>
-        Rename view
       </button>
       <button type="button" onClick={() => onSetViewAsDefault('default')}>
         Default view

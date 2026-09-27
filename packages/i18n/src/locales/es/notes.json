@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# elemento} many {# elementos} other {# elementos}}",
     "itemsCountFiltered": "{shown} de {total, plural, one {# elemento} many {# elementos} other {# elementos}}",
-    "renameViewUnavailableForTags": "Todavía no se puede cambiar el nombre de las vistas guardadas de etiquetas",
     "tagFilterLabel": "etiqueta = {tag}"
   },
   "tree": {

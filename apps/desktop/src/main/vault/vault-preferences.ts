@@ -7,6 +7,7 @@ import {
   EDITOR_SETTINGS_DEFAULTS
 } from '@memry/contracts/settings-schemas'
 import { LocaleSchema } from '@memry/contracts/locale-api'
+import { legacyColorTheme } from '@memry/contracts/color-themes'
 import { resolveFontSizePx, FONT_SIZE_PX_MIN, FONT_SIZE_PX_MAX } from '@memry/contracts/font-size'
 
 const EditorPreferencesSchema = z.object({
@@ -24,6 +25,12 @@ export const VaultPreferencesSchema = z.object({
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
   customFontFamily: z.string().max(64),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  colorTheme: z.string().max(64),
+  useThemeAccent: z.boolean(),
+  backgroundLight: z.string(),
+  foregroundLight: z.string(),
+  backgroundDark: z.string(),
+  foregroundDark: z.string(),
   // The supported-locale enum, not a loose length-bounded string. min(2).max(5)
   // rejected nothing the app actually ships — every SUPPORTED_LOCALES entry is
   // 2–5 characters ('fil', 'zh-CN') — while happily accepting values that are
@@ -53,6 +60,12 @@ export const VAULT_PREFERENCES_DEFAULTS: VaultPreferences = {
   fontFamily: GENERAL_SETTINGS_DEFAULTS.fontFamily,
   customFontFamily: GENERAL_SETTINGS_DEFAULTS.customFontFamily,
   accentColor: GENERAL_SETTINGS_DEFAULTS.accentColor,
+  colorTheme: GENERAL_SETTINGS_DEFAULTS.colorTheme,
+  useThemeAccent: GENERAL_SETTINGS_DEFAULTS.useThemeAccent,
+  backgroundLight: GENERAL_SETTINGS_DEFAULTS.backgroundLight,
+  foregroundLight: GENERAL_SETTINGS_DEFAULTS.foregroundLight,
+  backgroundDark: GENERAL_SETTINGS_DEFAULTS.backgroundDark,
+  foregroundDark: GENERAL_SETTINGS_DEFAULTS.foregroundDark,
   language: GENERAL_SETTINGS_DEFAULTS.language,
   createInSelectedFolder: GENERAL_SETTINGS_DEFAULTS.createInSelectedFolder,
   openPagesInNewTab: GENERAL_SETTINGS_DEFAULTS.openPagesInNewTab,
@@ -67,6 +80,12 @@ export const PORTABLE_GENERAL_FIELDS = [
   'fontFamily',
   'customFontFamily',
   'accentColor',
+  'colorTheme',
+  'useThemeAccent',
+  'backgroundLight',
+  'foregroundLight',
+  'backgroundDark',
+  'foregroundDark',
   'language',
   'createInSelectedFolder',
   'openPagesInNewTab',
@@ -103,6 +122,17 @@ export function readPreferences(vaultPath: string): VaultPreferences {
       fontFamily: prefs.fontFamily ?? VAULT_PREFERENCES_DEFAULTS.fontFamily,
       customFontFamily: prefs.customFontFamily ?? VAULT_PREFERENCES_DEFAULTS.customFontFamily,
       accentColor: prefs.accentColor ?? VAULT_PREFERENCES_DEFAULTS.accentColor,
+      // The migration for existing installs: a config.json written before color
+      // themes shipped picked warm or white through the color mode alone, so the
+      // mode decides the theme that keeps it looking the same. The next write
+      // of any preference persists the result, since writePreferences merges
+      // over this read.
+      colorTheme: prefs.colorTheme ?? legacyColorTheme(prefs.theme),
+      useThemeAccent: prefs.useThemeAccent ?? VAULT_PREFERENCES_DEFAULTS.useThemeAccent,
+      backgroundLight: prefs.backgroundLight ?? VAULT_PREFERENCES_DEFAULTS.backgroundLight,
+      foregroundLight: prefs.foregroundLight ?? VAULT_PREFERENCES_DEFAULTS.foregroundLight,
+      backgroundDark: prefs.backgroundDark ?? VAULT_PREFERENCES_DEFAULTS.backgroundDark,
+      foregroundDark: prefs.foregroundDark ?? VAULT_PREFERENCES_DEFAULTS.foregroundDark,
       language: prefs.language ?? VAULT_PREFERENCES_DEFAULTS.language,
       createInSelectedFolder:
         prefs.createInSelectedFolder ?? VAULT_PREFERENCES_DEFAULTS.createInSelectedFolder,

@@ -7,11 +7,7 @@
 
 import { describe, it, expect } from 'vitest'
 
-import {
-  GetHistorySchema,
-  SYNC_OP_CHANNELS,
-  UpdateSyncedSettingSchema
-} from './ipc-sync-ops'
+import { GetHistorySchema, SYNC_OP_CHANNELS, UpdateSyncedSettingSchema } from './ipc-sync-ops'
 
 describe('SYNC_OP_CHANNELS', () => {
   it('namespaces every channel under "sync:"', () => {
@@ -87,9 +83,7 @@ describe('UpdateSyncedSettingSchema', () => {
   it('accepts boolean/number/object/null values (z.unknown)', () => {
     const values: unknown[] = [true, 1, { nested: { a: 1 } }, null, []]
     for (const value of values) {
-      expect(
-        UpdateSyncedSettingSchema.safeParse({ fieldPath: 'x', value }).success
-      ).toBe(true)
+      expect(UpdateSyncedSettingSchema.safeParse({ fieldPath: 'x', value }).success).toBe(true)
     }
   })
 
@@ -102,9 +96,7 @@ describe('UpdateSyncedSettingSchema', () => {
   })
 
   it('rejects empty fieldPath', () => {
-    expect(
-      UpdateSyncedSettingSchema.safeParse({ fieldPath: '', value: 'x' }).success
-    ).toBe(false)
+    expect(UpdateSyncedSettingSchema.safeParse({ fieldPath: '', value: 'x' }).success).toBe(false)
   })
 
   it('accepts undefined value (z.unknown optional-semantics)', () => {

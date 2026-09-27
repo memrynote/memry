@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# פריט} two {# פריטים} other {# פריטים}}",
     "itemsCountFiltered": "{shown} מתוך {total, plural, one {# פריט} two {# פריטים} other {# פריטים}}",
-    "renameViewUnavailableForTags": "עדיין לא ניתן לשנות שם של תצוגות שמורות עבור תגים",
     "tagFilterLabel": "תג = {tag}"
   },
   "tree": {

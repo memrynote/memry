@@ -205,6 +205,18 @@ const createCollisionDetection = (): CollisionDetection => {
       return closestCenter({ ...args, droppableContainers: sections })
     }
 
+    // A rail page icon is being reordered: only other rail icons are targets.
+    // Pointer-first like sections above; the 8px gaps between icons and a
+    // pointer past either end fall back to the nearest icon.
+    if (activeType === 'rail-item') {
+      const railItems = args.droppableContainers.filter(
+        (container) => container.data.current?.type === 'rail-item'
+      )
+      const pointerItem = pointerWithin({ ...args, droppableContainers: railItems })
+      if (pointerItem.length > 0) return pointerItem
+      return closestCenter({ ...args, droppableContainers: railItems })
+    }
+
     const sidebarCollision = pointerCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
       return type === 'project' || type === 'trash' || type === 'archive'

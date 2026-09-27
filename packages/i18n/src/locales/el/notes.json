@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# στοιχείο} other {# στοιχεία}}",
     "itemsCountFiltered": "{shown} από {total, plural, one {# στοιχείο} other {# στοιχεία}}",
-    "renameViewUnavailableForTags": "Η μετονομασία αποθηκευμένων προβολών δεν είναι ακόμη διαθέσιμη για ετικέτες",
     "tagFilterLabel": "ετικέτα = {tag}"
   },
   "tree": {

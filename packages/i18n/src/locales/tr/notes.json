@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# öğe} other {# öğe}}",
     "itemsCountFiltered": "{total, plural, one {# öğeden} other {# öğeden}} {shown} tanesi",
-    "renameViewUnavailableForTags": "Etiketlerde kayıtlı görünümler henüz yeniden adlandırılamıyor",
     "tagFilterLabel": "etiket = {tag}"
   },
   "tree": {

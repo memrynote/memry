@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# élément} many {# éléments} other {# éléments}}",
     "itemsCountFiltered": "{shown} sur {total, plural, one {# élément} many {# éléments} other {# éléments}}",
-    "renameViewUnavailableForTags": "Le renommage des vues enregistrées n'est pas encore disponible pour les balises",
     "tagFilterLabel": "balise = {tag}"
   },
   "tree": {

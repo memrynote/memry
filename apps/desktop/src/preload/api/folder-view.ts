@@ -8,8 +8,8 @@ export const folderViewApi = {
   setConfig: (folderPath: string, config: Record<string, unknown>) =>
     invoke(FolderViewChannels.invoke.SET_CONFIG, { folderPath, config }),
   getViews: (scope: ViewScope) => invoke(FolderViewChannels.invoke.GET_VIEWS, { scope }),
-  setView: (scope: ViewScope, view: Record<string, unknown>) =>
-    invoke(FolderViewChannels.invoke.SET_VIEW, { scope, view } as MainIpcInvokeArgs<
+  setView: (scope: ViewScope, view: Record<string, unknown>, previousName?: string) =>
+    invoke(FolderViewChannels.invoke.SET_VIEW, { scope, view, previousName } as MainIpcInvokeArgs<
       typeof FolderViewChannels.invoke.SET_VIEW
     >[0]),
   deleteView: (scope: ViewScope, viewName: string) =>

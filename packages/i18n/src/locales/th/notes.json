@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, other {# รายการ}}",
     "itemsCountFiltered": "{shown} จาก {total, plural, other {# รายการ}}",
-    "renameViewUnavailableForTags": "แท็กยังไม่รองรับการเปลี่ยนชื่อมุมมองที่บันทึกไว้",
     "tagFilterLabel": "แท็ก = {tag}"
   },
   "tree": {

@@ -36,7 +36,16 @@ const mocks = vi.hoisted(() => ({
       fontSize: 'medium',
       fontSizePx: 16,
       fontFamily: 'system',
-      customFontFamily: ''
+      customFontFamily: '',
+      colorTheme: 'memrynote',
+      useThemeAccent: true,
+      backgroundLight: '',
+      foregroundLight: '',
+      backgroundDark: '',
+      foregroundDark: '',
+      reduceMotion: 'system',
+      pointerCursors: false,
+      fontSmoothing: false
     },
     isLoading: false,
     updateSettings: vi.fn()
@@ -579,6 +588,11 @@ describe('settings section coverage', () => {
     Reflect.deleteProperty(document, 'fonts')
     mocks.generalSettings.settings.fontFamily = 'system'
     mocks.generalSettings.settings.customFontFamily = ''
+    mocks.generalSettings.settings.colorTheme = 'memrynote'
+    mocks.generalSettings.settings.theme = 'system'
+    for (const attr of ['data-color-theme', 'data-light-palette', 'style']) {
+      document.documentElement.removeAttribute(attr)
+    }
     mocks.generalSettings.updateSettings.mockResolvedValue(true)
     mocks.calendarPreferences.isLoading = false
     mocks.calendarPreferences.updateSettings.mockResolvedValue(true)
@@ -753,13 +767,18 @@ describe('settings section coverage', () => {
     mocks.generalSettings.settings.fontSize = 'large'
     render(<AppearanceSettings />)
 
-    fireEvent.click(screen.getByText('appearance.theme.options.dark'))
+    fireEvent.click(screen.getByLabelText('appearance.theme.options.dark'))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('appearance.theme.error'))
 
-    fireEvent.click(screen.getByTitle('appearance.accent.presets.amber'))
+    fireEvent.pointerDown(screen.getByLabelText('appearance.accent.aria'), {
+      button: 0,
+      ctrlKey: false
+    })
+    fireEvent.click(await screen.findByText('appearance.accent.presets.amber'))
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
-        accentColor: '#f59e0b'
+        accentColor: '#f59e0b',
+        useThemeAccent: false
       })
     )
 
@@ -778,6 +797,146 @@ describe('settings section coverage', () => {
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontFamily: 'monospace',
         customFontFamily: ''
+      })
+    )
+  })
+
+  it('shows three color modes, with a saved white on the light card', () => {
+    mocks.generalSettings.settings.theme = 'white'
+    render(<AppearanceSettings />)
+
+    expect(screen.queryByLabelText('appearance.theme.options.white')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('appearance.theme.options.light')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getByLabelText('appearance.v2.colorTheme')).toHaveTextContent(
+      'appearance.colorTheme.default'
+    )
+    mocks.generalSettings.settings.theme = 'system'
+  })
+
+  it('stores the light card as the mode an older build renders closest to the theme', async () => {
+    mocks.generalSettings.settings.colorTheme = 'warm'
+    render(<AppearanceSettings />)
+
+    fireEvent.click(screen.getByLabelText('appearance.theme.options.light'))
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ theme: 'light' })
+    )
+  })
+
+  it('moves a light mode along when the theme switches to warm', async () => {
+    mocks.generalSettings.settings.theme = 'white'
+    render(<AppearanceSettings />)
+
+    fireEvent.pointerDown(screen.getByLabelText('appearance.v2.colorTheme'), {
+      button: 0,
+      ctrlKey: false
+    })
+    fireEvent.click(await screen.findByText('appearance.colorTheme.warm'))
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ colorTheme: 'warm', theme: 'light' })
+      )
+    )
+    mocks.generalSettings.settings.theme = 'system'
+  })
+
+  it('shows the theme accent option only for a community theme', () => {
+    mocks.generalSettings.settings.colorTheme = 'dracula'
+    render(<AppearanceSettings />)
+    expect(screen.getByLabelText('appearance.v2.colorTheme')).toHaveTextContent('Dracula')
+    expect(screen.getByLabelText('appearance.accent.aria')).toHaveTextContent(
+      'appearance.accent.options.theme'
+    )
+  })
+
+  it('saves a background override for the mode on screen and clears it on reset', async () => {
+    render(<AppearanceSettings />)
+
+    const input = screen.getByLabelText('appearance.colors.background')
+    fireEvent.change(input, { target: { value: '#111111' } })
+    fireEvent.blur(input)
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        backgroundLight: '#111111'
+      })
+    )
+  })
+
+  it('saves a picker color once the picker settles, not on every drag step', async () => {
+    render(<AppearanceSettings />)
+
+    const [accentPicker] = screen.getAllByLabelText('appearance.colors.pick')
+    fireEvent.input(accentPicker, { target: { value: '#123456' } })
+    expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled()
+    // Painted on the live interface while the picker is still open.
+    const root = document.documentElement
+    expect(root.style.getPropertyValue('--user-accent-color')).toBe('#123456')
+
+    fireEvent.change(accentPicker, { target: { value: '#123456' } })
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        accentColor: '#123456',
+        useThemeAccent: false
+      })
+    )
+    root.removeAttribute('data-color-theme')
+    root.removeAttribute('style')
+  })
+
+  it('puts the saved colors back when a picker try-out is abandoned', () => {
+    render(<AppearanceSettings />)
+
+    const input = screen.getByLabelText('appearance.colors.background')
+    fireEvent.change(input, { target: { value: '#101010' } })
+    const root = document.documentElement
+    expect(root.style.getPropertyValue('--ct-light-bg')).toBe('#101010')
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(root.hasAttribute('data-color-theme')).toBe(false)
+    expect(root.style.getPropertyValue('--ct-light-bg')).toBe('')
+    expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled()
+  })
+
+  it('writes the advanced options and resets them', async () => {
+    render(<AppearanceSettings />)
+
+    fireEvent.click(screen.getByLabelText('appearance.advanced.pointerCursors.label'))
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ pointerCursors: true })
+    )
+
+    fireEvent.click(screen.getByText('appearance.advanced.title'))
+    fireEvent.click(screen.getByText('appearance.advanced.reset'))
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        reduceMotion: 'system',
+        pointerCursors: false,
+        fontSmoothing: false
+      })
+    )
+  })
+
+  it('saves a color theme picked from the themes submenu', async () => {
+    render(<AppearanceSettings />)
+
+    fireEvent.pointerDown(screen.getByLabelText('appearance.v2.colorTheme'), {
+      button: 0,
+      ctrlKey: false
+    })
+    fireEvent.click(await screen.findByText('appearance.colorTheme.themes'))
+    fireEvent.click(await screen.findByText('Nord'))
+
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        colorTheme: 'nord',
+        useThemeAccent: true,
+        backgroundLight: '',
+        foregroundLight: '',
+        backgroundDark: '',
+        foregroundDark: ''
       })
     )
   })

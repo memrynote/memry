@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, other {# 项}}",
     "itemsCountFiltered": "{shown} 项，共 {total, plural, other {# 项}}",
-    "renameViewUnavailableForTags": "标签暂不支持重命名已保存的视图",
     "tagFilterLabel": "标签 = {tag}"
   },
   "tree": {

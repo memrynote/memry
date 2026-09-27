@@ -545,7 +545,13 @@ export const GetViewsRequestSchema = z.object({
 
 export const SetViewRequestSchema = z.object({
   scope: ViewScopeSchema,
-  view: ViewConfigSchema
+  view: ViewConfigSchema,
+  /**
+   * The view's current name when `view.name` is a rename. Without it the
+   * handler matches by `view.name` and a rename would append a duplicate.
+   * Optional so older callers keep their upsert-by-name behaviour.
+   */
+  previousName: z.string().optional()
 })
 
 export const DeleteViewRequestSchema = z.object({
@@ -733,7 +739,7 @@ export interface FolderViewClientAPI {
 
   getViews(scope: ViewScope): Promise<GetViewsResponse>
 
-  setView(scope: ViewScope, view: ViewConfig): Promise<SetViewResponse>
+  setView(scope: ViewScope, view: ViewConfig, previousName?: string): Promise<SetViewResponse>
 
   deleteView(scope: ViewScope, viewName: string): Promise<DeleteViewResponse>
 

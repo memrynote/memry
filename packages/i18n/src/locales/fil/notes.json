@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# item} other {# na item}}",
     "itemsCountFiltered": "{shown} sa {total, plural, one {# item} other {# na item}}",
-    "renameViewUnavailableForTags": "Hindi pa magagamit sa mga tag ang pagpapalit ng pangalan ng mga naka-save na view",
     "tagFilterLabel": "tag = {tag}"
   },
   "tree": {

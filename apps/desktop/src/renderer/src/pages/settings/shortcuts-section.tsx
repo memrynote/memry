@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Search, X, Info } from '@/lib/icons'
+import { Search, X, Info, Pencil, Trash2, Undo } from '@/lib/icons'
 import { useKeyboardSettings } from '@/hooks/use-keyboard-settings'
 import { trackRendererLog } from '@/lib/telemetry-diagnostics'
 import { toast } from 'sonner'
@@ -33,12 +33,23 @@ type SettingsT = ReturnType<typeof useT>['t']
 const ALL_CATEGORIES = 'all'
 
 const KEYCAP =
-  'h-auto min-w-5 rounded-[5px] border border-b-2 border-border bg-background px-1.5 py-px font-mono text-xs/4 font-normal text-foreground'
+  'h-auto min-w-0 rounded-none border-0 bg-transparent p-0 font-mono text-xs/4 font-normal text-muted-foreground'
+
+const PILL = 'flex items-center gap-0 rounded-full bg-muted px-2 py-0.5'
+
+const REBIND_BUTTON =
+  'group/rebind flex items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+
+const PENCIL = 'size-3.5 text-muted-foreground transition-colors group-hover/rebind:text-foreground'
+
+const ICON_BUTTON =
+  'flex size-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
 const QUIET_BUTTON =
   'rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
-const ROW = 'relative flex items-center justify-between min-h-11 py-2.5 shrink-0 group'
+const ROW =
+  'relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_1.5rem] items-center gap-4 min-h-14 py-3 shrink-0 group'
 
 const RECORDING_ROW = '-mx-4 px-4 bg-tint-light'
 
@@ -172,15 +183,13 @@ function ShortcutRow({
         {conflict ? (
           <span className="text-xs/4 text-destructive">{conflict}</span>
         ) : (
-          isCapturing && (
-            <span className="text-xs/4 text-muted-foreground">
-              {t('shortcuts.v2.recordingHint')}
-            </span>
-          )
+          <span className="text-xs/4 text-muted-foreground">
+            {isCapturing ? t('shortcuts.v2.recordingHint') : shortcutDescription(t, entry)}
+          </span>
         )}
       </div>
 
-      <div ref={captureRef} className="flex items-center gap-2.5 ms-4 shrink-0">
+      <div ref={captureRef} className="flex items-center gap-2.5 min-w-0">
         {isCapturing ? (
           <>
             <span className="text-xs/4 text-foreground">{t('shortcuts.pressShortcut')}</span>
@@ -196,34 +205,39 @@ function ShortcutRow({
           </>
         ) : (
           <>
-            {canRebind && !isDefault && (
-              <button
-                type="button"
-                onClick={() => void onClearOverride(entry.id)}
-                className={QUIET_BUTTON}
-                title={t('shortcuts.resetTitle')}
-              >
-                {t('shortcuts.v2.reset')}
-              </button>
-            )}
             {canRebind ? (
               <button
                 type="button"
                 onClick={startCapture}
-                className="flex items-center rounded-sm hover:opacity-70 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className={REBIND_BUTTON}
                 title={t('shortcuts.rebindTitle')}
               >
-                <KbdGroup>{keyCaps}</KbdGroup>
+                <KbdGroup className={PILL}>{keyCaps}</KbdGroup>
+                <Pencil aria-hidden="true" className={PENCIL} />
               </button>
             ) : (
               <span
                 className="flex items-center opacity-60"
                 title={t('shortcuts.editorManagedTitle')}
               >
-                <KbdGroup>{keyCaps}</KbdGroup>
+                <KbdGroup className={PILL}>{keyCaps}</KbdGroup>
               </span>
             )}
           </>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        {canRebind && !isDefault && !isCapturing && (
+          <button
+            type="button"
+            onClick={() => void onClearOverride(entry.id)}
+            className={ICON_BUTTON}
+            title={t('shortcuts.resetTitle')}
+            aria-label={t('shortcuts.resetTitle')}
+          >
+            <Undo className="size-3.5" />
+          </button>
         )}
       </div>
     </div>
@@ -439,7 +453,7 @@ function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): 
         )}
       </div>
 
-      <div ref={captureRef} className="flex items-center gap-2.5 ms-4 shrink-0">
+      <div ref={captureRef} className="flex items-center gap-2.5 min-w-0">
         {isCapturing ? (
           <>
             <span className="text-xs/4 text-foreground">{t('shortcuts.pressShortcut')}</span>
@@ -454,40 +468,39 @@ function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): 
             </Button>
           </>
         ) : binding ? (
-          <>
-            <button
-              type="button"
-              onClick={() => void save(null)}
-              className={cn(
-                QUIET_BUTTON,
-                'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100'
-              )}
-              title={t('shortcuts.clearTitle')}
-            >
-              <X className="size-3" />
-            </button>
-            <button
-              type="button"
-              onClick={startCapture}
-              className="flex items-center rounded-sm hover:opacity-70 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              title={t('shortcuts.rebindTitle')}
-            >
-              <KbdGroup>
-                {getGlobalCaptureParts(binding).map((part) => (
-                  <Kbd key={part} className={KEYCAP}>
-                    {part}
-                  </Kbd>
-                ))}
-              </KbdGroup>
-            </button>
-          </>
-        ) : (
           <button
             type="button"
             onClick={startCapture}
-            className="rounded-[5px] border border-dashed border-border px-2 py-0.5 text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className={REBIND_BUTTON}
+            title={t('shortcuts.rebindTitle')}
           >
-            {t('shortcuts.clickToSet')}
+            <KbdGroup className={PILL}>
+              {getGlobalCaptureParts(binding).map((part) => (
+                <Kbd key={part} className={KEYCAP}>
+                  {part}
+                </Kbd>
+              ))}
+            </KbdGroup>
+            <Pencil aria-hidden="true" className={PENCIL} />
+          </button>
+        ) : (
+          <button type="button" onClick={startCapture} className={REBIND_BUTTON}>
+            <span className="text-[13px]/4 text-muted-foreground">{t('shortcuts.clickToSet')}</span>
+            <Pencil aria-hidden="true" className={PENCIL} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        {binding && !isCapturing && (
+          <button
+            type="button"
+            onClick={() => void save(null)}
+            className={ICON_BUTTON}
+            title={t('shortcuts.clearTitle')}
+            aria-label={t('shortcuts.clearTitle')}
+          >
+            <Trash2 className="size-3.5" />
           </button>
         )}
       </div>

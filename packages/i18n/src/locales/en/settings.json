@@ -286,12 +286,23 @@
         "aria": "Color mode"
       },
       "options": {
-        "light": "Warm",
+        "light": "Light",
         "white": "White",
         "dark": "Dark",
         "system": "System"
       },
       "error": "Failed to update theme"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Memrynote themes",
+      "warm": "Warm",
+      "error": "Failed to update color theme",
+      "copy": "Copy theme",
+      "copied": "Theme copied to clipboard",
+      "copyError": "Could not copy the theme",
+      "import": "Import theme from clipboard",
+      "importInvalid": "The clipboard does not hold a memrynote theme"
     },
     "accent": {
       "pick": "Pick an accent color",
@@ -310,7 +321,43 @@
         "pink": "Pink",
         "orange": "Orange"
       },
-      "error": "Failed to update accent color"
+      "error": "Failed to update accent color",
+      "aria": "Accent preset",
+      "options": {
+        "theme": "Theme",
+        "custom": "Custom"
+      }
+    },
+    "colors": {
+      "background": "Background",
+      "foreground": "Foreground",
+      "forLight": "For light mode",
+      "forDark": "For dark mode",
+      "reset": "Use the theme's color",
+      "pick": "Pick a color"
+    },
+    "advanced": {
+      "title": "Advanced",
+      "reset": "Reset to default",
+      "error": "Failed to update setting",
+      "fontSizeDescription": "Base size of the interface text",
+      "zoomDescription": "Scale of the whole window",
+      "reduceMotion": {
+        "label": "Reduce motion",
+        "description": "Reduce animations or match your system",
+        "options": {
+          "system": "System",
+          "on": "On"
+        }
+      },
+      "pointerCursors": {
+        "label": "Use pointer cursors",
+        "description": "Show a pointer when hovering over interactive elements"
+      },
+      "fontSmoothing": {
+        "label": "Font smoothing",
+        "description": "Thinner, grayscale anti-aliased text on macOS"
+      }
     },
     "zoom": {
       "label": "Zoom Level",
@@ -358,6 +405,7 @@
         "text": "Text & zoom"
       },
       "colorMode": "Color mode",
+      "colorTheme": "Theme",
       "accent": "Accent color",
       "customColor": "Custom color",
       "fontFamily": "Font family",

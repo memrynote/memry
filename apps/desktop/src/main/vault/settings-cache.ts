@@ -1,3 +1,4 @@
+import { legacyColorTheme } from '@memry/contracts/color-themes'
 import { getSetting, setSetting } from '@main/database/queries/settings'
 import {
   GENERAL_SETTINGS_DEFAULTS,
@@ -69,6 +70,14 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
         seedPrefs.customFontFamily = general.customFontFamily
       }
       if (general.accentColor) seedPrefs.accentColor = general.accentColor
+      if (general.colorTheme) seedPrefs.colorTheme = general.colorTheme
+      else if (general.theme) seedPrefs.colorTheme = legacyColorTheme(general.theme)
+      // '' and false are real values ("theme's own color", "my accent").
+      if (general.useThemeAccent !== undefined) seedPrefs.useThemeAccent = general.useThemeAccent
+      if (general.backgroundLight !== undefined) seedPrefs.backgroundLight = general.backgroundLight
+      if (general.foregroundLight !== undefined) seedPrefs.foregroundLight = general.foregroundLight
+      if (general.backgroundDark !== undefined) seedPrefs.backgroundDark = general.backgroundDark
+      if (general.foregroundDark !== undefined) seedPrefs.foregroundDark = general.foregroundDark
       if (general.language) seedPrefs.language = general.language
       if (general.createInSelectedFolder !== undefined) {
         seedPrefs.createInSelectedFolder = general.createInSelectedFolder
@@ -120,6 +129,12 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
     fontFamily: prefs.fontFamily,
     customFontFamily: prefs.customFontFamily,
     accentColor: prefs.accentColor,
+    colorTheme: prefs.colorTheme,
+    useThemeAccent: prefs.useThemeAccent,
+    backgroundLight: prefs.backgroundLight,
+    foregroundLight: prefs.foregroundLight,
+    backgroundDark: prefs.backgroundDark,
+    foregroundDark: prefs.foregroundDark,
     language: language.success ? language.data : GENERAL_SETTINGS_DEFAULTS.language,
     createInSelectedFolder: prefs.createInSelectedFolder,
     openPagesInNewTab: prefs.openPagesInNewTab,

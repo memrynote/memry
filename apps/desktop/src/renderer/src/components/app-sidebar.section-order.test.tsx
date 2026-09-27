@@ -137,6 +137,7 @@ vi.mock('@/hooks/use-general-settings', () => ({
 }))
 
 vi.mock('@/hooks/use-sidebar-section-order', () => ({
+  useSidebarRailOrder: () => ({ order: [], setOrder: vi.fn(), error: null }),
   useSidebarSectionOrder: () => ({
     order: mocks.savedOrder,
     setOrder: mocks.setSectionOrder,

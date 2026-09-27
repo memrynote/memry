@@ -1,4 +1,5 @@
 import { Activity, useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { MotionConfig } from 'motion/react'
 import { useToday } from '@/hooks/use-today'
 import { resolveProjectReorderTarget } from '@/components/sidebar/sidebar-drag-types'
 import type { DragEndEvent } from '@dnd-kit/core'
@@ -134,9 +135,14 @@ const taskViewIds = taskViews.map((view) => view.id)
 // =============================================================================
 
 function ThemeSyncManager({ children }: { children: React.ReactNode }): React.JSX.Element {
-  useThemeSync()
+  const { reduceMotion } = useThemeSync()
   useWeekStartSync()
-  return <>{children}</>
+  // 'user' follows the OS; motion's own default ('never') would ignore it.
+  return (
+    <MotionConfig reducedMotion={reduceMotion === 'on' ? 'always' : 'user'}>
+      {children}
+    </MotionConfig>
+  )
 }
 
 // =============================================================================

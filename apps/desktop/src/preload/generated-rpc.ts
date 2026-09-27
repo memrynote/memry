@@ -253,6 +253,8 @@ export function createGeneratedRpcApi({
       "setSidebarSortMode": ((surface, mode) => invoke("settings:setSidebarSortMode", { surface, mode })) as GeneratedRpcApi["settings"]["setSidebarSortMode"],
       "getSidebarSectionOrder": (() => invoke("settings:getSidebarSectionOrder")) as GeneratedRpcApi["settings"]["getSidebarSectionOrder"],
       "setSidebarSectionOrder": ((order) => invoke("settings:setSidebarSectionOrder", order)) as GeneratedRpcApi["settings"]["setSidebarSectionOrder"],
+      "getSidebarRailOrder": (() => invoke("settings:getSidebarRailOrder")) as GeneratedRpcApi["settings"]["getSidebarRailOrder"],
+      "setSidebarRailOrder": ((order) => invoke("settings:setSidebarRailOrder", order)) as GeneratedRpcApi["settings"]["setSidebarRailOrder"],
       "getSidebarNavCollapsed": (() => invoke("settings:getSidebarNavCollapsed")) as GeneratedRpcApi["settings"]["getSidebarNavCollapsed"],
       "setSidebarNavCollapsed": ((collapsed) => invoke("settings:setSidebarNavCollapsed", collapsed)) as GeneratedRpcApi["settings"]["setSidebarNavCollapsed"],
       "getSidebarNotesFirst": (() => invoke("settings:getSidebarNotesFirst")) as GeneratedRpcApi["settings"]["getSidebarNotesFirst"],

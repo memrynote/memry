@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, other {# item}}",
     "itemsCountFiltered": "{shown} dari {total, plural, other {# item}}",
-    "renameViewUnavailableForTags": "Mengganti nama tampilan tersimpan belum tersedia untuk tag",
     "tagFilterLabel": "tag = {tag}"
   },
   "tree": {

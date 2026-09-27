@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, other {#件のアイテム}}",
     "itemsCountFiltered": "{total, plural, other {#件}}中{shown}件",
-    "renameViewUnavailableForTags": "保存したビューの名前変更は、タグではまだ利用できません",
     "tagFilterLabel": "タグ = {tag}"
   },
   "tree": {

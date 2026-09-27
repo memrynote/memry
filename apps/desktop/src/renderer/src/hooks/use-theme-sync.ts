@@ -6,10 +6,20 @@ import { FONT_FAMILY_MAP, sanitizeFontFamilyName } from '@/lib/interface-font'
 import { createLogger } from '@/lib/logger'
 import { resolveFontSizePx } from '@memry/contracts/font-size'
 import { clampZoomFactor } from '@memry/contracts/app-zoom'
+import {
+  applyColorTheme,
+  COLOR_THEME_STORAGE_KEY,
+  type ThemeCustomization
+} from '@memry/contracts/color-themes'
 
 const log = createLogger('ThemeSync')
 
-export function useThemeSync(): void {
+export interface ThemeSyncState {
+  /** For the app's MotionConfig, which CSS alone cannot reach. */
+  reduceMotion: 'system' | 'on'
+}
+
+export function useThemeSync(): ThemeSyncState {
   const { settings, isLoading } = useGeneralSettings()
   const { setTheme } = useTheme()
 
@@ -23,6 +33,53 @@ export function useThemeSync(): void {
     if (isLoading) return
     document.documentElement.style.setProperty('--user-accent-color', settings.accentColor)
   }, [isLoading, settings.accentColor])
+
+  const {
+    colorTheme,
+    accentColor,
+    useThemeAccent,
+    backgroundLight,
+    foregroundLight,
+    backgroundDark,
+    foregroundDark
+  } = settings
+  useEffect(() => {
+    if (isLoading) return
+    const custom: ThemeCustomization = {
+      colorTheme,
+      accentColor,
+      useThemeAccent,
+      backgroundLight,
+      foregroundLight,
+      backgroundDark,
+      foregroundDark
+    }
+    applyColorTheme(document.documentElement, custom)
+    // Cached for the preload, which paints it before the next launch's first frame.
+    try {
+      window.localStorage.setItem(COLOR_THEME_STORAGE_KEY, JSON.stringify(custom))
+    } catch {
+      // Losing the cache only costs the next launch a flash of the built-in palette
+    }
+  }, [
+    isLoading,
+    colorTheme,
+    accentColor,
+    useThemeAccent,
+    backgroundLight,
+    foregroundLight,
+    backgroundDark,
+    foregroundDark
+  ])
+
+  useEffect(() => {
+    if (isLoading) return
+    const root = document.documentElement
+    root.toggleAttribute('data-pointer-cursors', settings.pointerCursors === true)
+    root.toggleAttribute('data-font-smoothing', settings.fontSmoothing === true)
+    if (settings.reduceMotion === 'on') root.setAttribute('data-reduce-motion', 'on')
+    else root.removeAttribute('data-reduce-motion')
+  }, [isLoading, settings.pointerCursors, settings.fontSmoothing, settings.reduceMotion])
 
   useEffect(() => {
     if (isLoading) return
@@ -58,4 +115,6 @@ export function useThemeSync(): void {
     if (isLoading) return
     setDateFormatPref(settings.dateFormat)
   }, [isLoading, settings.dateFormat])
+
+  return { reduceMotion: settings.reduceMotion === 'on' ? 'on' : 'system' }
 }

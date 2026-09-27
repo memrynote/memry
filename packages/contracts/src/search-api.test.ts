@@ -3,12 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import {
-  ContentTypeEnum,
-  DateRangeSchema,
-  SearchQuerySchema,
-  AddReasonSchema
-} from './search-api'
+import { ContentTypeEnum, DateRangeSchema, SearchQuerySchema, AddReasonSchema } from './search-api'
 
 describe('ContentTypeEnum', () => {
   it('accepts all valid content types', () => {

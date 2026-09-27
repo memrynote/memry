@@ -66,13 +66,21 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   ]),
   ...group('appearance', 'appearance.groups.theme', [
     ['appearance.v2.colorMode'],
+    ['appearance.v2.colorTheme'],
     ['appearance.v2.accent'],
-    ['appearance.v2.customColor']
+    ['appearance.colors.background'],
+    ['appearance.colors.foreground'],
+    ['appearance.v2.fontFamily']
   ]),
-  ...group('appearance', 'appearance.v2.groups.text', [
-    ['appearance.v2.fontFamily'],
-    ['appearance.v2.fontSize'],
-    ['appearance.v2.zoom']
+  ...group('appearance', 'appearance.advanced.title', [
+    ['appearance.v2.fontSize', ['appearance.advanced.fontSizeDescription']],
+    ['appearance.v2.zoom', ['appearance.advanced.zoomDescription']],
+    ['appearance.advanced.reduceMotion.label', ['appearance.advanced.reduceMotion.description']],
+    [
+      'appearance.advanced.pointerCursors.label',
+      ['appearance.advanced.pointerCursors.description']
+    ],
+    ['appearance.advanced.fontSmoothing.label', ['appearance.advanced.fontSmoothing.description']]
   ]),
   ...group('editor', 'editor.groups.layout', [
     ['editor.v2.width', ['editor.width.description']],

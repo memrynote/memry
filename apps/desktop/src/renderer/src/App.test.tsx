@@ -181,7 +181,7 @@ vi.mock('@/hooks/use-flush-on-quit', () => ({
 }))
 
 vi.mock('@/hooks/use-theme-sync', () => ({
-  useThemeSync: vi.fn()
+  useThemeSync: vi.fn(() => ({ reduceMotion: 'system' }))
 }))
 
 vi.mock('@/features/tasks/use-task-queries', () => ({

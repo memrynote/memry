@@ -46,7 +46,7 @@ import { ProjectModal } from '@/components/tasks/project-modal'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
-import { useSidebarSectionOrder } from '@/hooks/use-sidebar-section-order'
+import { useSidebarRailOrder, useSidebarSectionOrder } from '@/hooks/use-sidebar-section-order'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useOpenPage } from '@/hooks/use-open-target'
 import type { OpenSidebarItemOptions } from '@/hooks/use-sidebar-navigation'
@@ -194,6 +194,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   const { settings: generalSettings } = useGeneralSettings()
   const { open: openSettings, isOpen: isSettingsOpen, close: closeSettings } = useSettingsModal()
   const { order: sectionOrder, setOrder: setSectionOrder } = useSidebarSectionOrder()
+  const { order: railOrder, setOrder: setRailOrder } = useSidebarRailOrder()
 
   // Handle creating a new note (⌘N shortcut target)
   const handleNewNote = useCallback(async () => {
@@ -302,9 +303,29 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // Sections visible in the sidebar (Home always; others gated by feature flags).
   // Drives both the rendered numbers and the ⌘/Ctrl+number shortcut mapping so
   // they never drift.
-  const visibleNav = useMemo(
-    () => mainNav.filter((item) => item.page === 'home' || isEnabled(item.page)),
-    [isEnabled]
+  // In the user's dragged order (`sidebar.railOrder`, per vault, synced).
+  const visibleNav = useMemo(() => {
+    const enabled = mainNav.filter((item) => item.page === 'home' || isEnabled(item.page))
+    const byPage = new Map(enabled.map((item) => [item.page as string, item]))
+    return resolveSidebarSectionOrder([...byPage.keys()], railOrder).flatMap((page) => {
+      const item = byPage.get(page)
+      return item ? [item] : []
+    })
+  }, [isEnabled, railOrder])
+
+  // Flag-hidden pages keep their slot in the saved order: the visible pages
+  // take the visible slots in their new order, hidden ones stay put.
+  const handleRailReorder = useCallback(
+    (pages: string[]) => {
+      const visible = new Set(pages)
+      const queue = [...pages]
+      const full = resolveSidebarSectionOrder(
+        mainNav.map((item) => item.page),
+        railOrder
+      )
+      setRailOrder(full.map((page) => (visible.has(page) ? (queue.shift() ?? page) : page)))
+    },
+    [railOrder, setRailOrder]
   )
 
   // ⌘/Ctrl + 1..9 → open the Nth visible section (matches the on-icon numbers).
@@ -827,6 +848,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         todayTasksCount={todayTasksCount}
         onOpenJournalSettings={() => openSettings('journal')}
         dock={dock}
+        onReorder={handleRailReorder}
       />
       {/* The panel starts below the h-9 title row (WindowControls + WorkspaceDragStrip).
           With the workspace card beside it, it forms one surface: the panel owns the

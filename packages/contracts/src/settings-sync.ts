@@ -25,6 +25,14 @@ export const SyncedSettingsSchema = z.object({
       // payload and stall every other synced setting.
       customFontFamily: z.string().optional(),
       accentColor: z.string().optional(),
+      // Loose string for the same reason: a theme id only a newer build knows
+      // must ride along, and the renderer falls back to the built-in palette.
+      colorTheme: z.string().optional(),
+      useThemeAccent: z.boolean().optional(),
+      backgroundLight: z.string().optional(),
+      foregroundLight: z.string().optional(),
+      backgroundDark: z.string().optional(),
+      foregroundDark: z.string().optional(),
       startOnBoot: z.boolean().optional(),
       language: z.string().optional(),
       createInSelectedFolder: z.boolean().optional(),
@@ -127,6 +135,10 @@ export const SyncedSettingsSchema = z.object({
       // stay unconstrained strings — a section a newer build added must ride
       // along instead of failing the whole settings payload.
       sectionOrder: z.array(z.string()).optional(),
+      // The app rail's page icons (home, inbox, ...), same one-list-one-clock
+      // rule as sectionOrder. Absent means the default order; older builds
+      // strip it on parse.
+      railOrder: z.array(z.string()).optional(),
       // One flag under one clock: collapsing hides the whole nav block at
       // once, so there is no per-row state for two devices to interleave.
       // Absent means expanded, which is every payload a build older than this

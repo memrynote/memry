@@ -21,7 +21,10 @@ import {
   type WeekdayTemplateMap
 } from '../../settings/journal-template-keys'
 import { SIDEBAR_SORT_SETTINGS_KEY } from '../../settings/sidebar-sort-store'
-import { SIDEBAR_SECTION_ORDER_SETTINGS_KEY } from '../../settings/sidebar-section-order-store'
+import {
+  SIDEBAR_RAIL_ORDER_SETTINGS_KEY,
+  SIDEBAR_SECTION_ORDER_SETTINGS_KEY
+} from '../../settings/sidebar-section-order-store'
 import { SIDEBAR_NAV_COLLAPSED_SETTINGS_KEY } from '../../settings/sidebar-nav-store'
 import {
   SIDEBAR_NOTES_FIRST_SETTINGS_KEY,
@@ -192,6 +195,21 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     }
   }
 
+  // Same whole-list replace for the rail's page order.
+  if (merged.sidebar?.railOrder) {
+    try {
+      const db = getDatabase()
+      const next = merged.sidebar.railOrder.filter((id) => typeof id === 'string')
+      setSetting(db, SIDEBAR_RAIL_ORDER_SETTINGS_KEY, JSON.stringify(next))
+      emit(SettingsChannels.events.CHANGED, {
+        key: SIDEBAR_RAIL_ORDER_SETTINGS_KEY,
+        value: next
+      })
+    } catch (err) {
+      log.warn('Failed to propagate merged sidebar rail order:', err)
+    }
+  }
+
   // Local-DB-only again, and tested with `typeof` rather than truthiness: the
   // whole point of the flag is that `false` is a real value, so a truthy guard
   // would drop every "expand it again" merge and strand the other device with
@@ -239,6 +257,14 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
           prefsUpdate.customFontFamily = g.customFontFamily
         }
         if (g.accentColor) prefsUpdate.accentColor = g.accentColor
+        if (g.colorTheme) prefsUpdate.colorTheme = g.colorTheme
+        // Not truthiness: '' clears a color override and false picks the user's
+        // accent, and dropping either would leave the other device stuck.
+        if (g.useThemeAccent !== undefined) prefsUpdate.useThemeAccent = g.useThemeAccent
+        if (g.backgroundLight !== undefined) prefsUpdate.backgroundLight = g.backgroundLight
+        if (g.foregroundLight !== undefined) prefsUpdate.foregroundLight = g.foregroundLight
+        if (g.backgroundDark !== undefined) prefsUpdate.backgroundDark = g.backgroundDark
+        if (g.foregroundDark !== undefined) prefsUpdate.foregroundDark = g.foregroundDark
         if (g.language) prefsUpdate.language = g.language
         if (g.createInSelectedFolder !== undefined) {
           prefsUpdate.createInSelectedFolder = g.createInSelectedFolder

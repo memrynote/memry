@@ -1305,6 +1305,18 @@ export interface GeneralSettingsDTO {
   fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
   customFontFamily: string
   accentColor: string
+  /** Color theme id from `@memry/contracts/color-themes`, or 'memrynote'. */
+  colorTheme: string
+  useThemeAccent: boolean
+  /** '' = the theme's own color; `Light` covers the warm and white modes. */
+  backgroundLight: string
+  foregroundLight: string
+  backgroundDark: string
+  foregroundDark: string
+  /** Per-install; never synced. */
+  reduceMotion: 'system' | 'on'
+  pointerCursors: boolean
+  fontSmoothing: boolean
   startOnBoot: boolean
   language: Locale
   onboardingCompleted: boolean
@@ -1395,6 +1407,9 @@ export interface SettingsClientAPI {
   /** Section ids in the order the user dragged them; empty means the default. */
   getSidebarSectionOrder(): Promise<string[]>
   setSidebarSectionOrder(order: string[]): Promise<{ success: boolean; error?: string }>
+  /** Rail page ids in the order the user dragged them; empty means the default. */
+  getSidebarRailOrder(): Promise<string[]>
+  setSidebarRailOrder(order: string[]): Promise<{ success: boolean; error?: string }>
   /** Whether the sidebar's top nav block is collapsed; false means expanded. */
   getSidebarNavCollapsed(): Promise<boolean>
   setSidebarNavCollapsed(collapsed: boolean): Promise<{ success: boolean; error?: string }>

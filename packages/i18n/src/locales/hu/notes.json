@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# elem} other {# elem}}",
     "itemsCountFiltered": "{shown} / {total, plural, one {# elem} other {# elem}}",
-    "renameViewUnavailableForTags": "A mentett nézetek átnevezése címkéknél még nem érhető el",
     "tagFilterLabel": "címke = {tag}"
   },
   "tree": {

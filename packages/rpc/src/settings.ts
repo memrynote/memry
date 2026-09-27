@@ -175,6 +175,13 @@ export const settingsRpc = defineDomain({
       channel: SettingsChannels.invoke.SET_SIDEBAR_SECTION_ORDER,
       params: ['order']
     }),
+    getSidebarRailOrder: defineMethod<() => Promise<string[]>>({
+      channel: SettingsChannels.invoke.GET_SIDEBAR_RAIL_ORDER
+    }),
+    setSidebarRailOrder: defineMethod<(order: string[]) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_SIDEBAR_RAIL_ORDER,
+      params: ['order']
+    }),
     getSidebarNavCollapsed: defineMethod<() => Promise<boolean>>({
       channel: SettingsChannels.invoke.GET_SIDEBAR_NAV_COLLAPSED
     }),

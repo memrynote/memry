@@ -399,40 +399,42 @@ describe('useFolderView', () => {
     await expect(result.current.setViewAsDefault(0)).rejects.toThrow('default failed')
   })
 
-  it('renames a view in place via setConfig without going through setView', async () => {
+  it('renames a view in place via setView with the name still on disk', async () => {
     const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
+    // Keystrokes rename the cache each time; one debounced write carries the
+    // original on-disk name so main replaces the view instead of appending.
+    await act(async () => {
+      await result.current.renameView(1, 'Ren')
+    })
     await act(async () => {
       await result.current.renameView(1, 'Renamed')
       vi.advanceTimersByTime(300)
       await Promise.resolve()
     })
 
-    // Whole array rewritten with order preserved — no name-keyed duplicate.
-    expect(window.api.folderView.setConfig).toHaveBeenCalledWith(
-      'Work',
-      expect.objectContaining({
-        views: [
-          expect.objectContaining({ name: 'Main' }),
-          expect.objectContaining({ name: 'Renamed' })
-        ]
-      })
+    expect(result.current.views.map((v) => v.name)).toEqual(['Main', 'Renamed'])
+    expect(window.api.folderView.setView).toHaveBeenCalledTimes(1)
+    expect(window.api.folderView.setView).toHaveBeenCalledWith(
+      workScope,
+      expect.objectContaining({ name: 'Renamed' }),
+      'Second'
     )
-    expect(window.api.folderView.setView).not.toHaveBeenCalled()
+    expect(window.api.folderView.setConfig).not.toHaveBeenCalled()
 
     // Empty names and names that collide with another view are a no-op.
-    const calls = (window.api.folderView.setConfig as any).mock.calls.length
+    const calls = (window.api.folderView.setView as any).mock.calls.length
     await act(async () => {
       await result.current.renameView(0, '   ')
       await result.current.renameView(1, 'Main')
       vi.advanceTimersByTime(300)
       await Promise.resolve()
     })
-    expect((window.api.folderView.setConfig as any).mock.calls.length).toBe(calls)
+    expect((window.api.folderView.setView as any).mock.calls.length).toBe(calls)
   })
 
   it('covers summary delete, note-property deletion, missing cache, and formula failures', async () => {

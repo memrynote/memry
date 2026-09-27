@@ -3,7 +3,8 @@ import { getI18n } from 'react-i18next'
  * View Switcher Component
  *
  * Popover-based view selector for folder view with management capabilities.
- * Two screens: a saved-views list and a Paper-style view editor (name + layout).
+ * Two screens: a saved-views list and a view editor (name + view actions).
+ * Layout lives in the page header (`LayoutToggle`), not here.
  * The editor is fully live — every change is persisted as it is made, so there
  * is no Save button. Creating a new view creates it immediately and drops into
  * the same live editor.
@@ -18,10 +19,7 @@ import {
   Copy,
   Star,
   Trash2,
-  Check,
-  Rows2,
-  List,
-  LayoutGrid
+  Check
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -51,8 +49,6 @@ const log = createLogger('Component:ViewSwitcher')
 // Types
 // ============================================================================
 
-type ViewType = ViewConfig['type']
-
 interface ViewSwitcherProps {
   /** All views for this folder */
   views: ViewConfig[]
@@ -64,8 +60,6 @@ interface ViewSwitcherProps {
   onViewChange: (index: number) => void
   /** Called when user creates a new view */
   onAddView: (view: ViewConfig) => Promise<void>
-  /** Called when user updates a view */
-  onUpdateView: (view: Partial<ViewConfig>) => Promise<void>
   /** Called when user renames a view in place by index */
   onRenameView: (index: number, newName: string) => Promise<void>
   /** Called when user sets a view as default */
@@ -75,12 +69,6 @@ interface ViewSwitcherProps {
   /** Additional CSS classes */
   className?: string
 }
-
-const LAYOUT_OPTIONS: { type: ViewType; icon: typeof Rows2; labelKey: string }[] = [
-  { type: 'table', icon: Rows2, labelKey: 'phaseF.componentsFolderViewViewSwitcher.table' },
-  { type: 'list', icon: List, labelKey: 'phaseF.componentsFolderViewViewSwitcher.list' },
-  { type: 'grid', icon: LayoutGrid, labelKey: 'phaseF.componentsFolderViewViewSwitcher.gallery' }
-]
 
 // ============================================================================
 // ViewSwitcher Component
@@ -92,7 +80,6 @@ export function ViewSwitcher({
   activeView,
   onViewChange,
   onAddView,
-  onUpdateView,
   onRenameView,
   onSetViewAsDefault,
   onDeleteView,
@@ -107,7 +94,6 @@ export function ViewSwitcher({
   // Editor targets a view by index (stable across in-place renames while open)
   const [editorIndex, setEditorIndex] = useState(-1)
   const [formName, setFormName] = useState('')
-  const [formType, setFormType] = useState<ViewType>('table')
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [deleteTargetName, setDeleteTargetName] = useState<string | null>(null)
@@ -168,7 +154,6 @@ export function ViewSwitcher({
       if (index !== activeViewIndex) onViewChange(index)
       setEditorIndex(index)
       setFormName(view.name)
-      setFormType(view.type)
       setScreen('editor')
     },
     [views, activeViewIndex, onViewChange]
@@ -194,7 +179,6 @@ export function ViewSwitcher({
       await onAddView(baseConfig)
       setEditorIndex(newIndex)
       setFormName(name)
-      setFormType(baseConfig.type)
       setScreen('editor')
     } catch (err) {
       log.error('Failed to create view', err)
@@ -226,18 +210,6 @@ export function ViewSwitcher({
   const handleNameBlur = useCallback(() => {
     if (editingView) setFormName(editingView.name)
   }, [editingView])
-
-  /**
-   * Apply a layout change live to the (active) edited view.
-   */
-  const handleLayoutChange = useCallback(
-    (type: ViewType) => {
-      if (!editingView) return
-      setFormType(type)
-      void onUpdateView({ type })
-    },
-    [editingView, onUpdateView]
-  )
 
   const duplicateView = useCallback(
     async (view: ViewConfig | null) => {
@@ -390,36 +362,6 @@ export function ViewSwitcher({
                     if (e.key === 'Enter') e.currentTarget.blur()
                   }}
                 />
-              </div>
-
-              {/* Layout */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {tPhaseF('phaseF.componentsFolderViewViewSwitcher.layout')}
-                </span>
-                <div className="flex gap-2">
-                  {LAYOUT_OPTIONS.map((opt) => {
-                    const Icon = opt.icon
-                    const selected = formType === opt.type
-                    return (
-                      <button
-                        key={opt.type}
-                        type="button"
-                        onClick={() => handleLayoutChange(opt.type)}
-                        aria-pressed={selected}
-                        className={cn(
-                          'flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 transition-colors',
-                          selected
-                            ? 'border-[var(--tint)] bg-[var(--tint)]/10 text-[var(--tint)]'
-                            : 'border-border bg-background text-muted-foreground hover:bg-accent'
-                        )}
-                      >
-                        <Icon className="h-[18px] w-[18px]" />
-                        <span className="text-xs font-medium">{tPhaseF(opt.labelKey)}</span>
-                      </button>
-                    )
-                  })}
-                </div>
               </div>
 
               {/* Secondary actions */}

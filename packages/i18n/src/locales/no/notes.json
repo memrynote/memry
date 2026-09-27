@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# element} other {# elementer}}",
     "itemsCountFiltered": "{shown} av {total, plural, one {# element} other {# elementer}}",
-    "renameViewUnavailableForTags": "Du kan ikke gi lagrede visninger for tagger nytt navn ennå",
     "tagFilterLabel": "tagg = {tag}"
   },
   "tree": {

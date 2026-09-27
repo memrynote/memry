@@ -110,7 +110,8 @@ import {
   PanelRightIcon,
   PauseIcon,
   PenTool01Icon,
-  PencilIcon,
+  Edit03Icon,
+  UndoIcon,
   PlayIcon,
   QrCodeIcon,
   RepeatIcon,
@@ -361,7 +362,7 @@ export const Heart = createIcon(FavouriteIcon)
 export const StickyNote = createIcon(StickyNote01Icon)
 
 // ── Actions & Tools ─────────────────────────────────
-export const Pencil = createIcon(PencilIcon)
+export const Pencil = createIcon(Edit03Icon)
 export const PenLine = createIcon(PencilEdit01Icon)
 export const PenTool = createIcon(PenTool01Icon)
 export const Eraser = createIcon(EraserIcon)
@@ -494,6 +495,8 @@ export const Loader2 = createIcon(Loading03Icon)
 export const RefreshCw = createIcon(Refresh01Icon)
 export const RotateCcw = createIcon(RotateLeft01Icon)
 export const RotateCw = createIcon(RotateRight01Icon)
+/** Restore-to-default affordance. Use for every "reset to default" control. */
+export const Undo = createIcon(UndoIcon)
 export const CircleDashed = createIcon(DashedLineCircleIcon)
 export const Progress = createIcon(Progress03Icon)
 export const BadgeCheck = createIcon(CheckmarkBadge01Icon)

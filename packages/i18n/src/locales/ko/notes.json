@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, other {항목 #개}}",
     "itemsCountFiltered": "{total, plural, other {항목 #개}} 중 {shown}개",
-    "renameViewUnavailableForTags": "태그에서는 저장된 보기의 이름을 아직 바꿀 수 없습니다",
     "tagFilterLabel": "태그 = {tag}"
   },
   "tree": {

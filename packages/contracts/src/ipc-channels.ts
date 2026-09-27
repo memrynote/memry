@@ -403,6 +403,10 @@ export const SettingsChannels = {
     GET_SIDEBAR_SECTION_ORDER: 'settings:getSidebarSectionOrder',
     /** Set the order the sidebar sections render in */
     SET_SIDEBAR_SECTION_ORDER: 'settings:setSidebarSectionOrder',
+    /** Get the order the app rail's page icons render in */
+    GET_SIDEBAR_RAIL_ORDER: 'settings:getSidebarRailOrder',
+    /** Set the order the app rail's page icons render in */
+    SET_SIDEBAR_RAIL_ORDER: 'settings:setSidebarRailOrder',
     /** Get whether the sidebar's top nav block is collapsed */
     GET_SIDEBAR_NAV_COLLAPSED: 'settings:getSidebarNavCollapsed',
     /** Set whether the sidebar's top nav block is collapsed */

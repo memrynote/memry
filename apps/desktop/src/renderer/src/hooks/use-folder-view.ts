@@ -282,6 +282,8 @@ export function useFolderView({
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   // Debounce timer for in-place renames (live, per-keystroke)
   const renameTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  /** Name on disk for the view being renamed while its write is debounced. */
+  const renameOriginRef = useRef<{ index: number; name: string } | null>(null)
 
   // ============================================================================
   // Queries
@@ -580,22 +582,14 @@ export function useFolderView({
    * Rename a view in place by index. Safe to call on every keystroke: the cache
    * updates optimistically right away and the disk write is debounced.
    *
-   * `setView` keys by name and would push a duplicate on a name change, so a
-   * rename rewrites the whole views array via `setConfig` to preserve order.
+   * The write goes through `setView` with `previousName`, which replaces the
+   * view in place for both folder and tag scopes. Every keystroke renames the
+   * cache, so the name still on disk is remembered in `renameOriginRef` until
+   * the debounced write lands.
    * Empty names and names that collide with another view are skipped.
    */
   const renameView = useCallback(
     async (index: number, newName: string) => {
-      // Whole-array rewrite goes through folderView.setConfig, which only
-      // folders have (a tag has no .folder.md to rewrite). Tag-scoped
-      // rename isn't wired up yet, so bail rather than apply an optimistic
-      // update that would silently revert on the next fetch.
-      if (scope.kind !== 'folder') {
-        log.warn('renameView is not supported for tag scope yet')
-        return
-      }
-      const folderPath = scope.path
-
       const target = views[index]
       if (!target) return
       const name = newName.trim()
@@ -606,6 +600,11 @@ export function useFolderView({
       if (collides) return
 
       const newViews = views.map((v, i) => (i === index ? { ...v, name } : v))
+      if (renameOriginRef.current?.index !== index) {
+        renameOriginRef.current = { index, name: target.name }
+      }
+      const persistedName = renameOriginRef.current.name
+      const renamed = newViews[index]
 
       // Optimistic update to cache
       queryClient.setQueryData<ViewsQueryData>(folderViewKeys.views(scope), (old) =>
@@ -619,9 +618,13 @@ export function useFolderView({
       renameTimeoutRef.current = setTimeout(() => {
         void (async () => {
           try {
-            const result = await window.api.folderView.setConfig(folderPath, {
-              views: newViews
-            } as unknown as Record<string, unknown>)
+            renameOriginRef.current = null
+            if (persistedName === name) return
+            const result = await window.api.folderView.setView(
+              scope,
+              renamed as unknown as ContractViewConfig,
+              persistedName
+            )
 
             if (!result.success) {
               throw new Error(result.error || 'Failed to rename view')

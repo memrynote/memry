@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# element} other {# elementer}}",
     "itemsCountFiltered": "{shown} af {total, plural, one {# element} other {# elementer}}",
-    "renameViewUnavailableForTags": "Gemte visninger kan endnu ikke omdøbes for tags",
     "tagFilterLabel": "tag = {tag}"
   },
   "tree": {
