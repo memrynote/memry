@@ -762,7 +762,16 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
         // Only a failed switch leaves this vault open. After a successful one
         // main already serves the next vault, and `activePath` here is still
         // this one until React commits: a refetch now would ask the wrong vault.
-        if (arrival !== null && arrival.path !== activePath) return
+        // Main is on the next vault now, but a held reveal (pager settling)
+        // keeps `activePath` on this one for a while, and this workspace stays
+        // visible with live effects. Without clearing the ref, the cache fence
+        // would take reads main answers from the next vault as this vault's
+        // rows (the tree then shows the other vault's notes). The layout effect
+        // sets the ref again when the incoming vault commits.
+        if (arrival !== null && arrival.path !== activePath) {
+          activePathRef.current = null
+          return
+        }
         void client.refetchQueries({
           type: 'active',
           predicate: (query) =>
