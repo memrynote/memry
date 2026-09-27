@@ -2,7 +2,7 @@ import { type Dispatch, useRef, useEffect, useState } from 'react'
 import {
   Search,
   X,
-  RotateCcw,
+  Undo,
   ChevronRight,
   Focus,
   FileText,
@@ -124,7 +124,7 @@ export function GraphControlPanel({
                 title={t('control.reset-filters')}
                 aria-label={t('control.reset-filters')}
               >
-                <RotateCcw className="size-3 text-muted-foreground" />
+                <Undo className="size-3 text-muted-foreground" />
               </Button>
             </div>
           )}

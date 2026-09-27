@@ -21,6 +21,7 @@
     "./canvas-folder-api": "./src/canvas-folder-api.ts",
     "./canvas-folder-types": "./src/canvas-folder-types.ts",
     "./cbor-ordering": "./src/cbor-ordering.ts",
+    "./color-themes": "./src/color-themes.ts",
     "./crypto": "./src/crypto.ts",
     "./delete-attestation": "./src/delete-attestation.ts",
     "./diagnostics-api": "./src/diagnostics-api.ts",

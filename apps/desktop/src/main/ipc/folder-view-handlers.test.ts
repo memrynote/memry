@@ -557,6 +557,34 @@ describe('folder-view-handlers', () => {
       expect(result.views.map((v) => v.name)).toEqual(['Open tasks'])
     })
 
+    it('renames a tag view in place when previousName is given', async () => {
+      const scope = { kind: 'tag', tag: 'araba' }
+      await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope,
+        view: { name: 'Default', type: 'table', default: true }
+      })
+      await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope,
+        view: { name: 'New view 12', type: 'grid' }
+      })
+      await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope,
+        view: { name: 'Reading', type: 'grid' },
+        previousName: 'New view 12'
+      })
+
+      const result = await invokeHandler(FolderViewChannels.invoke.GET_VIEWS, { scope })
+      expect(result.views.map((v) => v.name)).toEqual(['Default', 'Reading'])
+
+      // A rename onto another view's name is refused rather than duplicated.
+      const clash = await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
+        scope,
+        view: { name: 'Default', type: 'grid' },
+        previousName: 'Reading'
+      })
+      expect(clash.success).toBe(false)
+    })
+
     it('deleting the last view falls back to the default again', async () => {
       await invokeHandler(FolderViewChannels.invoke.SET_VIEW, {
         scope: { kind: 'tag', tag: 'araba' },

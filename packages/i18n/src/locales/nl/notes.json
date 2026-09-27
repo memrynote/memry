@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# item} other {# items}}",
     "itemsCountFiltered": "{shown} van {total, plural, one {# item} other {# items}}",
-    "renameViewUnavailableForTags": "Opgeslagen weergaven hernoemen is nog niet mogelijk voor tags",
     "tagFilterLabel": "tag = {tag}"
   },
   "tree": {

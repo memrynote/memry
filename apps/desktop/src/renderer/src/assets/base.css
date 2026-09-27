@@ -1842,12 +1842,17 @@
     /* Elements moving/transforming */
   }
 
-  .white {
+  /* The light mode of the memrynote theme. The :root palette above is the
+     light mode of the warm theme, picked by data-light-palette="warm"
+     (applyColorTheme). Keyed off the attribute rather than the .white class so
+     the system mode's light half gets it too, and so an older build's `light`
+     and `white` values render the same as the theme the user chose. */
+  :root:not(.dark, [data-light-palette='warm']) {
     /* ===== BASE COLORS - White Mode ===== */
     --background: #ffffff;
-    --foreground: #37352f;
-    --surface: #f7f6f3;
-    --surface-active: #efedea;
+    --foreground: #1d1f22;
+    --surface: #f5f5f5;
+    --surface-active: #ebebec;
     --critic-review-card-hover-background: var(--surface-active);
     --critic-review-actions-background: var(--background);
 
@@ -1859,10 +1864,10 @@
     --card-grey: #e3e2e0;
 
     /* ===== TYPOGRAPHY COLORS - White Mode ===== */
-    --text-primary: #37352f;
-    --text-secondary: #6b6966;
-    --text-tertiary: #9b9a97;
-    --text-bright: #37352f;
+    --text-primary: #1d1f22;
+    --text-secondary: #656769;
+    --text-tertiary: #969798;
+    --text-bright: #1d1f22;
 
     /* ===== ACCENT COLORS ===== */
     --accent-cyan: #0891b2;
@@ -1871,20 +1876,20 @@
     --accent-orange: #ea580c;
 
     /* ===== UI SEMANTIC COLORS - White Mode ===== */
-    --muted: #f7f6f3;
-    --muted-foreground: #6b6966;
+    --muted: #f5f5f5;
+    --muted-foreground: #656769;
     --popover: #ffffff;
-    --popover-foreground: #37352f;
-    --border: #e3e2e0;
-    --input: #e3e2e0;
+    --popover-foreground: #1d1f22;
+    --border: #ebebec;
+    --input: #ebebec;
     --card: #ffffff;
-    --card-foreground: #37352f;
-    --primary: #37352f;
+    --card-foreground: #1d1f22;
+    --primary: #1d1f22;
     --primary-foreground: #ffffff;
-    --secondary: #f7f6f3;
-    --secondary-foreground: #37352f;
-    --accent: #f7f6f3;
-    --accent-foreground: #37352f;
+    --secondary: #f5f5f5;
+    --secondary-foreground: #1d1f22;
+    --accent: #f5f5f5;
+    --accent-foreground: #1d1f22;
     --destructive: #e03e3e;
     --destructive-foreground: #ffffff;
     --ring: #9b9a97;
@@ -2888,24 +2893,27 @@ del.bn-inline-content {
   --sidebar-rail-active-foreground: var(--sidebar-primary);
 }
 
-.white {
+:root:not(.dark, [data-light-palette='warm']) {
   /* ===== SIDEBAR THEME - Clean White Palette ===== */
-  --sidebar: #f9f8f7;
-  --sidebar-foreground: #5f5e59;
-  --sidebar-primary: #37352f;
+  --sidebar: #fbfbfb;
+  --sidebar-foreground: #5a5c5e;
+  --sidebar-primary: #1d1f22;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: rgba(0, 0, 0, 0.04);
   --sidebar-accent-foreground: var(--sidebar-foreground);
-  --sidebar-border: #e9e9e7;
+  --sidebar-border: #ebebec;
   --sidebar-ring: var(--tint);
-  --sidebar-muted: #b0afab;
-  /* 5.16:1 on --sidebar, 5.06:1 on --muted. See the :root block. */
-  --sidebar-section-heading: #6b6966;
+  --sidebar-muted: #b0b1b2;
+  /* 5.4:1 on --sidebar, 5.2:1 on --muted. See the :root block. */
+  --sidebar-section-heading: #656769;
   --sidebar-terracotta: var(--tint);
-  --sidebar-text-folder: #37352f;
-  --sidebar-text-child: #6b6966;
-  --sidebar-dot-inactive: #e3e2e0;
+  --sidebar-text-folder: #1d1f22;
+  --sidebar-text-child: #656769;
+  --sidebar-dot-inactive: #e4e5e6;
   --sidebar-surface: rgba(0, 0, 0, 0.03);
+  /* Rail sits one step below the sidebar; active icon lifts to the canvas. */
+  --sidebar-rail: #f3f3f3;
+  --sidebar-rail-active: #ffffff;
 }
 
 .dark {
@@ -2931,6 +2939,141 @@ del.bn-inline-content {
   --sidebar-rail-foreground: #939393;
   --sidebar-rail-active: #393939;
   --sidebar-rail-active-foreground: #ffffff;
+}
+
+/* ===== COLOR THEMES =====
+   Set by applyColorTheme (@memry/contracts/color-themes): `data-color-theme`
+   plus --ct-{light,dark}-{bg,fg,surface,accent} inline on <html>. Four colors
+   per mode, everything else derived here, so a theme is data only.
+
+   Unlayered and (0,2,0) on purpose: it has to beat the layered token blocks
+   above and the unlayered .dark sidebar and tint blocks (0,1,0). The later
+   declaration wins against the (0,2,0) white sidebar block. The built-in
+   palettes are untouched while the attribute is absent. */
+:root[data-color-theme] {
+  --ct-bg: var(--ct-light-bg);
+  --ct-fg: var(--ct-light-fg);
+  --ct-surface: var(--ct-light-surface);
+  --ct-accent: var(--ct-light-accent);
+  --ct-raised: var(--ct-bg);
+  --ct-card: color-mix(in srgb, white 50%, var(--ct-bg));
+  --ct-tint-foreground: #ffffff;
+  --ct-rail-active: var(--ct-bg);
+}
+
+:root.dark[data-color-theme] {
+  --ct-bg: var(--ct-dark-bg);
+  --ct-fg: var(--ct-dark-fg);
+  --ct-surface: var(--ct-dark-surface);
+  --ct-accent: var(--ct-dark-accent);
+  /* Dark themes often put panels below the canvas; overlays still step up. */
+  --ct-raised: color-mix(in srgb, var(--ct-fg) 6%, var(--ct-bg));
+  --ct-card: var(--ct-raised);
+  /* Dark-theme accents are light pastels; white ink on them fails contrast. */
+  --ct-tint-foreground: var(--ct-bg);
+  --ct-rail-active: color-mix(in srgb, var(--ct-fg) 12%, var(--ct-surface));
+}
+
+:root[data-color-theme] {
+  --background: var(--ct-bg);
+  --foreground: var(--ct-fg);
+  --surface: var(--ct-surface);
+  --surface-active: color-mix(in srgb, var(--ct-fg) 10%, var(--ct-surface));
+  --critic-review-card-hover-background: var(--surface-active);
+  --critic-review-actions-background: var(--ct-bg);
+
+  --text-primary: var(--ct-fg);
+  --text-secondary: color-mix(in srgb, var(--ct-fg) 82%, var(--ct-bg));
+  --text-tertiary: color-mix(in srgb, var(--ct-fg) 60%, var(--ct-bg));
+  --text-bright: var(--ct-fg);
+
+  --muted: var(--ct-surface);
+  --muted-foreground: color-mix(in srgb, var(--ct-fg) 70%, var(--ct-bg));
+  --popover: var(--ct-raised);
+  --popover-foreground: var(--ct-fg);
+  --border: color-mix(in srgb, var(--ct-fg) 12%, var(--ct-bg));
+  --input: color-mix(in srgb, var(--ct-fg) 16%, var(--ct-bg));
+  --card: var(--ct-card);
+  --card-foreground: var(--ct-fg);
+  --primary: var(--ct-fg);
+  --primary-foreground: var(--ct-bg);
+  --secondary: var(--ct-surface);
+  --secondary-foreground: var(--ct-fg);
+  --accent: color-mix(in srgb, var(--ct-fg) 8%, var(--ct-bg));
+  --accent-foreground: var(--ct-fg);
+  --ring: color-mix(in srgb, var(--ct-fg) 45%, var(--ct-bg));
+
+  --queue-bg: var(--ct-surface);
+  --queue-number-bg: color-mix(in srgb, var(--ct-fg) 14%, var(--ct-surface));
+  --graph-bg: var(--ct-bg);
+  --graph-label-color: var(--ct-fg);
+  --graph-dimmed-node: var(--border);
+
+  --tint: var(--ct-accent);
+  --tint-foreground: var(--ct-tint-foreground);
+
+  --sidebar: var(--ct-surface);
+  --sidebar-foreground: color-mix(in srgb, var(--ct-fg) 72%, var(--ct-surface));
+  --sidebar-primary: var(--ct-fg);
+  --sidebar-primary-foreground: var(--ct-bg);
+  --sidebar-accent: color-mix(in srgb, var(--ct-fg) 9%, var(--ct-surface));
+  --sidebar-accent-foreground: var(--ct-fg);
+  --sidebar-border: color-mix(in srgb, var(--ct-fg) 12%, var(--ct-surface));
+  --sidebar-muted: color-mix(in srgb, var(--ct-fg) 45%, var(--ct-surface));
+  --sidebar-section-heading: color-mix(in srgb, var(--ct-fg) 65%, var(--ct-surface));
+  --sidebar-text-folder: var(--ct-fg);
+  --sidebar-text-child: color-mix(in srgb, var(--ct-fg) 75%, var(--ct-surface));
+  --sidebar-dot-inactive: var(--sidebar-border);
+  --sidebar-surface: color-mix(in srgb, var(--ct-fg) 6%, var(--ct-surface));
+  --sidebar-rail: var(--ct-surface);
+  --sidebar-rail-foreground: var(--sidebar-foreground);
+  --sidebar-rail-active: var(--ct-rail-active);
+  --sidebar-rail-active-foreground: var(--ct-fg);
+}
+
+/* ===== ADVANCED APPEARANCE (per-install, set by use-theme-sync) ===== */
+
+/* Reduce motion forced on: the same treatment the OS preference gets. */
+:root[data-reduce-motion='on'] *,
+:root[data-reduce-motion='on'] *::before,
+:root[data-reduce-motion='on'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+:root[data-pointer-cursors]
+  :is(
+    button,
+    [role='button'],
+    [role='menuitem'],
+    [role='menuitemradio'],
+    [role='menuitemcheckbox'],
+    [role='option'],
+    [role='tab'],
+    [role='switch'],
+    [role='checkbox'],
+    [role='radio'],
+    summary,
+    label[for],
+    select
+  ):not(:disabled, [aria-disabled='true'], [data-disabled]) {
+  cursor: pointer !important;
+}
+
+/* Beats the `auto` the body and the editor pin with !important. */
+:root[data-font-smoothing] *,
+:root[data-font-smoothing] {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* The editor pins its ink to literal colors above; follow the theme instead. */
+:root[data-color-theme] .bn-editor,
+:root[data-color-theme] .bn-container {
+  color: var(--foreground) !important;
+  caret-color: var(--foreground);
 }
 
 @theme inline {

@@ -1,5 +1,5 @@
 import type { Dispatch } from 'react'
-import { FileText, FolderOpen, Tag, Unlink, X, RotateCcw, Focus } from '@/lib/icons'
+import { FileText, FolderOpen, Tag, Unlink, X, Undo, Focus } from '@/lib/icons'
 import { PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import { Toggle } from '@/components/ui/toggle'
 import { Button } from '@/components/ui/button'
@@ -106,7 +106,7 @@ export function GraphFilters({
                 onClick={() => dispatch({ type: 'RESET_FILTERS' })}
                 aria-label={t('control.reset-filters')}
               >
-                <RotateCcw className="size-3.5 text-muted-foreground" />
+                <Undo className="size-3.5 text-muted-foreground" />
               </Button>
             </>
           )}

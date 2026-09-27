@@ -76,7 +76,6 @@ function renderSwitcher(overrides: Partial<React.ComponentProps<typeof ViewSwitc
     activeView: views[0],
     onViewChange: vi.fn(),
     onAddView: vi.fn().mockResolvedValue(undefined),
-    onUpdateView: vi.fn().mockResolvedValue(undefined),
     onRenameView: vi.fn().mockResolvedValue(undefined),
     onSetViewAsDefault: vi.fn().mockResolvedValue(undefined),
     onDeleteView: vi.fn().mockResolvedValue(undefined),
@@ -122,13 +121,12 @@ describe('ViewSwitcher', () => {
     })
   })
 
-  it('applies a layout change live on click (no save button)', () => {
-    const props = renderSwitcher()
+  it('does not offer layout in the view editor (it lives in the page header)', () => {
+    renderSwitcher()
 
     fireEvent.click(screen.getAllByRole('button', { name: 'viewActions' })[1])
-    fireEvent.click(screen.getByRole('button', { name: 'list' }))
 
-    expect(props.onUpdateView).toHaveBeenCalledWith({ type: 'list' })
+    expect(screen.queryByRole('button', { name: 'gallery' })).toBeNull()
   })
 
   it('duplicates a view from the editor', async () => {

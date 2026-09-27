@@ -49,6 +49,7 @@ describe('populateSettingsCacheFromConfig', () => {
         fontSize: 'large',
         fontFamily: 'gelasio',
         accentColor: '#ef4444',
+        colorTheme: 'gruvbox',
         language: 'tr',
         createInSelectedFolder: false,
         editor: {
@@ -69,6 +70,7 @@ describe('populateSettingsCacheFromConfig', () => {
     expect(general.fontSize).toBe('large')
     expect(general.fontFamily).toBe('gelasio')
     expect(general.accentColor).toBe('#ef4444')
+    expect(general.colorTheme).toBe('gruvbox')
     expect(general.language).toBe('tr')
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

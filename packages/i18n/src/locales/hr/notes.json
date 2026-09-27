@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}",
     "itemsCountFiltered": "{shown} od {total, plural, one {# stavke} few {# stavke} other {# stavki}}",
-    "renameViewUnavailableForTags": "Preimenovanje spremljenih prikaza još nije dostupno za oznake",
     "tagFilterLabel": "oznaka = {tag}"
   },
   "tree": {

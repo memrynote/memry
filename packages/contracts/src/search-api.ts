@@ -81,10 +81,7 @@ export interface InboxResultMetadata {
 }
 
 export type SearchResultMetadata =
-  | NoteResultMetadata
-  | JournalResultMetadata
-  | TaskResultMetadata
-  | InboxResultMetadata
+  NoteResultMetadata | JournalResultMetadata | TaskResultMetadata | InboxResultMetadata
 
 // ============================================================================
 // Search Result Item

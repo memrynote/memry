@@ -42,6 +42,7 @@ import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
 import { BulkActionBar } from '@/components/folder-view/bulk-action-bar'
 import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
+import { LayoutToggle } from '@/components/folder-view/layout-toggle'
 import { TagIconChip } from '@/components/settings/tag-icon-chip'
 import { TagAndFilterBar } from '@/components/folder-view/tag-and-filter-bar'
 import { useTagAndTags } from '@/hooks/use-tag-and-tags'
@@ -679,11 +680,6 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // View-rename isn't wired up for tag scope (renameView is .folder.md-backed
   // and the hook gates it to folder scope) — surface why instead of letting
   // ViewSwitcher's rename input silently revert on blur.
-  const handleRenameViewUnavailable = useCallback((): Promise<void> => {
-    toast.error(t('page.renameViewUnavailableForTags'), { id: 'tag-scope-rename-view' })
-    return Promise.resolve()
-  }, [t])
-
   /**
    * Everything that moves the active view also records its NAME, so the tab
    * comes back to the same view rather than to whatever now sits at that index.
@@ -1230,6 +1226,10 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           {/* Divider */}
           <div className="h-4 w-px flex-shrink-0 bg-border" />
 
+          {/* Layout: writes into the active view, so "New view" (which copies
+              the active view) saves it together with filters and sort. */}
+          <LayoutToggle value={viewType} onChange={(type) => void updateView({ type })} />
+
           {/* Saved views */}
           <ViewSwitcher
             views={views}
@@ -1237,8 +1237,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             activeView={activeView}
             onViewChange={handleViewChange}
             onAddView={addView}
-            onUpdateView={updateView}
-            onRenameView={scope.kind === 'folder' ? handleRenameView : handleRenameViewUnavailable}
+            onRenameView={handleRenameView}
             onSetViewAsDefault={handleSetViewAsDefault}
             onDeleteView={handleDeleteView}
           />

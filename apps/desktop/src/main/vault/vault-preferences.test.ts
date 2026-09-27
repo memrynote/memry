@@ -117,6 +117,12 @@ describe('VaultPreferencesSchema', () => {
       fontFamily: 'gelasio' as const,
       customFontFamily: 'Iosevka Term',
       accentColor: '#ff0000',
+      colorTheme: 'nord',
+      useThemeAccent: false,
+      backgroundLight: '',
+      foregroundLight: '',
+      backgroundDark: '#111111',
+      foregroundDark: '',
       language: 'tr',
       createInSelectedFolder: false,
       openPagesInNewTab: false,
@@ -204,6 +210,31 @@ describe('readPreferences', () => {
     expect(prefs.theme).toBe('dark')
     expect(prefs.fontSize).toBe('large')
     expect(prefs.editor.width).toBe('full')
+    // Written before color themes shipped, in dark mode: the white-based theme.
+    expect(prefs.colorTheme).toBe('memrynote')
+  })
+
+  it.each([
+    ['light', 'warm'],
+    ['system', 'warm'],
+    ['white', 'memrynote']
+  ])(
+    '#given a pre-theme config.json in %s mode #then keeps the palette it rendered (%s)',
+    (theme, expected) => {
+      fs.writeFileSync(
+        path.join(vaultPath, MEMRY_DIR, 'config.json'),
+        JSON.stringify({ preferences: { theme } })
+      )
+      expect(readPreferences(vaultPath).colorTheme).toBe(expected)
+    }
+  )
+
+  it('#given a stored colorTheme #then the mode no longer decides it', () => {
+    fs.writeFileSync(
+      path.join(vaultPath, MEMRY_DIR, 'config.json'),
+      JSON.stringify({ preferences: { theme: 'light', colorTheme: 'memrynote' } })
+    )
+    expect(readPreferences(vaultPath).colorTheme).toBe('memrynote')
   })
 
   it('#given config.json without preferences key #then returns defaults', () => {

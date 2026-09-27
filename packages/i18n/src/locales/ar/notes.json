@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, zero {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصراً} other {# عنصر}}",
     "itemsCountFiltered": "{shown} من {total, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصراً} other {# عنصر}}",
-    "renameViewUnavailableForTags": "إعادة تسمية العروض المحفوظة غير متاحة للعلامات بعد",
     "tagFilterLabel": "العلامة = {tag}"
   },
   "tree": {

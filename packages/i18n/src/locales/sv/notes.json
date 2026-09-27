@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# objekt} other {# objekt}}",
     "itemsCountFiltered": "{shown} av {total, plural, one {# objekt} other {# objekt}}",
-    "renameViewUnavailableForTags": "Det går ännu inte att byta namn på sparade vyer för taggar",
     "tagFilterLabel": "tagg = {tag}"
   },
   "tree": {

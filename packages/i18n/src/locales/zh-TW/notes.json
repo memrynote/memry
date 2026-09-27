@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, other {# 個項目}}",
     "itemsCountFiltered": "{total, plural, other {# 個項目}}中的 {shown} 個",
-    "renameViewUnavailableForTags": "標籤尚不支援重新命名已儲存的檢視",
     "tagFilterLabel": "標籤 = {tag}"
   },
   "tree": {

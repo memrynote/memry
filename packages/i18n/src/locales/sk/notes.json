@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}}",
     "itemsCountFiltered": "{shown} z {total, plural, one {# položky} few {# položiek} many {# položky} other {# položiek}}",
-    "renameViewUnavailableForTags": "Uložené zobrazenia sa pri značkách zatiaľ nedajú premenovať",
     "tagFilterLabel": "značka = {tag}"
   },
   "tree": {

@@ -17,7 +17,22 @@ export const SIDEBAR_SECTION_ORDER_SETTINGS_KEY = 'sidebar.sectionOrder'
  * Anything that is not an array of strings reads as "never reordered".
  */
 export function readSidebarSectionOrder(db: DataDb): string[] {
-  const raw = getSetting(db, SIDEBAR_SECTION_ORDER_SETTINGS_KEY)
+  return readIdList(db, SIDEBAR_SECTION_ORDER_SETTINGS_KEY)
+}
+
+/** Rail page ids (home, inbox, ...) in the order the user dragged them; same rules as sections. */
+export const SIDEBAR_RAIL_ORDER_SETTINGS_KEY = 'sidebar.railOrder'
+
+export function readSidebarRailOrder(db: DataDb): string[] {
+  return readIdList(db, SIDEBAR_RAIL_ORDER_SETTINGS_KEY)
+}
+
+export function writeSidebarRailOrder(db: DataDb, order: string[]): string[] {
+  return writeIdList(db, SIDEBAR_RAIL_ORDER_SETTINGS_KEY, order)
+}
+
+function readIdList(db: DataDb, key: string): string[] {
+  const raw = getSetting(db, key)
   if (!raw) return []
 
   try {
@@ -25,7 +40,7 @@ export function readSidebarSectionOrder(db: DataDb): string[] {
     if (!Array.isArray(parsed)) return []
     return parsed.filter((id): id is string => typeof id === 'string')
   } catch (err) {
-    log.warn('Failed to parse stored sidebar section order:', err)
+    log.warn(`Failed to parse stored ${key}:`, err)
     return []
   }
 }
@@ -39,8 +54,12 @@ export function readSidebarSectionOrder(db: DataDb): string[] {
  * into a third order neither user asked for.
  */
 export function writeSidebarSectionOrder(db: DataDb, order: string[]): string[] {
+  return writeIdList(db, SIDEBAR_SECTION_ORDER_SETTINGS_KEY, order)
+}
+
+function writeIdList(db: DataDb, key: string, order: string[]): string[] {
   const next = order.filter((id): id is string => typeof id === 'string')
-  setSetting(db, SIDEBAR_SECTION_ORDER_SETTINGS_KEY, JSON.stringify(next))
-  syncSettingsFieldUpdate(SIDEBAR_SECTION_ORDER_SETTINGS_KEY, next)
+  setSetting(db, key, JSON.stringify(next))
+  syncSettingsFieldUpdate(key, next)
   return next
 }

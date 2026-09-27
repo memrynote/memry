@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# elemento} many {# elementi} other {# elementi}}",
     "itemsCountFiltered": "{shown} di {total, plural, one {# elemento} many {# elementi} other {# elementi}}",
-    "renameViewUnavailableForTags": "La rinomina delle viste salvate non è ancora disponibile per i tag",
     "tagFilterLabel": "tag = {tag}"
   },
   "tree": {

@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}",
     "itemsCountFiltered": "{shown} из {total, plural, one {# элемента} few {# элементов} many {# элементов} other {# элемента}}",
-    "renameViewUnavailableForTags": "Переименование сохранённых видов пока недоступно для тегов",
     "tagFilterLabel": "тег = {tag}"
   },
   "tree": {

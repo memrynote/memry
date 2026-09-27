@@ -245,7 +245,17 @@ export function registerFolderViewHandlers(): void {
       withErrorHandler(async (input): Promise<SetViewResponse> => {
         const views = (await readScopedViews(input.scope)) || []
 
-        const existingIndex = views.findIndex((v) => v.name === input.view.name)
+        const { previousName } = input
+        const isRename = previousName !== undefined && previousName !== input.view.name
+        if (isRename && views.some((v) => v.name === input.view.name)) {
+          throw new Error(`A view named "${input.view.name}" already exists`)
+        }
+
+        // A rename replaces the view in place so its position is kept. Falls
+        // back to matching the new name when the old one is already gone.
+        const renameIndex = isRename ? views.findIndex((v) => v.name === previousName) : -1
+        const existingIndex =
+          renameIndex >= 0 ? renameIndex : views.findIndex((v) => v.name === input.view.name)
 
         if (existingIndex >= 0) {
           views[existingIndex] = input.view

@@ -1,7 +1,7 @@
-import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Input } from '@/components/ui/input'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picker'
-import { Sun, Moon, Monitor, FileText, Minus, Plus, RotateCcw } from '@/lib/icons'
+import { Minus, Plus, Undo } from '@/lib/icons'
+import { useTheme } from 'next-themes'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSystemFonts, type SystemFontsState } from '@/hooks/use-system-fonts'
 import {
@@ -35,27 +35,37 @@ import {
   ZOOM_FACTOR_DEFAULT
 } from '@memry/contracts/app-zoom'
 import {
+  applyColorTheme,
+  storedLightMode,
+  type PaletteMode,
+  type ThemeCustomization
+} from '@memry/contracts/color-themes'
+import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
+import type { GeneralSettingsDTO } from '../../../../preload/index.d'
+import {
+  AccentPicker,
+  AdvancedDisclosure,
+  ColorOverrideInput,
+  ColorThemePicker,
+  ModePreviewPicker,
+  ThemeClipboardButtons,
+  type ColorMode
+} from './appearance-theme-controls'
+import { Switch } from '@/components/ui/switch'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
-  COMPACT_SELECT
+  ACCENT_SWITCH,
+  COMPACT_SELECT,
+  SEGMENTED,
+  SEGMENT_ITEM,
+  SETTINGS_CARD
 } from '@/components/settings/settings-primitives'
 
 const STEP_BUTTON =
   'flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground disabled:cursor-default disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-
-const ACCENT_PRESETS = [
-  { value: '#6366f1', labelKey: 'appearance.accent.presets.indigo' },
-  { value: '#f59e0b', labelKey: 'appearance.accent.presets.amber' },
-  { value: '#10b981', labelKey: 'appearance.accent.presets.emerald' },
-  { value: '#ef4444', labelKey: 'appearance.accent.presets.red' },
-  { value: '#8b5cf6', labelKey: 'appearance.accent.presets.violet' },
-  { value: '#06b6d4', labelKey: 'appearance.accent.presets.cyan' },
-  { value: '#ec4899', labelKey: 'appearance.accent.presets.pink' },
-  { value: '#f97316', labelKey: 'appearance.accent.presets.orange' }
-] as const
-
-const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
 
 function setRootFontSize(px: number): void {
   document.documentElement.style.fontSize = `${px}px`
@@ -187,7 +197,7 @@ function Stepper({
         onClick={onReset}
         className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <RotateCcw className="size-3" />
+        <Undo className="size-3" />
       </button>
       <div className="flex items-center rounded-md border border-input">
         <button
@@ -218,62 +228,6 @@ function Stepper({
     </div>
   )
 }
-
-interface SegmentOption {
-  value: string
-  label: string
-  icon?: ComponentType<{ className?: string }>
-}
-
-function SegmentedControl({
-  options,
-  value,
-  onValueChange,
-  ariaLabel
-}: {
-  options: readonly SegmentOption[]
-  value: string
-  onValueChange: (v: string) => void
-  ariaLabel: string
-}) {
-  return (
-    <div
-      role="group"
-      aria-label={ariaLabel}
-      className="flex items-center shrink-0 rounded-[7px] bg-muted p-0.5"
-    >
-      {options.map((opt) => {
-        const isActive = value === opt.value
-        const Icon = opt.icon
-
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            aria-pressed={isActive}
-            onClick={() => onValueChange(opt.value)}
-            className={cn(
-              'flex items-center gap-1.5 rounded-[5px] py-0.75 px-2.5 text-xs/4 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-              isActive
-                ? 'bg-card font-medium text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.08)]'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {Icon && <Icon className="size-3" />}
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-const THEME_OPTIONS = [
-  { value: 'light', labelKey: 'appearance.theme.options.light', icon: Sun },
-  { value: 'white', labelKey: 'appearance.theme.options.white', icon: FileText },
-  { value: 'dark', labelKey: 'appearance.theme.options.dark', icon: Moon },
-  { value: 'system', labelKey: 'appearance.theme.options.system', icon: Monitor }
-]
 
 const BUILT_IN_FONT_LABEL_KEYS: Record<BuiltInFontFamily, string> = {
   system: 'system',
@@ -436,45 +390,87 @@ function FontFamilyPicker({
   )
 }
 
+const REDUCE_MOTION_OPTIONS = ['system', 'on'] as const
+
 export function AppearanceSettings() {
   const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useGeneralSettings()
-  const [customHex, setCustomHex] = useState('')
   // Enumeration takes seconds on a cold OS font cache but never blocks the main
   // thread, so it starts with the page rather than with the picker: by the time
   // the row is clicked the list is already there.
   const systemFonts = useSystemFonts(!isLoading)
 
-  const themeOptions: SegmentOption[] = THEME_OPTIONS.map((option) => ({
-    value: option.value,
-    label: t(option.labelKey),
-    icon: option.icon
-  }))
+  const { resolvedTheme } = useTheme()
+  const mode: PaletteMode = resolvedTheme === 'dark' ? 'dark' : 'light'
+  const saved: ThemeCustomization = {
+    colorTheme: settings.colorTheme,
+    accentColor: settings.accentColor,
+    useThemeAccent: settings.useThemeAccent,
+    backgroundLight: settings.backgroundLight,
+    foregroundLight: settings.foregroundLight,
+    backgroundDark: settings.backgroundDark,
+    foregroundDark: settings.foregroundDark
+  }
+  // A color being dragged in the picker: painted on the live interface at once,
+  // saved only when the picker settles. The mode previews and theme swatch read
+  // `custom` so they move with it; the color rows get `saved`, because a hex
+  // field compares against the saved value to tell whether there is anything
+  // to commit.
+  const [previewPatch, setPreviewPatch] = useState<Partial<ThemeCustomization> | null>(null)
+  const custom: ThemeCustomization = { ...saved, ...previewPatch }
+
+  const previewCustomization = (patch: Partial<ThemeCustomization> | null): void => {
+    setPreviewPatch(patch)
+    applyColorTheme(document.documentElement, { ...saved, ...patch })
+  }
 
   const handleThemeChange = useCallback(
-    async (value: string) => {
-      if (!value) return
-      const theme = value as 'light' | 'dark' | 'white' | 'system'
+    async (theme: ColorMode) => {
       const success = await updateSettings({ theme })
       if (!success) toast.error(t('appearance.theme.error'))
     },
     [t, updateSettings]
   )
 
-  const handleAccentChange = useCallback(
-    async (hex: string) => {
-      const success = await updateSettings({ accentColor: hex })
-      if (!success) toast.error(t('appearance.accent.error'))
+  const savedRef = useRef(saved)
+  const settingsThemeRef = useRef(settings.theme)
+  useEffect(() => {
+    savedRef.current = saved
+    settingsThemeRef.current = settings.theme
+  })
+
+  const handleCustomizationChange = useCallback(
+    async (updates: Partial<ThemeCustomization>) => {
+      // A light mode is stored as `light` under warm and `white` otherwise (see
+      // storedLightMode), so a theme switch carries the mode along with it.
+      const currentTheme = settingsThemeRef.current
+      const lightMode =
+        updates.colorTheme !== undefined && (currentTheme === 'light' || currentTheme === 'white')
+          ? storedLightMode(updates.colorTheme)
+          : currentTheme
+      const success = await updateSettings(
+        lightMode === currentTheme ? updates : { ...updates, theme: lightMode }
+      )
+      // On success the preview is already what is on screen and useThemeSync
+      // repaints the same colors, so the preview is dropped without a repaint
+      // (repainting the pre-save values here would flash the old color).
+      setPreviewPatch(null)
+      if (success) return
+      applyColorTheme(document.documentElement, savedRef.current)
+      toast.error(t('appearance.colorTheme.error'))
     },
     [t, updateSettings]
   )
+  const onCustomize = (updates: Partial<ThemeCustomization>): void =>
+    void handleCustomizationChange(updates)
 
-  const handleCustomHexSubmit = useCallback(() => {
-    if (HEX_COLOR_REGEX.test(customHex)) {
-      void handleAccentChange(customHex)
-      setCustomHex('')
-    }
-  }, [customHex, handleAccentChange])
+  const handleAdvancedChange = useCallback(
+    async (updates: Partial<GeneralSettingsDTO>) => {
+      const success = await updateSettings(updates)
+      if (!success) toast.error(t('appearance.advanced.error'))
+    },
+    [t, updateSettings]
+  )
 
   const handleFontChoiceChange = useCallback(
     async (key: string) => {
@@ -500,7 +496,21 @@ export function AppearanceSettings() {
     () => toast.error(t('appearance.zoom.error'))
   )
 
+  const handleAdvancedReset = (): void => {
+    // Through the drafts so the live interface and the pending writes agree.
+    previewFontSizePx(FONT_SIZE_PX_DEFAULT)
+    previewZoomFactor(ZOOM_FACTOR_DEFAULT)
+    void handleAdvancedChange({
+      reduceMotion: GENERAL_SETTINGS_DEFAULTS.reduceMotion,
+      pointerCursors: GENERAL_SETTINGS_DEFAULTS.pointerCursors,
+      fontSmoothing: GENERAL_SETTINGS_DEFAULTS.fontSmoothing
+    })
+  }
+
   const fontChoice = fontChoiceFromSettings(settings.fontFamily, settings.customFontFamily)
+  const colorModeHint = t(
+    mode === 'dark' ? 'appearance.colors.forDark' : 'appearance.colors.forLight'
+  )
 
   if (isLoading) {
     return (
@@ -522,64 +532,49 @@ export function AppearanceSettings() {
 
       <SettingsGroup label={t('appearance.groups.theme')}>
         <SettingRow label={t('appearance.v2.colorMode')}>
-          <SegmentedControl
-            options={themeOptions}
+          <ModePreviewPicker
             value={settings.theme}
-            onValueChange={(...args) => void handleThemeChange(...args)}
-            ariaLabel={t('appearance.theme.colorMode.aria')}
+            custom={custom}
+            onChange={(next) => void handleThemeChange(next)}
           />
         </SettingRow>
 
+        <SettingRow label={t('appearance.v2.colorTheme')}>
+          <div className="flex items-center gap-2">
+            <ThemeClipboardButtons custom={custom} onChange={onCustomize} />
+            <ColorThemePicker custom={custom} mode={mode} onChange={onCustomize} />
+          </div>
+        </SettingRow>
+
         <SettingRow label={t('appearance.v2.accent')}>
-          <div className="flex items-center shrink-0 gap-2">
-            {ACCENT_PRESETS.map((preset) => (
-              <button
-                key={preset.value}
-                type="button"
-                aria-label={t(preset.labelKey)}
-                onClick={() => void handleAccentChange(preset.value)}
-                className="size-4 rounded-full shrink-0 transition-transform duration-150 cursor-pointer hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-                style={{
-                  backgroundColor: preset.value,
-                  boxShadow:
-                    settings.accentColor === preset.value
-                      ? `var(--card) 0px 0px 0px 2px, ${preset.value} 0px 0px 0px 3.5px`
-                      : 'none'
-                }}
-                title={t(preset.labelKey)}
-              />
-            ))}
-          </div>
+          <AccentPicker
+            custom={saved}
+            mode={mode}
+            onChange={onCustomize}
+            onPreview={previewCustomization}
+          />
         </SettingRow>
 
-        <SettingRow label={t('appearance.v2.customColor')}>
-          <div className="flex items-center shrink-0 gap-2">
-            <div
-              className="size-4 rounded-full shrink-0"
-              style={{
-                backgroundColor: HEX_COLOR_REGEX.test(customHex) ? customHex : settings.accentColor
-              }}
-            />
-            <Input
-              placeholder={t('appearance.accent.custom.placeholder')}
-              value={customHex || settings.accentColor}
-              onChange={(e) => setCustomHex(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCustomHexSubmit()}
-              onFocus={() => {
-                if (!customHex) setCustomHex(settings.accentColor)
-              }}
-              onBlur={() => {
-                if (customHex === settings.accentColor) setCustomHex('')
-              }}
-              aria-label={t('appearance.accent.custom.label')}
-              className="w-20 h-auto py-1 px-2 rounded-md font-mono text-xs/4 bg-transparent border-border shadow-none"
-              maxLength={7}
-            />
-          </div>
+        <SettingRow label={t('appearance.colors.background')} description={colorModeHint}>
+          <ColorOverrideInput
+            kind="background"
+            custom={saved}
+            mode={mode}
+            onChange={onCustomize}
+            onPreview={previewCustomization}
+          />
         </SettingRow>
-      </SettingsGroup>
 
-      <SettingsGroup label={t('appearance.v2.groups.text')}>
+        <SettingRow label={t('appearance.colors.foreground')} description={colorModeHint}>
+          <ColorOverrideInput
+            kind="foreground"
+            custom={saved}
+            mode={mode}
+            onChange={onCustomize}
+            onPreview={previewCustomization}
+          />
+        </SettingRow>
+
         <SettingRow label={t('appearance.v2.fontFamily')}>
           <FontFamilyPicker
             choice={fontChoice}
@@ -587,39 +582,100 @@ export function AppearanceSettings() {
             onSelect={(...args) => void handleFontChoiceChange(...args)}
           />
         </SettingRow>
-
-        <SettingRow label={t('appearance.v2.fontSize')}>
-          <Stepper
-            value={fontSizePx}
-            min={FONT_SIZE_PX_MIN}
-            max={FONT_SIZE_PX_MAX}
-            onStep={(direction) => previewFontSizePx(stepFontSizePx(fontSizePx, direction))}
-            onReset={() => previewFontSizePx(FONT_SIZE_PX_DEFAULT)}
-            format={(px) => String(px)}
-            labels={{
-              decrease: t('appearance.typography.fontSize.decrease'),
-              increase: t('appearance.typography.fontSize.increase'),
-              reset: t('appearance.typography.fontSize.reset')
-            }}
-          />
-        </SettingRow>
-
-        <SettingRow label={t('appearance.v2.zoom')}>
-          <Stepper
-            value={zoomFactor}
-            min={ZOOM_FACTOR_MIN}
-            max={ZOOM_FACTOR_MAX}
-            onStep={(direction) => previewZoomFactor(stepZoomFactor(zoomFactor, direction))}
-            onReset={() => previewZoomFactor(ZOOM_FACTOR_DEFAULT)}
-            format={(factor) => `${zoomPercent(factor)}%`}
-            labels={{
-              decrease: t('appearance.zoom.decrease'),
-              increase: t('appearance.zoom.increase'),
-              reset: t('appearance.zoom.reset')
-            }}
-          />
-        </SettingRow>
       </SettingsGroup>
+
+      <AdvancedDisclosure onReset={handleAdvancedReset}>
+        <div className={SETTINGS_CARD}>
+          <SettingRow
+            label={t('appearance.v2.fontSize')}
+            description={t('appearance.advanced.fontSizeDescription')}
+          >
+            <Stepper
+              value={fontSizePx}
+              min={FONT_SIZE_PX_MIN}
+              max={FONT_SIZE_PX_MAX}
+              onStep={(direction) => previewFontSizePx(stepFontSizePx(fontSizePx, direction))}
+              onReset={() => previewFontSizePx(FONT_SIZE_PX_DEFAULT)}
+              format={(px) => String(px)}
+              labels={{
+                decrease: t('appearance.typography.fontSize.decrease'),
+                increase: t('appearance.typography.fontSize.increase'),
+                reset: t('appearance.typography.fontSize.reset')
+              }}
+            />
+          </SettingRow>
+
+          <SettingRow
+            label={t('appearance.v2.zoom')}
+            description={t('appearance.advanced.zoomDescription')}
+          >
+            <Stepper
+              value={zoomFactor}
+              min={ZOOM_FACTOR_MIN}
+              max={ZOOM_FACTOR_MAX}
+              onStep={(direction) => previewZoomFactor(stepZoomFactor(zoomFactor, direction))}
+              onReset={() => previewZoomFactor(ZOOM_FACTOR_DEFAULT)}
+              format={(factor) => `${zoomPercent(factor)}%`}
+              labels={{
+                decrease: t('appearance.zoom.decrease'),
+                increase: t('appearance.zoom.increase'),
+                reset: t('appearance.zoom.reset')
+              }}
+            />
+          </SettingRow>
+        </div>
+
+        <div className={SETTINGS_CARD}>
+          <SettingRow
+            label={t('appearance.advanced.reduceMotion.label')}
+            description={t('appearance.advanced.reduceMotion.description')}
+          >
+            <ToggleGroup
+              type="single"
+              value={settings.reduceMotion}
+              onValueChange={(value) => {
+                if (value === 'system' || value === 'on') {
+                  void handleAdvancedChange({ reduceMotion: value })
+                }
+              }}
+              aria-label={t('appearance.advanced.reduceMotion.label')}
+              className={SEGMENTED}
+            >
+              {REDUCE_MOTION_OPTIONS.map((option) => (
+                <ToggleGroupItem key={option} value={option} className={SEGMENT_ITEM}>
+                  {t(`appearance.advanced.reduceMotion.options.${option}`)}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </SettingRow>
+        </div>
+
+        <div className={SETTINGS_CARD}>
+          <SettingRow
+            label={t('appearance.advanced.pointerCursors.label')}
+            description={t('appearance.advanced.pointerCursors.description')}
+          >
+            <Switch
+              checked={settings.pointerCursors}
+              onCheckedChange={(pointerCursors) => void handleAdvancedChange({ pointerCursors })}
+              aria-label={t('appearance.advanced.pointerCursors.label')}
+              className={ACCENT_SWITCH}
+            />
+          </SettingRow>
+
+          <SettingRow
+            label={t('appearance.advanced.fontSmoothing.label')}
+            description={t('appearance.advanced.fontSmoothing.description')}
+          >
+            <Switch
+              checked={settings.fontSmoothing}
+              onCheckedChange={(fontSmoothing) => void handleAdvancedChange({ fontSmoothing })}
+              aria-label={t('appearance.advanced.fontSmoothing.label')}
+              className={ACCENT_SWITCH}
+            />
+          </SettingRow>
+        </div>
+      </AdvancedDisclosure>
     </div>
   )
 }

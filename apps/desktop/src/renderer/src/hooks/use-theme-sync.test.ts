@@ -19,6 +19,15 @@ const defaultSettings = {
   fontFamily: 'system' as const,
   customFontFamily: '',
   accentColor: '#6366f1',
+  colorTheme: 'memrynote',
+  useThemeAccent: true,
+  backgroundLight: '',
+  foregroundLight: '',
+  backgroundDark: '',
+  foregroundDark: '',
+  reduceMotion: 'system' as 'system' | 'on',
+  pointerCursors: false,
+  fontSmoothing: false,
   startOnBoot: false,
   language: 'en'
 }
@@ -30,6 +39,15 @@ describe('useThemeSync', () => {
     vi.clearAllMocks()
     document.documentElement.className = ''
     document.documentElement.removeAttribute('style')
+    for (const attr of [
+      'data-color-theme',
+      'data-reduce-motion',
+      'data-pointer-cursors',
+      'data-font-smoothing'
+    ]) {
+      document.documentElement.removeAttribute(attr)
+    }
+    window.localStorage.clear()
     vi.mocked(useTheme).mockReturnValue({ setTheme } as ReturnType<typeof useTheme>)
   })
 
@@ -71,6 +89,58 @@ describe('useThemeSync', () => {
     expect(document.documentElement.style.getPropertyValue('--font-sans')).toContain(
       'Crimson Pro Variable'
     )
+  })
+
+  it('paints the color theme and caches it for the next launch', () => {
+    vi.mocked(useGeneralSettings).mockReturnValue({
+      settings: { ...defaultSettings, colorTheme: 'nord' },
+      isLoading: false,
+      error: null,
+      updateSettings: vi.fn()
+    })
+
+    const { rerender } = renderHook(() => useThemeSync())
+
+    const root = document.documentElement
+    expect(root.getAttribute('data-color-theme')).toBe('nord')
+    expect(root.style.getPropertyValue('--ct-dark-bg')).toBe('#2e3440')
+    expect(JSON.parse(window.localStorage.getItem('memry-color-theme') ?? '{}')).toMatchObject({
+      colorTheme: 'nord'
+    })
+
+    // Back to the built-in palette: nothing of the theme may linger.
+    vi.mocked(useGeneralSettings).mockReturnValue({
+      settings: { ...defaultSettings, colorTheme: 'memrynote' },
+      isLoading: false,
+      error: null,
+      updateSettings: vi.fn()
+    })
+    rerender()
+
+    expect(root.hasAttribute('data-color-theme')).toBe(false)
+    expect(root.style.getPropertyValue('--ct-dark-bg')).toBe('')
+  })
+
+  it('marks the root for the per-install advanced appearance options', () => {
+    vi.mocked(useGeneralSettings).mockReturnValue({
+      settings: {
+        ...defaultSettings,
+        reduceMotion: 'on',
+        pointerCursors: true,
+        fontSmoothing: true
+      },
+      isLoading: false,
+      error: null,
+      updateSettings: vi.fn()
+    })
+
+    const { result } = renderHook(() => useThemeSync())
+
+    const root = document.documentElement
+    expect(root.getAttribute('data-reduce-motion')).toBe('on')
+    expect(root.hasAttribute('data-pointer-cursors')).toBe(true)
+    expect(root.hasAttribute('data-font-smoothing')).toBe(true)
+    expect(result.current.reduceMotion).toBe('on')
   })
 
   it('#given settings written before the slider shipped #then the legacy bucket sets the root size', () => {

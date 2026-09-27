@@ -316,13 +316,39 @@ Simple on/off toggles for optional or in-progress surfaces, per device.
 
 ## Appearance
 
+### Color Mode
+
+System (follow OS), Light, or Dark, shown as small window previews painted in the current theme and colors.
+
 ### Theme
 
-Light, White, Dark, or System (follow OS).
+**Memrynote** is the built-in theme, white in light mode. **Warm**, at the bottom of the list, is the paper-toned light palette that used to be the Warm color mode; both share the same dark mode. **Memrynote themes** lists fifteen well-known editor themes: Ayu, Catppuccin, Dracula, Everforest, GitHub, Gruvbox, Kanagawa, Material, Monokai, Night Owl, Nord, One, Rosé Pine, Solarized, and Tokyo Night. Each has a light and a dark variant, and the color mode picks between them.
 
-### Accent Color
+Updating from a version without themes keeps the look you had: a vault on the Warm or System mode opens on the Warm theme, and one on White or Dark opens on Memrynote.
 
-Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — plus a custom `#RRGGBB` input. Orange is the default accent.
+Picking a theme takes its whole look: background and text overrides are cleared and the accent goes back to the theme's. The two buttons next to the picker copy the current look to the clipboard as JSON and import one from it, so a look can be shared as text.
+
+### Accent, Background, Foreground
+
+- **Accent:** a theme's own accent (**Theme**), one of eight presets (indigo, amber, emerald, red, violet, cyan, pink, orange), or any `#RRGGBB` typed into the field (**Custom**). Orange is the default for the Memrynote palette.
+- **Background** and **Foreground** override the theme's canvas and text color. They apply to the mode on screen and are stored per mode: light (Warm and White share it) and dark. A dark background picked at night therefore never ends up under a light theme's text when the OS switches to light. The reset arrow goes back to the theme's color.
+
+All of these sync to your other devices. A device on an older version keeps the Memrynote palette.
+
+### Font
+
+The interface font family, described under Typography below.
+
+### Advanced
+
+Collapsed by default; **Reset to default** puts every option in it back.
+
+- **Font size** and **Zoom**, described below.
+- **Reduce motion:** System follows the OS setting; On turns animations off regardless of it.
+- **Use pointer cursors:** show a hand cursor over every button and menu item, not only links.
+- **Font smoothing:** grayscale anti-aliasing, which makes text thinner on macOS.
+
+Reduce motion, pointer cursors, and font smoothing are per-device, like zoom, and do not sync.
 
 ### Typography
 
@@ -500,7 +526,7 @@ Create, rename, recolor, and reorder property options.
 
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
-- General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`, `openPagesInNewTab`
+- General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `colorTheme`, `useThemeAccent`, `backgroundLight`, `foregroundLight`, `backgroundDark`, `foregroundDark`, `reduceMotion`, `pointerCursors`, `fontSmoothing`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`, `openPagesInNewTab`
 - Editor: `width`, `toolbarMode`, `spellCheck`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`

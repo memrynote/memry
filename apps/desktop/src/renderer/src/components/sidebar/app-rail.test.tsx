@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { DndContext } from '@dnd-kit/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppRail, type AppRailItem } from './app-rail'
 import type { SidebarItem } from '@/contexts/tabs/types'
@@ -19,20 +20,22 @@ const items: AppRailItem[] = [
 function renderRail(overrides: Partial<React.ComponentProps<typeof AppRail>> = {}) {
   const onNavClick = vi.fn()
   render(
-    <TooltipProvider>
-      <AppRail
-        items={items}
-        isActive={(item: SidebarItem) => item.type === 'home'}
-        onNavClick={(page) => () => onNavClick(page)}
-        onNavMiddleClick={() => () => {}}
-        isModifierHeld={false}
-        inboxCount={3}
-        todayTasksCount={12}
-        onOpenJournalSettings={() => {}}
-        dock={<button type="button">Settings</button>}
-        {...overrides}
-      />
-    </TooltipProvider>
+    <DndContext>
+      <TooltipProvider>
+        <AppRail
+          items={items}
+          isActive={(item: SidebarItem) => item.type === 'home'}
+          onNavClick={(page) => () => onNavClick(page)}
+          onNavMiddleClick={() => () => {}}
+          isModifierHeld={false}
+          inboxCount={3}
+          todayTasksCount={12}
+          onOpenJournalSettings={() => {}}
+          dock={<button type="button">Settings</button>}
+          {...overrides}
+        />
+      </TooltipProvider>
+    </DndContext>
   )
   return { onNavClick }
 }

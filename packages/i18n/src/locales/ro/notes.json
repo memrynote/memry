@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",
     "itemsCountFiltered": "{shown} din {total, plural, one {# element} few {# elemente} other {# de elemente}}",
-    "renameViewUnavailableForTags": "Redenumirea vizualizărilor salvate nu este încă disponibilă pentru etichete",
     "tagFilterLabel": "etichetă = {tag}"
   },
   "tree": {

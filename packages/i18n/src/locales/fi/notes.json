@@ -35,7 +35,6 @@
     },
     "itemsCount": "{count, plural, one {# kohde} other {# kohdetta}}",
     "itemsCountFiltered": "{shown} / {total, plural, one {# kohteesta} other {# kohteesta}}",
-    "renameViewUnavailableForTags": "Tallennettuja näkymiä ei voi vielä nimetä uudelleen tunnisteille",
     "tagFilterLabel": "tunniste = {tag}"
   },
   "tree": {

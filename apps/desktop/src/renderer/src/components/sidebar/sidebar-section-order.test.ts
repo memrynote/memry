@@ -133,3 +133,14 @@ describe('sectionDropEdge', () => {
     ).toBeNull()
   })
 })
+
+describe('rail order', () => {
+  it('drops unknown pages and re-inserts new ones at their default slot', () => {
+    expect(
+      resolveSidebarSectionOrder(
+        ['home', 'inbox', 'journal', 'tasks'],
+        ['tasks', 'future-page', 'home']
+      )
+    ).toEqual(['tasks', 'home', 'inbox', 'journal'])
+  })
+})

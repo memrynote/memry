@@ -11,10 +11,13 @@ import { z } from 'zod'
 import { LocaleSchema } from './locale-api'
 import { FONT_SIZE_PX_DEFAULT, FONT_SIZE_PX_MAX, FONT_SIZE_PX_MIN } from './font-size'
 import { ZOOM_FACTOR_DEFAULT, ZOOM_FACTOR_MAX, ZOOM_FACTOR_MIN } from './app-zoom'
+import { DEFAULT_ACCENT_COLOR, DEFAULT_COLOR_THEME_ID } from './color-themes'
 
 // ============================================================================
 // General Settings
 // ============================================================================
+
+const OptionalHexColor = z.union([z.literal(''), z.string().regex(/^#[0-9a-fA-F]{6}$/)])
 
 export const GeneralSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'white', 'system']),
@@ -36,6 +39,36 @@ export const GeneralSettingsSchema = z.object({
    */
   customFontFamily: z.string().max(64),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  /**
+   * Id of the color theme the interface is painted in (`color-themes.ts`), or
+   * `memrynote` for the built-in palette. A loose string, not an enum: an id
+   * from a newer build must round-trip instead of failing validation, and
+   * `applyColorTheme` falls back to the built-in palette for unknown ids.
+   */
+  colorTheme: z.string().max(64),
+  /**
+   * With a color theme on, paint the theme's own accent rather than
+   * `accentColor`. The built-in palette always uses `accentColor`.
+   */
+  useThemeAccent: z.boolean(),
+  /**
+   * Background and text color overrides, per mode so a color picked for dark
+   * mode never lands under a light theme's text when the OS flips. Empty means
+   * "the theme's own". `Light` covers both the warm and white modes.
+   */
+  backgroundLight: OptionalHexColor,
+  foregroundLight: OptionalHexColor,
+  backgroundDark: OptionalHexColor,
+  foregroundDark: OptionalHexColor,
+  /**
+   * Per-install interface preferences, like `zoomFactor`: never synced, never
+   * carried with the vault. `on` forces reduced motion regardless of the OS.
+   */
+  reduceMotion: z.enum(['system', 'on']),
+  /** Pointer (hand) cursor over every interactive element, not just links. */
+  pointerCursors: z.boolean(),
+  /** Grayscale anti-aliasing: thinner, lighter text on macOS. */
+  fontSmoothing: z.boolean(),
   startOnBoot: z.boolean(),
   language: LocaleSchema,
   onboardingCompleted: z.boolean(),
@@ -72,7 +105,7 @@ export const GeneralSettingsSchema = z.object({
 
 export type GeneralSettings = z.infer<typeof GeneralSettingsSchema>
 
-export const DEFAULT_ACCENT_COLOR = '#f97316'
+export { DEFAULT_ACCENT_COLOR }
 
 export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   theme: 'white',
@@ -81,6 +114,15 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   fontFamily: 'system',
   customFontFamily: '',
   accentColor: DEFAULT_ACCENT_COLOR,
+  colorTheme: DEFAULT_COLOR_THEME_ID,
+  useThemeAccent: true,
+  backgroundLight: '',
+  foregroundLight: '',
+  backgroundDark: '',
+  foregroundDark: '',
+  reduceMotion: 'system',
+  pointerCursors: false,
+  fontSmoothing: false,
   startOnBoot: false,
   language: 'en',
   onboardingCompleted: false,

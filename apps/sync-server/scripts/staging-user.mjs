@@ -2,7 +2,7 @@
 // Test-account helper for REMOTE staging. Never touches production.
 //
 //   pnpm staging:user <email>             -> delete the account from staging (D1 rows + its R2 blobs)
-//   pnpm staging:user <email> --believer  -> grant a lifetime believer entitlement (admin_override)
+//   pnpm staging:user <email> -b         -> grant a lifetime believer entitlement (admin_override)
 //
 // Delete mirrors services/account-deletion.ts (child rows before `users`).
 // Grant mirrors services/entitlements.ts upsertSyncEntitlement + SYNC_PLAN_LIMITS.believer.
@@ -27,11 +27,18 @@ const MIB = 1024 * 1024
 const BELIEVER = { storage: 50 * GIB, maxFileSize: 200 * MIB, versionHistoryDays: 365 }
 
 const args = process.argv.slice(2)
-// '--beilever' is a frequent typo; accept it instead of silently falling through to delete.
-const GRANT = args.includes('--believer') || args.includes('--beilever')
-const EMAIL = args.find((a) => !a.startsWith('--'))?.toLowerCase()
+// '-b' is the primary flag; '--believer' (and the '--beilever' typo) stay as aliases.
+const GRANT_FLAGS = ['-b', '--b', '--believer', '--beilever']
+const GRANT = GRANT_FLAGS.some((f) => args.includes(f))
+// Unknown flags must never fall through to the destructive delete path.
+const unknown = args.filter((a) => a.startsWith('-') && !GRANT_FLAGS.includes(a))
+if (unknown.length > 0) {
+  console.error(`Unknown flag(s): ${unknown.join(', ')}. Usage: pnpm staging:user <email> [-b]`)
+  process.exit(1)
+}
+const EMAIL = args.find((a) => !a.startsWith('-'))?.toLowerCase()
 if (!EMAIL) {
-  console.error('Usage: pnpm staging:user <email> [--believer]')
+  console.error('Usage: pnpm staging:user <email> [-b]')
   process.exit(1)
 }
 
