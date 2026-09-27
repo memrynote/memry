@@ -91,6 +91,18 @@
       "addTags": "添加标签…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "添加属性",
+    "dates": "日期",
+    "datesAria": "日期：{value}",
+    "start": "开始",
+    "due": "截止",
+    "dueDate": "截止日期",
+    "remindMe": "提醒我",
+    "linkItem": "关联笔记或画布",
+    "relatedAria": "相关项目：{count}",
+    "shorthandPreview": "由快捷语法设置"
+  },
   "drawer": {
     "close": "关闭任务详情",
     "subIssues": "子问题",

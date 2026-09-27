@@ -91,6 +91,18 @@
       "addTags": "タグを追加…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "プロパティを追加",
+    "dates": "日付",
+    "datesAria": "日付: {value}",
+    "start": "開始",
+    "due": "期限",
+    "dueDate": "期限日",
+    "remindMe": "リマインド",
+    "linkItem": "ノートまたはキャンバスをリンク",
+    "relatedAria": "関連アイテム: {count}",
+    "shorthandPreview": "短縮記法で設定"
+  },
   "drawer": {
     "close": "タスクの詳細を閉じる",
     "subIssues": "サブ問題",

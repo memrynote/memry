@@ -7,6 +7,8 @@ interface InteractiveProjectBadgeProps {
   onProjectChange: (projectId: string) => void
   allowCreate?: boolean
   className?: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export type { InteractiveProjectBadgeProps }
@@ -20,7 +22,9 @@ export const InteractiveProjectBadge = ({
   projects,
   onProjectChange,
   allowCreate = false,
-  className
+  className,
+  open,
+  onOpenChange
 }: InteractiveProjectBadgeProps): React.JSX.Element => (
   <ProjectPicker
     value={projectId}
@@ -31,5 +35,7 @@ export const InteractiveProjectBadge = ({
     triggerVariant="badge"
     allowCreate={allowCreate}
     className={className}
+    open={open}
+    onOpenChange={onOpenChange}
   />
 )

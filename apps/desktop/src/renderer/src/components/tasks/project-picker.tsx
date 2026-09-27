@@ -39,6 +39,9 @@ export interface ProjectPickerProps {
   /** Greys out the trigger and stops it opening, e.g. while a form is saving. */
   disabled?: boolean
   className?: string
+  /** Controlled open state, for a host that opens the picker from the keyboard. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const ProjectIndicator = ({ project }: { project: Project }): React.JSX.Element => (
@@ -150,7 +153,9 @@ export const ProjectPicker = ({
   contentWidth,
   placeholder,
   disabled,
-  className
+  className,
+  open,
+  onOpenChange
 }: ProjectPickerProps): React.JSX.Element => {
   const { t: tTasks } = useT('tasks')
   const availableProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
@@ -179,7 +184,12 @@ export const ProjectPicker = ({
 
   return (
     <>
-      <Picker value={pickerValue} onValueChange={handleValueChange}>
+      <Picker
+        value={pickerValue}
+        onValueChange={handleValueChange}
+        open={open}
+        onOpenChange={onOpenChange}
+      >
         {triggerVariant === 'badge' ? (
           <Picker.Trigger asChild>
             <button

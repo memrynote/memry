@@ -91,6 +91,18 @@
       "addTags": "Adaugă etichete…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Adaugă proprietate",
+    "dates": "Date",
+    "datesAria": "Date: {value}",
+    "start": "Început",
+    "due": "Termen",
+    "dueDate": "Data scadentă",
+    "remindMe": "Amintește-mi",
+    "linkItem": "Leagă o notă sau o pânză",
+    "relatedAria": "Elemente asociate: {count}",
+    "shorthandPreview": "Setat prin prescurtare"
+  },
   "drawer": {
     "close": "Închideți detaliile sarcinii",
     "subIssues": "Subprobleme",

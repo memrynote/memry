@@ -91,6 +91,18 @@
       "addTags": "إضافة وسوم…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "إضافة خاصية",
+    "dates": "التواريخ",
+    "datesAria": "التواريخ: {value}",
+    "start": "البدء",
+    "due": "الاستحقاق",
+    "dueDate": "تاريخ الاستحقاق",
+    "remindMe": "ذكّرني",
+    "linkItem": "ربط ملاحظة أو لوحة",
+    "relatedAria": "العناصر المرتبطة: {count}",
+    "shorthandPreview": "مضبوط بالاختصار"
+  },
   "drawer": {
     "close": "إغلاق تفاصيل المهمة",
     "subIssues": "القضايا الفرعية",

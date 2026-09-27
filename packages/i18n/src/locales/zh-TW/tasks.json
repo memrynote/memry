@@ -91,6 +91,18 @@
       "addTags": "新增標籤…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "新增屬性",
+    "dates": "日期",
+    "datesAria": "日期：{value}",
+    "start": "開始",
+    "due": "截止",
+    "dueDate": "截止日期",
+    "remindMe": "提醒我",
+    "linkItem": "連結筆記或畫布",
+    "relatedAria": "相關項目：{count}",
+    "shorthandPreview": "由快捷語法設定"
+  },
   "drawer": {
     "close": "關閉任務詳情",
     "subIssues": "子問題",

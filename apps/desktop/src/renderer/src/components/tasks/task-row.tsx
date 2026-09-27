@@ -39,7 +39,34 @@ interface TaskRowProps {
    * clickable (#1907).
    */
   interactive?: boolean
+  /**
+   * Replaces the read-only repeat, tag and due-date badges with the caller's
+   * own controls, placed between the title and the project badge. The note's
+   * task block uses it for its editable property chips; the Tasks page leaves
+   * it unset and keeps the badges.
+   */
+  meta?: React.ReactNode
+  /**
+   * Controls which of the row's own pickers is open, so a host can open them
+   * from the keyboard. Unset, each picker keeps its own state.
+   */
+  pickerControl?: TaskRowPickerControl
 }
+
+export type TaskRowPickerId = 'status' | 'priority' | 'project'
+
+export interface TaskRowPickerControl {
+  open: string | null
+  onOpenChange: (id: TaskRowPickerId, open: boolean) => void
+}
+
+const pickerProps = (
+  control: TaskRowPickerControl | undefined,
+  id: TaskRowPickerId
+): { open?: boolean; onOpenChange?: (open: boolean) => void } =>
+  control
+    ? { open: control.open === id, onOpenChange: (open) => control.onOpenChange(id, open) }
+    : {}
 
 // ============================================================================
 // HELPERS
@@ -78,7 +105,9 @@ export const TaskRow = ({
   onProjectChange,
   actions,
   renderTitle,
-  interactive = true
+  interactive = true,
+  meta,
+  pickerControl
 }: TaskRowProps): React.JSX.Element => {
   const {
     settings: { clockFormat }
@@ -162,12 +191,14 @@ export const TaskRow = ({
         onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
         onToggleComplete={() => onToggleComplete(task.id)}
         disabled={!interactive}
+        {...pickerProps(pickerControl, 'status')}
       />
 
       <InlinePriorityPopover
         priority={task.priority}
         onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
         disabled={!interactive}
+        {...pickerProps(pickerControl, 'priority')}
       />
 
       {renderTitle ? (
@@ -185,11 +216,15 @@ export const TaskRow = ({
         </span>
       )}
 
-      {task.isRepeating && task.repeatConfig && (
-        <RepeatIndicator config={task.repeatConfig} size="sm" />
-      )}
+      {meta ?? (
+        <>
+          {task.isRepeating && task.repeatConfig && (
+            <RepeatIndicator config={task.repeatConfig} size="sm" />
+          )}
 
-      {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} className="shrink-0" />}
+          {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} className="shrink-0" />}
+        </>
+      )}
 
       {showProjectBadge && onProjectChange && interactive ? (
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -197,6 +232,7 @@ export const TaskRow = ({
             projectId={task.projectId}
             projects={projects}
             onProjectChange={onProjectChange}
+            {...pickerProps(pickerControl, 'project')}
           />
         </div>
       ) : showProjectBadge ? (
@@ -208,7 +244,7 @@ export const TaskRow = ({
         </div>
       ) : null}
 
-      {dueDateDisplay && (
+      {!meta && dueDateDisplay && (
         <div
           className={cn(
             'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',

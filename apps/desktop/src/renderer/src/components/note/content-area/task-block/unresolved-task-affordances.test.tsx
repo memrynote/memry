@@ -32,6 +32,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@memry/i18n/renderer', () => ({ useT: () => ({ t: (key: string) => key }) }))
 vi.mock('@/contexts/tasks', () => ({ useTasksOptional: () => ({ projects: mocks.projects }) }))
 vi.mock('@/contexts/tabs', () => ({ useTabActions: () => ({ openTab: mocks.openTab }) }))
+// The provider reads the note's pending task reminders through TanStack
+// Query; these tests have no QueryClient and no reminders.
+vi.mock('@/hooks/use-reminders', () => ({ useReminders: () => ({ reminders: [] }) }))
 vi.mock('@/services/tasks-service', () => ({
   tasksService: {
     get: mocks.get,

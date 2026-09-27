@@ -177,6 +177,45 @@ Selecting a checklist item in a note offers a "Convert to task" action in the in
 
 A checklist item that is already ticked becomes a task that is already done — so a note you imported with `- [x] Book flights` in it does not reopen work you finished elsewhere.
 
+## Editing a Task From the Note
+
+A task in a note carries its properties on its own row, and every one of them can be changed there, without opening the task.
+
+- **Status, priority and project** are always on the row. Click one to change it.
+- **Everything else** shows as a small chip only while it is set: description, repeat, tags, dates, reminder, and related notes or canvases. Click a chip to change it. Clear the value in its picker and the chip goes away.
+- **To add what is missing**, hover the row and click **+**. The menu lists only the properties the task does not have yet, and picking one opens its picker straight away. A task with everything set has no **+**.
+
+Start and due dates share one chip — `Sep 5 → Sep 12`, or `Sep 5 →` with no deadline — and its picker has a **Start / Due** switch on top. Removing the due date removes its time too.
+
+The chips never touch the note's file. The line stays `- [ ] Title {task:…}`; the properties live with the task, as they do everywhere else.
+
+### Shorthand in the title
+
+The quick-add markers work in a task's title in a note too. Type them and they are applied when you press <kbd>Enter</kbd> or leave the title: `Buy milk #groceries @friday !high` saves as _Buy milk_, tagged, due Friday, high priority. While you type, dashed chips show what is about to be set.
+
+Only markers you add count. Text that was already in the title — `Fix #123 crash`, a line brought in from another app — stays title text when you edit something else on the line. A marker that names nothing, such as `+nosuchproject`, stays in the title as typed.
+
+### From the keyboard
+
+Click the row's empty space, or press <kbd>Esc</kbd> in the title, to select the task. Its keys then open each property's picker:
+
+| Key                           | Opens                      |
+| ----------------------------- | -------------------------- |
+| <kbd>S</kbd>                  | Status                     |
+| <kbd>P</kbd>                  | Priority                   |
+| <kbd>⇧</kbd>+<kbd>P</kbd>     | Project                    |
+| <kbd>D</kbd>                  | Due date                   |
+| <kbd>⇧</kbd>+<kbd>D</kbd>     | Start date                 |
+| <kbd>R</kbd>                  | Repeat                     |
+| <kbd>H</kbd>                  | Reminder                   |
+| <kbd>L</kbd>                  | Tags                       |
+| <kbd>E</kbd>                  | Description                |
+| <kbd>⇧</kbd>+<kbd>L</kbd>     | Related notes and canvases |
+| <kbd>Enter</kbd>              | Edit the title             |
+| <kbd>⌘</kbd>+<kbd>Enter</kbd> | Open the task in Tasks     |
+
+The same keys work inside the **+** menu. Hovering a chip shows its key.
+
 ## Which Project a Note's Task Lands In
 
 A task written inside a note — `/task`, a checklist line that converts, or a new task block — is filed in the note's own project. The first answer that applies wins:

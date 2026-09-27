@@ -93,6 +93,18 @@
       "addTags": "Etiket ekle…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Özellik ekle",
+    "dates": "Tarihler",
+    "datesAria": "Tarihler: {value}",
+    "start": "Başlangıç",
+    "due": "Bitiş",
+    "dueDate": "Bitiş tarihi",
+    "remindMe": "Bana hatırlat",
+    "linkItem": "Not veya tuval bağla",
+    "relatedAria": "İlgili öğeler: {count}",
+    "shorthandPreview": "Kısayol yazımıyla ayarlandı"
+  },
   "drawer": {
     "close": "Görev ayrıntılarını kapat",
     "subIssues": "Alt konular",

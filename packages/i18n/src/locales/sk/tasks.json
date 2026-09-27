@@ -91,6 +91,18 @@
       "addTags": "Pridať štítky…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Pridať vlastnosť",
+    "dates": "Dátumy",
+    "datesAria": "Dátumy: {value}",
+    "start": "Začiatok",
+    "due": "Termín",
+    "dueDate": "Termín splnenia",
+    "remindMe": "Pripomenúť",
+    "linkItem": "Prepojiť poznámku alebo plátno",
+    "relatedAria": "Súvisiace položky: {count}",
+    "shorthandPreview": "Nastavené skratkou"
+  },
   "drawer": {
     "close": "Zavrieť detaily úlohy",
     "subIssues": "Podproblémy",

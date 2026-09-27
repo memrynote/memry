@@ -91,6 +91,18 @@
       "addTags": "Thêm thẻ…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Thêm thuộc tính",
+    "dates": "Ngày",
+    "datesAria": "Ngày: {value}",
+    "start": "Bắt đầu",
+    "due": "Hạn",
+    "dueDate": "Ngày đến hạn",
+    "remindMe": "Nhắc tôi",
+    "linkItem": "Liên kết ghi chú hoặc canvas",
+    "relatedAria": "Mục liên quan: {count}",
+    "shorthandPreview": "Đặt bằng cú pháp nhanh"
+  },
   "drawer": {
     "close": "Đóng chi tiết nhiệm vụ",
     "subIssues": "Các vấn đề con",
