@@ -16,6 +16,7 @@
  */
 import { test, expect, type Page } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
+import { ensureDayPanelClosed } from './utils/electron-helpers'
 
 /**
  * A cold first launch opens the vault slowly (embedding-model init can take
@@ -131,6 +132,21 @@ test.describe('Spatial canvas — linking (M3)', () => {
     await openVault(page)
     await setSpatialCanvasFlag(page, true)
     const canvasId = await createCanvasFromSidebar(page)
+    // The arrow tool opens its style panel over the canvas's leading edge. With
+    // the Day Panel open beside the app rail, the canvas is narrow enough that
+    // card A's centre sits under that panel and the arrow drag starts on it.
+    await ensureDayPanelClosed(page)
+    // The canvas widens as the panel animates out; drop only once it settled,
+    // since the drops aim at the canvas centre.
+    let lastWidth = -1
+    await expect
+      .poll(async () => {
+        const width = (await page.locator('[data-canvas-editor]').boundingBox())?.width ?? 0
+        const settled = width === lastWidth
+        lastWidth = width
+        return settled
+      })
+      .toBe(true)
 
     // Two distinct note cards, spread apart so the arrow spans a clear gap.
     const a = await seedNote(page, `LinkA ${Date.now()}`, 'body a')

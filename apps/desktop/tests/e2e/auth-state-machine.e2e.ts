@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import { storeOtp } from '../../../sync-server/src/services/otp'
 import { test, expect } from './fixtures/sync-auth-fixtures'
 import type { SharedSyncBootstrap } from './utils/sync-backend'
+import { openSettingsView } from './utils/electron-helpers'
 
 const OTP_CODE = '123456'
 const OTP_HMAC_KEY = 'test-otp-hmac-key'
@@ -46,8 +47,7 @@ async function seedExpiredOtp(syncBootstrap: SharedSyncBootstrap, email: string)
 }
 
 async function openAccountSettings(page: Page): Promise<void> {
-  await page.evaluate(() => window.api.quickCapture.openSettings('account'))
-  await expect(page.getByRole('dialog')).toBeVisible()
+  await openSettingsView(page, 'account')
 }
 
 async function requestOtpFromUi(

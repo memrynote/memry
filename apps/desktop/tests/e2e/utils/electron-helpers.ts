@@ -208,7 +208,7 @@ export async function ensureDayPanelClosed(page: Page): Promise<void> {
  */
 export async function navigateTo(
   page: Page,
-  view: 'home' | 'notes' | 'tasks' | 'inbox' | 'journal' | 'settings'
+  view: 'home' | 'notes' | 'tasks' | 'inbox' | 'journal' | 'calendar' | 'settings'
 ): Promise<void> {
   await dismissFirstRunOnboarding(page)
 
@@ -219,16 +219,22 @@ export async function navigateTo(
     tasks: 'Tasks',
     inbox: 'Inbox',
     journal: 'Journal',
+    calendar: 'Calendar',
     settings: 'Settings'
   }
   const displayName = viewNames[view] || view
 
-  // Try multiple selector strategies
-  const navItem = page
-    .locator(
-      `[data-testid="nav-${view}"], button:has-text("${displayName}"), a:has-text("${displayName}"), span:text("${displayName}")`
-    )
-    .first()
+  // The app rail's page buttons are icon-only (`rail-<page>`, name in aria-label),
+  // so they must win over the text fallbacks, which would otherwise match a
+  // same-named sidebar row (a project called "Inbox", a "Journal" folder).
+  const railItem = page.locator(`[data-testid="rail-${view}"]`)
+  const navItem = (await railItem.count())
+    ? railItem.first()
+    : page
+        .locator(
+          `[data-testid="nav-${view}"], button:has-text("${displayName}"), a:has-text("${displayName}"), span:text("${displayName}")`
+        )
+        .first()
 
   try {
     await navItem.click({ timeout: 10000 })
@@ -655,6 +661,22 @@ export async function selectSearchResult(page: Page, text: string): Promise<void
   } catch {
     console.log(`Select search result: could not find "${text}"`)
   }
+}
+
+/**
+ * Open Settings on a section and wait for it to render.
+ *
+ * Settings used to be a modal dialog; it is now a workspace view
+ * (`settings-view`) that replaces the tab panes, so `getByRole('dialog')`
+ * no longer finds it.
+ */
+export async function openSettingsView(
+  page: Page,
+  section: string,
+  timeout?: number
+): Promise<void> {
+  await page.evaluate((requested) => window.api.quickCapture.openSettings(requested), section)
+  await expect(page.getByTestId('settings-view')).toBeVisible({ timeout })
 }
 
 /**

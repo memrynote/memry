@@ -9,10 +9,17 @@
  *  - Main content reclaims full width when the sidebar is offcanvas-collapsed.
  */
 
-import { test, expect } from './fixtures'
+import { test, expect, type Page } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 const PIXEL_DRIFT_TOLERANCE = 1 // px — single overlay DOM node; allow sub-pixel rounding
+
+/**
+ * The title-row toggle. "Toggle sidebar" also names the resize rail on the
+ * panel's edge, which slides offcanvas with the panel, so a name match can land
+ * on a button that is no longer on screen once the sidebar collapses.
+ */
+const chromeSidebarToggle = (page: Page) => page.locator('[data-sidebar="trigger"]')
 
 test.describe('Sidebar & WindowControls', () => {
   test('traffic lights stay anchored at the same x across sidebar toggle', async ({
@@ -33,7 +40,7 @@ test.describe('Sidebar & WindowControls', () => {
     expect(expandedBox).not.toBeNull()
 
     // Toggle sidebar closed
-    const sidebarToggle = page.getByRole('button', { name: /toggle sidebar/i }).first()
+    const sidebarToggle = chromeSidebarToggle(page)
     await sidebarToggle.click()
 
     // Wait for offcanvas animation to settle
@@ -68,10 +75,7 @@ test.describe('Sidebar & WindowControls', () => {
     await expect(forwardExpanded).toBeDisabled()
 
     // Collapse sidebar
-    await page
-      .getByRole('button', { name: /toggle sidebar/i })
-      .first()
-      .click()
+    await chromeSidebarToggle(page).click()
     await page.waitForTimeout(400)
 
     // Still visible, still disabled
@@ -85,10 +89,7 @@ test.describe('Sidebar & WindowControls', () => {
     const mainContent = page.locator('#main-content')
     const expandedWidth = (await mainContent.boundingBox())!.width
 
-    await page
-      .getByRole('button', { name: /toggle sidebar/i })
-      .first()
-      .click()
+    await chromeSidebarToggle(page).click()
     await page.waitForTimeout(400)
 
     const collapsedWidth = (await mainContent.boundingBox())!.width
@@ -104,7 +105,7 @@ test.describe('Sidebar & WindowControls', () => {
     await ready(page)
 
     // Collapse the sidebar
-    const toggle = page.getByRole('button', { name: /toggle sidebar/i }).first()
+    const toggle = chromeSidebarToggle(page)
     await toggle.click()
     await page.waitForTimeout(400)
 

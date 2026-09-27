@@ -133,9 +133,10 @@ test.describe('Tag icon picker', () => {
     await expect(tagRow).toBeVisible({ timeout: 15000 })
     await expect(tagRow.getByText(emoji)).toBeVisible({ timeout: 15000 })
 
-    // Settings tag row chip shows it too.
+    // Settings tag row chip shows it too. Scoped to the settings view: the
+    // sidebar tree stays mounted (hidden) behind it, so its row matches first.
     await openTagsSettings(page)
-    await expect(page.getByText(emoji).first()).toBeVisible()
+    await expect(page.getByTestId('settings-view').getByText(emoji).first()).toBeVisible()
   })
 
   test('picking an icon from the picker persists and re-displays it', async ({ page }) => {

@@ -34,7 +34,7 @@
 
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { SELECTORS } from './utils/electron-helpers'
+import { openSettingsView, SELECTORS } from './utils/electron-helpers'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
 import { getNoteFileBodyByTitle, openNoteByTitle } from './utils/note-sync-helpers'
 
@@ -66,8 +66,7 @@ async function templateContent(page: Page, id: string): Promise<string> {
  * Calling `openTab` directly would skip the wiring that decides that.
  */
 async function openTemplateEditor(page: Page, name: string): Promise<void> {
-  await page.evaluate(() => window.api.quickCapture.openSettings('templates'))
-  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15_000 })
+  await openSettingsView(page, 'templates', 15_000)
 
   const row = page.locator(`[role="button"][aria-label="${name}"]`)
   await expect(row).toBeVisible({ timeout: 15_000 })

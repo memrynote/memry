@@ -424,7 +424,9 @@ describe('AppSidebar', () => {
       { inNewTab: false, inBackground: false }
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'newNoteN' }))
+    // The panel header's New button: its name is the label plus the shortcut Kbd,
+    // so it is addressed by the title that carries the full hint.
+    fireEvent.click(screen.getByTitle('newNoteN'))
     await waitFor(() => {
       expect(mocks.createNote).toHaveBeenCalledWith({
         title: 'Untitled Note',

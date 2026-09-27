@@ -1,7 +1,7 @@
 import type { ElectronApplication, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
-import { SELECTORS } from './utils/electron-helpers'
+import { openSettingsView, SELECTORS } from './utils/electron-helpers'
 
 const SURFACED_VERSION = '2026.999.9'
 
@@ -51,10 +51,7 @@ test.describe('Update notice focus', () => {
 
     const templateName = uniqueLabel('Weekly Review')
 
-    await page.evaluate(() => {
-      window.api.quickCapture.openSettings('templates')
-    })
-    await expect(page.getByRole('dialog')).toBeVisible()
+    await openSettingsView(page, 'templates')
     await page.getByRole('button', { name: 'New Template' }).click()
 
     // The title field only commits on blur, so Enter is what actually sets the

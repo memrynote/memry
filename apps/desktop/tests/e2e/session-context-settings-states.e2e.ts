@@ -5,6 +5,7 @@ import {
   createNote,
   dismissFirstRunOnboarding,
   navigateTo,
+  openSettingsView,
   SELECTORS,
   showAllTasksScope
 } from './utils/electron-helpers'
@@ -41,10 +42,7 @@ async function createSecondaryWindow(electronApp: ElectronApplication): Promise<
 }
 
 async function openSettingsSection(page: Page, section: string): Promise<void> {
-  await page.evaluate((requestedSection) => {
-    window.api.quickCapture.openSettings(requestedSection)
-  }, section)
-  await expect(page.getByRole('dialog')).toBeVisible()
+  await openSettingsView(page, section)
 }
 
 async function openNoteTabs(page: Page, titles: string[]): Promise<void> {
@@ -269,10 +267,7 @@ test.describe('Session, context menu, settings, shortcuts, and state E2E', () =>
     await showAllTasksScope(page)
     await expect(page.getByText('No tasks yet')).toBeVisible()
 
-    await page
-      .locator('button:has-text("Calendar"), a:has-text("Calendar"), span:text("Calendar")')
-      .first()
-      .click()
+    await navigateTo(page, 'calendar')
     await expect(page.locator('[data-testid="calendar-page"]')).toBeVisible()
     await expect(page.locator('[data-testid="calendar-view"] [data-visual-type]')).toHaveCount(0)
 

@@ -10,6 +10,7 @@ import {
   waitForSyncOnline
 } from './utils/network-control'
 import type { SharedSyncBootstrap } from './utils/sync-backend'
+import { openSettingsView } from './utils/electron-helpers'
 
 const SYNC_TIMEOUT = 60_000
 const CONVERGENCE_TIMEOUT = 120_000
@@ -140,8 +141,7 @@ test.describe('Sync field merge and queue retry E2E', () => {
 
     await goOffline(electronAppA, electronAppB)
     await Promise.all([waitForSyncOffline(pageA), waitForSyncOffline(pageB)])
-    await pageA.evaluate(() => window.api.quickCapture.openSettings('account'))
-    await expect(pageA.getByRole('dialog')).toBeVisible()
+    await openSettingsView(pageA, 'account')
     await expect(pageA.getByText(/^Offline/).first()).toBeVisible()
 
     await pageA.evaluate(async ({ projectId }) => {

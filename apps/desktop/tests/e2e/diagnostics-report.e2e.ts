@@ -33,7 +33,7 @@ import {
   destroyElectronApp,
   waitForMainLog
 } from './utils/electron-lifecycle'
-import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { openSettingsView, waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
 // Assembled from parts at runtime so the source never holds a full `sk-…` literal
 // — the repo secret-scanner (scripts/check-staged-secrets.mjs) flags that shape
@@ -144,8 +144,7 @@ test('Path B: consent dialog sends a redacted incident report with the raw secre
       expect(await waitForMainLog(launched, BLOCKED_MSG, 20_000)).toBe(true)
 
       // Open the always-enabled Settings entry → shared consent dialog.
-      await page.evaluate(() => window.api.quickCapture.openSettings('general'))
-      await expect(page.getByRole('dialog')).toBeVisible()
+      await openSettingsView(page, 'general')
       await page.getByRole('button', { name: 'Send report…' }).click()
 
       const consent = page.getByRole('dialog').filter({ hasText: 'Send a diagnostic report?' })

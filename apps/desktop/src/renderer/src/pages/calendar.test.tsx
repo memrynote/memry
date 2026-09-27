@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
+import { DndContext } from '@dnd-kit/core'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import {
   TabProvider,
@@ -186,7 +187,12 @@ describe('Calendar workspace navigation', () => {
       <SettingsModalProvider>
         <SidebarProvider>
           <TabProvider>
-            <SidebarCalendarHarness />
+            {/* The rail's drag reorder needs the app-level DndContext (DragProvider).
+                No sensors: the default PointerSensor has no 8px threshold, so a click
+                would start a drag and dnd-kit would swallow it. */}
+            <DndContext sensors={[]}>
+              <SidebarCalendarHarness />
+            </DndContext>
           </TabProvider>
         </SidebarProvider>
       </SettingsModalProvider>
