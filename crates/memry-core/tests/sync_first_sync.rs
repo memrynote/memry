@@ -13,6 +13,8 @@
 //! | an unopenable update stops the document  | §7.9's stop-at-gap                  |
 //! | a baseline is taken only when §7.8 says  | §7.8, §7.5                          |
 //! | a tombstoned document is not body-pulled | §7.15                               |
+//! | elevated bodies run in parallel          | §10.7; the body pass's concurrency  |
+//! | a 429 in the bodies pass is paused out   | §7.10 `retryOn429: false`           |
 
 mod http_fakes;
 
@@ -28,12 +30,15 @@ use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{DocumentRegistry, extract_text};
 use memry_core::protocol::crdt_envelope::{CrdtMaterial, CrdtRequest, pack, unpack};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
-use memry_core::protocol::http::{ClientIdentity, HttpClient};
+use memry_core::protocol::http::{BOOTSTRAP_TOKEN_HEADER, ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::instants;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate, crdt_cursor_scope};
-use memry_core::sync::first_sync::{FirstSync, FirstSyncProgress, ProgressSink};
+use memry_core::sync::bootstrap::BootstrapClient;
+use memry_core::sync::first_sync::{
+    BODY_CONCURRENCY_ELEVATED, FirstSync, FirstSyncPhase, FirstSyncProgress, ProgressSink,
+};
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::note_body_feed::META_NOTE_BODY_LEGACY_PULL;
 use memry_core::sync::pull::{PullLoop, RecordCipher};
@@ -849,4 +854,228 @@ fn a_replayed_update_is_skipped_rather_than_re_applied() {
         .expect("apply");
     let fragment = reader.get_or_insert_xml_fragment("prosemirror");
     assert!(fragment.get_string(&reader.transact()).contains("once"));
+}
+
+// ------------------------------------------------- the parallel bodies pass
+
+/// Answers by route rather than by order, because the elevated bodies pass
+/// pulls several documents at once and their requests interleave. Every
+/// document has no snapshot and an empty log; what the tests assert is how
+/// the pass drove the server, not what the bodies said.
+struct RoutedTransport {
+    notes: Vec<String>,
+    calls: Mutex<Vec<memry_core::seams::transport::HttpRequest>>,
+    in_flight: AtomicU64,
+    max_in_flight: AtomicU64,
+}
+
+impl RoutedTransport {
+    fn new(notes: &[String]) -> Arc<Self> {
+        Arc::new(Self {
+            notes: notes.to_vec(),
+            calls: Mutex::new(Vec::new()),
+            in_flight: AtomicU64::new(0),
+            max_in_flight: AtomicU64::new(0),
+        })
+    }
+
+    fn crdt_calls(&self) -> Vec<memry_core::seams::transport::HttpRequest> {
+        self.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|call| call.url.contains("/sync/crdt/"))
+            .cloned()
+            .collect()
+    }
+
+    fn answer(&self, request: &memry_core::seams::transport::HttpRequest) -> String {
+        let url = request.url.as_str();
+        if url.ends_with("/sync/bootstrap") {
+            json!({"session": {"token": "boot-token", "expiresAt": 4_000_000_000i64}, "tailCursor": 10})
+                .to_string()
+        } else if url.ends_with("/sync/bootstrap/close") {
+            json!({}).to_string()
+        } else if url.contains("/sync/changes") {
+            let ids: Vec<(&str, &str)> =
+                self.notes.iter().map(|id| (id.as_str(), "note")).collect();
+            changes_page(&ids, &[], 10, false)
+        } else if url.ends_with("/sync/pull") {
+            let items: Vec<Json> = self
+                .notes
+                .iter()
+                .map(|id| record_envelope(id, "note"))
+                .collect();
+            json!({"items": items}).to_string()
+        } else if url.contains("/sync/crdt/snapshot/") {
+            json!({"snapshot": Json::Null}).to_string()
+        } else if url.contains("/sync/crdt/updates") {
+            json!({"updates": [], "hasMore": false}).to_string()
+        } else {
+            panic!("unrouted request to {url}")
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl memry_core::seams::transport::Transport for RoutedTransport {
+    async fn send(
+        &self,
+        request: memry_core::seams::transport::HttpRequest,
+    ) -> Result<memry_core::seams::transport::HttpResponse, memry_core::api::errors::TransportError>
+    {
+        self.calls.lock().unwrap().push(request.clone());
+        let now = self.in_flight.fetch_add(1, Ordering::SeqCst) + 1;
+        self.max_in_flight.fetch_max(now, Ordering::SeqCst);
+        // Held long enough that concurrent pulls genuinely overlap. The clock
+        // is paused, so this costs no real time.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        self.in_flight.fetch_sub(1, Ordering::SeqCst);
+        let body = self.answer(&request);
+        Ok(memry_core::seams::transport::HttpResponse {
+            status: 200,
+            headers: std::collections::HashMap::new(),
+            body: body.into_bytes(),
+        })
+    }
+
+    fn open_socket(
+        &self,
+        _request: memry_core::seams::transport::SocketRequest,
+        _listener: Arc<dyn memry_core::seams::transport::SocketListener>,
+    ) -> Result<
+        Arc<dyn memry_core::seams::transport::SocketHandle>,
+        memry_core::api::errors::TransportError,
+    > {
+        Err(memry_core::api::errors::TransportError::Failed {
+            what: "no sockets".to_string(),
+        })
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn an_elevated_first_sync_pulls_bodies_in_parallel_with_the_session_token() {
+    let db = scratch_db("parallel");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[31u8; 32]).expect("keypair");
+    let notes: Vec<String> = (0..10).map(|n| format!("note{n:08}")).collect();
+    let transport = RoutedTransport::new(&notes);
+    let http = Arc::new(HttpClient::new(
+        transport.clone(),
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    ));
+    let payloads: Vec<(String, String)> = notes
+        .iter()
+        .map(|id| (id.clone(), note_payload()))
+        .collect();
+    let payload_refs: Vec<(&str, &str)> = payloads
+        .iter()
+        .map(|(id, payload)| (id.as_str(), payload.as_str()))
+        .collect();
+    let bootstrap = Arc::new(BootstrapClient::new(Arc::clone(&http)));
+    let pull = Arc::new(PullLoop::new(
+        Arc::clone(&http),
+        db.clone(),
+        Declaration::subscribed(),
+        ScriptedCipher::new(&payload_refs),
+    ));
+    let bodies = Arc::new(
+        BodyPull::new(
+            http,
+            db.clone(),
+            Declaration::subscribed(),
+            RealCrdtCipher::with("device-a", public_key),
+        )
+        .with_bootstrap(Arc::clone(&bootstrap)),
+    );
+    let progress = RecordedProgress::new();
+    let report = FirstSync::new(pull, bodies, db.clone())
+        .with_bootstrap(bootstrap)
+        .with_progress(progress.clone())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync");
+
+    assert!(report.elevated);
+    assert_eq!(report.bodies.documents, notes.len());
+
+    // Every document still costs its snapshot and its updates page...
+    let crdt = transport.crdt_calls();
+    assert_eq!(crdt.len(), notes.len() * 2);
+    // ...and each of them carries the token, so `crdt_pull` runs at the
+    // elevated ceiling rather than at 600/min.
+    assert!(crdt.iter().all(|call| {
+        call.headers.get(BOOTSTRAP_TOKEN_HEADER).map(String::as_str) == Some("boot-token")
+    }));
+
+    // Overlapping, and never wider than the elevated cap.
+    let widest = transport.max_in_flight.load(Ordering::SeqCst) as usize;
+    assert!(widest > 1, "the bodies pass ran one document at a time");
+    assert!(widest <= BODY_CONCURRENCY_ELEVATED);
+
+    // FR-028: the bar only moves forwards, and ends full.
+    let bodies_progress: Vec<u64> = progress
+        .seen()
+        .iter()
+        .filter(|p| p.phase == FirstSyncPhase::Bodies)
+        .map(|p| p.completed)
+        .collect();
+    assert_eq!(
+        bodies_progress,
+        (1..=notes.len() as u64).collect::<Vec<_>>()
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_rate_limited_document_is_paused_out_and_retried_rather_than_failing_the_run() {
+    let db = scratch_db("rate-limited");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    let update = body_update("After the pause");
+
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        // `crdt_pull` is `retryOn429: false`: before, this one answer failed
+        // the whole first sync.
+        http_fakes::response_with_header(
+            429,
+            r#"{"error":{"code":"RATE_LIMITED","message":"Too many requests"}}"#,
+            ("retry-after", "7"),
+        ),
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{
+                "sequenceNum": 1,
+                "data": packed_base64(NOTE, &update, &secret_key),
+                "signerDeviceId": "device-a"
+            }], "hasMore": false})
+            .to_string(),
+        ),
+    ]);
+
+    let started = tokio::time::Instant::now();
+    let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync survives a 429");
+
+    assert!(
+        started.elapsed() >= std::time::Duration::from_secs(7),
+        "the Retry-After was waited out"
+    );
+    assert_eq!(report.bodies.updates, 1);
+    assert_eq!(text_of(&db, NOTE), "After the pause");
+    assert_eq!(
+        transport
+            .calls_to(&format!("/sync/crdt/snapshot/{NOTE}"))
+            .len(),
+        2,
+        "the refused request was sent again"
+    );
 }

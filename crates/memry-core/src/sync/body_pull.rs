@@ -64,6 +64,7 @@ use crate::protocol::http::{
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
 
+use super::bootstrap::BootstrapClient;
 use super::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 use super::store;
 
@@ -184,6 +185,7 @@ pub struct BodyPull {
     declaration: Declaration,
     cipher: Arc<dyn CrdtCipher>,
     vault_id: Option<String>,
+    bootstrap: Option<Arc<BootstrapClient>>,
 }
 
 impl BodyPull {
@@ -199,7 +201,21 @@ impl BodyPull {
             declaration,
             cipher,
             vault_id: None,
+            bootstrap: None,
         }
+    }
+
+    /// Chapter 10 §10.7: every route this pull sends is an elevated pull
+    /// bucket (`crdt_pull`, `crdt_batch_pull`), so a first sync's session
+    /// token rides on all of them. Without it the body pass runs at the
+    /// steady-state 600/min however the run was opened.
+    ///
+    /// Header only: renewal is the owner's to schedule
+    /// ([`BootstrapClient::renew_if_due`]), so concurrent document pulls never
+    /// race each other into two renewals.
+    pub fn with_bootstrap(mut self, bootstrap: Arc<BootstrapClient>) -> Self {
+        self.bootstrap = Some(bootstrap);
+        self
     }
 
     pub fn with_vault(mut self, vault_id: &str) -> Self {
@@ -519,6 +535,9 @@ impl BodyPull {
             .header(SYNC_TYPES_HEADER, &self.declaration.header_value());
         if let Some(vault_id) = &self.vault_id {
             request = request.header(VAULT_ID_HEADER, vault_id);
+        }
+        if let Some(bootstrap) = &self.bootstrap {
+            request = bootstrap.elevate(request, now_ms() / 1_000);
         }
         request
     }
