@@ -218,6 +218,8 @@ export class CrdtProvider {
   private snapshotPushFn: SnapshotPushFn | null = null
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
   private snapshotCoverage: SnapshotCoverageReader = NO_COVERAGE
+  /** See `setSnapshotDeferral`. */
+  private deferSnapshot: ((noteId: string) => void) | null = null
   /** Answers whether the owe is durable (#2421). */
   private oweRemoteMerge:
     ((noteId: string, reason: 'local_only' | 'compaction') => boolean) | null = null
@@ -305,6 +307,24 @@ export class CrdtProvider {
    */
   setSnapshotCoverage(reader: SnapshotCoverageReader | null): void {
     this.snapshotCoverage = reader ?? NO_COVERAGE
+  }
+
+  /**
+   * Wired by the sync runtime to its snapshot scheduler. With it set, a doc the
+   * LRU evicts hands its pending snapshot to the scheduler instead of pushing
+   * it on the spot.
+   *
+   * Eviction is one doc per open, so a vault written in bulk (an import, a
+   * seed) evicted, and pushed, one `POST /sync/crdt/snapshot` per note: 200
+   * notes spent ~120 requests in ten seconds, on the same per-device budget as
+   * `/sync/crdt/updates`, and drew 429s. The scheduler sends them together
+   * through `/sync/crdt/snapshot/batch`. Nothing is weakened: the body already
+   * reached the server through `/sync/crdt/updates`, the snapshot is only a
+   * compaction point, and a close-time push that failed was dropped anyway.
+   * A close an editor or teardown asks for still pushes before it returns.
+   */
+  setSnapshotDeferral(defer: ((noteId: string) => void) | null): void {
+    this.deferSnapshot = defer
   }
 
   /**
@@ -787,7 +807,11 @@ export class CrdtProvider {
     entry.pendingSnapshotBytes = 0
   }
 
-  async close(noteId: string, windowId?: number): Promise<void> {
+  async close(
+    noteId: string,
+    windowId?: number,
+    options: { evicting?: boolean } = {}
+  ): Promise<void> {
     const entry = this.docs.get(noteId)
     if (!entry || entry.closing) return
 
@@ -801,14 +825,22 @@ export class CrdtProvider {
     this.flushNetworkBroadcast(noteId)
 
     const push = this.snapshotPushFn
+    const defer = options.evicting ? this.deferSnapshot : null
     if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
-      const pushed = this.readPushBase(noteId).then((base) => {
-        const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(entry.doc))
-        return push(noteId, state, coverage)
-      })
-      await pushed.catch((err) => {
-        log.warn('Failed to push snapshot on close', { noteId, error: err })
-      })
+      if (defer) {
+        // Pushed later from the store, which flushDoc below brings up to date.
+        defer(noteId)
+      } else {
+        const pushed = this.readPushBase(noteId).then((base) => {
+          const { state, coverage } = this.encodeForPush(base, () =>
+            Y.encodeStateAsUpdate(entry.doc)
+          )
+          return push(noteId, state, coverage)
+        })
+        await pushed.catch((err) => {
+          log.warn('Failed to push snapshot on close', { noteId, error: err })
+        })
+      }
       entry.pendingSnapshotBytes = 0
     }
 
@@ -846,11 +878,11 @@ export class CrdtProvider {
    * here, never `close(noteId)`: an editor that opened the note in between
    * would lose its doc, and every edit after it (#2448).
    */
-  async closeIfInactive(noteId: string): Promise<boolean> {
+  async closeIfInactive(noteId: string, options: { evicting?: boolean } = {}): Promise<boolean> {
     const entry = this.docs.get(noteId)
     if (!entry || entry.closing || entry.windowIds.size > 0) return false
 
-    await this.close(noteId)
+    await this.close(noteId, undefined, options)
     return !this.docs.has(noteId)
   }
 
@@ -1114,6 +1146,7 @@ export class CrdtProvider {
     this.snapshotPushFn = null
     this.snapshotBatchPushFn = null
     this.snapshotCoverage = NO_COVERAGE
+    this.deferSnapshot = null
     this.oweRemoteMerge = null
     this.storeUnreconciled = false
     this.unvouchedNotes.clear()
@@ -1833,7 +1866,7 @@ export class CrdtProvider {
     inactiveDocs.sort(([, left], [, right]) => left.lastTouchedAt - right.lastTouchedAt)
 
     for (const [noteId] of inactiveDocs.slice(0, overflow)) {
-      await this.closeIfInactive(noteId)
+      await this.closeIfInactive(noteId, { evicting: true })
     }
   }
 

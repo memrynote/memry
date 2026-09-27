@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { SNAPSHOT_BATCH_WINDOW_MS } from '@memry/sync-client/crdt-snapshot-scheduler'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -199,6 +200,8 @@ const runtimeMocks = vi.hoisted(() => {
       setOweRemoteMerge: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
+      pushSnapshotsForNotes: vi.fn(),
+      setSnapshotDeferral: vi.fn(),
       readSyncableState: vi.fn(async () => new Uint8Array([7])),
       pushAllSnapshots: vi.fn(),
       destroy: vi.fn()
@@ -531,6 +534,7 @@ describe('sync runtime', () => {
     runtimeMocks.crdtProvider.init.mockResolvedValue(undefined)
     runtimeMocks.crdtProvider.seedExistingDocs.mockResolvedValue(1)
     runtimeMocks.crdtProvider.pushSnapshotForNote.mockResolvedValue(undefined)
+    runtimeMocks.crdtProvider.pushSnapshotsForNotes.mockResolvedValue(new Map())
     runtimeMocks.crdtProvider.pushAllSnapshots.mockResolvedValue(2)
     runtimeMocks.crdtProvider.destroy.mockResolvedValue(undefined)
     runtimeMocks.syncGoogleCalendarSource.mockResolvedValue(undefined)
@@ -807,12 +811,14 @@ describe('sync runtime', () => {
       }
 
       expect(runtimeMocks.postToServer).toHaveBeenCalledTimes(5)
-      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
+      expect(runtimeMocks.crdtProvider.pushSnapshotsForNotes).not.toHaveBeenCalled()
 
       // Once typing stops, the snapshot still lands — exactly once.
-      await vi.advanceTimersByTimeAsync(30_000)
-      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledTimes(1)
-      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+      // Through the batched push: quiet period, then the scheduler's batch window.
+      await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
+      expect(runtimeMocks.crdtProvider.pushSnapshotsForNotes).toHaveBeenCalledTimes(1)
+      expect(runtimeMocks.crdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(['note-1'])
+      expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
     }

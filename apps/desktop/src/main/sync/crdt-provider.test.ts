@@ -1008,6 +1008,59 @@ describe('CrdtProvider', () => {
     await cappedProvider.destroy()
   })
 
+  describe('snapshot of a doc the LRU evicts', () => {
+    let now = 1_000
+    let cappedProvider: CrdtProvider
+
+    beforeEach(async () => {
+      now = 1_000
+      cappedProvider = new CrdtProvider({ inactiveDocLimit: 1, now: () => now })
+      await cappedProvider.init(queue as any, pushSnapshot)
+      await cappedProvider.open('evicted', undefined, { skipSeed: true })
+      cappedProvider.updateMeta('evicted', { title: 'written in bulk' })
+      now += 1
+    })
+
+    afterEach(async () => {
+      await cappedProvider.destroy()
+    })
+
+    it('is handed to the deferral instead of pushed one request per note', async () => {
+      // #given a runtime that batches deferred snapshots
+      const defer = vi.fn()
+      cappedProvider.setSnapshotDeferral(defer)
+
+      // #when opening another note evicts the written one
+      await cappedProvider.open('next', undefined, { skipSeed: true })
+
+      // #then its snapshot is owed to the deferral, not sent on the spot
+      expect(cappedProvider.getDoc('evicted')).toBeUndefined()
+      expect(defer).toHaveBeenCalledWith('evicted')
+      expect(pushSnapshot).not.toHaveBeenCalled()
+    })
+
+    it('is pushed on the spot with no deferral wired', async () => {
+      await cappedProvider.open('next', undefined, { skipSeed: true })
+
+      expect(cappedProvider.getDoc('evicted')).toBeUndefined()
+      expect(pushSnapshot).toHaveBeenCalledWith('evicted', expect.any(Uint8Array), {
+        unmerged: false
+      })
+    })
+
+    it('is still pushed on the spot for a close that is not an eviction', async () => {
+      const defer = vi.fn()
+      cappedProvider.setSnapshotDeferral(defer)
+
+      await cappedProvider.close('evicted')
+
+      expect(defer).not.toHaveBeenCalled()
+      expect(pushSnapshot).toHaveBeenCalledWith('evicted', expect.any(Uint8Array), {
+        unmerged: false
+      })
+    })
+  })
+
   it('pushes only pending snapshots and resets pending byte counters', async () => {
     await provider.open('note-1', undefined, { skipSeed: true })
     provider.updateMeta('note-1', { title: 'Pending snapshot' })

@@ -181,6 +181,7 @@ const runtimeMocks = vi.hoisted(() => {
       isNoteSyncable: vi.fn(() => true),
       init: vi.fn(),
       setSnapshotCoverage: vi.fn(),
+      setSnapshotDeferral: vi.fn(),
       setOweRemoteMerge: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),

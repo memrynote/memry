@@ -32,6 +32,29 @@ export interface ProxyRequestRecord {
   at: number
   /** True when a fault rule severed this response. */
   severed: boolean
+  /**
+   * `device_id` claim of the bearer token, or null for unauthenticated calls.
+   * Lets a two-device spec attribute each request to the device that sent it.
+   */
+  deviceId: string | null
+}
+
+/**
+ * Reads the `device_id` claim out of a bearer JWT without verifying it: the
+ * proxy only labels traffic, the Worker behind it does the real check. Only the
+ * claim is kept, never the token.
+ */
+function bearerDeviceId(authorization: string | undefined): string | null {
+  const payload = authorization?.match(/^Bearer\s+[^.]+\.([^.]+)\./)?.[1]
+  if (!payload) return null
+  try {
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
+      device_id?: unknown
+    }
+    return typeof claims.device_id === 'string' ? claims.device_id : null
+  } catch {
+    return null
+  }
 }
 
 export interface FaultRule {
@@ -79,7 +102,8 @@ export async function startSyncProxy(
       path: pathname,
       status: 0,
       at: Date.now(),
-      severed: false
+      severed: false,
+      deviceId: bearerDeviceId(req.headers.authorization)
     }
     records.push(record)
 
@@ -155,7 +179,8 @@ export async function startSyncProxy(
       path: rawUrl.split('?')[0],
       status: 101,
       at: Date.now(),
-      severed: false
+      severed: false,
+      deviceId: bearerDeviceId(req.headers.authorization)
     })
     const upstream = net.connect(Number(target.port), target.hostname, () => {
       const lines = [`${req.method} ${rawUrl} HTTP/${req.httpVersion}`]

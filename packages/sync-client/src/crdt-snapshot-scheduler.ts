@@ -15,6 +15,18 @@ export const SNAPSHOT_QUIET_MS = 30_000
  */
 export const SNAPSHOT_MAX_WAIT_MS = 120_000
 
+/**
+ * How long a note that came due waits for others before the batch is sent.
+ *
+ * Notes written together come due together: a 200-note import is 200 quiet
+ * periods ending within a few seconds of each other. Sent one request per note
+ * that burst spent the device's whole CRDT push budget (300/min, shared with
+ * `/sync/crdt/updates`) and drew 429s. Sent as one call, the provider packs
+ * them into `/sync/crdt/snapshot/batch` requests of up to 50 notes. A snapshot
+ * is only a compaction point, so a couple of seconds more costs nothing.
+ */
+export const SNAPSHOT_BATCH_WINDOW_MS = 2_000
+
 interface PendingSnapshot {
   timer: ReturnType<typeof setTimeout>
   firstRequestedAt: number
@@ -23,6 +35,7 @@ interface PendingSnapshot {
 export interface CrdtSnapshotSchedulerOptions {
   quietMs?: number
   maxWaitMs?: number
+  batchWindowMs?: number
   now?: () => number
 }
 
@@ -38,18 +51,24 @@ export interface CrdtSnapshotSchedulerOptions {
  */
 export class CrdtSnapshotScheduler {
   private pending = new Map<string, PendingSnapshot>()
+  /** Came due, waiting for the batch window to close. */
+  private due = new Set<string>()
+  private batchTimer: ReturnType<typeof setTimeout> | null = null
   private inFlight = new Set<string>()
   private stopped = false
   private readonly quietMs: number
   private readonly maxWaitMs: number
+  private readonly batchWindowMs: number
   private readonly now: () => number
 
+  /** `pushFn` receives every note that came due in one batch window. */
   constructor(
-    private readonly pushFn: (noteId: string) => Promise<unknown>,
+    private readonly pushFn: (noteIds: string[]) => Promise<unknown>,
     options: CrdtSnapshotSchedulerOptions = {}
   ) {
     this.quietMs = options.quietMs ?? SNAPSHOT_QUIET_MS
     this.maxWaitMs = options.maxWaitMs ?? SNAPSHOT_MAX_WAIT_MS
+    this.batchWindowMs = options.batchWindowMs ?? SNAPSHOT_BATCH_WINDOW_MS
     this.now = options.now ?? Date.now
   }
 
@@ -63,12 +82,7 @@ export class CrdtSnapshotScheduler {
     const remainingMaxWait = firstRequestedAt + this.maxWaitMs - this.now()
     const delay = Math.max(0, Math.min(this.quietMs, remainingMaxWait))
 
-    const timer = setTimeout(() => this.fire(noteId), delay)
-    // Never hold the process open for a deferred snapshot: shutdown flushes
-    // outstanding snapshots through pushAllSnapshots(). unref exists only on
-    // node's Timeout — platform-free code probes for it structurally.
-    const maybeUnref = timer as unknown as { unref?: () => void }
-    if (typeof maybeUnref.unref === 'function') maybeUnref.unref()
+    const timer = unrefTimer(setTimeout(() => this.fire(noteId), delay))
     this.pending.set(noteId, { timer, firstRequestedAt })
   }
 
@@ -76,10 +90,14 @@ export class CrdtSnapshotScheduler {
     this.stopped = true
     for (const { timer } of this.pending.values()) clearTimeout(timer)
     this.pending.clear()
+    if (this.batchTimer) clearTimeout(this.batchTimer)
+    this.batchTimer = null
+    this.due.clear()
   }
 
+  /** Notes whose snapshot has not been handed to `pushFn` yet. */
   getPendingNoteIds(): string[] {
-    return Array.from(this.pending.keys())
+    return [...new Set([...this.pending.keys(), ...this.due])]
   }
 
   private fire(noteId: string): void {
@@ -93,13 +111,34 @@ export class CrdtSnapshotScheduler {
       return
     }
 
-    this.inFlight.add(noteId)
-    void this.pushFn(noteId)
+    this.due.add(noteId)
+    this.batchTimer ??= unrefTimer(setTimeout(() => this.flush(), this.batchWindowMs))
+  }
+
+  private flush(): void {
+    this.batchTimer = null
+    if (this.stopped || this.due.size === 0) return
+
+    const noteIds = [...this.due]
+    this.due.clear()
+    for (const noteId of noteIds) this.inFlight.add(noteId)
+    void this.pushFn(noteIds)
       .catch((err) => {
-        log.warn('Deferred CRDT snapshot push failed', { noteId, error: err })
+        log.warn('Deferred CRDT snapshot push failed', { noteIds, error: err })
       })
       .finally(() => {
-        this.inFlight.delete(noteId)
+        for (const noteId of noteIds) this.inFlight.delete(noteId)
       })
   }
+}
+
+/**
+ * Never hold the process open for a deferred snapshot: shutdown flushes
+ * outstanding snapshots through pushAllSnapshots(). unref exists only on
+ * node's Timeout — platform-free code probes for it structurally.
+ */
+function unrefTimer(timer: ReturnType<typeof setTimeout>): ReturnType<typeof setTimeout> {
+  const maybeUnref = timer as unknown as { unref?: () => void }
+  if (typeof maybeUnref.unref === 'function') maybeUnref.unref()
+  return timer
 }

@@ -182,6 +182,7 @@ const runtimeMocks = vi.hoisted(() => {
     crdtProvider: {
       init: vi.fn(),
       setSnapshotCoverage: vi.fn(),
+      setSnapshotDeferral: vi.fn(),
       setOweRemoteMerge: vi.fn(),
       seedExistingDocs: vi.fn(),
       // `open` is what the issue is about, so it is a plain spy on a fake doc

@@ -530,8 +530,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       ])
 
-      const snapshotScheduler = new CrdtSnapshotScheduler((noteId) =>
-        crdtProvider.pushSnapshotForNote(noteId)
+      // Batched: notes that come due together share /sync/crdt/snapshot/batch
+      // requests instead of spending one push-budget slot each.
+      const snapshotScheduler = new CrdtSnapshotScheduler((noteIds) =>
+        crdtProvider.pushSnapshotsForNotes(noteIds)
       )
       // Durable CRDT body outbox (#2298): note_body rows in sync_queue, pushed
       // through this fn, which keeps the CRDT route's own 429 gate and window.
@@ -844,6 +846,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         engine.snapshotCoverage(noteId, heldRevision)
       )
       crdtProvider.setOweRemoteMerge((noteId, reason) => engine.oweCrdtPull(noteId, reason))
+      crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
       // A full-state row queued with no runtime (a note leaving local-only) may
       // owe bodies the feed skipped: flagged, it claims nothing until its own
       // flush pull merged, which clears the flag. No second pull is owed.
@@ -939,6 +942,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       return engine
     } catch (error) {
       if (pendingRuntime) {
+        getCrdtProvider().setSnapshotDeferral(null)
         pendingRuntime.snapshotScheduler.stop()
         pendingRuntime.noteBodyOutbox.stop()
         pendingRuntime.ws.disconnect()
@@ -1021,7 +1025,10 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
 
   // Cancel deferred snapshots before the shutdown flush: pushAllSnapshots()
   // covers every note with pending bytes, so a timer firing mid-teardown would
-  // only duplicate that work against a provider about to be destroyed.
+  // only duplicate that work against a provider about to be destroyed. An
+  // eviction from here on pushes on the spot again rather than into a stopped
+  // scheduler.
+  if (active) getCrdtProvider().setSnapshotDeferral(null)
   active?.snapshotScheduler.stop()
 
   if (active && !options?.skipFinalSync) {

@@ -158,20 +158,41 @@ test.describe('Fresh-device bootstrap', () => {
       .toEqual(sample.map((item) => item.id))
 
     // (3) Pacing: a fresh device that hammers the buckets is the regression
-    // this whole epic exists to prevent. Zero 429s in B's window, not "few".
+    // this whole epic exists to prevent. Zero 429s, not "few".
     //
-    // Scoped to the requests B made, which is the claim under test. A's
-    // seeding traffic is a different path with a different owner and is
-    // measured separately below so a regression there cannot hide inside a
-    // whole-run total.
+    // Attributed per device (the token's device_id), not by time window: A
+    // keeps syncing its seed after B starts, so a window-only count mixed A's
+    // pushes into B's result and could not say whose budget ran out. The CRDT
+    // buckets are per device server-side, so this is the same split the server
+    // makes.
+    const deviceA = new Set(
+      syncProxy.records
+        .slice(0, requestsBeforeB)
+        .map((entry) => entry.deviceId)
+        .filter((id): id is string => id !== null)
+    )
+    expect(deviceA.size, 'device A made no authenticated request').toBe(1)
     const bootstrapWindow = syncProxy.records.slice(requestsBeforeB)
-    const throttled = bootstrapWindow.filter((entry) => entry.status === 429)
-    expect(
-      throttled.map((entry) => `${entry.method} ${entry.path}`).slice(0, 20),
-      'fresh-device bootstrap must not provoke 429s'
-    ).toEqual([])
+    const fromB = bootstrapWindow.filter(
+      (entry) => entry.deviceId !== null && !deviceA.has(entry.deviceId)
+    )
+    const throttledLines = (entries: typeof syncProxy.records): string[] =>
+      entries
+        .filter((entry) => entry.status === 429)
+        .map((entry) => `${entry.method} ${entry.path}`)
+        .slice(0, 20)
+
+    // Soft: both devices' results land in one run, whichever fails first.
+    expect.soft(throttledLines(fromB), 'fresh-device bootstrap must not provoke 429s').toEqual([])
+
+    // A's seeding push is a different path with a different owner, measured on
+    // its own so a regression there cannot hide inside B's result, nor fail it.
+    const fromA = syncProxy.records.filter(
+      (entry) => entry.deviceId !== null && deviceA.has(entry.deviceId)
+    )
+    expect.soft(throttledLines(fromA), 'seeding a vault must not provoke 429s').toEqual([])
 
     // Sanity: B really did talk to the server through the proxy.
-    expect(syncProxy.records.length).toBeGreaterThan(requestsBeforeB)
+    expect(fromB.length).toBeGreaterThan(0)
   })
 })
