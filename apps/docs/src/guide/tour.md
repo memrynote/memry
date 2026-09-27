@@ -137,9 +137,11 @@ The dots stay put while the pages move and blend toward the incoming vault as yo
 them opens the list of every vault. The rail never moves. With the panel hidden, switch vaults
 with the shortcuts above or <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>O</kbd>.
 
-Vaults you visited recently come back the way you left them, with the same tabs, scroll position
-and open note, so going back and forth is instant. The first visit to a vault in a session loads
-it from disk and shows a short loading state. If a switch takes more than a moment, the content
+Vaults you visited recently come back the way you left them, with the same tabs, scroll position,
+open note and sidebar lists, so going back and forth is instant. The first visit to a vault in a
+session loads it from disk; while it does, the sidebar keeps showing that vault's last page, with
+its own sort order and section order, instead of a loading state. Each vault also remembers which
+Collections folders you had open. If a switch takes more than a moment, the content
 area says which vault it is switching to, so the previous vault's notes are never mistaken for
 the new one's. Each vault stays fully separate: notes, journals, tasks and sync never cross between
 them, even when two vaults have an entry for the same day.
