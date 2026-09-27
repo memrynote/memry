@@ -1142,10 +1142,11 @@ freezes at the first snapshot: the first prune deletes every row the note has,
 and every later one deletes nothing new. Until its first snapshot lands, every
 note is in that window.
 
-Failing closed is not available for any of them. `GET /auth/devices` returns
-only non-revoked devices, so once a peer is revoked its key never comes back and
-a note held until the signer resolves is held forever; a device that is offline
-or rate-limited may not merge for a long time either. Holding the note back
+Failing closed is not available for any of them. A peer that is offline or
+rate-limited may not merge for a long time, so a note held until the signer
+resolves can be held indefinitely. (`GET /auth/devices` lists revoked devices
+too, with `revokedAt` set, so a revoked peer's key still resolves; servers
+before that change omitted them, which made such a hold permanent.) Holding the note back
 strands this device's own edits to protect a peer's — a certain loss traded for
 a possible one. The client also cannot tell transient from permanent:
 `getDeviceSigningKey` already refetches the device list on a cache miss, so a

@@ -1138,8 +1138,15 @@ signed-in account for sync, so another account's vaults never reach this account
 | `POST /auth/*`                         | mixed     | OTP, sign-in, refresh, sign-out                                                               |
 | `POST /auth/oauth/google/native`       | mixed     | Trade a platform-issued Google ID token for a setup token (mobile)                            |
 | `GET /auth/key-verifier`               | down      | Account key verifier for an established session (vault-key mismatch detection)                |
+| `GET /auth/devices`                    | down      | Signing-key directory; includes revoked devices (`revokedAt` set)                             |
 | `POST /devices/*`                      | mixed     | Linking, listing, revoking                                                                    |
 | `POST /keys/*`                         | mixed     | Key sealing during link, rotation                                                             |
+
+`GET /auth/devices` is the key directory every client verifies item and CRDT signatures against,
+not the device-management list (`GET /devices`, which hides revoked devices). It keeps revoked
+devices because push rejects a revoked signer, so everything signed under a revoked key was
+accepted before revocation and must stay verifiable. Without them, a device revoked from Settings
+left its whole history unappliable on every install, failing with `No public key for signer`.
 
 The five `/sync/crdt/*` routes are the only ones that carry a note body; the record feed above them
 moves metadata only. A device reads a body by applying the baseline from
