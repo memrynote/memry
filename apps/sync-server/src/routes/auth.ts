@@ -32,7 +32,7 @@ import {
   signSetupToken,
   verifyRenewableSetupToken
 } from '../services/auth'
-import { listDevices } from '../services/device'
+import { listDeviceSigningKeys } from '../services/device'
 import { sendEmail } from '../services/email'
 import {
   generateOtp,
@@ -812,7 +812,9 @@ auth.post('/setup', authMiddleware, async (c) => {
   return c.json({ success: true })
 })
 
-// GET /devices — returns all non-revoked devices for the authenticated user
+// GET /auth/devices — the signing-key directory: every device of the user,
+// revoked ones included with `revokedAt` set, so items they signed before
+// revocation stay verifiable. The device-management list is `GET /devices`.
 const devicesRateLimit = createRateLimiter({
   maxRequests: 60,
   windowSeconds: 60,
@@ -821,7 +823,7 @@ const devicesRateLimit = createRateLimiter({
 
 auth.get('/devices', authMiddleware, devicesRateLimit, async (c) => {
   const userId = c.get('userId')!
-  const devices = await listDevices(c.env.DB, userId)
+  const devices = await listDeviceSigningKeys(c.env.DB, userId)
 
   return c.json({
     devices: devices.map((d) => ({
