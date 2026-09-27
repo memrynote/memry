@@ -91,6 +91,18 @@
       "addTags": "Tambah tag…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Tambah sifat",
+    "dates": "Tarikh",
+    "datesAria": "Tarikh: {value}",
+    "start": "Mula",
+    "due": "Tamat tempoh",
+    "dueDate": "Tarikh akhir",
+    "remindMe": "Ingatkan saya",
+    "linkItem": "Pautkan nota atau kanvas",
+    "relatedAria": "Item berkaitan: {count}",
+    "shorthandPreview": "Ditetapkan melalui trengkas"
+  },
   "drawer": {
     "close": "Tutup butiran tugas",
     "subIssues": "Sub-isu",

@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, useMemo, memo, useCallback } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
-import { createLogger } from '@/lib/logger'
-import { extractErrorMessage } from '@/lib/ipc-error'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { PanelResizeRail } from '@/components/ui/panel-resize-rail'
 import { type Task, type Priority, type RepeatConfig } from '@/data/task-model'
@@ -24,9 +22,6 @@ import {
   DrawerSection,
   DrawerSectionHeading
 } from '@/components/tasks/drawer-section'
-import { notesService } from '@/services/notes-service'
-import { canvasService } from '@/services/canvas-service'
-import { NoteIconDisplay } from '@/lib/render-note-icon'
 import {
   useRelatedItemSearch,
   type RelatedSearchItem
@@ -38,13 +33,12 @@ import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
-import { FileAudio, FileImage, FilePdf, FileVideo, PenTool, X, Plus, Trash } from '@/lib/icons'
+import { X, Plus, Trash } from '@/lib/icons'
 import { TaskUnarchiveButton } from './task-unarchive-button'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
 import { TaskActivitySection } from '@/components/tasks/task-activity-section'
-import type { FileType } from '@memry/shared/file-types'
-
-const log = createLogger('TaskDetailDrawer')
+import { RelatedIcon } from '@/components/tasks/related-item-icon'
+import { relatedItemKey, useRelatedItemInfo } from '@/components/tasks/use-related-item-info'
 
 const TASK_DETAIL_WIDTH_KEY = 'task-detail-width'
 const TASK_DETAIL_WIDTH_DEFAULT_PX = 266
@@ -81,91 +75,6 @@ const formatCreatedDate = (date: Date, language: string): string =>
   }).format(date)
 
 // ============================================================================
-// SMALL DISPLAY COMPONENTS
-// ============================================================================
-
-const NoteIcon = ({ color }: { color: string }): React.JSX.Element => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    className="shrink-0"
-    style={{ color }}
-  >
-    <rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.1" />
-    <path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeLinecap="round" />
-  </svg>
-)
-
-const RelatedItemIcon = ({
-  fileType,
-  color
-}: {
-  fileType: FileType
-  color: string
-}): React.JSX.Element => {
-  const className = 'size-3.5 shrink-0 text-text-tertiary'
-
-  switch (fileType) {
-    case 'pdf':
-      return <FilePdf className={className} aria-hidden="true" />
-    case 'image':
-      return <FileImage className={className} aria-hidden="true" />
-    case 'audio':
-      return <FileAudio className={className} aria-hidden="true" />
-    case 'video':
-      return <FileVideo className={className} aria-hidden="true" />
-    case 'markdown':
-      return <NoteIcon color={color} />
-  }
-}
-
-// A note and a canvas can carry the same id, so a related item is addressed by
-// a discriminated reference rather than a bare id. Storage stays two disjoint
-// fields; only this layer unions them.
-type RelatedRef = { kind: 'note'; id: string } | { kind: 'canvas'; id: string }
-
-type RelatedItemInfo =
-  | { kind: 'note'; title: string; emoji?: string | null; fileType: FileType }
-  | { kind: 'canvas'; title: string; icon: string | null }
-
-const RelatedIcon = ({
-  kind,
-  info,
-  projectColor
-}: {
-  kind: RelatedRef['kind']
-  info?: RelatedItemInfo
-  projectColor: string
-}): React.JSX.Element => {
-  if (kind === 'canvas') {
-    const icon = info?.kind === 'canvas' ? info.icon : null
-    return icon ? (
-      <NoteIconDisplay value={icon} className="size-3.5 shrink-0 text-[13px] leading-3.5" />
-    ) : (
-      <PenTool className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
-    )
-  }
-  const emoji = info?.kind === 'note' ? info.emoji : null
-  return emoji ? (
-    <span className="size-3.5 text-center text-[13px] leading-3.5 shrink-0">{emoji}</span>
-  ) : (
-    <RelatedItemIcon
-      fileType={info?.kind === 'note' ? info.fileType : 'markdown'}
-      color={projectColor}
-    />
-  )
-}
-
-type RelatedItemKey = `${RelatedRef['kind']}:${string}`
-type RelatedItemInfoByKey = Partial<Record<RelatedItemKey, RelatedItemInfo>>
-
-const relatedItemKey = (ref: RelatedRef): RelatedItemKey => `${ref.kind}:${ref.id}`
-
-const EMPTY_RELATED_ITEMS: RelatedItemInfoByKey = {}
-
-// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -191,103 +100,19 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     minPx: TASK_DETAIL_WIDTH_MIN_PX,
     maxPx: TASK_DETAIL_WIDTH_MAX_PX
   })
-  const [noteNames, setNoteNames] = useState<RelatedItemInfoByKey>({})
-  const [canvasNames, setCanvasNames] = useState<RelatedItemInfoByKey>({})
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+  const untitledCanvasLabel = tCommon('canvas.untitled')
+  const {
+    refs: relatedRefs,
+    infoByKey: displayedRelatedNames,
+    remember: rememberRelatedItem,
+    forget: forgetRelatedItem
+  } = useRelatedItemInfo(task?.linkedNoteIds, task?.linkedCanvasIds, untitledCanvasLabel)
 
   const [isLinkingNote, setIsLinkingNote] = useState(false)
   const [noteSearchQuery, setNoteSearchQuery] = useState('')
   const noteSearchInputRef = useRef<HTMLInputElement>(null)
-
-  const untitledCanvasLabel = tCommon('canvas.untitled')
-  const linkedNoteKey = task?.linkedNoteIds?.join(',') ?? ''
-  const linkedCanvasKey = task?.linkedCanvasIds?.join(',') ?? ''
-
-  const relatedRefs = useMemo<RelatedRef[]>(
-    () => [
-      ...(task?.linkedNoteIds ?? []).map((id): RelatedRef => ({ kind: 'note', id })),
-      ...(task?.linkedCanvasIds ?? []).map((id): RelatedRef => ({ kind: 'canvas', id }))
-    ],
-    [task?.linkedNoteIds, task?.linkedCanvasIds]
-  )
-
-  const displayedRelatedNames = useMemo(
-    () => (relatedRefs.length ? { ...noteNames, ...canvasNames } : EMPTY_RELATED_ITEMS),
-    [relatedRefs.length, noteNames, canvasNames]
-  )
-
-  useEffect(() => {
-    if (!task?.linkedNoteIds?.length) {
-      return
-    }
-    let cancelled = false
-    void Promise.all(
-      task.linkedNoteIds.map(async (id) => {
-        try {
-          const file = await notesService.getFile(id)
-          if (file) {
-            return [
-              relatedItemKey({ kind: 'note', id }),
-              { kind: 'note' as const, title: file.title, emoji: null, fileType: file.fileType }
-            ] as const
-          }
-
-          const note = await notesService.get(id)
-          return note
-            ? ([
-                relatedItemKey({ kind: 'note', id }),
-                {
-                  kind: 'note' as const,
-                  title: note.title,
-                  emoji: note.emoji,
-                  fileType: 'markdown' as const
-                }
-              ] as const)
-            : null
-        } catch {
-          return null
-        }
-      })
-    ).then((results) => {
-      if (cancelled) return
-      const names: RelatedItemInfoByKey = {}
-      for (const r of results) if (r) names[r[0]] = r[1]
-      setNoteNames(names)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [task?.id, linkedNoteKey, task?.linkedNoteIds])
-
-  useEffect(() => {
-    if (!task?.linkedCanvasIds?.length) {
-      return
-    }
-    let cancelled = false
-    const linked = new Set(task.linkedCanvasIds)
-    void canvasService.list().then(
-      (response) => {
-        if (cancelled) return
-        const names: RelatedItemInfoByKey = {}
-        for (const canvas of response.canvases) {
-          if (!linked.has(canvas.id)) continue
-          names[relatedItemKey({ kind: 'canvas', id: canvas.id })] = {
-            kind: 'canvas',
-            title: canvas.title || untitledCanvasLabel,
-            icon: canvas.icon
-          }
-        }
-        setCanvasNames(names)
-      },
-      (err: unknown) => {
-        if (cancelled) return
-        log.error('Linked canvas lookup failed:', extractErrorMessage(err))
-      }
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [task?.id, linkedCanvasKey, task?.linkedCanvasIds, untitledCanvasLabel])
 
   useEffect(() => {
     if (!isOpen) return
@@ -595,20 +420,12 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     onUpdateTask?.(task.id, {
                       linkedCanvasIds: (task.linkedCanvasIds ?? []).filter((id) => id !== ref.id)
                     })
-                    setCanvasNames((prev) => {
-                      const next = { ...prev }
-                      delete next[key]
-                      return next
-                    })
+                    forgetRelatedItem(ref)
                   } else {
                     onUpdateTask?.(task.id, {
                       linkedNoteIds: task.linkedNoteIds.filter((id) => id !== ref.id)
                     })
-                    setNoteNames((prev) => {
-                      const next = { ...prev }
-                      delete next[key]
-                      return next
-                    })
+                    forgetRelatedItem(ref)
                   }
                 }
                 return (
@@ -672,27 +489,21 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                             onUpdateTask?.(task.id, {
                               linkedCanvasIds: [...(task.linkedCanvasIds ?? []), item.id]
                             })
-                            setCanvasNames((prev) => ({
-                              ...prev,
-                              [relatedItemKey(item)]: {
-                                kind: 'canvas',
-                                title: item.title,
-                                icon: item.icon
-                              }
-                            }))
+                            rememberRelatedItem(item, {
+                              kind: 'canvas',
+                              title: item.title,
+                              icon: item.icon
+                            })
                           } else {
                             onUpdateTask?.(task.id, {
                               linkedNoteIds: [...task.linkedNoteIds, item.id]
                             })
-                            setNoteNames((prev) => ({
-                              ...prev,
-                              [relatedItemKey(item)]: {
-                                kind: 'note',
-                                title: item.title,
-                                emoji: item.emoji,
-                                fileType: item.fileType
-                              }
-                            }))
+                            rememberRelatedItem(item, {
+                              kind: 'note',
+                              title: item.title,
+                              emoji: item.emoji,
+                              fileType: item.fileType
+                            })
                           }
                           setNoteSearchQuery('')
                           setIsLinkingNote(false)

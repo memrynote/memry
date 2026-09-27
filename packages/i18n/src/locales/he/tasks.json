@@ -91,6 +91,18 @@
       "addTags": "הוספת תגיות…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "הוספת מאפיין",
+    "dates": "תאריכים",
+    "datesAria": "תאריכים: {value}",
+    "start": "התחלה",
+    "due": "יעד",
+    "dueDate": "תאריך יעד",
+    "remindMe": "הזכר לי",
+    "linkItem": "קישור פתק או קנבס",
+    "relatedAria": "פריטים קשורים: {count}",
+    "shorthandPreview": "הוגדר בקיצור"
+  },
   "drawer": {
     "close": "סגור את פרטי המשימה",
     "subIssues": "נושאי משנה",

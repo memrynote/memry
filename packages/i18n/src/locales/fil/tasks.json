@@ -91,6 +91,18 @@
       "addTags": "Magdagdag ng tag…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Magdagdag ng property",
+    "dates": "Mga petsa",
+    "datesAria": "Mga petsa: {value}",
+    "start": "Simula",
+    "due": "Takdang araw",
+    "dueDate": "Takdang petsa",
+    "remindMe": "Paalalahanan ako",
+    "linkItem": "I-link ang tala o canvas",
+    "relatedAria": "Mga kaugnay na item: {count}",
+    "shorthandPreview": "Itinakda ng shorthand"
+  },
   "drawer": {
     "close": "Isara ang mga detalye ng gawain",
     "subIssues": "Mga sub-isyu",

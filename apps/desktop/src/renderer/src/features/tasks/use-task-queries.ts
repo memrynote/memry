@@ -15,6 +15,7 @@ import {
   onProjectDeleted
 } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
+import { priorityReverseMap, toServiceRepeatConfig, toTaskUpdateInput } from './task-update-input'
 import { trackRendererError, trackRendererLog } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('Tasks:Queries')
@@ -39,14 +40,6 @@ const priorityMap: Record<number, UiTask['priority']> = {
   2: 'medium',
   3: 'high',
   4: 'urgent'
-}
-
-const priorityReverseMap: Record<UiTask['priority'], number> = {
-  none: 0,
-  low: 1,
-  medium: 2,
-  high: 3,
-  urgent: 4
 }
 
 export const taskKeys = {
@@ -165,26 +158,6 @@ export function dbProjectToUiProject(
     isArchived: !!dbProject.archivedAt,
     createdAt: new Date(dbProject.createdAt),
     taskCount: 'taskCount' in dbProject ? dbProject.taskCount : 0
-  }
-}
-
-function toServiceRepeatConfig(config: UiRepeatConfig | null | undefined) {
-  if (config === undefined) return undefined
-  if (config === null) return null
-
-  return {
-    frequency: config.frequency,
-    interval: config.interval,
-    daysOfWeek: config.daysOfWeek,
-    monthlyType: config.monthlyType,
-    dayOfMonth: config.dayOfMonth,
-    weekOfMonth: config.weekOfMonth,
-    dayOfWeekForMonth: config.dayOfWeekForMonth,
-    endType: config.endType,
-    endDate: config.endDate ? formatDateKey(config.endDate) : null,
-    endCount: config.endCount,
-    completedCount: config.completedCount,
-    createdAt: config.createdAt.toISOString()
   }
 }
 
@@ -395,37 +368,7 @@ export function useTaskWorkspaceMutations() {
           void _completedAt
 
           if (Object.keys(otherUpdates).length > 0) {
-            const result = await tasksService.update({
-              id: taskId,
-              title: otherUpdates.title,
-              description: otherUpdates.description ?? undefined,
-              priority:
-                otherUpdates.priority !== undefined
-                  ? priorityReverseMap[otherUpdates.priority]
-                  : undefined,
-              projectId: otherUpdates.projectId,
-              statusId: otherUpdates.statusId ?? undefined,
-              parentId: otherUpdates.parentId ?? undefined,
-              dueDate:
-                'dueDate' in otherUpdates
-                  ? otherUpdates.dueDate
-                    ? formatDateKey(otherUpdates.dueDate)
-                    : null
-                  : undefined,
-              startDate:
-                'startDate' in otherUpdates
-                  ? otherUpdates.startDate
-                    ? formatDateKey(otherUpdates.startDate)
-                    : null
-                  : undefined,
-              dueTime: 'dueTime' in otherUpdates ? otherUpdates.dueTime : undefined,
-              isRepeating: otherUpdates.isRepeating,
-              repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
-              repeatFrom: otherUpdates.repeatFrom,
-              linkedNoteIds: otherUpdates.linkedNoteIds,
-              linkedCanvasIds: otherUpdates.linkedCanvasIds,
-              tags: otherUpdates.tags
-            })
+            const result = await tasksService.update(toTaskUpdateInput(taskId, otherUpdates))
             reportEnvelopeFailure('task_update', result)
           }
 
@@ -444,37 +387,7 @@ export function useTaskWorkspaceMutations() {
           void _archivedAt
 
           if (Object.keys(otherUpdates).length > 0) {
-            const result = await tasksService.update({
-              id: taskId,
-              title: otherUpdates.title,
-              description: otherUpdates.description ?? undefined,
-              priority:
-                otherUpdates.priority !== undefined
-                  ? priorityReverseMap[otherUpdates.priority]
-                  : undefined,
-              projectId: otherUpdates.projectId,
-              statusId: otherUpdates.statusId ?? undefined,
-              parentId: otherUpdates.parentId ?? undefined,
-              dueDate:
-                'dueDate' in otherUpdates
-                  ? otherUpdates.dueDate
-                    ? formatDateKey(otherUpdates.dueDate)
-                    : null
-                  : undefined,
-              startDate:
-                'startDate' in otherUpdates
-                  ? otherUpdates.startDate
-                    ? formatDateKey(otherUpdates.startDate)
-                    : null
-                  : undefined,
-              dueTime: 'dueTime' in otherUpdates ? otherUpdates.dueTime : undefined,
-              isRepeating: otherUpdates.isRepeating,
-              repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
-              repeatFrom: otherUpdates.repeatFrom,
-              linkedNoteIds: otherUpdates.linkedNoteIds,
-              linkedCanvasIds: otherUpdates.linkedCanvasIds,
-              tags: otherUpdates.tags
-            })
+            const result = await tasksService.update(toTaskUpdateInput(taskId, otherUpdates))
             reportEnvelopeFailure('task_update', result)
           }
 
@@ -482,35 +395,7 @@ export function useTaskWorkspaceMutations() {
           return
         }
 
-        const result = await tasksService.update({
-          id: taskId,
-          title: updates.title,
-          description: updates.description ?? undefined,
-          priority:
-            updates.priority !== undefined ? priorityReverseMap[updates.priority] : undefined,
-          projectId: updates.projectId,
-          statusId: updates.statusId ?? undefined,
-          parentId: updates.parentId ?? undefined,
-          dueDate:
-            'dueDate' in updates
-              ? updates.dueDate
-                ? formatDateKey(updates.dueDate)
-                : null
-              : undefined,
-          startDate:
-            'startDate' in updates
-              ? updates.startDate
-                ? formatDateKey(updates.startDate)
-                : null
-              : undefined,
-          dueTime: 'dueTime' in updates ? updates.dueTime : undefined,
-          isRepeating: updates.isRepeating,
-          repeatConfig: toServiceRepeatConfig(updates.repeatConfig),
-          repeatFrom: updates.repeatFrom,
-          linkedNoteIds: updates.linkedNoteIds,
-          linkedCanvasIds: updates.linkedCanvasIds,
-          tags: updates.tags
-        })
+        const result = await tasksService.update(toTaskUpdateInput(taskId, updates))
         reportEnvelopeFailure('task_update', result)
 
         invalidateWorkspace()

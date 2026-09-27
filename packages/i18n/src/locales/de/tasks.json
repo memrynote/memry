@@ -91,6 +91,18 @@
       "addTags": "Tags hinzufügen…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Eigenschaft hinzufügen",
+    "dates": "Daten",
+    "datesAria": "Daten: {value}",
+    "start": "Start",
+    "due": "Fällig",
+    "dueDate": "Fälligkeitsdatum",
+    "remindMe": "Erinnern",
+    "linkItem": "Notiz oder Canvas verknüpfen",
+    "relatedAria": "Verknüpfte Elemente: {count}",
+    "shorthandPreview": "Per Kurzbefehl gesetzt"
+  },
   "drawer": {
     "close": "Aufgabendetails schließen",
     "subIssues": "Unterthemen",

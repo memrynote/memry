@@ -91,6 +91,18 @@
       "addTags": "Tambah tag…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Tambah properti",
+    "dates": "Tanggal",
+    "datesAria": "Tanggal: {value}",
+    "start": "Mulai",
+    "due": "Tenggat",
+    "dueDate": "Tanggal tenggat",
+    "remindMe": "Ingatkan saya",
+    "linkItem": "Tautkan catatan atau kanvas",
+    "relatedAria": "Item terkait: {count}",
+    "shorthandPreview": "Diatur lewat singkatan"
+  },
   "drawer": {
     "close": "Tutup detail tugas",
     "subIssues": "Sub-masalah",

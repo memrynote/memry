@@ -91,6 +91,18 @@
       "addTags": "Добавить теги…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Добавить свойство",
+    "dates": "Даты",
+    "datesAria": "Даты: {value}",
+    "start": "Начало",
+    "due": "Срок",
+    "dueDate": "Срок выполнения",
+    "remindMe": "Напомнить",
+    "linkItem": "Связать заметку или холст",
+    "relatedAria": "Связанные элементы: {count}",
+    "shorthandPreview": "Задано сокращением"
+  },
   "drawer": {
     "close": "Закрыть детали задачи",
     "subIssues": "Подвопросы",

@@ -15,8 +15,25 @@ import {
   type NoteTaskProjectContext
 } from '@/lib/note-task-project'
 import { createLogger } from '@/lib/logger'
+import { useReminders } from '@/hooks/use-reminders'
+import type { ListRemindersInput } from '@/services/reminder-service'
 
 const log = createLogger('TaskPrefetch')
+
+/**
+ * Every task reminder still waiting to fire, in one list call per note instead
+ * of one per block. The reminder chip only needs to know whether a task has
+ * one; the picker loads the task's own reminders when it opens. The contract
+ * caps a page at 200, far past what a person keeps pending on tasks.
+ */
+const ACTIVE_TASK_REMINDERS: ListRemindersInput = {
+  targetType: 'task',
+  status: ['pending', 'snoozed'],
+  limit: 200,
+  offset: 0
+}
+
+const EMPTY_REMINDER_TASK_IDS: ReadonlySet<string> = new Set()
 
 const EMPTY_PROJECT_CONTEXT: NoteTaskProjectContext = {
   noteProjectIds: [],
@@ -34,6 +51,15 @@ interface TaskPrefetchValue {
    * than the inbox's (#2271). Null outside a note or before it resolves.
    */
   draftProjectId: string | null
+  /**
+   * The note these blocks live in. A task written in a note is linked to it,
+   * so the block's related-items chip leaves it out: pointing a row at the
+   * page it already sits on is noise, and unlinking it would detach the task
+   * from the note that holds its line.
+   */
+  noteId: string | null
+  /** Whether the task has a reminder still to fire. */
+  hasActiveReminder: (taskId: string) => boolean
 }
 
 // Default used when a taskBlock renders outside a provider (e.g. unit tests):
@@ -42,7 +68,9 @@ interface TaskPrefetchValue {
 const DEFAULT_VALUE: TaskPrefetchValue = {
   status: 'ready',
   getCached: () => undefined,
-  draftProjectId: null
+  draftProjectId: null,
+  noteId: null,
+  hasActiveReminder: () => false
 }
 
 const TaskPrefetchContext = createContext<TaskPrefetchValue>(DEFAULT_VALUE)
@@ -138,9 +166,24 @@ export function TaskPrefetchProvider({
     [noteId, projectContext, projects]
   )
 
+  const { reminders } = useReminders(ACTIVE_TASK_REMINDERS)
+  const reminderTaskIds = useMemo(
+    () =>
+      reminders.length
+        ? new Set(reminders.map((reminder) => reminder.targetId))
+        : EMPTY_REMINDER_TASK_IDS,
+    [reminders]
+  )
+
   const value = useMemo<TaskPrefetchValue>(
-    () => ({ status, getCached: (taskId: string) => tasksById.get(taskId), draftProjectId }),
-    [status, tasksById, draftProjectId]
+    () => ({
+      status,
+      getCached: (taskId: string) => tasksById.get(taskId),
+      draftProjectId,
+      noteId: noteId ?? null,
+      hasActiveReminder: (taskId: string) => reminderTaskIds.has(taskId)
+    }),
+    [status, tasksById, draftProjectId, noteId, reminderTaskIds]
   )
 
   return <TaskPrefetchContext.Provider value={value}>{children}</TaskPrefetchContext.Provider>

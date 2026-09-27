@@ -91,6 +91,18 @@
       "addTags": "태그 추가…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "속성 추가",
+    "dates": "날짜",
+    "datesAria": "날짜: {value}",
+    "start": "시작",
+    "due": "마감",
+    "dueDate": "마감일",
+    "remindMe": "알림 받기",
+    "linkItem": "노트 또는 캔버스 연결",
+    "relatedAria": "관련 항목: {count}",
+    "shorthandPreview": "단축 입력으로 설정"
+  },
   "drawer": {
     "close": "작업 세부정보 닫기",
     "subIssues": "하위 문제",

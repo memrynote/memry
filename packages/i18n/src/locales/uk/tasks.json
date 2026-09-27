@@ -91,6 +91,18 @@
       "addTags": "Додати теги…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Додати властивість",
+    "dates": "Дати",
+    "datesAria": "Дати: {value}",
+    "start": "Початок",
+    "due": "Термін",
+    "dueDate": "Термін виконання",
+    "remindMe": "Нагадати",
+    "linkItem": "Пов'язати нотатку або полотно",
+    "relatedAria": "Пов'язані елементи: {count}",
+    "shorthandPreview": "Задано скороченням"
+  },
   "drawer": {
     "close": "Закрити деталі завдання",
     "subIssues": "Підзавдання",

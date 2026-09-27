@@ -51,7 +51,8 @@ vi.mock('@/components/tasks/task-row', () => ({
     onUpdateTask,
     onProjectChange,
     actions,
-    renderTitle
+    renderTitle,
+    pickerControl
   }: {
     task: { id: string; title: string }
     project: { id: string; name: string }
@@ -61,9 +62,11 @@ vi.mock('@/components/tasks/task-row', () => ({
     onProjectChange: (projectId: string) => void
     actions: React.ReactNode
     renderTitle: () => React.ReactNode
+    pickerControl?: { open: string | null }
   }) => (
     <div data-testid="task-row" data-task-id={task.id} data-project-id={project.id}>
       <span>{isCompleted ? 'done' : 'open'}</span>
+      <span data-testid="open-property">{pickerControl?.open ?? ''}</span>
       {renderTitle()}
       {actions}
       <button type="button" onClick={() => onToggleComplete(task.id)}>
@@ -465,5 +468,129 @@ describe('TaskBlockRenderer', () => {
     await act(async () => Promise.resolve())
 
     expect(mocks.complete).toHaveBeenCalledWith({ id: 'task-9' })
+  })
+
+  // #2241 — the Tasks-page shorthand did nothing in a note.
+  it('applies shorthand typed into the title and keeps the tokens out of it', async () => {
+    const editor = makeEditor()
+    const block = makeBlock()
+    render(<TaskBlockRenderer block={block} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    const titleInput = screen.getByDisplayValue('Draft task')
+    fireEvent.change(titleInput, { target: { value: 'Ship it !high #launch' } })
+    act(() => vi.advanceTimersByTime(600))
+    await act(async () => Promise.resolve())
+
+    // #then the half-parsed line is never written as the title
+    expect(mocks.update).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(titleInput, { key: 'Enter' })
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', priority: 3, tags: ['launch'] })
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Ship it' })
+    expect(editor.updateBlock).toHaveBeenCalledWith(block, {
+      props: { ...block.props, title: 'Ship it' }
+    })
+  })
+
+  it('holds shorthand typed into a draft until its task id arrives', async () => {
+    const editor = makeEditor()
+    const draft = makeBlock({ taskId: '', title: '' })
+    mocks.taskState.task = null
+
+    const { rerender } = render(<TaskBlockRenderer block={draft} editor={editor} />)
+
+    const input = screen.getByDisplayValue('')
+    fireEvent.change(input, { target: { value: 'Buy milk #groceries @tomorrow' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await act(async () => Promise.resolve())
+
+    // The block is named without the tokens, which is what the create sees.
+    expect(editor.updateBlock).toHaveBeenCalledWith(draft, {
+      props: { ...draft.props, title: 'Buy milk' }
+    })
+    expect(mocks.update).not.toHaveBeenCalled()
+
+    const created = makeBlock({ taskId: 'task-9', title: 'Buy milk' })
+    rerender(<TaskBlockRenderer block={created} editor={editor} />)
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'task-9',
+        tags: ['groceries'],
+        dueDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        dueTime: null
+      })
+    )
+  })
+
+  it('opens a property picker from its key while the block itself has focus', () => {
+    const editor = makeEditor()
+    render(<TaskBlockRenderer block={makeBlock()} editor={editor} />)
+
+    const row = screen.getByRole('group', { name: 'Loaded task' })
+    fireEvent.keyDown(row, { key: 'd' })
+    expect(screen.getByTestId('open-property')).toHaveTextContent('due')
+
+    fireEvent.keyDown(row, { key: 'L', shiftKey: true })
+    expect(screen.getByTestId('open-property')).toHaveTextContent('related')
+
+    // A modified key is the app's, not a property's.
+    fireEvent.keyDown(row, { key: 's', metaKey: true })
+    expect(screen.getByTestId('open-property')).toHaveTextContent('related')
+
+    fireEvent.keyDown(row, { key: 'Enter', metaKey: true })
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ viewState: expect.objectContaining({ openTaskId: 'task-1' }) })
+    )
+
+    fireEvent.keyDown(row, { key: 'Enter' })
+    expect(screen.getByDisplayValue('Draft task')).toBeInTheDocument()
+  })
+
+  it('leaves letters typed into the title to the title', () => {
+    const editor = makeEditor()
+    render(<TaskBlockRenderer block={makeBlock()} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    fireEvent.keyDown(screen.getByDisplayValue('Draft task'), { key: 'd' })
+
+    expect(screen.getByTestId('open-property')).toHaveTextContent('')
+  })
+
+  it('keeps the block selected after Escape leaves the title', () => {
+    const editor = makeEditor()
+    render(<TaskBlockRenderer block={makeBlock()} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    fireEvent.keyDown(screen.getByDisplayValue('Draft task'), { key: 'Escape' })
+
+    expect(document.activeElement).toBe(screen.getByRole('group', { name: 'Loaded task' }))
+  })
+
+  // In the app, Esc in an input is a blur first: use-hint-activation blurs it
+  // in the capture phase, and the title's own key handler never runs.
+  it('selects the task once when Esc arrives as a bare blur', async () => {
+    // jsdom ties hasFocus() to a focused element; a browser ties it to the
+    // window, which keeps focus while the input blurs to <body>.
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const editor = makeEditor()
+    render(<TaskBlockRenderer block={makeBlock()} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    const titleInput = screen.getByDisplayValue('Draft task')
+    fireEvent.change(titleInput, { target: { value: 'Ship it !high' } })
+    act(() => titleInput.blur())
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledTimes(2)
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', priority: 3 })
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Ship it' })
+    // The mocked task keeps its loaded title; the block is what matters here.
+    expect(document.activeElement).toBe(screen.getByRole('group', { name: 'Loaded task' }))
+    hasFocus.mockRestore()
   })
 })

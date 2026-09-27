@@ -20,6 +20,10 @@ vi.mock('@/services/tasks-service', () => ({
   onProjectUpdated: () => vi.fn()
 }))
 
+// The provider reads the note's pending task reminders through TanStack
+// Query; these tests have no QueryClient and no reminders.
+vi.mock('@/hooks/use-reminders', () => ({ useReminders: () => ({ reminders: [] }) }))
+
 import { useTaskBlockData } from './use-task-block-data'
 import { TaskPrefetchProvider } from './task-prefetch-context'
 

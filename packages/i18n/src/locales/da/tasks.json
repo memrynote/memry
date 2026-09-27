@@ -91,6 +91,18 @@
       "addTags": "Tilføj tags…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Tilføj egenskab",
+    "dates": "Datoer",
+    "datesAria": "Datoer: {value}",
+    "start": "Start",
+    "due": "Forfald",
+    "dueDate": "Forfaldsdato",
+    "remindMe": "Påmind mig",
+    "linkItem": "Knyt note eller lærred",
+    "relatedAria": "Relaterede elementer: {count}",
+    "shorthandPreview": "Sat med genvej"
+  },
   "drawer": {
     "close": "Luk opgavedetaljer",
     "subIssues": "Underspørgsmål",

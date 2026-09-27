@@ -91,6 +91,18 @@
       "addTags": "Címkék hozzáadása…"
     }
   },
+  "inlineProperties": {
+    "addProperty": "Tulajdonság hozzáadása",
+    "dates": "Dátumok",
+    "datesAria": "Dátumok: {value}",
+    "start": "Kezdés",
+    "due": "Határidő",
+    "dueDate": "Határidő dátuma",
+    "remindMe": "Emlékeztess",
+    "linkItem": "Jegyzet vagy vászon csatolása",
+    "relatedAria": "Kapcsolódó elemek: {count}",
+    "shorthandPreview": "Gyorsírással beállítva"
+  },
   "drawer": {
     "close": "Zárja be a feladat részleteit",
     "subIssues": "Alkérdések",

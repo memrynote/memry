@@ -22,12 +22,17 @@ interface TaskReminderButtonProps {
   taskId: string
   disabled?: boolean
   className?: string
+  /** Controlled open state, for a host that opens the picker from the keyboard. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function TaskReminderButton({
   taskId,
   disabled = false,
-  className
+  className,
+  open,
+  onOpenChange
 }: TaskReminderButtonProps): React.ReactElement {
   const { t } = useT('tasks')
   const {
@@ -64,6 +69,8 @@ export function TaskReminderButton({
       reminders={activeReminders}
       onEdit={(id, date, note) => void actions.editReminder(id, date, note)}
       onDelete={(id) => void actions.deleteReminder(id)}
+      open={open}
+      onOpenChange={onOpenChange}
       trigger={
         <button
           type="button"

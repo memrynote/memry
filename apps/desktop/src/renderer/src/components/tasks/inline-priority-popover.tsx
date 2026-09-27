@@ -28,12 +28,17 @@ interface InlinePriorityPopoverProps {
   priority: Priority
   onPriorityChange: (priority: Priority) => void
   disabled?: boolean
+  /** Controlled open state, for a host that opens the picker from the keyboard. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export const InlinePriorityPopover = ({
   priority,
   onPriorityChange,
-  disabled = false
+  disabled = false,
+  open,
+  onOpenChange
 }: InlinePriorityPopoverProps): React.JSX.Element => {
   // Subscribe to the active language so the lazy `priorityConfig` labels below
   // re-resolve when the locale changes (this component renders no other copy).
@@ -57,7 +62,12 @@ export const InlinePriorityPopover = ({
   )
 
   return (
-    <Picker value={priority} onValueChange={(v) => onPriorityChange(v as Priority)}>
+    <Picker
+      value={priority}
+      onValueChange={(v) => onPriorityChange(v as Priority)}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       <Picker.Trigger asChild disabled={disabled}>
         <button
           type="button"
