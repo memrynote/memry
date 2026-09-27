@@ -358,6 +358,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // per block at a time, whatever the title does in the meantime.
   const draftCreateInFlightRef = useRef(new Set<string>())
   const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
+  // Blocks last written by another device or window (a Y.Doc update that
+  // arrived through main). The editor that typed a checkbox owns turning it
+  // into a task. When the note is open on two devices, both used to convert the
+  // same checkbox: each created its own row and wrote its own `taskId` onto the
+  // block, Yjs kept one, and each side then deleted the id that vanished from
+  // its doc, so both rows went and the block was left pointing at nothing. A
+  // local edit to the block takes it back.
+  const remoteAuthoredBlocksRef = useRef<Set<string>>(new Set())
   // Debounced standalone-task auto-convert. Holds the timer + the blockId we
   // intend to convert when it fires. The delay (CONVERT_DEBOUNCE_MS) is the
   // window in which the user can press Tab to indent the new checkbox under a
@@ -1151,6 +1159,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // (#1907). The block stays in `dismissedBlocksRef` so the analyzer does not
   // immediately re-schedule the conversion that just failed and loop on it;
   // reopening the note retries with a fresh set.
+  const taskIntentExclusions = useCallback(
+    (): Set<string> => new Set([...dismissedBlocksRef.current, ...remoteAuthoredBlocksRef.current]),
+    []
+  )
+
   const restoreCheckbox = useCallback(
     (blockId: string, content: unknown, checked: boolean) => {
       const stale = editor.getBlock(blockId)
@@ -1446,7 +1459,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // Re-scan: the structure may have changed during the debounce window
         // (e.g. user pressed Tab and the block became a child of another
         // taskBlock). Pick the latest intent for this block.
-        const latest = analyzeTaskIntents(editor.document as any[], dismissedBlocksRef.current)
+        const latest = analyzeTaskIntents(editor.document as any[], taskIntentExclusions())
         if (latest.subtaskCandidate?.blockId === blockId) {
           convertCheckboxToSubtask(
             latest.subtaskCandidate.blockId,
@@ -1458,7 +1471,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // else: the block disappeared or was already converted, no-op.
       }, CONVERT_DEBOUNCE_MS)
     },
-    [editor, convertCheckboxToSubtask, convertCheckboxToTask]
+    [editor, convertCheckboxToSubtask, convertCheckboxToTask, taskIntentExclusions]
   )
 
   // Cleanup the debounce timer on unmount so a teardown mid-typing doesn't
@@ -1976,10 +1989,28 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // conversion, draft taskBlock creation, subtask re-parenting and deletes.
   // A non-owner editor (a sibling on the same note in this window, R17) must
   // not run it — exactly one editor owns task auto-conversion.
-  const applyTaskIntents = (): void => {
+  const applyTaskIntents = (
+    changes?: ReadonlyArray<{ type: string; block: { id: string } }>
+  ): void => {
     if (!runSideEffects) return
 
-    const intents = analyzeTaskIntents(editor.document as any[], dismissedBlocksRef.current)
+    // A remote change carries edits another editor made and will act on
+    // itself: record which blocks it touched, keep the task-id baseline
+    // current so its deletes are not replayed here, and do nothing else.
+    if (isRemoteUpdateRef?.current) {
+      for (const change of changes ?? []) {
+        if (change.type === 'delete') remoteAuthoredBlocksRef.current.delete(change.block.id)
+        else remoteAuthoredBlocksRef.current.add(change.block.id)
+      }
+      knownTaskBlockIdsRef.current = analyzeTaskIntents(
+        editor.document as any[],
+        dismissedBlocksRef.current
+      ).currentTaskIds
+      return
+    }
+    for (const change of changes ?? []) remoteAuthoredBlocksRef.current.delete(change.block.id)
+
+    const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions())
 
     // Subtasks are unambiguous (the user already structured them as
     // children of a taskBlock) and convert immediately. Standalone
@@ -2169,9 +2200,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           <BlockNoteView
             editor={editor}
             editable={editable}
-            onChange={(): void => {
+            onChange={(_editor, context): void => {
               void handleChange()
-              applyTaskIntents()
+              applyTaskIntents(context.getChanges())
             }}
             theme={editorTheme}
             formattingToolbar={false}

@@ -51,6 +51,7 @@ const contentAreaMocks = vi.hoisted(() => ({
     })
   ),
   useSyncState: { status: 'error' },
+  editorChanges: [] as unknown[],
   yjsState: {
     fragment: undefined as unknown,
     doc: null as unknown,
@@ -178,9 +179,18 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('@blocknote/shadcn', () => ({
-  BlockNoteView: ({ children, onChange }: { children: React.ReactNode; onChange: () => void }) => (
+  BlockNoteView: ({
+    children,
+    onChange
+  }: {
+    children: React.ReactNode
+    onChange: (editor: unknown, context: { getChanges: () => unknown[] }) => void
+  }) => (
     <div data-testid="blocknote-view">
-      <button type="button" onClick={onChange}>
+      <button
+        type="button"
+        onClick={() => onChange(null, { getChanges: () => contentAreaMocks.editorChanges })}
+      >
         change
       </button>
       <div data-content-type="checkListItem" data-id="standalone">
@@ -558,6 +568,7 @@ describe('ContentArea', () => {
     contentAreaMocks.pasteSelect = null
     contentAreaMocks.blockNoteOptions = null
     contentAreaMocks.useSyncState = { status: 'error' }
+    contentAreaMocks.editorChanges = []
     contentAreaMocks.yjsState = {
       fragment: undefined,
       doc: null,
@@ -907,6 +918,45 @@ describe('ContentArea', () => {
         })
       ])
     )
+  })
+
+  // The note is open on two devices. The checkbox typed on one reaches the
+  // other as a Yjs update; converting it there too made two rows for one line,
+  // and each side then deleted the id Yjs dropped, so both rows were lost.
+  it('leaves a checkbox that arrived from another device to the device that typed it', async () => {
+    const remoteRef = { current: false }
+    contentAreaMocks.yjsState = { ...contentAreaMocks.yjsState, isRemoteUpdateRef: remoteRef }
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(() =>
+      emptyIntents(new Set(['existing-task']))
+    )
+    render(<ContentArea noteId="note-1" />)
+    contentAreaMocks.analyzeTaskIntents.mockClear()
+    contentAreaMocks.analyzeTaskIntents.mockImplementation(() => emptyIntents(new Set()))
+
+    remoteRef.current = true
+    contentAreaMocks.editorChanges = [
+      { type: 'insert', block: { id: 'remote-check' } },
+      { type: 'update', block: { id: 'remote-draft' } }
+    ]
+    fireEvent.click(screen.getByText('change'))
+    remoteRef.current = false
+
+    // A local edit elsewhere must not pick the remote blocks up either.
+    contentAreaMocks.editorChanges = [{ type: 'update', block: { id: 'local-para' } }]
+    fireEvent.click(screen.getByText('change'))
+
+    const exclusions = contentAreaMocks.analyzeTaskIntents.mock.calls.at(-1)?.[1] as Set<string>
+    expect(exclusions.has('remote-check')).toBe(true)
+    expect(exclusions.has('remote-draft')).toBe(true)
+    // The remote pass moved the baseline, so the local pass deletes nothing.
+    expect(contentAreaMocks.tasksService.delete).not.toHaveBeenCalled()
+
+    // Editing the block here makes it this device's to convert.
+    contentAreaMocks.editorChanges = [{ type: 'update', block: { id: 'remote-check' } }]
+    fireEvent.click(screen.getByText('change'))
+    const reclaimed = contentAreaMocks.analyzeTaskIntents.mock.calls.at(-1)?.[1] as Set<string>
+    expect(reclaimed.has('remote-check')).toBe(false)
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
   })
 
   it('converts task intents and cleans up deleted task blocks on editor changes', async () => {
