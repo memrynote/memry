@@ -23,6 +23,7 @@ import { getI18n } from 'react-i18next'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
 import type {
   BookmarkWithItem,
   BookmarkListResponse,
@@ -124,7 +125,11 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
   const [bookmarks, setBookmarks] = useState<BookmarkWithItem[]>([])
   const [total, setTotal] = useState(0)
   const [hasMore, setHasMore] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  // True until the first list arrives. Later loads (a refresh on a bookmark
+  // event, or the reload when a kept vault workspace is shown again) swap the
+  // rows in place: dropping to a loading row for each made the list flicker.
+  const [isLoading, setIsLoading] = useState(autoLoad)
+  const hasLoadedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
 
   // Track current filter options for loadMore
@@ -147,7 +152,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       limit?: number
       offset?: number
     }): Promise<BookmarkListResponse> => {
-      setIsLoading(true)
+      if (!hasLoadedRef.current) setIsLoading(true)
       setError(null)
 
       const opts = {
@@ -162,7 +167,8 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       currentOptionsRef.current = opts
 
       try {
-        const result = await bookmarksService.list(opts)
+        const result = await trackWorkspaceLoad(bookmarksService.list(opts))
+        hasLoadedRef.current = true
         setBookmarks(result.bookmarks)
         setTotal(result.total)
         setHasMore(result.hasMore)

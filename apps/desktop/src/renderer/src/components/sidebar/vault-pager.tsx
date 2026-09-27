@@ -32,6 +32,7 @@ import {
   serializeSidebarSnapshot,
   vaultTintStyle
 } from '@/lib/vault-sidebar-snapshot'
+import { pendingWorkspaceLoads, subscribeWorkspaceLoads } from '@/lib/workspace-load-tracker'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
 import { isPlainTextInputFocused } from '@/hooks/use-keyboard-shortcuts'
@@ -52,6 +53,8 @@ const TRACK_DIM = 0.4
 const PAGE_GAP_PX = 24
 /** The arrival snapshot fades once the new vault's queries settle, or after this at most. */
 const ARRIVAL_MAX_MS = 800
+/** How long the list must stay without reads in flight before the cover lifts. */
+const ARRIVAL_QUIET_MS = 50
 const REVEAL_MS = 150
 /** A freshly opened vault is snapshotted once its sidebar has had time to load. */
 const SNAPSHOT_IDLE_MS = 1500
@@ -461,16 +464,31 @@ export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPage
 
   useAdjacentVaultShortcuts()
 
-  // Arriving under a cover: lift it once the new vault's queries have settled.
+  // Arriving under a cover: lift it once the new vault's list has loaded, both
+  // its queries and the reads made outside TanStack Query (sort modes, section
+  // order, note positions: see `workspace-load-tracker`). Lifting on queries
+  // alone showed the list at its defaults, then reordering.
   // The cover is pointer-transparent, so the live list is usable underneath.
   useEffect(() => {
     if (!coveringRef.current) return
     coveredArrival = getVaultSwitchState().arrival
-    // Checking starts two frames in: the list's queries start in its own mount
-    // effects, and an empty fetch count before that means nothing.
+    const idle = (): boolean => queryClient.isFetching() === 0 && pendingWorkspaceLoads() === 0
+    // Checking starts two frames in: the list's reads start in its own mount
+    // effects, and an empty count before that means nothing.
     let ready = false
+    let quietTimer: ReturnType<typeof setTimeout> | null = null
     const check = (): void => {
-      if (ready && queryClient.isFetching() === 0) uncover(true)
+      if (!ready) return
+      if (quietTimer !== null) clearTimeout(quietTimer)
+      quietTimer = null
+      if (!idle()) return
+      // A read that lands often starts the next one from an effect (notes,
+      // then their positions), a render and a passive-effect flush later.
+      // Stay idle that long before lifting.
+      quietTimer = setTimeout(() => {
+        quietTimer = null
+        if (idle()) uncover(true)
+      }, ARRIVAL_QUIET_MS)
     }
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => {
@@ -479,10 +497,13 @@ export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPage
       })
     })
     const timer = setTimeout(() => uncover(true), ARRIVAL_MAX_MS)
-    const unsubscribe = queryClient.getQueryCache().subscribe(check)
+    const unsubscribeQueries = queryClient.getQueryCache().subscribe(check)
+    const unsubscribeLoads = subscribeWorkspaceLoads(check)
     return () => {
-      unsubscribe()
+      unsubscribeQueries()
+      unsubscribeLoads()
       cancelAnimationFrame(frame)
+      if (quietTimer !== null) clearTimeout(quietTimer)
       clearTimeout(timer)
     }
     // Mount-only: the cover is for the switch that mounted this tree.

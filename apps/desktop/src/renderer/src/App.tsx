@@ -667,16 +667,32 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
       // Cache fence. Once a switch away from this vault starts, main may
       // already serve the next vault, and the leaving workspace's observers
       // can still fetch (retries, reconnect, event-driven invalidations). A
-      // result that lands then answers for another vault: reset the query so
-      // it cannot be served as this vault's fresh rows. Manual writes
-      // (setQueryData) are not reads from main and are left alone.
+      // result that lands then answers for another vault and must not be
+      // served as this vault's rows. Manual writes (setQueryData) are not reads
+      // from main and are left alone.
       created.getQueryCache().subscribe((event) => {
-        if (event.type !== 'updated' || event.action.type !== 'success') return
-        if (event.action.manual) return
+        if (event.type !== 'updated') return
+        const { action, query } = event
+        const isFetch = action.type === 'fetch'
+        if (!isFetch && (action.type !== 'success' || action.manual)) return
         const { pending } = getVaultSwitchState()
         const isOpenVault =
           path === activePathRef.current && (pending === null || pending.path === path)
-        if (!isOpenVault) event.query.reset()
+        if (isOpenVault) return
+        if (isFetch) {
+          // Stop the read before it lands and keep the rows this vault already
+          // has. Resetting after the fact emptied them, so coming back to a
+          // kept vault showed skeletons until its refetch arrived. The query
+          // stays invalidated (see the leave handler) and refetches on reveal.
+          // The retryer is created right after this event: cancel a tick later.
+          if (query.state.data !== undefined) {
+            queueMicrotask(() => void query.cancel({ revert: true }))
+          }
+          return
+        }
+        // A read that got through (nothing cached to keep, or it outran the
+        // cancel): drop it rather than serve another vault's rows.
+        query.reset()
       })
       clientsRef.current.set(path, created)
       client = created
@@ -806,10 +822,9 @@ function App(): React.JSX.Element {
   useEffect(() => {
     if (!vaultPath) return
     if (prevVaultPathRef.current && prevVaultPathRef.current !== vaultPath) {
-      // Expanded folder ids belong to the vault being left and mean nothing in
-      // the one being entered. Query caches are per vault (see VaultStack), and
-      // tab state is stored per vault and read back on the way in.
-      localStorage.removeItem('sidebar-tree-expanded')
+      // Nothing to reset here: query caches are per vault (see VaultStack), and
+      // tab state and expanded folders (`sidebarTreeExpandedKey`) are stored per
+      // vault and read back on the way in.
       log.info('Vault switched')
     }
     prevVaultPathRef.current = vaultPath

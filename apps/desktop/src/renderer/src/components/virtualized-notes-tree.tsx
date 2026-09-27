@@ -109,6 +109,8 @@ export interface VirtualizedTreeActions {
 }
 
 interface VirtualizedNotesTreeProps {
+  /** localStorage key for the expanded folders (see `sidebarTreeExpandedKey`) */
+  expandedKey?: string
   /** Ref to expose expand/collapse actions to the parent */
   actionsRef?: React.RefObject<VirtualizedTreeActions | null>
   /** Tree structure with folders and notes */
@@ -198,16 +200,17 @@ interface VirtualizedNotesTreeProps {
 // ============================================================================
 
 /**
- * Storage key for expanded folders
+ * Storage key for expanded folders outside a vault workspace. Inside one the
+ * tree gets its vault's own key.
  */
 const EXPANDED_FOLDERS_KEY = 'sidebar-tree-expanded'
 
 /**
  * Load expanded folder IDs from localStorage
  */
-function loadExpandedFolders(): Set<string> {
+function loadExpandedFolders(key: string): Set<string> {
   try {
-    const stored = localStorage.getItem(EXPANDED_FOLDERS_KEY)
+    const stored = localStorage.getItem(key)
     if (stored) {
       return new Set(JSON.parse(stored))
     }
@@ -220,9 +223,9 @@ function loadExpandedFolders(): Set<string> {
 /**
  * Save expanded folder IDs to localStorage
  */
-function saveExpandedFolders(expandedIds: Set<string>): void {
+function saveExpandedFolders(key: string, expandedIds: Set<string>): void {
   try {
-    localStorage.setItem(EXPANDED_FOLDERS_KEY, JSON.stringify([...expandedIds]))
+    localStorage.setItem(key, JSON.stringify([...expandedIds]))
   } catch {
     // Ignore storage errors
   }
@@ -1012,7 +1015,8 @@ export function VirtualizedNotesTree({
   isDragDisabled = false,
   fileDropFolder = null,
   className,
-  scrollContainerRef
+  scrollContainerRef,
+  expandedKey = EXPANDED_FOLDERS_KEY
 }: VirtualizedNotesTreeProps) {
   const { t } = useT('notes')
   // Same preference the non-virtualized tree honours through useNoteTreeActions'
@@ -1023,7 +1027,9 @@ export function VirtualizedNotesTree({
   const usesExternalScroll = !!scrollContainerRef
 
   // Expanded folders state (persisted to localStorage)
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => loadExpandedFolders())
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
+    loadExpandedFolders(expandedKey)
+  )
 
   // Drag state
   const [dragState, setDragStateInternal] = useState<DragState>({
@@ -1055,8 +1061,8 @@ export function VirtualizedNotesTree({
 
   // Persist expanded state changes
   useEffect(() => {
-    saveExpandedFolders(expandedIds)
-  }, [expandedIds])
+    saveExpandedFolders(expandedKey, expandedIds)
+  }, [expandedKey, expandedIds])
 
   // Flatten tree based on expanded state
   const flatItems = useMemo(() => {

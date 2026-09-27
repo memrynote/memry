@@ -67,6 +67,35 @@ describe('useBookmarks', () => {
       expect(window.api.bookmarks.list).toHaveBeenCalled()
     })
 
+    it('keeps the loaded rows on screen while a later load runs', async () => {
+      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+        bookmarks: [createMockBookmark({ id: 'bm-1' })],
+        total: 1,
+        hasMore: false
+      })
+      const { result } = renderHook(() => useBookmarks(), { wrapper })
+      await waitFor(() => expect(result.current.bookmarks).toHaveLength(1))
+
+      let finish: (value: unknown) => void = () => {}
+      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockReturnValue(
+        new Promise((resolve) => {
+          finish = resolve
+        })
+      )
+      let refreshing: Promise<void> = Promise.resolve()
+      act(() => {
+        refreshing = result.current.refresh()
+      })
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.bookmarks).toHaveLength(1)
+
+      await act(async () => {
+        finish({ bookmarks: [], total: 0, hasMore: false })
+        await refreshing
+      })
+      expect(result.current.bookmarks).toHaveLength(0)
+    })
+
     it('should not load bookmarks on mount when autoLoad is false', async () => {
       const { result } = renderHook(() => useBookmarks({ autoLoad: false }), { wrapper })
 

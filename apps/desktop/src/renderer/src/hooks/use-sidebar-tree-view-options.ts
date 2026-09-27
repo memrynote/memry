@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { getI18n } from 'react-i18next'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
 
 const log = createLogger('SidebarTreeViewOptions')
 
@@ -40,14 +41,12 @@ function useSyncedSidebarFlag({ key, fallback, load, save }: SyncedFlagSource): 
     let cancelled = false
     // Starting from a resolved promise also routes a synchronous throw from
     // `load` into the rejection handler.
-    Promise.resolve()
-      .then(load)
-      .then(
-        (stored) => {
-          if (!cancelled && typeof stored === 'boolean') setValueState(stored)
-        },
-        (err: unknown) => log.error(`Failed to load ${key}`, err)
-      )
+    void trackWorkspaceLoad(Promise.resolve().then(load)).then(
+      (stored) => {
+        if (!cancelled && typeof stored === 'boolean') setValueState(stored)
+      },
+      (err: unknown) => log.error(`Failed to load ${key}`, err)
+    )
     return () => {
       cancelled = true
     }

@@ -8,6 +8,7 @@ import {
 import { getI18n } from 'react-i18next'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
 
 const log = createLogger('SidebarSortMode')
 
@@ -42,7 +43,7 @@ export function useSidebarSortMode(surface: SidebarSortSurface): UseSidebarSortM
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        const modes = await window.api?.settings?.getSidebarSortModes?.()
+        const modes = await trackWorkspaceLoad(window.api?.settings?.getSidebarSortModes?.())
         if (mounted && modes) setModeState(resolveSortMode(surface, modes[surface]))
       } catch (err) {
         log.error('Failed to load sidebar sort mode', err)

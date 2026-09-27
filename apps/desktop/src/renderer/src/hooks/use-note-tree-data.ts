@@ -14,6 +14,7 @@ import {
   type TreeStructure
 } from '@/components/notes-tree-utils'
 import { createLogger } from '@/lib/logger'
+import { trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
 
 const log = createLogger('Hook:NoteTreeData')
 
@@ -144,7 +145,7 @@ export function useNoteTreeData(): NoteTreeData {
   useEffect(() => {
     const fetchPositions = async () => {
       try {
-        const result = await notesService.getAllPositions()
+        const result = await trackWorkspaceLoad(notesService.getAllPositions())
         if (result.success) {
           setNotePositions(result.positions)
         }

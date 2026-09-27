@@ -501,7 +501,7 @@ describe('App', () => {
     expect(first).toBeVisible()
   })
 
-  it('does not keep rows the leaving vault fetches after a switch away began', async () => {
+  it('keeps the rows a leaving vault has, and never takes the next vault reads as its own', async () => {
     const view = render(<App />)
     const [clientA] = createdQueryClients
     const rowsKey = ['rows']
@@ -511,11 +511,12 @@ describe('App', () => {
 
     act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
     // A refetch from the still-visible vault A workspace, answered by main
-    // after it moved to vault B.
+    // after it moved to vault B: cancelled, A's own rows stay for the way back.
     await expect(
       clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
-    ).resolves.toBe('vault-b-rows')
-    expect(clientA.getQueryData(rowsKey)).toBeUndefined()
+    ).resolves.toBe('vault-a-rows')
+    expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows')
+    expect(clientA.getQueryState(rowsKey)?.isInvalidated).toBe(true)
 
     vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/b' } }
     view.rerender(<App />)
@@ -525,7 +526,7 @@ describe('App', () => {
 
     // Still fenced once main reports vault B: A is hidden, not open.
     await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
-    expect(clientA.getQueryData(rowsKey)).toBeUndefined()
+    expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows')
 
     // The open vault's own client caches normally.
     await clientB.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
@@ -537,17 +538,16 @@ describe('App', () => {
     render(<App />)
     const [clientA] = createdQueryClients
     const rowsKey = ['rows']
-    let answer = 'vault-a-rows'
+    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
+    // A first read that starts mid-switch has nothing cached to keep: it runs,
+    // main answers for vault B, and the fence empties the query.
+    let answer = 'vault-b-rows'
     const observer = new QueryObserver(clientA, {
       queryKey: rowsKey,
       queryFn: async () => answer
     })
     const unsubscribe = observer.subscribe(() => {})
-    await waitFor(() => expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows'))
-
-    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
-    answer = 'vault-b-rows'
-    await observer.refetch()
+    await waitFor(() => expect(clientA.getQueryState(rowsKey)?.fetchStatus).toBe('idle'))
     expect(clientA.getQueryData(rowsKey)).toBeUndefined()
 
     answer = 'vault-a-rows'

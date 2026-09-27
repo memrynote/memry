@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { getI18n } from 'react-i18next'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
 
 const log = createLogger('SidebarSectionOrder')
 
@@ -29,7 +30,7 @@ export function useSidebarSectionOrder(): UseSidebarSectionOrderResult {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        const stored = await window.api?.settings?.getSidebarSectionOrder?.()
+        const stored = await trackWorkspaceLoad(window.api?.settings?.getSidebarSectionOrder?.())
         if (mounted && Array.isArray(stored)) setOrderState(stored)
       } catch (err) {
         log.error('Failed to load sidebar section order', err)

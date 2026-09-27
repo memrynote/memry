@@ -18,6 +18,7 @@ import {
   getVaultSidebarSnapshot,
   resetVaultSidebarSnapshots
 } from '@/lib/vault-sidebar-snapshot'
+import { resetWorkspaceLoads, trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
 
 const WIDTH = 250
 
@@ -87,6 +88,7 @@ describe('VaultPager', () => {
     vi.restoreAllMocks()
     resetVaultSwitchState()
     resetVaultSidebarSnapshots()
+    resetWorkspaceLoads()
     localStorage.clear()
   })
 
@@ -262,6 +264,36 @@ describe('VaultPager', () => {
 
     await act(async () => {
       vi.advanceTimersByTime(1000)
+      await Promise.resolve()
+    })
+    expect(screen.queryByTestId('vault-pager-cover')).not.toBeInTheDocument()
+  })
+
+  it('keeps the cover while reads outside TanStack Query are still loading', async () => {
+    seedSnapshot('/vaults/work', 'Launch checklist')
+    beginVaultSwitch({ path: '/vaults/work', name: 'Work' }, 'next')
+    endVaultSwitch(true)
+    let finishLoad: () => void = () => {}
+    void trackWorkspaceLoad(
+      new Promise<void>((resolve) => {
+        finishLoad = resolve
+      })
+    )
+    renderPager()
+
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+      await Promise.resolve()
+    })
+    expect(screen.getByTestId('vault-pager-cover')).toBeInTheDocument()
+
+    await act(async () => {
+      finishLoad()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(100)
       await Promise.resolve()
     })
     expect(screen.queryByTestId('vault-pager-cover')).not.toBeInTheDocument()

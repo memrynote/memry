@@ -36,6 +36,8 @@ import {
 } from '@/components/note-tree-states'
 import { InitialSyncProgress } from '@/components/sync/initial-sync-progress'
 import { useSyncOptional } from '@/contexts/sync-context'
+import { useVaultScope } from '@/contexts/vault-scope'
+import { sidebarTreeExpandedKey } from '@/lib/sidebar-tree-expanded-key'
 import {
   TreeFolderIcon,
   RevealHandler,
@@ -123,6 +125,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   const { t: tCommon } = useT('common')
   const fileActions = useFileActionLabels()
   const data = useNoteTreeData()
+  const vaultScope = useVaultScope()
+  // Resolved once, before TreeProvider reads it: the workspace never changes vault.
+  const [expandedKey] = useState(() => sidebarTreeExpandedKey(vaultScope))
   // Optional on purpose: canvas embeds and unit tests mount the tree without a
   // SyncProvider, and "no provider" must read as "no initial sync running".
   const initialSyncInProgress = useSyncOptional()?.state.initialSyncProgress != null
@@ -742,6 +747,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     >
       {useVirtualizedTree ? (
         <VirtualizedNotesTree
+          expandedKey={expandedKey}
           actionsRef={virtualTreeActionsRef}
           tree={data.tree}
           selectedIds={selectedIds}
@@ -788,7 +794,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         />
       ) : (
         <TreeProvider
-          persistKey="sidebar-tree-expanded"
+          persistKey={expandedKey}
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
           draggable={!actions.renamingNoteId && !actions.renamingFolderPath && !actions.isMoving}
