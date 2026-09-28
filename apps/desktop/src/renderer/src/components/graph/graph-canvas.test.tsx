@@ -133,12 +133,14 @@ vi.mock('./graph-context-menu', () => ({
     onFocusNode,
     onOpenInTab,
     onCreateNote,
+    onUnpin,
     onClose
   }: {
     menu: { nodeId: string }
     onFocusNode: (nodeId: string) => void
     onOpenInTab: (nodeId: string) => void
     onCreateNote?: (title: string) => void
+    onUnpin?: (nodeId: string) => void
     onClose: () => void
   }) => (
     <div data-testid="context-menu">
@@ -150,6 +152,9 @@ vi.mock('./graph-context-menu', () => ({
       </button>
       <button type="button" onClick={() => onCreateNote?.('Created from graph')}>
         menu create
+      </button>
+      <button type="button" onClick={() => onUnpin?.(menu.nodeId)}>
+        menu unpin
       </button>
       <button type="button" onClick={onClose}>
         menu close
@@ -591,6 +596,39 @@ describe('GraphCanvas', () => {
       expect(Object.keys(onLayoutChange.mock.calls[0][0]).sort()).toEqual(
         graphCanvasMocks.sigmaContainerProps?.graph.nodes().sort()
       )
+    })
+
+    it('unpins from the context menu and saves the change', () => {
+      const onLayoutChange = vi.fn()
+      const { graph } = renderLive({}, { onLayoutChange })
+      fireEvent.click(screen.getByText('grab note'))
+      fireEvent.click(screen.getByText('drag note'))
+      fireEvent.click(screen.getByText('drop note'))
+
+      fireEvent.click(screen.getByText('context note'))
+      fireEvent.click(screen.getByText('menu unpin'))
+
+      expect(graph.hasNodeAttribute('note-a', 'pinned')).toBe(false)
+      expect(onLayoutChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ 'note-a': expect.not.objectContaining({ pinned: true }) })
+      )
+    })
+
+    it('unpins a restored pin with live motion off and re-settles', () => {
+      const onLayoutChange = vi.fn()
+      const { graph } = renderLive(
+        { animateLayout: false },
+        { savedLayout: { 'note-a': { x: 300, y: 200, pinned: true } }, onLayoutChange }
+      )
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(300)
+      onLayoutChange.mockClear()
+
+      fireEvent.click(screen.getByText('context note'))
+      fireEvent.click(screen.getByText('menu unpin'))
+
+      expect(graph.hasNodeAttribute('note-a', 'pinned')).toBe(false)
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(300)
+      expect(onLayoutChange).toHaveBeenCalledTimes(1)
     })
 
     it('leaves positions alone for static layouts', () => {
