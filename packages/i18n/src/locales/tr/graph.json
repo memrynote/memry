@@ -44,7 +44,8 @@
     "show-labels": "Etiketleri göster",
     "live-motion": "Canlı hareket",
     "focus-depth": "derinlik {depth}",
-    "clear-focus": "Odaklanmış düğümü temizle"
+    "clear-focus": "Odaklanmış düğümü temizle",
+    "relayout": "Yeniden yerleştir"
   },
   "filter": {
     "notes": "Notlar",
@@ -65,7 +66,8 @@
     "focus-node": "Bu düğüme odaklan",
     "open-new-tab": "Yeni sekmede aç",
     "create-note": "Not oluştur",
-    "copy-title": "Başlığı kopyala"
+    "copy-title": "Başlığı kopyala",
+    "unpin": "Sabitlemeyi kaldır"
   },
   "tooltip": {
     "connection-count": "{count, plural, one {# bağlantı} other {# bağlantı}}",
@@ -76,5 +78,11 @@
     "empty": "Bağlantı bulunamadı",
     "open-full": "Grafiğin tamamını aç",
     "close": "Grafiği kapat"
+  },
+  "relayout-confirm": {
+    "title": "Grafik yeniden yerleştirilsin mi?",
+    "description": "Sabitlenen tüm düğümler serbest bırakılır ve grafik yeni bir düzene oturur. Kayıtlı düzen silinir.",
+    "cancel": "Vazgeç",
+    "confirm": "Yeniden yerleştir"
   }
 }

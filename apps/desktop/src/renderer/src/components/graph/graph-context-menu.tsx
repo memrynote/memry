@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { Focus, ExternalLink, Copy, FilePlus } from '@/lib/icons'
+import { Focus, ExternalLink, Copy, FilePlus, Pin } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type Graph from 'graphology'
+import { PINNED_ATTRIBUTE } from '@/lib/graph-physics'
 
 export interface ContextMenuState {
   nodeId: string
@@ -15,6 +16,7 @@ interface GraphContextMenuProps {
   onFocusNode: (nodeId: string) => void
   onOpenInTab: (nodeId: string) => void
   onCreateNote?: (title: string) => void
+  onUnpin?: (nodeId: string) => void
   onClose: () => void
 }
 
@@ -24,6 +26,7 @@ export function GraphContextMenu({
   onFocusNode,
   onOpenInTab,
   onCreateNote,
+  onUnpin,
   onClose
 }: GraphContextMenuProps): React.JSX.Element {
   const { t } = useT('graph')
@@ -51,6 +54,7 @@ export function GraphContextMenu({
   const attrs = graph.getNodeAttributes(menu.nodeId)
   const label = (attrs.label as string) || t('context-menu.untitled')
   const isUnresolved = attrs.isUnresolved as boolean
+  const isPinned = attrs[PINNED_ATTRIBUTE] === true
 
   return (
     <div
@@ -101,6 +105,20 @@ export function GraphContextMenu({
         >
           <FilePlus className="size-3.5 text-muted-foreground" />
           {t('context-menu.create-note')}
+        </button>
+      )}
+
+      {isPinned && onUnpin && (
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
+          onClick={() => {
+            onUnpin(menu.nodeId)
+            onClose()
+          }}
+        >
+          <Pin className="size-3.5 text-muted-foreground" />
+          {t('context-menu.unpin')}
         </button>
       )}
 

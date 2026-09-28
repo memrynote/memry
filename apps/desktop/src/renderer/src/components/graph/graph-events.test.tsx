@@ -213,13 +213,24 @@ describe('GraphEvents', () => {
       expect(preventSigmaDefault).not.toHaveBeenCalled()
     })
 
+    it('reports a drop past the drag threshold as moved', () => {
+      const { onNodeRelease } = renderWithDrag()
+      mocks.viewportToGraph.mockReturnValue({ x: 120, y: -40 })
+
+      mocks.events.downNode({ node: 'note-1', event: { x: 5, y: 5 } })
+      mocks.events.mousemovebody({ x: 60, y: 80, preventSigmaDefault: vi.fn() })
+      mocks.events.mouseup()
+
+      expect(onNodeRelease).toHaveBeenCalledWith('note-1', true)
+    })
+
     it('releases the node on mouse up', () => {
       const { onNodeRelease } = renderWithDrag()
 
       mocks.events.downNode({ node: 'note-1', event: { x: 5, y: 5 } })
       mocks.events.mouseup()
 
-      expect(onNodeRelease).toHaveBeenCalledWith('note-1')
+      expect(onNodeRelease).toHaveBeenCalledWith('note-1', false)
     })
 
     it('releases the node when the pointer comes up outside the window', () => {
@@ -230,7 +241,7 @@ describe('GraphEvents', () => {
       // reaches us as a window-level pointerup.
       window.dispatchEvent(new Event('pointerup'))
 
-      expect(onNodeRelease).toHaveBeenCalledWith('note-1')
+      expect(onNodeRelease).toHaveBeenCalledWith('note-1', false)
       expect(document.body.style.cursor).toBe('pointer')
 
       // The drag is over: a later pointer move must not keep hauling the node.
@@ -244,7 +255,7 @@ describe('GraphEvents', () => {
       mocks.events.downNode({ node: 'note-1', event: { x: 5, y: 5 } })
       window.dispatchEvent(new Event('blur'))
 
-      expect(onNodeRelease).toHaveBeenCalledWith('note-1')
+      expect(onNodeRelease).toHaveBeenCalledWith('note-1', false)
     })
 
     it('releases the node when another element swallows the pointerup', () => {
@@ -257,7 +268,7 @@ describe('GraphEvents', () => {
         mocks.events.downNode({ node: 'note-1', event: { x: 5, y: 5 } })
         overlay.dispatchEvent(new Event('pointerup', { bubbles: true }))
 
-        expect(onNodeRelease).toHaveBeenCalledWith('note-1')
+        expect(onNodeRelease).toHaveBeenCalledWith('note-1', false)
       } finally {
         overlay.remove()
       }
@@ -269,7 +280,7 @@ describe('GraphEvents', () => {
       mocks.events.downNode({ node: 'note-1', event: { x: 5, y: 5 } })
       window.dispatchEvent(new Event('pointercancel'))
 
-      expect(onNodeRelease).toHaveBeenCalledWith('note-1')
+      expect(onNodeRelease).toHaveBeenCalledWith('note-1', false)
     })
 
     it('releases only once when both pointerup and mouseup arrive', () => {

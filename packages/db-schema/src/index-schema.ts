@@ -13,3 +13,4 @@
  */
 
 export * from './schema/notes-cache.ts'
+export * from './schema/graph-layouts.ts'

@@ -15,7 +15,14 @@ import {
 import { graphLabelRenderedSizeThreshold } from '@/lib/graph-labels'
 import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 import { hasWebGLSupport } from '@/lib/webgl-support'
-import { LivePhysics, SettledPhysics, type PhysicsHandle } from './physics-layout'
+import { RESTORED_ALPHA, type GraphPhysicsOptions, type NodePosition } from '@/lib/graph-physics'
+import {
+  LivePhysics,
+  SettledPhysics,
+  type LayoutChangeHandler,
+  type PhysicsHandle
+} from './physics-layout'
+import { GraphPinMarkers } from './graph-pin-markers'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { useTabActions } from '@/contexts/tabs'
@@ -70,14 +77,22 @@ interface GraphCanvasProps {
   graphSettings: GraphSettings
   onFocusNode: (nodeId: string) => void
   onClose?: () => void
+  /** Positions to start from; read once, when the graph is built. */
+  savedLayout?: Readonly<Record<string, NodePosition>> | null
+  /** Called with every position when the force layout rests or a pin changes. */
+  onLayoutChange?: LayoutChangeHandler
 }
+
+const RESTORED_PHYSICS_OPTIONS: GraphPhysicsOptions = { initialAlpha: RESTORED_ALPHA }
 
 export function GraphCanvas({
   data,
   filterState,
   graphSettings,
   onFocusNode,
-  onClose
+  onClose,
+  savedLayout,
+  onLayoutChange
 }: GraphCanvasProps): React.JSX.Element {
   const { resolvedTheme } = useTheme()
   const [webglAvailable] = useState(() => hasWebGLSupport())
@@ -96,9 +111,19 @@ export function GraphCanvas({
     physicsHandleRef.current?.drag(nodeId, x, y)
   }, [])
 
-  const handleNodeRelease = useCallback((nodeId: string) => {
-    physicsHandleRef.current?.release(nodeId)
+  // A drop pins the node where it landed; a plain click leaves it as it was.
+  const handleNodeRelease = useCallback((nodeId: string, moved: boolean) => {
+    if (moved) physicsHandleRef.current?.pin(nodeId)
+    else physicsHandleRef.current?.release(nodeId)
   }, [])
+
+  const handleUnpin = useCallback((nodeId: string) => {
+    physicsHandleRef.current?.unpin(nodeId)
+  }, [])
+
+  const [physicsOptions] = useState(() =>
+    savedLayout && Object.keys(savedLayout).length > 0 ? RESTORED_PHYSICS_OPTIONS : undefined
+  )
 
   const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
 
@@ -111,7 +136,7 @@ export function GraphCanvas({
     [graphSettings.showTagEdges]
   )
 
-  const { graph, revision } = useLiveGraph(data, graphBuildOptions, resolvedTheme)
+  const { graph, revision } = useLiveGraph(data, graphBuildOptions, resolvedTheme, savedLayout)
 
   const focusVisibleSet = useMemo(() => {
     if (!filterState.focusNodeId) return null
@@ -291,7 +316,12 @@ export function GraphCanvas({
           graph={graph}
           revision={revision}
           physicsHandleRef={physicsHandleRef}
+          physicsOptions={physicsOptions}
+          onLayoutChange={onLayoutChange}
         />
+        {graphSettings.layout === 'forceatlas2' && (
+          <GraphPinMarkers graph={graph} color={labelColor} />
+        )}
         <GraphEvents
           onHoverNode={setHoveredNode}
           onTooltipMove={setTooltipPos}
@@ -310,6 +340,7 @@ export function GraphCanvas({
           menu={contextMenu}
           graph={graph}
           onFocusNode={onFocusNode}
+          onUnpin={handleUnpin}
           onClose={handleCloseContextMenu}
         />
       )}
@@ -330,9 +361,10 @@ export function GraphCanvas({
 function useLiveGraph(
   data: GraphDataResponse,
   options: BuildGraphOptions,
-  themeKey: string | undefined
+  themeKey: string | undefined,
+  savedLayout: Readonly<Record<string, NodePosition>> | null | undefined
 ): { graph: Graph; revision: number } {
-  const [graph] = useState(() => buildGraphologyGraph(data, options))
+  const [graph] = useState(() => buildGraphologyGraph(data, options, savedLayout))
   const [revision, setRevision] = useState(0)
   const appliedRef = useRef({ data, options, themeKey })
 
@@ -366,11 +398,13 @@ function ContextMenuWithTabAction({
   menu,
   graph,
   onFocusNode,
+  onUnpin,
   onClose
 }: {
   menu: ContextMenuState
   graph: ReturnType<typeof buildGraphologyGraph>
   onFocusNode: (nodeId: string) => void
+  onUnpin: (nodeId: string) => void
   onClose: () => void
 }): React.JSX.Element {
   const { openTab } = useTabActions()
@@ -439,6 +473,7 @@ function ContextMenuWithTabAction({
       onFocusNode={onFocusNode}
       onOpenInTab={handleOpenInTab}
       onCreateNote={(...args) => void handleCreateNote(...args)}
+      onUnpin={onUnpin}
       onClose={onClose}
     />
   )
@@ -553,13 +588,17 @@ function LayoutManager({
   animate,
   graph,
   revision,
-  physicsHandleRef
+  physicsHandleRef,
+  physicsOptions,
+  onLayoutChange
 }: {
   layout: GraphSettings['layout']
   animate: boolean
   graph: Graph
   revision: number
   physicsHandleRef: React.MutableRefObject<PhysicsHandle | null>
+  physicsOptions: GraphPhysicsOptions | undefined
+  onLayoutChange: LayoutChangeHandler | undefined
 }): React.JSX.Element | null {
   useEffect(() => {
     if (layout === 'circular') {
@@ -573,9 +612,21 @@ function LayoutManager({
   if (layout !== 'forceatlas2') return null
 
   return animate ? (
-    <LivePhysics graph={graph} handleRef={physicsHandleRef} revision={revision} />
+    <LivePhysics
+      graph={graph}
+      handleRef={physicsHandleRef}
+      revision={revision}
+      options={physicsOptions}
+      onLayoutChange={onLayoutChange}
+    />
   ) : (
-    <SettledPhysics graph={graph} revision={revision} />
+    <SettledPhysics
+      graph={graph}
+      handleRef={physicsHandleRef}
+      revision={revision}
+      options={physicsOptions}
+      onLayoutChange={onLayoutChange}
+    />
   )
 }
 

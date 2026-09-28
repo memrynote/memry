@@ -44,7 +44,8 @@
     "show-labels": "Show labels",
     "live-motion": "Live motion",
     "focus-depth": "depth {depth}",
-    "clear-focus": "Clear focused node"
+    "clear-focus": "Clear focused node",
+    "relayout": "Re-layout"
   },
   "filter": {
     "notes": "Notes",
@@ -66,7 +67,8 @@
     "focus-node": "Focus on this node",
     "open-new-tab": "Open in new tab",
     "create-note": "Create note",
-    "copy-title": "Copy title"
+    "copy-title": "Copy title",
+    "unpin": "Unpin"
   },
   "tooltip": {
     "connection-count": "{count, plural, one {# connection} other {# connections}}",
@@ -77,5 +79,11 @@
     "empty": "No connections found",
     "open-full": "Open full graph",
     "close": "Close graph"
+  },
+  "relayout-confirm": {
+    "title": "Re-layout the graph?",
+    "description": "Every pinned node is released and the graph settles into a fresh arrangement. Your saved layout is discarded.",
+    "cancel": "Cancel",
+    "confirm": "Re-layout"
   }
 }

@@ -5,6 +5,7 @@ import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent, AppMenuCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
+import type { GraphLayout, SaveGraphLayoutRequest } from '@memry/contracts/graph-api'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
 import type {
   AgentEvent,
@@ -1018,6 +1019,9 @@ export interface GraphClientAPI {
       weight: number
     }>
   }>
+  getLayout(viewKey: string): Promise<GraphLayout | null>
+  saveLayout(params: SaveGraphLayoutRequest): Promise<void>
+  clearLayout(viewKey: string): Promise<void>
 }
 
 // Quick Capture types

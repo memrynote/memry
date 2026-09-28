@@ -8,8 +8,37 @@ interface PhysicsNode {
   vy: number
   fx: number | null
   fy: number | null
+  /** Held where the user dropped it: survives release and is saved with the layout. */
+  pinned: boolean
   radius: number
   degree: number
+}
+
+/** Graph attribute that marks a node the user pinned; shared with the renderer's pin markers. */
+export const PINNED_ATTRIBUTE = 'pinned'
+
+export interface NodePosition {
+  x: number
+  y: number
+  pinned?: boolean
+}
+
+function createNode(id: string, attrs: Record<string, unknown>): PhysicsNode {
+  const x = (attrs.x as number) ?? 0
+  const y = (attrs.y as number) ?? 0
+  const pinned = attrs[PINNED_ATTRIBUTE] === true
+  return {
+    id,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    fx: pinned ? x : null,
+    fy: pinned ? y : null,
+    pinned,
+    radius: 0,
+    degree: 0
+  }
 }
 
 interface PhysicsLink {
@@ -28,6 +57,11 @@ export interface GraphPhysicsOptions {
   alphaDecay?: number
   velocityDecay?: number
   collidePadding?: number
+  /**
+   * Energy the simulation starts with. Lower when nodes already start from a
+   * saved layout, so reopening does not shake an arrangement that was at rest.
+   */
+  initialAlpha?: number
 }
 
 const DEFAULTS: Required<GraphPhysicsOptions> = {
@@ -37,8 +71,12 @@ const DEFAULTS: Required<GraphPhysicsOptions> = {
   // ~300 ticks from alpha 1 down to alphaMin, matching d3-force's feel.
   alphaDecay: 0.0228,
   velocityDecay: 0.38,
-  collidePadding: 3
+  collidePadding: 3,
+  initialAlpha: 1
 }
+
+/** Start energy for a graph restored from a saved layout: enough to fold in new nodes. */
+export const RESTORED_ALPHA = 0.1
 
 const ALPHA_MIN = 0.001
 
@@ -110,19 +148,11 @@ export class GraphPhysics {
     this.graph = graph
     this.settings = { ...DEFAULTS, ...options }
     this.cutoff = this.settings.linkDistance * REPULSION_CUTOFF_FACTOR
+    this.alphaValue = this.settings.initialAlpha
 
     graph.forEachNode((id, attrs) => {
-      const node: PhysicsNode = {
-        id,
-        x: (attrs.x as number) ?? 0,
-        y: (attrs.y as number) ?? 0,
-        vx: 0,
-        vy: 0,
-        fx: null,
-        fy: null,
-        radius: ((attrs.size as number) ?? 4) * 1.2 + this.settings.collidePadding,
-        degree: 0
-      }
+      const node = createNode(id, attrs)
+      node.radius = ((attrs.size as number) ?? 4) * 1.2 + this.settings.collidePadding
       this.nodes.push(node)
       this.nodesById.set(id, node)
     })
@@ -171,17 +201,7 @@ export class GraphPhysics {
       present.add(id)
       let node = this.nodesById.get(id)
       if (!node) {
-        node = {
-          id,
-          x: (attrs.x as number) ?? 0,
-          y: (attrs.y as number) ?? 0,
-          vx: 0,
-          vy: 0,
-          fx: null,
-          fy: null,
-          radius: 0,
-          degree: 0
-        }
+        node = createNode(id, attrs)
         this.nodesById.set(id, node)
         structureChanged = true
       }
@@ -231,13 +251,65 @@ export class GraphPhysics {
     node.fy = y
   }
 
-  /** Release a held node and let it relax back into the layout. */
+  /**
+   * Release a held node. An unpinned node relaxes back into the layout; a pinned
+   * one stays where it is, so a click on a pinned node does not free it.
+   */
   release(nodeId: string): void {
     const node = this.nodesById.get(nodeId)
     if (!node || this.destroyed) return
+    if (!node.pinned) {
+      node.fx = null
+      node.fy = null
+    }
+    this.alphaTarget = 0
+  }
+
+  /** End a drag with the node fixed where it was dropped. */
+  pin(nodeId: string): void {
+    const node = this.nodesById.get(nodeId)
+    if (!node || this.destroyed) return
+    node.pinned = true
+    node.fx = node.fx ?? node.x
+    node.fy = node.fy ?? node.y
+    node.x = node.fx
+    node.y = node.fy
+    node.vx = 0
+    node.vy = 0
+    this.alphaTarget = 0
+    this.setPinnedAttribute(node.id, true)
+  }
+
+  unpin(nodeId: string): void {
+    const node = this.nodesById.get(nodeId)
+    if (!node || this.destroyed || !node.pinned) return
+    node.pinned = false
     node.fx = null
     node.fy = null
-    this.alphaTarget = 0
+    this.setPinnedAttribute(node.id, false)
+    this.reheat()
+  }
+
+  /** Current positions, for saving. Pinned nodes report their held spot. */
+  snapshot(): Record<string, NodePosition> {
+    const positions: Record<string, NodePosition> = {}
+    for (const node of this.nodes) {
+      if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) continue
+      positions[node.id] = node.pinned
+        ? { x: node.x, y: node.y, pinned: true }
+        : { x: node.x, y: node.y }
+    }
+    return positions
+  }
+
+  isPinned(nodeId: string): boolean {
+    return this.nodesById.get(nodeId)?.pinned ?? false
+  }
+
+  private setPinnedAttribute(nodeId: string, pinned: boolean): void {
+    if (!this.graph.hasNode(nodeId)) return
+    if (pinned) this.graph.setNodeAttribute(nodeId, PINNED_ATTRIBUTE, true)
+    else this.graph.removeNodeAttribute(nodeId, PINNED_ATTRIBUTE)
   }
 
   destroy(): void {

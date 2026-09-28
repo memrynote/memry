@@ -7,6 +7,8 @@ import { hasWebGLSupport } from '@/lib/webgl-support'
 import { useGraphData, useGraphReactivity } from '@/hooks/use-graph-data'
 import { useGraphFilters } from '@/hooks/use-graph-filters'
 import { useGraphSettings } from '@/hooks/use-graph-settings'
+import { useGraphLayout, useGraphLayoutActions } from '@/hooks/use-graph-layout'
+import { GRAPH_LAYOUT_GLOBAL_KEY } from '@memry/contracts/graph-api'
 import { useT } from '@memry/i18n/renderer'
 import { GraphCanvas } from './graph-canvas'
 import { GraphControlPanel } from './graph-control-panel'
@@ -43,6 +45,18 @@ function GraphPageContent({ onClose }: { onClose?: () => void }): React.JSX.Elem
   useGraphReactivity()
   const { filterState, dispatch, isFiltered } = useGraphFilters()
   const { settings: graphSettings, updateSettings } = useGraphSettings()
+  const { layout: savedLayout, isLoading: isLayoutLoading } =
+    useGraphLayout(GRAPH_LAYOUT_GLOBAL_KEY)
+  const { save: saveLayout, clear: clearLayout } = useGraphLayoutActions(GRAPH_LAYOUT_GLOBAL_KEY)
+  // Re-layout remounts the canvas: a fresh graph, scattered seeds, no pins.
+  const [layoutEpoch, setLayoutEpoch] = useState(0)
+
+  // Remount before clearing: the old canvas stops saving the moment it unmounts,
+  // and the new one only saves once it rests, so its write queues after the clear.
+  const handleRelayout = useCallback(async () => {
+    setLayoutEpoch((epoch) => epoch + 1)
+    await clearLayout()
+  }, [clearLayout])
 
   const focusLabel = useMemo(() => {
     if (!filterState.focusNodeId || !data) return null
@@ -76,7 +90,7 @@ function GraphPageContent({ onClose }: { onClose?: () => void }): React.JSX.Elem
       .join(', ')
   }, [data, t])
 
-  if (isLoading) {
+  if (isLoading || isLayoutLoading) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
@@ -113,7 +127,10 @@ function GraphPageContent({ onClose }: { onClose?: () => void }): React.JSX.Elem
     <div className="relative h-full w-full">
       <div role="img" aria-label={graphAriaLabel} className="h-full w-full">
         <GraphCanvas
+          key={layoutEpoch}
           data={data}
+          savedLayout={layoutEpoch === 0 ? savedLayout?.nodes : null}
+          onLayoutChange={saveLayout}
           filterState={filterState}
           graphSettings={graphSettings}
           onFocusNode={handleFocusNode}
@@ -135,6 +152,7 @@ function GraphPageContent({ onClose }: { onClose?: () => void }): React.JSX.Elem
         focusLabel={focusLabel}
         settings={graphSettings}
         updateSettings={updateSettings}
+        onRelayout={handleRelayout}
       />
     </div>
   )

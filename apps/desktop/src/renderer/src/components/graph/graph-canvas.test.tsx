@@ -68,7 +68,7 @@ vi.mock('./graph-events', () => ({
     onContextMenu?: (menu: { nodeId: string; x: number; y: number } | null) => void
     onNodeGrab?: (id: string) => void
     onNodeDrag?: (id: string, x: number, y: number) => void
-    onNodeRelease?: (id: string) => void
+    onNodeRelease?: (id: string, moved: boolean) => void
   }) => (
     <div>
       <button
@@ -104,11 +104,19 @@ vi.mock('./graph-events', () => ({
       <button type="button" onClick={() => onNodeDrag?.('note-a', 777, -321)}>
         drag note
       </button>
-      <button type="button" onClick={() => onNodeRelease?.('note-a')}>
+      <button type="button" onClick={() => onNodeRelease?.('note-a', false)}>
         release note
+      </button>
+      <button type="button" onClick={() => onNodeRelease?.('note-a', true)}>
+        drop note
       </button>
     </div>
   )
+}))
+
+// A 2D overlay drawn through sigma's canvas API, which the sigma mock does not model.
+vi.mock('./graph-pin-markers', () => ({
+  GraphPinMarkers: () => null
 }))
 
 vi.mock('./graph-tooltip', () => ({
@@ -478,7 +486,10 @@ describe('GraphCanvas', () => {
       animateLayout: true
     }
 
-    function renderLive(overrides: Partial<GraphSettings> = {}): {
+    function renderLive(
+      overrides: Partial<GraphSettings> = {},
+      props: Partial<React.ComponentProps<typeof GraphCanvas>> = {}
+    ): {
       graph: any
       unmount: () => void
     } {
@@ -488,6 +499,7 @@ describe('GraphCanvas', () => {
           filterState={filters}
           graphSettings={{ ...livePhysics, ...overrides }}
           onFocusNode={vi.fn()}
+          {...props}
         />
       )
       return { graph: graphCanvasMocks.sigmaContainerProps?.graph, unmount }
@@ -533,6 +545,52 @@ describe('GraphCanvas', () => {
       for (let i = 0; i < 20; i++) vi.advanceTimersToNextFrame()
 
       expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(777)
+    })
+
+    it('pins a dropped node where it landed and saves the layout right away', () => {
+      const onLayoutChange = vi.fn()
+      const { graph } = renderLive({}, { onLayoutChange })
+
+      fireEvent.click(screen.getByText('grab note'))
+      fireEvent.click(screen.getByText('drag note'))
+      vi.advanceTimersToNextFrame()
+      fireEvent.click(screen.getByText('drop note'))
+
+      expect(onLayoutChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ 'note-a': { x: 777, y: -321, pinned: true } })
+      )
+
+      for (let i = 0; i < 40; i++) vi.advanceTimersToNextFrame()
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(777)
+      expect(graph.getNodeAttribute('note-a', 'pinned')).toBe(true)
+    })
+
+    it('starts from a saved layout, pins included', () => {
+      const { graph } = renderLive(
+        {},
+        {
+          savedLayout: { 'note-a': { x: 300, y: 200, pinned: true }, 'note-b': { x: 280, y: 190 } }
+        }
+      )
+
+      for (let i = 0; i < 20; i++) vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(300)
+      expect(graph.getNodeAttribute('note-a', 'y')).toBe(200)
+    })
+
+    it('saves the layout once the simulation comes to rest', () => {
+      const onLayoutChange = vi.fn()
+      renderLive({}, { onLayoutChange })
+
+      for (let i = 0; i < 400 && onLayoutChange.mock.calls.length === 0; i++) {
+        vi.advanceTimersToNextFrame()
+      }
+
+      expect(onLayoutChange).toHaveBeenCalledTimes(1)
+      expect(Object.keys(onLayoutChange.mock.calls[0][0]).sort()).toEqual(
+        graphCanvasMocks.sigmaContainerProps?.graph.nodes().sort()
+      )
     })
 
     it('leaves positions alone for static layouts', () => {

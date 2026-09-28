@@ -236,6 +236,18 @@ The local traversal still enumerates the edges touching its outermost ring witho
 them, because a node's `connectionCount` is its degree in the whole graph rather than inside the
 returned slice.
 
+### Graph Layouts
+
+`graph_layouts` in index.db holds the saved node positions of the graph view, one row per view
+(`view_key`, currently only `global`). `positions` is a versioned JSON blob
+(`GraphLayoutSchema` in `packages/contracts/src/graph-api.ts`): `{ version: 1, nodes: { [id]:
+{ x, y, pinned? } } }`. Opening the graph reads one row, not one per node.
+
+The table is per-device and disposable. A missing row, a blob that does not parse, or an
+unknown version reads as "no layout", and the graph falls back to a fresh arrangement. The
+renderer writes the row when the simulation comes to rest and immediately on pin or unpin,
+through one serialized queue, so an older write never lands after a newer one.
+
 ## Migrations
 
 ```bash

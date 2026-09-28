@@ -313,6 +313,108 @@ describe('GraphPhysics', () => {
     expect(graph.getNodeAttribute('a', 'x')).not.toBe(100)
   })
 
+  describe('pins', () => {
+    it('holds a pinned node where it was dropped while its neighbours settle', () => {
+      const graph = makeGraph(
+        [
+          ['a', 0, 0],
+          ['b', 40, 0],
+          ['c', -30, 20]
+        ],
+        [
+          ['a', 'b'],
+          ['a', 'c']
+        ]
+      )
+      const physics = new GraphPhysics(graph)
+
+      physics.grab('a')
+      physics.dragTo('a', 100, 60)
+      physics.tick()
+      physics.pin('a')
+      settle(physics)
+
+      expect(graph.getNodeAttribute('a', 'x')).toBe(100)
+      expect(graph.getNodeAttribute('a', 'y')).toBe(60)
+      expect(graph.getNodeAttribute('a', 'pinned')).toBe(true)
+      expect(physics.isPinned('a')).toBe(true)
+      expect(physics.isSettled).toBe(true)
+    })
+
+    it('keeps a pinned node in place when it is clicked without moving', () => {
+      const graph = makeGraph([
+        ['a', 0, 0],
+        ['b', 40, 0]
+      ])
+      const physics = new GraphPhysics(graph)
+      physics.grab('a')
+      physics.dragTo('a', 70, 10)
+      physics.pin('a')
+
+      physics.grab('a')
+      physics.release('a')
+      settle(physics)
+
+      expect(graph.getNodeAttribute('a', 'x')).toBe(70)
+      expect(physics.isPinned('a')).toBe(true)
+    })
+
+    it('lets an unpinned node drift again and clears the marker', () => {
+      const graph = makeGraph([
+        ['a', 0, 0],
+        ['b', 40, 0]
+      ])
+      const physics = new GraphPhysics(graph)
+      physics.grab('a')
+      physics.dragTo('a', 100, 60)
+      physics.pin('a')
+
+      physics.unpin('a')
+      for (let i = 0; i < 40; i++) physics.tick()
+
+      expect(graph.getNodeAttribute('a', 'x')).not.toBe(100)
+      expect(graph.hasNodeAttribute('a', 'pinned')).toBe(false)
+      expect(physics.isPinned('a')).toBe(false)
+    })
+
+    it('restores pins from the graph when a simulation starts or new nodes join', () => {
+      const graph = makeGraph([
+        ['a', 25, -15],
+        ['b', 40, 0]
+      ])
+      graph.setNodeAttribute('a', 'pinned', true)
+      const physics = new GraphPhysics(graph)
+
+      graph.addNode('c', { x: 5, y: 5, size: 5, pinned: true })
+      physics.sync()
+      settle(physics)
+
+      expect(graph.getNodeAttribute('a', 'x')).toBe(25)
+      expect(graph.getNodeAttribute('a', 'y')).toBe(-15)
+      expect(graph.getNodeAttribute('c', 'x')).toBe(5)
+      expect(physics.isPinned('c')).toBe(true)
+    })
+
+    it('snapshots every position and marks only pinned nodes', () => {
+      const graph = makeGraph([
+        ['a', 1, 2],
+        ['b', 3, 4]
+      ])
+      graph.setNodeAttribute('a', 'pinned', true)
+      const physics = new GraphPhysics(graph)
+
+      expect(physics.snapshot()).toEqual({
+        a: { x: 1, y: 2, pinned: true },
+        b: { x: 3, y: 4 }
+      })
+    })
+
+    it('starts from the configured initial alpha', () => {
+      const physics = new GraphPhysics(makeGraph([['a', 0, 0]]), { initialAlpha: 0.1 })
+      expect(physics.alpha).toBe(0.1)
+    })
+  })
+
   it('ignores drag calls for nodes that are not in the graph', () => {
     const graph = makeGraph([['a', 0, 0]])
     const physics = new GraphPhysics(graph)

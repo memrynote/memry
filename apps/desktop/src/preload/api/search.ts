@@ -1,11 +1,15 @@
 import { SearchChannels, GraphChannels } from '@memry/contracts/ipc-channels'
 import type { IndexRebuildProgress } from '@memry/contracts/search-api'
+import type { SaveGraphLayoutRequest } from '@memry/contracts/graph-api'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const graphApi = {
   getData: () => invoke(GraphChannels.invoke.GET_GRAPH_DATA),
   getLocal: (params: { noteId: string; depth?: number }) =>
-    invoke(GraphChannels.invoke.GET_LOCAL_GRAPH, params)
+    invoke(GraphChannels.invoke.GET_LOCAL_GRAPH, params),
+  getLayout: (viewKey: string) => invoke(GraphChannels.invoke.GET_LAYOUT, viewKey),
+  saveLayout: (params: SaveGraphLayoutRequest) => invoke(GraphChannels.invoke.SAVE_LAYOUT, params),
+  clearLayout: (viewKey: string) => invoke(GraphChannels.invoke.CLEAR_LAYOUT, viewKey)
 }
 
 type SearchItemType = 'note' | 'journal' | 'task' | 'inbox'
