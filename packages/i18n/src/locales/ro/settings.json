@@ -354,9 +354,13 @@
     },
     "updateError": "Setarea nu a fost actualizată",
     "dateFormat": {
-      "description": "Formatul numelui de fișier pentru notițele zilnice (de ex. YYYY-MM-DD)",
+      "description": "Formatul numelui de fișier pentru notițele zilnice (de ex. YYYY-MM-DD dddd)",
       "label": "Format dată",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "renameNote": "Schimbarea formatului redenumește fișierele de jurnal existente. Un fișier al cărui nume nou este deja folosit rămâne neschimbat.",
+      "tokensHelp": "Ajutor pentru formatul datei",
+      "tokensNote": "Celelalte caractere rămân neschimbate. Numele zilelor săptămânii sunt întotdeauna în engleză.",
+      "tokensTitle": "Simboluri de format"
     },
     "folder": {
       "description": "Dosarul în care sunt stocate notițele zilnice",

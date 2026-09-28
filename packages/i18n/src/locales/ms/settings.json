@@ -354,9 +354,13 @@
     },
     "updateError": "Gagal mengemas kini tetapan",
     "dateFormat": {
-      "description": "Format nama fail untuk nota harian (cth. YYYY-MM-DD)",
+      "description": "Format nama fail untuk nota harian (cth. YYYY-MM-DD dddd)",
       "label": "Format Tarikh",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "renameNote": "Menukar format akan menamakan semula fail jurnal sedia ada. Fail yang nama baharunya sudah digunakan dibiarkan seperti asal.",
+      "tokensHelp": "Bantuan format tarikh",
+      "tokensNote": "Aksara lain dikekalkan seperti asal. Nama hari sentiasa dalam bahasa Inggeris.",
+      "tokensTitle": "Token format"
     },
     "folder": {
       "description": "Folder tempat nota harian disimpan",

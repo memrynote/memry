@@ -354,9 +354,13 @@
     },
     "updateError": "更新設定失敗",
     "dateFormat": {
-      "description": "每日筆記的檔名格式（例如 YYYY-MM-DD）",
+      "description": "每日筆記的檔名格式（例如 YYYY-MM-DD dddd）",
       "label": "日期格式",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "renameNote": "變更格式會重新命名現有的日記檔案。新名稱已被使用的檔案維持不變。",
+      "tokensHelp": "日期格式說明",
+      "tokensNote": "其他字元維持不變。星期名稱一律為英文。",
+      "tokensTitle": "格式標記"
     },
     "folder": {
       "description": "儲存每日筆記的資料夾",

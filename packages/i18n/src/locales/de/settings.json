@@ -354,9 +354,13 @@
     },
     "updateError": "Die Einstellung konnte nicht aktualisiert werden",
     "dateFormat": {
-      "description": "Dateinamenformat für tägliche Notizen (z. B. YYYY-MM-DD)",
+      "description": "Dateinamenformat für tägliche Notizen (z. B. YYYY-MM-DD dddd)",
       "label": "Datumsformat",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "renameNote": "Wenn du das Format änderst, werden vorhandene Journaldateien umbenannt. Eine Datei, deren neuer Name bereits vergeben ist, bleibt unverändert.",
+      "tokensHelp": "Hilfe zum Datumsformat",
+      "tokensNote": "Andere Zeichen bleiben unverändert. Wochentagsnamen sind immer auf Englisch.",
+      "tokensTitle": "Formatplatzhalter"
     },
     "folder": {
       "description": "Ordner, in dem tägliche Notizen gespeichert werden",

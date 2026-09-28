@@ -354,9 +354,13 @@
     },
     "updateError": "Gagal memperbarui setelan",
     "dateFormat": {
-      "description": "Format nama file untuk catatan harian (mis. YYYY-MM-DD)",
+      "description": "Format nama file untuk catatan harian (mis. YYYY-MM-DD dddd)",
       "label": "Format Tanggal",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "renameNote": "Mengubah format akan mengganti nama file jurnal yang ada. File yang nama barunya sudah dipakai dibiarkan apa adanya.",
+      "tokensHelp": "Bantuan format tanggal",
+      "tokensNote": "Karakter lain dipertahankan apa adanya. Nama hari selalu dalam bahasa Inggris.",
+      "tokensTitle": "Token format"
     },
     "folder": {
       "description": "Folder tempat catatan harian disimpan",

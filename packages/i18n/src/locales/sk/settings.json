@@ -354,9 +354,13 @@
     },
     "updateError": "Nepodarilo sa aktualizovať nastavenie",
     "dateFormat": {
-      "description": "Formát názvu súboru pre denné poznámky (napr. YYYY-MM-DD)",
+      "description": "Formát názvu súboru pre denné poznámky (napr. YYYY-MM-DD dddd)",
       "label": "Formát dátumu",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "renameNote": "Zmena formátu premenuje existujúce súbory denníka. Súbor, ktorého nový názov je už obsadený, zostane bez zmeny.",
+      "tokensHelp": "Pomocník k formátu dátumu",
+      "tokensNote": "Ostatné znaky zostávajú bez zmeny. Názvy dní v týždni sú vždy po anglicky.",
+      "tokensTitle": "Zástupné znaky formátu"
     },
     "folder": {
       "description": "Priečinok, kde sa ukladajú denné poznámky",

@@ -74,6 +74,24 @@ async function expand(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   await user.click(screen.getByTestId('journal-per-day-toggle').querySelector('button')!)
 }
 
+describe('Journal settings — date format help', () => {
+  it('lists every token with today rendered through it', async () => {
+    const user = userEvent.setup()
+    render(<JournalSettings />)
+
+    await user.hover(screen.getByRole('button', { name: 'Date format help' }))
+    const tooltip = await screen.findByRole('tooltip')
+
+    const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+    expect(tooltip.textContent).toContain('Format tokens')
+    expect(tooltip.textContent).toContain(`dddd${weekday}`)
+    expect(tooltip.textContent).toContain(`ddd${weekday.slice(0, 3)}`)
+    expect(tooltip.textContent).toContain(`YYYY${new Date().getFullYear()}`)
+    expect(tooltip.textContent).toContain('Weekday names are always in English.')
+    expect(tooltip.textContent).toContain('Changing the format renames existing journal files.')
+  })
+})
+
 describe('Journal settings — per-day templates', () => {
   beforeEach(() => {
     setWeekdayTemplate.mockClear()

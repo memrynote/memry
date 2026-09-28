@@ -354,9 +354,13 @@
     },
     "updateError": "No se pudo actualizar la configuración",
     "dateFormat": {
-      "description": "Formato del nombre de archivo de las notas diarias (p. ej. YYYY-MM-DD)",
+      "description": "Formato del nombre de archivo de las notas diarias (p. ej. YYYY-MM-DD dddd)",
       "label": "Formato de fecha",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "renameNote": "Cambiar el formato renombra los archivos de diario existentes. Un archivo cuyo nuevo nombre ya está en uso se deja como está.",
+      "tokensHelp": "Ayuda sobre el formato de fecha",
+      "tokensNote": "Los demás caracteres se mantienen tal cual. Los nombres de los días siempre están en inglés.",
+      "tokensTitle": "Códigos de formato"
     },
     "folder": {
       "description": "Carpeta donde se guardan las notas diarias",

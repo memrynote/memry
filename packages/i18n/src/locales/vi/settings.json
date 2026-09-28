@@ -354,9 +354,13 @@
     },
     "updateError": "Cập nhật cài đặt thất bại",
     "dateFormat": {
-      "description": "Định dạng tên tệp cho ghi chú hàng ngày (vd. YYYY-MM-DD)",
+      "description": "Định dạng tên tệp cho ghi chú hàng ngày (vd. YYYY-MM-DD dddd)",
       "label": "Định dạng ngày",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "renameNote": "Đổi định dạng sẽ đổi tên các tệp nhật ký hiện có. Tệp có tên mới đã bị dùng sẽ được giữ nguyên.",
+      "tokensHelp": "Trợ giúp định dạng ngày",
+      "tokensNote": "Các ký tự khác được giữ nguyên. Tên các ngày trong tuần luôn bằng tiếng Anh.",
+      "tokensTitle": "Mã định dạng"
     },
     "folder": {
       "description": "Thư mục lưu ghi chú hàng ngày",

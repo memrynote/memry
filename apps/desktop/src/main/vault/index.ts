@@ -51,7 +51,10 @@ import { detectCorruption } from '../database/fts-rebuild'
 import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
-import { startWatcher, stopWatcher } from './watcher'
+import { getWatcher, startWatcher, stopWatcher } from './watcher'
+import { renameJournalsForFormatChange } from './journal-format-migration'
+import { flushPendingWritebacks } from '../sync/crdt-writeback'
+import { DEFAULT_JOURNAL_DATE_FORMAT } from '@memry/storage-vault'
 import { indexVault, rebuildIndex, resetIndexDatabase } from './indexer'
 import { closeActivityLog, openActivityLog } from './activity-log'
 import { createLogger } from '../lib/logger'
@@ -964,12 +967,44 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
     throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
   }
 
+  const vaultPath = currentStatus.path
   const oldConfig = getConfig()
-  writeVaultConfig(currentStatus.path, updates)
+  const renameJournals = journalFormatChange(oldConfig, updates)
+
+  // Journal files move to their new names before the new format is written.
+  // The watcher is off for the whole of it: it classifies paths with whatever
+  // config is current, so the unlink of an old name could be read as a journal
+  // deletion and synced as one. Pending write-backs land first, at the old
+  // paths they were computed for. Restarting after the renames replays nothing
+  // (`ignoreInitial`), and the rebuild below re-indexes every moved file.
+  let watcherPaused = false
+  if (renameJournals) {
+    await flushPendingWritebacks()
+    watcherPaused = getWatcher().isWatching()
+    if (watcherPaused) await stopWatcher()
+    try {
+      await renameJournalsForFormatChange(
+        vaultPath,
+        oldConfig.journalFolder,
+        oldConfig.journalDateFormat,
+        renameJournals.newFormat
+      )
+    } catch (error) {
+      logger.error('Journal rename for new date format failed', error)
+      trackMainError('vault', 'journal_format_rename', error)
+    }
+  }
+
+  try {
+    writeVaultConfig(vaultPath, updates)
+  } finally {
+    if (watcherPaused) await startWatcher(vaultPath)
+  }
   const newConfig = getConfig()
 
   // Restart watcher if exclude patterns changed
   if (
+    !watcherPaused &&
     updates.excludePatterns &&
     JSON.stringify(oldConfig.excludePatterns) !== JSON.stringify(newConfig.excludePatterns)
   ) {
@@ -1004,6 +1039,24 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
   }
 
   return newConfig
+}
+
+/**
+ * The new format when this update changes only the journal date format.
+ * Changing the folder in the same update is left alone: files are never moved
+ * between folders by a settings change.
+ */
+function journalFormatChange(
+  current: VaultConfig,
+  updates: Partial<VaultConfig>
+): { newFormat: string } | null {
+  if (updates.journalDateFormat === undefined) return null
+  if (updates.journalFolder !== undefined && updates.journalFolder !== current.journalFolder) {
+    return null
+  }
+  const from = current.journalDateFormat || DEFAULT_JOURNAL_DATE_FORMAT
+  const to = updates.journalDateFormat || DEFAULT_JOURNAL_DATE_FORMAT
+  return from === to ? null : { newFormat: to }
 }
 
 /**
