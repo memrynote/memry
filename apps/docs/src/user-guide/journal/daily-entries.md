@@ -18,6 +18,17 @@ Journal entries also share note review tools: selection comments and the aligned
 
 Use **Add property** or **Add tag** above the date heading to organize a daily entry before writing.
 
+## Header Actions
+
+The journal header carries the same controls as a note:
+
+- **Reminder** — set a reminder to revisit the day. Works on a day you have not written in yet.
+- **Bookmark** — bookmark the day. Bookmarking an empty day creates its entry first.
+- **Mind map** — show the entry's headings as a mind map, when the canvas feature is on. The editor stays open underneath, so undo history survives.
+- **⋮ menu** — local graph, find, version history, export, insert template, save as template, full width, copy path, reveal in Finder, open in default app, attachments, journal settings, and **Delete entry**.
+
+Actions that need a file on disk (version history, export, local graph, file actions, delete) appear once the day has an entry. Rename and move are not offered: a journal file's name and folder come from its date and your [journal settings](/user-guide/journal/templates-settings).
+
 ## Width
 
 Journal pages follow the global **Width** setting in [Settings → Editor](/user-guide/settings#editor). To override it just for the Journal, use the **Full width** toggle in the journal ⋮ menu — it widens the writing column edge to edge and applies to every journal page until you turn it off.
