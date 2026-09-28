@@ -16,6 +16,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
+import type { FileType } from '@memry/shared/file-types'
 import type { DataDb, IndexDb } from '../types'
 
 export interface TagItem {
@@ -28,6 +29,11 @@ export interface TagItem {
   container: string | null
   created: string
   modified: string
+  /**
+   * What a note row's file actually is: a tagged PDF or image is a `note_cache`
+   * row too. Always 'markdown' for tasks and inbox items.
+   */
+  fileType: FileType
 }
 
 /**
@@ -63,7 +69,8 @@ function listNoteItems(indexDb: IndexDb, normalizedTag: string): TagItem[] {
       emoji: noteCache.emoji,
       path: noteCache.path,
       createdAt: noteCache.createdAt,
-      modifiedAt: noteCache.modifiedAt
+      modifiedAt: noteCache.modifiedAt,
+      fileType: noteCache.fileType
     })
     .from(noteCache)
     .where(inArray(noteCache.id, matchingIds))
@@ -91,7 +98,8 @@ function listNoteItems(indexDb: IndexDb, normalizedTag: string): TagItem[] {
     tags: tagsByNoteId.get(note.id) ?? [],
     container: folderOf(note.path),
     created: note.createdAt,
-    modified: note.modifiedAt
+    modified: note.modifiedAt,
+    fileType: note.fileType
   }))
 }
 
@@ -143,7 +151,8 @@ function listTaskItems(dataDb: DataDb, normalizedTag: string): TagItem[] {
     tags: tagsByTaskId.get(row.id) ?? [],
     container: row.projectName ?? null,
     created: row.createdAt,
-    modified: row.modifiedAt
+    modified: row.modifiedAt,
+    fileType: 'markdown' as const
   }))
 }
 
@@ -193,7 +202,8 @@ function listInboxItemsForTag(dataDb: DataDb, normalizedTag: string): TagItem[] 
     tags: tagsByItemId.get(row.id) ?? [],
     container: null,
     created: row.createdAt,
-    modified: row.modifiedAt
+    modified: row.modifiedAt,
+    fileType: 'markdown' as const
   }))
 }
 

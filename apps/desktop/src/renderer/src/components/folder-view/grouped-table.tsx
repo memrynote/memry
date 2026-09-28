@@ -48,6 +48,7 @@ import {
 } from '@dnd-kit/sortable'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 import { useT } from '@memry/i18n/renderer'
+import { dragRefsForRow, startCanvasRowsDrag } from '@/pages/canvas/canvas-bulk-add'
 import {
   AlignLeft,
   Calendar,
@@ -1268,6 +1269,11 @@ export function GroupedTable({
                       // T121: Exit animation - simple opacity fade
                       isExiting && 'opacity-0 transition-opacity duration-200'
                     )}
+                    // A row, or the selection it belongs to, drops onto a canvas as cards.
+                    draggable
+                    onDragStart={(e) =>
+                      startCanvasRowsDrag(e, dragRefsForRow(notes, row.original.id, selectedRowIds))
+                    }
                     onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
                     onMouseDown={(e) =>

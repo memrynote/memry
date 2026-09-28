@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { handleMiddleClick } from '@/lib/middle-click'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
+import { refFromViewRow, startCanvasRowsDrag } from '@/pages/canvas/canvas-bulk-add'
 import { FolderViewEmptyState } from './folder-view-empty-state'
 import { TagChip } from '@/components/note/tags-row/TagChip'
 import { toTagChip, formatRelative, NoteCardKindIcon, type TagMetaMap } from './note-card-pieces'
@@ -98,6 +99,12 @@ export function FolderListView({
             key={note.id}
             role="button"
             tabIndex={0}
+            // Drops onto a canvas as a card; this view has no multi-select.
+            draggable
+            onDragStart={(e) => {
+              const ref = refFromViewRow(note)
+              startCanvasRowsDrag(e, ref ? [ref] : [])
+            }}
             onClick={() => onNoteOpen(note.id)}
             onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
             onKeyDown={(e) => {

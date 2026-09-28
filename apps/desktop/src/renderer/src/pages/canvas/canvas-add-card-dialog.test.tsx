@@ -15,7 +15,14 @@ interface Sources {
 }
 
 const mocks = vi.hoisted(() => ({
-  sources: { results: [], events: [], loading: false } as Sources
+  sources: { results: [], events: [], loading: false } as Sources,
+  tags: [] as { name: string; count: number }[],
+  folders: [] as string[],
+  scopeOptions: [] as {
+    viewName: string | null
+    refs: { entityType: 'note' | 'task' | 'file'; entityId: string }[]
+  }[],
+  loadScope: vi.fn()
 }))
 
 // Production react-i18next hands back a referentially-stable `t` across
@@ -42,7 +49,17 @@ vi.mock('./use-canvas-add-search', () => ({
   })
 }))
 
+vi.mock('./canvas-bulk-sources', () => ({
+  listBulkTags: async () => mocks.tags,
+  listBulkFolders: async () => mocks.folders,
+  loadBulkScopeOptions: (scope: unknown) => {
+    mocks.loadScope(scope)
+    return Promise.resolve(mocks.scopeOptions)
+  }
+}))
+
 import { CanvasAddCardDialog } from './canvas-add-card-dialog'
+import { BULK_ADD_CONFIRM_THRESHOLD } from './canvas-bulk-add'
 
 function noteResult(id: string, title: string) {
   return { id, type: 'note', title, metadata: { type: 'note', path: `n/${title}.md`, tags: [] } }
@@ -73,6 +90,7 @@ function setup(overrides: Partial<Parameters<typeof CanvasAddCardDialog>[0]> = {
     onCreateNote: vi.fn(),
     onPick: vi.fn(),
     onReveal: vi.fn(),
+    onAddAll: vi.fn(),
     ...overrides
   }
   const { rerender } = render(<CanvasAddCardDialog {...props} />)
@@ -355,5 +373,109 @@ describe('CanvasAddCardDialog', () => {
     fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
     expect(props.onCreateNote).toHaveBeenCalledWith('')
     expect(props.onPick).not.toHaveBeenCalled()
+  })
+  describe('add all from a tag, folder or saved view (#2484)', () => {
+    function notes(count: number, prefix = 'n') {
+      return Array.from({ length: count }, (_, i) => ({
+        entityType: 'note' as const,
+        entityId: `${prefix}${i}`
+      }))
+    }
+
+    beforeEach(() => {
+      mocks.tags = [
+        { name: 'research', count: 3 },
+        { name: 'reading', count: 1 }
+      ]
+      mocks.folders = ['Projects', 'Projects/2026']
+      mocks.scopeOptions = []
+      mocks.loadScope.mockReset()
+    })
+
+    it('offers the bulk sources only for a blank query', () => {
+      setup()
+      expect(screen.getByTestId('canvas-add-bulk-tag')).toBeInTheDocument()
+      expect(screen.getByTestId('canvas-add-bulk-folder')).toBeInTheDocument()
+      fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'x' } })
+      expect(screen.queryByTestId('canvas-add-bulk-tag')).not.toBeInTheDocument()
+    })
+
+    it('adds every item of a tag without views in one step and closes', async () => {
+      mocks.scopeOptions = [{ viewName: null, refs: notes(3) }]
+      const props = setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
+      // The tag list filters on the same input.
+      fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'resea' } })
+      await waitFor(() =>
+        expect(screen.getByTestId('canvas-add-bulk-tag-research')).toBeInTheDocument()
+      )
+      expect(screen.queryByTestId('canvas-add-bulk-tag-reading')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag-research'))
+
+      await waitFor(() => expect(props.onAddAll).toHaveBeenCalledWith(notes(3)))
+      expect(mocks.loadScope).toHaveBeenCalledWith({ kind: 'tag', tag: 'research' })
+      expect(props.onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('lets a folder with filtering saved views add one view', async () => {
+      mocks.scopeOptions = [
+        { viewName: null, refs: notes(3) },
+        { viewName: 'Open', refs: notes(1, 'open') }
+      ]
+      const props = setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-folder'))
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-folder-Projects/2026'))
+
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-view-1'))
+
+      expect(mocks.loadScope).toHaveBeenCalledWith({ kind: 'folder', path: 'Projects/2026' })
+      expect(props.onAddAll).toHaveBeenCalledWith(notes(1, 'open'))
+    })
+
+    it('asks before placing more new cards than the threshold', async () => {
+      const refs = notes(BULK_ADD_CONFIRM_THRESHOLD + 5)
+      mocks.scopeOptions = [{ viewName: null, refs }]
+      const props = setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-tag-research'))
+
+      await screen.findByTestId('canvas-add-bulk-confirm')
+      expect(props.onAddAll).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-confirm-add'))
+      expect(props.onAddAll).toHaveBeenCalledWith(refs)
+    })
+
+    it('does not count items already on the board toward the threshold', async () => {
+      const refs = notes(BULK_ADD_CONFIRM_THRESHOLD + 5)
+      mocks.scopeOptions = [{ viewName: null, refs }]
+      const onCanvasKeys = new Set(refs.slice(0, 10).map((ref) => `note:${ref.entityId}`))
+      const props = setup({ onCanvasKeys })
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-tag-research'))
+
+      await waitFor(() => expect(props.onAddAll).toHaveBeenCalledWith(refs))
+      expect(screen.queryByTestId('canvas-add-bulk-confirm')).not.toBeInTheDocument()
+    })
+
+    it('steps back to the source list from the confirm step', async () => {
+      mocks.scopeOptions = [{ viewName: null, refs: notes(BULK_ADD_CONFIRM_THRESHOLD + 1) }]
+      const props = setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-tag-research'))
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-confirm-back'))
+
+      expect(await screen.findByTestId('canvas-add-bulk-tag-research')).toBeInTheDocument()
+      expect(props.onAddAll).not.toHaveBeenCalled()
+    })
+
+    it('goes back to search on Backspace in an empty input', async () => {
+      setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
+      await screen.findByTestId('canvas-add-bulk-tag-research')
+      fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Backspace' })
+      expect(screen.getByTestId('canvas-add-create-note')).toBeInTheDocument()
+    })
   })
 })
