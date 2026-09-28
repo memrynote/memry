@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSigma } from '@react-sigma/core'
 import type Graph from 'graphology'
-import { GraphPhysics, type GraphPhysicsOptions } from '@/lib/graph-physics'
+import { GraphPhysics, type GraphPhysicsOptions, type NodePosition } from '@/lib/graph-physics'
 import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 
 /** Upper bound on the synchronous pre-settle, so a huge vault cannot lock the frame forever. */
@@ -27,6 +27,22 @@ export interface PhysicsHandle {
   grab: (nodeId: string) => void
   drag: (nodeId: string, x: number, y: number) => void
   release: (nodeId: string) => void
+  /** End a drag with the node held where it was dropped. */
+  pin: (nodeId: string) => void
+  unpin: (nodeId: string) => void
+  isPinned: (nodeId: string) => boolean
+}
+
+/** Receives every position once the layout comes to rest or a pin changes. */
+export type LayoutChangeHandler = (positions: Record<string, NodePosition>) => void
+
+/** Latest callback without restarting the simulation when its identity changes. */
+function useLatest<T>(value: T): React.MutableRefObject<T> {
+  const ref = useRef(value)
+  useEffect(() => {
+    ref.current = value
+  })
+  return ref
 }
 
 /**
@@ -37,17 +53,20 @@ export function LivePhysics({
   graph,
   handleRef,
   revision = 0,
-  options
+  options,
+  onLayoutChange
 }: {
   graph: Graph
   handleRef: React.MutableRefObject<PhysicsHandle | null>
   /** Bumped whenever the graph was patched in place; never remounts the simulation. */
   revision?: number
   options?: GraphPhysicsOptions
+  onLayoutChange?: LayoutChangeHandler
 }): null {
   const sigma = useSigma()
   const physicsRef = useRef<GraphPhysics | null>(null)
   const wakeRef = useRef<() => void>(() => {})
+  const onLayoutChangeRef = useLatest(onLayoutChange)
 
   useEffect(() => {
     const physics = new GraphPhysics(graph, options)
@@ -60,7 +79,12 @@ export function LivePhysics({
       // the old, killed instance; refreshing that one throws. Same guard as
       // SigmaSettingsSync.
       if (sigma.getGraph() === graph) refreshSigmaIfMeasurable(sigma, REPAINT_MOVEMENT_ONLY)
-      frame = physics.isSettled ? null : requestAnimationFrame(step)
+      if (physics.isSettled) {
+        frame = null
+        onLayoutChangeRef.current?.(physics.snapshot())
+      } else {
+        frame = requestAnimationFrame(step)
+      }
     }
 
     const wake = (): void => {
@@ -80,7 +104,20 @@ export function LivePhysics({
       release: (nodeId) => {
         physics.release(nodeId)
         wake()
-      }
+      },
+      // Pin changes are saved right away, not at rest: the graph may be closed
+      // before the simulation settles.
+      pin: (nodeId) => {
+        physics.pin(nodeId)
+        onLayoutChangeRef.current?.(physics.snapshot())
+        wake()
+      },
+      unpin: (nodeId) => {
+        physics.unpin(nodeId)
+        onLayoutChangeRef.current?.(physics.snapshot())
+        wake()
+      },
+      isPinned: (nodeId) => physics.isPinned(nodeId)
     }
 
     frame = requestAnimationFrame(step)
@@ -113,29 +150,55 @@ export function LivePhysics({
 /** Same forces, run to rest in one pass — the static arrangement when live motion is off. */
 export function SettledPhysics({
   graph,
+  handleRef,
   revision = 0,
-  options
+  options,
+  onLayoutChange
 }: {
   graph: Graph
+  /** Dragging is a live-motion feature; here the handle only reads and clears pins. */
+  handleRef?: React.MutableRefObject<PhysicsHandle | null>
   /** Bumped whenever the graph was patched in place; never remounts the simulation. */
   revision?: number
   options?: GraphPhysicsOptions
+  onLayoutChange?: LayoutChangeHandler
 }): null {
   const sigma = useSigma()
   const physicsRef = useRef<GraphPhysics | null>(null)
+  const onLayoutChangeRef = useLatest(onLayoutChange)
 
   useEffect(() => {
     const physics = new GraphPhysics(graph, options)
     physicsRef.current = physics
-    settle(physics)
-    if (sigma.getGraph() === graph) refreshSigmaIfMeasurable(sigma)
+    const settleAndPaint = (): void => {
+      settle(physics)
+      if (sigma.getGraph() === graph) refreshSigmaIfMeasurable(sigma)
+      onLayoutChangeRef.current?.(physics.snapshot())
+    }
+    settleAndPaint()
+
+    if (handleRef) {
+      handleRef.current = {
+        grab: () => {},
+        drag: () => {},
+        release: () => {},
+        pin: () => {},
+        unpin: (nodeId) => {
+          if (!physics.isPinned(nodeId)) return
+          physics.unpin(nodeId)
+          settleAndPaint()
+        },
+        isPinned: (nodeId) => physics.isPinned(nodeId)
+      }
+    }
 
     return () => {
+      if (handleRef) handleRef.current = null
       physicsRef.current = null
       physics.destroy()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graph, sigma])
+  }, [graph, sigma, handleRef])
 
   // Structural change on a patched graph: relax from where the nodes already sit
   // rather than re-deriving the whole arrangement from a cold start.
@@ -145,7 +208,9 @@ export function SettledPhysics({
     physics.reheat()
     settle(physics)
     if (sigma.getGraph() === graph) refreshSigmaIfMeasurable(sigma)
-  }, [revision, graph, sigma])
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- the ref holds the latest save callback (useLatest), not a DOM node; the settled positions only exist after this effect runs
+    onLayoutChangeRef.current?.(physics.snapshot())
+  }, [revision, graph, sigma, onLayoutChangeRef])
 
   return null
 }

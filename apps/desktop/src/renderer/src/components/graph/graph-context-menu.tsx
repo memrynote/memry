@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Focus, ExternalLink, Copy, FilePlus, Link2, Tag, Unlink, ChevronLeft } from '@/lib/icons'
+import {
+  Focus,
+  ExternalLink,
+  Copy,
+  FilePlus,
+  Link2,
+  Tag,
+  Unlink,
+  ChevronLeft,
+  Pin
+} from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type Graph from 'graphology'
 import {
@@ -9,6 +19,7 @@ import {
   type GraphRelationLink
 } from '@/lib/graph-edits'
 import { isValidTagName, normalizeTagName } from '@/lib/tag-utils'
+import { PINNED_ATTRIBUTE } from '@/lib/graph-physics'
 
 export interface ContextMenuState {
   nodeId: string
@@ -26,6 +37,7 @@ interface GraphContextMenuProps {
   onLinkTo?: (sourceId: string, targetId: string) => void
   onAddTag?: (nodeId: string, tag: string) => void
   onUnlink?: (link: GraphRelationLink) => void
+  onUnpin?: (nodeId: string) => void
   onClose: () => void
 }
 
@@ -46,6 +58,7 @@ export function GraphContextMenu({
   onLinkTo,
   onAddTag,
   onUnlink,
+  onUnpin,
   onClose
 }: GraphContextMenuProps): React.JSX.Element {
   const menuRef = useRef<HTMLDivElement>(null)
@@ -108,6 +121,7 @@ export function GraphContextMenu({
           onStartLink={onLinkTo ? () => setMode('link') : undefined}
           onStartTag={onAddTag ? () => setMode('tag') : undefined}
           onUnlink={onUnlink}
+          onUnpin={onUnpin}
           onClose={onClose}
         />
       )}
@@ -124,6 +138,7 @@ interface MainMenuProps {
   onStartLink?: () => void
   onStartTag?: () => void
   onUnlink?: (link: GraphRelationLink) => void
+  onUnpin?: (nodeId: string) => void
   onClose: () => void
 }
 
@@ -136,12 +151,14 @@ function MainMenu({
   onStartLink,
   onStartTag,
   onUnlink,
+  onUnpin,
   onClose
 }: MainMenuProps): React.JSX.Element {
   const { t } = useT('graph')
   const attrs = graph.getNodeAttributes(nodeId)
   const label = (attrs.label as string) || t('context-menu.untitled')
   const isUnresolved = attrs.isUnresolved as boolean
+  const isPinned = attrs[PINNED_ATTRIBUTE] === true
   const editable = isEditableGraphNode(graph, nodeId)
 
   /** Runs `action`, then closes the menu. */
@@ -188,6 +205,13 @@ function MainMenu({
         <button type="button" className={ITEM_CLASS} onClick={onStartTag}>
           <Tag className="size-3.5 text-muted-foreground" />
           {t('context-menu.add-tag')}
+        </button>
+      )}
+
+      {isPinned && onUnpin && (
+        <button type="button" className={ITEM_CLASS} onClick={closing(() => onUnpin(nodeId))}>
+          <Pin className="size-3.5 text-muted-foreground" />
+          {t('context-menu.unpin')}
         </button>
       )}
 

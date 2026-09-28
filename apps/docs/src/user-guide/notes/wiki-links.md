@@ -269,6 +269,7 @@ The sidebar **Graph** entry opens a force-directed map of your notes and the lin
 - Click a node to open the note in a tab.
 - Hover to highlight neighbors.
 - Drag a node to pull it around — linked notes follow it, and the graph settles again when you let go.
+- A node you drag stays where you drop it. Pinned nodes carry a thin ring; right-click one → **Unpin** to let it drift back into the layout.
 
 ### Editing From the Graph
 
@@ -297,12 +298,19 @@ a task, use the relation property in the note's properties panel. The local grap
 inside a note is view-only.
 
 The layout is a live simulation: it arranges itself when the view opens, comes to rest on
-its own, and wakes up again whenever you drag something. Node positions are not saved, so
-each time you open the graph it settles into a fresh arrangement.
+its own, and wakes up again whenever you drag something. Where everything came to rest,
+pins included, is saved, so the graph reopens the way you left it, including after a restart.
+To start over, open the gear icon → **Display** → **Re-layout**. That releases every pin and
+lets the graph settle into a fresh arrangement.
+
+Saved layouts stay on the device and do not sync. Rebuilding the search index also clears
+them, and the graph then starts from a fresh arrangement again.
 
 Edits made while the graph is open are folded into the arrangement you are looking at. A
-new note or link slides into place and the neighbours shift to make room; nothing else
-moves, and the graph does not rebuild itself from scratch on every save.
+new note or link appears beside what it links to, and the neighbours shift to make room.
+Pinned nodes stay put, nothing else moves, and the graph does not rebuild itself from
+scratch on every save. Notes added while the graph was closed are placed the same way the
+next time you open it.
 
 Turn the motion off with **Live motion** under the gear icon → **Display** if you prefer a
 still graph — the same forces then run once and stop, which is also the lighter option on

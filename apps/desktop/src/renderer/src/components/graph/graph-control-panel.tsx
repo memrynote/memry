@@ -10,7 +10,8 @@ import {
   PenTool,
   Tag,
   Unlink,
-  Settings
+  Settings,
+  RotateCcw
 } from '@/lib/icons'
 import { PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,16 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { useT } from '@memry/i18n/renderer'
@@ -29,6 +40,8 @@ interface GraphControlPanelProps {
   focusLabel: string | null
   settings: GraphSettings
   updateSettings: (updates: Partial<GraphSettings>) => void
+  /** Forget the saved arrangement and pins, and lay the graph out from scratch. */
+  onRelayout?: () => Promise<void> | void
 }
 
 const ENTITY_FILTERS = [
@@ -74,10 +87,12 @@ export function GraphControlPanel({
   isFiltered,
   focusLabel,
   settings,
-  updateSettings
+  updateSettings,
+  onRelayout
 }: GraphControlPanelProps): React.JSX.Element {
   const { t } = useT('graph')
   const [isOpen, setIsOpen] = useState(false)
+  const [confirmRelayout, setConfirmRelayout] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -232,10 +247,38 @@ export function GraphControlPanel({
                 checked={settings.animateLayout}
                 onCheckedChange={(v) => updateSettings({ animateLayout: v })}
               />
+              {onRelayout && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-full justify-start gap-2 text-xs"
+                  onClick={() => setConfirmRelayout(true)}
+                >
+                  <RotateCcw className="size-3.5 text-muted-foreground" />
+                  {t('control.relayout')}
+                </Button>
+              )}
             </div>
           </PanelSection>
         </div>
       </div>
+
+      {onRelayout && (
+        <AlertDialog open={confirmRelayout} onOpenChange={setConfirmRelayout}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('relayout-confirm.title')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('relayout-confirm.description')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('relayout-confirm.cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => void onRelayout()}>
+                {t('relayout-confirm.confirm')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   )
 }

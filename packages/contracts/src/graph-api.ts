@@ -39,6 +39,43 @@ export const LocalGraphRequestSchema = z.object({
 
 export type LocalGraphRequest = z.infer<typeof LocalGraphRequestSchema>
 
+/**
+ * Saved node position. `pinned` nodes are held in place by the simulation; the
+ * rest only seed where the layout starts, so a reopen looks like the last one.
+ */
+export const GraphLayoutNodeSchema = z.object({
+  x: z.number().finite(),
+  y: z.number().finite(),
+  pinned: z.boolean().optional()
+})
+
+export type GraphLayoutNode = z.infer<typeof GraphLayoutNodeSchema>
+
+export const GRAPH_LAYOUT_VERSION = 1
+
+/**
+ * Stored as JSON in index.db. Versioned so a future shape can be read next to
+ * this one; anything that does not parse is treated as no saved layout.
+ */
+export const GraphLayoutSchema = z.object({
+  version: z.literal(GRAPH_LAYOUT_VERSION),
+  nodes: z.record(z.string(), GraphLayoutNodeSchema)
+})
+
+export type GraphLayout = z.infer<typeof GraphLayoutSchema>
+
+/** Key for the full-vault graph. Saved graph views (#2486) will add their own keys. */
+export const GRAPH_LAYOUT_GLOBAL_KEY = 'global'
+
+export const GraphLayoutViewKeySchema = z.string().min(1).max(200)
+
+export const SaveGraphLayoutRequestSchema = z.object({
+  viewKey: GraphLayoutViewKeySchema,
+  layout: GraphLayoutSchema
+})
+
+export type SaveGraphLayoutRequest = z.infer<typeof SaveGraphLayoutRequestSchema>
+
 export const GraphSettingsSchema = z.object({
   layout: z.enum(['forceatlas2', 'circular', 'random']),
   showLabels: z.boolean(),

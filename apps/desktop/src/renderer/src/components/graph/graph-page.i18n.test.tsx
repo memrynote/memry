@@ -26,6 +26,11 @@ vi.mock('@/hooks/use-graph-filters', () => ({
   useGraphFilters: graphHookMocks.useGraphFilters
 }))
 
+vi.mock('@/hooks/use-graph-layout', () => ({
+  useGraphLayout: () => ({ layout: null, isLoading: false }),
+  useGraphLayoutActions: () => ({ save: vi.fn(), clear: vi.fn() })
+}))
+
 vi.mock('@/hooks/use-graph-settings', () => ({
   useGraphSettings: graphHookMocks.useGraphSettings
 }))

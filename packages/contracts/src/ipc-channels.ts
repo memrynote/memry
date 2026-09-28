@@ -1014,7 +1014,13 @@ export const GraphChannels = {
     /** Get full graph data (all nodes + edges) */
     GET_GRAPH_DATA: 'graph:get-graph-data',
     /** Get local graph around a specific note */
-    GET_LOCAL_GRAPH: 'graph:get-local-graph'
+    GET_LOCAL_GRAPH: 'graph:get-local-graph',
+    /** Saved node positions for one graph view, or null */
+    GET_LAYOUT: 'graph:get-layout',
+    /** Replace the saved node positions for one graph view */
+    SAVE_LAYOUT: 'graph:save-layout',
+    /** Forget the saved node positions for one graph view */
+    CLEAR_LAYOUT: 'graph:clear-layout'
   }
 } as const
 

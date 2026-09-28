@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
@@ -84,6 +84,31 @@ describe('graph controls i18n', () => {
     fireEvent.click(toggle)
 
     expect(dispatch).toHaveBeenCalledWith({ type: 'TOGGLE_CANVAS_EDGES' })
+  })
+
+  it('asks before Re-layout and only runs it on confirm', async () => {
+    const onRelayout = vi.fn()
+    renderWithI18n(
+      <GraphControlPanel
+        filterState={defaultFilterState}
+        dispatch={vi.fn()}
+        isFiltered={false}
+        focusLabel={null}
+        settings={GRAPH_SETTINGS_DEFAULTS}
+        updateSettings={vi.fn()}
+        onRelayout={onRelayout}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Re-layout' }))
+    expect(await screen.findByText('Re-layout the graph?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onRelayout).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Re-layout' }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Re-layout' }))
+    expect(onRelayout).toHaveBeenCalledOnce()
   })
 
   it('renders focused node depth and clear-focus accessible label', () => {

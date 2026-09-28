@@ -229,6 +229,34 @@ describe('graph-builder', () => {
       expect(result).toEqual({ changed: false, structureChanged: false })
     })
 
+    it('places a new node beside the neighbours it links to', () => {
+      const graph = buildGraphologyGraph(graphData, { showTags: false })
+      graph.setNodeAttribute('note-a', 'x', 500)
+      graph.setNodeAttribute('note-a', 'y', -500)
+
+      syncGraphologyGraph(
+        graph,
+        {
+          nodes: [...graphData.nodes, gamma],
+          edges: [...graphData.edges, { source: 'note-a', target: 'note-c', type: 'wikilink' }]
+        },
+        { showTags: false }
+      )
+
+      const dx = (graph.getNodeAttribute('note-c', 'x') as number) - 500
+      const dy = (graph.getNodeAttribute('note-c', 'y') as number) + 500
+      expect(Math.hypot(dx, dy)).toBeCloseTo(20, 5)
+    })
+
+    it('never overwrites a pin when data is patched', () => {
+      const graph = buildGraphologyGraph(graphData)
+      graph.setNodeAttribute('note-a', 'pinned', true)
+
+      syncGraphologyGraph(graph, graphData)
+
+      expect(graph.getNodeAttribute('note-a', 'pinned')).toBe(true)
+    })
+
     it('honours the tag toggle when patching', () => {
       const graph = buildGraphologyGraph(graphData)
       expect(graph.hasNode('tag:shared')).toBe(true)
@@ -237,6 +265,47 @@ describe('graph-builder', () => {
 
       expect(result.structureChanged).toBe(true)
       expect(graph.hasNode('tag:shared')).toBe(false)
+    })
+  })
+
+  describe('saved layout', () => {
+    it('starts every saved node at its saved position and restores pins', () => {
+      const graph = buildGraphologyGraph(
+        graphData,
+        {},
+        {
+          'note-a': { x: 10, y: 20, pinned: true },
+          'note-b': { x: -30, y: 40 }
+        }
+      )
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(10)
+      expect(graph.getNodeAttribute('note-a', 'y')).toBe(20)
+      expect(graph.getNodeAttribute('note-a', 'pinned')).toBe(true)
+      expect(graph.getNodeAttribute('note-b', 'x')).toBe(-30)
+      expect(graph.hasNodeAttribute('note-b', 'pinned')).toBe(false)
+    })
+
+    it('places nodes the layout has never seen next to their saved neighbours', () => {
+      const graph = buildGraphologyGraph(
+        graphData,
+        { showTags: false },
+        {
+          'note-a': { x: 1000, y: 1000 },
+          'note-b': { x: 1000, y: 1000 }
+        }
+      )
+
+      // task-1 links only to note-a, which was saved at (1000, 1000).
+      const dx = (graph.getNodeAttribute('task-1', 'x') as number) - 1000
+      const dy = (graph.getNodeAttribute('task-1', 'y') as number) - 1000
+      expect(Math.hypot(dx, dy)).toBeCloseTo(20, 5)
+    })
+
+    it('ignores saved entries for nodes that no longer exist', () => {
+      const graph = buildGraphologyGraph(graphData, {}, { gone: { x: 1, y: 1, pinned: true } })
+
+      expect(graph.hasNode('gone')).toBe(false)
     })
   })
 

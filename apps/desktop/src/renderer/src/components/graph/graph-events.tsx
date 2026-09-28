@@ -32,7 +32,8 @@ interface GraphEventsProps {
   onContextMenu?: (menu: { nodeId: string; x: number; y: number } | null) => void
   onNodeGrab?: (nodeId: string) => void
   onNodeDrag?: (nodeId: string, x: number, y: number) => void
-  onNodeRelease?: (nodeId: string) => void
+  /** `moved` is false for a press that never crossed the drag threshold (a click). */
+  onNodeRelease?: (nodeId: string, moved: boolean) => void
   /** Whether an Alt-press on this node may start a link gesture. */
   canStartLink?: (nodeId: string) => boolean
   onLinkDrag?: (drag: LinkDragState | null) => void
@@ -91,7 +92,7 @@ export function GraphEvents({
       dragRef.current = null
       suppressClickRef.current = drag.moved
       document.body.style.cursor = 'pointer'
-      onNodeRelease?.(drag.nodeId)
+      onNodeRelease?.(drag.nodeId, drag.moved)
     }
     const endDrag = (): void => endGesture(true)
     const cancelDrag = (): void => endGesture(false)
@@ -165,8 +166,10 @@ export function GraphEvents({
 
     // Sigma only learns a drag is over from its own mouseup. A pointer released
     // past the window edge, focus lost mid-drag, or a pointer the browser hands
-    // elsewhere never delivers one — the node would stay pinned and the physics
-    // simulation held at its drag alpha, so the frame loop would never park.
+    // elsewhere never delivers one — the node would stay held and the physics
+    // simulation kept at its drag alpha, so the frame loop would never park.
+    // Ending the drag here pins a moved node where the pointer last put it,
+    // the same as a normal drop.
     // Capture phase, so nothing in between can swallow the release.
     window.addEventListener('pointerup', endDrag, true)
     window.addEventListener('pointercancel', cancelDrag, true)

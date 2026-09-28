@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import Graph from 'graphology'
@@ -49,6 +49,32 @@ describe('graph menu and tooltip i18n', () => {
 
     expect(screen.getByText('Untitled')).toBeInTheDocument()
     expect(screen.getByText('Create note')).toBeInTheDocument()
+  })
+
+  it('offers Unpin only on a pinned node', () => {
+    const graph = new Graph()
+    graph.addNode('note-1', { label: 'Alpha', isUnresolved: false })
+    graph.addNode('note-2', { label: 'Beta', isUnresolved: false, pinned: true })
+    const onUnpin = vi.fn()
+    const onClose = vi.fn()
+    const props = { graph, onFocusNode: vi.fn(), onOpenInTab: vi.fn(), onUnpin, onClose }
+
+    const { rerender } = render(
+      <I18nextProvider i18n={i18nEn}>
+        <GraphContextMenu menu={{ nodeId: 'note-1', x: 0, y: 0 }} {...props} />
+      </I18nextProvider>
+    )
+    expect(screen.queryByText('Unpin')).not.toBeInTheDocument()
+
+    rerender(
+      <I18nextProvider i18n={i18nEn}>
+        <GraphContextMenu menu={{ nodeId: 'note-2', x: 0, y: 0 }} {...props} />
+      </I18nextProvider>
+    )
+    fireEvent.click(screen.getByText('Unpin'))
+
+    expect(onUnpin).toHaveBeenCalledWith('note-2')
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('renders tooltip entity and connection copy', () => {

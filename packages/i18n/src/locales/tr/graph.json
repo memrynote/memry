@@ -44,7 +44,8 @@
     "show-labels": "Etiketleri göster",
     "live-motion": "Canlı hareket",
     "focus-depth": "derinlik {depth}",
-    "clear-focus": "Odaklanmış düğümü temizle"
+    "clear-focus": "Odaklanmış düğümü temizle",
+    "relayout": "Yeniden yerleştir"
   },
   "filter": {
     "notes": "Notlar",
@@ -73,7 +74,8 @@
     "tag-search": "Etiket ara veya oluştur…",
     "no-matches": "Eşleşme yok",
     "create-tag": "#{tag} oluştur",
-    "remove-link": "{title} bağlantısını kaldır"
+    "remove-link": "{title} bağlantısını kaldır",
+    "unpin": "Sabitlemeyi kaldır"
   },
   "tooltip": {
     "connection-count": "{count, plural, one {# bağlantı} other {# bağlantı}}",
@@ -97,5 +99,11 @@
     "tag-exists": "Bu notta zaten #{tag} var",
     "tag-failed": "Etiket eklenemedi",
     "undo-failed": "Değişiklik geri alınamadı"
+  },
+  "relayout-confirm": {
+    "title": "Grafik yeniden yerleştirilsin mi?",
+    "description": "Sabitlenen tüm düğümler serbest bırakılır ve grafik yeni bir düzene oturur. Kayıtlı düzen silinir.",
+    "cancel": "Vazgeç",
+    "confirm": "Yeniden yerleştir"
   }
 }

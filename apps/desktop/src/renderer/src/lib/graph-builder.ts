@@ -1,5 +1,6 @@
 import Graph from 'graphology'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
+import { PINNED_ATTRIBUTE, type NodePosition } from './graph-physics'
 
 const NODE_COLOR_VARS: Record<string, string> = {
   note: '--graph-node-note',
@@ -58,7 +59,10 @@ interface GraphSpec {
 }
 
 /** Owned by the force simulation, so a data refresh must never write over them. */
-const LAYOUT_ATTRIBUTES = new Set(['x', 'y'])
+const LAYOUT_ATTRIBUTES = new Set(['x', 'y', PINNED_ATTRIBUTE])
+
+/** How far from its neighbours' centre a newly placed node lands, in graph units. */
+const NEIGHBOUR_JITTER = 20
 
 /** The shape `data` should have on screen, independent of any existing graph. */
 function buildGraphSpec(data: GraphDataResponse, options: BuildGraphOptions): GraphSpec {
@@ -178,9 +182,15 @@ function buildGraphSpec(data: GraphDataResponse, options: BuildGraphOptions): Gr
   return { nodes, edges }
 }
 
+/**
+ * Build the graph for `data`. With a saved `layout`, every node it knows about
+ * starts where it was saved (pins included) and nodes added since are placed
+ * next to their saved neighbours, so the reopened graph looks like the last one.
+ */
 export function buildGraphologyGraph(
   data: GraphDataResponse,
-  options: BuildGraphOptions = {}
+  options: BuildGraphOptions = {},
+  layout?: Readonly<Record<string, NodePosition>> | null
 ): Graph {
   const graph = new Graph({ multi: true, type: 'undirected' })
   const spec = buildGraphSpec(data, options)
@@ -190,7 +200,51 @@ export function buildGraphologyGraph(
     graph.addEdgeWithKey(key, edge.source, edge.target, edge.attributes)
   }
 
+  if (layout) {
+    const placed = new Set<string>()
+    const unplaced: string[] = []
+    graph.forEachNode((id) => {
+      const saved = layout[id]
+      if (!saved) {
+        unplaced.push(id)
+        return
+      }
+      graph.mergeNodeAttributes(id, { x: saved.x, y: saved.y })
+      if (saved.pinned) graph.setNodeAttribute(id, PINNED_ATTRIBUTE, true)
+      placed.add(id)
+    })
+    placeNearNeighbours(graph, unplaced, (id) => placed.has(id))
+  }
+
   return graph
+}
+
+/**
+ * Move each node in `ids` next to the centre of its neighbours that are in
+ * `isAnchor`. A node with no anchored neighbour keeps its seeded position.
+ */
+function placeNearNeighbours(
+  graph: Graph,
+  ids: readonly string[],
+  isAnchor: (id: string) => boolean
+): void {
+  for (const id of ids) {
+    let sumX = 0
+    let sumY = 0
+    let count = 0
+    graph.forEachNeighbor(id, (neighbour, attrs) => {
+      if (!isAnchor(neighbour)) return
+      sumX += attrs.x as number
+      sumY += attrs.y as number
+      count++
+    })
+    if (count === 0) continue
+    const angle = Math.random() * 2 * Math.PI
+    graph.mergeNodeAttributes(id, {
+      x: sumX / count + Math.cos(angle) * NEIGHBOUR_JITTER,
+      y: sumY / count + Math.sin(angle) * NEIGHBOUR_JITTER
+    })
+  }
 }
 
 export interface GraphSyncResult {
@@ -216,6 +270,7 @@ export function syncGraphologyGraph(
   const spec = buildGraphSpec(data, options)
   let changed = false
   let structureChanged = false
+  const added: string[] = []
 
   for (const key of graph.edges()) {
     if (spec.edges.has(key)) continue
@@ -232,6 +287,7 @@ export function syncGraphologyGraph(
   for (const [id, attributes] of spec.nodes) {
     if (!graph.hasNode(id)) {
       graph.addNode(id, attributes)
+      added.push(id)
       structureChanged = true
       continue
     }
@@ -253,6 +309,13 @@ export function syncGraphologyGraph(
       graph.mergeEdgeAttributes(key, patch)
       changed = true
     }
+  }
+
+  // A new note or link lands beside what it connects to instead of at a random
+  // spot, so the settled layout around it barely has to move.
+  if (added.length > 0) {
+    const addedSet = new Set(added)
+    placeNearNeighbours(graph, added, (id) => !addedSet.has(id))
   }
 
   return { changed: changed || structureChanged, structureChanged }
