@@ -13,6 +13,7 @@ const handles: VaultServiceHandles = {
     update: async () => {},
     addTag: async () => {},
     removeTag: async () => {},
+    saveHtmlAttachment: async () => ({ marker: '<!-- file:{} -->', url: 'a.html' }),
     moveToFolder: async () => {}
   },
   folders: {
@@ -162,6 +163,7 @@ describe('Write tools — P1 deny-by-default', () => {
       vault_add_inbox_tag: { id: 'i1', tag: 'work' },
       vault_remove_inbox_tag: { id: 'i1', tag: 'work' },
       vault_update_note: { id: 'x', mode: 'append', content_markdown: 'b' },
+      vault_add_html_artifact: { id: 'x', title: 'Diagram', html: '<p>hi</p>' },
       vault_update_task: { id: 'x', title: 'new' },
       vault_add_tag: { id: 'x', kind: 'note', tag: 'a' },
       vault_remove_tag: { id: 'x', kind: 'note', tag: 'a' },
@@ -533,6 +535,54 @@ describe('Write tools — P1 deny-by-default', () => {
       { operation: 'templates.create', args: [{ name: 'Template' }] },
       'w1'
     )
+  })
+
+  it('vault_add_html_artifact saves the attachment, then appends its file block', async () => {
+    const calls: string[] = []
+    const local: VaultServiceHandles = {
+      ...handles,
+      notes: {
+        ...handles.notes,
+        saveHtmlAttachment: vi.fn(async () => {
+          calls.push('save')
+          return { marker: '<!-- file:{"url":"a.html"} -->', url: 'a.html' }
+        }),
+        update: vi.fn(async () => {
+          calls.push('update')
+        })
+      }
+    }
+    const gate: WriteToolGate = async () => ({ approved: true })
+    const t = buildWriteTools(local, gate).find((x) => x.name === 'vault_add_html_artifact')!
+    await expect(
+      t.handler(
+        { id: 'note-1', title: 'Diagram', html: '<svg></svg>' },
+        { writeGrant: 'g', windowId: 'w1' }
+      )
+    ).resolves.toEqual({ id: 'note-1', url: 'a.html' })
+    expect(calls).toEqual(['save', 'update'])
+    expect(local.notes.saveHtmlAttachment).toHaveBeenCalledWith({
+      id: 'note-1',
+      title: 'Diagram',
+      html: '<svg></svg>'
+    })
+    expect(local.notes.update).toHaveBeenCalledWith({
+      id: 'note-1',
+      mode: 'append',
+      content_markdown: '<!-- file:{"url":"a.html"} -->'
+    })
+  })
+
+  it('vault_add_html_artifact rejects oversized html before the gate', async () => {
+    const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
+    const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_add_html_artifact')!
+    await expect(
+      t.handler(
+        { id: 'note-1', title: 'Big', html: 'x'.repeat(512 * 1024 + 1) },
+        { writeGrant: 'g', windowId: 'w1' }
+      )
+    ).rejects.toMatchObject({ code: 'VALIDATION' })
+    expect(gate).not.toHaveBeenCalled()
   })
 
   it('returns PERMISSION_DENIED when the gate denies', async () => {

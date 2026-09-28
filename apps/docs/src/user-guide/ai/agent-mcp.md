@@ -348,6 +348,12 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
   bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
   cannot overwrite a filed document with markdown.
 
+`vault_add_html_artifact` lets an agent put a diagram, chart, or small interactive explanation in a
+note. The HTML is saved as an attachment of that note and appended as a file block, which renders
+it inline in the same sandbox as an `.html` file you attach yourself: scripts run, `https:`
+resources load, but the page cannot read the vault or the app. It syncs like any other attachment.
+The HTML is capped at 512 KB and the call needs your approval.
+
 Pass `file_types` to narrow the search up front — `["markdown"]` for notes only, or
 `["pdf", "image"]` to look for filed documents. The filter runs inside the search query, so `limit`
 counts only matching rows. Omit `file_types` to search every file type.
@@ -396,6 +402,7 @@ inline approval unless you set the Agent Permissions confirmation to **Always al
 - `vault_add_inbox_tag`
 - `vault_remove_inbox_tag`
 - `vault_update_note`
+- `vault_add_html_artifact`
 - `vault_update_task`
 - `vault_add_tag`
 - `vault_remove_tag`

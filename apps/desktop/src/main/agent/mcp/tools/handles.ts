@@ -208,6 +208,15 @@ export interface VaultServiceHandles {
     }): Promise<void>
     addTag(input: { id: string; tag: string }): Promise<void>
     removeTag(input: { id: string; tag: string }): Promise<void>
+    /**
+     * Save `html` as an attachment of note `id` and return the file-block
+     * marker that embeds it. Does not touch the note body.
+     */
+    saveHtmlAttachment(input: {
+      id: string
+      title: string
+      html: string
+    }): Promise<{ marker: string; url: string }>
     moveToFolder(input: { id: string; folder_path: string }): Promise<void>
   }
   folders: {

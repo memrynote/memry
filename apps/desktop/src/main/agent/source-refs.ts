@@ -31,6 +31,7 @@ export function extractAgentSourceRefs(
     case 'vault_create_note':
     case 'vault_rename_note':
     case 'vault_update_note':
+    case 'vault_add_html_artifact':
     case 'vault_add_note_tag':
     case 'vault_remove_note_tag':
     case 'vault_move_to_folder':

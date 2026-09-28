@@ -94,6 +94,7 @@ const toolLabels: Record<string, string> = {
   vault_add_inbox_tag: 'Adding inbox tag',
   vault_remove_inbox_tag: 'Removing inbox tag',
   vault_update_note: 'Updating note',
+  vault_add_html_artifact: 'Adding HTML artifact',
   vault_update_task: 'Updating task',
   vault_add_tag: 'Adding tag',
   vault_remove_tag: 'Removing tag',

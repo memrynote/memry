@@ -137,6 +137,24 @@ const updateNote: Builder = async (args, handles) => {
   })
 }
 
+const addHtmlArtifact: Builder = async (args, handles) => {
+  const id = str(args.id)
+  const note = await handles.notes.read(id)
+  if (!note) throw new Error(`Note not found: ${id}`)
+  return make({
+    kind: 'fields',
+    type: 'note',
+    id,
+    title: note.title,
+    context: note.folder_path,
+    intent: 'update',
+    fields: fields(
+      field('html artifact', null, `${str(args.title)}.html`),
+      field('size', null, `${Math.ceil(Buffer.byteLength(str(args.html), 'utf8') / 1024)} KB`)
+    )
+  })
+}
+
 const renameNote: Builder = async (args, handles) => {
   const id = str(args.id)
   const note = await handles.notes.read(id)
@@ -796,6 +814,7 @@ const desktopWrite: Builder = async (args) =>
 const BUILDERS: Record<string, Builder | undefined> = {
   vault_create_note: createNote,
   vault_update_note: updateNote,
+  vault_add_html_artifact: addHtmlArtifact,
   vault_rename_note: renameNote,
   vault_move_to_folder: moveNote,
   vault_delete_note: deleteNote,

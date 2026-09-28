@@ -60,6 +60,7 @@ describe('Vault MCP tool schemas', () => {
       'vault_add_inbox_tag',
       'vault_remove_inbox_tag',
       'vault_update_note',
+      'vault_add_html_artifact',
       'vault_update_task',
       'vault_add_tag',
       'vault_remove_tag',

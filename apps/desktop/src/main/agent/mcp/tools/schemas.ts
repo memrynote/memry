@@ -14,6 +14,9 @@ import type { ChangePreviewKind } from '@memry/contracts/ipc-agent'
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 
 const idSchema = z.string().min(1)
+
+/** Cap on an agent-written HTML artifact ; well under the attachment size limit. */
+export const HTML_ARTIFACT_MAX_CHARS = 512 * 1024
 /**
  * Said on every canvas tool that takes a canvas id. Two canvases in different
  * folders may share a title, so a bare title is refused when it matches more
@@ -424,6 +427,20 @@ export const TOOL_SCHEMAS = {
     }),
     description: 'Update note body. Requires user approval with diff preview.'
   },
+  vault_add_html_artifact: {
+    input: z.object({
+      id: idSchema,
+      title: z.string().min(1).max(120),
+      html: z.string().min(1).max(HTML_ARTIFACT_MAX_CHARS)
+    }),
+    description:
+      'Append a self-contained HTML artifact (diagram, chart, interactive explanation) to a ' +
+      'markdown note. It is saved as a note attachment and rendered inline in a sandboxed ' +
+      'iframe. Write one complete HTML document with inline CSS/JS. It cannot read the vault, ' +
+      'the note, or sibling files; external scripts/styles/fonts load only over https (e.g. a ' +
+      'CDN). Do not use alert/confirm/prompt. Keep it compact and readable in light and dark ' +
+      'themes. Requires user approval.'
+  },
   vault_update_task: {
     input: taskPatchSchema.extend({ id: idSchema }),
     description:
@@ -585,6 +602,7 @@ export const WRITE_TOOL_NAMES = [
   'vault_add_inbox_tag',
   'vault_remove_inbox_tag',
   'vault_update_note',
+  'vault_add_html_artifact',
   'vault_update_task',
   'vault_add_tag',
   'vault_remove_tag',
@@ -640,6 +658,7 @@ export const UPDATE_TOOL_NAMES = [
   'vault_add_inbox_tag',
   'vault_remove_inbox_tag',
   'vault_update_note',
+  'vault_add_html_artifact',
   'vault_update_task',
   'vault_add_tag',
   'vault_remove_tag',
@@ -708,6 +727,7 @@ export const WRITE_TOOL_PREVIEW_KINDS = {
   vault_add_inbox_tag: 'fields',
   vault_remove_inbox_tag: 'fields',
   vault_update_note: 'body',
+  vault_add_html_artifact: 'fields',
   vault_update_task: 'fields',
   vault_add_tag: 'fields',
   vault_remove_tag: 'fields',
