@@ -9,7 +9,7 @@
  */
 
 import * as React from 'react'
-import { Bell, BellRing } from '@/lib/icons'
+import { AlarmClock } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -87,11 +87,12 @@ export function JournalReminderButton({
                 )}
                 disabled={disabled}
               >
-                {hasActiveReminder ? (
-                  <BellRing className="size-4 text-amber-500" />
-                ) : (
-                  <Bell className="size-4" />
-                )}
+                <AlarmClock
+                  className={cn(
+                    'h-3.5 w-3.5',
+                    hasActiveReminder ? 'text-amber-500' : 'text-muted-foreground'
+                  )}
+                />
                 <span className="sr-only">{tooltipContent}</span>
               </Button>
             }

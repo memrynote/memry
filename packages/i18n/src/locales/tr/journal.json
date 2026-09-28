@@ -29,7 +29,8 @@
     "goToToday": "Bugüne Git",
     "copyUnsavedContent": "Kaydedilmemiş içeriği panoya kopyala",
     "addBookmark": "Yer işareti ekle",
-    "removeBookmark": "Yer işaretini kaldır"
+    "removeBookmark": "Yer işaretini kaldır",
+    "deleteEntry": "Girdiyi sil"
   },
   "editor": {
     "placeholder": {
@@ -210,7 +211,9 @@
     "noteNotFound": "Not \"{target}\" bulunamadı",
     "fileNotFound": "Dosya bulunamadı: {target}",
     "openLinkedItemFailed": "Bağlantılı öğe açılamadı",
-    "errorPrefix": "Hata:"
+    "errorPrefix": "Hata:",
+    "deleteFailed": "Günlük girdisi silinemedi",
+    "bookmarkFailed": "Yer işareti güncellenemedi"
   },
   "export": {
     "noteTitle": "Günlük - {day} {month} {year}"
@@ -236,5 +239,9 @@
       "failedToLoadJournalSettings": "Günlük ayarları yüklenemedi",
       "failedToUpdateSettings": "Ayarlar güncellenemedi"
     }
+  },
+  "deleteConfirm": {
+    "title": "Günlük girdisini sil",
+    "description": "\"{title}\" girdisini silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
   }
 }
