@@ -4,7 +4,8 @@
  * Parsing a note's markdown is only half the load: BlockNote returns plain
  * paragraphs/checkboxes, and these passes turn the markdown markers back into
  * real blocks and inline content — `[[wiki links]]`, link mentions, date
- * mentions, and `{task:<id>}` checkboxes into the taskBlock renderer.
+ * mentions, `{task:<id>}` checkboxes into the taskBlock renderer, and `{check}`
+ * checkboxes into plain ones.
  *
  * Any surface that renders a note (the editor via use-editor-sync, a read-only
  * canvas card via canvas-note-body) MUST run the same chain in the same order,
@@ -20,6 +21,7 @@ import { normalizeLinkMentions } from './link-mention-utils'
 import { normalizeDateMentions } from './date-mention-utils'
 import { normalizeInlineCheckboxes } from './inline-checkbox-utils'
 import { normalizeTaskBlocks } from './task-block/task-block-utils'
+import { normalizePlainCheckboxes } from '@memry/shared/plain-checkbox'
 import { reportUnclaimedTokens } from './unclaimed-token-telemetry'
 
 /** `source` is the markdown `blocks` were parsed from, or null when they were not. */
@@ -33,6 +35,9 @@ export function normalizeNoteBlocks(blocks: Block[], source: string | null): Blo
   // cell whose token is followed by a wiki link or a mention has already had
   // that half promoted, so this only ever looks at the leading text run.
   normalized = normalizeInlineCheckboxes(normalized).blocks
+  // Before the task pass, though the two never claim the same line: one ends
+  // in `{check}`, the other in `{task:<id>}`.
+  normalized = normalizePlainCheckboxes(normalized as any[]).blocks as Block[]
   const result = normalizeTaskBlocks(normalized as any[], source).blocks as Block[]
   // Anything still literal after the chain is a token the note will render
   // broken. Counted, never surfaced — see unclaimed-token-telemetry.ts (#1848).

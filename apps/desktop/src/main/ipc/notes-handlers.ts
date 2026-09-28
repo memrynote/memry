@@ -22,6 +22,7 @@ import {
   SetLocalOnlySchema,
   ApplyTemplateSchema,
   NoteAppendBlocksSchema,
+  NoteCarriedTasksSchema,
   LargeFileReadLinesSchema,
   LargeFileSearchSchema,
   AttachmentActionSchema,
@@ -88,6 +89,7 @@ import {
 } from '../notes/domain'
 import { applyTemplateToNote } from '../notes/apply-template'
 import { appendBlocksToNote } from '../vault/append-blocks'
+import { getCarriedTaskIds } from '../tasks/note-carried-tasks'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { downloadAttachmentFromUrl } from '../vault/remote-attachment'
@@ -455,6 +457,15 @@ export function registerNotesHandlers(): void {
         return { success: true }
       }, 'errors:note.deleteFailed')
     )
+  )
+
+  // notes:get-carried-tasks - Tasks a pending note/folder delete would orphan.
+  // Read-only; the renderer deletes them itself once the notes are gone.
+  ipcMain.handle(
+    NotesChannels.invoke.GET_CARRIED_TASKS,
+    createValidatedHandler(NoteCarriedTasksSchema, async (input) => ({
+      taskIds: await getCarriedTaskIds(input)
+    }))
   )
 
   // notes:list - List notes with filtering

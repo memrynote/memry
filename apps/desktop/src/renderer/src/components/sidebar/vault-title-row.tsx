@@ -1,5 +1,6 @@
 import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
 import { cn } from '@/lib/utils'
+import { VaultGlyph } from '@/components/sidebar/vault-glyph'
 
 /** A vault's accent, or the default tint for vaults that never stored one. */
 export function resolveVaultAccent(accentColor: string | undefined): string {
@@ -10,8 +11,10 @@ export function resolveVaultAccent(accentColor: string | undefined): string {
 
 interface VaultTitleRowProps {
   name: string
+  /** The vault's icon; absent draws the default. */
+  icon?: string
   /** Any CSS color: `var(--tint)` for the open vault, a stored hex for others. */
-  dotColor: string
+  accent: string
   className?: string
 }
 
@@ -20,16 +23,12 @@ interface VaultTitleRowProps {
  * has no sidebar snapshot yet, and on the switch screen when the pager left no
  * frame. The open vault's own name is in the panel header (`SidebarVaultHeader`).
  */
-export function VaultTitleRow({ name, dotColor, className }: VaultTitleRowProps) {
+export function VaultTitleRow({ name, icon, accent, className }: VaultTitleRowProps) {
   return (
     <div className={cn('shrink-0 px-3', className)}>
       <div className="flex h-8 items-center gap-2 px-2">
-        {/* The dot is a fill beside the name, never the only cue: the name says which vault. */}
-        <span
-          aria-hidden="true"
-          className="size-2 shrink-0 rounded-full"
-          style={{ backgroundColor: dotColor }}
-        />
+        {/* The icon sits beside the name, never the only cue: the name says which vault. */}
+        <VaultGlyph icon={icon} color={accent} />
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-sidebar-primary">
           {name}
         </span>

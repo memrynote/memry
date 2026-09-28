@@ -5,6 +5,7 @@ import {
   CreateVaultSchema,
   DownloadRemoteVaultSchema,
   SelectVaultSchema,
+  SetVaultIconSchema,
   UpdateVaultConfigSchema
 } from '@memry/contracts/vault-api'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
@@ -22,6 +23,9 @@ import {
 import { createVault } from '../vault/create-vault'
 import { defaultVaultParentDir } from '../vault/default-parent'
 import { findVault, getVaults } from '../store'
+import { isValidDirectory } from '../vault/init'
+import { readVaultIcon, writeVaultIcon } from '../vault/vault-icon'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { getTelemetryRuntime } from '../telemetry/runtime'
 
@@ -136,6 +140,26 @@ export function registerVaultHandlers(): void {
       const { deleteAccountVault, refreshVaultDirectory } = await import('../sync/vault-directory')
       await deleteAccountVault(vaultUuid)
       await refreshVaultDirectory({ force: true })
+    })
+  )
+
+  // vault:set-icon - Set or reset a listed vault's icon, then sync it
+  ipcMain.handle(
+    VaultChannels.invoke.SET_ICON,
+    createValidatedHandler(SetVaultIconSchema, async ({ path: vaultPath, icon }) => {
+      if (!findVault(vaultPath)) throw new Error('Vault is not in the vault list')
+      if (!isValidDirectory(vaultPath)) throw new Error('Vault folder is not reachable')
+      // Strictly after the stored change time, so this change wins even when an
+      // adopted account copy carries a clock ahead of this machine's.
+      const previous = readVaultIcon(vaultPath)
+      const updatedAt = Math.max(Date.now(), (previous?.updatedAt ?? 0) + 1)
+      writeVaultIcon(vaultPath, { value: icon, updatedAt, pendingSync: true })
+      broadcastToAllWindows(VaultChannels.events.LIST_CHANGED)
+      // Lazy like the other account routes here: the sync stack loads on first use.
+      const { refreshVaultDirectory } = await import('../sync/vault-directory')
+      void refreshVaultDirectory({ force: true }).catch((err) =>
+        log.warn('Vault icon sync failed; retries on the next refresh', err)
+      )
     })
   )
 

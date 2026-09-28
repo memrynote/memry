@@ -656,6 +656,22 @@ const taskLineCases: RoundtripCase[] = [
   }
 ]
 
+/**
+ * A checkbox kept as a checkbox carries `{check}` at the end of its line, the
+ * `plain` prop in the document (`@memry/shared/plain-checkbox`). The marker is
+ * stripped on the way in and written back on the way out, so an untouched line
+ * must come back byte for byte, whatever else is on it.
+ */
+const plainCheckboxCases: RoundtripCase[] = [
+  { name: 'plain checkbox', markdown: '- [ ] Passport {check}' },
+  { name: 'ticked plain checkbox with bold', markdown: '- [x] Pack **the** passport {check}' },
+  { name: 'empty plain checkbox', markdown: '- [ ] {check}' },
+  {
+    name: 'plain checkbox beside an ordinary one',
+    markdown: '- [ ] Passport {check}\n- [ ] Book flights'
+  }
+]
+
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...mentionCases,
   ...dateCases,
@@ -665,6 +681,7 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...containerCases,
   ...blockMarkerCases,
   ...taskLineCases,
+  ...plainCheckboxCases,
   ...nestedUnderListCases,
   ...diagramCases,
   ...whiteboardCases,

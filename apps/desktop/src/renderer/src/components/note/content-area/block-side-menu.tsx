@@ -34,12 +34,22 @@ import { SideMenuExtension } from '@blocknote/core/extensions'
 import { TextSelection } from 'prosemirror-state'
 import type { Node as ProseMirrorNode } from 'prosemirror-model'
 import type { BlockNoteEditor } from '@blocknote/core'
-import { ArrowRight, Copy, LayoutTemplate, MessageCircle, Palette, Trash2, Type } from '@/lib/icons'
+import {
+  ArrowRight,
+  CheckSquare,
+  Copy,
+  LayoutTemplate,
+  MessageCircle,
+  Palette,
+  Trash2,
+  Type
+} from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import { isMac } from '@/lib/shortcut-registry'
 import { getEditorSelectionFromState, getProseMirrorState } from './review-formatting-toolbar'
 import type { TemplateAnchor } from './insert-template'
 import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
+import { getCheckboxTaskActions } from './checkbox-task-actions'
 import type { ReviewSelection } from './types'
 
 type AnyBlock = { id: string; type: string; props?: Record<string, unknown>; content?: unknown }
@@ -83,7 +93,10 @@ const TURN_INTO_TARGETS: Array<{ key: string; type: string; props?: Record<strin
   { key: 'heading3', type: 'heading', props: { level: 3 } },
   { key: 'bulletList', type: 'bulletListItem' },
   { key: 'numberedList', type: 'numberedListItem' },
-  { key: 'checkList', type: 'checkListItem' },
+  // A checkbox that stays one, and one that becomes a task. `Task` goes through
+  // the editor's own converter after the retype (`checkbox-task-actions.ts`).
+  { key: 'checkbox', type: 'checkListItem', props: { plain: true } },
+  { key: 'task', type: 'checkListItem', props: { plain: false } },
   { key: 'toggleList', type: 'toggleListItem' },
   { key: 'quote', type: 'quote' },
   { key: 'codeBlock', type: 'codeBlock' },
@@ -222,6 +235,12 @@ function TurnIntoItem() {
                   editor.updateBlock(each.id, { type: target.type, props: target.props ?? {} })
                 }
               })
+              // Without the actions (a template, a review surface) the block is
+              // left an ordinary checkbox, which the owning editor converts.
+              if (target.key === 'task') {
+                const actions = getCheckboxTaskActions(editor)
+                for (const each of blocks) actions?.toTask(each.id)
+              }
               // Converted blocks change height; the highlight rects would be stale.
               if (blocks.length > 1) getBlockSelection(editor)?.clear()
             }}
@@ -231,6 +250,28 @@ function TurnIntoItem() {
         ))}
       </Components.Generic.Menu.Dropdown>
     </Components.Generic.Menu.Root>
+  )
+}
+
+/**
+ * A task block back to a plain checkbox holding its line. Only for a task with
+ * no subtasks under it; the task itself is asked about by the editor's removal
+ * prompt, as for any task that leaves the note.
+ */
+function TaskToCheckboxItem() {
+  const { t } = useT('notes')
+  const editor = useBlockNoteEditor<any, any, any>()
+  const block = useCurrentBlock() as (AnyBlock & { children?: unknown[] }) | undefined
+  const actions = getCheckboxTaskActions(editor)
+
+  if (!block || !actions || block.type !== 'taskBlock' || block.children?.length) return null
+
+  return (
+    <MenuItem
+      icon={<CheckSquare size={16} />}
+      label={t('editor.blockMenu.turnIntoCheckbox')}
+      onClick={() => actions.toCheckbox(block.id)}
+    />
   )
 }
 
@@ -411,6 +452,7 @@ function MemryDragHandleMenu({
   return (
     <Components.Generic.Menu.Dropdown className="bn-menu-dropdown bn-drag-handle-menu">
       <TurnIntoItem />
+      <TaskToCheckboxItem />
       {/* Stock item: owns the block colour props, their markdown marker and the
           `text-color-*` test hooks. The label stays BlockNote's "Colors" so the
           existing drag-handle E2E keeps matching it. */}

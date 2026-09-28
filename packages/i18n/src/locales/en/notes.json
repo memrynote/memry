@@ -141,6 +141,13 @@
   },
   "editor": {
     "bodySyncPending": "Syncing — this note's contents may still be on their way",
+    "taskRemoval": {
+      "title": "{count, plural, one {Task removed from this note} other {# tasks removed from this note}}",
+      "description": "{count, plural, one {Keep it in Tasks, or delete it everywhere?} other {Keep them in Tasks, or delete them everywhere?}}",
+      "keep": "Keep in Tasks",
+      "delete": "{count, plural, one {Delete task} other {Delete tasks}}",
+      "deleteFailed": "Could not delete the tasks. They are still in Tasks."
+    },
     "title": {
       "untitled": "Untitled",
       "aria": "Note title"
@@ -332,6 +339,11 @@
     "upload": {
       "failed": "Could not attach that file"
     },
+    "checkboxTask": {
+      "converted": "Checkbox turned into a task",
+      "hint": "A new checkbox becomes a task. Press {undo} to keep it a checkbox.",
+      "keepAsCheckbox": "Keep as checkbox"
+    },
     "obsidianTask": {
       "refused": "This line carries an id, a dependency or a block link that Obsidian needs at the end of the line. Remove it in Obsidian first, then convert.",
       "createFailed": "Could not create the task for this line.",
@@ -346,12 +358,14 @@
         "heading3": "Heading 3",
         "bulletList": "Bulleted list",
         "numberedList": "Numbered list",
-        "checkList": "To-do list",
+        "checkbox": "Checkbox",
+        "task": "Task",
         "toggleList": "Toggle list",
         "quote": "Quote",
         "codeBlock": "Code",
         "callout": "Callout"
       },
+      "turnIntoCheckbox": "Turn into checkbox",
       "colors": "Colors",
       "duplicate": "Duplicate",
       "insertTemplate": "Insert template…",
@@ -644,6 +658,11 @@
     "confirm": "{count, plural, one {Move task} other {Move tasks}}",
     "success": "{count, plural, one {Moved # task to {project}} other {Moved # tasks to {project}}}",
     "failed": "Could not move the note's tasks"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, one {Also delete the task inside} other {Also delete the # tasks inside}}",
+    "description": "{count, plural, one {Left unticked, it stays in Tasks.} other {Left unticked, they stay in Tasks.}}",
+    "failed": "Could not delete the tasks. They are still in Tasks."
   },
   "cover": {
     "add": "Add cover",

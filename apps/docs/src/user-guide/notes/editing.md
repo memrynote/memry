@@ -265,7 +265,7 @@ Common markdown shortcuts work inline:
 | `###### `    | Heading 6     |
 | `- `         | Bullet list   |
 | `1. `        | Numbered list |
-| `[ ] `       | Check list    |
+| `[ ] `       | Task          |
 | `> `         | Quote         |
 | `**bold**`   | **bold**      |
 | `*italic*`   | _italic_      |
@@ -412,14 +412,15 @@ from the margin and open the menu from one of them, **Turn into** converts every
 selected text block at once. Tables, files, tasks and other blocks without text of
 their own keep their type.
 
-| Action                          | What it does                                                                                                                                                    |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Turn into**                   | Converts the block to another text type — text, heading 1–3, bulleted, numbered or to-do list, toggle list, quote, code, callout. Indented children come along. |
-| **Colors**                      | Sets the block's text and background colour.                                                                                                                    |
-| **Duplicate** (`⌘D` / `Ctrl+D`) | Copies the block and its indented children directly below.                                                                                                      |
-| **Move to…**                    | Search for another note and move the block to the end of it.                                                                                                    |
-| **Delete**                      | Removes the block.                                                                                                                                              |
-| **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                         |
+| Action                          | What it does                                                                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Turn into**                   | Converts the block to another text type — text, heading 1–3, bulleted or numbered list, checkbox, task, toggle list, quote, code, callout. Indented children come along. |
+| **Turn into checkbox**          | On a task: puts its line back as a plain checkbox, then asks whether the task stays in Tasks. Not offered on a task with subtasks.                                       |
+| **Colors**                      | Sets the block's text and background colour.                                                                                                                             |
+| **Duplicate** (`⌘D` / `Ctrl+D`) | Copies the block and its indented children directly below.                                                                                                               |
+| **Move to…**                    | Search for another note and move the block to the end of it.                                                                                                             |
+| **Delete**                      | Removes the block.                                                                                                                                                       |
+| **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                                  |
 
 Some entries are hidden when they do not apply. **Turn into** and **Comment** do not
 appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks,

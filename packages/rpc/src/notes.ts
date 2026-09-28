@@ -312,6 +312,24 @@ export interface AppendBlocksResponse {
 }
 
 /**
+ * Notes a delete is about to remove: by id, and folders by path (every note
+ * under them).
+ */
+export interface CarriedTasksInput {
+  noteIds?: string[]
+  folderPaths?: string[]
+}
+
+/**
+ * Tasks whose `{task:<id>}` line sits in one of those notes and in no note that
+ * survives the delete. Deleting the notes leaves these rows behind unless the
+ * caller deletes them too.
+ */
+export interface CarriedTasksResponse {
+  taskIds: string[]
+}
+
+/**
  * Which per-note fields `notes.list` should build. Omit for the full shape —
  * `'tree'` drops the sidebar-irrelevant heavy fields (`snippet`, `mimeType`,
  * `fileSize`) from every row.
@@ -524,6 +542,10 @@ export const notesRpc = defineDomain({
     delete: defineMethod<(id: string) => SuccessResponse>({
       channel: NotesChannels.invoke.DELETE,
       params: ['id']
+    }),
+    getCarriedTasks: defineMethod<(input: CarriedTasksInput) => Promise<CarriedTasksResponse>>({
+      channel: NotesChannels.invoke.GET_CARRIED_TASKS,
+      params: ['input']
     }),
     applyTemplate: defineMethod<(input: ApplyTemplateInput) => Promise<NoteUpdateResponse>>({
       channel: NotesChannels.invoke.APPLY_TEMPLATE,

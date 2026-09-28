@@ -33,6 +33,36 @@ const para = (id: string, text = ''): any => ({
 })
 
 describe('analyzeTaskIntents', () => {
+  describe('empty checkbox', () => {
+    it('reports a freshly typed empty checkbox so it can show as a draft task', () => {
+      const intents = analyzeTaskIntents([cl('cl1', '')], new Set())
+      expect(intents.emptyCheckbox).toEqual({ blockId: 'cl1', parentTaskId: '' })
+      expect(intents.standaloneCandidate).toBeNull()
+    })
+
+    it('carries the parent task id for an empty checkbox under a task', () => {
+      const intents = analyzeTaskIntents(
+        [tb('tb1', 'task-1', 'Parent', '', [cl('cl1', '')])],
+        new Set()
+      )
+      expect(intents.emptyCheckbox).toEqual({ blockId: 'cl1', parentTaskId: 'task-1' })
+    })
+
+    it('leaves empty checkboxes the note opened with alone', () => {
+      const intents = analyzeTaskIntents([cl('cl1', '')], new Set(), {
+        openedBlockIds: new Set(['cl1'])
+      })
+      expect(intents.emptyCheckbox).toBeNull()
+    })
+
+    it('does not draft an empty checkbox that continues a plain list', () => {
+      const plain = { ...cl('p1', 'plain'), props: { isChecked: false, plain: true } }
+      const intents = analyzeTaskIntents([plain, cl('cl1', '')], new Set())
+      expect(intents.emptyCheckbox).toBeNull()
+      expect(intents.plainByContext).toEqual(['cl1'])
+    })
+  })
+
   describe('top-level checkListItem', () => {
     it('should mark a top-level checkbox as standalone task candidate', () => {
       // #given
@@ -391,6 +421,81 @@ describe('analyzeTaskIntents', () => {
       // #then - this checkbox should be a standalone candidate (no taskBlock parent)
       expect(result.standaloneCandidate?.blockId).toBe('cl1')
       expect(result.subtaskCandidate).toBeNull()
+    })
+  })
+
+  describe('plain checkboxes', () => {
+    const plain = (id: string, text: string, children: any[] = []): any => ({
+      ...cl(id, text, false, children),
+      props: { checked: false, plain: true }
+    })
+
+    it('never offers a plain checkbox, top level or under a task', () => {
+      // #given
+      const blocks = [
+        plain('p1', 'Passport'),
+        tb('tb1', 'task-1', 'Trip', '', [plain('p2', 'Sock')])
+      ]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toBeNull()
+      expect(result.subtaskCandidate).toBeNull()
+      expect(result.plainByContext).toEqual([])
+    })
+
+    it('makes a checkbox that continues a plain list plain, even before it has text', () => {
+      // #given Enter at the end of a plain list, then one more typed line
+      const blocks = [plain('p1', 'Passport'), cl('cl1', ''), cl('cl2', 'Charger')]
+      // and the checkbox Tab put under a plain one
+      blocks.push(plain('p2', 'Clothes', [cl('cl3', 'Socks')]))
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then only the ones directly after a plain checkbox, or first under one
+      expect(result.plainByContext).toEqual(['cl1', 'cl3'])
+      // cl2 follows cl1, which is not plain yet in this snapshot
+      expect(result.standaloneCandidate).toEqual({ blockId: 'cl2' })
+    })
+
+    it('converts a checkbox the note opened with, even under a plain one', () => {
+      // #given a line added under a plain list outside the app
+      const blocks = [plain('p1', 'Passport'), cl('cl1', 'Charger')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set(), {
+        openedBlockIds: new Set(['p1', 'cl1'])
+      })
+
+      // #then the open rule wins: every unmarked checkbox becomes a task
+      expect(result.plainByContext).toEqual([])
+      expect(result.standaloneCandidate).toEqual({ blockId: 'cl1' })
+    })
+
+    it('leaves a checkbox after a task or a paragraph to become a task', () => {
+      // #given
+      const blocks = [tb('tb1', 'task-1'), cl('cl1', 'Next'), para('x', 'text'), cl('cl2', 'Other')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.plainByContext).toEqual([])
+      expect(result.standaloneCandidate).toEqual({ blockId: 'cl1' })
+    })
+
+    it('does not claim a remote or dismissed checkbox, or a persisted task line', () => {
+      // #given
+      const blocks = [plain('p1', 'A'), cl('cl1', 'B'), plain('p2', 'C'), cl('cl2', 'D {task:t1}')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set(['cl1']))
+
+      // #then
+      expect(result.plainByContext).toEqual([])
     })
   })
 })

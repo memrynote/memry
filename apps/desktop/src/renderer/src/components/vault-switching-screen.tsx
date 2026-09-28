@@ -44,7 +44,7 @@ export function VaultSwitchingScreen({ target }: { target: VaultSwitchTarget }) 
         ) : (
           <div className="flex h-full shrink-0 flex-col bg-sidebar" style={{ width: layout.width }}>
             <div className="drag-region h-9 shrink-0" />
-            <VaultTitleRow name={target.name} dotColor={accent} className="pt-2" />
+            <VaultTitleRow name={target.name} icon={target.icon} accent={accent} className="pt-2" />
           </div>
         ))}
       <div className="flex min-w-0 flex-1 flex-col">

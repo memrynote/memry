@@ -8,6 +8,7 @@ export {
   getLocalOnlyCount,
   listNotesFromCache,
   listNoteCacheFilesAfter,
+  listNoteCacheUnderFolder,
   countNotes,
   bulkInsertNotes,
   clearNoteCache,

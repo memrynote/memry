@@ -27,6 +27,8 @@ export const NotesChannels = {
     MOVE: 'notes:move',
     /** Delete a note */
     DELETE: 'notes:delete',
+    /** Task ids carried as `{task:<id>}` lines by notes about to be deleted */
+    GET_CARRIED_TASKS: 'notes:get-carried-tasks',
     /** List notes with filtering */
     LIST: 'notes:list',
     /** Get all tags used in notes */

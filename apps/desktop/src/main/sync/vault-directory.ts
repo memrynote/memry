@@ -2,11 +2,19 @@ import fs from 'fs'
 import path from 'path'
 
 import { KEYCHAIN_ENTRIES, KEY_DERIVATION_CONTEXTS } from '@memry/contracts/crypto'
-import type { AccountVaultInfo, SelectVaultResponse } from '@memry/contracts/vault-api'
+import { VaultChannels } from '@memry/contracts/ipc-channels'
+import {
+  VaultIconSchema,
+  type AccountVaultInfo,
+  type SelectVaultResponse
+} from '@memry/contracts/vault-api'
 
 import { retrieveKey, secureCleanup } from '../crypto'
 import { deriveKey } from '../crypto/keys'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
+import { isValidDirectory } from '../vault/init'
+import { readVaultIcon, writeVaultIcon } from '../vault/vault-icon'
 import { defaultVaultParentDir as defaultParentDir } from '../vault/default-parent'
 import {
   getAccountVaultsCache,
@@ -17,10 +25,15 @@ import {
   upsertVault
 } from '../store'
 import { abandonBootstrap, beginBootstrap, markBootstrapInteractive } from './bootstrap-metrics'
-import { deleteFromServer, getFromServer, postToServer } from './http-client'
+import { deleteFromServer, getFromServer, postToServer, putToServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
 import { getSignedInUserId } from './vault-account-binding'
-import { decryptVaultName, encryptVaultName } from './vault-name-crypto'
+import {
+  decryptVaultIcon,
+  decryptVaultName,
+  encryptVaultIcon,
+  encryptVaultName
+} from './vault-name-crypto'
 
 const log = createLogger('VaultDirectory')
 
@@ -32,6 +45,10 @@ interface ServerVaultEntry {
   createdAt: number | null
   encryptedName: string | null
   nameNonce: string | null
+  /** Absent from servers that predate vault icons. */
+  encryptedIcon?: string | null
+  iconNonce?: string | null
+  iconUpdatedAt?: number | null
 }
 
 let lastRefreshAt = 0
@@ -80,7 +97,9 @@ export async function refreshVaultDirectory(opts?: { force?: boolean }): Promise
     setAccountVaultsCache({ fetchedAt: Date.now(), vaults: remote })
 
     const remoteByUuid = new Map(remote.map((v) => [v.vaultUuid, v]))
+    const serverByUuid = new Map(vaults.map((v) => [v.vaultUuid, v]))
     const userId = await getSignedInUserId()
+    let iconsChanged = false
     for (const local of getVaults()) {
       if (!local.vaultUuid) continue
       // Only vaults this account syncs. The list is every folder ever opened on
@@ -90,25 +109,94 @@ export async function refreshVaultDirectory(opts?: { force?: boolean }): Promise
       const binding = local.accountBinding
       if (!userId || binding?.mode !== 'sync' || binding.userId !== userId) continue
       const entry = remoteByUuid.get(local.vaultUuid)
-      if (entry && entry.name === local.name) continue
-      const { encryptedName, nameNonce } = encryptVaultName(local.name, nameKey, local.vaultUuid)
-      try {
-        await postToServer(
-          '/sync/vaults',
-          { vaultUuid: local.vaultUuid, encryptedName, nameNonce },
-          token
-        )
-      } catch (err) {
-        // 402 (free plan / vault limit) is expected here — registration retries
-        // on the next refresh once entitlements change.
-        log.info('Vault self-registration skipped', { vaultUuid: local.vaultUuid, err })
+      if (!entry || entry.name !== local.name) {
+        const { encryptedName, nameNonce } = encryptVaultName(local.name, nameKey, local.vaultUuid)
+        try {
+          await postToServer(
+            '/sync/vaults',
+            { vaultUuid: local.vaultUuid, encryptedName, nameNonce },
+            token
+          )
+        } catch (err) {
+          // 402 (free plan / vault limit) is expected here — registration retries
+          // on the next refresh once entitlements change.
+          log.info('Vault self-registration skipped', { vaultUuid: local.vaultUuid, err })
+        }
+      }
+      const server = serverByUuid.get(local.vaultUuid)
+      if (await syncVaultIcon(local.path, local.vaultUuid, server, nameKey, token)) {
+        iconsChanged = true
       }
     }
+    if (iconsChanged) broadcastToAllWindows(VaultChannels.events.LIST_CHANGED)
   } catch (err) {
     log.warn('Vault directory refresh failed', err)
   } finally {
     secureCleanup(nameKey)
   }
+}
+
+/**
+ * Reconcile one local vault's icon with the account copy, last writer wins on
+ * the change time. A local change not yet accepted is pushed; a newer account
+ * copy is adopted into the vault's config.json. Returns true when the local
+ * icon changed. Failures leave the pending change for the next refresh.
+ */
+async function syncVaultIcon(
+  vaultPath: string,
+  vaultUuid: string,
+  server: ServerVaultEntry | undefined,
+  key: Uint8Array,
+  token: string
+): Promise<boolean> {
+  if (!isValidDirectory(vaultPath)) return false
+  const local = readVaultIcon(vaultPath)
+  const remoteAt = server?.iconUpdatedAt ?? null
+
+  if (local?.pendingSync && (remoteAt === null || local.updatedAt > remoteAt)) {
+    const sealed =
+      local.value === null
+        ? { encryptedIcon: null, iconNonce: null }
+        : encryptVaultIcon(local.value, key, vaultUuid)
+    try {
+      await putToServer(
+        `/sync/vaults/${encodeURIComponent(vaultUuid)}/icon`,
+        { ...sealed, iconUpdatedAt: local.updatedAt },
+        token
+      )
+    } catch (err) {
+      // 402, 404 (not registered yet, or a server without icon support) and
+      // network errors: the change stays pending and retries on the next refresh.
+      log.info('Vault icon push skipped', { vaultUuid, err })
+      return false
+    }
+    // A stale write the server refused (applied: false) is adopted from the
+    // account copy on the next refresh. The user may have changed the icon
+    // again while the request was in flight: only clear the flag for this change.
+    const current = readVaultIcon(vaultPath)
+    if (current && current.updatedAt === local.updatedAt) {
+      writeVaultIcon(vaultPath, { ...current, pendingSync: false })
+    }
+    return false
+  }
+
+  if (remoteAt !== null && remoteAt > (local?.updatedAt ?? -1)) {
+    let value: string | null = null
+    if (server?.encryptedIcon && server.iconNonce) {
+      value = decryptVaultIcon(server.encryptedIcon, server.iconNonce, key, vaultUuid)
+      // Undecryptable, or a format this version cannot draw: keep the local
+      // icon rather than clearing it.
+      if (value === null || !VaultIconSchema.safeParse(value).success) return false
+    }
+    writeVaultIcon(vaultPath, { value, updatedAt: remoteAt, pendingSync: false })
+    return true
+  }
+
+  if (local?.pendingSync) {
+    // Same change time on both sides: the account already has this change.
+    writeVaultIcon(vaultPath, { ...local, pendingSync: false })
+  }
+  return false
 }
 
 function slugify(name: string): string {

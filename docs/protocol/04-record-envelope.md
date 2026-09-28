@@ -656,12 +656,28 @@ stopped syncing.
 **Normative.** A vault's display name is its own small envelope, **not** a record
 payload. XChaCha20-Poly1305 under the **vault key** with AAD
 `vault-name-v1:<vaultUuid>`
-(`apps/desktop/src/main/sync/vault-name-crypto.ts:5-8`, `:21`), yielding
+(`apps/desktop/src/main/sync/vault-name-crypto.ts:5-9`, `:46-53`), yielding
 `encryptedName` and `nameNonce`, both standard base64
-(`apps/desktop/src/main/sync/vault-name-crypto.ts:22`).
+(`apps/desktop/src/main/sync/vault-name-crypto.ts:11-12`).
 
 **Its failure contract differs from every other envelope in this chapter: decrypt
 failure returns `null` rather than throwing**
-(`apps/desktop/src/main/sync/vault-name-crypto.ts:31-36`). A client that reuses
+(`apps/desktop/src/main/sync/vault-name-crypto.ts:31-44`). A client that reuses
 the item envelope for a vault name produces the wrong bytes; a client that
 propagates a throw here breaks the vault list.
+
+## 4.16 The vault-icon envelope
+
+**Normative.** A vault's icon is sealed exactly like its name (§4.15), under the
+same vault key, with its own AAD `vault-icon-v1:<vaultUuid>`
+(`apps/desktop/src/main/sync/vault-name-crypto.ts:6`, `:68-86`), yielding
+`encryptedIcon` and `iconNonce`. The distinct AAD means a name envelope never
+opens as an icon and an icon never opens as a name. Decrypt failure returns
+`null`, as for the name.
+
+The plaintext is `icon:<HugeiconName>` (a Hugeicons library icon) or an emoji of
+at most 32 UTF-16 code units; `custom:` uploaded icons are refused
+(`packages/contracts/src/vault-api.ts`, `VaultIconSchema`). A reader that
+decrypts a value it cannot validate MUST keep its local icon rather than clear
+it. A reset to the default icon is not an envelope: it travels as both fields
+`null` with a change time (chapter 05 §5.11.1).

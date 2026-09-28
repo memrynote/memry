@@ -255,7 +255,7 @@ Picking a single window (focusing the app from a notification click, targeting t
 
 ### Agent Chat streaming deltas
 
-`agent:event` is one channel carrying two very different traffic shapes. Turn-lifecycle events (`message_upserted`, `conversation_updated`, `tool_call_*`, `turn_completed`, `turn_error`) are per turn and still fan out to every window through `broadcastToAllWindows`. `assistant_text_delta` is emitted once per token, and a window that does not display that conversation would run the whole agent reducer for text it never renders, so `broadcastAgentEvent` in `src/main/agent/runtime/event-bus.ts` addresses those to the windows that do.
+`agent:event` is one channel carrying two very different traffic shapes. Turn-lifecycle events (`message_upserted`, `conversation_updated`, `tool_call_*`, `turn_completed`, `turn_error`) are per turn and still fan out to every window through `broadcastToAllWindows`. `assistant_text_delta` and `assistant_reasoning_delta` are emitted once per token, and a window that does not display that conversation would run the whole agent reducer for text it never renders, so `broadcastAgentEvent` in `src/main/agent/runtime/event-bus.ts` addresses those to the windows that do.
 
 Each window reports what it shows over `agent:setStreamTarget` (`{ conversationId: string | null }`, `null` meaning Agent Chat is open with nothing selected). `AgentProvider` sends it whenever its active conversation changes; main keys the report by `BrowserWindow.id` — the same id the renderer already sends as `sourceWindowId`.
 

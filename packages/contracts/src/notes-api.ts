@@ -328,6 +328,16 @@ export const NoteAppendBlocksSchema = z.object({
 })
 
 /**
+ * The notes a delete is about to remove: single notes by id, and folders by
+ * path (every note under them). Main answers with the tasks those notes carry
+ * as `{task:<id>}` lines, so the delete dialog can offer to delete them too.
+ */
+export const NoteCarriedTasksSchema = z.object({
+  noteIds: z.array(z.string()).max(10_000).default([]),
+  folderPaths: z.array(z.string()).max(1_000).default([])
+})
+
+/**
  * One window of lines from an open large-file session.
  *
  * `count` is capped because the response is an IPC payload: the viewer only

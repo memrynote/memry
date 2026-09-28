@@ -63,7 +63,8 @@ vi.mock('../journal/runtime-effects', () => ({
 vi.mock('../notes/runtime-effects', () => ({
   syncNoteCreate: vi.fn(),
   syncNoteDelete: vi.fn(),
-  syncNoteUpdate: vi.fn()
+  syncNoteUpdate: vi.fn(),
+  unlinkTasksFromDeletedNote: vi.fn()
 }))
 
 // Both readers are spied through to the real implementation: the add path must
@@ -116,7 +117,7 @@ vi.mock('../telemetry/diagnostics', () => ({
 
 import { getIndexDatabase, getDatabase, updateFtsContent } from '../database'
 import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
-import { syncNoteCreate } from '../notes/runtime-effects'
+import { syncNoteCreate, unlinkTasksFromDeletedNote } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
 import { getConfig } from './index'
 import { safeRead } from './file-ops'
@@ -279,6 +280,8 @@ describe('vault watcher', () => {
 
     const deleted = indexDb.db.select().from(noteCache).where(eq(noteCache.id, noteId)).get()
     expect(deleted).toBeUndefined()
+    // A file removed outside the app never reaches `deleteNoteCommand`.
+    expect(unlinkTasksFromDeletedNote).toHaveBeenCalledWith(noteId)
     const deletedCanonical = dataDb.db
       .select()
       .from(noteMetadata)

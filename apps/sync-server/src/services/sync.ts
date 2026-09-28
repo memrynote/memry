@@ -1426,6 +1426,11 @@ export interface UserVaultSummary {
   createdAt: number | null
   encryptedName: string | null
   nameNonce: string | null
+  /** Sealed icon; null when unset or reset. */
+  encryptedIcon: string | null
+  iconNonce: string | null
+  /** Client ms of the last icon change, reset included; null when never set. */
+  iconUpdatedAt: number | null
 }
 
 export const listUserVaults = async (
@@ -1438,7 +1443,10 @@ export const listUserVaults = async (
               COALESCE(cnt.itemCount, 0) AS itemCount,
               sv.created_at AS createdAt,
               sv.encrypted_name AS encryptedName,
-              sv.name_nonce AS nameNonce
+              sv.name_nonce AS nameNonce,
+              sv.encrypted_icon AS encryptedIcon,
+              sv.icon_nonce AS iconNonce,
+              sv.icon_updated_at AS iconUpdatedAt
        FROM sync_vaults sv
        LEFT JOIN (
          SELECT user_id, vault_id, COUNT(*) AS itemCount
@@ -1456,7 +1464,11 @@ export const listUserVaults = async (
     itemCount: Number(r.itemCount),
     createdAt: r.createdAt ?? null,
     encryptedName: r.encryptedName ?? null,
-    nameNonce: r.nameNonce ?? null
+    nameNonce: r.nameNonce ?? null,
+    encryptedIcon: r.encryptedIcon ?? null,
+    iconNonce: r.iconNonce ?? null,
+    iconUpdatedAt:
+      r.iconUpdatedAt === null || r.iconUpdatedAt === undefined ? null : Number(r.iconUpdatedAt)
   }))
 }
 
@@ -1474,6 +1486,38 @@ export const setVaultName = async (
     )
     .bind(encryptedName, nameNonce, Math.floor(Date.now() / 1000), userId, vaultId)
     .run()
+}
+
+/**
+ * Last writer wins on the client's change time. A write no newer than the
+ * stored one changes nothing, so a device replaying a stale icon cannot undo a
+ * newer change from another device. Exported for the schema test.
+ */
+export const SET_VAULT_ICON_SQL = `UPDATE sync_vaults
+   SET encrypted_icon = ?, icon_nonce = ?, icon_updated_at = ?, updated_at = ?
+   WHERE user_id = ? AND vault_id = ?
+     AND (icon_updated_at IS NULL OR icon_updated_at < ?)`
+
+/** Returns true when the icon was stored, false when a newer one was already there. */
+export const setVaultIcon = async (
+  db: D1Database,
+  userId: string,
+  vaultId: string,
+  icon: { encryptedIcon: string | null; iconNonce: string | null; iconUpdatedAt: number }
+): Promise<boolean> => {
+  const result = await db
+    .prepare(SET_VAULT_ICON_SQL)
+    .bind(
+      icon.encryptedIcon,
+      icon.iconNonce,
+      icon.iconUpdatedAt,
+      Math.floor(Date.now() / 1000),
+      userId,
+      vaultId,
+      icon.iconUpdatedAt
+    )
+    .run()
+  return (result.meta?.changes ?? 0) > 0
 }
 
 // Upper bound on simultaneous R2 reads from pullItems. Conservative for a

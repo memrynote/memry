@@ -25,12 +25,13 @@ export function setAgentStreamTarget(windowId: number, conversationId: string | 
 /**
  * Fan an agent event out to the renderer.
  *
- * Every event kind except `assistant_text_delta` goes to all windows: they are
- * per-turn, not per-token, and other windows need them to keep their
- * conversation list and transcript current.
+ * Every event kind except the two per-token deltas (`assistant_text_delta`,
+ * `assistant_reasoning_delta`) goes to all windows: they are per-turn, not
+ * per-token, and other windows need them to keep their conversation list and
+ * transcript current.
  *
- * `assistant_text_delta` is emitted once per token, and a window that does not
- * show the conversation pays full reducer cost for text it will never render.
+ * The deltas are emitted once per token, and a window that does not show the
+ * conversation pays full reducer cost for text it will never render.
  * Those go only to the windows that reported this conversation — with the
  * completed `message_upserted` still broadcast to everyone, so a window that is
  * skipped mid-stream converges on the final text instead of being stranded.
@@ -41,7 +42,7 @@ export function setAgentStreamTarget(windowId: number, conversationId: string | 
  * narrowed by a window that opted in.
  */
 export function broadcastAgentEvent(event: AgentEvent): void {
-  if (event.kind !== 'assistant_text_delta') {
+  if (event.kind !== 'assistant_text_delta' && event.kind !== 'assistant_reasoning_delta') {
     broadcastToAllWindows(AgentChannels.events.AGENT_EVENT, event)
     return
   }

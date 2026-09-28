@@ -13,6 +13,7 @@ import {
   type SuggestionMenuProps
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
+import { insertOrUpdateBlockForSlashMenu } from '@blocknote/core'
 import { withCollaborationIfLive } from './collaboration-options'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -99,6 +100,15 @@ import { registerEditorPlugin } from './register-editor-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
 import { registerBlockSelection } from './marquee-block-registry'
 import { MoveBlockDialog } from './move-block-dialog'
+import { TaskRemovalDialog } from './task-removal-dialog'
+import {
+  markTaskRemovalsHandled,
+  relinkTaskNotes,
+  takeHandledTaskRemoval,
+  taskIdsInBlocks
+} from './task-removal'
+import { registerCheckboxTaskActions } from './checkbox-task-actions'
+import { turnTaskIntoCheckbox } from './task-to-checkbox'
 import {
   AttachmentPickerDialog,
   buildInsertedAttachmentBlock,
@@ -153,6 +163,21 @@ import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('ContentArea')
+
+/** localStorage flag: the first-conversion hint has been shown on this device. */
+const CONVERSION_HINT_KEY = 'memry_checkbox_task_hint_seen'
+
+function collectBlockIds(blocks: Array<{ id: string; children?: unknown[] }>): Set<string> {
+  const ids = new Set<string>()
+  const walk = (list: Array<{ id: string; children?: unknown[] }>): void => {
+    for (const block of list) {
+      ids.add(block.id)
+      if (block.children?.length) walk(block.children as typeof list)
+    }
+  }
+  walk(blocks)
+  return ids
+}
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 
@@ -359,6 +384,24 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // per block at a time, whatever the title does in the meantime.
   const draftCreateInFlightRef = useRef(new Set<string>())
   const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
+  // Checkboxes this editor turned into tasks, by block id, with the line they
+  // were. Undo puts the checkbox back, and the task the conversion made goes.
+  const convertedCheckboxesRef = useRef(new Map<string, { taskId: string; content: unknown }>())
+  // Every block the note opened with. Only a checkbox made after that can
+  // continue a plain list; one already in the file converts on open.
+  const openedBlockIdsRef = useRef<ReadonlySet<string>>(new Set())
+  // Tasks whose blocks left this note while the task itself was kept, so the
+  // note was dropped from their linked notes. Undo brings a block back, and
+  // the link comes back with it.
+  const unlinkedTaskIdsRef = useRef<Set<string>>(new Set())
+  // Removed tasks the removal dialog is asking about. A ref, not state: the
+  // dialog's close runs `keep` right after its delete button ran `delete`, and
+  // only a synchronous take lets the second one find nothing left to do.
+  const pendingRemovalRef = useRef<string[]>([])
+  const [pendingRemovalCount, setPendingRemovalCount] = useState(0)
+  // True for the one synchronous dispatch a cut makes. Cut is a move, not a
+  // delete: the line is on the clipboard, and pasting it must find its task.
+  const cutInProgressRef = useRef(false)
   // Blocks last written by another device or window (a Y.Doc update that
   // arrived through main). The editor that typed a checkbox owns turning it
   // into a task. When the note is open on two devices, both used to convert the
@@ -367,12 +410,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // its doc, so both rows went and the block was left pointing at nothing. A
   // local edit to the block takes it back.
   const remoteAuthoredBlocksRef = useRef<Set<string>>(new Set())
-  // Debounced standalone-task auto-convert. Holds the timer + the blockId we
-  // intend to convert when it fires. The delay (CONVERT_DEBOUNCE_MS) is the
-  // window in which the user can press Tab to indent the new checkbox under a
-  // sibling taskBlock instead of having it auto-promoted to a top-level task.
-  const pendingConvertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingConvertBlockIdRef = useRef<string | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -1178,6 +1215,76 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor]
   )
 
+  const discardTask = useCallback((taskId: string) => {
+    tasksService
+      .delete(taskId)
+      .catch((err) =>
+        log.warn('Failed to delete a task whose conversion was undone', { taskId, err })
+      )
+  }, [])
+
+  // A checkbox back where its task was stays a checkbox, including after the
+  // note is reopened. A tracked edit on purpose: it clears the redo stack, and
+  // a redo would otherwise bring back a task block whose row is gone.
+  const keepCheckboxPlain = useCallback(
+    (blockId: string) => {
+      const block = editor.getBlock(blockId)
+      if (!block || block.type !== 'checkListItem' || (block.props as any)?.plain) return
+      editor.updateBlock(block, { props: { plain: true } as any })
+    },
+    [editor]
+  )
+
+  // The "Keep as checkbox" action on the first-conversion hint: the same as
+  // pressing undo right away, from a button.
+  const revertConversion = useCallback(
+    (blockId: string) => {
+      const converted = convertedCheckboxesRef.current.get(blockId)
+      const block = editor.getBlock(blockId)
+      if (!converted || !block || block.type !== 'taskBlock') return
+      if ((block.props as any)?.taskId !== converted.taskId) return
+      convertedCheckboxesRef.current.delete(blockId)
+      markTaskRemovalsHandled(editor, [converted.taskId])
+      editor.updateBlock(block, {
+        type: 'checkListItem' as any,
+        props: { checked: !!(block.props as any)?.checked, plain: true } as any,
+        content: converted.content as any
+      })
+      discardTask(converted.taskId)
+    },
+    [editor, discardTask]
+  )
+
+  // Once per device: the first checkbox that turns into a task on its own says
+  // so, and says how to keep it a checkbox. After that, undo is the way.
+  const showConversionHint = useCallback(
+    (blockId: string) => {
+      try {
+        if (localStorage.getItem(CONVERSION_HINT_KEY)) return
+        localStorage.setItem(CONVERSION_HINT_KEY, '1')
+      } catch {
+        return
+      }
+      toast(tRef.current('editor.checkboxTask.converted'), {
+        description: tRef.current('editor.checkboxTask.hint', { undo: isMac ? '⌘Z' : 'Ctrl+Z' }),
+        action: {
+          label: tRef.current('editor.checkboxTask.keepAsCheckbox'),
+          onClick: () => revertConversion(blockId)
+        }
+      })
+    },
+    [revertConversion]
+  )
+
+  // Bookkeeping once a conversion has its task id on the block.
+  const rememberConversion = useCallback(
+    (blockId: string, taskId: string, content: unknown, auto: boolean) => {
+      convertedCheckboxesRef.current.set(blockId, { taskId, content })
+      if (auto) showConversionHint(blockId)
+    },
+    [showConversionHint]
+  )
+
   // A rejected completion must not cost the block its task id. The row already
   // exists at this point, and a block left on `taskId: ''` can never find it.
   const completeConverted = useCallback(async (taskId: string, completedAt: string | null) => {
@@ -1189,7 +1296,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [])
 
   const convertCheckboxToTask = useCallback(
-    (blockId: string) => {
+    (blockId: string, auto = false) => {
       const block = editor.getBlock(blockId)
       if (!block) return
 
@@ -1309,6 +1416,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           if (result.success && result.task) {
             if (isDone) await completeConverted(result.task.id, doneAt)
             const freshBlock = editor.getBlock(blockId)
+            // Undone while the row was being created: the checkbox is back, so
+            // the task it would have become goes.
+            if (freshBlock && freshBlock.type !== 'taskBlock') {
+              discardTask(result.task.id)
+              keepCheckboxPlain(blockId)
+              return
+            }
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
               const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
@@ -1329,6 +1443,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
+              rememberConversion(blockId, result.task.id, originalContent, auto)
             }
           } else {
             restoreCheckbox(blockId, originalContent, wasChecked)
@@ -1341,8 +1456,34 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
       })()
     },
-    [editor, noteId, tasksCtx, completeConverted, restoreCheckbox]
+    [
+      editor,
+      noteId,
+      tasksCtx,
+      completeConverted,
+      restoreCheckbox,
+      discardTask,
+      keepCheckboxPlain,
+      rememberConversion
+    ]
   )
+
+  // The block menu's Turn into "Task" converts through this same path, and its
+  // "Turn into checkbox" goes the other way (checkbox-task-actions.ts).
+  useEffect(() => {
+    if (!runSideEffects) return
+    return registerCheckboxTaskActions(editor, {
+      toTask: (blockId) => convertCheckboxToTask(blockId),
+      toCheckbox: (blockId) => {
+        // Asked about like any task leaving the note, even one converted this
+        // session: this is a choice, not an undo.
+        convertedCheckboxesRef.current.delete(blockId)
+        turnTaskIntoCheckbox(editor as any, blockId).catch((err) =>
+          log.warn('Failed to turn a task into a checkbox', { blockId, err })
+        )
+      }
+    })
+  }, [editor, runSideEffects, convertCheckboxToTask])
 
   const convertCheckboxToSubtask = useCallback(
     (blockId: string, parentTaskId: string) => {
@@ -1401,6 +1542,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           if (result.success && result.task) {
             if (isDone) await completeConverted(result.task.id, doneAt)
             const freshBlock = editor.getBlock(blockId)
+            // Same undo race as the top-level path.
+            if (freshBlock && freshBlock.type !== 'taskBlock') {
+              discardTask(result.task.id)
+              keepCheckboxPlain(blockId)
+              return
+            }
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || title
               // Live `checked`, same reason as the top-level path: the block is
@@ -1417,6 +1564,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
+              rememberConversion(blockId, result.task.id, originalContent, true)
             }
           } else {
             restoreCheckbox(blockId, originalContent, wasChecked)
@@ -1427,63 +1575,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
       })()
     },
-    [editor, noteId, completeConverted, restoreCheckbox]
+    [
+      editor,
+      noteId,
+      completeConverted,
+      restoreCheckbox,
+      discardTask,
+      keepCheckboxPlain,
+      rememberConversion
+    ]
   )
-
-  const cancelPendingConvert = useCallback(() => {
-    if (pendingConvertTimerRef.current) {
-      clearTimeout(pendingConvertTimerRef.current)
-      pendingConvertTimerRef.current = null
-    }
-    pendingConvertBlockIdRef.current = null
-  }, [])
-
-  // Debounce window for standalone task auto-conversion. Long enough that a
-  // user typing `- [ ] foo` then Tab can land in the indent path before the
-  // block is replaced with the read-only taskBlock renderer.
-  const CONVERT_DEBOUNCE_MS = 600
-
-  const schedulePendingConvert = useCallback(
-    (blockId: string) => {
-      if (pendingConvertBlockIdRef.current === blockId && pendingConvertTimerRef.current) {
-        // Already scheduled for the same block — refresh the timer.
-        clearTimeout(pendingConvertTimerRef.current)
-      } else if (pendingConvertTimerRef.current) {
-        clearTimeout(pendingConvertTimerRef.current)
-      }
-
-      pendingConvertBlockIdRef.current = blockId
-      pendingConvertTimerRef.current = setTimeout(() => {
-        pendingConvertTimerRef.current = null
-        pendingConvertBlockIdRef.current = null
-
-        // Re-scan: the structure may have changed during the debounce window
-        // (e.g. user pressed Tab and the block became a child of another
-        // taskBlock). Pick the latest intent for this block.
-        const latest = analyzeTaskIntents(editor.document as any[], taskIntentExclusions())
-        if (latest.subtaskCandidate?.blockId === blockId) {
-          convertCheckboxToSubtask(
-            latest.subtaskCandidate.blockId,
-            latest.subtaskCandidate.parentTaskId
-          )
-        } else if (latest.standaloneCandidate?.blockId === blockId) {
-          convertCheckboxToTask(blockId)
-        }
-        // else: the block disappeared or was already converted, no-op.
-      }, CONVERT_DEBOUNCE_MS)
-    },
-    [editor, convertCheckboxToSubtask, convertCheckboxToTask, taskIntentExclusions]
-  )
-
-  // Cleanup the debounce timer on unmount so a teardown mid-typing doesn't
-  // mutate state on a torn-down editor.
-  useEffect(() => {
-    return () => {
-      if (pendingConvertTimerRef.current) {
-        clearTimeout(pendingConvertTimerRef.current)
-      }
-    }
-  }, [])
 
   const createTaskForDraftBlock = useCallback(
     (blockId: string, title: string) => {
@@ -1803,7 +1904,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           throw new Error(result?.error ?? 'append failed')
         }
 
+        // The tasks moved with their lines: they belong to the target note
+        // now, so the removal here must neither delete them nor ask about them.
+        const movedTaskIds = taskIdsInBlocks([block] as never)
+        markTaskRemovalsHandled(editor, movedTaskIds)
         editor.removeBlocks([block])
+        for (const taskId of movedTaskIds) {
+          relinkTaskNotes(taskId, { unlink: noteId, link: targetNoteId }).catch((err) =>
+            log.warn('Failed to relink a moved task', { taskId, err })
+          )
+        }
       } catch (err) {
         toast.error(extractErrorMessage(err, tRef.current('editor.blockMenu.moveDialog.failed')))
       } finally {
@@ -2019,26 +2129,36 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
     for (const change of changes ?? []) remoteAuthoredBlocksRef.current.delete(change.block.id)
 
-    const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions())
+    const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions(), {
+      openedBlockIds: openedBlockIdsRef.current
+    })
 
-    // Subtasks are unambiguous (the user already structured them as
-    // children of a taskBlock) and convert immediately. Standalone
-    // checkboxes are debounced so the user has time to press Tab to
-    // promote them into a subtask before the read-only taskBlock
-    // renderer steals focus.
+    // Both paths convert in the same change that produced the checkbox, so a
+    // `- [ ]` line never renders as a plain checkbox first. Tab-to-subtask is
+    // handled by the taskBlock title input (see task-block-renderer).
     if (intents.subtaskCandidate) {
-      cancelPendingConvert()
       convertCheckboxToSubtask(
         intents.subtaskCandidate.blockId,
         intents.subtaskCandidate.parentTaskId
       )
     } else if (intents.standaloneCandidate) {
-      schedulePendingConvert(intents.standaloneCandidate.blockId)
-    } else if (
-      pendingConvertBlockIdRef.current &&
-      !intents.currentTaskIds.has(pendingConvertBlockIdRef.current)
-    ) {
-      cancelPendingConvert()
+      convertCheckboxToTask(intents.standaloneCandidate.blockId, true)
+    } else if (intents.emptyCheckbox) {
+      // A bare `- [ ]` shows as a draft taskBlock immediately. No row is
+      // created: the draft path below creates it once a title is typed, and
+      // an empty draft is removed by Backspace/Enter in the title input.
+      const empty = editor.getBlock(intents.emptyCheckbox.blockId)
+      if (empty) {
+        editor.updateBlock(empty, {
+          type: 'taskBlock' as any,
+          props: {
+            taskId: '',
+            title: '',
+            checked: !!(empty.props as any)?.checked,
+            parentTaskId: intents.emptyCheckbox.parentTaskId
+          }
+        })
+      }
     }
 
     if (intents.draftTaskBlock) {
@@ -2071,13 +2191,142 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       void tasksService.update({ id: orphan.taskId, parentId: null })
     }
 
-    for (const prevId of knownTaskBlockIdsRef.current) {
-      if (!intents.currentTaskIds.has(prevId)) {
-        void tasksService.delete(prevId)
+    const removedTaskIds = [...knownTaskBlockIdsRef.current].filter(
+      (taskId) => !intents.currentTaskIds.has(taskId)
+    )
+    for (const taskId of intents.currentTaskIds) {
+      // Undo put back a block whose task was kept off this note: link it again.
+      if (!knownTaskBlockIdsRef.current.has(taskId) && unlinkedTaskIdsRef.current.delete(taskId)) {
+        relinkTask(taskId, { link: noteId })
       }
     }
     knownTaskBlockIdsRef.current = intents.currentTaskIds
+    handleRemovedTasks(removedTaskIds)
+    markPlainByContext(intents.plainByContext)
   }
+
+  // Enter in a plain list, or Tab under a plain checkbox: the new checkbox is
+  // plain too. Kept off the undo stack, or undo would take the flag off and the
+  // next change would put it straight back, and the user could never undo past
+  // it.
+  const markPlainByContext = (blockIds: string[]): void => {
+    if (blockIds.length === 0) return
+    const apply = (): void => {
+      for (const blockId of blockIds) {
+        const block = editor.getBlock(blockId)
+        if (block?.type === 'checkListItem') {
+          editor.updateBlock(block, { props: { plain: true } as any })
+        }
+      }
+    }
+    if (typeof (editor as any).transact !== 'function') {
+      apply()
+      return
+    }
+    ;(editor as any).transact((tr: any) => {
+      tr.setMeta?.('addToHistory', false)
+      apply()
+    })
+  }
+
+  // The block a removed task was converted from, when the removal is that
+  // conversion being undone: the checkbox is back (or, one undo step in, the
+  // task block has lost its id). Null for anything else, a deleted block
+  // included, which is asked about like any other removal.
+  const undoneConversionBlock = (taskId: string): string | null => {
+    for (const [blockId, converted] of convertedCheckboxesRef.current) {
+      if (converted.taskId !== taskId) continue
+      const block = editor.getBlock(blockId)
+      if (block?.type === 'checkListItem') return blockId
+      if (block?.type === 'taskBlock' && !(block.props as any)?.taskId) return blockId
+      return null
+    }
+    return null
+  }
+
+  // Undo of a conversion ends on a plain checkbox, and the task it made is
+  // deleted without asking: undo means it should never have existed.
+  const settleUndoneConversion = (blockId: string, taskId: string): void => {
+    const converted = convertedCheckboxesRef.current.get(blockId)
+    convertedCheckboxesRef.current.delete(blockId)
+    const block = editor.getBlock(blockId)
+    if (block?.type === 'taskBlock') {
+      editor.updateBlock(block, {
+        type: 'checkListItem' as any,
+        props: { checked: !!(block.props as any)?.checked, plain: true } as any,
+        content: converted?.content as any
+      })
+    } else {
+      keepCheckboxPlain(blockId)
+    }
+    discardTask(taskId)
+  }
+
+  const relinkTask = (taskId: string, change: { unlink?: string; link?: string }): void => {
+    relinkTaskNotes(taskId, change).catch((err) =>
+      log.warn("Failed to update a task's linked notes", { taskId, err })
+    )
+  }
+
+  // The task stays; this note just stops being one of its linked notes.
+  const keepTaskOffNote = (taskId: string): void => {
+    unlinkedTaskIdsRef.current.add(taskId)
+    relinkTask(taskId, { unlink: noteId })
+  }
+
+  // Every task id that left the document in one change. See task-removal.ts
+  // for the three outcomes.
+  const handleRemovedTasks = (taskIds: string[]): void => {
+    const asked: string[] = []
+    for (const taskId of taskIds) {
+      if (takeHandledTaskRemoval(editor, taskId)) continue
+      const undoneFrom = undoneConversionBlock(taskId)
+      if (undoneFrom) settleUndoneConversion(undoneFrom, taskId)
+      else if (cutInProgressRef.current) keepTaskOffNote(taskId)
+      else asked.push(taskId)
+    }
+    if (asked.length === 0) return
+    pendingRemovalRef.current = [...new Set([...pendingRemovalRef.current, ...asked])]
+    setPendingRemovalCount(pendingRemovalRef.current.length)
+  }
+
+  const takePendingRemoval = (): string[] => {
+    const taskIds = pendingRemovalRef.current
+    pendingRemovalRef.current = []
+    setPendingRemovalCount(0)
+    return taskIds
+  }
+
+  const keepRemovedTasks = (): void => {
+    for (const taskId of takePendingRemoval()) keepTaskOffNote(taskId)
+  }
+
+  const deleteRemovedTasks = (): void => {
+    const taskIds = takePendingRemoval()
+    if (taskIds.length === 0) return
+    tasksService
+      .bulkDelete(taskIds)
+      .then((result) => {
+        if (!result.success) toast.error(result.error ?? t('editor.taskRemoval.deleteFailed'))
+      })
+      .catch((err) => toast.error(extractErrorMessage(err, t('editor.taskRemoval.deleteFailed'))))
+  }
+
+  // Cut removes the selection in the same synchronous dispatch that fires the
+  // `cut` event, so the flag only has to outlive that one turn. Capture phase:
+  // this container sits above ProseMirror's own listener.
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return
+    const onCut = (): void => {
+      cutInProgressRef.current = true
+      setTimeout(() => {
+        cutInProgressRef.current = false
+      }, 0)
+    }
+    container.addEventListener('cut', onCut, true)
+    return () => container.removeEventListener('cut', onCut, true)
+  }, [editor])
 
   // The content a note opens with never reaches `onChange`. y-prosemirror
   // (1.3, BlockNote 0.52+) renders the Y.Doc into ProseMirror synchronously
@@ -2086,7 +2335,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // deferred that first render a tick, so the subscription caught it. Without
   // this scan, a checkbox that arrived with the file (an Obsidian Tasks line)
   // stays a plain checkbox until the user happens to type in the note.
-  const scanOpenedContent = useEffectEvent(applyTaskIntents)
+  //
+  // It also records which blocks the note opened with: those convert like any
+  // other checkbox, even under a plain one (see `TaskIntentOptions`).
+  const scanOpenedContent = useEffectEvent(() => {
+    openedBlockIdsRef.current = collectBlockIds(editor.document as any[])
+    applyTaskIntents()
+  })
   useEffect(() => {
     scanOpenedContent()
   }, [editor])
@@ -2182,6 +2437,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onInsert={insertPickedAttachment}
             />
           )}
+          <TaskRemovalDialog
+            count={pendingRemovalCount}
+            onKeep={keepRemovedTasks}
+            onDelete={deleteRemovedTasks}
+          />
           {moveBlockId && noteId && (
             <MoveBlockDialog
               open
@@ -2285,6 +2545,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                       // so inside a cell BlockNote puts the checklist after the
                       // whole table. Inside a cell the item inserts the inline
                       // node at the caret instead — same row, same label.
+                      //
+                      // Outside a cell the row makes a PLAIN checkbox: picking
+                      // "Check List" from a menu is asking for a checkbox, and
+                      // the task is one ⌘Enter away (`As linked task`). Typing
+                      // `[] ` is still the quick way to a task.
                       if ((item as { key?: string }).key === 'check_list') {
                         return inCell
                           ? {
@@ -2292,7 +2557,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                               onItemClick: () =>
                                 editor.insertInlineContent([createInlineCheckboxContent(false)])
                             }
-                          : item
+                          : {
+                              ...item,
+                              onItemClick: () =>
+                                insertOrUpdateBlockForSlashMenu(editor, {
+                                  type: 'checkListItem',
+                                  props: { plain: true }
+                                } as any)
+                            }
                       }
                       // Every attachment command opens the same picker (#2161).
                       // BlockNote's own items insert an empty block and pop the

@@ -1,13 +1,11 @@
 import type { ComponentProps, HTMLAttributes } from 'react'
 import { memo } from 'react'
-import { useReducedMotion } from 'motion/react'
 import { cjk } from '@streamdown/cjk'
 import { code } from '@streamdown/code'
 import { math } from '@streamdown/math'
 import { mermaid } from '@streamdown/mermaid'
 import type { Pluggable, PluggableList, Plugin } from 'unified'
 import {
-  type AnimateOptions,
   defaultRehypePlugins,
   defaultUrlTransform,
   Streamdown,
@@ -84,23 +82,11 @@ const streamdownRehypePlugins: PluggableList = [
 ]
 
 /**
- * Words resolve out of blur as the turn streams. Only while it streams: the
- * animate plugin rewrites every text node into per-word spans, which is dead
- * weight — and an unreadable DOM for tests and screen readers — once the answer
- * stands still.
+ * Streaming motion is the caller's typewriter reveal (see `useStreamingText`),
+ * so Streamdown's own per-word animate plugin stays off.
  */
-const streamAnimation: AnimateOptions = {
-  animation: 'blurIn',
-  sep: 'word',
-  duration: 420,
-  easing: 'cubic-bezier(0.22, 0.61, 0.25, 1)',
-  stagger: 55
-}
-
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => {
-    const prefersReducedMotion = useReducedMotion()
-
     return (
       <Streamdown
         className={cn(
@@ -110,7 +96,7 @@ export const MessageResponse = memo(
         plugins={streamdownPlugins}
         rehypePlugins={streamdownRehypePlugins}
         urlTransform={memryUrlTransform}
-        animated={props.isAnimating && !prefersReducedMotion ? streamAnimation : false}
+        animated={false}
         {...props}
       />
     )

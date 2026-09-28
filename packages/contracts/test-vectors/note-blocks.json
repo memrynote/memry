@@ -464,7 +464,7 @@
     {
       "name": "checkListItem",
       "pins": "the `checked` prop, both ways",
-      "updateHex": "0113f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030d636865636b4c6973744974656d0700f2da95eb0602060400f2da95eb060304446f6e652800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb060207636865636b656401782800f2da95eb060102696401770f636865636b6c6973746974656d2d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb060d030d636865636b4c6973744974656d0700f2da95eb060e060400f2da95eb060f084e6f7420646f6e652800f2da95eb060e0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb060e0974657874436f6c6f7201770764656661756c742800f2da95eb060e0d74657874416c69676e6d656e740177046c6566742800f2da95eb060e07636865636b656401792800f2da95eb060d02696401770f636865636b6c6973746974656d2d3100",
+      "updateHex": "0115f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030d636865636b4c6973744974656d0700f2da95eb0602060400f2da95eb060304446f6e652800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb060207636865636b656401782800f2da95eb060205706c61696e01792800f2da95eb060102696401770f636865636b6c6973746974656d2d3087f2da95eb0601030e626c6f636b436f6e7461696e65720700f2da95eb060e030d636865636b4c6973744974656d0700f2da95eb060f060400f2da95eb0610084e6f7420646f6e652800f2da95eb060f0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb060f0974657874436f6c6f7201770764656661756c742800f2da95eb060f0d74657874416c69676e6d656e740177046c6566742800f2da95eb060f07636865636b656401792800f2da95eb060f05706c61696e01792800f2da95eb060e02696401770f636865636b6c6973746974656d2d3100",
       "expectedBlocks": [
         {
           "id": "checklistitem-0",
@@ -478,6 +478,10 @@
             {
               "name": "checked",
               "value": "true"
+            },
+            {
+              "name": "plain",
+              "value": "false"
             },
             {
               "name": "textAlignment",
@@ -511,6 +515,10 @@
               "value": "false"
             },
             {
+              "name": "plain",
+              "value": "false"
+            },
+            {
               "name": "textAlignment",
               "value": "left"
             },
@@ -529,7 +537,7 @@
           ]
         }
       ],
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"checklistitem-0\"\n2 element checkListItem backgroundColor=\"default\" checked=true textAlignment=\"left\" textColor=\"default\"\n3 text \"Done\"\n1 element blockContainer id=\"checklistitem-1\"\n2 element checkListItem backgroundColor=\"default\" checked=false textAlignment=\"left\" textColor=\"default\"\n3 text \"Not done\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"checklistitem-0\"\n2 element checkListItem backgroundColor=\"default\" checked=true plain=false textAlignment=\"left\" textColor=\"default\"\n3 text \"Done\"\n1 element blockContainer id=\"checklistitem-1\"\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n3 text \"Not done\""
     },
     {
       "name": "divider",

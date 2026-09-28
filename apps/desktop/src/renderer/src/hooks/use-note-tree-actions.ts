@@ -26,6 +26,7 @@ import {
   type TreeStructure
 } from '@/components/notes-tree-utils'
 import type { MoveOperation, DropPosition } from '@/components/kibo-ui/tree'
+import { deleteNoteTasks } from '@/components/note/delete-note-tasks'
 import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:NoteTreeActions')
@@ -541,36 +542,47 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     }
   }, [deps.selectedIds, deps.noteMap])
 
-  const handleDeleteConfirm = useCallback(async () => {
-    if ((notesToDelete.length === 0 && foldersToDelete.length === 0) || isDeleting) return
+  const handleDeleteConfirm = useCallback(
+    async (taskIds: string[] = []) => {
+      if ((notesToDelete.length === 0 && foldersToDelete.length === 0) || isDeleting) return
 
-    setIsDeleting(true)
-    try {
-      for (const note of notesToDelete) {
-        const result = await deps.mutations.deleteNote.mutateAsync(note.id)
-        if (result.success) {
-          closeTab(`/notes/${note.id}`)
+      setIsDeleting(true)
+      try {
+        // The tasks go only if every note they came from did: a note that
+        // survived its delete still shows them.
+        let everyDeleteSucceeded = true
+        for (const note of notesToDelete) {
+          const result = await deps.mutations.deleteNote.mutateAsync(note.id)
+          if (result.success) {
+            closeTab(`/notes/${note.id}`)
+          } else {
+            everyDeleteSucceeded = false
+          }
         }
-      }
 
-      for (const folderPath of foldersToDelete) {
-        await notesService.deleteFolder(folderPath)
-      }
+        for (const folderPath of foldersToDelete) {
+          const result = await notesService.deleteFolder(folderPath)
+          if (!result.success) everyDeleteSucceeded = false
+        }
 
-      if (foldersToDelete.length > 0) {
-        await refreshFolderTree()
-      }
+        if (everyDeleteSucceeded) await deleteNoteTasks(taskIds)
 
-      setIsDeleteDialogOpen(false)
-      setNotesToDelete([])
-      setFoldersToDelete([])
-      deps.setSelectedIds([])
-    } catch (err) {
-      log.error('Failed to delete items', err)
-    } finally {
-      setIsDeleting(false)
-    }
-  }, [notesToDelete, foldersToDelete, isDeleting, deps, closeTab, refreshFolderTree])
+        if (foldersToDelete.length > 0) {
+          await refreshFolderTree()
+        }
+
+        setIsDeleteDialogOpen(false)
+        setNotesToDelete([])
+        setFoldersToDelete([])
+        deps.setSelectedIds([])
+      } catch (err) {
+        log.error('Failed to delete items', err)
+      } finally {
+        setIsDeleting(false)
+      }
+    },
+    [notesToDelete, foldersToDelete, isDeleting, deps, closeTab, refreshFolderTree]
+  )
 
   // ---- External / Finder ----
 

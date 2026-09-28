@@ -665,6 +665,12 @@
     },
     "sources": {
       "used": "{count, plural, one {# kaynak kullanıldı} other {# kaynak kullanıldı}}"
+    },
+    "reasoning": {
+      "thinking": "Düşünüyor…",
+      "thought": "Düşündü",
+      "thoughtFor": "{seconds} sn düşündü",
+      "toggle": "Düşünme sürecini göster veya gizle"
     }
   },
   "home": {

@@ -35,6 +35,7 @@ import {
   serializeTaskBlock,
   type TaskBlockProps
 } from '@memry/shared/task-block'
+import { normalizePlainCheckboxes, withPlainCheckboxMarkers } from '@memry/shared/plain-checkbox'
 import {
   type BlockColors,
   hasNonDefaultColors,
@@ -459,8 +460,10 @@ export async function prepareFragmentSeed(
   const blocks = await markdownToBlocks(source, notePath)
   if (!blocks) return null
   // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
-  // binds the custom block on first paint instead of a raw checkbox.
-  const normalized = normalizeTaskBlocks(blocks, source).blocks
+  // binds the custom block on first paint instead of a raw checkbox. Lines
+  // ending in the plain-checkbox marker become checkboxes with `plain: true`,
+  // which the editor never converts.
+  const normalized = normalizePlainCheckboxes(normalizeTaskBlocks(blocks, source).blocks).blocks
   return {
     blocks: normalized,
     marks: parsed.marks,
@@ -619,7 +622,9 @@ async function serializeBlocks(
   editor: ServerBlockNoteEditor,
   blocks: PartialBlock[]
 ): Promise<string> {
-  const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks as never[])
+  const { blocks: wrapped, replacements } = extractInlineColorRuns(
+    withPlainCheckboxMarkers(blocks as never[])
+  )
   const md = normalizeSerializedMarkdown(
     await editor.blocksToMarkdownLossy(wrapped as PartialBlock[])
   )

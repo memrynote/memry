@@ -59,14 +59,14 @@ export const SortableSubtaskRow = ({
           }
         }}
         className={cn(
-          'flex items-center gap-2 border-l-[3px] border-l-transparent',
-          'py-1.5 pl-[44px] pr-3',
-          'hover:bg-muted rounded-r-sm',
+          'flex items-center gap-2 border-s-[3px] border-s-transparent',
+          'py-1.5 ps-[44px] pe-3',
+          'hover:bg-muted rounded-e-sm',
           'transition-colors duration-150',
           onClick && 'focus-visible:outline-none',
           isDragging
             ? 'cursor-grabbing opacity-50 shadow-lg ring-2 ring-primary bg-background z-10'
-            : 'cursor-grab'
+            : ''
         )}
         aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
       >

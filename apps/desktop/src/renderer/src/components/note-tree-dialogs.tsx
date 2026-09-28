@@ -12,6 +12,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { TemplateSelector } from '@/components/note/template-selector'
+import { DeleteNoteTasksOption, useNoteTasksChoice } from '@/components/note/delete-note-tasks'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -24,7 +25,8 @@ interface NoteTreeDeleteDialogProps {
   notesToDelete: NoteListItem[]
   foldersToDelete: string[]
   isDeleting: boolean
-  onConfirm: () => void
+  /** `taskIds`: the notes' tasks the user chose to delete with them, or none. */
+  onConfirm: (taskIds: string[]) => void
 }
 
 export function NoteTreeDeleteDialog({
@@ -38,6 +40,11 @@ export function NoteTreeDeleteDialog({
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
   const totalItems = notesToDelete.length + foldersToDelete.length
+  const tasksChoice = useNoteTasksChoice(
+    open,
+    notesToDelete.map((note) => note.id),
+    foldersToDelete
+  )
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -56,16 +63,17 @@ export function NoteTreeDeleteDialog({
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <DeleteNoteTasksOption choice={tasksChoice} disabled={isDeleting} />
         <AlertDialogFooter>
           <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={() => onConfirm(tasksChoice.taskIdsToDelete)}
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isDeleting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 {t('tree.deleteDialog.deleting')}
               </>
             ) : totalItems === 1 ? (

@@ -219,6 +219,14 @@ function partToBackendEvent(part: unknown): BackendEvent | null {
     return { kind: 'assistant_delta', text: typed.text }
   }
 
+  if (typed.type === 'reasoning-start') {
+    return { kind: 'reasoning_delta', text: '', startsBlock: true }
+  }
+
+  if (typed.type === 'reasoning-delta' && typeof typed.text === 'string') {
+    return { kind: 'reasoning_delta', text: typed.text, startsBlock: false }
+  }
+
   if (typed.type === 'tool-call') {
     return {
       kind: 'tool_use',

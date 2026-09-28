@@ -16,7 +16,8 @@ import {
   syncNoteUpdate,
   syncNoteDelete,
   setNoteLocalOnlyState,
-  cleanupProjectLinksForDeletedNote
+  cleanupProjectLinksForDeletedNote,
+  unlinkTasksFromDeletedNote
 } from './runtime-effects'
 
 export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
@@ -62,6 +63,7 @@ export async function deleteNoteCommand(id: string): Promise<void> {
   // Drop the note's project links + clear any project home note pointing at it,
   // only once the note is actually gone (spec §4 "Cleanup rules").
   await cleanupProjectLinksForDeletedNote(id)
+  await unlinkTasksFromDeletedNote(id)
 }
 
 export async function setNoteLocalOnlyCommand(input: {

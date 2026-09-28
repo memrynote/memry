@@ -25,6 +25,11 @@ interface EmojiPickerProps {
    * outside-click. Needed so the picker is clickable inside a modal Dialog.
    */
   embedded?: boolean
+  /**
+   * Offer the uploaded-icon tab. Off where the icon is drawn outside the vault
+   * that stores the image (vault icons): the image would not resolve there.
+   */
+  allowCustom?: boolean
 }
 
 interface EmojiData {
@@ -42,7 +47,8 @@ export function EmojiPicker({
   onSelect,
   onRemove,
   hasEmoji,
-  embedded = false
+  embedded = false,
+  allowCustom = true
 }: EmojiPickerProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -156,18 +162,20 @@ export function EmojiPicker({
         >
           {t('menus.emoji.iconsTab')}
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('custom')}
-          className={cn(
-            'flex-1 px-4 py-2 text-sm font-medium transition-colors',
-            activeTab === 'custom'
-              ? 'text-foreground border-b-2 border-foreground'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          {t('menus.emoji.customTab')}
-        </button>
+        {allowCustom && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('custom')}
+            className={cn(
+              'flex-1 px-4 py-2 text-sm font-medium transition-colors',
+              activeTab === 'custom'
+                ? 'text-foreground border-b-2 border-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t('menus.emoji.customTab')}
+          </button>
+        )}
       </div>
 
       <div

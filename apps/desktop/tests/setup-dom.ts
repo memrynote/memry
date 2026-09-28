@@ -110,7 +110,8 @@ const createMockApi = () => ({
     switch: vi.fn().mockResolvedValue({ success: true }),
     remove: vi.fn().mockResolvedValue({ success: true }),
     reindex: vi.fn().mockResolvedValue({ success: true }),
-    deleteFromAccount: vi.fn().mockResolvedValue(undefined)
+    deleteFromAccount: vi.fn().mockResolvedValue(undefined),
+    setIcon: vi.fn().mockResolvedValue(undefined)
   },
 
   // Home boards API (mounted app-wide by HomeTabTitleSync, not only by the Home page)
@@ -548,6 +549,7 @@ const createMockApi = () => ({
   onVaultStatusChanged: vi.fn().mockReturnValue(() => {}),
   onVaultIndexProgress: vi.fn().mockReturnValue(() => {}),
   onVaultError: vi.fn().mockReturnValue(() => {}),
+  onVaultListChanged: vi.fn().mockReturnValue(() => {}),
   onVaultIndexRecovered: vi.fn().mockReturnValue(() => {}),
   onVaultActivityChanged: vi.fn().mockReturnValue(() => {}),
   onNoteCreated: vi.fn().mockReturnValue(() => {}),

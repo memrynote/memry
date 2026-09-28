@@ -76,6 +76,10 @@ function translate(obj: Record<string, unknown>): BackendEvent {
     if (obj.item.type === 'agent_message' && typeof obj.item.text === 'string') {
       return { kind: 'assistant_delta', text: obj.item.text }
     }
+    // A reasoning summary arrives whole, one item per summary section.
+    if (obj.item.type === 'reasoning' && typeof obj.item.text === 'string' && obj.item.text) {
+      return { kind: 'reasoning_delta', text: obj.item.text, startsBlock: true }
+    }
     return { kind: 'noop' }
   }
 

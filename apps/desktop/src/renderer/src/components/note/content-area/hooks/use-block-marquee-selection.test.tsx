@@ -10,6 +10,26 @@ const marqueeIndentMocks = vi.hoisted(() => ({
 
 vi.mock('./task-block-marquee-indent', () => marqueeIndentMocks)
 
+const clipboardMocks = vi.hoisted(() => ({
+  selectedFragmentToHTML: vi.fn(() => ({
+    clipboardHTML: '<bn/>',
+    externalHTML: '<p>ext</p>',
+    markdown: 'md'
+  })),
+  between: vi.fn(() => 'text-selection')
+}))
+
+vi.mock('@blocknote/core', () => ({
+  selectedFragmentToHTML: clipboardMocks.selectedFragmentToHTML
+}))
+
+vi.mock('@tiptap/pm/state', () => ({
+  AllSelection: class {
+    readonly kind = 'all'
+  },
+  TextSelection: { between: clipboardMocks.between }
+}))
+
 import { topLevelSelectedBlockIds, useBlockMarqueeSelection } from './use-block-marquee-selection'
 
 /** Every stubbed `getBoundingClientRect()` bumps this — one measure, one count. */
@@ -185,6 +205,153 @@ describe('useBlockMarqueeSelection', () => {
 
     // Only the ancestor — 'b' is removed implicitly with it.
     expect(editor.removeBlocks).toHaveBeenCalledWith(['a'])
+    expect(result.current.selectedBlockIds.size).toBe(0)
+
+    unmount()
+    trigger.remove()
+  })
+
+  it('selects every top-level block on Cmd/Ctrl+A from the editor', () => {
+    const { trigger, blockContainerRef } = setupDom()
+    const viewDom = document.createElement('div')
+    viewDom.contentEditable = 'true'
+    trigger.append(viewDom)
+    const blur = vi.spyOn(viewDom, 'blur')
+    const editor = {
+      prosemirrorView: { dom: viewDom },
+      document: [{ id: 'a', children: [{ id: 'b' }] }, { id: 'c' }],
+      removeBlocks: vi.fn()
+    }
+
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({ editor, blockContainerRef, triggerContainerEl: trigger })
+    )
+
+    const selectAll = new KeyboardEvent('keydown', {
+      key: 'a',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true
+    })
+    act(() => {
+      viewDom.dispatchEvent(selectAll)
+    })
+
+    expect(selectAll.defaultPrevented).toBe(true)
+    expect(blur).toHaveBeenCalled()
+    expect([...result.current.selectedBlockIds]).toEqual(['a', 'c'])
+    expect(result.current.highlightRects.map((rect) => rect.id)).toEqual(['a', 'c'])
+
+    // Repeating it while blocks are selected (focus on body) keeps them selected.
+    act(() => {
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true, cancelable: true })
+      )
+    })
+    expect([...result.current.selectedBlockIds]).toEqual(['a', 'c'])
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }))
+    })
+    expect(editor.removeBlocks).toHaveBeenCalledWith(['a', 'c'])
+
+    unmount()
+    trigger.remove()
+  })
+
+  it('leaves Cmd+A native in nested inputs and when disabled', () => {
+    const { trigger, blockContainerRef } = setupDom()
+    const viewDom = document.createElement('div')
+    const input = document.createElement('input')
+    viewDom.append(input)
+    trigger.append(viewDom)
+    const editor = { prosemirrorView: { dom: viewDom }, document: [{ id: 'a' }] }
+
+    const { result, rerender, unmount } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        useBlockMarqueeSelection({
+          editor,
+          blockContainerRef,
+          triggerContainerEl: trigger,
+          enabled
+        }),
+      { initialProps: { enabled: true } }
+    )
+
+    const fromInput = new KeyboardEvent('keydown', {
+      key: 'a',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true
+    })
+    act(() => {
+      input.dispatchEvent(fromInput)
+    })
+    expect(fromInput.defaultPrevented).toBe(false)
+    expect(result.current.selectedBlockIds.size).toBe(0)
+
+    rerender({ enabled: false })
+    const disabled = new KeyboardEvent('keydown', {
+      key: 'a',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true
+    })
+    act(() => {
+      viewDom.dispatchEvent(disabled)
+    })
+    expect(disabled.defaultPrevented).toBe(false)
+    expect(result.current.selectedBlockIds.size).toBe(0)
+
+    unmount()
+    trigger.remove()
+  })
+
+  it('copies and cuts a block selection through the BlockNote serializer', () => {
+    const { trigger, blockContainerRef } = setupDom()
+    const viewDom = document.createElement('div')
+    trigger.append(viewDom)
+    const dispatch = vi.fn()
+    const tr = { setSelection: vi.fn(() => tr) }
+    const view = { dom: viewDom, dispatch, state: { doc: {}, tr } }
+    const editor = {
+      prosemirrorView: view,
+      document: [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
+      removeBlocks: vi.fn()
+    }
+
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({ editor, blockContainerRef, triggerContainerEl: trigger })
+    )
+
+    act(() => {
+      viewDom.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'a', metaKey: true, bubbles: true, cancelable: true })
+      )
+    })
+
+    const setData = vi.fn()
+    const copy = new Event('copy', { bubbles: true, cancelable: true }) as ClipboardEvent
+    Object.defineProperty(copy, 'clipboardData', { value: { setData, clearData: vi.fn() } })
+    act(() => {
+      document.body.dispatchEvent(copy)
+    })
+
+    expect(copy.defaultPrevented).toBe(true)
+    expect(tr.setSelection).toHaveBeenCalledWith(expect.objectContaining({ kind: 'all' }))
+    expect(clipboardMocks.selectedFragmentToHTML).toHaveBeenCalledWith(view, editor)
+    expect(setData).toHaveBeenCalledWith('blocknote/html', '<bn/>')
+    expect(setData).toHaveBeenCalledWith('text/html', '<p>ext</p>')
+    expect(setData).toHaveBeenCalledWith('text/plain', 'md')
+    expect(editor.removeBlocks).not.toHaveBeenCalled()
+    expect(result.current.selectedBlockIds.size).toBe(3)
+
+    const cut = new Event('cut', { bubbles: true, cancelable: true }) as ClipboardEvent
+    Object.defineProperty(cut, 'clipboardData', { value: { setData, clearData: vi.fn() } })
+    act(() => {
+      document.body.dispatchEvent(cut)
+    })
+    expect(editor.removeBlocks).toHaveBeenCalledWith(['a', 'b', 'c'])
     expect(result.current.selectedBlockIds.size).toBe(0)
 
     unmount()

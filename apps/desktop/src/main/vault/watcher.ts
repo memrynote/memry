@@ -58,7 +58,12 @@ import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
-import { syncNoteCreate, syncNoteDelete, syncNoteUpdate } from '../notes/runtime-effects'
+import {
+  syncNoteCreate,
+  syncNoteDelete,
+  syncNoteUpdate,
+  unlinkTasksFromDeletedNote
+} from '../notes/runtime-effects'
 import { normalizeRelativePath } from '../lib/paths'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 
@@ -797,6 +802,9 @@ export class VaultWatcher {
 
           deleteNoteFromCache(db, cached.id)
           void flushProjectionEvents()
+          // A folder delete and a file removed outside the app both land here,
+          // and neither goes through `deleteNoteCommand`.
+          void unlinkTasksFromDeletedNote(cached.id)
 
           recordActivity({ kind: 'removed', source: 'watcher', path: relativePath })
 

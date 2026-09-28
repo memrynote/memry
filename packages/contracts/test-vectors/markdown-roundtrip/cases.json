@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 114,
+    "exportedCaseCount": 118,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 124,
+    "caseCount": 128,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -630,6 +630,34 @@
       "canonical": null,
       "pending": null,
       "sha256": "9f9a23a33700bf588cfd476e6b4378f317cd6531e43aaae707aacb08e4a22099"
+    },
+    {
+      "name": "plain checkbox",
+      "markdown": "- [ ] Passport {check}",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e583935beaa27b4d1bd68a2e49ed17b2d858b8b4c23790bfd1015ee59b133171"
+    },
+    {
+      "name": "ticked plain checkbox with bold",
+      "markdown": "- [x] Pack **the** passport {check}",
+      "canonical": null,
+      "pending": null,
+      "sha256": "cdd5cfaeb9d3dc8692578e4b1db623f1985bdfb7505f4266dfd90f94f13be7b1"
+    },
+    {
+      "name": "empty plain checkbox",
+      "markdown": "- [ ] {check}",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f8a6fc393475f2319eb00a2e5f5d2554096aacc6579e8756e1fdd9b893cb1d47"
+    },
+    {
+      "name": "plain checkbox beside an ordinary one",
+      "markdown": "- [ ] Passport {check}\n- [ ] Book flights",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b62578ab0c4c318bd753eb324656a80b52999037596dd2801bcb2d28219b3542"
     },
     {
       "name": "callout nested under a list item",

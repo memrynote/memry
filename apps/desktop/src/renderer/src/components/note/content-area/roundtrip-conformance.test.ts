@@ -147,6 +147,26 @@ describe('round-trip fuzz, renderer pipeline', () => {
   }
 })
 
+describe('plain checkboxes, renderer pipeline', () => {
+  it('opens a `{check}` line as a plain checkbox, marker off the text', async () => {
+    const markdown = '- [x] Pack **the** passport {check}\n- [ ] Book flights'
+    const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
+    const [plain, ordinary] = normalizeNoteBlocks(parsed as Block[], markdown)
+
+    expect(plain.type).toBe('checkListItem')
+    expect(plain.props).toMatchObject({ checked: true, plain: true })
+    expect(JSON.stringify(plain.content)).not.toContain('{check}')
+    expect(ordinary.props).toMatchObject({ plain: false })
+  })
+
+  it('writes the marker for a checkbox made plain in the editor', async () => {
+    const parsed = await parseMarkdownPreservingBlanks(editor, '- [ ] Passport')
+    const [checkbox] = normalizeNoteBlocks(parsed as Block[], '- [ ] Passport')
+    const plain = { ...checkbox, props: { ...checkbox.props, plain: true } } as Block
+    expect(await serializeBlocksPreservingBlanks(editor, [plain])).toBe('- [ ] Passport {check}')
+  })
+})
+
 describe('task titles from the source, renderer pipeline', () => {
   it('does not give a task the text of a hidden copy of its line', async () => {
     const markdown = '<!--\n- [ ] OLD COMMENT {task:t1}\n-->\n\n- [ ] **new** {task:t1}'

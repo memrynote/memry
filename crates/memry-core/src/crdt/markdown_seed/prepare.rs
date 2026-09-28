@@ -97,6 +97,12 @@ pub(super) fn line_fallback(line: &str) -> Option<&'static str> {
     if line.contains("{task:") {
         return Some("task block");
     }
+    // Desktop strips the marker into the `plain` prop
+    // (`shared/src/plain-checkbox.ts`); kept as text it would be a line the
+    // user never typed.
+    if line.contains("{check}") {
+        return Some("plain checkbox");
+    }
     if line == ">" || line.starts_with("> >") {
         return Some("structured quote");
     }

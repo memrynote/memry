@@ -53,10 +53,29 @@ vi.mock('../services/sync', () => ({
   }),
   updateDeviceCursor: vi.fn().mockResolvedValue(undefined),
   listUserVaults: vi.fn().mockResolvedValue([
-    { vaultUuid: 'v-a', itemCount: 367, createdAt: 1000, encryptedName: 'enc-a', nameNonce: 'n-a' },
-    { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000, encryptedName: null, nameNonce: null }
+    {
+      vaultUuid: 'v-a',
+      itemCount: 367,
+      createdAt: 1000,
+      encryptedName: 'enc-a',
+      nameNonce: 'n-a',
+      encryptedIcon: 'enc-icon',
+      iconNonce: 'n-icon',
+      iconUpdatedAt: 1700000000000
+    },
+    {
+      vaultUuid: 'v-b',
+      itemCount: 4,
+      createdAt: 2000,
+      encryptedName: null,
+      nameNonce: null,
+      encryptedIcon: null,
+      iconNonce: null,
+      iconUpdatedAt: null
+    }
   ]),
-  setVaultName: vi.fn().mockResolvedValue(undefined)
+  setVaultName: vi.fn().mockResolvedValue(undefined),
+  setVaultIcon: vi.fn().mockResolvedValue(true)
 }))
 
 vi.mock('../services/entitlements', () => ({
@@ -145,6 +164,7 @@ import {
   getItem,
   updateDeviceCursor,
   listUserVaults,
+  setVaultIcon,
   setVaultName
 } from '../services/sync'
 import { ensureSyncVaultAllowed, isPaidSyncEntitlementActive } from '../services/entitlements'
@@ -365,9 +385,21 @@ describe('sync routes', () => {
           itemCount: 367,
           createdAt: 1000,
           encryptedName: 'enc-a',
-          nameNonce: 'n-a'
+          nameNonce: 'n-a',
+          encryptedIcon: 'enc-icon',
+          iconNonce: 'n-icon',
+          iconUpdatedAt: 1700000000000
         },
-        { vaultUuid: 'v-b', itemCount: 4, createdAt: 2000, encryptedName: null, nameNonce: null }
+        {
+          vaultUuid: 'v-b',
+          itemCount: 4,
+          createdAt: 2000,
+          encryptedName: null,
+          nameNonce: null,
+          encryptedIcon: null,
+          iconNonce: null,
+          iconUpdatedAt: null
+        }
       ])
       expect(listUserVaults).toHaveBeenCalledWith(env.DB, 'user-1')
     })
@@ -513,6 +545,107 @@ describe('sync routes', () => {
         ensureSyncVaultAllowed,
         'DELETE must register above paidSyncMiddleware'
       ).not.toHaveBeenCalled()
+    })
+  })
+
+  // ==========================================================================
+  // PUT /sync/vaults/:vaultId/icon
+  // ==========================================================================
+
+  describe('PUT /sync/vaults/:vaultId/icon', () => {
+    const putIcon = (body: unknown, vaultId = 'vault-a') =>
+      app.request(
+        `/sync/vaults/${vaultId}/icon`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        },
+        env,
+        executionCtx
+      )
+
+    beforeEach(() => {
+      vi.mocked(vaultExistsForUser).mockResolvedValue(true)
+    })
+
+    it('stores the sealed icon and reports whether it was applied', async () => {
+      const res = await putIcon({
+        encryptedIcon: 'enc-icon',
+        iconNonce: 'nonce',
+        iconUpdatedAt: 1700000000000
+      })
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true, applied: true })
+      expect(setVaultIcon).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-a', {
+        encryptedIcon: 'enc-icon',
+        iconNonce: 'nonce',
+        iconUpdatedAt: 1700000000000
+      })
+    })
+
+    it('accepts a reset (both icon fields null)', async () => {
+      const res = await putIcon({ encryptedIcon: null, iconNonce: null, iconUpdatedAt: 5 })
+
+      expect(res.status).toBe(200)
+      expect(setVaultIcon).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-a', {
+        encryptedIcon: null,
+        iconNonce: null,
+        iconUpdatedAt: 5
+      })
+    })
+
+    it('passes through a stale write as applied: false', async () => {
+      vi.mocked(setVaultIcon).mockResolvedValueOnce(false)
+
+      const res = await putIcon({ encryptedIcon: 'e', iconNonce: 'n', iconUpdatedAt: 5 })
+
+      expect(await res.json()).toEqual({ success: true, applied: false })
+    })
+
+    it('rejects half an envelope with 400', async () => {
+      const res = await putIcon({ encryptedIcon: 'e', iconNonce: null, iconUpdatedAt: 5 })
+
+      expect(res.status).toBe(400)
+      expect(setVaultIcon).not.toHaveBeenCalled()
+    })
+
+    it('rejects a change time far in the future with 400', async () => {
+      const res = await putIcon({
+        encryptedIcon: 'e',
+        iconNonce: 'n',
+        iconUpdatedAt: Date.now() + 2 * 24 * 60 * 60 * 1000
+      })
+
+      expect(res.status).toBe(400)
+      expect(setVaultIcon).not.toHaveBeenCalled()
+    })
+
+    it('returns 402 without an active paid sync entitlement', async () => {
+      vi.mocked(isPaidSyncEntitlementActive).mockReturnValueOnce(false)
+
+      const res = await putIcon({ encryptedIcon: 'e', iconNonce: 'n', iconUpdatedAt: 5 })
+
+      expect(res.status).toBe(402)
+      expect(setVaultIcon).not.toHaveBeenCalled()
+    })
+
+    it('404s when the caller does not own the vault', async () => {
+      vi.mocked(vaultExistsForUser).mockResolvedValue(false)
+
+      const res = await putIcon({ encryptedIcon: 'e', iconNonce: 'n', iconUpdatedAt: 5 })
+
+      expect(res.status).toBe(404)
+      expect(setVaultIcon).not.toHaveBeenCalled()
+    })
+
+    // Same edge as DELETE: paidSyncMiddleware upserts the vault row, so an icon
+    // write below it could create a vault the account never registered.
+    it('registers above paidSyncMiddleware', async () => {
+      await putIcon({ encryptedIcon: 'e', iconNonce: 'n', iconUpdatedAt: 5 })
+
+      expect(paidSyncMiddleware).not.toHaveBeenCalled()
     })
   })
 

@@ -429,13 +429,16 @@ export const TOOL_SCHEMAS = {
   },
   vault_add_html_artifact: {
     input: z.object({
-      id: idSchema,
-      title: z.string().min(1).max(120),
+      id: idSchema.describe(
+        'ID of the existing note to append the artifact to, exactly as returned by a vault ' +
+          'read/search tool. Not a name for the artifact.'
+      ),
+      title: z.string().min(1).max(120).describe('Artifact title, used as the file name.'),
       html: z.string().min(1).max(HTML_ARTIFACT_MAX_CHARS)
     }),
     description:
-      'Append a self-contained HTML artifact (diagram, chart, interactive explanation) to a ' +
-      'markdown note. It is saved as a note attachment and rendered inline in a sandboxed ' +
+      'Append a self-contained HTML artifact (diagram, chart, interactive explanation) to an ' +
+      'existing markdown note identified by `id` (the note id, not an artifact name). It is saved as a note attachment and rendered inline in a sandboxed ' +
       'iframe. Write one complete HTML document with inline CSS/JS. It cannot read the vault, ' +
       'the note, or sibling files; external scripts/styles/fonts load only over https (e.g. a ' +
       'CDN). Do not use alert/confirm/prompt. Keep it compact and readable in light and dark ' +

@@ -30,6 +30,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { useVaultSwitcherOpenRequest } from '@/lib/vault-switcher-open'
 import { getVaultSwitchState } from '@/lib/vault-switch-state'
 import { resolveVaultAccent } from '@/components/sidebar/vault-title-row'
+import { VaultGlyph } from '@/components/sidebar/vault-glyph'
 import type { AccountVaultInfo, VaultInfo } from '../../../preload/index.d'
 import { useT } from '@memry/i18n/renderer'
 
@@ -127,7 +128,11 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
     async (vault: VaultInfo) => {
       if (getVaultSwitchState().pending) return
       setOpen(false)
-      await switchVault(vault.path, { name: vault.name, accentColor: vault.accentColor })
+      await switchVault(vault.path, {
+        name: vault.name,
+        accentColor: vault.accentColor,
+        icon: vault.icon
+      })
     },
     [switchVault]
   )
@@ -259,10 +264,10 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                           isActive ? 'text-sidebar-terracotta opacity-100' : 'opacity-0'
                         )}
                       />
-                      <span
-                        aria-hidden="true"
-                        className={cn('size-2 shrink-0 rounded-full', isMissing && 'opacity-60')}
-                        style={{ backgroundColor: resolveVaultAccent(vault.accentColor) }}
+                      <VaultGlyph
+                        icon={vault.icon}
+                        color={resolveVaultAccent(vault.accentColor)}
+                        className={cn(isMissing && 'opacity-60')}
                       />
                       <span
                         className={cn(

@@ -16,6 +16,10 @@ describe('planChecklistTasks', () => {
     expect(planned.every((item) => item.parentIndex === null)).toBe(true)
   })
 
+  it('leaves a plain checkbox, marked `{check}`, a checkbox', () => {
+    expect(titles('- [ ] Passport {check}\n- [ ] Buy milk')).toEqual(['Buy milk'])
+  })
+
   it('accepts an upper-case X and the * and + list markers', () => {
     const planned = plan('* [X] Ship it\n+ [ ] Then rest')
 

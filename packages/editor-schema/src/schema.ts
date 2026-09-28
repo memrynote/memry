@@ -7,6 +7,7 @@ import {
 } from '@blocknote/core'
 import { createMemryInlineContentSpecs, type MemryInlineSpecs } from './inline'
 import { withImageWidthInAlt } from './blocks/image-width'
+import { withPlainCheckbox } from './blocks/plain-checkbox'
 import { assertSpecKeysMatchNodeTypes, type SpecKeysMatchNodeTypes } from './spec-keys'
 
 /**
@@ -106,6 +107,9 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
     // instead of dropped. Here rather than per surface: a surface that dropped
     // the width would erase it from the file on its next write-back.
     image: withImageWidthInAlt(defaultBlockSpecs.image),
+    // The checkbox the user keeps as a checkbox. Here for the same reason as
+    // the image: a surface without the prop writes the flag away.
+    checkListItem: withPlainCheckbox(defaultBlockSpecs.checkListItem),
     ...impl.blocks
   }
   const memryInlineSpecs = createMemryInlineContentSpecs(impl.inline)

@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { selectedFragmentToHTML } from '@blocknote/core'
+import { AllSelection, TextSelection } from '@tiptap/pm/state'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import { createLogger } from '@/lib/logger'
 import { hasSelectableTextAt, shouldStartMarquee } from '../marquee-hit-test'
 import { classifyBlocks, indentTaskBlock, outdentTaskBlock } from './task-block-marquee-indent'
@@ -186,6 +189,49 @@ export function topLevelSelectedBlockIds(
   }
   walk(document)
   return out
+}
+
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return target.isContentEditable || target.closest('input, textarea, select') !== null
+}
+
+function isSelectAllShortcut(event: KeyboardEvent): boolean {
+  return (
+    (event.metaKey || event.ctrlKey) &&
+    !event.shiftKey &&
+    !event.altKey &&
+    !event.isComposing &&
+    event.key.toLowerCase() === 'a'
+  )
+}
+
+// Point the (blurred) ProseMirror selection at the selected blocks so
+// BlockNote's own clipboard serializer can run over them. Covering every
+// top-level block uses an AllSelection, the same selection a native select-all
+// produced before, so copying a whole note yields identical clipboard data.
+function selectBlocksInProseMirror(
+  view: any,
+  ids: ReadonlyArray<string>,
+  coversAll: boolean
+): void {
+  const { state } = view
+  if (coversAll) {
+    view.dispatch(state.tr.setSelection(new AllSelection(state.doc)))
+    return
+  }
+  const wanted = new Set(ids)
+  let from = -1
+  let to = -1
+  state.doc.descendants((node: PMNode, pos: number) => {
+    if (node.type.name !== 'blockContainer' || !wanted.has(node.attrs.id)) return true
+    if (from === -1) from = pos
+    to = pos + node.nodeSize
+    return false
+  })
+  if (from === -1) return
+  const selection = TextSelection.between(state.doc.resolve(from), state.doc.resolve(to))
+  view.dispatch(state.tr.setSelection(selection))
 }
 
 export function useBlockMarqueeSelection({
@@ -536,8 +582,78 @@ export function useBlockMarqueeSelection({
     }
   }, [enabled, triggerContainerEl, editor, blockContainerRef])
 
+  const getTopLevelSelectedIds = useCallback((): string[] => {
+    const doc = Array.isArray(editor?.document) ? (editor.document as BlockNode[]) : null
+    return doc
+      ? topLevelSelectedBlockIds(doc, selectedRef.current)
+      : Array.from(selectedRef.current)
+  }, [editor])
+
+  // Backspace / Delete / cut on a marquee selection: remove every
+  // visually-selected block. This intentionally bypasses PM's native
+  // cross-block deletion so textblocks and custom blocks (taskBlock, file,
+  // youtubeEmbed) share the same block-only path.
+  const removeSelectedBlocks = useCallback((): void => {
+    // Prune nested descendants: removeBlocks throws (and rolls back the
+    // entire deletion) when given both a block and a descendant of it.
+    const ids = getTopLevelSelectedIds()
+    if (ids.length === 0) {
+      clearSelection()
+      return
+    }
+    if (onDeleteSelectedBlocks?.(ids)) {
+      clearSelection()
+      return
+    }
+    try {
+      editor.removeBlocks(ids)
+    } catch (err) {
+      log.warn('Failed to remove marquee-selected blocks', err)
+    }
+    clearSelection()
+  }, [clearSelection, editor, getTopLevelSelectedIds, onDeleteSelectedBlocks])
+
+  // Cmd/Ctrl+A selects every block instead of highlighting the text. Only
+  // top-level blocks are marked: children sit inside their parent's highlight,
+  // and delete/cut remove them with the parent anyway.
+  const selectAllBlocks = useCallback((): void => {
+    const doc = Array.isArray(editor?.document) ? (editor.document as BlockNode[]) : []
+    if (doc.length === 0) return
+    teardownDragRef.current?.()
+    teardownDragRef.current = null
+    selectedRef.current = new Set(doc.map((block) => block.id))
+    hasSelectionRef.current = true
+    setMarqueeRect(null)
+    setIsActive(false)
+    try {
+      ;(editor?.prosemirrorView?.dom as HTMLElement | undefined)?.blur()
+    } catch (err) {
+      log.warn('Failed to blur PM view on select all', err)
+    }
+    try {
+      window.getSelection()?.removeAllRanges()
+    } catch (err) {
+      log.warn('Failed to clear native selection on select all', err)
+    }
+    recomputeHighlightRects()
+  }, [editor, recomputeHighlightRects])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (enabled && isSelectAllShortcut(event)) {
+        const viewDom = editor?.prosemirrorView?.dom as HTMLElement | undefined
+        // Keydown inside the editor targets its contenteditable root; nested
+        // editable surfaces (inputs in node views) keep their native select-all.
+        const fromEditor = viewDom !== undefined && event.target === viewDom
+        const fromBlockSelection = hasSelectionRef.current && !isTextEntryTarget(event.target)
+        if (fromEditor || fromBlockSelection) {
+          event.preventDefault()
+          event.stopPropagation()
+          selectAllBlocks()
+          return
+        }
+      }
+
       if (!hasSelectionRef.current) return
 
       if (event.key === 'Escape') {
@@ -563,39 +679,58 @@ export function useBlockMarqueeSelection({
         return
       }
 
-      // Backspace / Delete on a marquee selection: remove every
-      // visually-selected block. This intentionally bypasses PM's
-      // native cross-block deletion so textblocks and custom blocks
-      // (taskBlock, file, youtubeEmbed) share the same block-only path.
       if (event.key === 'Backspace' || event.key === 'Delete') {
         if (selectedRef.current.size === 0) return
         event.preventDefault()
         event.stopPropagation()
-        // Prune nested descendants: removeBlocks throws (and rolls back the
-        // entire deletion) when given both a block and a descendant of it.
-        const doc = Array.isArray(editor?.document) ? (editor.document as BlockNode[]) : null
-        const ids = doc
-          ? topLevelSelectedBlockIds(doc, selectedRef.current)
-          : Array.from(selectedRef.current)
-        if (ids.length === 0) {
-          clearSelection()
-          return
-        }
-        if (onDeleteSelectedBlocks?.(ids)) {
-          clearSelection()
-          return
-        }
-        try {
-          editor.removeBlocks(ids)
-        } catch (err) {
-          log.warn('Failed to remove marquee-selected blocks', err)
-        }
-        clearSelection()
+        removeSelectedBlocks()
       }
     }
     document.addEventListener('keydown', onKeyDown, true)
     return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [clearSelection, editor, indentSelectedBlocks, onDeleteSelectedBlocks, outdentSelectedBlocks])
+  }, [
+    clearSelection,
+    editor,
+    enabled,
+    indentSelectedBlocks,
+    outdentSelectedBlocks,
+    removeSelectedBlocks,
+    selectAllBlocks
+  ])
+
+  // Copy / cut a block selection. The editor is blurred while blocks are
+  // selected, so ProseMirror's clipboard handlers never see these events;
+  // without this, Cmd+A then Cmd+C would copy nothing.
+  useEffect(() => {
+    const onClipboard = (event: ClipboardEvent): void => {
+      if (!hasSelectionRef.current || selectedRef.current.size === 0) return
+      if (isTextEntryTarget(event.target)) return
+      const view = editor?.prosemirrorView
+      if (!view || !event.clipboardData) return
+      const ids = getTopLevelSelectedIds()
+      if (ids.length === 0) return
+      const doc = Array.isArray(editor.document) ? (editor.document as BlockNode[]) : []
+      try {
+        selectBlocksInProseMirror(view, ids, ids.length === doc.length)
+        const { clipboardHTML, externalHTML, markdown } = selectedFragmentToHTML(view, editor)
+        event.preventDefault()
+        event.clipboardData.clearData()
+        event.clipboardData.setData('blocknote/html', clipboardHTML)
+        event.clipboardData.setData('text/html', externalHTML)
+        event.clipboardData.setData('text/plain', markdown)
+      } catch (err) {
+        log.warn('Failed to copy marquee-selected blocks', err)
+        return
+      }
+      if (event.type === 'cut') removeSelectedBlocks()
+    }
+    document.addEventListener('copy', onClipboard, true)
+    document.addEventListener('cut', onClipboard, true)
+    return () => {
+      document.removeEventListener('copy', onClipboard, true)
+      document.removeEventListener('cut', onClipboard, true)
+    }
+  }, [editor, getTopLevelSelectedIds, removeSelectedBlocks])
 
   useEffect(() => {
     const onMouseDown = (event: globalThis.MouseEvent): void => {

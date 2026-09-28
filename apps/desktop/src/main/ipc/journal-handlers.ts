@@ -51,6 +51,7 @@ import { getTasksByDueDate, countOverdueTasksBeforeDate } from '../journal/store
 import { getIndexDatabase, getDatabase } from '../database'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { enqueueJournalDelete, enqueueJournalUpdate } from '../journal/runtime-effects'
+import { unlinkTasksFromDeletedNote } from '../notes/runtime-effects'
 import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
 import { trackMainEvent } from '../telemetry/track'
 import { shouldEmitThrottled } from '../telemetry/throttle'
@@ -246,6 +247,7 @@ export function registerJournalHandlers(): void {
       if (noteId) {
         enqueueJournalDelete(noteId, input.date)
         deleteJournalCache(db, noteId)
+        await unlinkTasksFromDeletedNote(noteId)
       }
 
       // Emit event

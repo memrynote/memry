@@ -559,16 +559,17 @@ survive, including unnamed ones).**
 **Normative** (`packages/editor-schema/src/blocks/markdown.ts`), the forms that
 are not plain CommonMark:
 
-| Block            | On-disk form                                                                                                                    | Anchor                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| callout          | `> [!info\|warning\|error\|success]` alone on its line, then one `> ` per non-empty content line                                | `:26`, `:45-50`                |
-| structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                | `:165-170`                     |
-| youtube embed    | `![embed](videoUrl)`                                                                                                            | `:304`, `:307`                 |
-| bookmark         | `![bookmark](url)`                                                                                                              | `:305`, `:311`                 |
-| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                   | `:324`, `:326-332`, `:335-337` |
-| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                            | `:373`, `:382`, `:423`         |
-| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                         | `:452`, `:464-473`             |
-| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open` | `:542`, `:549-550`, `:590-622` |
+| Block            | On-disk form                                                                                                                    | Anchor                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| callout          | `> [!info\|warning\|error\|success]` alone on its line, then one `> ` per non-empty content line                                | `:26`, `:45-50`                         |
+| structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                | `:165-170`                              |
+| youtube embed    | `![embed](videoUrl)`                                                                                                            | `:304`, `:307`                          |
+| bookmark         | `![bookmark](url)`                                                                                                              | `:305`, `:311`                          |
+| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                   | `:324`, `:326-332`, `:335-337`          |
+| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                            | `:373`, `:382`, `:423`                  |
+| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                         | `:452`, `:464-473`                      |
+| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open` | `:542`, `:549-550`, `:590-622`          |
+| plain checkbox   | `- [ ] text {check}`: a `checkListItem` whose `plain` prop is `true`; the marker ends the line, after one space                 | `packages/shared/src/plain-checkbox.ts` |
 
 **Claiming rules matter as much as the forms:**
 
@@ -678,6 +679,17 @@ directions by `packages/editor-schema/src/__tests__/registry-parity.test.ts`.
 defaults of the same name
 (`packages/editor-schema/src/schema.ts:57-61`, where `impl.blocks` is spread over
 `defaultBlockSpecs`).
+
+`checkListItem` is BlockNote's own with one prop added, `plain` (boolean,
+default `false`, `packages/editor-schema/src/blocks/plain-checkbox.ts`). A plain
+checkbox is one the user keeps as a checkbox: a client that turns checkboxes
+into tasks MUST skip it (desktop `scan-task-intents.ts`, the core's
+`conversion_candidates`). A writer emits `plain=false` like every other
+declared default. A reader built before the prop existed ignores the attribute
+rather than deleting the node, so the only cost of an old client is that it
+converts the line into a task, as it did every checkbox. On disk the flag is the
+`{check}` marker (§12.6); a markdown seed that does not strip it MUST fall back
+for that line rather than keep the marker as text.
 
 `diagram` is a Mermaid diagram, and it is the one type whose renderer spec comes
 from a third-party package (`@blocknote/diagram-block`) rather than from

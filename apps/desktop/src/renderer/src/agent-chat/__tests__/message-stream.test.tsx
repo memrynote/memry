@@ -177,7 +177,7 @@ describe('MessageStream', () => {
     )
 
     const trigger = screen.getByRole('button', { name: /Searching notes/i })
-    expect(trigger.querySelector('.agent-thinking-pixels')).not.toBeNull()
+    expect(trigger.querySelector('.aicss-orb')).not.toBeNull()
     expect(screen.queryByText('Reading app data')).not.toBeInTheDocument()
 
     fireEvent.click(trigger)
@@ -213,7 +213,7 @@ describe('MessageStream', () => {
     )
 
     const trigger = screen.getByRole('button', { name: /2 steps/i })
-    expect(trigger.querySelector('.agent-thinking-pixels')).toBeNull()
+    expect(trigger.querySelector('.aicss-orb')).toBeNull()
     expect(screen.queryByText('Reading note')).not.toBeInTheDocument()
   })
 
@@ -242,16 +242,14 @@ describe('MessageStream', () => {
     const { rerender } = render(<MessageStream inFlight messages={messages} />)
 
     expect(
-      screen
-        .getByRole('button', { name: /Reading app data/i })
-        .querySelector('.agent-thinking-pixels')
+      screen.getByRole('button', { name: /Reading app data/i }).querySelector('.aicss-orb')
     ).not.toBeNull()
 
     // The backend never reported results, so only the turn ending can settle the group.
     rerender(<MessageStream inFlight={false} messages={messages} />)
 
     const settled = screen.getByRole('button', { name: /2 steps/i })
-    expect(settled.querySelector('.agent-thinking-pixels')).toBeNull()
+    expect(settled.querySelector('.aicss-orb')).toBeNull()
   })
 
   it('keeps an activity group open while a tool waits for approval', () => {

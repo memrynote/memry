@@ -46,21 +46,31 @@ describe('VaultPill', () => {
     act(() => setVaultSwipeProgress(null, 0))
   })
 
-  it('shows one small accent dot per vault and switches on click', () => {
+  it('shows one accent icon per vault and switches on click', () => {
     render(<VaultPill vaults={vaults} activePath="/vaults/personal" />)
 
     expect(pill()).toHaveTextContent('')
     expect(pill().querySelectorAll('[data-vault-dot]')).toHaveLength(2)
-    expect(dot('/vaults/personal').style.backgroundColor).toBe('rgb(249, 115, 22)')
+    const glyph = dot('/vaults/personal').querySelector<HTMLElement>('[data-vault-glyph]')!
+    expect(glyph.style.color).toBe('rgb(249, 115, 22)')
+    // No icon of its own: the default icon is drawn.
+    expect(glyph.querySelector('svg')).not.toBeNull()
     expect(dot('/vaults/personal').style.opacity).toBe('1')
     expect(dot('/vaults/work').style.opacity).toBe('0.35')
-    expect(dot('/vaults/personal')).toHaveClass('size-1.5')
 
     fireEvent.click(dot('/vaults/personal').parentElement!)
     expect(requestVaultPage).not.toHaveBeenCalled()
 
     fireEvent.click(dot('/vaults/work').parentElement!)
     expect(requestVaultPage).toHaveBeenCalledWith({ path: '/vaults/work' })
+  })
+
+  it('draws the vault icon when one is set', () => {
+    render(
+      <VaultPill vaults={[{ ...vaults[0], icon: '🌿' }, vaults[1]]} activePath="/vaults/personal" />
+    )
+
+    expect(dot('/vaults/personal')).toHaveTextContent('🌿')
   })
 
   it('moves emphasis toward the target dot during a swipe', () => {

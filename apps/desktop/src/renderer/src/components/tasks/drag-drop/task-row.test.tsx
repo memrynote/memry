@@ -282,12 +282,12 @@ describe('TaskRow — Row Click Boundaries', () => {
 })
 
 describe('TaskRow — Whole-Row Drag', () => {
-  it('applies cursor-grab when dragHandleListeners are provided', () => {
+  it('uses default cursor on hover when dragHandleListeners are provided', () => {
     const listeners = { onPointerDown: vi.fn() }
     render(<TaskRow {...defaultProps} dragHandleListeners={listeners} />)
 
     const row = screen.getByLabelText(/^Task: Test Task/)
-    expect(row.className).toContain('cursor-grab')
+    expect(row.className).not.toContain('cursor-grab')
   })
 
   it('does not render a grip icon', () => {

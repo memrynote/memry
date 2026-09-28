@@ -121,7 +121,23 @@ export const vaultService: VaultClientAPI = {
     notePath?: string
   }): Promise<Record<string, string>> => {
     return window.api.vault.resolveEmbeds(input)
+  },
+
+  /**
+   * Set a listed vault's icon, or reset it to the default with null. Synced
+   * account-wide once the vault syncs.
+   */
+  setIcon: (path: string, icon: string | null): Promise<void> => {
+    return window.api.vault.setIcon(path, icon)
   }
+}
+
+/**
+ * Subscribe to vault list display changes (an icon set here or synced in).
+ * Returns unsubscribe function.
+ */
+export function onVaultListChanged(callback: () => void): () => void {
+  return window.api.onVaultListChanged(callback)
 }
 
 /**

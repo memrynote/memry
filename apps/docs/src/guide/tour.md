@@ -132,9 +132,15 @@ past the middle to switch, or short of it to spring back.
 <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on
 Windows and Linux) play the same move.
 
-Under the panel, one dot per vault shows where you are, the open vault's dot in its accent color.
-The dots stay put while the pages move and blend toward the incoming vault as you swipe; clicking
-them opens the list of every vault. The rail never moves. With the panel hidden, switch vaults
+Under the panel, one icon per vault shows where you are, in each vault's accent color, the open
+vault's icon solid and the rest dimmed. The icons stay put while the pages move and blend toward the
+incoming vault as you swipe; clicking another vault's icon switches to it. With more vaults than fit,
+the row scrolls sideways and keeps the open vault in view. The rail never moves.
+
+Every vault starts with the same library icon. To give it its own, click the icon beside the
+vault's name at the top of the panel, or right-click any vault's icon under the panel and choose
+**Change icon…**; pick an emoji or an icon. **Reset icon** brings the library icon back. A synced
+vault's icon follows it to your other devices, end-to-end encrypted like its name. With the panel hidden, switch vaults
 with the shortcuts above or <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>O</kbd>.
 
 Vaults you visited recently come back the way you left them, with the same tabs, scroll position,

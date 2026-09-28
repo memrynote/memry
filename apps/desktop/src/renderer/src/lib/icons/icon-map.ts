@@ -200,6 +200,7 @@ import {
   Layout03Icon,
   LeftToRightListBulletIcon,
   LeftToRightListDashIcon,
+  LibraryIcon,
   Link02Icon,
   LinkForwardIcon,
   Loading03Icon,
@@ -333,6 +334,8 @@ export const FolderKanban = createIcon(FolderKanbanIcon)
 // ── Objects & Items ─────────────────────────────────
 export const Book = createIcon(Book01Icon)
 export const Book2 = createIcon(Book02Icon)
+/** A vault's default icon. */
+export const Library = createIcon(LibraryIcon)
 export const BookOpen = createIcon(BookOpen01Icon)
 export const Bookmark = createIcon(Bookmark01Icon)
 export const Bookmark2 = createIcon(Bookmark02Icon)

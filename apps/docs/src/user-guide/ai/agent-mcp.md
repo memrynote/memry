@@ -60,6 +60,13 @@ Antigravity models carry their own reasoning tier in the model id (`gemini-3.1-p
 `-low`), so picking an Antigravity model replaces the separate reasoning control rather than adding
 to it. Any model id your Google account can reach can be typed in, not only the listed presets.
 
+When the model exposes its reasoning (Claude thinking, Codex reasoning summaries, and local models
+that stream reasoning), the reply opens with a "Thinking…" block that follows the reasoning as it
+arrives. Once the answer starts, the block folds into a "Thought for Ns" line you can click to
+reopen. The reasoning is stored encrypted with the reply and is only displayed: it is never sent
+back to the model in later turns or in conversation summaries. Antigravity does not report its
+reasoning, so its replies show the plain thinking indicator.
+
 Unlike the other two CLIs, Antigravity has no per-run configuration flag: it reads MCP servers from
 `~/.gemini/config/mcp_config.json` and tool permissions from a project file, both at process start.
 So the first Antigravity turn registers one app-managed entry named `memry` in that file (every

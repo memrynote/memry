@@ -235,6 +235,7 @@ export interface MainIpcInvokeHandlers {
   "notes:get-all-positions": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; positions: Record<string, number>; }>>
   "notes:get-by-path": (...args: [string]) => Awaited<Promise<import("../vault/notes-crud").Note | null>>
   "notes:get-calendar-property-names": (...args: []) => Awaited<Promise<string[]>>
+  "notes:get-carried-tasks": (...args: [{ noteIds?: string[] | undefined; folderPaths?: string[] | undefined; }]) => Awaited<Promise<{ taskIds: string[]; }>>
   "notes:get-file": (...args: [string]) => Awaited<Promise<import("../vault/notes-crud").FileMetadata | null>>
   "notes:get-folder-config": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").FolderConfig | null>>
   "notes:get-folder-template": (...args: [string]) => Awaited<Promise<string | null>>
@@ -511,6 +512,7 @@ export interface MainIpcInvokeHandlers {
   "vault:resolve-embeds": (...args: [{ refs: string[]; notePath?: string | undefined; }]) => Awaited<Promise<Record<string, string>>>
   "vault:reveal": (...args: []) => Awaited<Promise<void>>
   "vault:select": (...args: [{ path?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
+  "vault:set-icon": (...args: [{ path: string; icon: string | null; }]) => Awaited<Promise<void>>
   "vault:switch": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
   "vault:update-config": (...args: [{ excludePatterns?: string[] | undefined; defaultNoteFolder?: string | undefined; journalFolder?: string | undefined; journalDateFormat?: string | undefined; attachmentsFolder?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
 }
