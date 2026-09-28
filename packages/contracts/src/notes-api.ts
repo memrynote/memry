@@ -408,6 +408,81 @@ export interface NoteLinksResponse {
 }
 
 // ============================================================================
+// Similarity (local embeddings)
+// ============================================================================
+
+/**
+ * Why a similarity answer is empty, so the renderer can hide the surface
+ * instead of showing a misleading "nothing similar":
+ * - `disabled`: the local embedding model is turned off in settings.
+ * - `no-embedding`: this note has no vector yet (too short, or not embedded).
+ * - `ready`: the answer is real, even when the list is empty.
+ */
+export type NoteSimilarityStatus = 'disabled' | 'no-embedding' | 'ready'
+
+export const NoteSimilarRequestSchema = z.object({
+  noteId: z.string().min(1),
+  limit: z.number().int().min(1).max(20).optional()
+})
+
+/**
+ * Most notes one grouping request may carry. Grouping is O(n³) in the worst
+ * case and runs on the main thread, so a board past this is grouped a
+ * selection at a time.
+ */
+export const MAX_CLUSTER_NOTES = 300
+
+export const NoteClusterRequestSchema = z.object({
+  noteIds: z.array(z.string().min(1)).max(MAX_CLUSTER_NOTES)
+})
+
+export interface SimilarNoteItem {
+  id: string
+  title: string
+  path: string
+  emoji: string | null
+  snippet: string | null
+  /** Cosine similarity to the source note, 0..1. */
+  similarity: number
+}
+
+export interface SimilarNotesResponse {
+  status: NoteSimilarityStatus
+  notes: SimilarNoteItem[]
+}
+
+export interface NoteTagSuggestion {
+  tag: string
+  /** 0..1. */
+  confidence: number
+  /** How many similar notes carry the tag. */
+  support: number
+}
+
+export interface NoteTagSuggestionsResponse {
+  status: NoteSimilarityStatus
+  tags: NoteTagSuggestion[]
+}
+
+export interface NoteClusterGroup {
+  noteIds: string[]
+  /** Titles in `noteIds` order, so a proposal can be reviewed without N lookups. */
+  titles: string[]
+  /** A tag or folder most members share, or null when they share none. */
+  suggestedName: string | null
+}
+
+export interface NoteClustersResponse {
+  status: Exclude<NoteSimilarityStatus, 'no-embedding'>
+  /** Proposed groups of two or more notes, largest first. */
+  groups: NoteClusterGroup[]
+  /** Notes with a vector that joined no group. */
+  ungrouped: string[]
+  /** Notes with no vector (too short, not embedded yet, or not a note). */
+  missing: string[]
+}
+
+// ============================================================================
 // Large-file viewer
 // ============================================================================
 

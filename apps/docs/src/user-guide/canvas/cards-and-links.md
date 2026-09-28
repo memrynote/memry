@@ -258,3 +258,9 @@ Nothing is written into your notes. The connection is read from the canvas file,
 so it syncs with the canvas and appears on your other devices once they update
 to this version. Other apps that open your vault do not see it, because it is
 not a `[[wiki link]]`.
+
+## Grouping cards by similarity
+
+With [local embeddings](/user-guide/ai/embeddings-search#suggest-groups-on-a-canvas) turned on,
+**Suggest groups** proposes groups of similar note cards. You review, rename, or discard each group,
+and only the groups you accept become frames. Grouping runs on this device.

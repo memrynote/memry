@@ -23,6 +23,8 @@ import {
   ApplyTemplateSchema,
   NoteAppendBlocksSchema,
   NoteCarriedTasksSchema,
+  NoteSimilarRequestSchema,
+  NoteClusterRequestSchema,
   LargeFileReadLinesSchema,
   LargeFileSearchSchema,
   AttachmentActionSchema,
@@ -36,6 +38,7 @@ import {
   openAttachmentExternal
 } from '../vault/attachment-actions'
 import { revealFolderInFinder } from '../vault/folder-actions'
+import { clusterNotes, getSimilarNotes, getTagSuggestions } from '../similarity'
 import { renameAttachment } from '../vault/attachment-rename'
 import {
   buildExistingAttachmentReference,
@@ -490,6 +493,26 @@ export function registerNotesHandlers(): void {
     createStringHandler(async (id) => {
       return getNoteLinks(id)
     })
+  )
+
+  // notes:get-similar - Nearest notes by local embedding (read-only, on-device)
+  ipcMain.handle(
+    NotesChannels.invoke.GET_SIMILAR,
+    createValidatedHandler(NoteSimilarRequestSchema, (input) =>
+      getSimilarNotes(input.noteId, input.limit)
+    )
+  )
+
+  // notes:get-tag-suggestions - Tags shared by a note's nearest neighbours
+  ipcMain.handle(
+    NotesChannels.invoke.GET_TAG_SUGGESTIONS,
+    createStringHandler((id) => getTagSuggestions(id))
+  )
+
+  // notes:cluster - Proposed groups for a set of notes
+  ipcMain.handle(
+    NotesChannels.invoke.CLUSTER,
+    createValidatedHandler(NoteClusterRequestSchema, (input) => clusterNotes(input.noteIds))
   )
 
   // notes:get-folders - Get folder structure
