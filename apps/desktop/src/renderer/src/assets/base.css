@@ -766,6 +766,13 @@
   background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
+/* A color theme derives --border from its own palette; the charcoal literal
+   above only matches the built-in dark canvas. */
+:root[data-color-theme] .dark .bn-editor [data-content-type='table'] th,
+:root[data-color-theme] .dark .bn-editor [data-content-type='table'] td {
+  border-color: var(--border) !important;
+}
+
 /* ===== QUOTE BLOCK ===== */
 :root [data-content-type='quote'] blockquote {
   border-left-width: 3px !important;
@@ -3017,7 +3024,13 @@ del.bn-inline-content {
    Unlayered and (0,2,0) on purpose: it has to beat the layered token blocks
    above and the unlayered .dark sidebar and tint blocks (0,1,0). The later
    declaration wins against the (0,2,0) white sidebar block. The built-in
-   palettes are untouched while the attribute is absent. */
+   palettes are untouched while the attribute is absent.
+
+   Nested `.dark` elements are listed too: BlockNote puts the color scheme as
+   a class on its own root and on its body-level portal (`bn-root dark`), and
+   the built-in `.dark` token block then re-declared --background/--foreground
+   there, so the editor and its menus painted the stock charcoal palette
+   inside a themed window. */
 :root[data-color-theme] {
   --ct-bg: var(--ct-light-bg);
   --ct-fg: var(--ct-light-fg);
@@ -3029,7 +3042,8 @@ del.bn-inline-content {
   --ct-rail-active: var(--ct-bg);
 }
 
-:root.dark[data-color-theme] {
+:root.dark[data-color-theme],
+:root[data-color-theme] .dark {
   --ct-bg: var(--ct-dark-bg);
   --ct-fg: var(--ct-dark-fg);
   --ct-surface: var(--ct-dark-surface);
@@ -3042,7 +3056,8 @@ del.bn-inline-content {
   --ct-rail-active: color-mix(in srgb, var(--ct-fg) 12%, var(--ct-surface));
 }
 
-:root[data-color-theme] {
+:root[data-color-theme],
+:root[data-color-theme] .dark {
   --background: var(--ct-bg);
   --foreground: var(--ct-fg);
   --surface: var(--ct-surface);
