@@ -218,6 +218,7 @@ export interface MainIpcInvokeHandlers {
   "notes:attachment-rename": (...args: [{ noteId: string; url: string; newName: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentRenameResult>>
   "notes:attachment-resolve": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentResolveResult>>
   "notes:attachment-reveal-in-finder": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
+  "notes:cluster": (...args: [{ noteIds: string[]; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").NoteClustersResponse>>
   "notes:create": (...args: [{ title: string; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; properties?: Record<string, unknown> | undefined; emoji?: string | null | undefined; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:create-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:create-property-definition": (...args: [{ name: string; type: "number" | "date" | "text" | "select" | "status" | "url" | "checkbox" | "multiselect"; options?: { value: string; color: string; default?: boolean | undefined; }[] | undefined; defaultValue?: unknown; color?: string | undefined; }]) => Awaited<Promise<{ success: true; definition: import("../../../../../packages/contracts/src/property-types").PropertyDefinition | undefined; } | { success: true; definition: { type: string; name: string; createdAt: string; clock: import("../../../../../packages/contracts/src/sync-api").VectorClock | null; syncedAt: string | null; options: string | null; defaultValue: string | null; color: string | null; }; }> | { success: false; error: string }>
@@ -244,6 +245,8 @@ export interface MainIpcInvokeHandlers {
   "notes:get-local-only-count": (...args: []) => Awaited<Promise<{ count: number; }>>
   "notes:get-positions": (...args: [{ folderPath: string; }]) => Awaited<{ success: true; positions: { path: string; position: number; folderPath: string; }[]; } | { success: false; error: string }>
   "notes:get-property-definitions": (...args: []) => Awaited<Promise<{ type: string; name: string; createdAt: string; clock: import("../../../../../packages/contracts/src/sync-api").VectorClock | null; syncedAt: string | null; options: string | null; defaultValue: string | null; color: string | null; }[]>>
+  "notes:get-similar": (...args: [{ noteId: string; limit?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").SimilarNotesResponse>>
+  "notes:get-tag-suggestions": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").NoteTagSuggestionsResponse>>
   "notes:get-tags": (...args: []) => Awaited<Promise<{ tag: string; color: string; count: number; }[]>>
   "notes:get-version": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotDetail | null>>
   "notes:get-versions": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotListItem[]>>

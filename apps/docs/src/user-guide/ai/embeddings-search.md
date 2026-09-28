@@ -10,6 +10,8 @@ When embeddings are loaded, memrynote can rank notes by **semantic similarity** 
 
 - The [search palette](/user-guide/search) (semantic boost on top of keyword match)
 - "Related notes" suggestions in some surfaces
+- **Similar notes** under a note, **suggested tags** on an untagged note, and **Suggest groups**
+  on a canvas (see below)
 
 A query like "setting up authentication" can surface a note titled "OAuth flow" even when the words don't overlap.
 
@@ -65,6 +67,44 @@ suggestions, related notes, and reindexing start the local model on first use. T
 separate utility process and shuts down after an idle period, so regular note reading does not keep the
 embedding runtime resident forever.
 
+## Similar Notes, Suggested Tags, and Canvas Groups
+
+These three features answer "which of my notes belong together?" from the vectors already stored on
+this device. None of them reads note text or runs the model when you open a note: they compare stored
+vectors only. They are hidden while embeddings are turned off, and they never change anything until you
+act on them.
+
+### Similar notes
+
+Below a note's backlinks and outgoing links, **Similar notes** lists up to five notes that read like it.
+Notes this one already links to, and notes that link to it, are left out, since you have already made
+that connection. A note too short to embed, or one that has not been embedded yet, shows no list.
+
+Hover a row for two actions:
+
+- **Link from this note** adds a `[[Title]]` link on a new line at the end of the note. It is an ordinary
+  edit, so undo removes it, and the note drops off the list once the link is saved.
+- **Add to canvas** puts a card for the similar note on a canvas you pick. A note already on that canvas
+  is not added twice. This action appears only when canvases are turned on.
+
+### Suggested tags
+
+A note with no tags shows **Suggested tags** under its title: tags that at least two of its most similar
+notes carry, strongest first. Click one to add it. It goes through the normal tag path, the same as
+adding it by hand. Click the **x** to hide the suggestions for that note.
+
+### Suggest groups on a canvas
+
+**Suggest groups** (top right of a canvas) groups the note cards on the board by similarity. With two or
+more note cards selected, only the selection is grouped. It groups up to 300 notes at a time; on a bigger board,
+select some cards first. Each proposed group gets a name from a tag or
+folder most of its notes share, or a plain "Group 1" when they share none.
+
+Review the groups before anything happens: untick a group to discard it, or rename it. **Create frames**
+then puts each accepted group's cards into a named frame, laid out as a grid. If other drawings are on
+the board, the frames go to their right so nothing is covered. One undo takes the whole change back.
+Task, event, file, and project cards are not grouped.
+
 ## Model Size
 
 Models trade off accuracy vs disk and memory. The default is tuned for desktop hardware. The settings page shows dimensions and the current count of embedded notes.
@@ -88,6 +128,10 @@ to reopen the vault for semantic search to see them.
 Embeddings are computed **on-device**. The vectors are stored in the local index database (`<vault>/index.db`). They are **never sent** to a server.
 
 Even if you sync across devices, embeddings are recomputed locally — the embedding payload itself is not part of the sync stream.
+
+Similar notes, suggested tags, and canvas group suggestions are computed from those local vectors. No
+note text, title, or vector leaves the device for any of them. What you accept (a link, a tag, a card, a
+frame) is an ordinary edit and syncs like any other.
 
 ## Performance
 

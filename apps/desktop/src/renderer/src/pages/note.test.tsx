@@ -274,6 +274,14 @@ vi.mock('@/contexts/tabs/tab-identity', () => ({
   useTabIdentity: () => ({ tabId: '/notes/note-1', groupId: 'group-1' })
 }))
 
+// Similar notes and tag suggestions subscribe to note updates too; the
+// notes-service mock above keeps only the LAST subscriber, which must stay the
+// page's own. The sections are covered in their own tests.
+vi.mock('@/hooks/use-note-similarity', () => ({
+  useSimilarNotes: () => [],
+  useTagSuggestions: () => []
+}))
+
 vi.mock('@/hooks/use-feature-flags', () => ({
   useFeatureFlags: () => ({
     flags: { spatialCanvas: mocks.spatialCanvasEnabled },
