@@ -17,6 +17,7 @@ import type {
   VoiceTranscriptionSettings
 } from '../../contracts/src/settings-schemas.ts'
 import type { TagSearch } from '../../contracts/src/tag-searches-api.ts'
+import type { GraphViewsSettings, GraphViewsSettingsPatch } from '../../contracts/src/graph-api.ts'
 import { SettingsChannels } from '../../contracts/src/ipc-channels.ts'
 import type { SidebarSortMode, SidebarSortSurface } from '../../contracts/src/sidebar-sort.ts'
 import {
@@ -345,6 +346,13 @@ export const settingsRpc = defineDomain({
     setGraphSettings: defineMethod<(settings: Partial<GraphSettings>) => SuccessResponse>({
       channel: SettingsChannels.invoke.SET_GRAPH_SETTINGS,
       params: ['settings']
+    }),
+    getGraphViews: defineMethod<() => Promise<GraphViewsSettings>>({
+      channel: SettingsChannels.invoke.GET_GRAPH_VIEWS
+    }),
+    setGraphViews: defineMethod<(patch: GraphViewsSettingsPatch) => Promise<GraphViewsSettings>>({
+      channel: SettingsChannels.invoke.SET_GRAPH_VIEWS,
+      params: ['patch']
     }),
     getCalendarGoogleSettings: defineMethod<() => Promise<CalendarGoogleSettings>>({
       channel: SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS

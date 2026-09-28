@@ -1449,4 +1449,85 @@ describe('settings-handlers', () => {
       expect(removeHandlerCalls).toContain(SettingsChannels.invoke.SET_TAG_SEARCHES)
     })
   })
+  describe('saved graph views', () => {
+    const view = {
+      id: 'v1',
+      name: 'Work only',
+      state: {
+        filters: {
+          showNotes: true,
+          showTasks: false,
+          showJournals: true,
+          showProjects: true,
+          showTags: true,
+          showOrphans: true,
+          selectedTags: ['work'],
+          focusNodeId: null,
+          focusDepth: 2,
+          searchQuery: ''
+        },
+        colorBy: 'tag-category',
+        collapsedCategoryIds: ['cat-1']
+      },
+      layout: 'forceatlas2',
+      createdAt: '2026-09-11T00:00:00.000Z',
+      updatedAt: '2026-09-11T00:00:00.000Z'
+    }
+
+    it('#given a vault that never saved a view #when get #then returns no views and no last state', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      await expect(invokeHandler(SettingsChannels.invoke.GET_GRAPH_VIEWS)).resolves.toEqual({
+        views: [],
+        lastState: null
+      })
+    })
+
+    it('#given a stored blob #when patching only lastState #then keeps the saved views', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({ views: [view], lastState: null })
+      )
+
+      const written = await invokeHandler(SettingsChannels.invoke.SET_GRAPH_VIEWS, {
+        lastState: view.state
+      })
+
+      expect(written).toEqual({ views: [view], lastState: view.state })
+      expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+        expect.anything(),
+        'graphViews',
+        JSON.stringify({ views: [view], lastState: view.state })
+      )
+    })
+
+    it('#given a malformed view #when set #then it is dropped before persisting', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      await expect(
+        invokeHandler(SettingsChannels.invoke.SET_GRAPH_VIEWS, { views: [view, { id: 'bad' }] })
+      ).resolves.toEqual({ views: [view], lastState: null })
+    })
+
+    it('#given a corrupted blob #when get #then resets to defaults', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue('{not json')
+
+      await expect(invokeHandler(SettingsChannels.invoke.GET_GRAPH_VIEWS)).resolves.toEqual({
+        views: [],
+        lastState: null
+      })
+      expect(settingsQueries.deleteSetting).toHaveBeenCalledWith(expect.anything(), 'graphViews')
+    })
+
+    it('#given registered handlers #when unregister #then removes GET and SET channels', () => {
+      registerSettingsHandlers()
+      unregisterSettingsHandlers()
+
+      expect(removeHandlerCalls).toContain(SettingsChannels.invoke.GET_GRAPH_VIEWS)
+      expect(removeHandlerCalls).toContain(SettingsChannels.invoke.SET_GRAPH_VIEWS)
+    })
+  })
 })

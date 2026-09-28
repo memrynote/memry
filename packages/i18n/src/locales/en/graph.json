@@ -30,7 +30,8 @@
     "tags": "tags",
     "orphan": "orphan",
     "orphans": "orphans",
-    "unresolved": "unresolved"
+    "unresolved": "unresolved",
+    "category": "category"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -45,7 +46,13 @@
     "live-motion": "Live motion",
     "focus-depth": "depth {depth}",
     "clear-focus": "Clear focused node",
-    "relayout": "Re-layout"
+    "relayout": "Re-layout",
+    "categories": "Tag categories",
+    "color-by-category": "Color by category",
+    "no-categories": "Group tags into categories in the tag hub to color and collapse the graph by category.",
+    "collapse-category": "Collapse {name}",
+    "expand-category": "Expand {name}",
+    "uncategorized": "Uncategorized"
   },
   "filter": {
     "notes": "Notes",
@@ -76,17 +83,24 @@
     "no-matches": "No matches",
     "create-tag": "Create #{tag}",
     "remove-link": "Remove link to {title}",
-    "unpin": "Unpin"
+    "unpin": "Unpin",
+    "collapse-category": "Collapse {name}",
+    "expand-category": "Expand {name}"
   },
   "tooltip": {
     "connection-count": "{count, plural, one {# connection} other {# connections}}",
-    "more-tags": "+{count}"
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# item} other {# items}}",
+    "click-to-expand": "Click to expand"
   },
   "local-panel": {
     "loading": "Loading graph...",
     "empty": "No connections found",
     "open-full": "Open full graph",
-    "close": "Close graph"
+    "close": "Close graph",
+    "pin": "Pin to this note",
+    "unpin": "Unpin and follow the open note",
+    "pinned-to": "Pinned: {title}"
   },
   "edit": {
     "linked": "Linked {source} to {target} in \"{property}\"",
@@ -106,5 +120,18 @@
     "description": "Every pinned node is released and the graph settles into a fresh arrangement. Your saved layout is discarded.",
     "cancel": "Cancel",
     "confirm": "Re-layout"
+  },
+  "views": {
+    "title": "Saved views",
+    "unsaved": "Unsaved view",
+    "edited": "Edited",
+    "empty": "No saved views yet",
+    "save-as": "Save as new view…",
+    "update": "Update “{name}”",
+    "delete": "Delete view {name}",
+    "save-dialog-title": "Save graph view",
+    "save-dialog-placeholder": "View name",
+    "cancel": "Cancel",
+    "save": "Save"
   }
 }

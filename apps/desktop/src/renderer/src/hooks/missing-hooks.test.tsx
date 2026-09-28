@@ -13,6 +13,7 @@ import { useFlushOnQuit } from './use-flush-on-quit'
 import { useFocusTrap } from './use-focus-trap'
 import { useFolderViewEvents } from './use-folder-view-events'
 import { useGraphData, useGraphReactivity, useLocalGraphData } from './use-graph-data'
+import { GRAPH_VIEW_STATE_DEFAULTS } from '@memry/contracts/graph-api'
 import { useGraphFilters } from './use-graph-filters'
 import { useGraphSettings } from './use-graph-settings'
 import { useInboxKeyboard } from './use-inbox-keyboard'
@@ -93,7 +94,9 @@ vi.mock('@/contexts/tabs', () => ({
     setActiveTab: mocks.setActiveTab,
     state: { activeGroupId: 'pane-a' },
     dispatch: mocks.tabsDispatch
-  })
+  }),
+  // The graph filters hook stores its state in the tab; outside a tab it is local.
+  useTabActionsOptional: () => null
 }))
 
 vi.mock('@/services/inbox-service', () => ({
@@ -630,7 +633,7 @@ describe('state and settings hooks', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const wrapper = queryWrapper(queryClient)
 
-    const filters = renderHook(() => useGraphFilters())
+    const filters = renderHook(() => useGraphFilters(GRAPH_VIEW_STATE_DEFAULTS))
     expect(filters.result.current.isFiltered).toBe(false)
     act(() => filters.result.current.dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: 'note' }))
     expect(filters.result.current.filterState.showNotes).toBe(false)

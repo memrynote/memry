@@ -22,7 +22,8 @@ const mocks = vi.hoisted(() => ({
       Object.defineProperty(document.createElement('div'), 'offsetWidth', { value: 800 }),
     getGraph: (): unknown => mocks.sigmaContainerProps?.graph
   },
-  sigmaContainerProps: null as null | Record<string, any>
+  sigmaContainerProps: null as null | Record<string, any>,
+  requestedNoteId: null as string | null
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -42,7 +43,10 @@ vi.mock('@react-sigma/core', () => ({
 }))
 
 vi.mock('@/hooks/use-graph-data', () => ({
-  useLocalGraphData: () => mocks.localGraph
+  useLocalGraphData: (noteId: string) => {
+    mocks.requestedNoteId = noteId
+    return mocks.localGraph
+  }
 }))
 
 vi.mock('./graph-events', () => ({
@@ -221,6 +225,26 @@ describe('LocalGraphPanel', () => {
       vi.runOnlyPendingTimers()
     })
     unmount()
+  })
+
+  it('stays on a pinned note while the page moves to another one', () => {
+    const { rerender } = render(<LocalGraphPanel noteId="note-a" onClose={vi.fn()} />)
+    expect(mocks.requestedNoteId).toBe('note-a')
+
+    fireEvent.click(screen.getByTestId('local-graph-pin'))
+    expect(screen.getByTestId('local-graph-pin')).toHaveAttribute('aria-pressed', 'true')
+
+    rerender(<LocalGraphPanel noteId="note-c" onClose={vi.fn()} />)
+    expect(mocks.requestedNoteId).toBe('note-a')
+    expect(screen.getByText('local-panel.pinned-to')).toBeInTheDocument()
+    const settings = mocks.sigmaContainerProps?.settings
+    expect(settings.nodeReducer('note-a', { size: 5, color: '#000000' })).toMatchObject({
+      color: '#f59e0b'
+    })
+
+    fireEvent.click(screen.getByTestId('local-graph-pin'))
+    expect(mocks.requestedNoteId).toBe('note-c')
+    expect(screen.queryByText('local-panel.pinned-to')).not.toBeInTheDocument()
   })
 
   it('renders a safe fallback with the local panel close control when WebGL is unavailable', () => {

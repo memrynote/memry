@@ -7,7 +7,8 @@ const TYPE_COLORS: Record<string, string> = {
   journal: 'bg-accent-purple/15 text-accent-purple',
   task: 'bg-accent-orange/15 text-accent-orange',
   project: 'bg-accent-green/15 text-accent-green',
-  tag: 'bg-[var(--graph-node-tag)]/15 text-[var(--graph-node-tag)]'
+  tag: 'bg-[var(--graph-node-tag)]/15 text-[var(--graph-node-tag)]',
+  group: 'bg-muted text-foreground'
 }
 
 const TYPE_LABEL_KEYS = {
@@ -15,7 +16,8 @@ const TYPE_LABEL_KEYS = {
   journal: 'entity.journal',
   task: 'entity.task',
   project: 'entity.project',
-  tag: 'entity.tag'
+  tag: 'entity.tag',
+  group: 'entity.category'
 } as const
 
 interface GraphTooltipProps {
@@ -37,6 +39,7 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
   const connectionCount = (attrs.connectionCount as number) ?? 0
   const emoji = attrs.emoji as string | null
   const isUnresolved = attrs.isUnresolved as boolean
+  const isGroup = nodeType === 'group'
   const nodeTypeLabel = isUnresolved
     ? t('entity.unresolved')
     : TYPE_LABEL_KEYS[nodeType as keyof typeof TYPE_LABEL_KEYS]
@@ -63,9 +66,15 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
           {nodeTypeLabel}
         </span>
         <span className="text-[10px] text-muted-foreground">
-          {t('tooltip.connection-count', { count: connectionCount })}
+          {isGroup
+            ? t('tooltip.member-count', { count: (attrs.memberCount as number) ?? 0 })
+            : t('tooltip.connection-count', { count: connectionCount })}
         </span>
       </div>
+
+      {isGroup && (
+        <p className="text-[10px] text-muted-foreground mb-1">{t('tooltip.click-to-expand')}</p>
+      )}
 
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1">

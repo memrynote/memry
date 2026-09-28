@@ -1878,6 +1878,15 @@
     --graph-edge-soft: #a8a6a0;
     --graph-bg: #f6f5f0;
     --graph-label-color: #1a1a1a;
+    --graph-group-1: #4a7fb5;
+    --graph-group-2: #c06a4a;
+    --graph-group-3: #5a9a6a;
+    --graph-group-4: #9a6ab5;
+    --graph-group-5: #b88f2e;
+    --graph-group-6: #3a9aa0;
+    --graph-group-7: #b55a7a;
+    --graph-group-8: #7a7a4a;
+    --graph-group-none: #c4c2bc;
 
     /* ===== QUEUE LIST ===== */
     --queue-bg: #eae8e1;
@@ -2158,6 +2167,15 @@
     --graph-edge-soft: #6b6966;
     --graph-bg: #0e0e10;
     --graph-label-color: #dedede;
+    --graph-group-1: #7aa8d8;
+    --graph-group-2: #e0906e;
+    --graph-group-3: #80c090;
+    --graph-group-4: #bb95d6;
+    --graph-group-5: #e0bc62;
+    --graph-group-6: #62bcc2;
+    --graph-group-7: #d8849e;
+    --graph-group-8: #a8a878;
+    --graph-group-none: #4a4850;
 
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #161618;

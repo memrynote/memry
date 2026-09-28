@@ -41,9 +41,34 @@ function resolveVar(varName: string, fallback = '#8c8c8c'): string {
   return value || fallback
 }
 
+/** A tag category the user collapsed into one super-node. */
+export interface CollapsedGraphGroup {
+  /** The tag category id. The super-node's id is `groupNodeId(id)`. */
+  id: string
+  label: string
+  color: string
+  /** Every tag in the category. A node carrying any of them folds into the group. */
+  tags: string[]
+}
+
 export interface BuildGraphOptions {
   showTags?: boolean
+  /**
+   * Collapsed tag categories, in category order. A node whose tags fall into
+   * more than one collapsed category folds into the first.
+   */
+  collapsedGroups?: CollapsedGraphGroup[]
 }
+
+const GROUP_NODE_PREFIX = 'group:'
+
+export const groupNodeId = (categoryId: string): string => `${GROUP_NODE_PREFIX}${categoryId}`
+
+const TAG_NODE_PREFIX = 'tag:'
+
+/** The tag a `tag:<name>` node stands for, or null for any other node. */
+export const tagOfTagNode = (nodeId: string): string | null =>
+  nodeId.startsWith(TAG_NODE_PREFIX) ? nodeId.slice(TAG_NODE_PREFIX.length) : null
 
 type GraphAttributes = Record<string, unknown>
 
@@ -56,6 +81,8 @@ interface SpecEdge {
 interface GraphSpec {
   nodes: Map<string, GraphAttributes>
   edges: Map<string, SpecEdge>
+  /** Super-node id -> the node ids folded into it. Empty when nothing is collapsed. */
+  groupMembers: Map<string, string[]>
 }
 
 /** Owned by the force simulation, so a data refresh must never write over them. */
@@ -134,7 +161,7 @@ function buildGraphSpec(data: GraphDataResponse, options: BuildGraphOptions): Gr
 
     for (const node of data.nodes) {
       for (const tag of node.tags) {
-        const tagNodeId = `tag:${tag}`
+        const tagNodeId = `${TAG_NODE_PREFIX}${tag}`
         if (!nodes.has(tagNodeId)) {
           const angle = Math.random() * 2 * Math.PI
           const radius = spread * 0.3 + Math.random() * spread * 0.7
@@ -179,7 +206,120 @@ function buildGraphSpec(data: GraphDataResponse, options: BuildGraphOptions): Gr
     }
   }
 
-  return { nodes, edges }
+  return collapseGroups({ nodes, edges, groupMembers: new Map() }, options.collapsedGroups ?? [])
+}
+
+/**
+ * Fold every member of a collapsed category into one super-node.
+ *
+ * Members leave the spec entirely, so the layout simulates the super-node
+ * alone. Every edge with exactly one end inside a group is redirected to the
+ * super-node, and parallel redirected edges merge into one whose weight is how
+ * many they replaced. Edges between two members of the same group disappear.
+ */
+function collapseGroups(spec: GraphSpec, groups: CollapsedGraphGroup[]): GraphSpec {
+  if (groups.length === 0) return spec
+
+  const groupIndexByTag = new Map<string, number>()
+  groups.forEach((group, index) => {
+    for (const tag of group.tags) {
+      if (!groupIndexByTag.has(tag)) groupIndexByTag.set(tag, index)
+    }
+  })
+
+  const memberOf = new Map<string, string>()
+  const groupMembers = new Map<string, string[]>()
+  for (const [id, attributes] of spec.nodes) {
+    const tagOfNode = tagOfTagNode(id)
+    const tags = tagOfNode !== null ? [tagOfNode] : ((attributes.tags as string[]) ?? [])
+    let index: number | undefined
+    for (const tag of tags) {
+      const candidate = groupIndexByTag.get(tag)
+      if (candidate !== undefined && (index === undefined || candidate < index)) index = candidate
+    }
+    if (index === undefined) continue
+    const groupId = groupNodeId(groups[index].id)
+    memberOf.set(id, groupId)
+    const members = groupMembers.get(groupId)
+    if (members) members.push(id)
+    else groupMembers.set(groupId, [id])
+  }
+
+  if (memberOf.size === 0) return spec
+
+  const nodes = new Map<string, GraphAttributes>()
+  for (const [id, attributes] of spec.nodes) {
+    if (!memberOf.has(id)) nodes.set(id, attributes)
+  }
+
+  for (const group of groups) {
+    const id = groupNodeId(group.id)
+    const members = groupMembers.get(id)
+    if (!members) continue
+    // The members' seed positions are random, so their centroid is a fresh
+    // random-ish point too; a sync onto a live graph overrides it with the
+    // centroid of where the members actually sat.
+    let x = 0
+    let y = 0
+    for (const member of members) {
+      const attributes = spec.nodes.get(member)
+      x += (attributes?.x as number) ?? 0
+      y += (attributes?.y as number) ?? 0
+    }
+    nodes.set(id, {
+      x: x / members.length,
+      y: y / members.length,
+      size: 5 + Math.log2(members.length + 1) * 3,
+      color: group.color,
+      label: `${group.label} (${members.length})`,
+      groupLabel: group.label,
+      nodeType: 'group',
+      categoryId: group.id,
+      memberCount: members.length,
+      tags: group.tags,
+      wordCount: 0,
+      connectionCount: 0,
+      emoji: null,
+      isOrphan: false,
+      isUnresolved: false
+    })
+  }
+
+  const edges = new Map<string, SpecEdge>()
+  const groupDegree = new Map<string, number>()
+  for (const [key, edge] of spec.edges) {
+    const source = memberOf.get(edge.source) ?? edge.source
+    const target = memberOf.get(edge.target) ?? edge.target
+    if (source === edge.source && target === edge.target) {
+      edges.set(key, edge)
+      continue
+    }
+    if (source === target) continue
+    const [a, b] = source < target ? [source, target] : [target, source]
+    const groupEdgeKey = `${GROUP_NODE_PREFIX}edge:${a}|${b}`
+    const existing = edges.get(groupEdgeKey)
+    if (existing) {
+      const weight = (existing.attributes.weight as number) + 1
+      existing.attributes.weight = weight
+      existing.attributes.size = Math.min(4, 1 + Math.log2(weight))
+      continue
+    }
+    edges.set(groupEdgeKey, {
+      source: a,
+      target: b,
+      attributes: { ...edge.attributes, size: 1, edgeType: 'group', weight: 1 }
+    })
+    for (const end of [a, b]) {
+      if (groupMembers.has(end)) groupDegree.set(end, (groupDegree.get(end) ?? 0) + 1)
+    }
+  }
+
+  for (const [id, degree] of groupDegree) {
+    const attributes = nodes.get(id)
+    if (attributes) attributes.connectionCount = degree
+  }
+
+  return { nodes, edges, groupMembers }
 }
 
 /**
@@ -265,12 +405,15 @@ export interface GraphSyncResult {
 export function syncGraphologyGraph(
   graph: Graph,
   data: GraphDataResponse,
-  options: BuildGraphOptions = {}
+  options: BuildGraphOptions = {},
+  positionCache: GraphPositionCache = createGraphPositionCache()
 ): GraphSyncResult {
   const spec = buildGraphSpec(data, options)
   let changed = false
   let structureChanged = false
   const added: string[] = []
+
+  const placements = placeArrivingNodes(graph, spec, positionCache)
 
   for (const key of graph.edges()) {
     if (spec.edges.has(key)) continue
@@ -280,14 +423,21 @@ export function syncGraphologyGraph(
 
   for (const id of graph.nodes()) {
     if (spec.nodes.has(id)) continue
+    // A pin survives the node leaving: expanding a collapsed category must not
+    // silently release what the user pinned inside it.
+    const pinned = graph.getNodeAttribute(id, PINNED_ATTRIBUTE) === true
+    positionCache.positions.set(id, { ...readPosition(graph, id), ...(pinned && { pinned }) })
+    positionCache.groupOrigins.delete(id)
     graph.dropNode(id)
     structureChanged = true
   }
 
   for (const [id, attributes] of spec.nodes) {
     if (!graph.hasNode(id)) {
-      graph.addNode(id, attributes)
-      added.push(id)
+      const placed = placements.get(id)
+      graph.addNode(id, placed ? { ...attributes, ...placed } : attributes)
+      // A node coming back from a collapsed category already knows where it sat.
+      if (!placed) added.push(id)
       structureChanged = true
       continue
     }
@@ -319,6 +469,96 @@ export function syncGraphologyGraph(
   }
 
   return { changed: changed || structureChanged, structureChanged }
+}
+
+export interface GraphPosition {
+  x: number
+  y: number
+  /** Set on a cached position whose node was pinned when it left the graph. */
+  pinned?: boolean
+}
+
+/**
+ * What the graph remembers about nodes that left it, so a collapse that is
+ * undone puts the members back instead of scattering them at random. Owned by
+ * the caller so it outlives one sync.
+ */
+export interface GraphPositionCache {
+  /** Last position of every node that was dropped from the graph. */
+  positions: Map<string, GraphPosition>
+  /** Super-node id -> the centroid it was created at. */
+  groupOrigins: Map<string, GraphPosition>
+  /** Member id -> the super-node it was folded into. */
+  memberGroup: Map<string, string>
+}
+
+export function createGraphPositionCache(): GraphPositionCache {
+  return { positions: new Map(), groupOrigins: new Map(), memberGroup: new Map() }
+}
+
+function readPosition(graph: Graph, id: string): GraphPosition {
+  return {
+    x: graph.getNodeAttribute(id, 'x') as number,
+    y: graph.getNodeAttribute(id, 'y') as number
+  }
+}
+
+/**
+ * Positions for nodes about to be added, measured against the graph BEFORE the
+ * sync drops anything:
+ *
+ * - A new super-node sits at the centroid of the members it swallows, so the
+ *   group appears where its members were.
+ * - A member coming back out of a super-node returns to where it sat before
+ *   the collapse, shifted by however far the super-node moved since.
+ * - Anything else seen before returns to its last position.
+ */
+function placeArrivingNodes(
+  graph: Graph,
+  spec: GraphSpec,
+  cache: GraphPositionCache
+): Map<string, GraphPosition> {
+  const placements = new Map<string, GraphPosition>()
+
+  for (const [groupId, members] of spec.groupMembers) {
+    if (graph.hasNode(groupId)) continue
+    const present = members.filter((id) => graph.hasNode(id))
+    for (const id of members) cache.memberGroup.set(id, groupId)
+    if (present.length === 0) continue
+    let x = 0
+    let y = 0
+    for (const id of present) {
+      const position = readPosition(graph, id)
+      x += position.x
+      y += position.y
+    }
+    const centroid = { x: x / present.length, y: y / present.length }
+    placements.set(groupId, centroid)
+    cache.groupOrigins.set(groupId, centroid)
+  }
+
+  for (const id of spec.nodes.keys()) {
+    if (graph.hasNode(id) || placements.has(id)) continue
+    const cached = cache.positions.get(id)
+    if (!cached) continue
+    const groupId = cache.memberGroup.get(id)
+    const origin = groupId ? cache.groupOrigins.get(groupId) : undefined
+    // A pinned member goes back exactly where the user put it; the rest follow
+    // the super-node.
+    if (!cached.pinned && groupId && origin && graph.hasNode(groupId) && !spec.nodes.has(groupId)) {
+      const current = readPosition(graph, groupId)
+      placements.set(id, {
+        ...cached,
+        x: cached.x + current.x - origin.x,
+        y: cached.y + current.y - origin.y
+      })
+    } else {
+      placements.set(id, cached)
+    }
+    cache.memberGroup.delete(id)
+  }
+
+  return placements
 }
 
 /** Only the attributes that actually differ, so sigma is not woken for a no-op. */

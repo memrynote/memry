@@ -11,7 +11,9 @@ import {
   Tag,
   Unlink,
   Settings,
-  RotateCcw
+  RotateCcw,
+  Expand,
+  Shrink
 } from '@/lib/icons'
 import { PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import { Input } from '@/components/ui/input'
@@ -30,8 +32,14 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'
-import type { GraphSettings } from '@memry/contracts/graph-api'
+import type { GraphColorBy, GraphSettings } from '@memry/contracts/graph-api'
+import { GRAPH_GROUP_NONE_VAR, type GraphCategory } from '@/lib/graph-categories'
 import { useT } from '@memry/i18n/renderer'
+
+export interface GraphCategoryRow extends GraphCategory {
+  /** Notes, journals, tasks and projects that fall in this category. */
+  count: number
+}
 
 interface GraphControlPanelProps {
   filterState: GraphFilterState
@@ -42,6 +50,13 @@ interface GraphControlPanelProps {
   updateSettings: (updates: Partial<GraphSettings>) => void
   /** Forget the saved arrangement and pins, and lay the graph out from scratch. */
   onRelayout?: () => Promise<void> | void
+  /** The saved-views switcher, rendered at the top of the drawer. */
+  viewsMenu?: React.ReactNode
+  colorBy?: GraphColorBy
+  onColorByChange?: (colorBy: GraphColorBy) => void
+  categories?: GraphCategoryRow[]
+  collapsedCategoryIds?: readonly string[]
+  onToggleCategory?: (categoryId: string) => void
 }
 
 const ENTITY_FILTERS = [
@@ -88,7 +103,13 @@ export function GraphControlPanel({
   focusLabel,
   settings,
   updateSettings,
-  onRelayout
+  onRelayout,
+  viewsMenu,
+  colorBy = 'type',
+  onColorByChange,
+  categories,
+  collapsedCategoryIds = [],
+  onToggleCategory
 }: GraphControlPanelProps): React.JSX.Element {
   const { t } = useT('graph')
   const [isOpen, setIsOpen] = useState(false)
@@ -130,6 +151,8 @@ export function GraphControlPanel({
         className={`absolute end-0 top-0 z-40 w-[260px] max-h-full border-s border-border bg-popover/95 backdrop-blur-sm rounded-bl-lg overflow-y-auto transition-transform duration-250 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="p-3 space-y-0.5">
+          {viewsMenu && <div className="pe-10 pb-2">{viewsMenu}</div>}
+
           {isFiltered && (
             <div className="flex justify-end mb-2">
               <Button
@@ -233,6 +256,76 @@ export function GraphControlPanel({
               </div>
             </div>
           </PanelSection>
+
+          {/* Categories section: colour legend and collapse controls */}
+          {categories && onColorByChange && onToggleCategory && (
+            <PanelSection title={t('control.categories')} defaultOpen>
+              <div className="space-y-2.5">
+                <FilterSwitch
+                  label={t('control.color-by-category')}
+                  checked={colorBy === 'tag-category'}
+                  onCheckedChange={(v) => onColorByChange(v ? 'tag-category' : 'type')}
+                />
+                {categories.length === 0 ? (
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    {t('control.no-categories')}
+                  </p>
+                ) : (
+                  <ul className="space-y-1" aria-label={t('control.categories')}>
+                    {categories.map((category) => {
+                      const collapsed = collapsedCategoryIds.includes(category.id)
+                      const actionLabel = collapsed
+                        ? t('control.expand-category', { name: category.label })
+                        : t('control.collapse-category', { name: category.label })
+                      return (
+                        <li key={category.id} className="flex items-center gap-2">
+                          <span
+                            aria-hidden
+                            className="size-2.5 shrink-0 rounded-full"
+                            style={{ background: `var(${category.colorVar})` }}
+                          />
+                          <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                            {category.label}
+                          </span>
+                          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                            {category.count}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 shrink-0 p-0"
+                            onClick={() => onToggleCategory(category.id)}
+                            disabled={!collapsed && category.count === 0}
+                            aria-pressed={collapsed}
+                            aria-label={actionLabel}
+                            title={actionLabel}
+                          >
+                            {collapsed ? (
+                              <Expand className="size-3 text-foreground" />
+                            ) : (
+                              <Shrink className="size-3 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </li>
+                      )
+                    })}
+                    {colorBy === 'tag-category' && (
+                      <li className="flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ background: `var(${GRAPH_GROUP_NONE_VAR})` }}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                          {t('control.uncategorized')}
+                        </span>
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            </PanelSection>
+          )}
 
           {/* Display section */}
           <PanelSection title={t('control.display')} defaultOpen>

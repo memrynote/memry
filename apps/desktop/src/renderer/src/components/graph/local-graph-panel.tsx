@@ -2,12 +2,14 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
-import { X, Maximize2 } from '@/lib/icons'
+import { X, Maximize2, Pin } from '@/lib/icons'
 import Graph from 'graphology'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import { Button } from '@/components/ui/button'
 import { useLocalGraphData } from '@/hooks/use-graph-data'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import { cn } from '@/lib/utils'
 import { buildGraphologyGraph, keepsOwnEdgeColor } from '@/lib/graph-builder'
 import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 import { hasWebGLSupport } from '@/lib/webgl-support'
@@ -36,6 +38,16 @@ function easeOutQuad(t: number): number {
   return 1 - (1 - t) * (1 - t)
 }
 
+/**
+ * Name inside `Tab.viewState` for the note the local graph is pinned to. Not
+ * entity-stamped on purpose: the pin exists to outlive the tab moving to
+ * another note.
+ */
+export const LOCAL_GRAPH_PIN_KEY = 'localGraphPinnedNoteId'
+
+const parsePinnedNoteId = (raw: unknown): string | null | undefined =>
+  raw === null ? null : typeof raw === 'string' && raw !== '' ? raw : undefined
+
 interface LocalGraphPanelProps {
   noteId: string
   onClose: () => void
@@ -50,7 +62,29 @@ export function LocalGraphPanel({
   const { t } = useT('graph')
   const { resolvedTheme } = useTheme()
   const [webglAvailable] = useState(() => hasWebGLSupport())
-  const { data, isLoading } = useLocalGraphData(noteId)
+  const [pinnedNoteId, setPinnedNoteId] = useTabViewState<string | null>({
+    key: LOCAL_GRAPH_PIN_KEY,
+    defaultValue: null,
+    parse: parsePinnedNoteId
+  })
+  // Pinned: the panel keeps showing one note while the page moves on.
+  // Unpinned: it follows whatever note the page shows.
+  const centerId = pinnedNoteId ?? noteId
+  const { data, isLoading } = useLocalGraphData(centerId)
+  const centerLabel = useMemo(
+    () => data?.nodes.find((node) => node.id === centerId)?.label ?? null,
+    [data, centerId]
+  )
+  const togglePin = useCallback(
+    () => setPinnedNoteId((current) => (current ? null : noteId)),
+    [setPinnedNoteId, noteId]
+  )
+  const pin = {
+    pinned: pinnedNoteId !== null,
+    // Only worth naming when the panel is showing a different note than the page.
+    label: pinnedNoteId !== null && pinnedNoteId !== noteId ? centerLabel : null,
+    onToggle: togglePin
+  }
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
@@ -68,7 +102,7 @@ export function LocalGraphPanel({
 
   const nodeReducer = useCallback(
     (node: string, attrs: Record<string, unknown>): Partial<NodeDisplayData> => {
-      const isCenter = node === noteId
+      const isCenter = node === centerId
       const baseAttrs = attrs as Partial<NodeDisplayData>
 
       if (isCenter) {
@@ -92,12 +126,12 @@ export function LocalGraphPanel({
       if (isHovered) {
         return { ...baseAttrs, highlighted: true, zIndex: 1 }
       }
-      if (isNeighbor || node === noteId) {
+      if (isNeighbor || node === centerId) {
         return baseAttrs
       }
       return { ...baseAttrs, label: '', color: dimmedColor, zIndex: 0 }
     },
-    [graph, noteId, dimmedColor]
+    [graph, centerId, dimmedColor]
   )
 
   const edgeReducer = useCallback(
@@ -168,7 +202,7 @@ export function LocalGraphPanel({
         <div className="flex h-full items-center justify-center">
           <span className="text-xs text-muted-foreground">{t('local-panel.loading')}</span>
         </div>
-        <PanelHeader onClose={onClose} />
+        <PanelHeader onClose={onClose} pin={pin} />
       </div>
     )
   }
@@ -179,7 +213,7 @@ export function LocalGraphPanel({
         <div className="flex h-full items-center justify-center">
           <span className="text-xs text-muted-foreground">{t('local-panel.empty')}</span>
         </div>
-        <PanelHeader onClose={onClose} />
+        <PanelHeader onClose={onClose} pin={pin} />
       </div>
     )
   }
@@ -188,14 +222,14 @@ export function LocalGraphPanel({
     return (
       <div className="relative h-[250px] rounded-md border border-border bg-muted/30 overflow-hidden">
         <GraphRenderUnavailable className="p-4" />
-        <PanelHeader onClose={onClose} />
+        <PanelHeader onClose={onClose} pin={pin} />
       </div>
     )
   }
 
   return (
     <div className="relative h-[250px] rounded-md border border-border bg-muted/30 overflow-hidden">
-      <PanelHeader onClose={onClose} onOpenFullGraph={onOpenFullGraph} />
+      <PanelHeader onClose={onClose} onOpenFullGraph={onOpenFullGraph} pin={pin} />
 
       <SigmaContainer graph={graph} settings={initialSigmaSettings} className="h-full w-full">
         <LocalSigmaSettingsSync nodeReducer={nodeReducer} edgeReducer={edgeReducer} />
@@ -348,36 +382,64 @@ function LocalSigmaSettingsSync({
 
 function PanelHeader({
   onClose,
-  onOpenFullGraph
+  onOpenFullGraph,
+  pin
 }: {
   onClose: () => void
   onOpenFullGraph?: () => void
+  pin: { pinned: boolean; label: string | null; onToggle: () => void }
 }): React.JSX.Element {
   const { t } = useT('graph')
+  const pinLabel = pin.pinned ? t('local-panel.unpin') : t('local-panel.pin')
 
   return (
-    <div className="absolute top-1.5 end-1.5 z-10 flex items-center gap-1">
-      {onOpenFullGraph && (
+    <>
+      {pin.label && (
+        <div className="absolute top-1.5 start-1.5 z-10 flex max-w-[60%] items-center gap-1 rounded-md bg-popover/80 px-1.5 py-0.5 backdrop-blur-sm">
+          <Pin className="size-3 shrink-0 text-muted-foreground" />
+          <span className="truncate text-[11px] text-foreground">
+            {t('local-panel.pinned-to', { title: pin.label })}
+          </span>
+        </div>
+      )}
+      <div className="absolute top-1.5 end-1.5 z-10 flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            'h-6 w-6 bg-popover/80 backdrop-blur-sm hover:bg-popover',
+            pin.pinned && 'bg-accent text-foreground'
+          )}
+          onClick={pin.onToggle}
+          aria-pressed={pin.pinned}
+          aria-label={pinLabel}
+          title={pinLabel}
+          data-testid="local-graph-pin"
+        >
+          <Pin className={cn('size-3', !pin.pinned && 'text-muted-foreground')} />
+        </Button>
+        {onOpenFullGraph && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 bg-popover/80 backdrop-blur-sm hover:bg-popover"
+            onClick={onOpenFullGraph}
+            title={t('local-panel.open-full')}
+          >
+            <Maximize2 className="size-3" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
           className="h-6 w-6 bg-popover/80 backdrop-blur-sm hover:bg-popover"
-          onClick={onOpenFullGraph}
-          title={t('local-panel.open-full')}
+          onClick={onClose}
+          title={t('local-panel.close')}
         >
-          <Maximize2 className="size-3" />
+          <X className="size-3" />
         </Button>
-      )}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 bg-popover/80 backdrop-blur-sm hover:bg-popover"
-        onClick={onClose}
-        title={t('local-panel.close')}
-      >
-        <X className="size-3" />
-      </Button>
-    </div>
+      </div>
+    </>
   )
 }
 

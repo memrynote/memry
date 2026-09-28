@@ -43,7 +43,12 @@ import type {
   FeaturesSettings,
   InboxSettings
 } from '@memry/contracts/settings-schemas'
-import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
+import {
+  GRAPH_SETTINGS_DEFAULTS,
+  GRAPH_VIEWS_SETTINGS_DEFAULTS,
+  parseGraphViewsSettings,
+  type GraphViewsSettings
+} from '@memry/contracts/graph-api'
 import {
   MAX_SAVED_TAG_SEARCHES,
   parseTagSearches,
@@ -287,6 +292,28 @@ function getDbOrNull() {
 
 /** Settings key holding the saved multi-tag searches blob. */
 const TAG_SEARCHES_GROUP_KEY = 'tagSearches'
+
+/** Settings key holding saved graph views and the last-used graph view state. */
+const GRAPH_VIEWS_GROUP_KEY = 'graphViews'
+
+/**
+ * Absent for every vault written before saved graph views existed, which reads
+ * as "no saved views, no last state". A corrupted blob is dropped the same way
+ * `readGroupSettings` drops one.
+ */
+function readGraphViews(): GraphViewsSettings {
+  const db = getDbOrNull()
+  if (!db) return { ...GRAPH_VIEWS_SETTINGS_DEFAULTS }
+  const raw = getSetting(db, GRAPH_VIEWS_GROUP_KEY)
+  if (!raw) return { ...GRAPH_VIEWS_SETTINGS_DEFAULTS }
+  try {
+    return parseGraphViewsSettings(JSON.parse(raw))
+  } catch {
+    logger.warn('Corrupted settings for "graphViews", resetting to defaults')
+    deleteSetting(db, GRAPH_VIEWS_GROUP_KEY)
+    return { ...GRAPH_VIEWS_SETTINGS_DEFAULTS }
+  }
+}
 
 /**
  * Read a JSON-blob settings group with corruption recovery (T015).
@@ -1285,6 +1312,22 @@ export function registerSettingsHandlers(): void {
       writeGroupSettings('graph', GRAPH_SETTINGS_DEFAULTS, updates)
   )
 
+  ipcMain.handle(SettingsChannels.invoke.GET_GRAPH_VIEWS, () => readGraphViews())
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_GRAPH_VIEWS,
+    (_event, patch: unknown): GraphViewsSettings => {
+      const db = getDbOrNull()
+      if (!db) return { ...GRAPH_VIEWS_SETTINGS_DEFAULTS }
+      const current = readGraphViews()
+      const update = patch !== null && typeof patch === 'object' ? patch : {}
+      // Re-validate the merged blob: the persisted value must never become
+      // something `parseGraphViewsSettings` would later throw away wholesale.
+      const next = parseGraphViewsSettings({ ...current, ...update })
+      setSetting(db, GRAPH_VIEWS_GROUP_KEY, JSON.stringify(next))
+      return next
+    }
+  )
+
   ipcMain.handle(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS, () =>
     readGroupSettings('calendar.google', CALENDAR_GOOGLE_SETTINGS_DEFAULTS)
   )
@@ -1615,6 +1658,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_TAG_SEARCHES)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_GRAPH_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_GRAPH_VIEWS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_VIEWS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS)

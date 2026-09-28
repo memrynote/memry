@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
-import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
+import { GRAPH_SETTINGS_DEFAULTS, GRAPH_VIEW_STATE_DEFAULTS } from '@memry/contracts/graph-api'
 import { GraphPage } from './graph-page'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
@@ -12,7 +12,9 @@ const graphHookMocks = vi.hoisted(() => ({
   useGraphData: vi.fn(),
   useGraphReactivity: vi.fn(),
   useGraphFilters: vi.fn(),
-  useGraphSettings: vi.fn()
+  useGraphSettings: vi.fn(),
+  useGraphViews: vi.fn(),
+  useTagCategories: vi.fn()
 }))
 
 const renderingMocks = vi.hoisted(() => ({ webglAvailable: true }))
@@ -23,7 +25,16 @@ vi.mock('@/hooks/use-graph-data', () => ({
 }))
 
 vi.mock('@/hooks/use-graph-filters', () => ({
-  useGraphFilters: graphHookMocks.useGraphFilters
+  useGraphFilters: graphHookMocks.useGraphFilters,
+  isGraphFiltered: () => false
+}))
+
+vi.mock('@/hooks/use-graph-views', () => ({
+  useGraphViews: graphHookMocks.useGraphViews
+}))
+
+vi.mock('@/hooks/use-tag-categories', () => ({
+  useTagCategories: graphHookMocks.useTagCategories
 }))
 
 vi.mock('@/hooks/use-graph-layout', () => ({
@@ -76,10 +87,25 @@ beforeEach(() => {
     refetch: vi.fn()
   })
   graphHookMocks.useGraphFilters.mockReturnValue({
+    viewState: { ...GRAPH_VIEW_STATE_DEFAULTS, filters: defaultFilterState },
+    activeViewId: null,
     filterState: defaultFilterState,
     dispatch: vi.fn(),
-    isFiltered: false
+    isFiltered: false,
+    setColorBy: vi.fn(),
+    toggleCollapsed: vi.fn(),
+    applyView: vi.fn()
   })
+  graphHookMocks.useGraphViews.mockReturnValue({
+    views: [],
+    lastState: null,
+    isLoading: false,
+    saveView: vi.fn(),
+    updateView: vi.fn(),
+    deleteView: vi.fn(),
+    rememberState: vi.fn()
+  })
+  graphHookMocks.useTagCategories.mockReturnValue({ categories: [], isLoading: false })
   graphHookMocks.useGraphSettings.mockReturnValue({
     settings: GRAPH_SETTINGS_DEFAULTS,
     updateSettings: vi.fn()
