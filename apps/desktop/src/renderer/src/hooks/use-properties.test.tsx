@@ -52,6 +52,48 @@ describe('useProperties', () => {
     })
   })
 
+  it('refetches when another surface writes properties this hook does not hold', async () => {
+    type UpdatedEvent = { id: string; changes: { properties?: Record<string, unknown> } }
+    const updateCallbacks: Array<(event: UpdatedEvent) => void> = []
+    api.onNoteUpdated = vi.fn((callback: (event: UpdatedEvent) => void) => {
+      updateCallbacks.push(callback)
+      return () => {}
+    })
+
+    const { result } = renderHook(() => useProperties('note-1'))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(api.properties.get).toHaveBeenCalledTimes(1)
+
+    // Echo of the hook's own state, another note, and a content-only update: no refetch.
+    await act(async () => {
+      updateCallbacks[0]({
+        id: 'note-1',
+        changes: { properties: { status: 'draft', priority: 2 } }
+      })
+      updateCallbacks[0]({ id: 'note-2', changes: { properties: { other: true } } })
+      updateCallbacks[0]({ id: 'note-1', changes: {} })
+    })
+    expect(api.properties.get).toHaveBeenCalledTimes(1)
+
+    const related = ['memry://note/note-b']
+    api.properties.get = vi
+      .fn()
+      .mockResolvedValue([
+        ...initialProperties,
+        { name: 'related', value: related, type: 'relation' }
+      ])
+    await act(async () => {
+      updateCallbacks[0]({
+        id: 'note-1',
+        changes: { properties: { status: 'draft', priority: 2, related } }
+      })
+    })
+
+    await waitFor(() => {
+      expect(result.current.propertiesRecord).toEqual({ status: 'draft', priority: 2, related })
+    })
+  })
+
   it('updates, adds, removes, renames, reorders, and skips no-op paths', async () => {
     const { result } = renderHook(() => useProperties('note-1'))
 

@@ -66,7 +66,15 @@
     "focus-node": "Focus on this node",
     "open-new-tab": "Open in new tab",
     "create-note": "Create note",
-    "copy-title": "Copy title"
+    "copy-title": "Copy title",
+    "link-to": "Link to…",
+    "add-tag": "Add tag…",
+    "back": "Back",
+    "link-search": "Search notes…",
+    "tag-search": "Search or create a tag…",
+    "no-matches": "No matches",
+    "create-tag": "Create #{tag}",
+    "remove-link": "Remove link to {title}"
   },
   "tooltip": {
     "connection-count": "{count, plural, one {# connection} other {# connections}}",
@@ -77,5 +85,18 @@
     "empty": "No connections found",
     "open-full": "Open full graph",
     "close": "Close graph"
+  },
+  "edit": {
+    "linked": "Linked {source} to {target} in \"{property}\"",
+    "unlinked": "Removed the link from {source} to {target}",
+    "already-linked": "{source} already links to {target}",
+    "property-conflict": "\"{property}\" on this note is not a relation property, so the link was not added",
+    "link-unsupported": "Links can only be made between notes",
+    "link-failed": "Could not add the link",
+    "unlink-failed": "Could not remove the link",
+    "tag-added": "Added #{tag} to {note}",
+    "tag-exists": "This note already has #{tag}",
+    "tag-failed": "Could not add the tag",
+    "undo-failed": "Could not undo the change"
   }
 }

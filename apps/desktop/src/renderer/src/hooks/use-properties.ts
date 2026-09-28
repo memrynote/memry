@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
+import { onNoteUpdated } from '@/services/notes-service'
 import { inferType, getUniquePropertyName } from '@/lib/property-utils'
 import { toast } from 'sonner'
 import { getI18n } from 'react-i18next'
@@ -32,6 +33,10 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
   const [error, setError] = useState<string | null>(null)
 
   const propertiesRecord = useMemo(() => toRecord(properties), [properties])
+  const propertiesRecordRef = useRef(propertiesRecord)
+  useEffect(() => {
+    propertiesRecordRef.current = propertiesRecord
+  }, [propertiesRecord])
 
   const fetchProperties = useCallback(async () => {
     if (!entityId) {
@@ -77,6 +82,21 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       void fetchProperties()
     })
     return unsub
+  }, [entityId, fetchProperties])
+
+  // Every write below sends the full record, so a stale local copy would erase
+  // a property another surface (the graph, an agent) wrote since the last
+  // fetch. Refetch when an update lands with properties this hook does not hold;
+  // this hook's own writes echo back identical and are skipped.
+  useEffect(() => {
+    if (!entityId) return
+    return onNoteUpdated((event) => {
+      if (event.id !== entityId) return
+      const next = event.changes.properties
+      if (!next) return
+      if (JSON.stringify(next) === JSON.stringify(propertiesRecordRef.current)) return
+      void fetchProperties()
+    })
   }, [entityId, fetchProperties])
 
   const updateProperty = useCallback(
