@@ -22,8 +22,12 @@ const mocks = vi.hoisted(() => ({
     viewName: string | null
     refs: { entityType: 'note' | 'task' | 'file'; entityId: string }[]
   }[],
-  loadScope: vi.fn()
+  loadScope: vi.fn(),
+  scopeError: null as Error | null,
+  toast: Object.assign(vi.fn(), { error: vi.fn() })
 }))
+
+vi.mock('sonner', () => ({ toast: mocks.toast }))
 
 // Production react-i18next hands back a referentially-stable `t` across
 // renders, so the mock does too — a fresh `t` (or a fresh `{ t }` wrapper)
@@ -54,7 +58,7 @@ vi.mock('./canvas-bulk-sources', () => ({
   listBulkFolders: async () => mocks.folders,
   loadBulkScopeOptions: (scope: unknown) => {
     mocks.loadScope(scope)
-    return Promise.resolve(mocks.scopeOptions)
+    return mocks.scopeError ? Promise.reject(mocks.scopeError) : Promise.resolve(mocks.scopeOptions)
   }
 }))
 
@@ -387,9 +391,66 @@ describe('CanvasAddCardDialog', () => {
         { name: 'research', count: 3 },
         { name: 'reading', count: 1 }
       ]
-      mocks.folders = ['Projects', 'Projects/2026']
+      mocks.folders = ['Areas', 'Projects', 'Projects/2026']
       mocks.scopeOptions = []
+      mocks.scopeError = null
       mocks.loadScope.mockReset()
+      mocks.toast.mockReset()
+      mocks.toast.error.mockReset()
+    })
+
+    it('says so and stays on the list when a scope holds nothing placeable', async () => {
+      mocks.scopeOptions = [{ viewName: null, refs: [] }]
+      const props = setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-tag-research'))
+
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('bulkEmpty'))
+      expect(await screen.findByTestId('canvas-add-bulk-tag-research')).toBeInTheDocument()
+      expect(props.onAddAll).not.toHaveBeenCalled()
+    })
+
+    it('reports a failed load and returns to the list', async () => {
+      mocks.scopeError = new Error('disk gone')
+      setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-folder'))
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-folder-Projects'))
+
+      await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('disk gone'))
+      expect(await screen.findByTestId('canvas-add-bulk-folder-Projects')).toBeInTheDocument()
+    })
+
+    it('shows an empty note when no tag matches the filter', async () => {
+      setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
+      await screen.findByTestId('canvas-add-bulk-tag-research')
+      fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'zzz' } })
+      expect(screen.getByTestId('canvas-add-bulk-empty')).toHaveTextContent('addEmpty')
+    })
+
+    it('steps back from the view list with the back arrow', async () => {
+      mocks.scopeOptions = [
+        { viewName: null, refs: notes(2) },
+        { viewName: 'Open', refs: notes(1) }
+      ]
+      setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-folder'))
+      fireEvent.click(await screen.findByTestId('canvas-add-bulk-folder-Areas'))
+      await screen.findByTestId('canvas-add-bulk-view-0')
+
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-back'))
+      expect(await screen.findByTestId('canvas-add-bulk-folder-Areas')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-back'))
+      expect(screen.getByTestId('canvas-add-create-note')).toBeInTheDocument()
+    })
+
+    it('starts on a blank search after closing mid-flow', async () => {
+      const props = setup()
+      fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
+      await screen.findByTestId('canvas-add-bulk-tag-research')
+      fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Escape' })
+      expect(props.onOpenChange).toHaveBeenCalledWith(false)
+      expect(screen.getByTestId('canvas-add-create-note')).toBeInTheDocument()
     })
 
     it('offers the bulk sources only for a blank query', () => {

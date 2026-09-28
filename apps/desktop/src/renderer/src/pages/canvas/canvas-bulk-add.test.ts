@@ -1,12 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import {
+  dragRefsForRow,
   planBatchPlacement,
+  startCanvasRowsDrag,
   refFromViewRow,
   refsFromViewRows,
   splitNewRefs
 } from './canvas-bulk-add'
 import {
+  CANVAS_ITEM_DRAG_MIME,
   CARD_DEFAULT_HEIGHT,
   CARD_DEFAULT_WIDTH,
   entityKey,
@@ -162,5 +165,60 @@ describe('planBatchPlacement', () => {
     for (const center of centers) {
       expect(center.y - CARD_DEFAULT_HEIGHT / 2).toBeGreaterThan(bottom)
     }
+  })
+})
+
+describe('dragRefsForRow', () => {
+  const rows = [row('a'), row('b', { kind: 'task' }), row('c', { kind: 'inbox' }), row('d')]
+
+  it('drags the whole selection when the dragged row is part of it', () => {
+    expect(dragRefsForRow(rows, 'a', new Set(['a', 'b', 'c']))).toEqual([
+      { entityType: 'note', entityId: 'a' },
+      { entityType: 'task', entityId: 'b' }
+    ])
+  })
+
+  it('drags only the row when it is outside the selection', () => {
+    expect(dragRefsForRow(rows, 'd', new Set(['a', 'b']))).toEqual([
+      { entityType: 'note', entityId: 'd' }
+    ])
+  })
+})
+
+describe('startCanvasRowsDrag', () => {
+  function dragEvent(target: unknown = null) {
+    const setData = vi.fn()
+    const event = {
+      target: target as EventTarget | null,
+      dataTransfer: { setData, effectAllowed: 'uninitialized' as DataTransfer['effectAllowed'] },
+      preventDefault: vi.fn()
+    }
+    return { event, setData }
+  }
+
+  it('writes the canvas payload as a copy drag', () => {
+    const { event, setData } = dragEvent()
+    const refs = [
+      { entityType: 'note' as const, entityId: 'a' },
+      { entityType: 'task' as const, entityId: 'b' }
+    ]
+    startCanvasRowsDrag(event, refs)
+    expect(event.dataTransfer.effectAllowed).toBe('copy')
+    expect(setData).toHaveBeenCalledWith(CANVAS_ITEM_DRAG_MIME, JSON.stringify(refs))
+  })
+
+  it('cancels a drag with nothing a canvas can hold', () => {
+    const { event, setData } = dragEvent()
+    startCanvasRowsDrag(event, [])
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(setData).not.toHaveBeenCalled()
+  })
+
+  it('leaves a drag that starts inside an editable cell alone', () => {
+    const input = document.createElement('input')
+    const { event, setData } = dragEvent(input)
+    startCanvasRowsDrag(event, [{ entityType: 'note', entityId: 'a' }])
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(setData).not.toHaveBeenCalled()
   })
 })
