@@ -7,7 +7,7 @@
  * pickers: the rows come from two sources and a typed tag is a row of its own.
  */
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Command } from 'cmdk'
 import { useT } from '@memry/i18n/renderer'
 import { Hash, Tag, X } from '@/lib/icons'
@@ -41,13 +41,12 @@ export function CanvasFrameBindingDialog({
   const [query, setQuery] = useState('')
   const { tags, properties, loading } = useFrameBindingChoices(open)
 
-  // Reset between openings so a stale query never greets the next one.
-  useEffect(() => {
-    if (!open) {
-      // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- the query is user-owned; closing discards it
-      setQuery('')
-    }
-  }, [open])
+  // Every close goes through here, so the next opening starts with an empty
+  // query without an effect watching `open`.
+  const setOpen = (next: boolean): void => {
+    if (!next) setQuery('')
+    onOpenChange(next)
+  }
 
   const needle = query.trim().toLowerCase().replace(/^#/, '')
 
@@ -77,7 +76,7 @@ export function CanvasFrameBindingDialog({
 
   const pick = (binding: FrameBinding): void => {
     onPick(binding)
-    onOpenChange(false)
+    setOpen(false)
   }
 
   const nothing =
@@ -86,7 +85,7 @@ export function CanvasFrameBindingDialog({
   return (
     <Command.Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={setOpen}
       shouldFilter={false}
       label={t('canvas.frame.bindTitle')}
       overlayClassName="fixed inset-0 z-50 bg-black/50"
@@ -110,7 +109,7 @@ export function CanvasFrameBindingDialog({
             data-testid="canvas-frame-unbind"
             onSelect={() => {
               onUnbind()
-              onOpenChange(false)
+              setOpen(false)
             }}
             className={itemClass}
           >
