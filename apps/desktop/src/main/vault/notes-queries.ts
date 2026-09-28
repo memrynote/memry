@@ -19,6 +19,7 @@ import {
   type NoteTreeCacheRow
 } from '@main/database/queries/notes'
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
+import { getCanvasEdgesForEntity } from '@main/database/queries/canvas-edges'
 import { getAllTagsWithCounts } from '@main/database/queries/tags'
 import { getDatabase, getIndexDatabase } from '../database'
 import { toAbsolutePath } from './notes-io'
@@ -176,6 +177,30 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
   const targetCache = getNoteCacheById(db, id)
   const targetTitle = targetCache?.title ?? ''
 
+  // Canvas arrows between two note cards. Only note-to-note edges belong here:
+  // both lists open their entries as notes. An endpoint whose note is gone from
+  // the cache (deleted, or not indexed yet) is dropped rather than shown blank.
+  const canvasBacklinks: Backlink[] = []
+  for (const edge of getCanvasEdgesForEntity(getDatabase(), 'note', id)) {
+    if (edge.sourceType !== 'note' || edge.targetType !== 'note') continue
+    const via = { kind: 'canvas' as const, canvasId: edge.canvasId, canvasTitle: edge.canvasTitle }
+    if (edge.sourceId === id) {
+      const target = getNoteCacheById(db, edge.targetId)
+      if (!target) continue
+      outgoingLinks.push({ sourceId: id, targetId: target.id, targetTitle: target.title, via })
+    } else {
+      const source = getNoteCacheById(db, edge.sourceId)
+      if (!source) continue
+      canvasBacklinks.push({
+        sourceId: source.id,
+        sourcePath: source.path,
+        sourceTitle: source.title,
+        contexts: [],
+        via
+      })
+    }
+  }
+
   const backlinks: Backlink[] = await Promise.all(
     incoming.map(async (ref) => {
       const sourceCache = getNoteCacheById(db, ref.sourceNoteId)
@@ -204,5 +229,5 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
     })
   )
 
-  return { outgoing: outgoingLinks, incoming: backlinks }
+  return { outgoing: outgoingLinks, incoming: [...backlinks, ...canvasBacklinks] }
 }

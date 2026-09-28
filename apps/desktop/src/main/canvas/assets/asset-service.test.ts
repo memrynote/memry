@@ -29,7 +29,8 @@ const MIGRATION_FILES = [
   '0045_canvas_files.sql',
   '0048_canvas_folders.sql',
   '0057_sync_unknown_fields.sql',
-  '0058_canvas_owner_note.sql'
+  '0058_canvas_owner_note.sql',
+  '0063_canvas_entity_edges.sql'
 ]
 
 function freshDb() {

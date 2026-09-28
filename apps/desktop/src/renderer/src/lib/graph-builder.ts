@@ -13,6 +13,7 @@ const EDGE_COLOR_VARS: Record<string, string> = {
   wikilink: '--graph-edge-wikilink',
   'task-note': '--graph-edge-task-note',
   'project-task': '--graph-edge-project-task',
+  canvas: '--graph-edge-canvas',
   'entity-tag': '--graph-node-tag'
 }
 
@@ -21,7 +22,17 @@ const EDGE_SIZES: Record<string, number> = {
   'task-note': 1.5,
   'project-task': 1.5,
   relation: 1.25,
+  canvas: 1.5,
   'entity-tag': 0.8
+}
+
+/**
+ * Edge types that keep their own color when the graph paints every other edge
+ * in the soft background tone. A canvas connection was drawn by hand, and it is
+ * the one kind of edge that has no text in any note behind it.
+ */
+export function keepsOwnEdgeColor(attrs: Record<string, unknown>): boolean {
+  return attrs.edgeType === 'canvas'
 }
 
 function resolveVar(varName: string, fallback = '#8c8c8c'): string {

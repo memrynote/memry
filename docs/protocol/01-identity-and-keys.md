@@ -64,9 +64,8 @@ MUST reproduce all seven rows exactly; they are pinned as vectors under
 
 `memry-signing-key-v1` (id 2) and `memry-verify-key-v1` (id 3) have **no
 production caller anywhere in the tree**. The only references are the two
-implementation maps, one desktop unit test
-(`apps/desktop/src/main/crypto/crypto.test.ts:210-215`), and the committed
-vectors (`packages/contracts/test-vectors/crypto-vectors.json:77`, `:85`). The
+implementation maps and the committed vectors
+(`packages/contracts/test-vectors/crypto-vectors.json:77`, `:85`). The
 device signing key is a random Ed25519 pair, not a derived one (§1.5), so
 nothing needs them.
 

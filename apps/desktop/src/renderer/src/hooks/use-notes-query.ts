@@ -29,6 +29,7 @@ import {
   onFolderConfigUpdated
 } from '@/services/notes-service'
 import { onVaultIndexProgress } from '@/services/vault-service'
+import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { tagsService } from '@/services/tags-service'
 
 /**
@@ -472,11 +473,19 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
     // A created note resolves any outgoing link that named its title.
     const unsubCreated = onNoteCreated(refresh)
     const unsubDeleted = onNoteDeleted(refresh)
+    // An arrow drawn or removed on any canvas can add or drop a connection, and
+    // a canvas arriving by sync (or as a conflict copy) can bring its own.
+    const unsubCanvasCreated = onCanvasCreated(refresh)
+    const unsubCanvasUpdated = onCanvasUpdated(refresh)
+    const unsubCanvasDeleted = onCanvasDeleted(refresh)
 
     return () => {
       unsubUpdated()
       unsubCreated()
       unsubDeleted()
+      unsubCanvasCreated()
+      unsubCanvasUpdated()
+      unsubCanvasDeleted()
     }
   }, [noteId, queryClient])
 

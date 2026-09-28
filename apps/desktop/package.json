@@ -100,7 +100,8 @@
     "generate:icons": "node scripts/generate-icons.mjs",
     "seed:vault": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-vault.ts",
     "seed:rich": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-rich-vault.ts",
-    "seed:bench": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-bench-vault.ts"
+    "seed:bench": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-bench-vault.ts",
+    "seed:small": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-small-vault.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",

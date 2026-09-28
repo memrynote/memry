@@ -6,15 +6,17 @@ canvas stores the reference, never a copy of your content.
 
 ## Adding cards
 
-- **Drag the item onto the canvas.** Notes from the sidebar, tasks from any
-  task list, and events from the Calendar all drop straight onto the board and
-  become a card where you let go. A dashed outline shows the canvas is ready to
+- **Drag the item onto the canvas.** Notes from the sidebar, rows from a
+  folder or tag page, tasks from any task list, and events from the Calendar
+  all drop straight onto the board and become a card where you let go. A dashed outline shows the canvas is ready to
   take the drop.
 - **Click "Add card"** at the bottom of the canvas to search your notes, files,
   tasks, events and projects, or to create a new note without leaving the board. "Create
   note …" is always the first option, and typing a title carries it into the
   new note. The picker opens over a dimmed canvas; press <kbd>Esc</kbd> or
   click outside it to go back to the board.
+- **Add everything from a tag or folder** in one step, from the same picker.
+  See [Adding a whole tag or folder](#adding-a-whole-tag-or-folder).
 
 Searching is never required. If you can see the item — in the sidebar, in the
 other half of a split view, on the Calendar — you can drag it over.
@@ -28,12 +30,18 @@ together, tiled side by side rather than stacked on one point.
 Calendar events drag from the day, week and month views. Dragging an event onto
 a canvas never changes its date — it only places a card.
 
+Rows drag from a folder or tag page in any layout: table, grouped table, list
+and gallery. In the table, select several rows and drag one of them to drop the
+whole selection; dragging a row outside the selection drops only that row.
+Notes, filed files and tasks all become cards; inbox rows are left out.
+
 Inbox items cannot be dragged onto a canvas. File one first: the note or task
 it becomes can then be dragged over like any other item.
 
-Dropping something that already has a card gives you a second card for it. Both
-stay live and both update together — useful when the same note belongs to two
-clusters on the board. The **Add card** picker behaves differently: pick
+Dropping a single item that already has a card gives you a second card for it.
+Both stay live and both update together — useful when the same note belongs to
+two clusters on the board. Dropping several items at once skips the ones that
+are already on the board and tells you how many it skipped. The **Add card** picker behaves differently: pick
 something that is already on the board and it scrolls to the card you have
 instead, marked with an **On canvas** badge.
 
@@ -58,6 +66,32 @@ A card added from the picker lands in the middle of your view, or in the
 nearest free spot beside it when something is already there. Add three tasks
 and an event in a row and they tile out from the centre instead of piling up on
 one point.
+
+### Adding a whole tag or folder
+
+With the search box empty, the **Add card** picker lists **Add all from** →
+**A tag…** and **A folder…**. Pick one, then type to filter the list of tags or
+folders and choose one:
+
+- A tag adds every note, filed file and task carrying it, including its nested
+  tags (`#work` also brings in `#work/meetings`). Inbox items are left out.
+- A folder adds every note and filed file in it, subfolders included — the same
+  rows its folder page shows.
+- When the tag or folder has **saved views** with filters, you choose between
+  **All items** and one of those views. Picking a view adds only what that view
+  shows. Each option shows how many items it holds.
+
+Items that already have a card on this canvas are skipped, never duplicated,
+and the confirmation tells you how many were skipped. The rest are laid out as
+one tidy grid in alphabetical order, in the free space nearest your view. The
+view moves to show the new cards, and they stay selected so you can drag the
+whole batch somewhere else at once. Bulk-added notes open at the compact card
+size; resize any of them as you would a single card.
+
+Adding more than 50 new cards asks first, because large boards get slower and
+can pass the [sync size limit](./sync-and-limits.md#size-limit). Press
+<kbd>Backspace</kbd> in the empty search box, or the back arrow beside it, to
+step back. One **Undo** removes the whole batch.
 
 ## Removing cards
 
@@ -199,5 +233,34 @@ To remove a link, use the **remove** button in that same bubble.
 Draw an arrow from one card to another and it binds to both. Move a card and the
 arrow follows. Links are saved with the canvas.
 
-Canvas arrows are visual: they do not create wiki links or backlinks between the
-underlying notes.
+An arrow between two cards is also a real connection, so you do not have to make
+it a second time as a wiki link:
+
+- **Arrow from note A to note B.** A's **Outgoing links** list B, and B's
+  **Backlinks** list A. Both entries say **Connected on** and the canvas name.
+- **In the graph**, the two items are joined by a canvas edge in its own colour.
+  This works between notes, tasks and projects. Calendar events and files are
+  not graph nodes, so their arrows only stay on the board.
+- **Direction follows the arrowhead.** An arrow with its only head at the start
+  points from the far end back to the near one. An arrow with heads at both ends,
+  or at neither, counts from where you started drawing it.
+
+An arrow only counts when **both** of its ends are attached to a card. An arrow
+that ends on a plain shape, on text, or in empty space stays a drawing. So does
+an arrow that loops back to the same item.
+
+Delete the arrow or either card and the connection goes away the next time the
+canvas saves. Several arrows between the same two cards on one board are one
+connection. The same pair connected on two boards shows once per board in
+backlinks.
+
+Nothing is written into your notes. The connection is read from the canvas file,
+so it syncs with the canvas and appears on your other devices once they update
+to this version. Other apps that open your vault do not see it, because it is
+not a `[[wiki link]]`.
+
+## Grouping cards by similarity
+
+With [local embeddings](/user-guide/ai/embeddings-search#suggest-groups-on-a-canvas) turned on,
+**Suggest groups** proposes groups of similar note cards. You review, rename, or discard each group,
+and only the groups you accept become frames. Grouping runs on this device.

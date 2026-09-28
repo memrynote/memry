@@ -41,6 +41,7 @@ import type {
 import type { DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
+import { clearCanvasEdges, rewriteCanvasEdges } from './edge-index'
 import { storedFolderPath } from './folder-lookup'
 import { normalizeFolder, normalizeStoredFolder } from './folder-paths'
 import {
@@ -181,6 +182,7 @@ export function createCanvas(
       clock: null
     })
     .run()
+  if (scene) rewriteCanvasEdges(db, id, scene)
 
   return {
     id,
@@ -390,6 +392,9 @@ export function updateCanvas(
           .run()
       }
     }
+    // Derived here from the scene, not from the caller: an arrow's binding is
+    // only meaningful against the cards in the same scene.
+    if (input.scene !== undefined) rewriteCanvasEdges(tx, id, input.scene)
 
     return {
       ok: true,
@@ -444,6 +449,7 @@ export async function deleteCanvas(
     // The FK cascade only fires on hard deletes; prune advisory refs here so
     // ref-consuming queries never see tombstoned canvases.
     tx.delete(canvasEntityRefs).where(eq(canvasEntityRefs.canvasId, id)).run()
+    clearCanvasEdges(tx, id)
     return row.filePath ?? ''
   })
 

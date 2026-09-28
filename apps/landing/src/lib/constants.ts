@@ -4,6 +4,7 @@ import {
   FileText,
   CheckSquare,
   Calendar,
+  Shapes,
   Briefcase,
   GraduationCap,
   Laptop,
@@ -203,6 +204,18 @@ export const FEATURES = [
       'Meetings, deadlines, tasks and journal days share one grid. Google sync runs both ways.',
     highlights: ['Google Calendar sync', 'Week view', 'Drag to reschedule', 'Start + due dates'],
     screenshot: 'calendar'
+  },
+  {
+    id: 'canvas',
+    icon: Shapes,
+    title: 'Canvas',
+    tagline: 'Think in space.',
+    description:
+      'The cards are your real notes, tasks, events, projects and files, not copies. Edit them on the board, put one note in two clusters, and keep the board as a plain .excalidraw file in your vault.',
+    highlights: ['Live cards', 'Edit in place', 'Freehand ink', 'Plain .excalidraw files'],
+    screenshot: 'canvas',
+    docsHref: `${DOCS_URL}/user-guide/canvas/overview`,
+    docsLabel: 'How canvases work'
   }
 ] as const
 

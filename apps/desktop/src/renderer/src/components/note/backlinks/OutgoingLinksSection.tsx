@@ -60,8 +60,13 @@ export function OutgoingLinksSection({
           <ul className="flex flex-col">
             {sortedLinks.slice(0, visibleCount).map((link) => {
               const resolved = link.targetId !== null
+              // A note can wiki-link a target and also point at it on one or
+              // more canvases; each is its own row.
+              const key = link.via
+                ? `${link.targetTitle}\u0000canvas\u0000${link.via.canvasId}`
+                : link.targetTitle
               return (
-                <li key={link.targetTitle}>
+                <li key={key}>
                   <button
                     type="button"
                     onClick={() => onLinkClick(link.targetTitle)}
@@ -82,6 +87,13 @@ export function OutgoingLinksSection({
                     >
                       {link.targetTitle}
                     </span>
+                    {link.via?.kind === 'canvas' && (
+                      <span className="flex-shrink-0 truncate text-[11px] text-text-tertiary">
+                        {t('canvasLinks.connectedOn', {
+                          canvas: link.via.canvasTitle || t('canvasLinks.untitledCanvas')
+                        })}
+                      </span>
+                    )}
                     {!resolved && (
                       <>
                         {' '}

@@ -62,13 +62,17 @@ mac:
   extraFiles:
     - from: native/eventkit/bin/memry-eventkit
       to: MacOS/memry-eventkit
+  # A map, never a list: electron-builder deep-assigns this into Info.plist,
+  # and a list lands under keys "0", "1", ... where macOS never finds the
+  # usage strings (tccd then refuses the calendar prompt silently).
+  # prune-packaged-app.mjs fails a mac build without the calendar keys.
   extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-    - NSCalendarsFullAccessUsageDescription: MemryNote shows the events from your Mac's calendars next to your notes and tasks. They are read on this Mac only and never uploaded or synced.
-    - NSCalendarsUsageDescription: MemryNote shows the events from your Mac's calendars next to your notes and tasks. They are read on this Mac only and never uploaded or synced.
+    NSCameraUsageDescription: Application requests access to the device's camera.
+    NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    NSCalendarsFullAccessUsageDescription: MemryNote shows the events from your Mac's calendars next to your notes and tasks. They are read on this Mac only and never uploaded or synced.
+    NSCalendarsUsageDescription: MemryNote shows the events from your Mac's calendars next to your notes and tasks. They are read on this Mac only and never uploaded or synced.
   notarize: true
 linux:
   # electron-builder >=26.13 rejects executable names with unsafe path chars;

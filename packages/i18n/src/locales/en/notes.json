@@ -283,6 +283,27 @@
       "disabledTitle": "Canvas is turned off",
       "disabledBody": "Turn on Canvas in Settings › Features to see and edit this whiteboard. The drawing is kept either way."
     },
+    "viewBlock": {
+      "title": "View",
+      "group": "Insert",
+      "subtext": "A live list of notes from a folder, a tag or the whole vault",
+      "sourceMenu": "What this view shows",
+      "chooseSource": "Choose what to show",
+      "sourceVault": "All notes",
+      "sourceFolder": "Folder",
+      "sourceTag": "Tag",
+      "noFolders": "No folders yet",
+      "noTags": "No tags yet",
+      "savedView": "Saved view",
+      "savedViewMissing": "The saved view “{name}” is gone, so this shows the default view.",
+      "openAsTab": "Open as tab",
+      "empty": "Nothing matches this view yet.",
+      "loadFailed": "Could not load this view. The notes themselves are untouched.",
+      "folderMissing": "This folder is not in the vault any more. Pick another source.",
+      "invalidJson": "This view’s definition is not valid JSON. Fix it below, or remove the block.",
+      "invalidShape": "This view’s definition has no source. Pick one above, or fix it below.",
+      "definition": "Definition"
+    },
     "slashMenu": {
       "aria": "Blocks and actions",
       "groups": {
@@ -545,6 +566,36 @@
     "unresolved": "Not created yet",
     "showMore": "Show {count} more outgoing links",
     "more": "{count} more"
+  },
+  "canvasLinks": {
+    "connectedOn": "Connected on {canvas}",
+    "untitledCanvas": "Untitled canvas"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, one {# similar note} other {# similar notes}}",
+    "sectionAria": "Similar notes",
+    "hint": "Notes that read like this one and are not linked to it yet. Found on this device from local embeddings.",
+    "addLink": "Link from this note",
+    "addLinkAria": "Link {title} from this note",
+    "linked": "Linked {title}",
+    "addToCanvas": "Add to canvas",
+    "addToCanvasAria": "Add {title} to a canvas",
+    "searchCanvases": "Search canvases...",
+    "canvasLoading": "Loading canvases...",
+    "noCanvases": "No canvases yet",
+    "noMatch": "No canvas matches",
+    "addedToCanvas": "Added {title} to {canvas}",
+    "alreadyOnCanvas": "{title} is already on {canvas}",
+    "openCanvas": "Open",
+    "addToCanvasFailed": "Could not add the note to the canvas"
+  },
+  "suggestedTags": {
+    "label": "Suggested tags:",
+    "hint": "Tags shared by the notes most similar to this one. Nothing is added until you pick one.",
+    "acceptAria": "Add tag {tag}",
+    "support": "{count, plural, one {Used on # similar note} other {Used on # similar notes}}",
+    "dismiss": "Hide suggested tags",
+    "failed": "Could not add the tag"
   },
   "comments": {
     "railAria": "Comments",

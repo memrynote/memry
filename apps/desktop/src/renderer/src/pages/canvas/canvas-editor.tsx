@@ -80,6 +80,8 @@ import {
   type ViewportAppState
 } from './canvas-viewport'
 import { InsideCanvasSurfaceContext } from './canvas-surface-context'
+import { CanvasClusterSuggest } from './canvas-cluster-suggest'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 
 const log = createLogger('SpatialCanvas')
 
@@ -883,6 +885,23 @@ export const CanvasEditor = ({
     changeHandlersRef.current.interceptLinkEditor(appState)
   }, [])
 
+  // "Suggest groups" sits beside the library button. Only in a canvas tab (an
+  // embedded board is a view into a note, not a place to reorganise) and only
+  // while the local embedding model is on. Stable identity for the same memo
+  // reason as `handleApi`.
+  const { enabled: embeddingsEnabled } = useAISettingsContext()
+  const showClusterSuggest = !embedded && embeddingsEnabled && api !== null
+  const renderTopRightUI = useCallback(
+    (_isMobile: boolean, appState: { viewModeEnabled: boolean }): React.JSX.Element | null =>
+      showClusterSuggest && !appState.viewModeEnabled && apiRef.current ? (
+        <CanvasClusterSuggest
+          api={apiRef.current}
+          onSceneMutated={() => persisterRef.current?.notifyChange()}
+        />
+      ) : null,
+    [showClusterSuggest]
+  )
+
   // Excalidraw's own toolbar/menu i18n comes from its bundled translations via
   // langCode — independent of Memry's i18n and i18n:check; we do not translate
   // Excalidraw's internal UI ourselves.
@@ -950,6 +969,7 @@ export const CanvasEditor = ({
           }}
           onChange={handleChange}
           onLinkOpen={handleLinkOpen}
+          renderTopRightUI={renderTopRightUI}
           // Controlled only when embedded, where the block's Edit/Done owns it:
           // a defined value also hides Excalidraw's own view-mode toggle, which
           // a canvas tab keeps.

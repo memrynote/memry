@@ -229,7 +229,9 @@ note or reopened it a few times. Opening the note is now enough.
 ## Backlinks Panel
 
 The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it — including notes that point to it through a `[[wiki link]]` or through a
-[Relation property](/user-guide/notes/properties-tags#relation-properties).
+[Relation property](/user-guide/notes/properties-tags#relation-properties), and notes
+connected to it by an arrow on a [canvas](/user-guide/canvas/cards-and-links#connecting-cards).
+A canvas entry says **Connected on** and the canvas name, and has no text snippet.
 
 <!-- screenshot: backlinks section under a note -->
 
@@ -252,16 +254,47 @@ a dashed underline and **Not created yet**, and clicking it offers to create the
 same as a [broken link](#broken-links). Deleting a note turns links to it into
 **Not created yet** entries, and recreating a note with that title makes them live again.
 
-The list is read-only. To change what a note links to, edit the links in the note itself.
+An arrow drawn from this note's card to another note's card on a canvas is listed here
+too, marked **Connected on** and the canvas name.
+
+The list is read-only. To change what a note links to, edit the links in the note itself,
+or the arrows on the canvas.
 
 ## Graph View
 
 The sidebar **Graph** entry opens a force-directed map of your notes and the links between them. Useful for finding orphan notes or unexpectedly large clusters.
 
 - Nodes are notes; edges are wiki links and [relation properties](/user-guide/notes/properties-tags#relation-properties) (drawn thinner, to tell them apart from wiki links).
+- Arrows between cards on a [canvas](/user-guide/canvas/cards-and-links#connecting-cards) are edges too, drawn in their own colour. Turn them off with **Canvas connections** under the gear icon → **Filters**.
 - Click a node to open the note in a tab.
 - Hover to highlight neighbors.
 - Drag a node to pull it around — linked notes follow it, and the graph settles again when you let go.
+
+### Editing From the Graph
+
+You can connect notes without leaving the graph:
+
+- **Link by dragging.** Hold <kbd>Alt</kbd> (<kbd>Option</kbd> on macOS) and drag from one
+  note onto another. A dashed line follows the pointer; releasing over a note adds that note
+  to the first note's `related` [relation property](/user-guide/notes/properties-tags#relation-properties),
+  and the edge appears right away. The note body is not touched. `related` is created the
+  first time you use it. If the note already has a `related` property holding something other
+  than note links, nothing is written and a message says so.
+- **Right-click a note** for **Link to…** (search the notes in the graph and pick one) and
+  **Add tag…** (pick a tag already in use, or type a new one). A new tag recolours and
+  refilters the graph like any other tag change.
+- **Remove a relation link** from the same menu: every relation edge on the note, in either
+  direction, is listed as **Remove link to …**. Removing one takes that note out of every
+  relation property on the linking note. Wiki links are not listed, since they live in the
+  note text; open the note to change them.
+
+Each edit shows a short message with **Undo**. Undo reverses only that edit and keeps
+anything you changed in the note since.
+
+These edits work between notes only. Journal entries, tasks, projects, tag nodes, and
+not-yet-created notes cannot be edited from the graph; to link a note to a journal entry or
+a task, use the relation property in the note's properties panel. The local graph panel
+inside a note is view-only.
 
 The layout is a live simulation: it arranges itself when the view opens, comes to rest on
 its own, and wakes up again whenever you drag something. Node positions are not saved, so

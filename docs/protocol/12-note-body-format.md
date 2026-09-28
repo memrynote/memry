@@ -599,6 +599,53 @@ are not plain CommonMark:
   NOTHING, because `![whiteboard](memry://canvas/)` fails the claim and would
   re-open as an image; the block is dropped rather than changing type.
 
+### 12.6.1 The view block is a code fence
+
+**Normative.** A view block (a live list of notes embedded in a note, #2488) is
+**not a block type**. It is a `codeBlock` whose `language` is `memry-view`, and
+on disk it is the fence that code block already writes:
+
+````
+```memry-view
+{
+  "source": { "kind": "tag", "tag": "inbox-thought" },
+  "layout": "list"
+}
+```
+````
+
+The fence body is the block's definition as JSON
+(`packages/shared/src/view-block.ts`). Writers emit two-space JSON with
+`source` first. The keys are:
+
+| Key       | Value                                                                                                 |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| `source`  | required: `{ "kind": "vault" }`, `{ "kind": "folder", "path": "" }` or `{ "kind": "tag", "tag": "" }` |
+| `view`    | a saved view on the source, by name                                                                   |
+| `layout`  | `list`, `table` or `grid`                                                                             |
+| `filters` | a folder-view `FilterExpression`, ANDed onto the saved view's filters                                 |
+| `order`   | `[{ "property", "direction": "asc" \| "desc" }]`                                                      |
+| `limit`   | a positive integer                                                                                    |
+
+The consequences are the reason for the shape:
+
+- **No schema change.** The registry in §12.9 is unchanged, so no client can
+  meet a node name it would delete (§12.1). Main, the mobile WebView and every
+  older build hold the block as a code block and write the same bytes back;
+  Obsidian and GitHub show it as code. Only the desktop renderer draws it
+  (`createMemrySchema`'s `codeBlockViews`, presentation only).
+- **Round-trip is the code block's.** The body is literal text
+  (`LITERAL_TEXT_BLOCK_TYPES`), and the conformance corpus pins it
+  (`packages/editor-schema/src/conformance.ts`, `viewBlockCases`).
+- **Readers are tolerant.** A reader MUST keep keys it does not know and MUST
+  write them back when it rewrites the definition; a known key holding a value
+  it does not understand is ignored for display, not dropped. A body that is not
+  JSON, or has no usable `source`, is shown as an error with the source visible,
+  never removed.
+- **Template variables resolve as text.** A journal template substitutes
+  `{{date:YYYY-MM-DD}}` and the other tokens across the whole body, fence
+  included, so a filter written against them is fixed when the entry is created.
+
 ## 12.7 Inline grammar
 
 **Normative:**

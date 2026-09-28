@@ -442,6 +442,13 @@
       "when": 1787917959433,
       "tag": "0062_crdt_body_withheld",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "6",
+      "when": 1788004359433,
+      "tag": "0063_canvas_entity_edges",
+      "breakpoints": true
     }
   ]
 }

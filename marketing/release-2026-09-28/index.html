@@ -1,0 +1,3459 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>memrynote · what's new · 2026.09.28</title>
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(fonts/dm-sans-opsz-normal.woff2) format('woff2');
+        font-weight: 100 1000;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(fonts/dm-sans-opsz-italic.woff2) format('woff2');
+        font-weight: 100 1000;
+        font-style: italic;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url(fonts/jetbrains-mono.woff2) format('woff2');
+        font-weight: 100 800;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #000;
+        overflow: hidden;
+      }
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0d0c0b;
+        font-family: 'DM Sans', system-ui, sans-serif;
+        color: #f3efe8;
+        -webkit-font-smoothing: antialiased;
+      }
+      .full {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+      }
+      em {
+        font-style: italic;
+        color: #ff671a;
+      }
+      /* masked words: the inner span rises out of its own box */
+      .m {
+        display: inline-block;
+        overflow: hidden;
+        vertical-align: top;
+        padding: 0 0.08em 0.2em;
+        margin: 0 -0.08em -0.2em;
+      }
+      .i {
+        display: inline-block;
+      }
+
+      /* ---------- headlines ---------- */
+      .hd {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .hd.center {
+        width: 1920px;
+        text-align: center;
+      }
+      .lbl {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #ff671a;
+        white-space: nowrap;
+      }
+      .hd .lbl {
+        margin-bottom: 28px;
+      }
+      .hd .h {
+        font-weight: 600;
+        letter-spacing: -0.045em;
+        line-height: 0.98;
+        white-space: nowrap;
+      }
+      .hd .ln {
+        display: block;
+      }
+      .hd .sb {
+        margin-top: 34px;
+        font-size: 27px;
+        line-height: 1.42;
+        letter-spacing: -0.005em;
+        color: rgba(243, 239, 232, 0.64);
+        white-space: nowrap;
+      }
+
+      /* ---------- windows ---------- */
+      #scene {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        perspective: 2400px;
+        perspective-origin: 960px 540px;
+      }
+      .win {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 18px;
+      }
+      .wc {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .win .shot {
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: block;
+        border-radius: 18px;
+      }
+      .win .sh {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 18px;
+        box-shadow:
+          0 80px 160px -40px rgba(0, 0, 0, 0.8),
+          0 26px 50px -18px rgba(0, 0, 0, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.07);
+      }
+      .patch,
+      .cut {
+        position: absolute;
+      }
+      .cut {
+        background-repeat: no-repeat;
+      }
+      .ui {
+        font-family: system-ui;
+        color: #37352f;
+      }
+
+      /* agent: the note body and review bar, rebuilt so they can change */
+      .adoc {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .ah2 {
+        position: absolute;
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 32px;
+        white-space: nowrap;
+      }
+      .aln {
+        position: absolute;
+        font-size: 16px;
+        line-height: 24px;
+        height: 24px;
+        white-space: nowrap;
+      }
+      .aln .bul {
+        position: absolute;
+        left: -6px;
+        top: 10px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #37352f;
+      }
+      .aln .bul.b2 {
+        left: -10px;
+      }
+      .dl,
+      .ad {
+        display: inline-block;
+        vertical-align: top;
+        overflow: hidden;
+        border-radius: 3px;
+        position: relative;
+      }
+      .dl .st {
+        position: absolute;
+        left: 0;
+        top: 12.5px;
+        height: 1.2px;
+        width: 0;
+        background: currentColor;
+      }
+      .lnk {
+        color: #f97316;
+        font-weight: 500;
+      }
+      .iw {
+        display: inline-block;
+        vertical-align: top;
+      }
+      .it {
+        border-radius: 3px;
+      }
+      .abar {
+        position: absolute;
+        width: 594px;
+        height: 60px;
+        background: #fff;
+        border: 1px solid #e9e9e7;
+        border-radius: 12px;
+        box-shadow:
+          0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      }
+      .abar .t1 {
+        position: absolute;
+        left: 16px;
+        top: 11px;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .abar .t2 {
+        position: absolute;
+        left: 16px;
+        top: 31px;
+        font-size: 12px;
+        color: #787774;
+        white-space: nowrap;
+      }
+      .abar .b {
+        position: absolute;
+        top: 13px;
+        height: 32px;
+        line-height: 32px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .abar .rej {
+        left: 386px;
+        width: 70px;
+      }
+      .abar .edt {
+        left: 462px;
+        width: 47px;
+        border: 1px solid #e6e5e3;
+        line-height: 30px;
+        background: #fff;
+      }
+      .abar .acc {
+        left: 517px;
+        width: 66px;
+        background: #1d1f22;
+        color: #fff;
+      }
+      .cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 22px;
+        height: 30px;
+        transform-origin: 3px 2px;
+      }
+
+      /* timeline */
+      .clip {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .tline {
+        position: absolute;
+        background: #fe8019;
+        box-shadow: 0 0 14px rgba(254, 128, 25, 0.7);
+      }
+      canvas.cov {
+        position: absolute;
+      }
+
+      /* calendars */
+      .crow {
+        border-radius: 10px;
+      }
+
+      /* blocks: the page the task row stays on */
+      .sheet {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 18px;
+        background: #fff;
+      }
+
+      /* tasks: the inline task row, rebuilt */
+      .trow {
+        position: absolute;
+        width: 640px;
+        height: 37px;
+        border-radius: 8px;
+      }
+      .trow > * {
+        position: absolute;
+      }
+      .ttl {
+        top: 10px;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 17px;
+        white-space: nowrap;
+        color: rgba(55, 53, 47, 0.9);
+      }
+      .ttl .tok {
+        display: inline-block;
+        vertical-align: top;
+        overflow: hidden;
+      }
+      .caret {
+        position: absolute;
+        top: 9px;
+        width: 1.4px;
+        height: 19px;
+        background: #37352f;
+      }
+      .sel {
+        position: absolute;
+        top: 9px;
+        height: 19px;
+        background: #b4d7ff;
+        border-radius: 2px;
+      }
+      .chip {
+        position: absolute;
+        top: 8.5px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 6px;
+        border: 1px solid #e3e2df;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: 500;
+        line-height: 14px;
+        white-space: nowrap;
+        color: #6f6d68;
+      }
+      .chip.ghost {
+        border-style: dashed;
+        border-color: rgba(55, 53, 47, 0.24);
+        color: #9b9a97;
+      }
+      .chip.proj {
+        border-color: transparent;
+        background: rgba(99, 102, 241, 0.1);
+        color: #5b5bd6;
+      }
+      .chip svg {
+        width: 12px;
+        height: 12px;
+        flex: none;
+      }
+      .chip .sq {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: #6366f1;
+      }
+      .chip .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #14a38b;
+      }
+      .ico {
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .key {
+        position: absolute;
+        width: 150px;
+        height: 64px;
+        border-radius: 14px;
+        background: linear-gradient(#ffffff, #f1efeb);
+        border: 1px solid #d8d5cf;
+        color: #4a4843;
+        font-family: system-ui;
+        font-size: 19px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      /* montage */
+      #wall {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        transform-origin: 960px 540px;
+      }
+      .wi {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-size: 58px;
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        white-space: nowrap;
+        color: #1c1b19;
+      }
+      .ws {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #ff671a;
+      }
+
+      /* end card */
+      .pill {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 52px;
+        padding: 0 26px;
+        border-radius: 26px;
+        border: 1.5px solid rgba(28, 27, 25, 0.14);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 21px;
+        font-weight: 500;
+        color: #1c1b19;
+        white-space: nowrap;
+      }
+      .pill i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ff671a;
+      }
+
+      /* rail: page icons, badges and the old sidebar rows, rebuilt so they can move */
+      .rt {
+        position: absolute;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+      }
+      .rg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 20px;
+        height: 20px;
+      }
+      .rg svg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        overflow: visible;
+      }
+      .rnum {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 36px;
+        height: 36px;
+        line-height: 36px;
+        text-align: center;
+        font: 600 11px system-ui;
+        font-variant-numeric: tabular-nums;
+      }
+      .rbadge {
+        position: absolute;
+        height: 15px;
+        min-width: 15px;
+        padding: 0 4px;
+        border-radius: 8px;
+        background: #1d1f22;
+        color: #fff;
+        font: 600 9px/15px system-ui;
+        text-align: center;
+        box-shadow: 0 0 0 2px #f3f3f3;
+      }
+      .onav {
+        position: absolute;
+        overflow: hidden;
+        background: #fbfbfb;
+        font-family: system-ui;
+      }
+      .orow {
+        position: absolute;
+        left: 8px;
+        width: 203px;
+        height: 28px;
+        border-radius: 5px;
+      }
+      .orow .lb {
+        position: absolute;
+        left: 26px;
+        top: 0;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 28px;
+        color: #5a5c5e;
+        white-space: nowrap;
+      }
+      .orow .bd {
+        position: absolute;
+        right: 8px;
+        top: 0;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 28px;
+        color: #5a5c5e;
+      }
+      .tip {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 26px;
+        padding: 0 6px 0 10px;
+        border-radius: 6px;
+        background: #1d1f22;
+        color: #fff;
+        font: 12px/26px system-ui;
+        white-space: nowrap;
+        transform-origin: 0 50%;
+      }
+      .tip b {
+        height: 16px;
+        min-width: 16px;
+        padding: 0 4px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.2);
+        font: 500 10px/16px system-ui;
+      }
+      .kc {
+        position: absolute;
+        width: 76px;
+        height: 68px;
+        border-radius: 14px;
+        background: linear-gradient(#ffffff, #f1efeb);
+        border: 1px solid #d8d5cf;
+        color: #4a4843;
+        font: 500 30px/66px system-ui;
+        text-align: center;
+      }
+      /* vaults: the recording, and the switcher from the sidebar's foot, big */
+      .vchip {
+        position: absolute;
+        width: 112px;
+        height: 112px;
+        font: 76px/112px 'Apple Color Emoji';
+        text-align: center;
+      }
+      .vring {
+        position: absolute;
+        border-radius: 50%;
+        border: 3px solid #ff671a;
+      }
+
+      /* hud */
+      .hud {
+        position: absolute;
+        top: 46px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .glint {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        background: linear-gradient(
+          105deg,
+          transparent 42%,
+          rgba(255, 255, 255, 0.16) 50%,
+          transparent 58%
+        );
+        background-size: 300% 100%;
+        mix-blend-mode: screen;
+      }
+      .dotc {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 50%;
+        background: #ff671a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="bg" class="full" width="1920" height="1080"></canvas>
+      <div id="cam" class="full">
+        <div id="scene"></div>
+        <canvas id="scrim" class="full" width="1920" height="1080"></canvas>
+        <div id="open" class="full"></div>
+        <div id="wall" class="full"></div>
+        <div id="type" class="full"></div>
+        <div id="end" class="full"></div>
+      </div>
+      <div id="wipe" class="full"></div>
+      <div id="hudroot" class="full" style="mix-blend-mode: difference"></div>
+      <canvas
+        id="grain"
+        class="full"
+        width="1920"
+        height="1080"
+        style="mix-blend-mode: overlay"
+      ></canvas>
+      <svg width="0" height="0" style="position: absolute">
+        <defs id="defs"></defs>
+      </svg>
+    </div>
+    <script src="timeline.js"></script>
+    <script src="brand.js"></script>
+    <script src="themes.js"></script>
+    <script>
+      const T = window.TL,
+        FPS = T.fps,
+        DUR = T.dur,
+        W = 1920,
+        H = 1080
+      const BR = '#ff671a'
+      const DARK = [13, 12, 11],
+        PAPER = [244, 242, 238],
+        INKD = [243, 239, 232],
+        INKL = [28, 27, 25]
+      const THEME = Object.fromEntries(window.THEMES.map((x) => [x.id, x]))
+      const MENU = window.THEMES.map((x) => x.id) // the submenu lists them in this order
+      const NS = 'http://www.w3.org/2000/svg'
+      const q = new URLSearchParams(location.search)
+
+      // =====================================================================
+      // math
+      // =====================================================================
+      const clamp = (x, a = 0, b = 1) => (x < a ? a : x > b ? b : x)
+      const lerp = (a, b, u) => a + (b - a) * u
+      const inv = (t, a, b) => clamp((t - a) / (b - a))
+      const oExpo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x))
+      const iExpo = (x) => (x <= 0 ? 0 : Math.pow(2, 10 * x - 10))
+      const ioExpo = (x) =>
+        x <= 0
+          ? 0
+          : x >= 1
+            ? 1
+            : x < 0.5
+              ? Math.pow(2, 20 * x - 10) / 2
+              : (2 - Math.pow(2, -20 * x + 10)) / 2
+      const oCub = (x) => 1 - Math.pow(1 - x, 3)
+      const iCub = (x) => x * x * x
+      const ioCub = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
+      const oQuint = (x) => 1 - Math.pow(1 - x, 5)
+      const ioQuint = (x) => (x < 0.5 ? 16 * x ** 5 : 1 - Math.pow(-2 * x + 2, 5) / 2)
+      const ioSine = (x) => -(Math.cos(Math.PI * x) - 1) / 2
+      const oBack = (x, s = 1.70158) =>
+        x <= 0 ? 0 : x >= 1 ? 1 : 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2)
+      const smooth = (x) => x * x * (3 - 2 * x)
+      const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
+      const mixc = (a, b, u) => [0, 1, 2].map((i) => a[i] + (b[i] - a[i]) * u)
+      const rgb = (c) => `rgb(${c.map((v) => Math.round(v)).join(',')})`
+      const rgba = (c, a) => `rgba(${c.map((v) => Math.round(v)).join(',')},${(+a).toFixed(3)})`
+      const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+      function rng(seed) {
+        return () => {
+          seed |= 0
+          seed = (seed + 0x6d2b79f5) | 0
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+      function hash(a, b, c = 0) {
+        let h =
+          Math.imul((a + 0x9e3779b9) | 0, 0x85ebca6b) ^
+          Math.imul((b + 0x7f4a7c15) | 0, 0xc2b2ae35) ^
+          Math.imul((c + 0x165667b1) | 0, 0x27d4eb2f)
+        h ^= h >>> 15
+        h = Math.imul(h, 0x2c1b3c6d)
+        h ^= h >>> 12
+        return h >>> 0
+      }
+
+      // =====================================================================
+      // dom helpers
+      // =====================================================================
+      const $ = (id) => document.getElementById(id)
+      function el(tag, cls, parent, html) {
+        const e = document.createElement(tag)
+        if (cls) e.className = cls
+        if (html != null) e.innerHTML = html
+        if (parent) parent.appendChild(e)
+        return e
+      }
+      function svg(tag, attrs, parent) {
+        const e = document.createElementNS(NS, tag)
+        for (const k in attrs) e.setAttribute(k, attrs[k])
+        if (parent) parent.appendChild(e)
+        return e
+      }
+      // style writes go through a cache: render() touches hundreds of properties per frame
+      function css(e, k, v) {
+        const c = e._c || (e._c = {})
+        if (c[k] !== v) {
+          c[k] = v
+          e.style[k] = v
+        }
+      }
+      const show = (e, on) => css(e, 'display', on ? '' : 'none')
+      const box = (e, x, y, w, h) => {
+        e.style.left = x + 'px'
+        e.style.top = y + 'px'
+        if (w != null) e.style.width = w + 'px'
+        if (h != null) e.style.height = h + 'px'
+        return e
+      }
+      // masked words. "*x*" => emphasis (italic brand). returns the inner spans
+      function words(parent, text) {
+        const out = []
+        text.split(' ').forEach((w, k, all) => {
+          const m = el('span', 'm', parent)
+          const em = w.startsWith('*')
+          out.push(el(em ? 'em' : 'span', 'i', m, w.replace(/\*/g, '')))
+          if (k < all.length - 1) parent.appendChild(document.createTextNode(' '))
+        })
+        return out
+      }
+      const rise = (e, x, y = 0) =>
+        css(e, 'transform', `translateY(${((1 - x) * 112 - y * 112).toFixed(2)}%)`)
+
+      // =====================================================================
+      // camera: a pose puts native point (px,py) of a window at stage point (qx,qy)
+      // =====================================================================
+      const P = (px, py, qx, qy, s, rx = 0, ry = 0, rz = 0, z = 0, o = 1) => ({
+        px,
+        py,
+        qx,
+        qy,
+        s,
+        rx,
+        ry,
+        rz,
+        z,
+        o
+      })
+      function mixPose(a, b, u) {
+        const r = {}
+        for (const k in a) r[k] = a[k] + (b[k] - a[k]) * u
+        return r
+      }
+      const tweak = (p, d) => Object.assign({}, p, d)
+      function track(keys, t) {
+        if (t <= keys[0][0]) return keys[0][1]
+        for (let i = 1; i < keys.length; i++) {
+          if (t <= keys[i][0]) {
+            const [t0, p0] = keys[i - 1],
+              [t1, p1, ez] = keys[i]
+            return mixPose(p0, p1, (ez || ioCub)(inv(t, t0, t1)))
+          }
+        }
+        return keys[keys.length - 1][1]
+      }
+      function place(e, p) {
+        css(e, 'transformOrigin', `${p.px.toFixed(2)}px ${p.py.toFixed(2)}px`)
+        css(
+          e,
+          'transform',
+          `translate3d(${(p.qx - p.px).toFixed(2)}px,${(p.qy - p.py).toFixed(2)}px,${p.z.toFixed(2)}px) rotateX(${p.rx.toFixed(3)}deg) rotateY(${p.ry.toFixed(3)}deg) rotateZ(${p.rz.toFixed(3)}deg) scale(${p.s.toFixed(4)})`
+        )
+        css(e, 'opacity', String(+clamp(p.o).toFixed(3)))
+      }
+
+      // =====================================================================
+      // screenshots
+      // =====================================================================
+      const SHOTS = {
+        agent: [1176, 944],
+        timeline: [1876, 1074],
+        calendars: [1876, 1074],
+        themes: [1800, 1078],
+        blocks: [1492, 1152],
+        'rail-inbox': [1624, 1056],
+        'rail-tasks': [1624, 1056],
+        'rail-journal': [1624, 1056],
+        'rail-calendar': [1624, 1056],
+        'rail-graph': [1624, 1056]
+      }
+      const SRC = {} // name -> canvas with the pixels, for sampling and re-theming
+      async function loadShots() {
+        await Promise.all(
+          Object.keys(SHOTS).map(async (name) => {
+            const im = new Image()
+            im.src = `shots/${name}.png`
+            await im.decode()
+            const c = document.createElement('canvas')
+            c.width = im.width
+            c.height = im.height
+            c.getContext('2d', { willReadFrequently: true }).drawImage(im, 0, 0)
+            SRC[name] = c
+          })
+        )
+      }
+      function sample(name, x, y) {
+        const d = SRC[name]
+          .getContext('2d', { willReadFrequently: true })
+          .getImageData(x, y, 1, 1).data
+        return [d[0], d[1], d[2]]
+      }
+      // root (camera) > shadow + content (focus crop) > layer (the screenshot and everything cut from it)
+      function makeWin(id, name, shot) {
+        const [w, h] = SHOTS[name]
+        const e = box(el('div', 'win', $('scene')), 0, 0, w, h)
+        e.id = id
+        e.W = w
+        e.H = h
+        e.sh = box(el('div', 'sh', e), 0, 0, w, h)
+        e.c = box(el('div', 'wc', e), 0, 0, w, h)
+        e.layer = box(el('div', 'wc', e.c), 0, 0, w, h)
+        e.img = shot || el('img', 'shot', e.layer)
+        if (shot) e.layer.appendChild(shot)
+        else e.img.src = `shots/${name}.png`
+        e.img.width = w
+        e.img.height = h
+        return e
+      }
+      // frame a window down to its content column: a floating card, shadow included
+      function crop(w, l = 0, t = 0, r = 0, b = 0) {
+        const any = l > 0.01 || t > 0.01 || r > 0.01 || b > 0.01
+        css(
+          w.c,
+          'clipPath',
+          any
+            ? `inset(${t.toFixed(2)}px ${r.toFixed(2)}px ${b.toFixed(2)}px ${l.toFixed(2)}px round 18px)`
+            : 'none'
+        )
+        css(w.sh, 'left', l.toFixed(2) + 'px')
+        css(w.sh, 'top', t.toFixed(2) + 'px')
+        css(w.sh, 'width', (w.W - l - r).toFixed(2) + 'px')
+        css(w.sh, 'height', (w.H - t - b).toFixed(2) + 'px')
+      }
+      // stage position of a native point under a flat pose (rotations ignored)
+      const onStage = (p, x, y) => [p.qx + (x - p.px) * p.s, p.qy + (y - p.py) * p.s]
+      const patch = (parent, x, y, w, h, color) => {
+        const e = box(el('div', 'patch', parent), x, y, w, h)
+        e.style.background = typeof color === 'string' ? color : rgb(color)
+        return e
+      }
+      function cut(parent, name, x, y, w, h) {
+        const e = box(el('div', 'cut', parent), x, y, w, h)
+        e.style.backgroundImage = `url(shots/${name}.png)`
+        e.style.backgroundPosition = `${-x}px ${-y}px`
+        return e
+      }
+
+      // =====================================================================
+      // headlines
+      // =====================================================================
+      function makeHead(o) {
+        const root = el('div', 'hd' + (o.center ? ' center' : ''), $('type'))
+        root.style.display = 'none'
+        root.style.left = (o.center ? 0 : o.x) + 'px'
+        root.style.top = o.y + 'px'
+        const h = { root, words: [] }
+        if (o.label) {
+          h.label = el('div', 'lbl', root)
+          h.labelIn = el('span', 'i', el('span', 'm', h.label), o.label)
+        }
+        const hh = el('div', 'h', root)
+        hh.style.fontSize = (o.size || 100) + 'px'
+        h.h = hh
+        o.lines.forEach((ln) => h.words.push(...words(el('span', 'ln', hh), ln)))
+        if (o.sub) h.sub = el('div', 'sb', root, o.sub)
+        return h
+      }
+      // a: in, b: out, o.sub: when the sub line lands, o.at: explicit word times
+      function renderHead(h, t, a, b, o = {}) {
+        const on = t >= a - 0.02 && t < b + 0.7
+        show(h.root, on)
+        if (!on) return
+        if (h.labelIn)
+          rise(h.labelIn, oExpo(inv(t, a - 0.05, a + 0.55)), iExpo(inv(t, b, b + 0.35)))
+        h.words.forEach((w, k) => {
+          const ta = o.at ? o.at[k] : a + 0.05 + k * (o.st || 0.075)
+          const tb = b + k * 0.035
+          rise(w, oExpo(inv(t, ta, ta + 0.75)), iExpo(inv(t, tb, tb + 0.4)))
+        })
+        if (h.sub) {
+          const s0 = o.sub == null ? a + 0.45 : o.sub
+          const x = oExpo(inv(t, s0, s0 + 0.9)),
+            y = iCub(inv(t, b, b + 0.3))
+          css(h.sub, 'opacity', (x * (1 - y)).toFixed(3))
+          css(h.sub, 'transform', `translateY(${((1 - x) * 16 - y * 10).toFixed(2)}px)`)
+        }
+      }
+      // decode: characters resolve left to right out of mono noise
+      const GLYPHS = 'abcdefghijklmnopqrstuvwxyz0123456789#@!/.:+'
+      function decode(e, text, t, a, b, frame, seed) {
+        const n = text.length
+        let s = ''
+        for (let k = 0; k < n; k++) {
+          const c = text[k]
+          const tk = a + ((b - a) * k) / n
+          if (t >= tk || c === ' ') s += c
+          else if (t >= tk - 0.16) s += GLYPHS[hash(frame >> 1, k, seed) % GLYPHS.length]
+          else s += '\u00a0'
+        }
+        if (e._txt !== s) {
+          e._txt = s
+          e.textContent = s
+        }
+      }
+
+      // =====================================================================
+      // OPEN: "33" rolls in as two reels; the digits are windows onto the release
+      // =====================================================================
+      const OP = {}
+      // the reels count up to counts.features (two digits): the tens reel turns once, the units reel twice
+      const DIGITS = [Math.floor(T.counts.features / 10) % 10, T.counts.features % 10]
+      const upTo = (d) => Array.from({ length: d + 1 }, (_, k) => k)
+      const REEL = [
+        [...upTo(9), ...upTo(DIGITS[0])],
+        [...upTo(9), ...upTo(9), ...upTo(DIGITS[1])]
+      ]
+      // what each digit shows through its strokes: [shot, native x, native y at the cell center, scale]
+      const FILLS = [
+        [
+          ['rail-graph', 930, 560, 1.0],
+          ['timeline', 1010, 360, 0.95],
+          ['agent', 430, 520, 1.05],
+          ['themes', 1400, 560, 1.05],
+          ['rail-calendar', 900, 420, 1.0],
+          ['timeline', 1250, 850, 1.0]
+        ],
+        [
+          ['blocks', 760, 835, 1.05],
+          ['rail-tasks', 760, 380, 1.1],
+          ['calendars', 1070, 640, 1.0],
+          ['rail-journal', 800, 300, 1.05],
+          ['themes', 1200, 330, 1.1],
+          ['blocks', 700, 360, 1.05]
+        ]
+      ]
+      function buildOpen() {
+        const root = $('open')
+        const FS = 720
+        const mc = document.createElement('canvas').getContext('2d')
+        mc.font = `700 ${FS}px "DM Sans"`
+        let adv = 0
+        for (let d = 0; d < 10; d++) adv = Math.max(adv, mc.measureText(String(d)).width)
+        const m3 = mc.measureText('3')
+        const asc = m3.actualBoundingBoxAscent,
+          dsc = m3.actualBoundingBoxDescent
+        const cw = Math.ceil(adv) + 30,
+          ch = Math.ceil(asc + dsc) + 90
+        const base = 45 + asc
+        const kern = Math.round(FS * 0.07)
+        // caption to the right of the numerals, measured for centering
+        const cap = el('div', 'hd', root)
+        const capH = el('div', 'h', cap)
+        capH.style.fontSize = '150px'
+        capH.style.lineHeight = '0.9'
+        OP.capWords = [
+          ...words(el('span', 'ln', capH), '*new*'),
+          ...words(el('span', 'ln', capH), 'features')
+        ]
+        OP.sub = el('div', 'mono', cap)
+        OP.sub.style.cssText =
+          'margin-top:34px;font-size:22px;letter-spacing:.14em;text-transform:uppercase;color:rgba(243,239,232,.62);white-space:nowrap'
+        OP.subText = `+ ${T.counts.improvements} improvements  \u00b7  ${T.counts.fixes} fixes`
+        OP.sub.textContent = OP.subText
+        const capW = Math.max(capH.offsetWidth, OP.sub.offsetWidth)
+        const total = cw * 2 - kern + 70 + capW
+        const x0 = Math.round((W - total) / 2),
+          y0 = Math.round(H / 2 - ch / 2 + 10)
+        OP.cells = [x0, x0 + cw - kern].map((x) => [x, y0])
+        OP.cw = cw
+        OP.ch = ch
+        OP.base = base
+        OP.pitch = ch
+        cap.style.left = x0 + cw * 2 - kern + 70 + 'px'
+        cap.style.top = Math.round(H / 2 - cap.offsetHeight / 2 + 4) + 'px'
+        OP.cap = cap
+        const defs = $('defs')
+        OP.reels = OP.cells.map(([x, y], r) => {
+          const cell = box(el('div', '', root), x, y, cw, ch)
+          cell.style.position = 'absolute'
+          cell.style.overflow = 'hidden'
+          // clipPath content may not be grouped: the transform goes on the clipPath itself
+          const g = svg('clipPath', { id: 'reel' + r, clipPathUnits: 'userSpaceOnUse' }, defs)
+          const fill = box(el('div', '', cell), 0, 0, cw, ch)
+          fill.style.position = 'absolute'
+          fill.style.clipPath = `url(#reel${r})`
+          const imgs = FILLS[r].map(([name]) => {
+            const im = el('img', '', fill)
+            im.src = `shots/${name}.png`
+            im.style.cssText = 'position:absolute;left:0;top:0;transform-origin:0 0'
+            return im
+          })
+          const ol = svg(
+            'svg',
+            { width: cw, height: ch, style: 'position:absolute;left:0;top:0;overflow:visible' },
+            cell
+          )
+          const og = svg('g', {}, ol)
+          REEL[r].forEach((d, k) => {
+            const a = {
+              x: cw / 2,
+              y: base + k * ch,
+              'text-anchor': 'middle',
+              'font-family': 'DM Sans',
+              'font-weight': 700,
+              'font-size': FS
+            }
+            svg('text', a, g).textContent = d
+            svg('text', Object.assign({ fill: 'none', 'stroke-width': 2.2 }, a), og).textContent = d
+          })
+          return { cell, g, og, fill, imgs, ol }
+        })
+        // the dive: the same first digit, in stage space, clipping the whole scene
+        OP.dg = svg('clipPath', { id: 'dive', clipPathUnits: 'userSpaceOnUse' }, defs)
+        svg(
+          'text',
+          {
+            x: x0 + cw / 2,
+            y: y0 + base,
+            'text-anchor': 'middle',
+            'font-family': 'DM Sans',
+            'font-weight': 700,
+            'font-size': FS
+          },
+          OP.dg
+        ).textContent = String(DIGITS[0])
+        // the thickest point of the stroke is where the camera goes through
+        const c = document.createElement('canvas')
+        c.width = cw
+        c.height = ch
+        const g2 = c.getContext('2d', { willReadFrequently: true })
+        g2.font = `700 ${FS}px "DM Sans"`
+        g2.textAlign = 'center'
+        g2.fillText(String(DIGITS[0]), cw / 2, base)
+        const d = g2.getImageData(0, 0, cw, ch).data
+        const ins = (x, y) => x >= 0 && y >= 0 && x < cw && y < ch && d[(y * cw + x) * 4 + 3] > 128
+        let best = [cw / 2, ch / 2, 0]
+        for (let y = Math.floor(ch * 0.45); y < ch; y += 5)
+          for (let x = 0; x < cw; x += 5) {
+            if (!ins(x, y)) continue
+            let r = 1
+            outer: for (; r < 160; r += 2)
+              for (let a = 0; a < 16; a++) {
+                const ang = (a / 16) * Math.PI * 2
+                if (!ins(Math.round(x + Math.cos(ang) * r), Math.round(y + Math.sin(ang) * r)))
+                  break outer
+              }
+            if (r > best[2]) best = [x, y, r]
+          }
+        OP.focus = [x0 + best[0], y0 + best[1]]
+        // the thought dot and the label
+        OP.dot = el('div', 'dotc', root)
+        OP.label = el('div', 'mono', root)
+        OP.label.style.cssText =
+          'position:absolute;left:0;top:0;font-size:22px;letter-spacing:.16em;white-space:nowrap;color:rgba(243,239,232,.72)'
+        OP.labelText = `memrynote \u00b7 release ${T.version}`
+        OP.label.textContent = OP.labelText
+        OP.labelW = OP.label.offsetWidth
+        OP.label.textContent = ''
+      }
+      function reelIdx(r, t) {
+        const [a, b] = T.open.reels
+        const n = REEL[r].length - 1
+        const u = inv(t, a + r * 0.04, b)
+        let idx = n * (1 - Math.pow(1 - u, 3.2))
+        if (t > b) idx = n + 0.06 * Math.sin((t - b) * 34) * Math.exp(-(t - b) * 9)
+        return idx
+      }
+      function renderOpen(t, frame) {
+        const O = T.open
+        const on = t < O.dive[1] + 0.02
+        show($('open'), on)
+        if (!on) return
+        // dot + label: the dot lands, the label decodes out of it, both move up out of the way
+        const up = ioCub(inv(t, 0.82, 1.2))
+        const lx = lerp(W / 2 - (OP.labelW + 34) / 2, OP.cells[0][0] + 26, up)
+        const ly = lerp(H / 2, OP.cells[0][1] - 18, up)
+        const dotIn = oBack(inv(t, O.dot, O.dot + 0.45), 2.2)
+        const labOut = iCub(inv(t, O.textOut, O.textOut + 0.3))
+        const dr = 13 * dotIn * lerp(1, 0.72, up) * (1 - labOut)
+        const dx = lerp(W / 2, lx + dr, ioCub(inv(t, O.label[0] - 0.08, O.label[0] + 0.3)))
+        css(OP.dot, 'transform', `translate(${(dx - dr).toFixed(2)}px,${(ly - dr).toFixed(2)}px)`)
+        css(OP.dot, 'width', (2 * dr).toFixed(2) + 'px')
+        css(OP.dot, 'height', (2 * dr).toFixed(2) + 'px')
+        decode(OP.label, OP.labelText, t, O.label[0], O.label[1], frame, 3)
+        css(
+          OP.label,
+          'transform',
+          `translate(${(lx + 34 * lerp(1, 0.8, up)).toFixed(2)}px,${(ly - 15).toFixed(2)}px) scale(${lerp(1, 0.86, up).toFixed(4)})`
+        )
+        css(OP.label, 'transformOrigin', '0 50%')
+        css(OP.label, 'opacity', (1 - labOut).toFixed(3))
+        // reels
+        const [ra] = O.reels
+        const diving = t >= O.dive[0]
+        OP.reels.forEach((R, r) => {
+          const appear = oExpo(inv(t, ra + r * 0.05, ra + 0.5 + r * 0.05))
+          const out1 = r === 1 ? ioCub(inv(t, O.dive[0] - 0.05, O.dive[0] + 0.2)) : 0
+          show(R.cell, appear > 0.001 && out1 < 1)
+          if (appear <= 0.001) return
+          const idx = reelIdx(r, t)
+          const tr = `translate(0,${(-idx * OP.pitch).toFixed(2)})`
+          R.g.setAttribute('transform', tr)
+          R.og.setAttribute('transform', tr)
+          css(
+            R.cell,
+            'transform',
+            `translate(${(r === 1 ? out1 * 220 : 0).toFixed(1)}px,${((1 - appear) * 60).toFixed(1)}px)`
+          )
+          css(R.cell, 'opacity', (appear * (1 - out1)).toFixed(3))
+          // fill: which cut is live, with a punch-in on each cut
+          let k = -1,
+            tk = ra
+          O.cuts.forEach((c, i) => {
+            if (t >= c) {
+              k = i
+              tk = c
+            }
+          })
+          const fi = k < 0 ? 0 : k
+          const [name, nx, ny, s0] = k < 0 ? FILLS[r][0] : FILLS[r][fi]
+          const punch =
+            1 +
+            (k < 0
+              ? 0.06 * (1 - oExpo(inv(t, ra, ra + 1.2)))
+              : 0.13 * (1 - oExpo(inv(t, tk, tk + 0.45))))
+          const drift = (t - tk) * 14 * (r ? -1 : 1)
+          const s = s0 * punch
+          R.imgs.forEach((im, i) => {
+            const live = i === fi && !(diving && r === 0)
+            show(im, live)
+            if (live)
+              css(
+                im,
+                'transform',
+                `translate(${(OP.cw / 2 - nx * s + drift).toFixed(2)}px,${(OP.ch / 2 - ny * s).toFixed(2)}px) scale(${s.toFixed(4)})`
+              )
+          })
+          // outline: faint at rest, flashes brand orange as the reels lock
+          const lock = Math.exp(-Math.max(0, t - O.reels[1]) * 5) * (t >= O.reels[1] ? 1 : 0)
+          const dark = name === 'themes' || name === 'calendars' || name === 'timeline'
+          const olA = diving && r === 0 ? 0 : (dark ? 0.42 : 0.2) + 0.58 * lock
+          R.og.setAttribute(
+            'stroke',
+            lock > 0.02
+              ? rgba(mixc([255, 255, 255], hex(BR), lock), olA)
+              : `rgba(255,255,255,${olA.toFixed(3)})`
+          )
+          R.og.setAttribute('stroke-width', (2.2 + 3 * lock).toFixed(2))
+        })
+        // caption and counts
+        OP.capWords.forEach((w, k) =>
+          rise(
+            w,
+            oExpo(inv(t, O.caption + k * 0.09, O.caption + k * 0.09 + 0.7)),
+            iExpo(inv(t, O.textOut + k * 0.03, O.textOut + k * 0.03 + 0.35))
+          )
+        )
+        decode(OP.sub, OP.subText, t, O.sub, O.sub + 0.45, frame, 11)
+        css(OP.sub, 'opacity', (1 - iCub(inv(t, O.textOut, O.textOut + 0.25))).toFixed(3))
+      }
+      // the camera flies through the stroke of the first digit into the rail window
+      function renderDive(t) {
+        const [a, b] = T.open.dive
+        const sc = $('scene')
+        if (t >= a && t < b) {
+          const u = inv(t, a, b)
+          const k = Math.exp(Math.log(80) * Math.pow(u, 2.3))
+          const [fx, fy] = OP.focus
+          OP.dg.setAttribute(
+            'transform',
+            `translate(${fx},${fy}) scale(${k.toFixed(5)}) translate(${-fx},${-fy})`
+          )
+          css(sc, 'clipPath', 'url(#dive)')
+        } else css(sc, 'clipPath', 'none')
+      }
+
+      // =====================================================================
+      // RAIL: the sidebar's page list folds into the new rail, then the rail drives the window
+      // =====================================================================
+      const CURSOR_SVG =
+        '<svg width="22" height="30" viewBox="0 0 22 30"><path d="M3 2 L3 24.5 L8.4 19.4 L11.9 27.6 L15.5 26 L12.1 18.1 L19.2 18.1 Z" fill="#111" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>'
+      const RL = {}
+      // rail order in the screenshots, and the page each icon opens
+      const RAIL = [
+        ['Home', null],
+        ['Inbox', 'rail-inbox'],
+        ['Tasks', 'rail-tasks'],
+        ['Journal', 'rail-journal'],
+        ['Calendar', 'rail-calendar'],
+        ['Graph', 'rail-graph']
+      ]
+      // native px of the rail screenshots: 36px tiles on a 44px pitch, the first 14px under the chrome row
+      const TILE_Y = (k) => 50 + 44 * k
+      // the old sidebar: a Navigation block under the New note button pushed the tree down by NAV_H
+      const NAV_Y0 = 118,
+        NAV_H = 224
+      const ROW_Y = (k) => NAV_Y0 + 30 + 32 * k
+      const RAIL_FG = [90, 92, 94], // --sidebar-rail-foreground
+        RAIL_INK = [29, 31, 34] // --sidebar-rail-active-foreground
+      // page glyphs from lib/icons/page-icons.tsx: outline at rest, solid for the open page
+      const G = {
+        homeBody:
+          'M12.8924 2.80982L21.4876 9.59547C21.8112 9.85095 22 10.2405 22 10.6528C22 11.3969 21.3969 12 20.6528 12H20V15.5C20 18.3284 20 19.7426 19.1213 20.6213C18.2426 21.5 16.8284 21.5 14 21.5H10C7.17157 21.5 5.75736 21.5 4.87868 20.6213C4 19.7426 4 18.3284 4 15.5V12H3.34716C2.60315 12 2 11.3969 2 10.6528C2 10.2405 2.1888 9.85095 2.5124 9.59547L11.1076 2.80982C11.3617 2.60915 11.6761 2.5 12 2.5C12.3239 2.5 12.6383 2.60915 12.8924 2.80982Z',
+        homeDoor:
+          'M14.5 21.5V17C14.5 16.0654 14.5 15.5981 14.299 15.25C14.1674 15.022 13.978 14.8326 13.75 14.701C13.4019 14.5 12.9346 14.5 12 14.5C11.0654 14.5 10.5981 14.5 10.25 14.701C10.022 14.8326 9.83261 15.022 9.70096 15.25C9.5 15.5981 9.5 16.0654 9.5 17V21.5',
+        inboxBody:
+          'M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z',
+        inboxTray:
+          'M21.5 13.5H16.5743C15.7322 13.5 15.0706 14.2036 14.6995 14.9472C14.2963 15.7551 13.4889 16.5 12 16.5C10.5111 16.5 9.70373 15.7551 9.30054 14.9472C8.92942 14.2036 8.26777 13.5 7.42566 13.5H2.5',
+        nbBody: 'M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4',
+        nbRings: 'M2 6h4M2 10h4M2 14h4M2 18h4',
+        nbPen:
+          'M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z',
+        calRings: 'M16 2V6M8 2V6',
+        calBody:
+          'M13 4H11C7.22876 4 5.34315 4 4.17157 5.17157C3 6.34315 3 8.22876 3 12V14C3 17.7712 3 19.6569 4.17157 20.8284C5.34315 22 7.22876 22 11 22H13C16.7712 22 18.6569 22 19.8284 20.8284C21 19.6569 21 17.7712 21 14V12C21 8.22876 21 6.34315 19.8284 5.17157C18.6569 4 16.7712 4 13 4Z',
+        calHead: 'M3 10H21',
+        clipBody: 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2',
+        clipCheck: 'm9 14 2 2 4-4',
+        graph:
+          '<path d="M11 5L18 5"/><path d="M10 10L14.5 14.5"/><path d="M5 11L5 18"/><circle cx="6.44444" cy="6.44444" r="4.44444"/><circle cx="5" cy="20" r="2"/><circle cx="16" cy="16" r="2"/><circle cx="20" cy="5" r="2"/>'
+      }
+      const pth = (d, extra = '') => `<path d="${d}"${extra}/>`
+      const svg24 = (sw, body) =>
+        `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
+      let maskN = 0
+      function pageGlyph(k, solid) {
+        const id = 'pgm' + maskN++
+        const day =
+          '<text x="12" y="16.25" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="700" font-family="system-ui" fill="currentColor" stroke="none">28</text>'
+        const clip = '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>'
+        // solid: the silhouette filled, inner details punched out through a mask
+        const masked = (knock, fill, over = '') =>
+          `<mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="white" stroke="none"/><g color="black" stroke="black">${knock}</g></mask><g fill="currentColor" mask="url(#${id})">${fill}</g>` +
+          (over ? `<g fill="currentColor">${over}</g>` : '')
+        const body = [
+          () =>
+            solid
+              ? masked(
+                  pth(G.homeDoor, ' fill="black"') +
+                    '<rect x="9.5" y="18" width="5" height="6" fill="black"/>',
+                  pth(G.homeBody)
+                )
+              : pth(G.homeBody) + pth(G.homeDoor),
+          () =>
+            solid
+              ? masked(pth(G.inboxTray), pth(G.inboxBody))
+              : pth(G.inboxBody) + pth(G.inboxTray),
+          () =>
+            solid
+              ? masked(
+                  '<rect width="8" height="4" x="8" y="2" rx="1" ry="1" stroke-width="4" fill="black"/>' +
+                    pth(G.clipCheck),
+                  pth(G.clipBody),
+                  clip
+                )
+              : clip + pth(G.clipBody) + pth(G.clipCheck),
+          () =>
+            solid
+              ? masked(
+                  pth(G.nbPen, ' stroke-width="4" fill="black"'),
+                  pth(G.nbBody),
+                  pth(G.nbRings) + pth(G.nbPen)
+                )
+              : pth(G.nbBody) + pth(G.nbRings) + pth(G.nbPen),
+          () =>
+            solid
+              ? masked(pth(G.calHead) + day, pth(G.calRings) + pth(G.calBody))
+              : pth(G.calRings) + pth(G.calBody) + pth(G.calHead) + day,
+          () => (solid ? `<g fill="currentColor">${G.graph}</g>` : G.graph)
+        ][k]()
+        return svg24(1.8, body)
+      }
+      // the old sidebar's row icons (Hugeicons Home01, Inbox, CheckmarkSquare03, Book02, Calendar02, ChartRelationship)
+      const OLD_GLYPHS = [
+        pth(
+          'M3 11.9896V14.5C3 17.7998 3 19.4497 4.02513 20.4749C5.05025 21.5 6.70017 21.5 10 21.5H14C17.2998 21.5 18.9497 21.5 19.9749 20.4749C21 19.4497 21 17.7998 21 14.5V11.9896C21 10.3083 21 9.46773 20.6441 8.74005C20.2882 8.01237 19.6247 7.49628 18.2976 6.46411L16.2976 4.90855C14.2331 3.30285 13.2009 2.5 12 2.5C10.7991 2.5 9.76689 3.30285 7.70242 4.90855L5.70241 6.46411C4.37533 7.49628 3.71179 8.01237 3.3559 8.74005C3 9.46773 3 10.3083 3 11.9896Z'
+        ) +
+          pth(
+            'M15.0002 17C14.2007 17.6224 13.1504 18 12.0002 18C10.8499 18 9.79971 17.6224 9.00018 17'
+          ),
+        pth(G.inboxBody) + pth(G.inboxTray),
+        pth(
+          'M21.4477 8.2C21.5 9.25014 21.5 10.4994 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C13.0719 2.5 14.0156 2.5 14.85 2.51908'
+        ) + pth('M8 11.5C8 11.5 9.5 11.5 11.5 15C11.5 15 16.5588 5.83333 21.5 4'),
+        pth('M15.5 7H8.5M12.499 11H8.49902') +
+          pth(
+            'M20 22H6C4.89543 22 4 21.1046 4 20M4 20C4 18.8954 4.89543 18 6 18H20V6C20 4.11438 20 3.17157 19.4142 2.58579C18.8284 2 17.8856 2 16 2H10C7.17157 2 5.75736 2 4.87868 2.87868C4 3.75736 4 5.17157 4 8V20Z'
+          ) +
+          pth('M19.5 18C19.5 18 18.5 18.7628 18.5 20C18.5 21.2372 19.5 22 19.5 22'),
+        pth(G.calRings) +
+          pth(G.calBody) +
+          pth(G.calHead) +
+          pth('M11 14H16M8 14H8.00898M13 18H8M16 18H15.991'),
+        G.graph
+      ].map((b) => svg24(1.5, b))
+      function cutAt(parent, name, sx, sy, w, h, x, y) {
+        const e = cut(parent, name, sx, sy, w, h)
+        e.style.left = x + 'px'
+        e.style.top = y + 'px'
+        return e
+      }
+      function buildRail() {
+        const w = makeWin('wR', 'rail-inbox')
+        RL.w = w
+        const L = w.layer
+        const holder = (x, y, ww, hh, bg) => {
+          const e = box(el('div', 'patch', L), x, y, ww, hh)
+          e.style.overflow = 'hidden'
+          e.style.background = bg
+          return e
+        }
+        // each page's content column and tab, cut from its screenshot so the pages can trade places
+        RL.stack = holder(274, 37, 1350, 1019, '#fff')
+        RL.stack.style.borderBottomRightRadius = '18px'
+        RL.tabs = holder(274, 0, 242, 36, '#fff')
+        // the pages stack by z-index inside; keep that from leaking over the spotlight
+        RL.stack.style.isolation = RL.tabs.style.isolation = 'isolate'
+        RL.pages = RAIL.map(
+          ([, shot]) =>
+            shot && {
+              c: cutAt(RL.stack, shot, 274, 37, 1350, 1019, 0, 0),
+              tab: cutAt(RL.tabs, shot, 274, 0, 242, 36, 0, 0)
+            }
+        )
+        // a spotlight on the sidebar while it changes
+        RL.dim = patch(L, 274, 0, 1350, 1056, 'rgba(12,11,10,0.5)')
+        RL.dim.style.borderRadius = '0 18px 18px 0'
+        // the screenshot's own rail icons give way to rebuilt ones
+        patch(L, 0, 44, 52, 272, '#f3f3f3')
+        // before: no rail, the panel runs to the window edge; the rail slides in over this
+        RL.cover = patch(L, 0, 36, 53, 1020, '#fbfbfb')
+        RL.cover.style.borderTop = '1px solid #ebebec'
+        RL.cover.style.borderBottomLeftRadius = '18px'
+        RL.coverC = patch(L, 53, 36, 14, 14, '#fbfbfb')
+        RL.coverC.style.borderTop = '1px solid #ebebec'
+        // the old Navigation block, and the tree it pushed down
+        RL.tree = holder(53, NAV_Y0, 219, 1055 - NAV_Y0, '#fbfbfb')
+        RL.nav = box(el('div', 'onav', RL.tree), 0, 0, 219, NAV_H)
+        RL.navHead = box(el('div', 'patch', RL.nav, 'Navigation'), 16, 6)
+        RL.navHead.style.cssText +=
+          ';font:500 11px/24px system-ui;letter-spacing:.04em;text-transform:uppercase;color:#656769'
+        RL.rows = RAIL.map(([title], k) => {
+          const r = box(el('div', 'orow', RL.nav), 8, 30 + 32 * k)
+          if (k === 1) r.style.background = 'rgba(0,0,0,0.04)'
+          return {
+            r,
+            lb: el('div', 'lb', r, title),
+            bd: k === 1 || k === 2 ? el('div', 'bd', r, '9+') : null
+          }
+        })
+        RL.treeCut = cutAt(RL.tree, 'rail-inbox', 53, NAV_Y0, 219, 1055 - NAV_Y0, 0, 0)
+        // the active tile, then the icons: each flies out of its old row into its tile
+        RL.act = box(el('div', 'rt', L), 8, TILE_Y(1), 36, 36)
+        RL.act.style.background = '#fff'
+        RL.act.style.boxShadow = '0 0 0 1px #ebebec, 0 1px 2px rgba(0,0,0,0.05)'
+        RL.icons = RAIL.map((_, k) => {
+          const e = box(el('div', 'rt', L), 0, 0, 36, 36)
+          e.style.transformOrigin = '18px 18px'
+          const gl = box(el('div', 'rg', e), 8, 8)
+          const o = {
+            e,
+            gl,
+            old: el('div', 'rg', gl, OLD_GLYPHS[k]),
+            out: el('div', 'rg', gl, pageGlyph(k, false)),
+            sol: el('div', 'rg', gl, pageGlyph(k, true))
+          }
+          o.num = el('div', 'rnum', e, String(k + 1))
+          if (k === 1 || k === 2) {
+            o.badge = el('div', 'rbadge', e, '9+')
+            o.badge.style.right = '-3px'
+            o.badge.style.top = '0px'
+          }
+          return o
+        })
+        RL.cur = el('div', 'cursor', L, CURSOR_SVG)
+        RL.tip = el('div', 'tip', L, '<span></span><b></b>')
+        RL.tipT = RL.tip.querySelector('span')
+        RL.tipK = RL.tip.querySelector('b')
+        RL.kCmd = el('div', 'kc', $('type'), '\u2318')
+        RL.k2 = el('div', 'kc', $('type'), '2')
+        RL.head = makeHead({
+          x: 132,
+          y: 318,
+          label: '01 \u2014 Navigation',
+          lines: ['A new way', '*around*.'],
+          size: 112,
+          sub: 'Pages live on the rail now.<br>One click, or \u23181 to \u23186.'
+        })
+      }
+      // both poses hang on the same native point, so the pull-back keeps the window's edge at x 760
+      // and never slides under the headline
+      const R_CLOSE = P(150, 215, 1090, 560, 2.2, 2, -7)
+      const R_SET = P(150, 215, 889, 335, 0.86, 2, -10)
+      function railPose(t) {
+        const R = T.rail
+        if (t < R.start)
+          return tweak(R_CLOSE, {
+            s: R_CLOSE.s * lerp(1.34, 1, oCub(inv(t, T.open.dive[0], R.start)))
+          })
+        return track(
+          [
+            [R.start, R_CLOSE],
+            [R.pull[0], tweak(R_CLOSE, { s: 2.3 }), ioSine],
+            [R.pull[1], R_SET, ioQuint],
+            [R.out[0], tweak(R_SET, { s: 0.9 }), ioSine],
+            [R.out[1], tweak(R_SET, { s: 0.9, qx: -900, ry: 40, z: -300 }), iCub]
+          ],
+          t
+        )
+      }
+      // pages over time: Inbox, the four clicks, then cmd+2 back to Inbox
+      function railAt(t) {
+        const R = T.rail
+        const s = [[-1, 1], ...R.clicks.map((c, i) => [c, 2 + i]), [R.press, 1]]
+        let i = 0
+        while (i < s.length - 1 && t >= s[i + 1][0]) i++
+        return { t0: s[i][0], from: i ? s[i - 1][1] : s[i][1], to: s[i][1] }
+      }
+      // 0..1: how solid (open) icon k is
+      function railActive(k, t, pop, cur) {
+        if (t < pop) return 0
+        if (cur.t0 < 0) return k === 1 ? smooth(inv(t, pop + 0.02, pop + 0.12)) : 0
+        const u = smooth(inv(t, cur.t0 + 0.05, cur.t0 + 0.14))
+        return (k === cur.to ? u : 0) + (k === cur.from ? 1 - u : 0)
+      }
+      function railCursor(t) {
+        const C = T.rail.clicks
+        const tip = (k) => [31, TILE_Y(k) + 23]
+        const last = C[C.length - 1]
+        const pts = [[C[0] - 0.5, [236, 470]]]
+        C.forEach((c, i) => pts.push([c - 0.1, tip(2 + i)], [c + 0.1, tip(2 + i)]))
+        pts.push([last + 0.55, [260, 520]])
+        let [x, y] = pts[0][1]
+        for (let i = 1; i < pts.length; i++) {
+          if (t >= pts[i][0]) {
+            ;[x, y] = pts[i][1]
+            continue
+          }
+          const u = ioCub(inv(t, pts[i - 1][0], pts[i][0]))
+          x = lerp(pts[i - 1][1][0], pts[i][1][0], u)
+          y = lerp(pts[i - 1][1][1], pts[i][1][1], u)
+          break
+        }
+        const o =
+          clamp(inv(t, C[0] - 0.5, C[0] - 0.32)) * (1 - clamp(inv(t, last + 0.3, last + 0.55)))
+        let press = 0
+        C.forEach((c) => (press = Math.max(press, 1 - Math.abs(t - c + 0.02) / 0.06)))
+        return { x, y, o, press }
+      }
+      function renderRail(t) {
+        const R = T.rail
+        const on = t >= T.open.dive[0] && t < R.out[1]
+        show(RL.w, on)
+        // clears out before the window swings across where it stood
+        renderHead(RL.head, t, R.head, R.out[0] - 0.42, { sub: R.sub, st: 0.085 })
+        // keycaps: cmd held, then 2
+        const kv =
+          oBack(inv(t, R.cmd - 0.1, R.cmd + 0.18), 1.6) *
+          (1 - iCub(inv(t, R.release, R.release + 0.2)))
+        const k2v =
+          oBack(inv(t, R.press - 0.24, R.press - 0.02), 1.6) *
+          (1 - iCub(inv(t, R.release, R.release + 0.2)))
+        const kp = Math.max(0, 1 - Math.abs(t - R.press) / 0.07)
+        ;[
+          [RL.kCmd, kv, 0, 1],
+          [RL.k2, k2v, 92, kp]
+        ].forEach(([e, v, dx, p]) => {
+          show(e, v > 0.001)
+          css(
+            e,
+            'transform',
+            `translate(${132 + dx}px,${(752 + (1 - v) * 26 + p * 4).toFixed(2)}px) scale(${lerp(0.9, 1, v).toFixed(4)})`
+          )
+          css(e, 'opacity', clamp(v).toFixed(3))
+          css(
+            e,
+            'boxShadow',
+            `0 ${(5 - 4 * p).toFixed(2)}px 0 #d4d1cb, 0 14px 28px -12px rgba(0,0,0,.4)`
+          )
+        })
+        if (!on) return
+        place(RL.w, railPose(t))
+        const [m0, m1] = R.morph
+        // the strip under the rail is panel colored until the rail slides in from the edge
+        const X = 67 * ioCub(inv(t, m0 + 0.05, m0 + 0.45))
+        show(RL.cover, X < 53)
+        css(RL.cover, 'clipPath', `inset(0 0 0 ${X.toFixed(2)}px)`)
+        show(RL.coverC, X < 67)
+        css(RL.coverC, 'clipPath', `inset(0 0 0 ${Math.max(0, X - 53).toFixed(2)}px)`)
+        css(RL.dim, 'opacity', (1 - smooth(inv(t, R.pull[0] - 0.1, R.pull[0] + 0.35))).toFixed(3))
+        // labels fold into their icons, then the tree takes the room back
+        const fold = ioQuint(inv(t, m0 + 0.3, m0 + 0.78))
+        show(RL.tree, fold < 1)
+        if (fold < 1) {
+          const hOut = iCub(inv(t, m0, m0 + 0.22))
+          css(RL.navHead, 'opacity', (1 - hOut).toFixed(3))
+          css(RL.navHead, 'transform', `translateY(${(-6 * hOut).toFixed(2)}px)`)
+          RL.rows.forEach((o, k) => {
+            const u = ioCub(inv(t, m0 + 0.03 * k, m0 + 0.03 * k + 0.24))
+            css(o.lb, 'clipPath', `inset(-2px ${(u * 100).toFixed(2)}% -2px 0)`)
+            css(o.lb, 'transform', `translateX(${(-12 * u).toFixed(2)}px)`)
+            if (o.bd) css(o.bd, 'opacity', (1 - u).toFixed(3))
+            if (k === 1) css(o.r, 'background', rgba([0, 0, 0], 0.04 * (1 - u)))
+          })
+          css(RL.treeCut, 'transform', `translateY(${(NAV_H * (1 - fold)).toFixed(2)}px)`)
+        }
+        const pop = m1 - 0.08
+        const cur = railAt(t)
+        RL.icons.forEach((o, k) => {
+          const f0 = m0 + 0.12 + 0.0625 * k
+          const v = inv(t, f0, f0 + 0.42)
+          const x = lerp(73, 26, ioCub(v)),
+            y = lerp(ROW_Y(k) + 14, TILE_Y(k) + 18, ioQuint(v))
+          css(
+            o.e,
+            'transform',
+            `translate(${(x - 18).toFixed(2)}px,${(y - 18).toFixed(2)}px) scale(${lerp(0.8, 1, oBack(v, 2)).toFixed(4)})`
+          )
+          const mid = smooth(inv(v, 0.3, 0.7))
+          const act = railActive(k, t, pop, cur)
+          css(o.old, 'opacity', (1 - mid).toFixed(3))
+          css(o.out, 'opacity', (mid * (1 - act)).toFixed(3))
+          css(o.sol, 'opacity', (mid * act).toFixed(3))
+          css(o.e, 'color', rgb(mixc(RAIL_FG, RAIL_INK, act)))
+          // cmd held: glyphs roll up, their shortcut numbers roll in
+          const d = 0.035 * k
+          const n =
+            oCub(inv(t, R.cmd + d, R.cmd + d + 0.16)) *
+            (1 - oCub(inv(t, R.release + d, R.release + d + 0.16)))
+          css(o.gl, 'transform', `translateY(${(-9 * n).toFixed(2)}px)`)
+          css(o.gl, 'opacity', (1 - n).toFixed(3))
+          css(o.num, 'transform', `translateY(${(9 * (1 - n)).toFixed(2)}px)`)
+          css(o.num, 'opacity', n.toFixed(3))
+          if (o.badge) {
+            const bp = oBack(inv(t, pop + 0.06 * k, pop + 0.06 * k + 0.3), 2.4)
+            show(o.badge, bp > 0.001)
+            css(o.badge, 'transform', `scale(${bp.toFixed(4)})`)
+          }
+        })
+        // the white tile lands on Inbox, then follows every click
+        const tp = oBack(inv(t, pop, pop + 0.34), 1.8)
+        const dur = Math.abs(cur.to - cur.from) > 1 ? 0.32 : 0.22
+        const ty =
+          cur.t0 < 0
+            ? TILE_Y(1)
+            : lerp(TILE_Y(cur.from), TILE_Y(cur.to), oQuint(inv(t, cur.t0, cur.t0 + dur)))
+        const press = cur.t0 < 0 ? 0 : Math.max(0, 1 - Math.abs(t - cur.t0 - 0.02) / 0.08)
+        show(RL.act, tp > 0.001)
+        css(
+          RL.act,
+          'transform',
+          `translateY(${(ty - TILE_Y(1)).toFixed(2)}px) scale(${(lerp(0.5, 1, tp) * (1 - 0.06 * press)).toFixed(4)})`
+        )
+        css(RL.act, 'opacity', clamp(tp * 2).toFixed(3))
+        // pages: the new one rises in from the side of the rail it came from
+        const u = cur.t0 < 0 ? 1 : clamp((t - cur.t0) / 0.34)
+        const dir = cur.to > cur.from ? 1 : -1
+        RL.pages.forEach((p, k) => {
+          if (!p) return
+          const isTo = k === cur.to,
+            isFrom = k === cur.from && cur.from !== cur.to && u < 1
+          show(p.c, isTo || isFrom)
+          show(p.tab, isTo || isFrom)
+          if (!(isTo || isFrom)) return
+          css(p.c, 'zIndex', isTo ? '2' : '1')
+          css(p.tab, 'zIndex', isTo ? '2' : '1')
+          // the old page is nearly gone before the new one is readable: no double image
+          const e = isTo ? oQuint(u) : oCub(clamp(u / 0.3))
+          css(
+            p.c,
+            'transform',
+            `translateY(${(isTo ? dir * 150 * (1 - e) : -dir * 60 * e).toFixed(2)}px)`
+          )
+          css(p.c, 'opacity', (isTo ? smooth(clamp((u - 0.08) / 0.3)) : 1 - e).toFixed(3))
+          const te = oQuint(clamp(u / 0.6))
+          css(
+            p.tab,
+            'transform',
+            `translateY(${(isTo ? dir * 36 * (1 - te) : -dir * 36 * te).toFixed(2)}px)`
+          )
+        })
+        // cursor and tooltip; the tooltip is drawn large so it reads at this distance
+        const c = railCursor(t)
+        show(RL.cur, c.o > 0.001)
+        css(
+          RL.cur,
+          'transform',
+          `translate(${(c.x - 3).toFixed(2)}px,${(c.y - 2).toFixed(2)}px) scale(${(1.45 * (1 - 0.1 * c.press)).toFixed(4)})`
+        )
+        css(RL.cur, 'opacity', c.o.toFixed(3))
+        let tipK = -1,
+          tv = 0
+        R.clicks.forEach((ck, i) => {
+          const a = ck - 0.16,
+            b = ck + 0.34
+          if (t >= a && t < b) {
+            tipK = 2 + i
+            tv = oBack(inv(t, a, a + 0.14), 1.6) * (1 - iCub(inv(t, b - 0.08, b)))
+          }
+        })
+        show(RL.tip, tipK >= 0)
+        if (tipK >= 0) {
+          if (RL.tipT.textContent !== RAIL[tipK][0]) {
+            RL.tipT.textContent = RAIL[tipK][0]
+            RL.tipK.textContent = '\u2318' + (tipK + 1)
+          }
+          css(
+            RL.tip,
+            'transform',
+            `translate(54px,${(TILE_Y(tipK) + 5).toFixed(2)}px) scale(${(1.8 * lerp(0.9, 1, tv)).toFixed(4)})`
+          )
+          css(RL.tip, 'opacity', clamp(tv).toFixed(3))
+        }
+      }
+
+      // =====================================================================
+      // VAULTS: the screen recording, retimed so every switch lands on the beat
+      // =====================================================================
+      const VA = { frame: -1, tok: 0 }
+      const VW = 1286,
+        VH = 914,
+        VN = 398 // shots/vaults.mp4, 60 fps
+      // the sidebar's foot, left to right: memrynote, Garden, Vocab
+      const VAULT_ICONS = ['\u2764\ufe0f', '\u{1f9d1}\u200d\u{1f33e}', '\u{1f4d8}']
+      const VAULT_RGB = [
+        [255, 96, 124],
+        [140, 206, 96],
+        [88, 150, 240]
+      ]
+      const VAULT_SEQ = [0, 1, 2, 1, 0] // at the start, then after each switch: swipe, swipe, click, click
+      // where the recorder's close-up shows the three vault icons (recording px)
+      const VAULT_DOTS = [
+        [205, 887],
+        [244, 887],
+        [283, 887]
+      ]
+      function vaultAt(t) {
+        const S = T.vaults.switches
+        let i = 0
+        while (i < S.length && t >= S[i]) i++
+        return { i, t0: i ? S[i - 1] : -1 }
+      }
+      function vaultColor(t) {
+        const { i, t0 } = vaultAt(t)
+        return mixc(
+          VAULT_RGB[VAULT_SEQ[Math.max(0, i - 1)]],
+          VAULT_RGB[VAULT_SEQ[i]],
+          i ? smooth(inv(t, t0, t0 + 0.25)) : 1
+        )
+      }
+      // monotone cubic (Fritsch-Carlson) through [film, recording] pairs: eases speed, never plays backwards
+      function monotone(pts) {
+        const n = pts.length,
+          x = pts.map((p) => p[0]),
+          y = pts.map((p) => p[1])
+        const h = [],
+          d = []
+        for (let i = 0; i < n - 1; i++) {
+          h.push(x[i + 1] - x[i])
+          d.push((y[i + 1] - y[i]) / h[i])
+        }
+        const m = [d[0]]
+        for (let i = 1; i < n - 1; i++)
+          m.push(
+            d[i - 1] * d[i] <= 0
+              ? 0
+              : (3 * (h[i - 1] + h[i])) /
+                  ((2 * h[i] + h[i - 1]) / d[i - 1] + (h[i] + 2 * h[i - 1]) / d[i])
+          )
+        m.push(d[n - 2])
+        return (t) => {
+          if (t <= x[0]) return y[0]
+          if (t >= x[n - 1]) return y[n - 1]
+          let i = 0
+          while (t > x[i + 1]) i++
+          const s = (t - x[i]) / h[i],
+            s2 = s * s,
+            s3 = s2 * s
+          return (
+            (2 * s3 - 3 * s2 + 1) * y[i] +
+            (s3 - 2 * s2 + s) * h[i] * m[i] +
+            (-2 * s3 + 3 * s2) * y[i + 1] +
+            (s3 - s2) * h[i] * m[i + 1]
+          )
+        }
+      }
+      // film time at which the recording reaches `src` (the map only moves forward)
+      function vaultFilmAt(src) {
+        let a = T.vaults.map[0][0],
+          b = T.vaults.map[T.vaults.map.length - 1][0]
+        for (let k = 0; k < 40; k++) {
+          const m = (a + b) / 2
+          if (VA.map(m) < src) a = m
+          else b = m
+        }
+        return (a + b) / 2
+      }
+      function buildVault() {
+        VA.map = monotone(T.vaults.map)
+        const w = box(el('div', 'win', $('scene')), 0, 0, VW, VH)
+        VA.w = w
+        VA.sh = box(el('div', 'sh', w), 0, 0, VW, VH)
+        VA.sh.style.borderRadius = '30px'
+        // the recording's window corners show a sliver of desktop: a rounder mask hides it
+        VA.card = box(el('div', 'wc', w), 0, 0, VW, VH)
+        VA.card.style.clipPath = 'inset(0 round 30px)'
+        VA.card.style.background = '#fbfbfb'
+        const cv = box(el('canvas', 'cov', VA.card), 0, 0)
+        cv.width = VW
+        cv.height = VH
+        VA.cx = cv.getContext('2d')
+        // while it pages between vaults, the sidebar panel lifts out of the window
+        VA.slot = patch(VA.card, 52, 36, 224, VH - 36, '#ededeb')
+        VA.slot.style.boxShadow = 'inset 0 3px 10px rgba(0,0,0,0.08)'
+        VA.lift = box(el('div', 'patch', VA.card), 52, 36, 224, VH - 36)
+        VA.lift.style.borderTopLeftRadius = '14px'
+        VA.lift.style.overflow = 'hidden'
+        // grows from its rail edge, so the rail stays in view
+        VA.lift.style.transformOrigin = '0 45%'
+        const lc = el('canvas', '', VA.lift)
+        lc.width = 224
+        lc.height = VH - 36
+        lc.style.display = 'block'
+        VA.lx = lc.getContext('2d')
+        VA.rings = T.vaults.clicks.map(() => [
+          el('div', 'vring', VA.card),
+          el('div', 'vring', VA.card)
+        ])
+        VA.head = makeHead({
+          x: 132,
+          y: 300,
+          label: '02 \u2014 Vaults',
+          lines: ['Hop between', '*vaults*.'],
+          size: 112,
+          sub: 'Click one at the foot of the sidebar, or swipe.'
+        })
+        VA.chips = VAULT_ICONS.map((s, k) =>
+          box(el('div', 'vchip', $('type'), s), 122 + 128 * k, 676)
+        )
+        VA.mark = el('div', 'dotc', $('type'))
+      }
+      const chipX = (k) => 122 + 128 * k + 56
+      // hung by its left edge: the sidebar, where the switching happens, stays large and in view
+      const V_SET = P(0, 457, 800, 548, 1.0, 2, -10)
+      function vaultPose(t) {
+        const V = T.vaults
+        return track(
+          [
+            [V.in[0], tweak(V_SET, { qx: 2300, ry: -40, z: -300 })],
+            [V.in[1], V_SET, oQuint],
+            [V.out[0], tweak(V_SET, { s: 1.04 }), ioSine],
+            [V.out[1], tweak(V_SET, { s: 1.04, qx: -1500, ry: 40, z: -300 }), iCub]
+          ],
+          t
+        )
+      }
+      function renderVault(t) {
+        const V = T.vaults
+        const on = t >= V.in[0] && t < V.out[1]
+        show(VA.w, on)
+        renderHead(VA.head, t, V.head, V.out[0] - 0.42, { sub: V.sub, st: 0.085 })
+        // the switcher, big: the open vault lights up, an orange dot follows it
+        const { i, t0 } = vaultAt(t)
+        const cur = VAULT_SEQ[i],
+          prev = VAULT_SEQ[Math.max(0, i - 1)]
+        const aIn = i ? oBack(inv(t, t0, t0 + 0.36), 2.6) : 1,
+          aOut = i ? 1 - oExpo(inv(t, t0, t0 + 0.3)) : 0
+        const chipsIn = (k) =>
+          oExpo(inv(t, V.sub + 0.1 + 0.07 * k, V.sub + 0.75 + 0.07 * k)) *
+          (1 - iExpo(inv(t, V.out[0] - 0.42 + 0.03 * k, V.out[0] - 0.07 + 0.03 * k)))
+        VA.chips.forEach((e, k) => {
+          const vis = chipsIn(k)
+          show(e, vis > 0.001)
+          if (vis <= 0.001) return
+          const a = k === cur ? aIn : k === prev ? aOut : 0
+          css(
+            e,
+            'transform',
+            `translateY(${((1 - vis) * 40).toFixed(2)}px) scale(${lerp(0.68, 1, a).toFixed(4)})`
+          )
+          css(e, 'opacity', (vis * lerp(0.3, 1, clamp(a))).toFixed(3))
+          css(e, 'filter', `grayscale(${(0.85 * (1 - clamp(a))).toFixed(3)})`)
+        })
+        const mv = chipsIn(0)
+        show(VA.mark, mv > 0.001)
+        const mx = lerp(chipX(prev), chipX(cur), i ? ioQuint(inv(t, t0, t0 + 0.28)) : 1)
+        css(VA.mark, 'width', '10px')
+        css(VA.mark, 'height', '10px')
+        css(
+          VA.mark,
+          'transform',
+          `translate(${(mx - 5).toFixed(2)}px,${(676 + 118 + (1 - mv) * 30).toFixed(2)}px)`
+        )
+        css(VA.mark, 'opacity', mv.toFixed(3))
+        if (!on) return null
+        place(VA.w, vaultPose(t))
+        // the panel lifts off the window for the two swipes
+        const lf =
+          oBack(inv(t, V.lift[0], V.lift[0] + 0.32), 1.5) *
+          (1 - ioCub(inv(t, V.lift[1] - 0.16, V.lift[1])))
+        show(VA.slot, lf > 0.001)
+        css(VA.slot, 'opacity', clamp(lf).toFixed(3))
+        css(
+          VA.lift,
+          'transform',
+          `translate(${(6 * lf).toFixed(2)}px,${(-10 * lf).toFixed(2)}px) scale(${(1 + 0.06 * lf).toFixed(4)})`
+        )
+        css(
+          VA.lift,
+          'boxShadow',
+          `${(22 * lf).toFixed(1)}px ${(30 * lf).toFixed(1)}px ${(64 * lf).toFixed(1)}px rgba(0,0,0,${(0.3 * clamp(lf)).toFixed(3)}), 0 0 0 1px rgba(0,0,0,${(0.08 * clamp(lf)).toFixed(3)})`
+        )
+        // a ping on each click in the close-up
+        V.clicks.forEach((c, j) => {
+          const [x, y] = VAULT_DOTS[VAULT_SEQ[3 + j]]
+          VA.rings[j].forEach((e, r) => {
+            const a = c + 0.07 * r
+            const vis = t >= a && t < a + 0.55
+            show(e, vis)
+            if (!vis) return
+            const rad = lerp(10, 58, oExpo(inv(t, a, a + 0.55)))
+            box(e, x - rad, y - rad, 2 * rad, 2 * rad)
+            css(e, 'opacity', (1 - smooth(inv(t, a + 0.08, a + 0.55))).toFixed(3))
+            css(e, 'borderWidth', (r ? 2 : 4) + 'px')
+          })
+        })
+        // the frame: fetched and drawn once per recording frame
+        const f = clamp(Math.round(VA.map(t) * 60), 0, VN - 1)
+        if (f === VA.frame) return null
+        VA.frame = f
+        const tok = ++VA.tok
+        const im = new Image()
+        im.src = `frames/vault/${String(f).padStart(3, '0')}.jpg`
+        return im.decode().then(() => {
+          if (tok !== VA.tok) return
+          VA.cx.drawImage(im, 0, 0)
+          VA.lx.drawImage(im, 52, 36, 224, VH - 36, 0, 0, 224, VH - 36)
+        })
+      }
+
+      // =====================================================================
+      // AGENT: the diff lands in the note, the review bar asks, Accept applies
+      // =====================================================================
+      const AG = {}
+      const INK = [55, 53, 47],
+        ADD = [45, 122, 106],
+        DEL = [125, 118, 106]
+      function buildAgent() {
+        const w = makeWin('wA', 'agent')
+        AG.w = w
+        patch(w.layer, 136, 372, 574, 300, '#fff')
+        patch(w.layer, 138, 672, 620, 74, '#fff')
+        const doc = el('div', 'adoc ui', w.c)
+        AG.h2 = box(el('div', 'ah2', doc, 'Observations'), 150, 378)
+        const line = (x, y, html) => box(el('div', 'aln', doc, html), x, y)
+        const mod = (pre, del, add, post) =>
+          `<span class="bul"></span>${pre}<span class="dl"><span>${del}</span><i class="st"></i></span><span class="ad"><span class="at">${add}</span></span>${post}`
+        AG.mods = [
+          line(
+            150,
+            421,
+            mod('Protein at ', '180g', '164g', ' is non-negotiable; below it I lose strength')
+          ),
+          line(150, 455, mod('', '7', '6.5', ' hours sleep correlates with better Sunday numbers'))
+        ].map((e) => {
+          const dl = e.querySelector('.dl'),
+            ad = e.querySelector('.ad')
+          return {
+            e,
+            dl,
+            ad,
+            st: dl.querySelector('.st'),
+            at: ad.querySelector('.at'),
+            dlW: dl.offsetWidth,
+            adW: ad.offsetWidth
+          }
+        })
+        AG.travel = line(
+          175,
+          489,
+          '<span class="bul b2"></span>Travel weeks \u2260 progress weeks (see <span class="lnk">Tokyo Trip</span>)'
+        )
+        AG.ins = [
+          'Carb cycling on heavy lift days prevents mid-week fatigue',
+          'Morning cortisol spikes when stress is high; affects weigh-in readings',
+          'Sodium management the day before weigh-in shifts scale by 0.5-1kg'
+        ].map((s) => {
+          const e = line(
+            150,
+            523,
+            `<span class="bul"></span><span class="iw"><span class="it">${s}</span></span>`
+          )
+          return { e, iw: e.querySelector('.iw'), it: e.querySelector('.it') }
+        })
+        AG.tags = line(150, 523, '#fitness #log')
+        // review bar
+        const bar = box(el('div', 'abar ui', w.c), 150, 678)
+        el('div', 't1', bar, 'Agent suggested 4 changes')
+        el('div', 't2', bar, 'Not saved yet. Accept to apply it.')
+        el('div', 'b rej', bar, 'Reject')
+        el('div', 'b edt', bar, 'Edit')
+        AG.acc = el('div', 'b acc', bar, 'Accept')
+        AG.bar = bar
+        AG.cur = el('div', 'cursor', w.c, CURSOR_SVG)
+      }
+      const A_SET = P(560, 470, 1300, 552, 0.84, 3, -16)
+      const A_PUSH = P(420, 530, 1330, 548, 1.72, 1.5, -6)
+      const A_DRIFT = P(430, 548, 1330, 548, 1.8, 1, -4.5)
+      function agentPose(t) {
+        const A = T.agent
+        // slides in from the right as the vault window leaves to the left
+        return track(
+          [
+            [T.vaults.out[0] + 0.05, tweak(A_SET, { qx: 2900, ry: -50, z: -300 })],
+            [A.settle[1], A_SET, oQuint],
+            [A.push[0], A_SET],
+            [A.push[1], A_PUSH, ioQuint],
+            [A.out[0], A_DRIFT, ioSine],
+            [A.out[1], tweak(A_DRIFT, { z: -1400, ry: 26, qx: 900, o: 0 }), iCub]
+          ],
+          t
+        )
+      }
+      function renderAgent(t) {
+        const A = T.agent
+        const on = t >= T.vaults.out[0] && t < A.out[1]
+        show(AG.w, on)
+        if (!on) return
+        place(AG.w, agentPose(t))
+        crop(AG.w, 118 * ioQuint(inv(t, A.push[0], A.push[1])))
+        const accE = ioCub(inv(t, A.accept, A.accept + 0.36))
+        // inline substitutions
+        AG.mods.forEach((m, k) => {
+          const te = A.edits[k]
+          const mk = oCub(inv(t, te, te + 0.24)) * (1 - accE)
+          const gr = oExpo(inv(t, te + 0.1, te + 0.42))
+          css(m.dl, 'color', rgb(mixc(INK, DEL, mk)))
+          css(m.dl, 'background', rgba(DEL, 0.1 * mk))
+          css(m.st, 'width', (oCub(inv(t, te, te + 0.24)) * 100).toFixed(2) + '%')
+          css(m.st, 'opacity', (1 - accE).toFixed(3))
+          css(m.dl, 'width', (m.dlW * (1 - accE)).toFixed(2) + 'px')
+          css(m.dl, 'opacity', (1 - accE).toFixed(3))
+          css(m.ad, 'width', (m.adW * gr).toFixed(2) + 'px')
+          css(m.ad, 'color', rgb(mixc(ADD, INK, accE)))
+          css(m.ad, 'background', rgba([74, 158, 142], 0.12 * (1 - accE)))
+        })
+        // inserted lines push the rest of the note down
+        let y = 523
+        AG.ins.forEach((l, k) => {
+          const te = A.edits[2 + k]
+          const hgt = oExpo(inv(t, te, te + 0.34))
+          const rev = oCub(inv(t, te + 0.03, te + 0.42))
+          show(l.e, hgt > 0.001)
+          css(l.e, 'top', y.toFixed(2) + 'px')
+          css(l.e, 'opacity', Math.min(1, hgt * 1.6).toFixed(3))
+          css(l.iw, 'clipPath', `inset(-2px ${((1 - rev) * 100).toFixed(2)}% -2px 0)`)
+          css(l.it, 'color', rgb(mixc(ADD, INK, accE)))
+          css(l.it, 'background', rgba([74, 158, 142], 0.12 * (1 - accE)))
+          y += 34 * hgt
+        })
+        css(AG.tags, 'top', y.toFixed(2) + 'px')
+        // review bar and the click
+        const bi = oBack(inv(t, A.bar, A.bar + 0.5), 1.3),
+          bo = iCub(inv(t, A.accept + 0.12, A.accept + 0.45))
+        show(AG.bar, bi > 0 && bo < 1)
+        css(
+          AG.bar,
+          'transform',
+          `translateY(${((1 - bi) * 26 + bo * 18).toFixed(2)}px) scale(${lerp(0.96, 1, bi).toFixed(4)})`
+        )
+        css(AG.bar, 'opacity', (clamp(bi * 1.4) * (1 - bo)).toFixed(3))
+        const press = Math.max(0, 1 - Math.abs(t - (A.press + A.accept) / 2) / 0.09)
+        css(AG.acc, 'transform', `scale(${(1 - 0.05 * press).toFixed(4)})`)
+        css(AG.acc, 'background', rgb(mixc([29, 31, 34], [70, 70, 72], press)))
+        // cursor: glides in, clicks Accept, leaves
+        const cm = ioCub(inv(t, A.cursor[0], A.cursor[1]))
+        const cx = lerp(900, 704, cm) + Math.sin(cm * Math.PI) * 30,
+          cy = lerp(880, 704, cm) + Math.sin(cm * Math.PI) * -24
+        const cOut = iCub(inv(t, A.accept + 0.4, A.accept + 0.8))
+        show(AG.cur, t > A.cursor[0] && cOut < 1)
+        css(
+          AG.cur,
+          'transform',
+          `translate(${(cx - 3).toFixed(2)}px,${(cy - 2 + cOut * 40).toFixed(2)}px) scale(${(1 - 0.12 * press).toFixed(4)})`
+        )
+        css(AG.cur, 'opacity', (clamp(cm * 3) * (1 - cOut)).toFixed(3))
+      }
+
+      // =====================================================================
+      // TIMELINE: the today line drops, the past opens out of it, the future builds row by row
+      // =====================================================================
+      const TLN = {}
+      const TL_ROWS = [
+        165, 196, 228, 260, 292, 324, 356, 388, 420, 452, 484, 525, 556, 588, 620, 652, 684, 725,
+        756, 788, 820, 852, 884, 916, 948, 980, 1012
+      ]
+      const TODAY_X = 856.5
+      function buildTimeline() {
+        const [w0, h0] = SHOTS.timeline
+        const w = el('div', 'win', $('scene'))
+        box(w, 0, 0, w0, h0)
+        TLN.w = w
+        TLN.sh = el('div', 'sh', w)
+        const clip = box(el('div', 'clip', w), 0, 0, w0, h0)
+        TLN.clip = clip
+        const im = el('img', 'shot', clip)
+        im.src = 'shots/timeline.png'
+        // unbuilt rows are covered with the chart's own empty pattern (the empty row at y=146)
+        const x0 = 871,
+          x1 = 1867,
+          y0 = 150,
+          y1 = 1042
+        const cv = box(el('canvas', 'cov', clip), x0, y0)
+        cv.width = x1 - x0
+        cv.height = y1 - y0
+        TLN.cov = cv
+        TLN.cx = cv.getContext('2d')
+        const pat = document.createElement('canvas')
+        pat.width = cv.width
+        pat.height = 1
+        pat.getContext('2d').drawImage(SRC.timeline, x0, 146, cv.width, 1, 0, 0, cv.width, 1)
+        TLN.pat = pat
+        const edges = [y0]
+        for (let i = 1; i < TL_ROWS.length; i++) edges.push((TL_ROWS[i - 1] + TL_ROWS[i]) / 2)
+        edges.push(y1)
+        TLN.bands = TL_ROWS.map((_, i) => [edges[i] - y0, edges[i + 1] - edges[i]])
+        TLN.line = box(el('div', 'tline', w), TODAY_X - 1.25, 0, 2.5, h0)
+        TLN.dot = cut(w, 'timeline', 844, 109, 26, 25)
+        TLN.dot.style.borderRadius = '50%'
+      }
+      const TL_A = P(857, 560, 900, 494, 0.9, 11, -7)
+      const TL_B = P(1010, 560, 960, 494, 1.0, 8, -3)
+      function rowStart(i) {
+        const [a, b] = T.timeline.rows
+        return a + ((b - a) * i) / TL_ROWS.length
+      }
+      function renderTimeline(t) {
+        const S = T.timeline
+        const on = t >= S.start - 0.05 && t < S.out[1]
+        show(TLN.w, on)
+        if (!on) return
+        place(
+          TLN.w,
+          track(
+            [
+              [S.start, TL_A],
+              [S.out[0], TL_B, ioSine],
+              [S.out[1], tweak(TL_B, { ry: 78, qx: -260, z: -500, o: 0 }), iCub]
+            ],
+            t
+          )
+        )
+        // the line drops from the top
+        const ln = oExpo(inv(t, S.line[0], S.line[1] + 0.12))
+        const rev = ioCub(inv(t, S.reveal[0], S.reveal[1]))
+        css(TLN.line, 'transform', `scaleY(${ln.toFixed(4)})`)
+        css(TLN.line, 'transformOrigin', '50% 0')
+        css(TLN.line, 'opacity', (1 - rev * 0.85).toFixed(3))
+        const L = TODAY_X * (1 - rev),
+          R = (SHOTS.timeline[0] - TODAY_X) * (1 - rev)
+        css(TLN.clip, 'clipPath', `inset(0px ${R.toFixed(2)}px 0px ${L.toFixed(2)}px round 18px)`)
+        css(TLN.sh, 'opacity', rev.toFixed(3))
+        const pop = oBack(inv(t, S.pop, S.pop + 0.4), 2.6)
+        show(TLN.dot, t >= S.pop && rev < 1)
+        css(TLN.dot, 'transform', `scale(${pop.toFixed(4)})`)
+        // rows build out to the right of today
+        const cx = TLN.cx,
+          cw = TLN.cov.width
+        cx.clearRect(0, 0, cw, TLN.cov.height)
+        TLN.bands.forEach(([y, h], i) => {
+          const f = oExpo(inv(t, rowStart(i), rowStart(i) + 0.34))
+          const x = f * cw
+          if (x < cw - 0.5) cx.drawImage(TLN.pat, x, 0, cw - x, 1, x, y, cw - x, h)
+          const glow = f > 0 && f < 1 ? (1 - f) * 0.9 : 0
+          if (glow > 0.01) {
+            cx.fillStyle = `rgba(254,128,25,${glow.toFixed(3)})`
+            cx.fillRect(x - 1, y + 3, 2.5, h - 6)
+          }
+        })
+      }
+
+      // =====================================================================
+      // CALENDARS: four providers, one per beat
+      // =====================================================================
+      const CAL = {}
+      const CAL_ROWS = [
+        [741, 523, 668, 55],
+        [741, 775, 668, 56],
+        [741, 832, 668, 56],
+        [741, 889, 668, 56]
+      ]
+      const CAL_NAMES = [
+        ['Google Calendar', 'two-way sync'],
+        ['ICS & webcal', 'subscribe by link'],
+        ['CalDAV', 'any CalDAV server'],
+        ['macOS Calendar', 'read-only, stays on this Mac']
+      ]
+      function buildCalendars() {
+        const w = makeWin('wC', 'calendars')
+        CAL.w = w
+        crop(w, 706, 56, 436, 99)
+        CAL.rows = CAL_ROWS.map(([x, y, ww, hh]) => {
+          const c = cut(w.c, 'calendars', x, y, ww, hh)
+          c.classList.add('crow')
+          return c
+        })
+        CAL.head = makeHead({
+          x: 132,
+          y: 196,
+          label: '05 \u2014 Calendars',
+          lines: ['*Every* calendar.'],
+          size: 96
+        })
+        CAL.items = CAL_NAMES.map(([a, b], k) => {
+          const row = box(el('div', '', $('type')), 134, 454 + k * 88)
+          row.style.position = 'absolute'
+          row.style.whiteSpace = 'nowrap'
+          const m = el('span', 'm', row)
+          const i = el('span', 'i', m, a)
+          i.style.cssText = 'font-size:56px;font-weight:600;letter-spacing:-.035em'
+          const n = el('span', 'mono', row, b)
+          n.style.cssText =
+            'margin-left:24px;font-size:18px;letter-spacing:.14em;text-transform:uppercase;color:rgba(243,239,232,.72);vertical-align:13px'
+          return { row, i, n }
+        })
+      }
+      const C_SET = P(1075, 735, 1262, 560, 1.2, 5, -17)
+      function renderCalendars(t) {
+        const S = T.calendars
+        const on = t >= T.timeline.out[0] && t < S.out[1]
+        show(CAL.w, on)
+        renderHead(CAL.head, t, S.start - 0.12, S.out[0] - 0.05, { st: 0.1 })
+        CAL.items.forEach((it, k) => {
+          const a = S.rows[k]
+          const vis = t >= a - 0.05 && t < S.out[1] + 0.3
+          show(it.row, vis)
+          if (!vis) return
+          rise(
+            it.i,
+            oExpo(inv(t, a - 0.04, a + 0.5)),
+            iExpo(inv(t, S.out[0] + k * 0.03, S.out[0] + k * 0.03 + 0.3))
+          )
+          const nx = oExpo(inv(t, a + 0.08, a + 0.6)) * (1 - iCub(inv(t, S.out[0], S.out[0] + 0.2)))
+          css(it.n, 'opacity', (nx * 0.9).toFixed(3))
+          const active = k === 3 || t < S.rows[k + 1] ? 1 : 0.55
+          css(it.row, 'opacity', String(active))
+        })
+        // the words leave with the whip
+        const up = iExpo(inv(t, S.out[0] - 0.02, S.out[1] - 0.02))
+        const lift = `translateY(${(-620 * up).toFixed(2)}px)`
+        css(CAL.head.root, 'transform', lift)
+        CAL.items.forEach((it) => css(it.row, 'transform', lift))
+        if (!on) return
+        place(
+          CAL.w,
+          track(
+            [
+              [T.timeline.out[0], tweak(C_SET, { ry: -80, qx: 1900, z: -400, o: 0 })],
+              [S.start, C_SET, oCub],
+              [S.out[0], tweak(C_SET, { s: 1.27, ry: -12 }), ioSine],
+              [S.out[1], tweak(C_SET, { s: 1.27, ry: -12, qy: -780, o: 0.3 }), iExpo]
+            ],
+            t
+          )
+        )
+        CAL.rows.forEach((r, k) => {
+          const a = S.rows[k]
+          const u = oBack(inv(t, a, a + 0.42), 1.6)
+          const lit = t >= a ? 1 : 0
+          show(r, lit)
+          if (!lit) return
+          const settle = 1 - 0.5 * oCub(inv(t, a + 0.45, a + 0.9))
+          css(
+            r,
+            'transform',
+            `translateY(${(-4 * u * settle).toFixed(2)}px) scale(${(1 + 0.035 * u * settle).toFixed(4)})`
+          )
+          css(
+            r,
+            'boxShadow',
+            `0 0 0 1.5px rgba(122,162,247,${(0.75 * u).toFixed(3)}), 0 ${(18 * u).toFixed(1)}px ${(40 * u).toFixed(1)}px rgba(0,0,0,${(0.45 * u).toFixed(3)})`
+          )
+        })
+      }
+
+      // =====================================================================
+      // BLOCKS: whip-pans between whiteboard, diagram and math on the real note
+      // =====================================================================
+      const BLK = {}
+      function buildBlocks() {
+        const w = makeWin('wB', 'blocks')
+        BLK.w = w
+        BLK.sheet = box(el('div', 'sheet', w.c), 0, 0, SHOTS.blocks[0], SHOTS.blocks[1])
+        w.c.insertBefore(BLK.sheet, w.layer)
+        const bgAt = (x, y) => sample('blocks', x, y)
+        // write-ons on the whiteboard: [x, y, w, h, t0, t1, fromRight]
+        const B0 = T.blocks.start
+        BLK.wipes = [
+          [514, 135, 190, 29, B0 + 0.04, B0 + 0.42, 0],
+          [920, 193, 54, 18, B0 + 0.28, B0 + 0.44, 0],
+          [862, 249, 44, 22, B0 + 0.38, B0 + 0.56, 1],
+          [687, 394, 140, 22, B0 + 0.46, B0 + 0.74, 0],
+          ...[0, 1, 2, 3, 4].map((k) => [
+            453 + 117.4 * k,
+            1022,
+            118,
+            66,
+            T.blocks.math[0] + k * 0.0625,
+            T.blocks.math[0] + k * 0.0625 + 0.22,
+            0
+          ])
+        ].map(([x, y, ww, hh, a, b, rtl]) => ({
+          p: patch(w.layer, x, y, ww, hh, bgAt(x - 2, y + 2)),
+          c: cut(w.layer, 'blocks', x, y, ww, hh),
+          a,
+          b,
+          rtl
+        }))
+        // pops: whiteboard photo card, then the Mermaid boxes and arrows
+        const D = T.blocks.diagram[0]
+        BLK.pops = [
+          [899, 212, 158, 104, B0 + 0.22, 'pop'],
+          [473, 809, 122, 52, D, 'pop'],
+          [593, 826, 48, 18, D + 0.1, 'wipe'],
+          [639, 809, 104, 52, D + 0.2, 'pop'],
+          [728, 772, 64, 40, D + 0.3, 'wipe'],
+          [728, 856, 66, 38, D + 0.3, 'wipe'],
+          [789, 759, 98, 52, D + 0.4, 'pop'],
+          [791, 858, 94, 52, D + 0.4, 'pop'],
+          [883, 876, 52, 18, D + 0.5, 'wipe'],
+          [933, 858, 128, 52, D + 0.6, 'pop']
+        ].map(([x, y, ww, hh, a, kind]) => ({
+          p: patch(w.layer, x, y, ww, hh, bgAt(x - 2, y - 2)),
+          c: cut(w.layer, 'blocks', x, y, ww, hh),
+          a,
+          kind
+        }))
+        BLK.label = makeHead({ x: 132, y: 372, label: '06 \u2014 Blocks', lines: [''], size: 10 })
+        BLK.words = ['Whiteboards.', 'Diagrams.', 'Math.'].map((s) => {
+          const r = box(el('div', 'hd', $('type')), 128, 436)
+          const hh = el('div', 'h', r)
+          hh.style.fontSize = '118px'
+          return { r, w: words(hh, s)[0] }
+        })
+        BLK.head = makeHead({
+          x: 132,
+          y: 372,
+          label: '06 \u2014 Blocks',
+          lines: ['Right in', 'your *notes*.'],
+          size: 112,
+          sub: 'Whiteboard, Mermaid and math blocks.'
+        })
+      }
+      const B_WB = P(767, 318, 1266, 540, 1.2, 4, -10)
+      const B_MM = P(767, 834, 1266, 556, 1.26, 4, -10)
+      const B_MATH = P(747, 1054, 1266, 556, 1.28, 4, -10)
+      const B_ALL = P(745, 600, 1300, 556, 0.72, 5, -15)
+      const B_TASK = P(767, 622, 960, 548, 2.4, 0, 0)
+      function blocksPose(t) {
+        const B = T.blocks
+        return track(
+          [
+            [T.calendars.out[0], tweak(B_WB, { qy: 1700, o: 0.4 })],
+            [B.start + 0.02, B_WB, oExpo],
+            [B.words[1] - 0.14, tweak(B_WB, { s: 1.24 }), ioSine],
+            [B.words[1] + 0.02, B_MM, ioQuint],
+            [B.words[2] - 0.14, tweak(B_MM, { s: 1.29 }), ioSine],
+            [B.words[2] + 0.02, B_MATH, ioQuint],
+            [B.pull[0], tweak(B_MATH, { s: 1.31 }), ioSine],
+            [B.pull[1], B_ALL, ioQuint],
+            [B.dive[0], tweak(B_ALL, { s: 0.74 }), ioSine],
+            [B.dive[1], B_TASK, ioQuint],
+            [T.tasks.out[0], tweak(B_TASK, { s: 2.5, qy: 560 }), ioSine]
+          ],
+          t
+        )
+      }
+      function renderBlocks(t) {
+        const B = T.blocks
+        // gone once the orange iris has covered the frame
+        const on = t >= T.calendars.out[0] && t < irisMid()
+        show(BLK.w, on)
+        const wordsOn = t >= B.start - 0.05 && t < B.head + 0.4
+        BLK.words.forEach((o, k) => {
+          const a = B.words[k],
+            b = k < 2 ? B.words[k + 1] - 0.08 : B.head - 0.1
+          const vis = wordsOn && t >= a - 0.05 && t < b + 0.45
+          show(o.r, vis)
+          if (vis) rise(o.w, oExpo(inv(t, a - 0.02, a + 0.5)), iExpo(inv(t, b, b + 0.3)))
+        })
+        renderHead(BLK.label, t, B.start, B.head - 0.1)
+        renderHead(BLK.head, t, B.head, B.headOut, { sub: B.head + 0.25, st: 0.09 })
+        if (!on) return
+        place(BLK.w, blocksPose(t))
+        const open = 1 - ioQuint(inv(t, B.dive[0], B.dive[1] - 0.08))
+        crop(BLK.w, 436 * open, 0, 330 * open, 0)
+        BLK.wipes.forEach((o) => {
+          const u = oCub(inv(t, o.a, o.b))
+          show(o.c, u > 0)
+          css(
+            o.c,
+            'clipPath',
+            o.rtl
+              ? `inset(0 0 0 ${((1 - u) * 100).toFixed(2)}%)`
+              : `inset(0 ${((1 - u) * 100).toFixed(2)}% 0 0)`
+          )
+        })
+        BLK.pops.forEach((o) => {
+          const vis = t >= o.a
+          show(o.c, vis)
+          if (!vis) return
+          if (o.kind === 'pop') {
+            const u = oBack(inv(t, o.a, o.a + 0.36), 1.9)
+            css(o.c, 'transform', `scale(${lerp(0.55, 1, u).toFixed(4)})`)
+            css(o.c, 'opacity', clamp(inv(t, o.a, o.a + 0.1)).toFixed(3))
+          } else
+            css(
+              o.c,
+              'clipPath',
+              `inset(0 ${((1 - oCub(inv(t, o.a, o.a + 0.16))) * 100).toFixed(2)}% 0 0)`
+            )
+        })
+        // the page empties around the task row as the camera arrives on it
+        css(
+          BLK.w.layer,
+          'opacity',
+          (1 - smooth(inv(t, B.dive[1] - 0.14, B.dive[1] + 0.16))).toFixed(3)
+        )
+      }
+
+      // =====================================================================
+      // TASKS: the inline task row, typed with quick-add shorthand
+      // =====================================================================
+      const TK = {}
+      const ICON = {
+        cal: '<svg viewBox="0 0 24 24" class="ico"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>',
+        hash: '<svg viewBox="0 0 24 24" class="ico"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg>',
+        plus: '<svg viewBox="0 0 24 24" class="ico"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+        open: '<svg viewBox="0 0 24 24" class="ico"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>',
+        high: '<svg width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="5.5" width="2.2" height="5.5" rx="0.5" fill="#f97316"/><rect x="5" y="3" width="2.2" height="8" rx="0.5" fill="#f97316"/><rect x="9" y="1" width="2.2" height="10" rx="0.5" fill="#e3e2df"/></svg>',
+        none: '<svg width="13" height="13" viewBox="0 0 13 13"><path d="M3 6.5h7" stroke="#9b9a97" stroke-width="1.1" stroke-linecap="round"/></svg>'
+      }
+      function buildTasks() {
+        const w = BLK.w
+        const row = box(el('div', 'trow ui', w.c), 447, 604)
+        row.style.background = rgb(sample('blocks', 700, 607))
+        TK.row = row
+        TK.st = box(el('div', '', row), 3.5, 11.5, 15, 15)
+        TK.st.innerHTML =
+          '<svg width="15" height="15" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="6.5" fill="none" stroke="#a9a8a4" stroke-width="1.1" stroke-dasharray="2.2 2"/></svg>'
+        TK.pNone = box(el('div', '', row), 35, 12, 13, 13)
+        TK.pNone.innerHTML = ICON.none
+        TK.pHigh = box(el('div', '', row), 35, 12, 13, 13)
+        TK.pHigh.innerHTML = ICON.high
+        TK.sel = box(el('div', 'sel', row), 61, 9, 0, 19)
+        TK.old = box(el('div', 'ttl', row, 'Hey! Task block has properties'), 62, 10)
+        TK.ttl = box(el('div', 'ttl', row), 62, 10)
+        TK.caret = box(el('div', 'caret', row), 62, 9)
+        // title: plain words, then the three shorthand tokens
+        const full = T.tasks.text
+        TK.full = full
+        TK.chars = [...full].map((c) => el('span', '', TK.ttl, c === ' ' ? '\u00a0' : c))
+        const tok = (s) => full.indexOf(s)
+        TK.tokens = ['#travel', '@friday', '!high'].map((s) => ({
+          a: tok(s) - 1,
+          b: tok(s) + s.length
+        }))
+        const chip = (cls, html) => el('div', 'chip ' + cls, row, html)
+        TK.date = chip('', ICON.cal + '<span class="dv">Sep 28</span>')
+        TK.dateV = TK.date.querySelector('.dv')
+        TK.proj = chip('proj', '<span class="sq"></span>memrynote Launch')
+        TK.plus = chip('', ICON.plus)
+        TK.plus.style.borderStyle = 'dashed'
+        TK.plus.style.padding = '0 3px'
+        TK.open = box(el('div', '', row), 627, 13, 11, 11)
+        TK.open.innerHTML = ICON.open
+        TK.open.style.color = '#9b9a97'
+        TK.gHigh = chip('ghost', ICON.high + 'High')
+        TK.gTag = chip('ghost', ICON.hash + 'travel')
+        TK.gDate = chip('ghost', ICON.cal + 'Oct 2')
+        TK.tag = chip('', '<span class="dot"></span>travel')
+        // widths for layout
+        TK.dateW0 = TK.date.offsetWidth
+        TK.dateV.textContent = 'Oct 2'
+        TK.dateW1 = TK.date.offsetWidth
+        TK.dateV.textContent = 'Sep 28'
+        ;['proj', 'plus', 'gHigh', 'gTag', 'gDate', 'tag'].forEach(
+          (k) => (TK[k + 'W'] = TK[k].offsetWidth)
+        )
+        // char x positions (for the caret and the selection)
+        TK.cx = TK.chars.map((c) => c.offsetLeft)
+        TK.cw = TK.chars.map((c) => c.offsetWidth)
+        TK.oldW = TK.old.offsetWidth
+        TK.key = el(
+          'div',
+          'key',
+          $('type'),
+          '<span style="font-size:17px;letter-spacing:.02em">return</span><span style="font-size:24px">\u21b5</span>'
+        )
+        TK.head = makeHead({
+          center: true,
+          y: 206,
+          label: '07 \u2014 Tasks',
+          lines: ['Type it. It\u2019s a *task*.'],
+          size: 104
+        })
+        TK.head.h.style.color = rgb(INKL)
+        TK.sub = el('div', 'hd center', $('type'))
+        TK.sub.style.top = '792px'
+        TK.subIn = el(
+          'div',
+          'sb',
+          TK.sub,
+          'Quick-add <b>#tags</b>, <b>@dates</b> and <b>!priority</b> as you type. Every property edits inline.'
+        )
+        TK.subIn.style.cssText = 'font-size:28px;color:rgba(28,27,25,.6);white-space:nowrap'
+      }
+      function typedCount(t) {
+        const S = T.tasks
+        return clamp(Math.floor((t - S.type) / S.step) + 1, 0, TK.full.length)
+      }
+      function renderTasks(t, frame) {
+        const S = T.tasks
+        const on = t >= T.blocks.pull[0] && t < S.out[1]
+        show(TK.row, on)
+        renderHead(TK.head, t, S.head, S.out[0] - 0.2, { st: 0.08 })
+        const subV =
+          oExpo(inv(t, S.sub, S.sub + 0.8)) * (1 - iCub(inv(t, S.out[0] - 0.2, S.out[0] + 0.05)))
+        show(TK.sub, subV > 0.001)
+        css(TK.subIn, 'opacity', subV.toFixed(3))
+        css(TK.subIn, 'transform', `translateY(${((1 - subV) * 14).toFixed(2)}px)`)
+        const keyV =
+          oBack(inv(t, S.enter - 0.34, S.enter - 0.06), 1.6) *
+          (1 - iCub(inv(t, S.enter + 0.55, S.enter + 0.8)))
+        show(TK.key, keyV > 0.001)
+        const kp = Math.max(0, 1 - Math.abs(t - S.enter) / 0.07)
+        css(
+          TK.key,
+          'transform',
+          `translate(885px,${(640 + (1 - keyV) * 30 + kp * 4).toFixed(2)}px) scale(${lerp(0.9, 1, keyV).toFixed(4)})`
+        )
+        css(TK.key, 'opacity', keyV.toFixed(3))
+        css(
+          TK.key,
+          'boxShadow',
+          `0 ${(5 - 4 * kp).toFixed(2)}px 0 #d4d1cb, 0 14px 28px -12px rgba(0,0,0,.25)`
+        )
+        if (!on) return
+        // title: old title selected and replaced, then typing
+        const selV = t >= S.select && t < S.type - 0.05
+        show(TK.old, t < S.type - 0.05)
+        css(
+          TK.sel,
+          'width',
+          (selV ? TK.oldW + 2 * clamp(inv(t, S.select, S.select + 0.06)) : 0).toFixed(1) + 'px'
+        )
+        show(TK.sel, selV)
+        const n = t < S.type ? 0 : typedCount(t)
+        const ent = ioCub(inv(t, S.enter, S.enter + 0.26))
+        const typedEnd = t >= S.enter
+        TK.chars.forEach((c, i) => show(c, i < n))
+        TK.tokens.forEach((k) => {
+          for (let i = k.a; i < k.b; i++) {
+            css(TK.chars[i], 'opacity', (1 - ent).toFixed(3))
+            css(TK.chars[i], 'display', i < n && ent < 0.999 ? 'inline-block' : 'none')
+            css(
+              TK.chars[i],
+              'width',
+              i < n && ent < 0.999 ? (TK.cw[i] * (1 - ent)).toFixed(2) + 'px' : ''
+            )
+            css(TK.chars[i], 'overflow', 'hidden')
+            css(TK.chars[i], 'verticalAlign', 'top')
+          }
+        })
+        const plainEnd = TK.cx[TK.tokens[0].a] // "Book flights"
+        const lastX = n === 0 ? 0 : TK.cx[n - 1] + TK.cw[n - 1]
+        const caretX = typedEnd ? lerp(lastX, plainEnd, ent) : lastX
+        const blink = t > S.enter + 0.4 ? (Math.floor((t - S.enter) * 2.5) % 2 === 0 ? 1 : 0) : 1
+        show(TK.caret, t >= S.type - 0.05 && t < S.out[0] + 0.1)
+        css(TK.caret, 'left', (62 + caretX).toFixed(2) + 'px')
+        css(TK.caret, 'opacity', String(blink))
+        // chips: ghosts pop left of the date as each token completes; Enter turns them into properties
+        const gap = 4,
+          right = 588
+        const gv = TK.tokens.map((k) =>
+          oBack(inv(t, S.type + k.b * S.step, S.type + k.b * S.step + 0.3), 2.2)
+        )
+        const dateW = lerp(TK.dateW0, TK.dateW1, ent)
+        const projX = right - TK.projW
+        const dateX = projX - gap - dateW
+        const tagX = dateX - gap - TK.tagW
+        css(TK.proj, 'left', projX + 'px')
+        css(TK.plus, 'left', right + 12 + 'px')
+        css(TK.date, 'left', dateX.toFixed(2) + 'px')
+        css(TK.date, 'width', dateW.toFixed(2) + 'px')
+        const dv = t >= S.enter + 0.1 ? 'Oct 2' : 'Sep 28'
+        if (TK.dateV.textContent !== dv) TK.dateV.textContent = dv
+        // [High][# travel][Oct 2] grow leftward as they land; on Enter each flies to its property
+        let gx = dateX
+        const ghost = (e, ww, v, dest, kind) => {
+          gx -= (gap + ww) * v
+          show(e, v > 0.001 && ent < 1)
+          css(e, 'left', lerp(gx, dest, ent).toFixed(2) + 'px')
+          css(e, 'opacity', (clamp(v * 1.5) * (1 - smooth(ent))).toFixed(3))
+          css(
+            e,
+            'transform',
+            `scale(${(lerp(0.7, 1, clamp(v)) * (kind === 'high' ? lerp(1, 0.5, ent) : 1)).toFixed(4)})`
+          )
+        }
+        ghost(TK.gDate, TK.gDateW, gv[1], dateX, 'date')
+        ghost(TK.gTag, TK.gTagW, gv[0], tagX, 'tag')
+        ghost(TK.gHigh, TK.gHighW, gv[2], 30, 'high')
+        show(TK.tag, ent > 0)
+        css(TK.tag, 'left', tagX.toFixed(2) + 'px')
+        css(TK.tag, 'opacity', ent.toFixed(3))
+        const hp = smooth(inv(t, S.enter + 0.12, S.enter + 0.34))
+        css(TK.pNone, 'opacity', (1 - hp).toFixed(3))
+        css(TK.pHigh, 'opacity', hp.toFixed(3))
+        css(TK.pHigh, 'transform', `scale(${lerp(0.4, 1, oBack(hp, 2.4)).toFixed(4)})`)
+      }
+
+      // =====================================================================
+      // THEMES: the real Appearance screenshot, repainted with each theme's real palette
+      // =====================================================================
+      const THM = { cache: new Map() }
+      function buildThemes() {
+        const [w0, h0] = SHOTS.themes
+        const cv = el('canvas', 'shot')
+        cv.width = w0
+        cv.height = h0
+        const w = makeWin('wM', 'themes', cv)
+        crop(w, 690, 50, 200, 218)
+        THM.w = w
+        THM.cv = cv
+        THM.cx = cv.getContext('2d')
+        const s = SRC.themes.getContext('2d', { willReadFrequently: true })
+        THM.px = s.getImageData(0, 0, w0, h0)
+        THM.head = makeHead({
+          x: 132,
+          y: 318,
+          label: '08 \u2014 Themes',
+          lines: ['Make it', '*yours*.'],
+          size: 132,
+          sub: `${window.THEMES.length} color themes, in light and dark.`
+        })
+        THM.em = THM.head.words[2]
+      }
+      // gradient map: the screenshot's own neutral ramp onto the theme's derived tokens (base.css rules)
+      function paletteOf(id, mode) {
+        const p = THEME[id][mode]
+        const bg = hex(p.bg),
+          fg = hex(p.fg),
+          sf = hex(p.surface),
+          ac = hex(p.accent)
+        const card = mode === 'dark' ? mixc(bg, fg, 0.06) : mixc(bg, [255, 255, 255], 0.5)
+        return { bg, fg, sf, ac, card, border: mixc(bg, fg, 0.12), hover: mixc(sf, fg, 0.1), mode }
+      }
+      function themed(id, mode) {
+        const key = id + '|' + mode
+        if (THM.cache.has(key)) return THM.cache.get(key)
+        const pal = paletteOf(id, mode)
+        // control points on the original luminance: canvas, sidebar, card, borders, text
+        const K = [
+          [0, mixc(pal.bg, [0, 0, 0], mode === 'dark' ? 0.55 : 0.2)],
+          [24, pal.bg],
+          [33, pal.sf],
+          [36, pal.card],
+          [52, pal.border],
+          [222, pal.fg],
+          [255, mixc(pal.fg, mode === 'dark' ? [255, 255, 255] : [0, 0, 0], 0.2)]
+        ]
+        const lut = new Float32Array(256 * 3)
+        for (let y = 0; y < 256; y++) {
+          let i = 0
+          while (i < K.length - 2 && y > K[i + 1][0]) i++
+          const u = clamp((y - K[i][0]) / (K[i + 1][0] - K[i][0]))
+          const c = mixc(K[i][1], K[i + 1][1], u)
+          lut[y * 3] = c[0]
+          lut[y * 3 + 1] = c[1]
+          lut[y * 3 + 2] = c[2]
+        }
+        const src = THM.px.data
+        const out = new ImageData(THM.px.width, THM.px.height)
+        const d = out.data
+        const yOr = 137
+        for (let i = 0; i < src.length; i += 4) {
+          const r = src[i],
+            g = src[i + 1],
+            b = src[i + 2]
+          const y = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b)
+          let R = lut[y * 3],
+            G = lut[y * 3 + 1],
+            B = lut[y * 3 + 2]
+          const mx = Math.max(r, g, b),
+            mn = Math.min(r, g, b)
+          const sat = mx ? (mx - mn) / mx : 0
+          if (sat > 0.22) {
+            // brand-orange pixels become the theme accent; other hues keep their color
+            const hue = r === mx ? ((g - b) / (mx - mn + 1e-6)) * 60 : 999
+            const w = smooth(clamp((sat - 0.22) / 0.3))
+            if (hue >= 8 && hue <= 40) {
+              const a = clamp((y - 24) / (yOr - 24))
+              R = lerp(R, lerp(pal.bg[0], pal.ac[0], a), w)
+              G = lerp(G, lerp(pal.bg[1], pal.ac[1], a), w)
+              B = lerp(B, lerp(pal.bg[2], pal.ac[2], a), w)
+            } else {
+              R = lerp(R, r, w)
+              G = lerp(G, g, w)
+              B = lerp(B, b, w)
+            }
+          }
+          d[i] = R
+          d[i + 1] = G
+          d[i + 2] = B
+          d[i + 3] = src[i + 3]
+        }
+        const c = document.createElement('canvas')
+        c.width = out.width
+        c.height = out.height
+        const x = c.getContext('2d')
+        x.putImageData(out, 0, 0)
+        // the select shows the picked theme, the main menu's check moves off Memrynote
+        const btn = lutAt(lut, sample('themes', 1300, 276))
+        x.fillStyle = rgb(btn)
+        x.fillRect(1262, 274, 88, 21)
+        x.fillStyle = rgb(lutAt(lut, sample('themes', 1450, 500)))
+        x.fillRect(1324, 312, 22, 20)
+        x.fillStyle = rgb(pal.fg)
+        x.font = '500 13px system-ui'
+        x.textBaseline = 'middle'
+        x.fillText(THEME[id].name, 1263, 285)
+        const tw = x.measureText(THEME[id].name).width
+        x.strokeStyle = rgba(pal.fg, 0.6)
+        x.lineWidth = 1.3
+        x.beginPath()
+        x.moveTo(1263 + tw + 8, 283)
+        x.lineTo(1263 + tw + 11, 286)
+        x.lineTo(1263 + tw + 14, 283)
+        x.stroke()
+        // highlight and check on the theme's own row in the submenu
+        const row = MENU.indexOf(id)
+        const ry = 358 + row * 32
+        x.fillStyle = rgba(pal.fg, mode === 'dark' ? 0.09 : 0.07)
+        roundRect(x, 1358, ry - 14, 194, 28, 6)
+        x.fill()
+        x.strokeStyle = rgb(pal.fg)
+        x.lineWidth = 1.6
+        x.beginPath()
+        x.moveTo(1528, ry)
+        x.lineTo(1532, ry + 4)
+        x.lineTo(1540, ry - 4)
+        x.stroke()
+        const res = { c, pal }
+        THM.cache.set(key, res)
+        return res
+      }
+      const lutAt = (lut, c) => {
+        const y = Math.round(lum(c))
+        return [lut[y * 3], lut[y * 3 + 1], lut[y * 3 + 2]]
+      }
+      function roundRect(x, l, t, w, h, r) {
+        x.beginPath()
+        x.moveTo(l + r, t)
+        x.arcTo(l + w, t, l + w, t + h, r)
+        x.arcTo(l + w, t + h, l, t + h, r)
+        x.arcTo(l, t + h, l, t, r)
+        x.arcTo(l, t, l + w, t, r)
+        x.closePath()
+      }
+      // which theme is showing at t: null before the first step
+      function themeAt(t) {
+        const S = T.themes
+        const [d0, ds, dl] = S.dark,
+          [l0, ls, ll] = S.light
+        if (t < d0) return null
+        if (t < l0)
+          return {
+            id: dl[Math.min(dl.length - 1, Math.floor((t - d0) / ds))],
+            mode: 'dark',
+            step: Math.floor((t - d0) / ds)
+          }
+        return {
+          id: ll[Math.min(ll.length - 1, Math.floor((t - l0) / ls))],
+          mode: 'light',
+          step: dl.length + Math.floor((t - l0) / ls)
+        }
+      }
+      const M_POSE = P(1188, 470, 1290, 556, 1.08, 4, -13)
+      function renderThemes(t) {
+        const S = T.themes
+        const on = t >= T.tasks.out[1] - 0.25 && t < S.out[1]
+        show(THM.w, on)
+        const th = themeAt(t)
+        renderHead(THM.head, t, S.head, S.headOut, { sub: S.sub, st: 0.1 })
+        const pal = th ? paletteOf(th.id, th.mode) : null
+        css(
+          THM.em,
+          'color',
+          pal ? rgb(pal.mode === 'dark' ? pal.ac : mixc(pal.ac, [0, 0, 0], 0.1)) : BR
+        )
+        const ink = pal && pal.mode === 'light' ? pal.fg : INKD
+        css(THM.head.h, 'color', rgb(ink))
+        css(THM.head.sub, 'color', rgba(ink, 0.66))
+        if (!on) return
+        place(
+          THM.w,
+          track(
+            [
+              [T.tasks.out[1] - 0.25, tweak(M_POSE, { s: 1.16 })],
+              [S.start + 0.3, M_POSE, oExpo],
+              [S.out[0], tweak(M_POSE, { s: 1.09, ry: -10 }), ioSine],
+              [S.out[1], tweak(M_POSE, { s: 0.8, ry: -4, z: -300, o: 0 }), iCub]
+            ],
+            t
+          )
+        )
+        const key = th ? th.id + '|' + th.mode : 'orig'
+        if (THM.key !== key) {
+          THM.key = key
+          if (!th) THM.cx.drawImage(SRC.themes, 0, 0)
+          else THM.cx.drawImage(themed(th.id, th.mode).c, 0, 0)
+        }
+      }
+
+      // =====================================================================
+      // MORE: everything else in the release, on rows
+      // =====================================================================
+      const MORE_ROWS = [
+        [
+          'Journal header actions',
+          'Weekday journal filenames',
+          'Vault icons',
+          'Plain checkboxes',
+          'Sandboxed HTML artifacts',
+          'Antigravity CLI',
+          'Gemini for inline AI'
+        ],
+        [
+          'Rebindable shortcuts',
+          'Folder layout toggle',
+          'Sidebar section order',
+          'Embedded HTML files',
+          'Collections view options',
+          'Sticky section headers',
+          'Vault activity log'
+        ],
+        [
+          'Live canvas cards',
+          'Outgoing links',
+          'Bulk note icons',
+          'New note from this note',
+          'Tasks grouped by source',
+          'Name items in place',
+          'Task date distance'
+        ],
+        [
+          'Home board and tour',
+          'Searchable settings',
+          'Clearer vault setup',
+          'Apple Notes folder picker',
+          'Apple Notes tables',
+          'Checklists become tasks',
+          'Google Calendar colors'
+        ],
+        [
+          'One-row toolbar',
+          'Brighter calendar colors',
+          'Google Calendar in seconds',
+          'Faster sync',
+          'Sync that survives restarts',
+          'Global Capture, no Accessibility',
+          'Shortcut conflict warnings'
+        ],
+        [
+          'Newer Claude models',
+          'Apply Template from the menu',
+          'Projects follow the note',
+          'Empty folders sync',
+          'Deleted notes stay deleted',
+          'Nothing lost after updates',
+          'Recurring tasks fixed'
+        ]
+      ]
+      const MR = {}
+      function buildMore() {
+        const root = $('wall')
+        const R = rng(28)
+        MR.rows = MORE_ROWS.map((items, r) => {
+          const y = 150 + r * 132
+          const els = []
+          let x = 0
+          // two copies so the row never runs out while it scrolls
+          for (let rep = 0; rep < 2; rep++)
+            items.forEach((s) => {
+              const e = el('div', 'wi', root, s)
+              const w = e.offsetWidth
+              els.push({ e, x, w, y, kind: 'w', d: R() * 0.38 })
+              x += w + 38
+              const sp = el('div', 'ws', root)
+              els.push({ e: sp, x, w: 12, y: y + 30, kind: 's', d: R() * 0.38 })
+              x += 12 + 38
+            })
+          return {
+            els,
+            len: x / 2,
+            dir: r % 2 ? 1 : -1,
+            speed: 150 + ((r * 37) % 5) * 26,
+            phase: R() * 800
+          }
+        })
+        MR.label = box(el('div', 'lbl', root), 0, 0)
+        MR.label.style.position = 'absolute'
+        MR.labelIn = el('span', 'i', el('span', 'm', MR.label), `Also new in ${T.version}`)
+        MR.dot = el('div', 'dotc', $('end'))
+        MR.dot.style.width = MR.dot.style.height = '0px'
+      }
+      function renderMore(t) {
+        const S = T.more
+        const on = t >= S.start - 0.3 && t < S.collapse[1] + 0.05
+        show($('wall'), on)
+        if (!on) return
+        const [c0, c1] = S.collapse
+        const zoom = lerp(1.06, 0.97, ioSine(inv(t, S.start, c0)))
+        css($('wall'), 'transform', `rotate(-4deg) scale(${zoom.toFixed(4)})`)
+        MR.rows.forEach((row, r) => {
+          const a = S.rows[0] + r * 0.07
+          const inU = oExpo(inv(t, a, a + 0.8))
+          const off = row.phase + row.dir * row.speed * (t - S.start) + row.dir * (1 - inU) * 1400
+          row.els.forEach((o) => {
+            let x = ((((o.x + off) % (row.len * 2)) + row.len * 2) % (row.len * 2)) - row.len * 0.45
+            let y = o.y
+            const cxm = x + o.w / 2
+            const dist = Math.abs(cxm - 960)
+            let op = lerp(0.2, 1, Math.exp(-Math.pow(dist / 560, 2))) * clamp(inU * 1.3)
+            let s = 1
+            const u = iExpo(inv(t, c0 + o.d, c0 + o.d + 0.6))
+            if (u > 0) {
+              x = lerp(x, 960 - o.w / 2, u)
+              y = lerp(y, 540 - 36, u)
+              s = lerp(1, 0.04, u)
+              op *= 1 - smooth(inv(u, 0.7, 1))
+            }
+            const vis = op > 0.003 && x > -o.w - 200 && x < W + 200
+            show(o.e, vis)
+            if (!vis) return
+            css(
+              o.e,
+              'transform',
+              `translate(${x.toFixed(2)}px,${y.toFixed(2)}px) scale(${s.toFixed(4)})`
+            )
+            css(o.e, 'opacity', op.toFixed(3))
+            if (o.kind === 'w') css(o.e, 'color', dist < 300 ? '#1c1b19' : '#1c1b19')
+          })
+        })
+        css(MR.label, 'transform', 'translate(142px,62px) rotate(4deg)')
+        rise(
+          MR.labelIn,
+          oExpo(inv(t, S.start + 0.1, S.start + 0.7)),
+          iExpo(inv(t, c0 - 0.2, c0 + 0.1))
+        )
+      }
+
+      // =====================================================================
+      // END: the dot becomes the mark, the wordmark sings mem-ry-note
+      // =====================================================================
+      const EN = {}
+      function buildEnd() {
+        const root = $('end')
+        const B = window.BRAND
+        const s = svg(
+          'svg',
+          { width: W, height: H, style: 'position:absolute;left:0;top:0;overflow:visible' },
+          root
+        )
+        const markH = 106,
+          ms = markH / 1031
+        const k = 5.1 // wordmark scale, glyph units -> px
+        const g = svg('g', {}, s)
+        EN.mark = svg('g', {}, g)
+        EN.top = svg('path', { d: B.markTop, fill: B.markColor }, EN.mark)
+        EN.bar = svg('path', { d: B.bar, fill: B.markColor }, EN.mark)
+        const cp = svg('clipPath', { id: 'wmclip', clipPathUnits: 'userSpaceOnUse' }, $('defs'))
+        EN.wm = svg('g', {}, g)
+        EN.chunks = B.wordmark.map((d) => svg('path', { d, fill: B.wordColor }, EN.wm))
+        const bb = EN.wm.getBBox()
+        const markW = 1280 * ms,
+          gap = 40
+        const totalW = markW + gap + bb.width * k
+        const x0 = W / 2 - totalW / 2,
+          yMid = 452
+        EN.markT = { x: x0, y: yMid - markH / 2, s: ms }
+        EN.wmT = { x: x0 + markW + gap - bb.x * k, y: yMid + markH * 0.33, k }
+        EN.tip = [x0 + 637.44 * ms, yMid - markH / 2 + 648 * ms]
+        // userSpaceOnUse here is the wordmark's own (glyph) space, transform included
+        svg('rect', { x: bb.x - 2, y: bb.y - 2.5, width: bb.width + 4, height: bb.height + 5 }, cp)
+        EN.wm.setAttribute('clip-path', 'url(#wmclip)')
+        EN.wmH = bb.height * k
+        EN.tag = makeHead({ center: true, y: 568, lines: ['Available *now*.'], size: 64 })
+        EN.tag.h.style.color = rgb(INKL)
+        EN.pill = el('div', 'pill', root, '<i></i>memrynote.com')
+        EN.pillW = EN.pill.offsetWidth
+        EN.meta = el('div', 'mono', root)
+        EN.meta.style.cssText =
+          'position:absolute;left:0;top:0;width:1920px;text-align:center;font-size:16px;letter-spacing:.2em;color:rgba(28,27,25,.5);white-space:nowrap'
+        EN.meta.textContent = `RELEASE ${T.version}  \u00b7  ${T.counts.features} NEW FEATURES  \u00b7  ${T.counts.improvements} IMPROVEMENTS  \u00b7  ${T.counts.fixes} FIXES`
+      }
+      function renderEnd(t) {
+        const S = T.end
+        const [f0, f1] = S.fade
+        renderHead(EN.tag, t, S.tagline, f0, { st: 0.1 })
+        const on = t >= T.more.collapse[0]
+        show($('end'), on)
+        if (!on) return
+        // the dot: gathers the wall, becomes the mark's tip, comes back at the very end
+        const dIn = oBack(inv(t, T.more.collapse[0] + 0.55, T.more.collapse[1]), 2)
+        const toMark = ioCub(inv(t, S.start, S.start + 0.3))
+        const back = ioCub(inv(t, f1 - 0.35, f1))
+        const dr = 13 * dIn * (1 - smooth(inv(t, S.start + 0.12, S.start + 0.3))) + 13 * back
+        const dx = back > 0 ? W / 2 : lerp(W / 2, EN.tip[0], toMark),
+          dy = back > 0 ? H / 2 : lerp(H / 2, EN.tip[1] - 6, toMark)
+        show(MR.dot, dr > 0.05)
+        css(MR.dot, 'width', (2 * dr).toFixed(2) + 'px')
+        css(MR.dot, 'height', (2 * dr).toFixed(2) + 'px')
+        css(MR.dot, 'transform', `translate(${(dx - dr).toFixed(2)}px,${(dy - dr).toFixed(2)}px)`)
+        // mark: lobes grow from the tip, the bar slides up under them
+        const out = iCub(inv(t, f0 + 0.25, f1 - 0.3))
+        const mt = oBack(inv(t, S.start + 0.04, S.start + 0.5), 1.5) * (1 - out)
+        const mb = oExpo(inv(t, S.start + 0.12, S.start + 0.6)) * (1 - out)
+        const { x, y, s } = EN.markT
+        EN.mark.setAttribute('transform', `translate(${x},${y}) scale(${s})`)
+        EN.top.setAttribute(
+          'transform',
+          `translate(637.44,648) scale(${Math.max(0.0001, mt).toFixed(4)}) translate(-637.44,-648)`
+        )
+        EN.bar.setAttribute('transform', `translate(0,${((1 - mb) * 420).toFixed(2)})`)
+        EN.bar.setAttribute('opacity', mb.toFixed(3))
+        // wordmark syllables rise into the clip
+        EN.wm.setAttribute('transform', `translate(${EN.wmT.x},${EN.wmT.y}) scale(${EN.wmT.k})`)
+        EN.chunks.forEach((c, k) => {
+          const a = S.syllables[k]
+          const u = oExpo(inv(t, a - 0.03, a + 0.55))
+          const o = iExpo(inv(t, f0 + 0.1 + k * 0.04, f0 + 0.45 + k * 0.04))
+          c.setAttribute(
+            'transform',
+            `translate(0,${(((1 - u) * 1.15 - o * 1.15) * (EN.wmH / EN.wmT.k)).toFixed(3)})`
+          )
+        })
+        const pv = oExpo(inv(t, S.url, S.url + 0.7)) * (1 - iCub(inv(t, f0, f0 + 0.3)))
+        css(
+          EN.pill,
+          'transform',
+          `translate(${(W / 2 - EN.pillW / 2).toFixed(1)}px,${(676 + (1 - pv) * 18).toFixed(2)}px)`
+        )
+        css(EN.pill, 'opacity', pv.toFixed(3))
+        const mv = oExpo(inv(t, S.meta, S.meta + 0.9)) * (1 - iCub(inv(t, f0, f0 + 0.3)))
+        css(EN.meta, 'transform', `translateY(${(986 + (1 - mv) * 10).toFixed(2)}px)`)
+        css(EN.meta, 'opacity', mv.toFixed(3))
+      }
+
+      // =====================================================================
+      // HUD, stage, glow, scrim, transitions
+      // =====================================================================
+      const HUD = {}
+      function buildHUD() {
+        HUD.l = el('div', 'hud', $('hudroot'), 'memrynote \u00b7 what\u2019s new')
+        HUD.l.style.left = '132px'
+        HUD.r = el('div', 'hud', $('hudroot'))
+        HUD.r.style.right = '132px'
+      }
+      const SECTIONS = [
+        'rail',
+        'vaults',
+        'agent',
+        'timeline',
+        'calendars',
+        'blocks',
+        'tasks',
+        'themes',
+        'more'
+      ].map((k) => T[k].start)
+      function renderHUD(t) {
+        // ducks while the gantt fills the frame: its own header lives under the HUD
+        const L = T.timeline
+        const bleed =
+          smooth(inv(t, L.start + 0.2, L.start + 0.45)) *
+          (1 - smooth(inv(t, L.out[1] - 0.25, L.out[1] + 0.1)))
+        const v =
+          smooth(inv(t, T.rail.start + 0.35, T.rail.start + 0.9)) *
+          (1 - smooth(inv(t, T.themes.out[0] - 0.2, T.themes.out[0] + 0.2))) *
+          (1 - bleed)
+        show($('hudroot'), v > 0.001)
+        if (v <= 0.001) return
+        let k = 0
+        while (k < SECTIONS.length - 2 && t >= SECTIONS[k + 1]) k++
+        const s = `0${k + 1} / 0${SECTIONS.length - 1}`
+        if (HUD.r.textContent !== s) HUD.r.textContent = s
+        // difference blend: light over the dark room, dark over white windows
+        css(HUD.l, 'color', 'rgb(150,148,144)')
+        css(HUD.r, 'color', 'rgb(150,148,144)')
+        css($('hudroot'), 'opacity', v.toFixed(3))
+      }
+      // the orange iris out of the task row, then the room opens onto the themes
+      const irisMid = () => T.tasks.out[0] + (T.tasks.out[1] - T.tasks.out[0]) * 0.55
+      function renderWipe(t) {
+        const [a, b] = T.tasks.out
+        const e = $('wipe')
+        const on = t >= a && t < b + 0.12
+        show(e, on)
+        if (!on) return
+        const mid = irisMid()
+        css(e, 'background', BR)
+        if (t < mid) {
+          // out of the priority icon Enter just set
+          const [ix, iy] = onStage(blocksPose(a), 447 + 41.5, 604 + 18.5)
+          const r = 2400 * iCub(inv(t, a, mid)) + 1
+          css(e, 'clipPath', `circle(${r.toFixed(1)}px at ${ix.toFixed(1)}px ${iy.toFixed(1)}px)`)
+        } else {
+          const r = 2300 * ioCub(inv(t, mid + 0.035, b + 0.12))
+          css(
+            e,
+            'clipPath',
+            `path(evenodd, "M0 0H1920V1080H0Z M${(960 - r).toFixed(1)} 540a${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(2 * r).toFixed(1)} 0a${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(-2 * r).toFixed(1)} 0Z")`
+          )
+        }
+      }
+      function stageAt(t) {
+        const S = T.themes
+        if (t < S.start) return DARK
+        if (t >= T.more.start) return PAPER
+        const th = themeAt(t)
+        let c
+        if (!th) c = mixc([33, 33, 33], [0, 0, 0], 0.5)
+        else {
+          const p = paletteOf(th.id, th.mode)
+          c = th.mode === 'dark' ? mixc(p.sf, [0, 0, 0], 0.45) : mixc(p.sf, p.fg, 0.05)
+        }
+        return mixc(c, PAPER, smooth(inv(t, S.out[0], S.out[1])))
+      }
+      // [t0, t1, color, alpha, x, y, radius]
+      const GLOWS = [
+        [0.9, 3.5, hex(BR), 0.11, 960, 560, 900],
+        [T.rail.start - 0.1, T.rail.out[1] - 0.2, [255, 243, 228], 0.1, 1100, 540, 1150],
+        [T.agent.start - 0.3, T.agent.out[1] - 0.4, [255, 243, 228], 0.1, 1300, 560, 1100],
+        [T.timeline.start, T.timeline.out[1] - 0.4, hex('#fe8019'), 0.1, 920, 480, 1150],
+        [T.calendars.start - 0.1, T.calendars.out[1] - 0.2, hex('#7aa2f7'), 0.15, 1260, 560, 1000],
+        [T.blocks.start - 0.1, T.blocks.dive[1] - 0.3, [214, 214, 255], 0.1, 1190, 540, 1050]
+      ]
+      function drawBG(t) {
+        const x = BGX
+        x.fillStyle = rgb(stageAt(t))
+        x.fillRect(0, 0, W, H)
+        const glow = (c, a, gx, gy, r) => {
+          if (a < 0.002) return
+          const g = x.createRadialGradient(gx, gy, 0, gx, gy, r)
+          g.addColorStop(0, rgba(c, a))
+          g.addColorStop(1, rgba(c, 0))
+          x.fillStyle = g
+          x.fillRect(0, 0, W, H)
+        }
+        GLOWS.forEach(([a, b, c, al, gx, gy, r]) =>
+          glow(c, al * smooth(inv(t, a, a + 0.4)) * (1 - smooth(inv(t, b - 0.4, b))), gx, gy, r)
+        )
+        // each vault tints the room its own color as it opens
+        const V = T.vaults
+        const vv = smooth(inv(t, V.in[0], V.in[1])) * (1 - smooth(inv(t, V.out[0], V.out[1])))
+        if (vv > 0.002) glow(vaultColor(t), 0.2 * vv, 1300, 560, 1050)
+        const th = themeAt(t)
+        if (th && t < T.themes.out[1]) {
+          const p = paletteOf(th.id, th.mode)
+          glow(p.ac, th.mode === 'dark' ? 0.2 : 0.12, 1262, 556, 1050)
+        }
+        // vignette in the dark room
+        const vig = 1 - smooth(inv(t, T.themes.light[0] - 0.1, T.themes.light[0] + 0.1))
+        if (vig > 0.01) {
+          const g = x.createRadialGradient(960, 540, 420, 960, 540, 1250)
+          g.addColorStop(0, 'rgba(0,0,0,0)')
+          g.addColorStop(1, `rgba(0,0,0,${(0.5 * vig).toFixed(3)})`)
+          x.fillStyle = g
+          x.fillRect(0, 0, W, H)
+        }
+      }
+      // legibility behind headlines that sit over windows
+      // [t0, t1, kind, alpha, solid until, clear at]
+      const SCRIMS = [[T.timeline.start + 0.25, T.timeline.out[1] - 0.3, 'bottom', 0.95, 720, 420]]
+      function drawScrim(t) {
+        const x = SCX
+        x.clearRect(0, 0, W, H)
+        const st = stageAt(t)
+        SCRIMS.forEach(([a, b, kind, al, s0, s1]) => {
+          const v = al * smooth(inv(t, a, a + 0.4)) * (1 - smooth(inv(t, b - 0.35, b)))
+          if (v < 0.003) return
+          const g =
+            kind === 'left'
+              ? x.createLinearGradient(s0, 0, s1, 0)
+              : x.createLinearGradient(0, s0, 0, s1)
+          for (let k = 0; k <= 8; k++) g.addColorStop(k / 8, rgba(st, v * (1 - smooth(k / 8))))
+          x.fillStyle = g
+          x.fillRect(0, 0, W, H)
+        })
+      }
+      let grainTile
+      function makeGrain() {
+        grainTile = document.createElement('canvas')
+        grainTile.width = grainTile.height = 384
+        const g = grainTile.getContext('2d'),
+          img = g.createImageData(384, 384),
+          R = rng(99)
+        for (let k = 0; k < img.data.length; k += 4) {
+          const v = 128 + (R() - 0.5) * 120
+          img.data[k] = img.data[k + 1] = img.data[k + 2] = v
+          img.data[k + 3] = 255
+        }
+        g.putImageData(img, 0, 0)
+      }
+      function drawGrain(t, frame) {
+        const R = rng(frame * 7 + 3),
+          ox = Math.floor(R() * 384),
+          oy = Math.floor(R() * 384)
+        GRX.setTransform(1, 0, 0, 1, 0, 0)
+        GRX.fillStyle = GRX.createPattern(grainTile, 'repeat')
+        GRX.translate(-ox, -oy)
+        GRX.fillRect(ox, oy, W, H)
+        css($('grain'), 'opacity', (t < T.themes.light[0] ? 0.09 : 0.05).toFixed(3))
+      }
+
+      // hits: a short decaying shake and punch on the music's big accents
+      function renderCam(t) {
+        let x = 0,
+          y = 0,
+          s = 0
+        T.impacts.forEach(([ti, amp], k) => {
+          const u = t - ti
+          if (u < 0 || u > 0.6) return
+          const e = Math.exp(-u * 9)
+          x += amp * e * Math.sin(u * 71 + k * 1.7)
+          y += amp * 0.7 * e * Math.sin(u * 59 + k * 2.9)
+          s += 0.006 * (amp / 5) * Math.exp(-u * 14)
+        })
+        css(
+          $('cam'),
+          'transform',
+          `translate(${x.toFixed(2)}px,${y.toFixed(2)}px) scale(${(1 + s).toFixed(5)})`
+        )
+      }
+      // a soft specular pass across a dark card as it lands
+      function glint(e, t, a) {
+        const u = inv(t, a, a + 1.1)
+        show(e, u > 0 && u < 1)
+        if (u > 0 && u < 1) css(e, 'backgroundPosition', `${(100 - ioSine(u) * 100).toFixed(2)}% 0`)
+      }
+
+      // =====================================================================
+      // main
+      // =====================================================================
+      let BGX, SCX, GRX
+      function render(t, frame = Math.round(t * FPS)) {
+        renderCam(t)
+        drawBG(t)
+        renderOpen(t, frame)
+        renderDive(t)
+        renderRail(t)
+        const wait = renderVault(t)
+        renderAgent(t)
+        renderHead(AG.head, t, T.agent.head, T.agent.out[0], { sub: T.agent.sub, st: 0.085 })
+        renderTimeline(t)
+        renderHead(TLN.head, t, T.timeline.head, T.timeline.out[0] - 0.05, { sub: T.timeline.sub })
+        renderCalendars(t)
+        renderBlocks(t)
+        renderTasks(t, frame)
+        renderThemes(t)
+        renderMore(t)
+        renderEnd(t)
+        renderWipe(t)
+        glint(TLN.glint, t, T.timeline.reveal[1])
+        glint(CAL.glint, t, T.calendars.start + 0.05)
+        glint(THM.glint, t, T.themes.start + 0.3)
+        drawScrim(t)
+        renderHUD(t)
+        drawGrain(t, frame)
+        // a promise while the vault section waits on a recording frame; the renderer awaits it
+        return wait
+      }
+      // fast stretches get more motion-blur samples
+      function fastRanges() {
+        const R = T.rail,
+          V = T.vaults,
+          A = T.agent,
+          L = T.timeline,
+          C = T.calendars,
+          B = T.blocks,
+          K = T.tasks,
+          M = T.themes,
+          MO = T.more,
+          E = T.end
+        return [
+          [0.85, 2.15],
+          [T.open.dive[0] - 0.1, R.start + 0.1],
+          [R.morph[0] - 0.05, R.pull[1] + 0.05],
+          ...R.clicks.map((c) => [c - 0.03, c + 0.36]),
+          [R.press - 0.03, R.press + 0.4],
+          // the retimed recording moves fast almost throughout
+          [R.out[0] - 0.05, V.out[1] + 0.1],
+          [A.push[0] - 0.04, A.push[1] + 0.05],
+          [A.out[0] - 0.05, L.start + 0.3],
+          [L.out[0] - 0.05, C.start + 0.15],
+          [C.out[0] - 0.06, B.start + 0.12],
+          [B.words[1] - 0.17, B.words[1] + 0.05],
+          [B.words[2] - 0.17, B.words[2] + 0.05],
+          [B.pull[0] - 0.04, B.pull[1] + 0.05],
+          [B.dive[0] - 0.05, K.start + 0.05],
+          [K.enter - 0.05, K.enter + 0.4],
+          [K.out[0] - 0.05, M.start + 0.35],
+          [M.out[0] - 0.1, MO.start + 0.7],
+          [MO.collapse[0] - 0.05, E.start + 0.15],
+          [E.fade[1] - 0.6, E.fade[1] + 0.05]
+        ]
+      }
+      let FAST = []
+      window.samplesAt = (t) => (FAST.some(([a, b]) => t >= a && t <= b) ? 16 : 6)
+
+      window.ready = (async () => {
+        await Promise.all(
+          [
+            '700 100px "DM Sans"',
+            '600 100px "DM Sans"',
+            '500 100px "DM Sans"',
+            'italic 600 100px "DM Sans"',
+            '400 100px "DM Sans"',
+            '500 20px "JetBrains Mono"'
+          ].map((f) => document.fonts.load(f))
+        )
+        await document.fonts.ready
+        await loadShots()
+        BGX = $('bg').getContext('2d')
+        SCX = $('scrim').getContext('2d')
+        GRX = $('grain').getContext('2d')
+        buildOpen()
+        buildRail()
+        buildVault()
+        FAST = fastRanges()
+        buildAgent()
+        AG.head = makeHead({
+          x: 132,
+          y: 318,
+          label: '03 \u2014 Agent',
+          lines: ['Your agent', '*asks* first.'],
+          size: 112,
+          sub: 'Every edit lands as a diff in your note.<br>Nothing is saved until you accept.'
+        })
+        buildTimeline()
+        TLN.head = makeHead({
+          x: 132,
+          y: 772,
+          label: '04 \u2014 Timeline',
+          lines: ['Plan on a *timeline*.'],
+          size: 100,
+          sub: 'Tasks, projects and events, laid out as a Gantt chart.'
+        })
+        buildCalendars()
+        buildBlocks()
+        buildTasks()
+        buildThemes()
+        // warm the palette cache so no frame pays for it
+        const S = T.themes
+        S.dark[2].forEach((id) => themed(id, 'dark'))
+        S.light[2].forEach((id) => themed(id, 'light'))
+        TLN.glint = el('div', 'glint', TLN.clip)
+        CAL.glint = el('div', 'glint', CAL.w.c)
+        THM.glint = el('div', 'glint', THM.w.c)
+        buildMore()
+        buildEnd()
+        buildHUD()
+        makeGrain()
+        window.EVENTS = buildEvents()
+        render(0)
+        return true
+      })()
+
+      // events the score listens to (derived from the same timeline)
+      function buildEvents() {
+        const ev = []
+        const add = (t, kind, extra = {}) => ev.push({ t: +t.toFixed(4), kind, ...extra })
+        const O = T.open
+        add(O.dot, 'dot')
+        for (let k = 0; k < OP.labelText.length; k++)
+          if (OP.labelText[k] !== ' ')
+            add(O.label[0] + ((O.label[1] - O.label[0]) * k) / OP.labelText.length, 'decode', { k })
+        add(O.reels[0], 'reels')
+        // a tick every time the units reel passes a digit
+        let last = 0
+        for (let f = Math.round(O.reels[0] * FPS * 4); f <= O.reels[1] * FPS * 4; f++) {
+          const i = Math.floor(reelIdx(1, f / FPS / 4) + 0.5)
+          if (i > last) {
+            add(f / FPS / 4, 'reelTick', { k: i })
+            last = i
+          }
+        }
+        add(O.reels[1], 'lock')
+        add(O.caption, 'caption')
+        for (let k = 0; k < OP.subText.length; k += 2)
+          add(O.sub + (0.45 * k) / OP.subText.length, 'decode', { k: 100 + k })
+        O.cuts.forEach((t, k) => k > 0 && add(t, 'cut', { k }))
+        add(O.textOut, 'textOut')
+        add(O.dive[0], 'dive')
+        const R = T.rail
+        add(R.start, 'railLand')
+        add(R.morph[0], 'navFold')
+        RAIL.forEach((_, k) => add(R.morph[0] + 0.03 * k, 'labelOut', { k }))
+        add(R.morph[0] + 0.05, 'railSlide')
+        RAIL.forEach((_, k) => {
+          const f0 = R.morph[0] + 0.12 + 0.0625 * k
+          add(f0, 'iconFly', { k })
+          add(f0 + 0.42, 'iconLand', { k })
+        })
+        add(R.morph[0] + 0.3, 'treeUp')
+        add(R.morph[1] - 0.08, 'tilePop')
+        ;[1, 2].forEach((k) => add(R.morph[1] - 0.08 + 0.06 * k, 'badge', { k }))
+        add(R.pull[0], 'pullBack')
+        R.clicks.forEach((c, i) => {
+          add(c - 0.16, 'tip', { k: 2 + i })
+          add(c, 'railClick', { k: 2 + i })
+        })
+        add(R.cmd, 'cmdDown')
+        RAIL.forEach((_, k) => add(R.cmd + 0.035 * k, 'numFlip', { k }))
+        add(R.press, 'cmdPress', { k: 1 })
+        add(R.release, 'cmdUp')
+        add(R.out[0], 'railOut')
+        const V = T.vaults
+        add(V.in[0], 'vaultIn')
+        add(V.lift[0], 'lift')
+        add(V.lift[1] - 0.16, 'drop')
+        // moments inside the recording: the panel starts paging, the recorder zooms in and out
+        ;[
+          [0.733, 'vpage'],
+          [2.15, 'vpage'],
+          [3.3, 'vzoomIn'],
+          [4.283, 'vpage'],
+          [5.5, 'vzoomOut']
+        ].forEach(([s, kind], k) => add(vaultFilmAt(s), kind, { k }))
+        V.switches.forEach((tt, k) => add(tt, 'vaultSwitch', { k, v: VAULT_SEQ[k + 1] }))
+        V.clicks.forEach((tt, k) => add(tt, 'vaultClick', { k }))
+        add(V.out[0], 'vaultOut')
+        const A = T.agent
+        add(A.start, 'arrive')
+        add(A.push[0], 'push')
+        A.edits.forEach((t, k) => add(t, k < 2 ? 'substitute' : 'insert', { k }))
+        add(A.bar, 'bar')
+        add(A.cursor[0], 'cursor')
+        add(A.press, 'press')
+        add(A.accept, 'accept')
+        add(A.out[0], 'exit')
+        const L = T.timeline
+        add(L.line[0], 'line')
+        add(L.pop, 'today')
+        add(L.reveal[0], 'reveal')
+        TL_ROWS.forEach((_, i) => add(rowStart(i), 'row', { k: i }))
+        add(L.out[0], 'swing')
+        T.calendars.rows.forEach((t, k) => add(t, 'provider', { k }))
+        add(T.calendars.out[0], 'whipUp')
+        const B = T.blocks
+        B.words.forEach((t, k) => add(t, 'word', { k }))
+        add(B.words[1] - 0.12, 'whip')
+        add(B.words[2] - 0.12, 'whip')
+        BLK.wipes.forEach((o, k) => add(o.a, k < 4 ? 'ink' : 'math', { k }))
+        BLK.pops.forEach((o, k) => add(o.a, o.kind === 'pop' ? 'boxPop' : 'arrow', { k }))
+        add(B.pull[0], 'pull')
+        add(B.head, 'blocksHead')
+        add(B.dive[0], 'diveRow')
+        const S = T.tasks
+        add(S.select, 'select')
+        for (let i = 0; i < TK.full.length; i++)
+          add(S.type + i * S.step, 'key', { k: i, space: TK.full[i] === ' ' })
+        TK.tokens.forEach((k, i) => add(S.type + k.b * S.step, 'ghost', { k: i }))
+        add(S.enter, 'enter')
+        add(S.enter + 0.12, 'merge')
+        add(S.out[0], 'iris')
+        add(S.out[0] + (S.out[1] - S.out[0]) * 0.55, 'open')
+        const M = T.themes
+        M.dark[2].forEach((id, k) => add(M.dark[0] + k * M.dark[1], 'theme', { k, mode: 'dark' }))
+        M.light[2].forEach((id, k) =>
+          add(M.light[0] + k * M.light[1], 'theme', { k: M.dark[2].length + k, mode: 'light' })
+        )
+        add(M.light[0], 'lightSwitch')
+        add(M.settle, 'settle')
+        add(M.out[0], 'themesOut')
+        MR.rows.forEach((_, r) => add(T.more.rows[0] + r * 0.07, 'rowIn', { k: r }))
+        add(T.more.collapse[0], 'collapse')
+        add(T.more.collapse[0] + 0.55, 'dotIn')
+        const E = T.end
+        add(E.start, 'mark')
+        E.syllables.forEach((t, k) => add(t, 'syllable', { k }))
+        add(E.tagline, 'tagline')
+        add(E.url, 'url')
+        add(E.meta, 'meta')
+        add(E.fade[0], 'fade')
+        return ev.sort((a, b) => a.t - b.t)
+      }
+
+      // live preview: ?t=12.3 freezes a frame; otherwise loops in real time
+      if (!navigator.webdriver) {
+        window.ready.then(() => {
+          if (q.get('t') != null) return render(+q.get('t'))
+          const t0 = performance.now()
+          ;(function loop() {
+            render(((performance.now() - t0) / 1000) % DUR)
+            requestAnimationFrame(loop)
+          })()
+        })
+      }
+      window.render = render
+    </script>
+  </body>
+</html>

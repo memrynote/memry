@@ -59,6 +59,8 @@ import { BodySyncPendingHint } from './body-sync-pending-hint'
 import { getCalloutSlashMenuItem } from './callout-block'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
+import { getViewSlashMenuItem } from './view-block'
+import { createViewBlockKeysPlugin } from './view-block-keys-plugin'
 import { isFromWhiteboard } from './whiteboard-events'
 import { withTableHeaderRow, type TableInsertEditor } from './slash-menu-utils'
 import {
@@ -1009,6 +1011,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     const plugin = createMultiBlockIndentPlugin(editor)
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor])
+
+  // Arrow keys into a view block, whose definition is hidden until the caret
+  // is in it and so unreachable by the browser's own caret movement (#2488).
+  useEffect(() => registerEditorPlugin(editor, createViewBlockKeysPlugin()), [editor])
 
   // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
   // handler wins over block-indent keymaps while a date mention is active.
@@ -2692,6 +2698,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                           async () => (await fetchNote())?.title
                         )
                       : null
+                  // `/view` embeds a live list of notes (#2488). A block, so not
+                  // in a table cell, for the reason the diagram gives above.
+                  const viewItem = inCell
+                    ? null
+                    : getViewSlashMenuItem(editor, {
+                        title: t('editor.viewBlock.title'),
+                        group: t('editor.viewBlock.group'),
+                        subtext: t('editor.viewBlock.subtext')
+                      })
                   // `/date` and `/remind` both surface the same two-row Date group:
                   // a plain date and a "Remind me — <subtitle>" (aliases overlap so
                   // either trigger shows both). Selecting inserts a configurable pill.
@@ -2779,6 +2794,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     { ...calloutItem, id: 'callout' },
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
+                    ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),
                     ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),
                     ...dateItems,
                     { ...linkToNoteItem, id: 'link_to_note' },

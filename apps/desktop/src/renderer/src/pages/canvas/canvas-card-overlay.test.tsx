@@ -54,7 +54,8 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
 }))
 vi.mock('react-i18next', () => ({ getI18n: () => ({ getFixedT: () => (k: string) => k }) }))
-vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
+const toastMock = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }))
+vi.mock('sonner', () => ({ toast: toastMock }))
 
 const mocks = vi.hoisted(() => {
   const lockCtxCache = new Map<
@@ -149,14 +150,29 @@ vi.mock('./canvas-add-card-dialog', () => ({
   CanvasAddCardDialog: ({
     open,
     onCreateNote,
-    onReveal
+    onReveal,
+    onAddAll
   }: {
     open: boolean
     onCreateNote: (title: string) => void
     onReveal: (entityType: string, entityId: string) => void
+    onAddAll: (refs: { entityType: string; entityId: string }[]) => void
   }) =>
     open ? (
       <>
+        <button
+          data-testid="stub-add-all"
+          onClick={() =>
+            onAddAll([
+              { entityType: 'note', entityId: 'n1' },
+              { entityType: 'note', entityId: 'b1' },
+              { entityType: 'task', entityId: 'b2' },
+              { entityType: 'file', entityId: 'b3' }
+            ])
+          }
+        >
+          add all
+        </button>
         <button data-testid="stub-create-note" onClick={() => onCreateNote('')}>
           create
         </button>
@@ -190,9 +206,11 @@ function makeApi(elements: CardElement[]): {
   api: ExcalidrawImperativeAPI
   fire: () => void
   updateScene: ReturnType<typeof vi.fn>
+  scrollToContent: ReturnType<typeof vi.fn>
 } {
   let onChangeCb: (() => void) | null = null
   const updateScene = vi.fn()
+  const scrollToContent = vi.fn()
   const api = {
     getSceneElements: () => elements,
     getSceneElementsIncludingDeleted: () => elements,
@@ -205,13 +223,14 @@ function makeApi(elements: CardElement[]): {
     }),
     getFiles: () => ({}),
     updateScene,
+    scrollToContent,
     refresh: vi.fn(),
     onChange: (cb: () => void) => {
       onChangeCb = cb
       return () => {}
     }
   } as unknown as ExcalidrawImperativeAPI
-  return { api, fire: () => onChangeCb?.(), updateScene }
+  return { api, fire: () => onChangeCb?.(), updateScene, scrollToContent }
 }
 
 function Harness({
@@ -389,6 +408,93 @@ describe('CanvasCardLayer', () => {
     )
     expect(created.customData).toEqual({ entityType: 'file', entityId: 'scan' })
     expect({ width: created.width, height: created.height }).toEqual({ width: 260, height: 240 })
+  })
+
+  it('places a multi-item drop as one batch, skipping cards already on the board', async () => {
+    const { api, updateScene } = makeApi([cardEl('e1', 'n1', 2000, 2000)])
+    render(<Harness api={api} />)
+    const drop = new Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperty(drop, 'dataTransfer', {
+      value: {
+        types: [CANVAS_ITEM_DRAG_MIME],
+        getData: (t: string) =>
+          t === CANVAS_ITEM_DRAG_MIME
+            ? JSON.stringify([
+                { entityType: 'note', entityId: 'n1' },
+                { entityType: 'note', entityId: 'r1' },
+                { entityType: 'file', entityId: 'r2' }
+              ])
+            : ''
+      }
+    })
+    Object.defineProperty(drop, 'clientX', { value: 120 })
+    Object.defineProperty(drop, 'clientY', { value: 80 })
+    screen.getByTestId('wrapper').dispatchEvent(drop)
+
+    await waitFor(() => expect(updateScene).toHaveBeenCalledTimes(1))
+    const passed = updateScene.mock.calls[0][0]
+    const created = passed.elements.slice(1)
+    expect(created.map((e: { customData: unknown }) => e.customData)).toEqual([
+      { entityType: 'note', entityId: 'r1' },
+      { entityType: 'file', entityId: 'r2' }
+    ])
+    // The batch comes back selected, so it moves as one.
+    expect(Object.keys(passed.appState.selectedElementIds).sort()).toEqual(
+      created.map((e: { id: string }) => e.id).sort()
+    )
+    expect(toastMock.success).toHaveBeenCalledWith('canvas.card.bulkAddedSkipped')
+  })
+
+  it('bulk add places the fresh items in one undoable update and follows them', async () => {
+    const { api, updateScene, scrollToContent } = makeApi([cardEl('e1', 'n1', 0, 0)])
+    render(<Harness api={api} />)
+
+    fireEvent.click(screen.getByTestId('canvas-add-card'))
+    fireEvent.click(screen.getByTestId('stub-add-all'))
+
+    expect(updateScene).toHaveBeenCalledTimes(1)
+    const passed = updateScene.mock.calls[0][0]
+    expect(passed.captureUpdate).toBe('immediately')
+    const created = passed.elements.slice(1) as {
+      id: string
+      x: number
+      y: number
+      width: number
+      height: number
+      customData: { entityId: string }
+    }[]
+    // n1 is already on the board: skipped, not duplicated.
+    expect(created.map((e) => e.customData.entityId)).toEqual(['b1', 'b2', 'b3'])
+    const all = [cardEl('e1', 'n1', 0, 0), ...created]
+    for (let i = 0; i < all.length; i++) {
+      for (let j = i + 1; j < all.length; j++) {
+        const a = all[i]
+        const b = all[j]
+        const overlap =
+          a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+        expect(overlap).toBe(false)
+      }
+    }
+    expect(scrollToContent).toHaveBeenCalledWith(
+      created,
+      expect.objectContaining({ fitToContent: true, maxZoom: 1 })
+    )
+  })
+
+  it('bulk add places nothing when every item is already on the board', () => {
+    const { api, updateScene } = makeApi([
+      cardEl('e1', 'n1'),
+      cardEl('e2', 'b1', 400),
+      cardEl('e3', 'b2', 800, 0, 'task'),
+      cardEl('e4', 'b3', 1200, 0, 'file')
+    ])
+    render(<Harness api={api} />)
+
+    fireEvent.click(screen.getByTestId('canvas-add-card'))
+    fireEvent.click(screen.getByTestId('stub-add-all'))
+
+    expect(updateScene).not.toHaveBeenCalled()
+    expect(toastMock).toHaveBeenCalledWith('canvas.card.bulkAllOnCanvas')
   })
 
   it('ignores drops without the canvas MIME', async () => {

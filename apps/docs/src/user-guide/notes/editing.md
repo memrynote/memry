@@ -58,6 +58,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Code block (language picker: 50 languages, alphabetical)
 - Diagram (Mermaid)
 - Whiteboard (an inline canvas you draw on)
+- View (a live list of notes from a folder, a tag or the whole vault)
 - Divider
 - Image, file
 - Table
@@ -138,6 +139,69 @@ A note shown as a card on a canvas shows its whiteboards as their title and
 
 On the phone the block shows a **Whiteboard** card rather than the drawing; the
 note keeps it, and the board is drawn on the desktop.
+
+## Views
+
+`/view` (or `/query`, `/base`, `/database`) puts a live list of notes in the
+note. It starts as the ten notes you changed most recently, with its source menu
+open so you can point it somewhere else:
+
+- **All notes**: every note outside the journal
+- **Folder**: the notes in a folder and its subfolders
+- **Tag**: the notes, tasks and inbox items carrying a tag
+
+The header next to the source holds the rest:
+
+- **Saved view**, when the folder or tag has more than one
+  [saved view](/user-guide/folder-view). Picking one uses its layout, filters and
+  sort.
+- **Filter**, the same filter builder a folder page has. Filters set here apply on
+  top of the saved view's.
+- **Layout**: list, table or gallery.
+- **Open as tab** opens the folder or tag page itself, on the same saved view.
+
+The list stays current. Create, edit, tag or delete a note anywhere and the view
+updates. Clicking a row opens it, and a middle-click opens it in a background tab.
+The list scrolls inside the block once it is taller than a few rows.
+
+A view is stored in the note as a code fence tagged `memry-view`, holding what
+the view shows as a few lines of JSON:
+
+````
+```memry-view
+{
+  "source": { "kind": "tag", "tag": "inbox-thought" },
+  "layout": "list"
+}
+```
+````
+
+Move the cursor into the block with the arrow keys, from the line above or below,
+to see that text under the list and edit it by hand; the list follows as you
+type. Clicking the list itself never moves the cursor into it, so a click on a
+row or a menu cannot type into the text by accident. If the text stops being valid, the block says so
+and keeps the text visible until it is fixed. Obsidian, GitHub, the phone and
+older versions of memrynote show the fence as an ordinary code block and leave it
+as it is.
+
+### Views in templates
+
+A view in a template is copied into every note made from it, so a
+[default journal template](/user-guide/templates#default-journal-template) can
+give each day the same list. Template variables inside the view's text are filled
+in when the entry is created. To list only the notes created since that day, open
+the block's text and add a filter:
+
+<div v-pre>
+
+```json
+"filters": "created after \"{{date:YYYY-MM-DD}}\""
+```
+
+Use `{{date:YYYY-MM-DD}}` rather than `{{date}}`: the plain form is a long,
+localized date that a filter cannot compare against.
+
+</div>
 
 ## Tables
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
+import { ArrowUpRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { FEATURES } from '@/lib/constants'
 import { getFeatureScreenshotSrc } from '@/lib/feature-screenshots'
@@ -15,7 +16,8 @@ const MODULE_TINT: Record<Feature['id'], string> = {
   journal: '--color-tint-sand',
   notes: '--color-tint-sage',
   tasks: '--color-tint-peach',
-  calendar: '--color-tint-lilac'
+  calendar: '--color-tint-lilac',
+  canvas: '--color-tint-mint'
 }
 
 function moduleDomId(id: Feature['id']) {
@@ -89,12 +91,23 @@ function ModulePanel({
           {feature.title}
         </h3>
         <p className="mt-3 text-base leading-[160%] text-muted">{feature.description}</p>
+        {'docsHref' in feature && (
+          <a
+            href={feature.docsHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1 rounded-sm text-base font-medium text-ink underline decoration-ink/25 underline-offset-4 transition-colors hover:text-terracotta hover:decoration-terracotta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
+          >
+            {feature.docsLabel}
+            <ArrowUpRight aria-hidden className="size-4 rtl:-scale-x-100" />
+          </a>
+        )}
       </div>
 
-      {/* One frame for all five, at 80% of the column from lg up.
+      {/* One frame for every module, at 80% of the column from lg up.
 
           The captures do not share an aspect ratio — 1.06 (inbox) through 1.75 (notes) —
-          so `object-contain` matted each one to a different rendered size and the five
+          so `object-contain` matted each one to a different rendered size and the
           shots read as five different windows. `object-cover` on a 4:3 frame renders every
           one at exactly the same width and height; 4:3 sits near the middle of that spread,
           so the crop is shared out rather than falling entirely on the widest shot.
@@ -116,7 +129,7 @@ function ModulePanel({
 }
 
 /**
- * The five modules, read top to bottom. A sticky rail of module names holds still on the
+ * The modules, read top to bottom. A sticky rail of module names holds still on the
  * start edge and marks where you are; the shots scroll past it. No tabs — nothing is
  * hidden behind a click, and the page reads as one continuous tour.
  */
@@ -137,7 +150,7 @@ export function Features() {
             Inside MemryNote
           </p>
           <h2 className="display-section mt-4 text-ink">
-            Five modules. <em className="text-terracotta">One window.</em>
+            Six modules. <em className="text-terracotta">One window.</em>
           </h2>
           <p className="section-sub mt-4">
             Each module is a room, not another tab. Open the ones that help you, and switch the rest

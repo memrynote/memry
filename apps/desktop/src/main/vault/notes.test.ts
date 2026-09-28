@@ -1438,6 +1438,32 @@ describe('notes operations', () => {
       ])
     })
 
+    it('lists a canvas arrow as an outgoing link on its source and a backlink on its target', async () => {
+      const from = await notes.createNote({ title: 'Arrow From', content: 'No links.' })
+      const to = await notes.createNote({ title: 'Arrow To', content: 'No links.' })
+      const bystander = await notes.createNote({ title: 'Bystander', content: 'No links.' })
+      const insertCanvas = dataDb.sqlite.prepare(
+        "INSERT INTO canvases (id, vault_id, title, snapshot_ciphertext, vector_clock, created_at, updated_at, deleted_at) VALUES (?, 'v1', ?, '', '{}', 1, 1, ?)"
+      )
+      insertCanvas.run('c-live', 'Map', null)
+      insertCanvas.run('c-dead', 'Gone', 5)
+      const insertEdge = dataDb.sqlite.prepare(
+        "INSERT INTO canvas_entity_edges (canvas_id, arrow_id, source_type, source_id, target_type, target_id) VALUES (?, ?, 'note', ?, 'note', ?)"
+      )
+      insertEdge.run('c-live', 'a1', from.id, to.id)
+      insertEdge.run('c-live', 'a2', from.id, to.id)
+      insertEdge.run('c-dead', 'a1', bystander.id, to.id)
+      const via = { kind: 'canvas', canvasId: 'c-live', canvasTitle: 'Map' }
+
+      expect((await notes.getNoteLinks(from.id)).outgoing).toEqual([
+        { sourceId: from.id, targetId: to.id, targetTitle: 'Arrow To', via }
+      ])
+      expect((await notes.getNoteLinks(to.id)).incoming).toEqual([
+        expect.objectContaining({ sourceId: from.id, sourceTitle: 'Arrow From', contexts: [], via })
+      ])
+      expect((await notes.getNoteLinks(bystander.id)).outgoing).toEqual([])
+    })
+
     it('includes property-relation backlinks labeled with the property name', async () => {
       const { setPropertyRefs } = await import('@main/database/queries/notes')
 

@@ -69,6 +69,36 @@ function renderUnlistedLanguageAsPlainText(
   }
 }
 
+type CodeBlockRender = CodeBlockSpec['implementation']['render']
+
+/**
+ * A code block tagged with one of `views`' languages is drawn by that view
+ * instead of as code. Presentation only: the node, its props and its fence are
+ * the code block's, so a surface without the view (main, mobile, an older
+ * build) still holds the block as code and writes the same bytes back. That is
+ * the whole reason a feature like the `memry-view` block (#2488) rides on a
+ * fence instead of adding a node type y-prosemirror would delete elsewhere.
+ */
+function renderCodeLanguageViews(
+  spec: CodeBlockSpec,
+  views: Readonly<Record<string, CodeBlockRender>> | undefined
+): CodeBlockSpec {
+  if (!views || Object.keys(views).length === 0) return spec
+  const render = spec.implementation.render
+  return {
+    ...spec,
+    implementation: {
+      ...spec.implementation,
+      render(block, editor) {
+        const view = Object.hasOwn(views, block.props.language)
+          ? views[block.props.language]
+          : undefined
+        return (view ?? render).call(this, block, editor)
+      }
+    }
+  }
+}
+
 /**
  * The one place a Memry BlockNote schema is built.
  *
@@ -96,12 +126,17 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
   blocks: Blocks & SpecKeysMatchNodeTypes<Blocks>
   inline: MemryInlineSpecs
   codeBlock?: Parameters<typeof createCodeBlockSpec>[0]
+  /** Code-block renders keyed by fence language; see `renderCodeLanguageViews`. */
+  codeBlockViews?: Readonly<Record<string, CodeBlockRender>>
 }) {
   const blockSpecs = {
     ...defaultBlockSpecs,
-    codeBlock: renderUnlistedLanguageAsPlainText(
-      createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS),
-      impl.codeBlock ?? CODE_BLOCK_DEFAULTS
+    codeBlock: renderCodeLanguageViews(
+      renderUnlistedLanguageAsPlainText(
+        createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS),
+        impl.codeBlock ?? CODE_BLOCK_DEFAULTS
+      ),
+      impl.codeBlockViews
     ),
     // BlockNote's own image, with its resized width written to the vault file
     // instead of dropped. Here rather than per surface: a surface that dropped

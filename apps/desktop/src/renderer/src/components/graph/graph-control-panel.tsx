@@ -7,6 +7,7 @@ import {
   Focus,
   FileText,
   FolderOpen,
+  PenTool,
   Tag,
   Unlink,
   Settings
@@ -200,6 +201,21 @@ export function GraphControlPanel({
                   </div>
                 )
               })}
+
+              {/* Edges, not nodes: arrows drawn between cards on a canvas. */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PenTool className="size-3.5" style={{ color: 'var(--graph-edge-canvas)' }} />
+                  <Label className="text-xs text-foreground font-normal">
+                    {t('filter.canvas-edges')}
+                  </Label>
+                </div>
+                <Switch
+                  checked={filterState.showCanvasEdges}
+                  onCheckedChange={() => dispatch({ type: 'TOGGLE_CANVAS_EDGES' })}
+                  aria-label={t('filter.canvas-edges')}
+                />
+              </div>
             </div>
           </PanelSection>
 

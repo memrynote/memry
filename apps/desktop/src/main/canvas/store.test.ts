@@ -29,7 +29,8 @@ const MIGRATIONS = [
   '0045_canvas_files.sql',
   '0048_canvas_folders.sql',
   '0057_sync_unknown_fields.sql',
-  '0058_canvas_owner_note.sql'
+  '0058_canvas_owner_note.sql',
+  '0063_canvas_entity_edges.sql'
 ]
 
 function freshDb() {
@@ -272,6 +273,79 @@ describe('canvas store', () => {
     expect(getCanvas(db, vault, created.id)).toBeNull()
     expect(listCanvases(db, 'vault-1')).toHaveLength(0)
     expect(db.select().from(schema.canvasEntityRefs).all()).toHaveLength(0)
+  })
+
+  describe('arrow edges', () => {
+    const card = (id: string, entityId: string): unknown => ({
+      id,
+      type: 'rectangle',
+      customData: { entityType: 'note', entityId }
+    })
+    const arrow = (id: string, start: string, end: string): unknown => ({
+      id,
+      type: 'arrow',
+      startBinding: { elementId: start },
+      endBinding: { elementId: end },
+      endArrowhead: 'arrow'
+    })
+    const sceneOf = (elements: unknown[]): string =>
+      JSON.stringify({ type: 'excalidraw', version: 2, elements })
+    const edgesOf = (canvasId: string) =>
+      db
+        .select()
+        .from(schema.canvasEntityEdges)
+        .where(eq(schema.canvasEntityEdges.canvasId, canvasId))
+        .all()
+
+    it('indexes an arrow between two cards when the scene is saved', () => {
+      const created = createCanvas(db, vault, 'vault-1', { scene: SCENE })
+
+      updateCanvas(db, vault, created.id, {
+        scene: sceneOf([card('c1', 'n1'), card('c2', 'n2'), arrow('a1', 'c1', 'c2')])
+      })
+
+      expect(edgesOf(created.id)).toEqual([
+        {
+          canvasId: created.id,
+          arrowId: 'a1',
+          sourceType: 'note',
+          sourceId: 'n1',
+          targetType: 'note',
+          targetId: 'n2'
+        }
+      ])
+    })
+
+    it('drops the edge when the next save no longer has the arrow', () => {
+      const created = createCanvas(db, vault, 'vault-1', {
+        scene: sceneOf([card('c1', 'n1'), card('c2', 'n2'), arrow('a1', 'c1', 'c2')])
+      })
+      expect(edgesOf(created.id)).toHaveLength(1)
+
+      updateCanvas(db, vault, created.id, { scene: sceneOf([card('c1', 'n1'), card('c2', 'n2')]) })
+
+      expect(edgesOf(created.id)).toEqual([])
+    })
+
+    it('leaves edges alone on a save that carries no scene', () => {
+      const created = createCanvas(db, vault, 'vault-1', {
+        scene: sceneOf([card('c1', 'n1'), card('c2', 'n2'), arrow('a1', 'c1', 'c2')])
+      })
+
+      updateCanvas(db, vault, created.id, { title: 'Renamed' })
+
+      expect(edgesOf(created.id)).toHaveLength(1)
+    })
+
+    it('prunes edges when the canvas is deleted', async () => {
+      const created = createCanvas(db, vault, 'vault-1', {
+        scene: sceneOf([card('c1', 'n1'), card('c2', 'n2'), arrow('a1', 'c1', 'c2')])
+      })
+
+      await deleteCanvas(db, vault, created.id, unlinkAsTrash)
+
+      expect(edgesOf(created.id)).toEqual([])
+    })
   })
 
   it('lists only the vault-scoped, non-deleted canvases', async () => {

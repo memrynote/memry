@@ -239,6 +239,33 @@
   color: var(--shiki-dark);
 }
 
+/* View block (#2488): a `memry-view` code block drawn as a live list of notes
+   (view-block.tsx). It is a code block to the document, not to the reader, so
+   it takes the note's own surface and ink instead of the code slab. */
+.bn-block-content[data-content-type='codeBlock'][data-language='memry-view'] {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* The view block renders app UI (folder list/table/gallery, tag chips, the
+   filter button) inside the editor, where two unlayered BlockNote rules beat
+   Tailwind's layered utilities: `.bn-default-styles li` resets font-size and
+   padding (a TagChip is an <li>, so it grew to body size and lost its pill),
+   and `.bn-shadcn svg:not([class*=size-])` reverts icon sizes (the filter icon
+   is `h-3.5 w-3.5`, so it grew to 24px). `revert-layer` hands both back to the
+   utilities, so the block looks the way the same components do everywhere
+   else. */
+.bn-default-styles .memry-view-block :is(p, li, h1, h2, h3, h4, h5, h6) {
+  font-size: revert-layer;
+  margin: revert-layer;
+  padding: revert-layer;
+}
+
+.bn-shadcn .memry-view-block svg:not([class*='size-']) {
+  width: revert-layer;
+  height: revert-layer;
+}
+
 /* Code text size. A bare `font-family: monospace` with no explicit font-size
    makes browsers fall back to their own fixed default (~13px), unrelated to the
    editor's S/M/L setting. `0.875em` re-ties code to that setting and keeps it a
@@ -1845,6 +1872,7 @@
     --graph-edge-task-note: #c4a46a;
     --graph-edge-project-task: #9a8abd;
     --graph-edge-tag-cooccurrence: #a8a6a1;
+    --graph-edge-canvas: #6b8fb8;
     --graph-ghost-node: #c4c2bc;
     --graph-dimmed-node: #e4e4de;
     --graph-edge-soft: #a8a6a0;
@@ -1984,6 +2012,7 @@
     --graph-edge-task-note: #c4a46a;
     --graph-edge-project-task: #9a8abd;
     --graph-edge-tag-cooccurrence: #c4c2bc;
+    --graph-edge-canvas: #5f86b3;
     --graph-ghost-node: #d4d2cc;
     --graph-dimmed-node: #e3e2e0;
     --graph-edge-soft: #bfbdb6;
@@ -2123,6 +2152,7 @@
     --graph-edge-task-note: #b89a5a;
     --graph-edge-project-task: #8a7aad;
     --graph-edge-tag-cooccurrence: #5a5855;
+    --graph-edge-canvas: #7aa2cf;
     --graph-ghost-node: #3a3840;
     --graph-dimmed-node: #2a2830;
     --graph-edge-soft: #6b6966;

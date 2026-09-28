@@ -2,7 +2,12 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 import { and, eq, isNull } from 'drizzle-orm'
 import sodium from 'libsodium-wrappers-sumo'
 import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { canvases, canvasEntityRefs, canvasAssets } from '@memry/db-schema/data-schema'
+import {
+  canvases,
+  canvasEntityEdges,
+  canvasEntityRefs,
+  canvasAssets
+} from '@memry/db-schema/data-schema'
 import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { CanvasSyncPayloadSchema, type CanvasSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -414,6 +419,78 @@ describe('canvasHandler', () => {
       expect(result).toBe('applied')
       const row = db.select().from(canvases).where(eq(canvases.id, 'c1')).get()
       expect(row!.title).toBeNull()
+    })
+  })
+
+  describe('arrow edges', () => {
+    const connectedScene = (arrows: boolean): string =>
+      JSON.stringify({
+        type: 'excalidraw',
+        version: 2,
+        source: 'test',
+        elements: [
+          { id: 'r1', type: 'rectangle', customData: { entityType: 'note', entityId: 'n1' } },
+          { id: 'r2', type: 'rectangle', customData: { entityType: 'note', entityId: 'n2' } },
+          ...(arrows
+            ? [
+                {
+                  id: 'a1',
+                  type: 'arrow',
+                  startBinding: { elementId: 'r1' },
+                  endBinding: { elementId: 'r2' },
+                  endArrowhead: 'arrow'
+                }
+              ]
+            : [])
+        ],
+        appState: {},
+        files: {}
+      })
+    const edgesOf = (id: string) =>
+      db.select().from(canvasEntityEdges).where(eq(canvasEntityEdges.canvasId, id)).all()
+
+    it('#given a remote create with an arrow between cards #then indexes the edge', () => {
+      const data: CanvasSyncPayload = {
+        id: 'c1',
+        vaultId: VAULT_ID,
+        scene: connectedScene(true),
+        clock: { B: 1 }
+      }
+
+      expect(canvasHandler.applyUpsert(ctx, 'c1', data, { B: 1 })).toBe('applied')
+
+      expect(edgesOf('c1')).toMatchObject([{ arrowId: 'a1', sourceId: 'n1', targetId: 'n2' }])
+    })
+
+    it('#given a remote update that removed the arrow #then drops the edge', () => {
+      canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        { id: 'c1', vaultId: VAULT_ID, scene: connectedScene(true), clock: { B: 1 } },
+        { B: 1 }
+      )
+
+      canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        { id: 'c1', vaultId: VAULT_ID, scene: connectedScene(false), clock: { B: 2 } },
+        { B: 2 }
+      )
+
+      expect(edgesOf('c1')).toEqual([])
+    })
+
+    it('#given a remote delete #then prunes the edges', () => {
+      canvasHandler.applyUpsert(
+        ctx,
+        'c1',
+        { id: 'c1', vaultId: VAULT_ID, scene: connectedScene(true), clock: { B: 1 } },
+        { B: 1 }
+      )
+
+      expect(canvasHandler.applyDelete(ctx, 'c1', { B: 2 })).toBe('applied')
+
+      expect(edgesOf('c1')).toEqual([])
     })
   })
 

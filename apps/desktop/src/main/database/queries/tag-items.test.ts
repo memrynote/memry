@@ -80,6 +80,22 @@ describe('listTagItems', () => {
     expect(items.map((i) => i.kind).sort()).toEqual(['inbox', 'note', 'task'])
   })
 
+  it('reports the real file type of a tagged binary', () => {
+    insertNote(indexDb, 'n1', 'Plain')
+    insertNoteTag(indexDb, 'n1', 'work')
+    insertNote(indexDb, 'f1', 'Scan')
+    indexDb.run(sql`UPDATE note_cache SET file_type = 'pdf' WHERE id = 'f1'`)
+    insertNoteTag(indexDb, 'f1', 'work')
+    insertTask(dataDb, 't1', 'Task')
+    insertTaskTag(dataDb, 't1', 'work')
+
+    const byId = new Map(listTagItems(indexDb, dataDb, 'work').map((i) => [i.id, i.fileType]))
+
+    expect(byId.get('n1')).toBe('markdown')
+    expect(byId.get('f1')).toBe('pdf')
+    expect(byId.get('t1')).toBe('markdown')
+  })
+
   it('includes descendant tags', () => {
     insertNote(indexDb, 'n1', 'Own')
     insertNoteTag(indexDb, 'n1', 'work')

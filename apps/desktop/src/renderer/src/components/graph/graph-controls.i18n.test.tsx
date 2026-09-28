@@ -17,6 +17,7 @@ const defaultFilterState: GraphFilterState = {
   showProjects: true,
   showTags: true,
   showOrphans: true,
+  showCanvasEdges: true,
   selectedTags: [],
   focusNodeId: null,
   focusDepth: 2,
@@ -63,6 +64,26 @@ describe('graph controls i18n', () => {
     expect(screen.getByText('Orphans')).toBeInTheDocument()
     expect(screen.getByText('Display')).toBeInTheDocument()
     expect(screen.getByText('Show labels')).toBeInTheDocument()
+  })
+
+  it('offers a canvas connections switch that toggles canvas edges', () => {
+    const dispatch = vi.fn()
+    renderWithI18n(
+      <GraphControlPanel
+        filterState={defaultFilterState}
+        dispatch={dispatch}
+        isFiltered={false}
+        focusLabel={null}
+        settings={GRAPH_SETTINGS_DEFAULTS}
+        updateSettings={vi.fn()}
+      />
+    )
+
+    const toggle = screen.getByRole('switch', { name: 'Canvas connections' })
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(toggle)
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'TOGGLE_CANVAS_EDGES' })
   })
 
   it('renders focused node depth and clear-focus accessible label', () => {

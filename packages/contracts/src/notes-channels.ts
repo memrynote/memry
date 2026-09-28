@@ -35,6 +35,12 @@ export const NotesChannels = {
     GET_TAGS: 'notes:get-tags',
     /** Get note links (outgoing and incoming) */
     GET_LINKS: 'notes:get-links',
+    /** Nearest notes by local embedding, excluding already-linked notes */
+    GET_SIMILAR: 'notes:get-similar',
+    /** Tags carried by a note's nearest neighbours */
+    GET_TAG_SUGGESTIONS: 'notes:get-tag-suggestions',
+    /** Group notes by local embedding similarity */
+    CLUSTER: 'notes:cluster',
     /** Get folder structure */
     GET_FOLDERS: 'notes:get-folders',
     /** Create a new folder */

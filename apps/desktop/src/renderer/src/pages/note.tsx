@@ -58,6 +58,7 @@ import {
   backlinkId
 } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
+import { NoteSimilarNotes, NoteSuggestedTags } from '@/components/note/similar-notes'
 import {
   useNote,
   useNoteMutations,
@@ -915,6 +916,7 @@ export function NotePage({ noteId }: NotePageProps) {
     () => collectOriginalNames(attachmentsEditorRef.current),
     []
   )
+  const getAttachmentsEditor = useCallback(() => attachmentsEditorRef.current, [])
   const getEditorContainer = useCallback(() => editorContainerRef.current, [])
   const getNoteBody = useCallback(() => noteBodyRef.current, [])
   // The map is built when it opens, but a restored tab reopens it before the
@@ -1882,6 +1884,8 @@ export function NotePage({ noteId }: NotePageProps) {
             hideAddButton
           />
 
+          <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted} />
+
           {properties.length > 0 && (
             <InfoSection
               properties={properties}
@@ -2066,6 +2070,15 @@ export function NotePage({ noteId }: NotePageProps) {
             tasks={linkedTasks}
             isLoading={linkedTasksLoading}
             onTaskClick={handleLinkedTaskClick}
+          />
+
+          <NoteSimilarNotes
+            noteId={noteId}
+            getEditor={getAttachmentsEditor}
+            largeFile={isLargeFile}
+            reviewing={Boolean(agentReview)}
+            deleted={isDeleted}
+            openLinked={openLinked}
           />
         </div>
       </div>

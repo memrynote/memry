@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 118,
+    "exportedCaseCount": 122,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 128,
+    "caseCount": 132,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -785,6 +785,34 @@
       "canonical": null,
       "pending": null,
       "sha256": "86dd52eda31de6005ca695c760e72bf4b710959cb7efe73f414a3a3dac7a4e74"
+    },
+    {
+      "name": "memry-view fence",
+      "markdown": "```memry-view\n{\n  \"source\": {\n    \"kind\": \"tag\",\n    \"tag\": \"inbox-thought\"\n  },\n  \"layout\": \"list\"\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "494219d9d6bd330016a36fcd1814c2947558c6e5bf3a7f618387291c1bdccbf8"
+    },
+    {
+      "name": "memry-view fence with a filter and a template variable",
+      "markdown": "```memry-view\n{\n  \"source\": {\n    \"kind\": \"vault\"\n  },\n  \"filters\": \"created after \\\"{{date:YYYY-MM-DD}}\\\"\"\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "aeb9ebd6e2f98e49685eba5defc58ba9292b3233c907cfc1beef4cca03d79ed3"
+    },
+    {
+      "name": "empty memry-view fence",
+      "markdown": "```memry-view\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "26c36118e211f722f7cf5d87fe3a4915359aa4bb594d366036e15b033aa4175a"
+    },
+    {
+      "name": "memry-view fence between paragraphs",
+      "markdown": "Today\n\n```memry-view\n{\"source\":{\"kind\":\"vault\"}}\n```\n\nLater",
+      "canonical": null,
+      "pending": null,
+      "sha256": "bbe6d8e4f1afc6b9e7c75074a35abfa54da76c080ce035a8da5b819687ec456c"
     },
     {
       "name": "asterisk bullets",

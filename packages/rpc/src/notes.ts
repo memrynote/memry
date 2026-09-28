@@ -16,7 +16,12 @@ import type {
   LargeFileLinesResult,
   LargeFileIndexEvent,
   LargeFileSearchResult,
-  LargeFileSearchProgressEvent
+  LargeFileSearchProgressEvent,
+  CanvasLinkVia,
+  LinkVia,
+  SimilarNotesResponse,
+  NoteTagSuggestionsResponse,
+  NoteClustersResponse
 } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
@@ -368,6 +373,7 @@ export interface NoteLink {
   sourceId: string
   targetId: string | null
   targetTitle: string
+  via?: CanvasLinkVia
 }
 
 export interface BacklinkContext {
@@ -381,7 +387,7 @@ export interface Backlink {
   sourcePath: string
   sourceTitle: string
   contexts: BacklinkContext[]
-  via?: { kind: 'property'; propertyName: string }
+  via?: LinkVia
 }
 
 export interface NoteLinksResponse {
@@ -566,6 +572,20 @@ export const notesRpc = defineDomain({
     getLinks: defineMethod<(id: string) => Promise<NoteLinksResponse>>({
       channel: NotesChannels.invoke.GET_LINKS,
       params: ['id']
+    }),
+    getSimilar: defineMethod<(noteId: string, limit?: number) => Promise<SimilarNotesResponse>>({
+      channel: NotesChannels.invoke.GET_SIMILAR,
+      params: ['noteId', 'limit'],
+      invokeArgs: ['{ noteId, limit }']
+    }),
+    getTagSuggestions: defineMethod<(noteId: string) => Promise<NoteTagSuggestionsResponse>>({
+      channel: NotesChannels.invoke.GET_TAG_SUGGESTIONS,
+      params: ['noteId']
+    }),
+    cluster: defineMethod<(noteIds: string[]) => Promise<NoteClustersResponse>>({
+      channel: NotesChannels.invoke.CLUSTER,
+      params: ['noteIds'],
+      invokeArgs: ['{ noteIds }']
     }),
     getFolders: defineMethod<() => Promise<FolderInfo[]>>({
       channel: NotesChannels.invoke.GET_FOLDERS

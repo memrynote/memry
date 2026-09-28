@@ -441,31 +441,62 @@ export function findFreeCardCenter(
   return { x: centerX, y: centerY }
 }
 
-/**
- * Parses the canvas drag payload from a DataTransfer-like getData function.
- * Returns null when the drag is not a canvas item (no MIME / bad JSON).
- */
-export function readCanvasDragItem(
-  getData: (type: string) => string
-): { entityType: CanvasEntityType; entityId: string } | null {
-  const raw = getData(CANVAS_ITEM_DRAG_MIME)
-  if (!raw) {
+function readDragRef(value: unknown): CanvasEntityRef | null {
+  if (!value || typeof value !== 'object') {
     return null
   }
-  try {
-    const parsed = JSON.parse(raw) as { entityType?: unknown; entityId?: unknown }
-    if (isEntityType(parsed.entityType) && typeof parsed.entityId === 'string' && parsed.entityId) {
-      return { entityType: parsed.entityType, entityId: parsed.entityId }
-    }
-  } catch {
-    return null
+  const { entityType, entityId } = value as { entityType?: unknown; entityId?: unknown }
+  if (isEntityType(entityType) && typeof entityId === 'string' && entityId) {
+    return { entityType, entityId }
   }
   return null
+}
+
+/**
+ * Parses the canvas drag payload from a DataTransfer-like getData function:
+ * one `{ entityType, entityId }` object (a single row) or an array of them (a
+ * multi-row drag from a folder or tag view). Invalid entries are dropped.
+ * Returns [] when the drag is not a canvas item (no MIME / bad JSON).
+ */
+export function readCanvasDragItems(getData: (type: string) => string): CanvasEntityRef[] {
+  const raw = getData(CANVAS_ITEM_DRAG_MIME)
+  if (!raw) {
+    return []
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return []
+  }
+  const entries = Array.isArray(parsed) ? parsed : [parsed]
+  const seen = new Set<string>()
+  const refs: CanvasEntityRef[] = []
+  for (const entry of entries) {
+    const ref = readDragRef(entry)
+    if (!ref || seen.has(entityKey(ref.entityType, ref.entityId))) {
+      continue
+    }
+    seen.add(entityKey(ref.entityType, ref.entityId))
+    refs.push(ref)
+  }
+  return refs
 }
 
 /** Serializes a canvas drag payload for dataTransfer.setData. */
 export function canvasDragPayload(entityType: CanvasEntityType, entityId: string): string {
   return JSON.stringify({ entityType, entityId })
+}
+
+/**
+ * Serializes a multi-item drag payload. A single ref keeps the one-object
+ * shape, so a one-row drag is byte-identical to what the sidebar tree sends.
+ */
+export function canvasDragPayloadMany(refs: readonly CanvasEntityRef[]): string {
+  if (refs.length === 1) {
+    return canvasDragPayload(refs[0].entityType, refs[0].entityId)
+  }
+  return JSON.stringify(refs.map(({ entityType, entityId }) => ({ entityType, entityId })))
 }
 
 /**
