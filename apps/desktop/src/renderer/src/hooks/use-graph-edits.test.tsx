@@ -141,6 +141,65 @@ describe('useGraphEdits', () => {
     expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-a', tags: ['work'] })
   })
 
+  it('does not write or toast when the unlink target is not in any relation', async () => {
+    const { edits } = setup()
+    mocks.propertiesGet.mockResolvedValue(props({ related: ['memry://note/c'] }))
+
+    await act(() => edits.unlinkNotes('note-a', 'note-b', labels))
+
+    expect(mocks.propertiesSet).not.toHaveBeenCalled()
+    expect(mocks.toast).not.toHaveBeenCalled()
+  })
+
+  it('reports failed unlink, tag and undo writes as error toasts', async () => {
+    const { edits } = setup()
+
+    mocks.propertiesGet.mockRejectedValueOnce(new Error('read failed'))
+    await act(() => edits.unlinkNotes('note-a', 'note-b', labels))
+    expect(mocks.toast.error).toHaveBeenLastCalledWith('read failed')
+
+    mocks.notesGet.mockResolvedValueOnce(null)
+    await act(() => edits.addTag('note-a', 'reading'))
+    expect(mocks.toast.error).toHaveBeenLastCalledWith('Note not found')
+
+    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', tags: [] })
+    mocks.updateNote.mockResolvedValueOnce({ success: false, note: null, error: 'locked' })
+    await act(() => edits.addTag('note-a', 'reading'))
+    expect(mocks.toast.error).toHaveBeenLastCalledWith('locked')
+
+    // A link that lands, then an undo whose re-read fails.
+    mocks.propertiesGet.mockResolvedValueOnce([])
+    await act(() => edits.linkNotes('note-a', 'note-b', labels))
+    mocks.propertiesGet.mockRejectedValueOnce(new Error('undo read failed'))
+    await act(async () => {
+      lastUndo()()
+      await vi.waitFor(() => expect(mocks.toast.error).toHaveBeenLastCalledWith('undo read failed'))
+    })
+    expect(mocks.propertiesSet).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips the undo write when the edit was already reverted elsewhere', async () => {
+    const { edits } = setup()
+    mocks.propertiesGet.mockResolvedValueOnce([])
+    await act(() => edits.linkNotes('note-a', 'note-b', labels))
+
+    mocks.propertiesGet.mockResolvedValueOnce(props({ related: [] }))
+    await act(async () => {
+      lastUndo()()
+      await vi.waitFor(() => expect(mocks.propertiesGet).toHaveBeenCalledTimes(2))
+    })
+    expect(mocks.propertiesSet).toHaveBeenCalledTimes(1)
+
+    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', tags: [] })
+    await act(() => edits.addTag('note-a', 'reading'))
+    mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', tags: [] })
+    await act(async () => {
+      lastUndo()()
+      await vi.waitFor(() => expect(mocks.notesGet).toHaveBeenCalledTimes(2))
+    })
+    expect(mocks.updateNote).toHaveBeenCalledTimes(1)
+  })
+
   it('skips a tag the note already has, ignoring case', async () => {
     const { edits } = setup()
     mocks.notesGet.mockResolvedValue({ id: 'note-a', title: 'Alpha', tags: ['Reading'] })

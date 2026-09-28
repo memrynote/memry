@@ -118,6 +118,52 @@ describe('GraphContextMenu editing', () => {
     expect(screen.queryByText('Add tag…')).not.toBeInTheDocument()
   })
 
+  it('runs the plain items and closes the menu', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const { onFocusNode, onOpenInTab, onClose } = renderMenu('a')
+
+    fireEvent.click(screen.getByText('Focus on this node'))
+    fireEvent.click(screen.getByText('Open in new tab'))
+    fireEvent.click(screen.getByText('Copy title'))
+
+    expect(onFocusNode).toHaveBeenCalledWith('a')
+    expect(onOpenInTab).toHaveBeenCalledWith('a')
+    expect(writeText).toHaveBeenCalledWith('Alpha')
+    expect(onClose).toHaveBeenCalledTimes(3)
+  })
+
+  it('shows an empty state and ignores Enter when nothing matches', () => {
+    const { onLinkTo, onAddTag } = renderMenu('a')
+
+    fireEvent.click(screen.getByText('Link to…'))
+    const linkInput = screen.getByLabelText('Search notes…')
+    fireEvent.change(linkInput, { target: { value: 'zzz' } })
+    expect(screen.getByText('No matches')).toBeInTheDocument()
+    fireEvent.keyDown(linkInput, { key: 'Enter' })
+    expect(onLinkTo).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByLabelText('Back'))
+    fireEvent.click(screen.getByText('Add tag…'))
+    const tagInput = screen.getByLabelText('Search or create a tag…')
+    // `work` is already on the node, so there is nothing to suggest or create.
+    fireEvent.change(tagInput, { target: { value: 'work' } })
+    expect(screen.getByText('No matches')).toBeInTheDocument()
+    fireEvent.keyDown(tagInput, { key: 'Enter' })
+    expect(onAddTag).not.toHaveBeenCalled()
+  })
+
+  it('picks an exact or the first suggested tag on Enter', () => {
+    const { onAddTag } = renderMenu('a')
+
+    fireEvent.click(screen.getByText('Add tag…'))
+    const input = screen.getByLabelText('Search or create a tag…')
+    fireEvent.change(input, { target: { value: 'IDEAS' } })
+    expect(screen.queryByText('Create #ideas')).not.toBeInTheDocument()
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onAddTag).toHaveBeenLastCalledWith('a', 'ideas')
+  })
+
   it('returns to the main menu from a picker', () => {
     renderMenu('a')
 
