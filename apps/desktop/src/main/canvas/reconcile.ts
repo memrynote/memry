@@ -53,6 +53,7 @@ import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { enqueueLocalSyncUpdate } from '../sync/local-mutations'
+import { rewriteCanvasEdges } from './edge-index'
 import { extractEntityRefsFromScene } from './scene-refs'
 import { decryptCanvasLibraryItemForVault, decryptCanvasSceneForVault } from './encryption'
 import { folderSegments, isDescendantFolder, MAX_CANVAS_FOLDER_DEPTH } from './folder-paths'
@@ -736,12 +737,22 @@ export async function reconcileCanvasFiles(
     .from(canvases)
     .where(isNull(canvases.deletedAt))
     .all()
-  for (const row of currentPaths) {
-    if (!row.filePath) continue
-    if (readCanvasFileSync(resolveCanvasFile(vaultPath, row.filePath)) === null) {
-      result.missingFiles += 1
+  //
+  // The same read rebuilds each canvas's arrow edges from its file. That is the
+  // backfill for canvases saved before `canvas_entity_edges` existed, and it
+  // picks up a document edited outside the app. A missing file keeps whatever
+  // edges the row had: the ink may still come back (see above).
+  db.transaction((tx) => {
+    for (const row of currentPaths) {
+      if (!row.filePath) continue
+      const content = readCanvasFileSync(resolveCanvasFile(vaultPath, row.filePath))
+      if (content === null) {
+        result.missingFiles += 1
+        continue
+      }
+      rewriteCanvasEdges(tx, row.id, stripCanvasMeta(content))
     }
-  }
+  })
 
   if (
     result.migrated ||

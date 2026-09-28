@@ -567,6 +567,10 @@
     "showMore": "Show {count} more outgoing links",
     "more": "{count} more"
   },
+  "canvasLinks": {
+    "connectedOn": "Connected on {canvas}",
+    "untitledCanvas": "Untitled canvas"
+  },
   "comments": {
     "railAria": "Comments",
     "badgeAria": "{count, plural, one {# comment} other {# comments}}",

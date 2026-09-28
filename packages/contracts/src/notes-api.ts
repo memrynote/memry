@@ -111,10 +111,27 @@ export interface NoteListItem {
  */
 export type NoteListFields = 'full' | 'tree'
 
+/** A connection drawn on a canvas: an arrow from one card to another (#2482). */
+export interface CanvasLinkVia {
+  kind: 'canvas'
+  canvasId: string
+  /** Null for an untitled canvas. */
+  canvasTitle: string | null
+}
+
+/**
+ * Where a non-wiki-link reference comes from. Absent on a plain `[[link]]`.
+ * Older builds only knew `property`; a renderer must tolerate kinds it does
+ * not know by falling back to the plain title.
+ */
+export type LinkVia = { kind: 'property'; propertyName: string } | CanvasLinkVia
+
 export interface NoteLink {
   sourceId: string
   targetId: string | null
   targetTitle: string
+  /** Set for a canvas arrow; absent for a wiki link. */
+  via?: CanvasLinkVia
 }
 
 export interface BacklinkContext {
@@ -128,7 +145,7 @@ export interface Backlink {
   sourcePath: string
   sourceTitle: string
   contexts: BacklinkContext[]
-  via?: { kind: 'property'; propertyName: string }
+  via?: LinkVia
 }
 
 // ============================================================================

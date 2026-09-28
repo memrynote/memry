@@ -54,6 +54,7 @@ const mocks = vi.hoisted(() => ({
   },
   notesListeners: {} as Record<string, (...args: any[]) => void>,
   taskListeners: {} as Record<string, (...args: any[]) => void>,
+  canvasListeners: {} as Record<string, (...args: any[]) => void>,
   unsubscribe: vi.fn()
 }))
 
@@ -165,6 +166,19 @@ vi.mock('@/services/tasks-service', () => {
     onTaskCreated: subscribe('created'),
     onTaskUpdated: subscribe('updated'),
     onTaskDeleted: subscribe('deleted')
+  }
+})
+
+vi.mock('@/services/canvas-service', () => {
+  const subscribe = (name: string) =>
+    vi.fn((callback: () => void) => {
+      mocks.canvasListeners[name] = callback
+      return mocks.unsubscribe
+    })
+  return {
+    onCanvasCreated: subscribe('created'),
+    onCanvasUpdated: subscribe('updated'),
+    onCanvasDeleted: subscribe('deleted')
   }
 })
 
@@ -621,6 +635,8 @@ describe('state and settings hooks', () => {
     act(() => filters.result.current.dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: 'note' }))
     expect(filters.result.current.filterState.showNotes).toBe(false)
     act(() => filters.result.current.dispatch({ type: 'TOGGLE_ORPHANS' }))
+    act(() => filters.result.current.dispatch({ type: 'TOGGLE_CANVAS_EDGES' }))
+    expect(filters.result.current.filterState.showCanvasEdges).toBe(false)
     act(() => filters.result.current.dispatch({ type: 'SET_SELECTED_TAGS', tags: ['work'] }))
     act(() =>
       filters.result.current.dispatch({ type: 'SET_FOCUS_NODE', nodeId: 'note-1', depth: 3 })
@@ -650,6 +666,10 @@ describe('state and settings hooks', () => {
     })
     // The graph refetch is debounced so one save cannot fan out into several.
     expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ['graph'] })
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['graph'] }))
+    // Canvas arrows are graph edges, so a canvas save refreshes the graph too.
+    invalidate.mockClear()
+    act(() => mocks.canvasListeners.updated())
     await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['graph'] }))
 
     const graphSettings = renderHook(() => useGraphSettings(), { wrapper })

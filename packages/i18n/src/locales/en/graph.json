@@ -53,6 +53,7 @@
     "projects": "Projects",
     "tags": "Tags",
     "orphans": "Orphans",
+    "canvas-edges": "Canvas connections",
     "toggle-entity": "Toggle {label}",
     "toggle-orphans": "Toggle orphan nodes"
   },

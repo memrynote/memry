@@ -1872,6 +1872,7 @@
     --graph-edge-task-note: #c4a46a;
     --graph-edge-project-task: #9a8abd;
     --graph-edge-tag-cooccurrence: #a8a6a1;
+    --graph-edge-canvas: #6b8fb8;
     --graph-ghost-node: #c4c2bc;
     --graph-dimmed-node: #e4e4de;
     --graph-edge-soft: #a8a6a0;
@@ -2011,6 +2012,7 @@
     --graph-edge-task-note: #c4a46a;
     --graph-edge-project-task: #9a8abd;
     --graph-edge-tag-cooccurrence: #c4c2bc;
+    --graph-edge-canvas: #5f86b3;
     --graph-ghost-node: #d4d2cc;
     --graph-dimmed-node: #e3e2e0;
     --graph-edge-soft: #bfbdb6;
@@ -2150,6 +2152,7 @@
     --graph-edge-task-note: #b89a5a;
     --graph-edge-project-task: #8a7aad;
     --graph-edge-tag-cooccurrence: #5a5855;
+    --graph-edge-canvas: #7aa2cf;
     --graph-ghost-node: #3a3840;
     --graph-dimmed-node: #2a2830;
     --graph-edge-soft: #6b6966;

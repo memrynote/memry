@@ -216,6 +216,7 @@ const filters: GraphFilterState = {
   showProjects: true,
   showTags: true,
   showOrphans: true,
+  showCanvasEdges: true,
   selectedTags: [],
   focusNodeId: null,
   focusDepth: 1,
@@ -270,6 +271,39 @@ describe('GraphCanvas', () => {
 
     expect(screen.getByText("Graph isn't available on this device")).toBeInTheDocument()
     expect(screen.queryByTestId('sigma')).not.toBeInTheDocument()
+  })
+
+  it('hides canvas edges when the canvas filter is off, and keeps their own colour when on', () => {
+    const withCanvas: GraphDataResponse = {
+      ...data,
+      edges: [
+        ...data.edges,
+        { id: 'edge-canvas', source: 'note-a', target: 'note-b', type: 'canvas', weight: 1 }
+      ]
+    }
+    const canvasAttrs = { edgeType: 'canvas', color: '#123456', size: 1.5 }
+
+    const reduceWith = (filterState: GraphFilterState) => {
+      const { unmount } = render(
+        <GraphCanvas
+          data={withCanvas}
+          filterState={filterState}
+          graphSettings={settings}
+          onFocusNode={vi.fn()}
+        />
+      )
+      const result = graphCanvasMocks.sigmaContainerProps?.settings.edgeReducer(
+        'note-a-note-b-canvas',
+        canvasAttrs
+      )
+      unmount()
+      return result
+    }
+
+    const shown = reduceWith(filters)
+    expect(shown).toMatchObject({ color: '#123456' })
+    expect(shown.hidden).toBeUndefined()
+    expect(reduceWith({ ...filters, showCanvasEdges: false }).hidden).toBe(true)
   })
 
   it('builds sigma settings, applies reducers, and handles hover/context menu actions', async () => {

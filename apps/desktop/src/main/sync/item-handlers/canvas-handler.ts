@@ -26,6 +26,7 @@ import { normalizeFolder } from '../../canvas/folder-paths'
 import { readCanvasScene, writeCanvasScene } from '../../canvas/store'
 import { getCanvasVaultPath } from '../../canvas/vault-path'
 import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
+import { clearCanvasEdges, rewriteCanvasEdges } from '../../canvas/edge-index'
 import { readMemryAssets } from '../../canvas/assets/memry-assets'
 import { ensureAssetsPresent, reconcileCanvasAssets } from '../../canvas/assets/asset-service'
 import { buildAssetServiceContext } from '../../canvas/assets/asset-service-context'
@@ -40,6 +41,7 @@ const log = createLogger('CanvasHandler')
 
 type CanvasTx = Parameters<Parameters<DrizzleDb['transaction']>[0]>[0]
 
+/** Advisory entity refs AND arrow edges, both derived from the scene being applied. */
 function writeRefs(tx: CanvasTx, canvasId: string, scene: string): void {
   for (const ref of extractEntityRefsFromScene(scene)) {
     tx.insert(canvasEntityRefs)
@@ -47,6 +49,7 @@ function writeRefs(tx: CanvasTx, canvasId: string, scene: string): void {
       .onConflictDoNothing()
       .run()
   }
+  rewriteCanvasEdges(tx, canvasId, scene)
 }
 
 /**
@@ -372,6 +375,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       // D3: prune advisory refs in the same tx (FK cascade is dead code under a
       // soft delete).
       tx.delete(canvasEntityRefs).where(eq(canvasEntityRefs.canvasId, itemId)).run()
+      clearCanvasEdges(tx, itemId)
       ctx.emit(CanvasChannels.events.DELETED, { id: itemId })
       return 'applied'
     })

@@ -44,7 +44,8 @@ const MIGRATIONS = [
   '0045_canvas_files.sql',
   '0048_canvas_folders.sql',
   '0057_sync_unknown_fields.sql',
-  '0058_canvas_owner_note.sql'
+  '0058_canvas_owner_note.sql',
+  '0063_canvas_entity_edges.sql'
 ]
 
 function freshDb() {
@@ -273,6 +274,45 @@ describe('adoption', () => {
     expect(db.select().from(schema.canvasEntityRefs).all()).toMatchObject([
       { canvasId: 'c9', entityType: 'note', entityId: 'n1' }
     ])
+  })
+
+  it('rebuilds arrow edges from every live file on open (the backfill for older canvases)', async () => {
+    const connected = JSON.stringify({
+      type: 'excalidraw',
+      elements: [
+        { id: 'r1', type: 'rectangle', customData: { entityType: 'note', entityId: 'n1' } },
+        { id: 'r2', type: 'rectangle', customData: { entityType: 'note', entityId: 'n2' } },
+        {
+          id: 'a1',
+          type: 'arrow',
+          startBinding: { elementId: 'r1' },
+          endBinding: { elementId: 'r2' },
+          endArrowhead: 'arrow'
+        }
+      ]
+    })
+    // A canvas saved by a build that predates the edge table: row and file, no edges.
+    const created = createCanvas(db, vault, 'vault-1', { title: 'Old', scene: SCENE })
+    const filePath = db.select().from(schema.canvases).all()[0].filePath!
+    fs.writeFileSync(
+      path.join(vault, filePath),
+      withCanvasMeta(connected, { id: created.id, createdAt: 1, updatedAt: 1 })
+    )
+    expect(db.select().from(schema.canvasEntityEdges).all()).toEqual([])
+
+    await reconcileCanvasFiles(db, vault, 'vault-1')
+
+    expect(db.select().from(schema.canvasEntityEdges).all()).toMatchObject([
+      { canvasId: created.id, arrowId: 'a1', sourceId: 'n1', targetId: 'n2' }
+    ])
+
+    // An arrow removed outside the app is gone after the next open.
+    fs.writeFileSync(
+      path.join(vault, filePath),
+      withCanvasMeta(SCENE, { id: created.id, createdAt: 1, updatedAt: 1 })
+    )
+    await reconcileCanvasFiles(db, vault, 'vault-1')
+    expect(db.select().from(schema.canvasEntityEdges).all()).toEqual([])
   })
 
   it('reports a missing document but NEVER tombstones the row', async () => {

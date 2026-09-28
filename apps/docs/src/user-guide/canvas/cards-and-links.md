@@ -199,5 +199,28 @@ To remove a link, use the **remove** button in that same bubble.
 Draw an arrow from one card to another and it binds to both. Move a card and the
 arrow follows. Links are saved with the canvas.
 
-Canvas arrows are visual: they do not create wiki links or backlinks between the
-underlying notes.
+An arrow between two cards is also a real connection, so you do not have to make
+it a second time as a wiki link:
+
+- **Arrow from note A to note B.** A's **Outgoing links** list B, and B's
+  **Backlinks** list A. Both entries say **Connected on** and the canvas name.
+- **In the graph**, the two items are joined by a canvas edge in its own colour.
+  This works between notes, tasks and projects. Calendar events and files are
+  not graph nodes, so their arrows only stay on the board.
+- **Direction follows the arrowhead.** An arrow with its only head at the start
+  points from the far end back to the near one. An arrow with heads at both ends,
+  or at neither, counts from where you started drawing it.
+
+An arrow only counts when **both** of its ends are attached to a card. An arrow
+that ends on a plain shape, on text, or in empty space stays a drawing. So does
+an arrow that loops back to the same item.
+
+Delete the arrow or either card and the connection goes away the next time the
+canvas saves. Several arrows between the same two cards on one board are one
+connection. The same pair connected on two boards shows once per board in
+backlinks.
+
+Nothing is written into your notes. The connection is read from the canvas file,
+so it syncs with the canvas and appears on your other devices once they update
+to this version. Other apps that open your vault do not see it, because it is
+not a `[[wiki link]]`.

@@ -7,6 +7,8 @@ export interface GraphFilterState {
   showProjects: boolean
   showTags: boolean
   showOrphans: boolean
+  /** Edges drawn as arrows between cards on a canvas. */
+  showCanvasEdges: boolean
   selectedTags: string[]
   focusNodeId: string | null
   focusDepth: number
@@ -16,6 +18,7 @@ export interface GraphFilterState {
 export type GraphFilterAction =
   | { type: 'TOGGLE_ENTITY_TYPE'; entityType: 'note' | 'task' | 'journal' | 'project' | 'tag' }
   | { type: 'TOGGLE_ORPHANS' }
+  | { type: 'TOGGLE_CANVAS_EDGES' }
   | { type: 'SET_SELECTED_TAGS'; tags: string[] }
   | { type: 'SET_FOCUS_NODE'; nodeId: string; depth?: number }
   | { type: 'SET_FOCUS_DEPTH'; depth: number }
@@ -30,6 +33,7 @@ const INITIAL_STATE: GraphFilterState = {
   showProjects: true,
   showTags: true,
   showOrphans: true,
+  showCanvasEdges: true,
   selectedTags: [],
   focusNodeId: null,
   focusDepth: 2,
@@ -52,6 +56,8 @@ function filterReducer(state: GraphFilterState, action: GraphFilterAction): Grap
     }
     case 'TOGGLE_ORPHANS':
       return { ...state, showOrphans: !state.showOrphans }
+    case 'TOGGLE_CANVAS_EDGES':
+      return { ...state, showCanvasEdges: !state.showCanvasEdges }
     case 'SET_SELECTED_TAGS':
       return { ...state, selectedTags: action.tags }
     case 'SET_FOCUS_NODE':
@@ -81,6 +87,7 @@ export function useGraphFilters(): {
     !filterState.showProjects ||
     !filterState.showTags ||
     !filterState.showOrphans ||
+    !filterState.showCanvasEdges ||
     filterState.selectedTags.length > 0 ||
     filterState.focusNodeId !== null ||
     filterState.searchQuery.length > 0

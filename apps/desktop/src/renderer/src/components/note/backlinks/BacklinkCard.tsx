@@ -14,9 +14,16 @@ interface BacklinkCardProps {
 export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: BacklinkCardProps) {
   const { t } = useT('notes')
   const { noteId, noteTitle, mentions, via } = backlink
-  const displayLabel = via
-    ? t('backlinks.viaProperty', { property: via.propertyName, title: noteTitle })
-    : noteTitle
+  const displayLabel =
+    via?.kind === 'property'
+      ? t('backlinks.viaProperty', { property: via.propertyName, title: noteTitle })
+      : noteTitle
+  const canvasLabel =
+    via?.kind === 'canvas'
+      ? t('canvasLinks.connectedOn', {
+          canvas: via.canvasTitle || t('canvasLinks.untitledCanvas')
+        })
+      : null
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   // A property-sourced backlink has no text mentions to reveal, so there is
   // nothing to expand — rendering the chevron would offer a toggle that does
@@ -42,6 +49,9 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
     >
       {displayLabel}
     </span>
+  )
+  const canvasNote = canvasLabel && (
+    <span className="flex-shrink-0 truncate text-[11px] text-text-tertiary">{canvasLabel}</span>
   )
 
   return (
@@ -72,7 +82,10 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
             {titleLink}
           </button>
         ) : (
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">{titleLink}</div>
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            {titleLink}
+            {canvasNote}
+          </div>
         )}
 
         {mentions.length > 1 && (

@@ -107,6 +107,34 @@ export const canvasEntityRefs = sqliteTable(
   ]
 )
 
+/**
+ * Advisory index of canvas arrows that connect two cards: one row per arrow
+ * whose start AND end are bound to entity cards. Rewritten from the scene
+ * wherever canvas_entity_refs is, plus on every vault open (the backfill for
+ * canvases saved before this table existed). Direction follows the arrow:
+ * source is the card it starts on, target the card it ends on.
+ */
+export const canvasEntityEdges = sqliteTable(
+  'canvas_entity_edges',
+  {
+    canvasId: text('canvas_id')
+      .notNull()
+      .references(() => canvases.id, { onDelete: 'cascade' }),
+    arrowId: text('arrow_id').notNull(),
+    sourceType: text('source_type').$type<CanvasEntityType>().notNull(),
+    sourceId: text('source_id').notNull(),
+    targetType: text('target_type').$type<CanvasEntityType>().notNull(),
+    targetId: text('target_id').notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.canvasId, table.arrowId] }),
+    index('idx_canvas_edges_source').on(table.sourceType, table.sourceId),
+    index('idx_canvas_edges_target').on(table.targetType, table.targetId)
+  ]
+)
+
+export type CanvasEntityEdgeRow = typeof canvasEntityEdges.$inferSelect
+
 export type CanvasRow = typeof canvases.$inferSelect
 export type NewCanvasRow = typeof canvases.$inferInsert
 export type CanvasEntityRefRow = typeof canvasEntityRefs.$inferSelect

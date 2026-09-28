@@ -254,6 +254,7 @@ Headings take no hover colour: `--sidebar-foreground`, the old hover target, is 
 | `--graph-edge-task-note`        | `#c4a46a` | `#c4a46a` | `#b89a5a` | Task-note edges          |
 | `--graph-edge-project-task`     | `#9a8abd` | `#9a8abd` | `#8a7aad` | Project-task edges       |
 | `--graph-edge-tag-cooccurrence` | `#a8a6a1` | `#c4c2bc` | `#5a5855` | Tag co-occurrence edges  |
+| `--graph-edge-canvas`           | `#6b8fb8` | `#5f86b3` | `#7aa2cf` | Canvas arrow edges       |
 | `--graph-ghost-node`            | `#c4c2bc` | `#d4d2cc` | `#3a3840` | Orphan/ghost nodes       |
 | `--graph-dimmed-node`           | `#e4e4de` | `#e3e2e0` | `#2a2830` | Dimmed (unfocused) nodes |
 | `--graph-edge-soft`             | `#a8a6a0` | `#bfbdb6` | `#6b6966` | Soft background edges    |

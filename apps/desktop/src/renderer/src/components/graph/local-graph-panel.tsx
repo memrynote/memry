@@ -8,7 +8,7 @@ import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import { Button } from '@/components/ui/button'
 import { useLocalGraphData } from '@/hooks/use-graph-data'
-import { buildGraphologyGraph } from '@/lib/graph-builder'
+import { buildGraphologyGraph, keepsOwnEdgeColor } from '@/lib/graph-builder'
 import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 import { hasWebGLSupport } from '@/lib/webgl-support'
 import type { GraphPhysicsOptions } from '@/lib/graph-physics'
@@ -108,7 +108,11 @@ export function LocalGraphPanel({
       const fade = fadeRef.current
 
       if (!activeHover || fade === 0 || !graph.hasNode(activeHover)) {
-        return { ...(attrs as Partial<EdgeDisplayData>), color: softEdgeColor, size: 1 }
+        return {
+          ...(attrs as Partial<EdgeDisplayData>),
+          color: keepsOwnEdgeColor(attrs) ? (attrs.color as string) : softEdgeColor,
+          size: 1
+        }
       }
 
       const [source, target] = graph.extremities(edge)
@@ -117,7 +121,7 @@ export function LocalGraphPanel({
         const targetSize = ((attrs.size as number) ?? 1) + 2
         return {
           ...(attrs as Partial<EdgeDisplayData>),
-          color: softEdgeColor,
+          color: keepsOwnEdgeColor(attrs) ? (attrs.color as string) : softEdgeColor,
           size: 1 + (targetSize - 1) * fade
         }
       }

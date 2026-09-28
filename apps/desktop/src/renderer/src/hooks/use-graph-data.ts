@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import { onNoteCreated, onNoteUpdated, onNoteDeleted } from '@/services/notes-service'
 import { onTaskCreated, onTaskUpdated, onTaskDeleted } from '@/services/tasks-service'
+import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 
 export const graphKeys = {
   all: ['graph'] as const,
@@ -53,7 +54,11 @@ export function useGraphReactivity(): void {
       onNoteDeleted(invalidateAll),
       onTaskCreated(invalidateAll),
       onTaskUpdated(invalidateAll),
-      onTaskDeleted(invalidateAll)
+      onTaskDeleted(invalidateAll),
+      // Canvas arrows between cards are graph edges.
+      onCanvasCreated(invalidateAll),
+      onCanvasUpdated(invalidateAll),
+      onCanvasDeleted(invalidateAll)
     ]
 
     return () => {
