@@ -1655,6 +1655,38 @@ describe('ContentArea', () => {
     expect(await slashController.getItems('mermaid')).toEqual([])
   })
 
+  it('offers the view row under /view, and not in a table cell', async () => {
+    // #given
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+
+    // #when / #then an alias finds it too
+    expect(await slashController.getItems('database')).toEqual([
+      expect.objectContaining({
+        title: 'View',
+        subtext: 'A live list of notes from a folder, a tag or the whole vault'
+      })
+    ])
+
+    // #given a caret inside a cell: a view is a block (#1640)
+    contentAreaMocks.editor.transact = (run: (tr: unknown) => unknown) =>
+      run({
+        selection: {
+          $from: {
+            depth: 3,
+            node: (depth: number) => ({
+              type: { name: ['table', 'tableRow', 'tableCell'][depth - 1] }
+            })
+          }
+        }
+      })
+
+    // #then
+    expect(await slashController.getItems('database')).toEqual([])
+  })
+
   it('registers the wiki-link edit plugin, prepended, through the undo-safe wrapper', () => {
     render(<ContentArea noteId="note-1" />)
 

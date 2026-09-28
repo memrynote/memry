@@ -93,6 +93,8 @@ Variables are filled at apply time, not stored as text. Editing the resulting no
 
 If you change the default mid-month, existing entries don't change — only new ones use the new template.
 
+A journal template can carry a [view](/user-guide/notes/editing#views), so every day opens with the same live list — for example, notes tagged `inbox-thought` created since that day. See [Views in templates](/user-guide/notes/editing#views-in-templates).
+
 ## Using a Template
 
 When creating a note, the create dialog has a template picker. Choose a template; the note is seeded with its content. Variables resolve at that moment.

@@ -26,7 +26,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import type { SidebarItem } from '@/contexts/tabs/types'
+import { sidebarItemForRow } from '@/lib/folder-row-navigation'
 import { useOpenPage } from '@/hooks/use-open-target'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
@@ -78,8 +78,7 @@ import {
   type FilterExpression,
   type ColumnConfig,
   type GroupByConfig,
-  type ViewScope,
-  type NoteWithProperties
+  type ViewScope
 } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -96,44 +95,6 @@ interface FolderViewPageProps {
 
 /** Stable empty selection, so folder scope never produces a new array identity. */
 const EMPTY_TAG_SELECTION: string[] = []
-
-/**
- * The sidebar item a row opens as. A tag page can list tasks and inbox items
- * beside notes, and those live on their own pages — so the row's `kind`, not
- * the page, decides where it goes. Shared by the plain open and the
- * middle-click background open so a row lands in the same place either way.
- */
-function sidebarItemForRow(item: NoteWithProperties): SidebarItem {
-  const kind = item.kind ?? 'note'
-
-  if (kind === 'task') {
-    return {
-      type: 'tasks',
-      title: 'Tasks',
-      icon: 'CheckSquare',
-      path: '/tasks',
-      // No `selectedProjectId`: under tag scope a row carries no project id,
-      // only a folder name, so the Tasks page falls back to its default
-      // project scope.
-      viewState: { openTaskId: item.id, activeInternalTab: 'all', activeTab: 'all' }
-    }
-  }
-
-  if (kind === 'inbox') {
-    return {
-      type: 'inbox',
-      title: 'Inbox',
-      icon: 'Inbox',
-      path: '/inbox',
-      // Fresh `focusedAt` token so Inbox's focus effect re-fires even when the
-      // same item is opened twice in a row (it dedupes on the token) — see
-      // inbox.tsx's focus effect.
-      viewState: { focusInboxItemId: item.id, focusedAt: Date.now() }
-    }
-  }
-
-  return { type: 'note', path: item.path, entityId: item.id, title: item.title, emoji: item.emoji }
-}
 
 /**
  * Folder View Page Component

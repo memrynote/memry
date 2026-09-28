@@ -239,6 +239,14 @@
   color: var(--shiki-dark);
 }
 
+/* View block (#2488): a `memry-view` code block drawn as a live list of notes
+   (view-block.tsx). It is a code block to the document, not to the reader, so
+   it takes the note's own surface and ink instead of the code slab. */
+.bn-block-content[data-content-type='codeBlock'][data-language='memry-view'] {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
 /* Code text size. A bare `font-family: monospace` with no explicit font-size
    makes browsers fall back to their own fixed default (~13px), unrelated to the
    editor's S/M/L setting. `0.875em` re-ties code to that setting and keeps it a

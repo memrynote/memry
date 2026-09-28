@@ -283,6 +283,27 @@
       "disabledTitle": "Canvas is turned off",
       "disabledBody": "Turn on Canvas in Settings › Features to see and edit this whiteboard. The drawing is kept either way."
     },
+    "viewBlock": {
+      "title": "View",
+      "group": "Insert",
+      "subtext": "A live list of notes from a folder, a tag or the whole vault",
+      "sourceMenu": "What this view shows",
+      "chooseSource": "Choose what to show",
+      "sourceVault": "All notes",
+      "sourceFolder": "Folder",
+      "sourceTag": "Tag",
+      "noFolders": "No folders yet",
+      "noTags": "No tags yet",
+      "savedView": "Saved view",
+      "savedViewMissing": "The saved view “{name}” is gone, so this shows the default view.",
+      "openAsTab": "Open as tab",
+      "empty": "Nothing matches this view yet.",
+      "loadFailed": "Could not load this view. The notes themselves are untouched.",
+      "folderMissing": "This folder is not in the vault any more. Pick another source.",
+      "invalidJson": "This view’s definition is not valid JSON. Fix it below, or remove the block.",
+      "invalidShape": "This view’s definition has no source. Pick one above, or fix it below.",
+      "definition": "Definition"
+    },
     "slashMenu": {
       "aria": "Blocks and actions",
       "groups": {

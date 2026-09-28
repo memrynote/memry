@@ -599,6 +599,36 @@ const whiteboardCases: RoundtripCase[] = [
 ]
 
 /**
+ * A view block is a ```` ```memry-view ```` fence holding its definition as
+ * JSON (#2488). In every pipeline it is a plain `codeBlock` — only the desktop
+ * renderer draws it as a live list — so these cases pin that the fence and the
+ * two-space JSON inside it come back byte for byte, which is what lets an older
+ * build and Obsidian carry the block as code without touching it.
+ */
+const viewBlockCases: RoundtripCase[] = [
+  {
+    name: 'memry-view fence',
+    markdown:
+      '```memry-view\n{\n  "source": {\n    "kind": "tag",\n    "tag": "inbox-thought"\n  },\n  "layout": "list"\n}\n```'
+  },
+  {
+    // Escaped quotes inside a filter string, and a template variable that a
+    // journal template resolves when the day is created.
+    name: 'memry-view fence with a filter and a template variable',
+    markdown:
+      '```memry-view\n{\n  "source": {\n    "kind": "vault"\n  },\n  "filters": "created after \\"{{date:YYYY-MM-DD}}\\""\n}\n```'
+  },
+  {
+    name: 'empty memry-view fence',
+    markdown: '```memry-view\n```'
+  },
+  {
+    name: 'memry-view fence between paragraphs',
+    markdown: 'Today\n\n```memry-view\n{"source":{"kind":"vault"}}\n```\n\nLater'
+  }
+]
+
+/**
  * Spellings Memry never writes, from files it did not author (#1915). The
  * block tree cannot tell `* One` from `- One`, so `canonical` here records
  * the house style an EDITED region comes back in. What an untouched document
@@ -685,6 +715,7 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...nestedUnderListCases,
   ...diagramCases,
   ...whiteboardCases,
+  ...viewBlockCases,
   ...foreignSpellingCases
 ]
 

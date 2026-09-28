@@ -1431,6 +1431,13 @@ writes the same bytes out again, and a fence written by Obsidian or GitHub opens
 diagram. What the parse rule adds is priority — it runs before `codeBlock`'s, which would
 otherwise claim every `<pre><code>`.
 
+The **view block** (a live list of notes in a note) goes one step further and adds no node at
+all. It is a `codeBlock` whose `language` is `memry-view`, holding its definition as JSON
+(`@memry/shared/view-block`). The renderer passes `codeBlockViews` to `createMemrySchema`, which
+routes that one language to a React render and leaves the node, its parse rule and its fence to
+the code block. So there is nothing for y-prosemirror to delete on a client that predates it,
+nothing for main or the mobile WebView to register, and the round trip is the code block's.
+
 `whiteboard` is a pointer, not a drawing: its one prop is `canvasId`, the drawing stays in
 the canvas's own `.excalidraw` file, and the note holds one
 `![whiteboard](memry://canvas/<id>)` line. Main writes that line through the server spec's
