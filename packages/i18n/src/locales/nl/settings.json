@@ -1048,9 +1048,7 @@
     "globalCapture": {
       "title": "Mondiale vangst",
       "description": "Leg overal een notitie vast",
-      "permissionNeeded": "Toestemming nodig",
-      "active": "Actief",
-      "permissionHint": "Voor globale snelkoppelingen is toegankelijkheidstoestemming vereist. Ga naar Systeeminstellingen → Privacy → Toegankelijkheid en schakel memrynote in."
+      "active": "Actief"
     },
     "toasts": {
       "saveGlobalFailed": "Kan de globale snelkoppeling voor vastleggen niet opslaan",

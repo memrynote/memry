@@ -1048,9 +1048,7 @@
     "globalCapture": {
       "title": "Globális rögzítés",
       "description": "Jegyzet rögzítése bárhonnan",
-      "permissionNeeded": "Engedély szükséges",
-      "active": "Aktív",
-      "permissionHint": "A globális parancsikonokhoz kisegítő lehetőségekre van szükség. Lépjen a Rendszerbeállítások → Adatvédelem → Kisegítő lehetőségek menüpontra, és engedélyezze az memrynote-et."
+      "active": "Aktív"
     },
     "toasts": {
       "saveGlobalFailed": "Nem sikerült menteni a globális rögzítési parancsikont",

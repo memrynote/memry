@@ -1048,9 +1048,7 @@
     "globalCapture": {
       "title": "Globalne przechwytywanie",
       "description": "Przechwytuj notatki z dowolnego miejsca",
-      "permissionNeeded": "Potrzebne pozwolenie",
-      "active": "Aktywny",
-      "permissionHint": "Skróty globalne wymagają uprawnień Dostępność. Przejdź do Ustawienia systemu → Prywatność → Dostępność i włącz memrynote."
+      "active": "Aktywny"
     },
     "toasts": {
       "saveGlobalFailed": "Nie udało się zapisać globalnego skrótu do przechwytywania",

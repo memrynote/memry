@@ -1048,9 +1048,7 @@
     "globalCapture": {
       "title": "Yleinen sieppaus",
       "description": "Tallenna muistiinpano mistä tahansa",
-      "permissionNeeded": "Lupa tarvitaan",
-      "active": "Aktiivinen",
-      "permissionHint": "Yleiset pikakuvakkeet vaativat esteettömyysluvan. Siirry kohtaan Järjestelmäasetukset → Tietosuoja → Esteettömyys ja ota memrynote käyttöön."
+      "active": "Aktiivinen"
     },
     "toasts": {
       "saveGlobalFailed": "Yleisen kaappauksen pikakuvakkeen tallentaminen epäonnistui",

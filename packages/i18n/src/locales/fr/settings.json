@@ -1048,9 +1048,7 @@
     "globalCapture": {
       "title": "Capture globale",
       "description": "Capturez une note de n'importe où",
-      "permissionNeeded": "Autorisation requise",
-      "active": "Actif",
-      "permissionHint": "Les raccourcis globaux nécessitent une autorisation d’accessibilité. Accédez à Paramètres système → Confidentialité → Accessibilité et activez memrynote."
+      "active": "Actif"
     },
     "toasts": {
       "saveGlobalFailed": "Échec de l'enregistrement du raccourci de capture globale",

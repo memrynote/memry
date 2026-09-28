@@ -225,4 +225,4 @@ The <kbd>⌘</kbd>+<kbd>+</kbd> alias for zoom in only applies while Zoom In kee
 
 Editor formatting rows (Bold, Italic, Underline, Strikethrough, Inline code) are shown for reference and cannot be reassigned: the note editor owns those keys.
 
-You can also set a **Global Capture** hotkey there to open quick capture from any app (macOS requires Accessibility permission).
+You can also set a **Global Capture** hotkey there to open quick capture from any app. It needs no extra system permission.

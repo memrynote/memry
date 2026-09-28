@@ -1048,9 +1048,7 @@
     "globalCapture": {
       "title": "Cattura globale",
       "description": "Cattura una nota da qualsiasi luogo",
-      "permissionNeeded": "È necessaria l'autorizzazione",
-      "active": "Attivo",
-      "permissionHint": "Le scorciatoie globali richiedono l'autorizzazione di accessibilità. Vai su Impostazioni di sistema → Privacy → Accessibilità e abilita memrynote."
+      "active": "Attivo"
     },
     "toasts": {
       "saveGlobalFailed": "Impossibile salvare il collegamento di acquisizione globale",

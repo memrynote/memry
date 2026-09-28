@@ -1048,9 +1048,7 @@
     "globalCapture": {
       "title": "Global fangst",
       "description": "Fang en note fra hvor som helst",
-      "permissionNeeded": "Tilladelse nødvendig",
-      "active": "Aktiv",
-      "permissionHint": "Globale genveje kræver tilgængelighedstilladelse. Gå til Systemindstillinger → Privatliv → Tilgængelighed og aktiver memrynote."
+      "active": "Aktiv"
     },
     "toasts": {
       "saveGlobalFailed": "Den globale genvej til optagelse kunne ikke gemmes",

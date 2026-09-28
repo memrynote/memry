@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Search, X, Info, Pencil, Trash2, Undo } from '@/lib/icons'
+import { Search, X, Pencil, Trash2, Undo } from '@/lib/icons'
 import { useKeyboardSettings } from '@/hooks/use-keyboard-settings'
 import { trackRendererLog } from '@/lib/telemetry-diagnostics'
 import { toast } from 'sonner'
@@ -312,7 +312,6 @@ function acceleratorKey(event: KeyboardEvent): string | null {
 type GlobalCaptureRowStatus =
   | { kind: 'unknown' }
   | { kind: 'active' }
-  | { kind: 'permissionRequired' }
   | { kind: 'rejected'; reason: 'in_use' | 'unsupported'; binding: ShortcutBindingDTO }
   | { kind: 'fallbackInUse' }
 
@@ -323,8 +322,6 @@ function toRowStatus(
   switch (result.status) {
     case 'registered':
       return { kind: 'active' }
-    case 'permission_required':
-      return { kind: 'permissionRequired' }
     case 'in_use':
     case 'unsupported':
       return binding ? { kind: 'rejected', reason: result.status, binding } : { kind: 'unknown' }
@@ -427,12 +424,6 @@ function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): 
       <div className="flex flex-col gap-0.5 min-w-0">
         <div className="flex items-center gap-2.5">
           <span className="text-[13px]/4 text-foreground">{t('shortcuts.v2.globalCapture')}</span>
-          {status.kind === 'permissionRequired' && (
-            <span className="flex items-center gap-1.5 text-xs/4 text-muted-foreground">
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-amber-500" />
-              {t('shortcuts.globalCapture.permissionNeeded')}
-            </span>
-          )}
           {status.kind === 'active' && (
             <span className="flex items-center gap-1.5 text-xs/4 text-muted-foreground">
               <span aria-hidden="true" className="size-1.5 rounded-full bg-green-500" />
@@ -446,12 +437,6 @@ function GlobalCaptureRow({ binding }: { binding: ShortcutBindingDTO | null }): 
         {problem && (
           <span role="alert" className="text-xs/4 text-destructive">
             {problem}
-          </span>
-        )}
-        {status.kind === 'permissionRequired' && IS_MACOS && (
-          <span className="flex items-start gap-1.5 text-xs/4 text-amber-700 dark:text-amber-400">
-            <Info className="size-3 mt-0.5 shrink-0" />
-            {t('shortcuts.globalCapture.permissionHint')}
           </span>
         )}
       </div>

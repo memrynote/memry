@@ -1112,17 +1112,23 @@ describe('settings-handlers', () => {
       expect(applyGlobalCaptureShortcut()).toEqual({ status: 'unbound', fallbackRegistered: false })
     })
 
-    it('#given macOS permission missing #when applied #then reports permission requirement', () => {
+    it('#given macOS without Accessibility trust #when applied #then registers the binding anyway', () => {
       const held = fakeOs()
       Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
       keyboardStore({ overrides: {}, globalCapture: { key: 'Space', modifiers: { meta: true } } })
-      mockIsTrustedAccessibilityClient.mockReturnValueOnce(false)
+      mockIsTrustedAccessibilityClient.mockReturnValue(false)
 
+      // Ordinary key combos need no Accessibility permission on macOS; gating on
+      // it left the configured shortcut dead for users with a stale entry (#2452).
       expect(applyGlobalCaptureShortcut()).toEqual({
-        status: 'permission_required',
-        fallbackRegistered: true
+        status: 'registered',
+        fallbackRegistered: false
       })
-      expect([...held.keys()]).toEqual([])
+      expect([...held.keys()]).toEqual(['CommandOrControl+Space'])
+      expect(mockIsTrustedAccessibilityClient).not.toHaveBeenCalled()
+
+      held.get('CommandOrControl+Space')?.()
+      expect(quickCaptureOpens).toBe(1)
     })
 
     it('#given a saved binding another app owns #when applied #then reports it in use', () => {
