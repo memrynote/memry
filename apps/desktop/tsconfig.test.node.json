@@ -151,7 +151,6 @@
     "src/main/sync/item-handlers/task-handler.test.ts",
     "src/main/sync/queue.test.ts",
     "src/main/sync/runtime.test.ts",
-    "src/main/sync/settings-sync.test.ts",
     "src/main/sync/sync-parent-ordering.test.ts",
     "src/main/sync/task-sync-gaps-e2e.test.ts",
     "src/main/sync/worker-bridge.test.ts",

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
-import { initCrypto } from '../crypto/index'
 import { decrypt, unwrapFileKey } from '../crypto/encryption'
 import { verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
@@ -14,7 +13,7 @@ import {
 } from '@memry/sync-client/note-size'
 
 beforeAll(async () => {
-  await initCrypto()
+  await sodium.ready
 })
 
 function generateTestKeys() {

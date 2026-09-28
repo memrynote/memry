@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
-import { initCrypto } from '../crypto/index'
 import { encryptCrdtUpdate, decryptCrdtUpdate } from './crdt-encrypt'
 import { SignatureVerificationError } from './decrypt'
 
 beforeAll(async () => {
-  await initCrypto()
+  await sodium.ready
 })
 
 function generateTestKeys() {

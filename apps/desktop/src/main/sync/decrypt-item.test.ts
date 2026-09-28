@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { initCrypto } from '../crypto/index'
 import { encrypt, wrapFileKey } from '../crypto/encryption'
 import { generateFileKey } from '../crypto/primitives'
 import { signPayload } from '../crypto/signatures'
@@ -20,7 +19,7 @@ import type { PullItemForDecrypt } from '@memry/sync-client/worker-protocol'
 // See engine/pull-coordinator.ts.
 
 beforeAll(async () => {
-  await initCrypto()
+  await sodium.ready
 })
 
 interface TestKeys {
