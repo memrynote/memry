@@ -1,3 +1,5 @@
+import type { LinkVia } from '@memry/contracts/notes-api'
+
 export interface Mention {
   id: string
   snippet: string // Context around the link
@@ -12,7 +14,7 @@ export interface Backlink {
   folder?: string // Parent folder name
   date: Date // When link was created or note updated
   mentions: Mention[] // All mentions of current note
-  via?: { kind: 'property'; propertyName: string } // Set for relation-property-sourced entries
+  via?: LinkVia // Set for relation-property and canvas-arrow entries
 }
 
 // A source note can reference the target both via [[wikilink]] and via a
@@ -21,7 +23,12 @@ export interface Backlink {
 // collide — this is the one place that decides how they're disambiguated.
 // note.tsx and journal.tsx both call this rather than inlining the formula.
 export function backlinkId(sourceId: string, via: Backlink['via']): string {
-  return via ? `${sourceId}:property:${via.propertyName}` : sourceId
+  if (!via) return sourceId
+  // A canvas entry is one per canvas: the same pair of notes joined on two
+  // canvases is two connections.
+  return via.kind === 'canvas'
+    ? `${sourceId}:canvas:${via.canvasId}`
+    : `${sourceId}:property:${via.propertyName}`
 }
 
 export type BacklinkSortOption = 'recent' | 'alphabetical' | 'mentions'

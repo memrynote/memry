@@ -8,6 +8,8 @@ vi.mock('@memry/i18n/renderer', () => ({
     t: (key: string, values?: Record<string, unknown>) => {
       if (key === 'outgoingLinks.summary') return `${values?.count} outgoing`
       if (key === 'outgoingLinks.more') return `${values?.count} more`
+      if (key === 'canvasLinks.connectedOn') return `on ${values?.canvas}`
+      if (key === 'canvasLinks.untitledCanvas') return 'Untitled canvas'
       return key.split('.').at(-1) ?? key
     }
   })
@@ -37,6 +39,24 @@ describe('OutgoingLinksSection', () => {
       'true'
     )
     expect(rowLabels()).toEqual(['Alpha unresolved', 'Mid', 'Zeta'])
+  })
+
+  it('lists a canvas connection beside a wiki link to the same note, naming the canvas', () => {
+    render(
+      <OutgoingLinksSection
+        links={[
+          link('Beta', 'note-b'),
+          {
+            ...link('Beta', 'note-b'),
+            via: { kind: 'canvas', canvasId: 'c1', canvasTitle: 'Map' }
+          },
+          { ...link('Beta', 'note-b'), via: { kind: 'canvas', canvasId: 'c2', canvasTitle: null } }
+        ]}
+        onLinkClick={vi.fn()}
+      />
+    )
+
+    expect(rowLabels()).toEqual(['Beta', 'Betaon Map', 'Betaon Untitled canvas'])
   })
 
   it('hands the clicked link title to onLinkClick, resolved or not', () => {

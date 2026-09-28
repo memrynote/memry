@@ -206,30 +206,12 @@ export interface NoteListResponse {
   hasMore: boolean
 }
 
-export interface NoteLink {
-  sourceId: string
-  targetId: string | null
-  targetTitle: string
-}
-
-export interface BacklinkContext {
-  snippet: string
-  linkStart: number
-  linkEnd: number
-}
-
-export interface Backlink {
-  sourceId: string
-  sourcePath: string
-  sourceTitle: string
-  contexts: BacklinkContext[]
-  via?: { kind: 'property'; propertyName: string }
-}
-
-export interface NoteLinksResponse {
-  outgoing: NoteLink[]
-  incoming: Backlink[]
-}
+export type {
+  NoteLink,
+  BacklinkContext,
+  Backlink,
+  NoteLinksResponse
+} from '@memry/contracts/notes-api'
 
 export interface ImportFilesInput {
   sourcePaths: string[]

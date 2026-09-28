@@ -8,6 +8,7 @@ vi.mock('@memry/i18n/renderer', () => ({
     t: (key: string, values?: Record<string, unknown>) => {
       if (key === 'backlinks.viaProperty') return `${values?.property} → ${values?.title}`
       if (key === 'backlinks.fromAria') return `Backlinks from ${values?.title}`
+      if (key === 'canvasLinks.connectedOn') return `Connected on ${values?.canvas}`
       return key.split('.').at(-1) ?? key
     }
   })
@@ -38,6 +39,18 @@ describe('BacklinkCard', () => {
     render(<BacklinkCard backlink={propertyBacklink} onClick={vi.fn()} />)
 
     expect(screen.getByRole('link', { name: 'father → John' })).toBeInTheDocument()
+  })
+
+  it('keeps the source title for a canvas entry and names the canvas beside it', () => {
+    const canvasBacklink: Backlink = {
+      ...baseBacklink,
+      via: { kind: 'canvas', canvasId: 'c1', canvasTitle: 'Family map' }
+    }
+
+    render(<BacklinkCard backlink={canvasBacklink} onClick={vi.fn()} />)
+
+    expect(screen.getByRole('link', { name: 'John' })).toBeInTheDocument()
+    expect(screen.getByText('Connected on Family map')).toBeInTheDocument()
   })
 
   it('offers no expand toggle when there are no mentions to reveal', () => {

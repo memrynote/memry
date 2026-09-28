@@ -8,6 +8,7 @@ import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import {
   buildGraphologyGraph,
   computeFocusSet,
+  keepsOwnEdgeColor,
   syncGraphologyGraph,
   type BuildGraphOptions
 } from '@/lib/graph-builder'
@@ -200,6 +201,10 @@ export function GraphCanvas({
     (edge: string, attrs: Record<string, unknown>): Partial<EdgeDisplayData> => {
       if (!graph.hasEdge(edge)) return attrs as Partial<EdgeDisplayData>
 
+      if (attrs.edgeType === 'canvas' && !filterState.showCanvasEdges) {
+        return { ...(attrs as Partial<EdgeDisplayData>), hidden: true }
+      }
+
       const [source, target] = graph.extremities(edge)
 
       const sourceAttrs = graph.getNodeAttributes(source)
@@ -224,7 +229,11 @@ export function GraphCanvas({
       const fade = fadeRef.current
 
       if (!activeHover || fade === 0 || !graph.hasNode(activeHover)) {
-        return { ...(attrs as Partial<EdgeDisplayData>), color: softEdgeColor, size: 1 }
+        return {
+          ...(attrs as Partial<EdgeDisplayData>),
+          color: keepsOwnEdgeColor(attrs) ? (attrs.color as string) : softEdgeColor,
+          size: 1
+        }
       }
 
       const connected = source === activeHover || target === activeHover
@@ -232,7 +241,7 @@ export function GraphCanvas({
         const targetSize = ((attrs.size as number) ?? 1) + 2
         return {
           ...(attrs as Partial<EdgeDisplayData>),
-          color: softEdgeColor,
+          color: keepsOwnEdgeColor(attrs) ? (attrs.color as string) : softEdgeColor,
           size: 1 + (targetSize - 1) * fade
         }
       }

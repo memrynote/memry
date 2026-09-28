@@ -229,7 +229,9 @@ note or reopened it a few times. Opening the note is now enough.
 ## Backlinks Panel
 
 The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it — including notes that point to it through a `[[wiki link]]` or through a
-[Relation property](/user-guide/notes/properties-tags#relation-properties).
+[Relation property](/user-guide/notes/properties-tags#relation-properties), and notes
+connected to it by an arrow on a [canvas](/user-guide/canvas/cards-and-links#connecting-cards).
+A canvas entry says **Connected on** and the canvas name, and has no text snippet.
 
 <!-- screenshot: backlinks section under a note -->
 
@@ -252,13 +254,18 @@ a dashed underline and **Not created yet**, and clicking it offers to create the
 same as a [broken link](#broken-links). Deleting a note turns links to it into
 **Not created yet** entries, and recreating a note with that title makes them live again.
 
-The list is read-only. To change what a note links to, edit the links in the note itself.
+An arrow drawn from this note's card to another note's card on a canvas is listed here
+too, marked **Connected on** and the canvas name.
+
+The list is read-only. To change what a note links to, edit the links in the note itself,
+or the arrows on the canvas.
 
 ## Graph View
 
 The sidebar **Graph** entry opens a force-directed map of your notes and the links between them. Useful for finding orphan notes or unexpectedly large clusters.
 
 - Nodes are notes; edges are wiki links and [relation properties](/user-guide/notes/properties-tags#relation-properties) (drawn thinner, to tell them apart from wiki links).
+- Arrows between cards on a [canvas](/user-guide/canvas/cards-and-links#connecting-cards) are edges too, drawn in their own colour. The pen button in the filter bar hides or shows them.
 - Click a node to open the note in a tab.
 - Hover to highlight neighbors.
 - Drag a node to pull it around — linked notes follow it, and the graph settles again when you let go.

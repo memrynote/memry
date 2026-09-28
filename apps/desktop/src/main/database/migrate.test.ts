@@ -1012,6 +1012,91 @@ describe('0062_crdt_body_withheld migration', () => {
   })
 })
 
+// #2482: canvas arrows indexed as connections.
+describe('0063_canvas_entity_edges migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-canvas-edges-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function makePre0063Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0063')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0063_canvas_entity_edges')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('adds an empty table on a populated database and changes no row', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: makePre0063Folder() })
+    sqlite
+      .prepare(
+        "INSERT INTO canvases (id, vault_id, snapshot_ciphertext, vector_clock, created_at, updated_at) VALUES ('c1', 'v1', '', '{}', 1, 1)"
+      )
+      .run()
+    sqlite
+      .prepare(
+        "INSERT INTO canvas_entity_refs (canvas_id, entity_type, entity_id) VALUES ('c1', 'note', 'n1')"
+      )
+      .run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(sqlite.prepare('SELECT id FROM canvases').all()).toEqual([{ id: 'c1' }])
+    expect(sqlite.prepare('SELECT entity_id FROM canvas_entity_refs').all()).toEqual([
+      { entity_id: 'n1' }
+    ])
+    expect(sqlite.prepare('SELECT count(*) AS n FROM canvas_entity_edges').get()).toEqual({ n: 0 })
+    const indexes = (
+      sqlite
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = ?")
+        .all('canvas_entity_edges') as { name: string }[]
+    ).map((row) => row.name)
+    expect(indexes).toEqual(
+      expect.arrayContaining(['idx_canvas_edges_source', 'idx_canvas_edges_target'])
+    )
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite
+      .prepare(
+        "INSERT INTO canvases (id, vault_id, snapshot_ciphertext, vector_clock, created_at, updated_at) VALUES ('c1', 'v1', '', '{}', 1, 1)"
+      )
+      .run()
+    sqlite
+      .prepare(
+        "INSERT INTO canvas_entity_edges (canvas_id, arrow_id, source_type, source_id, target_type, target_id) VALUES ('c1', 'a1', 'note', 'n1', 'note', 'n2')"
+      )
+      .run()
+
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0063Folder() })).not.toThrow()
+
+    expect(sqlite.prepare('SELECT count(*) AS n FROM canvas_entity_edges').get()).toEqual({ n: 1 })
+    sqlite.close()
+  })
+})
+
 // #2301 review B-6/A-8: drizzle applies a migration only when its `when` is
 // greater than the newest one already applied. Two stacked migrations that
 // share a `when` (or go backwards) make every install that has the first skip

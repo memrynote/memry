@@ -5,6 +5,7 @@ import { taskNotes } from '@memry/db-schema/schema/task-relations'
 import { projects } from '@memry/db-schema/schema/projects'
 import type { GraphNode, GraphEdge, GraphDataResponse } from '@memry/contracts/graph-api'
 import type { DataDb, IndexDb } from '../types'
+import { getCanvasEdgesTouching, listCanvasEdges, type CanvasEdgeRow } from './canvas-edges'
 
 const NODE_COLORS: Record<GraphNode['type'], string> = {
   note: 'var(--graph-node-note)',
@@ -16,6 +17,27 @@ const NODE_COLORS: Record<GraphNode['type'], string> = {
 const GHOST_COLOR = 'var(--graph-ghost-node)'
 
 const GHOST_PREFIX = 'ghost:'
+
+/** Canvas card types that are graph nodes. Events and files are not. */
+const CANVAS_GRAPH_TYPES = ['note', 'task', 'project'] as const
+
+/**
+ * One graph edge per pair of entities joined on any canvas: drawing the same
+ * connection on two canvases does not make it heavier.
+ */
+function canvasPairKey(edge: Pick<CanvasEdgeRow, 'sourceId' | 'targetId'>): string {
+  return `${edge.sourceId}\u0000${edge.targetId}`
+}
+
+function canvasGraphEdge(edge: Pick<CanvasEdgeRow, 'sourceId' | 'targetId'>): GraphEdge {
+  return {
+    id: `${edge.sourceId}-${edge.targetId}-canvas`,
+    source: edge.sourceId,
+    target: edge.targetId,
+    type: 'canvas',
+    weight: 1
+  }
+}
 
 /**
  * Node factories shared by the whole-vault build and the local traversal, so the two can
@@ -239,6 +261,15 @@ export function getGraphData(indexDb: IndexDb, dataDb: DataDb): GraphDataRespons
         weight: 1
       })
     }
+  }
+
+  const canvasPairs = new Set<string>()
+  for (const edge of listCanvasEdges(dataDb)) {
+    if (!nodeIds.has(edge.sourceId) || !nodeIds.has(edge.targetId)) continue
+    const key = canvasPairKey(edge)
+    if (canvasPairs.has(key)) continue
+    canvasPairs.add(key)
+    edges.push(canvasGraphEdge(edge))
   }
 
   const connectionCounts = new Map<string, number>()
@@ -559,6 +590,21 @@ function collectIncidentEdges(
         type: 'task-note',
         weight: 1
       }
+    })
+  }
+
+  const canvasRows = new Map<string, CanvasEdgeRow>()
+  for (const batch of chunk([...noteIds, ...taskIds, ...projectLikeIds])) {
+    for (const row of getCanvasEdgesTouching(dataDb, [...CANVAS_GRAPH_TYPES], batch)) {
+      canvasRows.set(canvasPairKey(row), row)
+    }
+  }
+
+  for (const [rowKey, row] of canvasRows) {
+    candidates.push({
+      rowKey: `canvas\u0000${rowKey}`,
+      requiresBothNodes: true,
+      edge: canvasGraphEdge(row)
     })
   }
 

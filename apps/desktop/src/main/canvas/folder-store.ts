@@ -41,6 +41,7 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../sync/local-mutations'
+import { clearCanvasEdges } from './edge-index'
 import { CanvasFolderError, CanvasFolderErrorCode } from './folder-errors'
 // Re-exported so every existing importer (and the sync handler) keeps reaching
 // these through the store; the class itself moved to a leaf module so
@@ -667,6 +668,7 @@ export async function deleteCanvasFolder(
       // The FK cascade only fires on hard deletes; prune advisory refs here so
       // ref-consuming queries never see tombstoned canvases.
       tx.delete(canvasEntityRefs).where(eq(canvasEntityRefs.canvasId, id)).run()
+      clearCanvasEdges(tx, id)
     }
     // Snapshotted pre-tombstone: the delete push carries the row as it was, and
     // its clock is what tells peers this delete is newer than what they hold.

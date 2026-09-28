@@ -54,7 +54,8 @@
     "tags": "Tags",
     "orphans": "Orphans",
     "toggle-entity": "Toggle {label}",
-    "toggle-orphans": "Toggle orphan nodes"
+    "toggle-orphans": "Toggle orphan nodes",
+    "toggle-canvas-edges": "Toggle canvas connections"
   },
   "search": {
     "placeholder": "Search nodes...",

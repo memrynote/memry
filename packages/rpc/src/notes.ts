@@ -16,7 +16,9 @@ import type {
   LargeFileLinesResult,
   LargeFileIndexEvent,
   LargeFileSearchResult,
-  LargeFileSearchProgressEvent
+  LargeFileSearchProgressEvent,
+  CanvasLinkVia,
+  LinkVia
 } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
@@ -368,6 +370,7 @@ export interface NoteLink {
   sourceId: string
   targetId: string | null
   targetTitle: string
+  via?: CanvasLinkVia
 }
 
 export interface BacklinkContext {
@@ -381,7 +384,7 @@ export interface Backlink {
   sourcePath: string
   sourceTitle: string
   contexts: BacklinkContext[]
-  via?: { kind: 'property'; propertyName: string }
+  via?: LinkVia
 }
 
 export interface NoteLinksResponse {

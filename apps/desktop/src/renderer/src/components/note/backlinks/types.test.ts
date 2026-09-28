@@ -21,4 +21,15 @@ describe('backlinkId', () => {
 
     expect(wikiId).not.toBe(propertyId)
   })
+
+  it('gives one id per canvas, apart from the wiki link and property ids', () => {
+    const ids = [
+      backlinkId('note-a', undefined),
+      backlinkId('note-a', { kind: 'property', propertyName: 'father' }),
+      backlinkId('note-a', { kind: 'canvas', canvasId: 'c1', canvasTitle: 'Map' }),
+      backlinkId('note-a', { kind: 'canvas', canvasId: 'c2', canvasTitle: 'Map' })
+    ]
+
+    expect(new Set(ids).size).toBe(4)
+  })
 })

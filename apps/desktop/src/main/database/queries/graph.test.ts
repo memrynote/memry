@@ -168,6 +168,26 @@ function insertTaskNote(db: TestDb, taskId: string, noteId: string): void {
   db.run(sql`INSERT INTO task_notes (task_id, note_id) VALUES (${taskId}, ${noteId})`)
 }
 
+function insertCanvas(db: TestDb, id: string, deletedAt: number | null = null): void {
+  db.run(sql`
+    INSERT INTO canvases (id, vault_id, title, snapshot_ciphertext, vector_clock, created_at, updated_at, deleted_at)
+    VALUES (${id}, 'vault-1', ${`Canvas ${id}`}, '', '{}', 1, 1, ${deletedAt})
+  `)
+}
+
+function insertCanvasEdge(
+  db: TestDb,
+  canvasId: string,
+  arrowId: string,
+  source: [string, string],
+  target: [string, string]
+): void {
+  db.run(sql`
+    INSERT INTO canvas_entity_edges (canvas_id, arrow_id, source_type, source_id, target_type, target_id)
+    VALUES (${canvasId}, ${arrowId}, ${source[0]}, ${source[1]}, ${target[0]}, ${target[1]})
+  `)
+}
+
 /**
  * A vault with everything the traversal has to survive: a 3-note cycle, a pair of notes
  * linking at each other, two rows collapsing onto one edge id, a ghost shared by two notes
@@ -224,6 +244,19 @@ function seedNeighbourhood(indexDb: TestDb, dataDb: TestDb): void {
   insertTaskNote(dataDb, 't2', 'n5')
   insertTaskNote(dataDb, 't3', 'n2')
   insertTaskNote(dataDb, 't-arch', 'n1')
+
+  // Canvas arrows: two arrows for one pair on one board, the same pair on a second
+  // board, a task card, an event card (not a node), and a deleted board.
+  insertMarkdownNote(indexDb, 'n7', 'Eta')
+  insertCanvas(dataDb, 'c1')
+  insertCanvas(dataDb, 'c2')
+  insertCanvas(dataDb, 'c-dead', 5)
+  insertCanvasEdge(dataDb, 'c1', 'a1', ['note', 'n5'], ['note', 'n7'])
+  insertCanvasEdge(dataDb, 'c1', 'a2', ['note', 'n5'], ['note', 'n7'])
+  insertCanvasEdge(dataDb, 'c2', 'a1', ['note', 'n5'], ['note', 'n7'])
+  insertCanvasEdge(dataDb, 'c1', 'a3', ['task', 't2'], ['note', 'n7'])
+  insertCanvasEdge(dataDb, 'c1', 'a4', ['note', 'n7'], ['calendar_event', 'e1'])
+  insertCanvasEdge(dataDb, 'c-dead', 'a1', ['note', 'n1'], ['note', 'n7'])
 }
 
 describe('graph queries', () => {
@@ -344,6 +377,14 @@ describe('graph queries', () => {
     expect(relationEdges[0]).toMatchObject({ source: 'note-1', target: 'note-2' })
   })
 
+  it('emits one canvas edge per connected pair on live canvases only', () => {
+    seedNeighbourhood(indexDb, dataDb)
+
+    const canvasEdges = getGraphData(indexDb, dataDb).edges.filter((e) => e.type === 'canvas')
+
+    expect(canvasEdges.map((e) => e.id).sort()).toEqual(['n5-n7-canvas', 't2-n7-canvas'])
+  })
+
   it('filters local graph by depth from the selected note', () => {
     insertMarkdownNote(indexDb, 'a', 'A')
     insertMarkdownNote(indexDb, 'b', 'B')
@@ -366,7 +407,7 @@ describe('graph queries', () => {
   })
 
   describe('local graph traversal', () => {
-    it.each(['n1', 'n5', 'n6', 't1', 'p1', 'p-arch', 'nte_gone'])(
+    it.each(['n1', 'n5', 'n6', 'n7', 't1', 't2', 'p1', 'p-arch', 'nte_gone'])(
       'returns exactly what the whole-vault build then filter returned, from %s',
       (seed) => {
         seedNeighbourhood(indexDb, dataDb)

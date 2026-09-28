@@ -216,6 +216,7 @@ const filters: GraphFilterState = {
   showProjects: true,
   showTags: true,
   showOrphans: true,
+  showCanvasEdges: true,
   selectedTags: [],
   focusNodeId: null,
   focusDepth: 1,

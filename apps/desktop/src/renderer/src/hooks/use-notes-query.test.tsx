@@ -44,7 +44,8 @@ const mocks = vi.hoisted(() => ({
     external: [] as NoteHandler[],
     tagsChanged: [] as EmptyHandler[],
     folderConfigUpdated: [] as EmptyHandler[],
-    indexProgress: [] as ((progress: number) => void)[]
+    indexProgress: [] as ((progress: number) => void)[],
+    canvas: [] as EmptyHandler[]
   }
 }))
 
@@ -87,6 +88,14 @@ vi.mock('@/services/notes-service', () => ({
 vi.mock('@/services/tags-service', () => ({
   tagsService: mocks.tagsService
 }))
+
+vi.mock('@/services/canvas-service', () => {
+  const subscribe = (callback: EmptyHandler) => {
+    mocks.handlers.canvas.push(callback)
+    return vi.fn()
+  }
+  return { onCanvasCreated: subscribe, onCanvasUpdated: subscribe, onCanvasDeleted: subscribe }
+})
 
 vi.mock('@/services/vault-service', () => ({
   onVaultIndexProgress: (callback: (progress: number) => void) => {
@@ -214,7 +223,7 @@ describe('use-notes-query', () => {
     const beat = mocks.handlers.indexProgress[0]
     expect(beat).toBeDefined()
 
-    // Progress beats arrive every 10 walked files — a burst inside the throttle
+    // Progress beats arrive every 10 walked files â a burst inside the throttle
     // window collapses to a single refetch.
     await act(async () => {
       beat(10)
@@ -290,6 +299,25 @@ describe('use-notes-query', () => {
         { sourceId: 'n1', targetId: 'n9', targetTitle: 'Later' }
       ])
     )
+  })
+
+  it('refetches links when a canvas changes, so a new arrow shows as a connection', async () => {
+    mocks.notesService.getLinks.mockResolvedValueOnce({ outgoing: [], incoming: [] })
+    const { result } = renderHook(() => useNoteLinksQuery('n1'), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    // Subscription order: created, updated, deleted.
+    expect(mocks.handlers.canvas).toHaveLength(3)
+    const via = { kind: 'canvas' as const, canvasId: 'c1', canvasTitle: 'Map' }
+    mocks.notesService.getLinks.mockResolvedValueOnce({
+      outgoing: [{ sourceId: 'n1', targetId: 'n2', targetTitle: 'Two', via }],
+      incoming: []
+    })
+    await act(async () => {
+      mocks.handlers.canvas[1]()
+    })
+
+    await waitFor(() => expect(result.current.outgoing[0]?.via).toEqual(via))
   })
 
   it('exposes note mutations and updates the affected query caches', async () => {

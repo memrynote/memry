@@ -1,5 +1,5 @@
 import type { Dispatch } from 'react'
-import { FileText, FolderOpen, Tag, Unlink, X, Undo, Focus } from '@/lib/icons'
+import { FileText, FolderOpen, PenTool, Tag, Unlink, X, Undo, Focus } from '@/lib/icons'
 import { PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import { Toggle } from '@/components/ui/toggle'
 import { Button } from '@/components/ui/button'
@@ -93,6 +93,17 @@ export function GraphFilters({
           >
             <Unlink
               className={`size-3.5 ${filterState.showOrphans ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}
+            />
+          </Toggle>
+
+          <Toggle
+            size="sm"
+            pressed={filterState.showCanvasEdges}
+            onPressedChange={() => dispatch({ type: 'TOGGLE_CANVAS_EDGES' })}
+            aria-label={t('filter.toggle-canvas-edges')}
+          >
+            <PenTool
+              className={`size-3.5 ${filterState.showCanvasEdges ? 'text-[var(--graph-edge-canvas)]' : 'text-muted-foreground/40'}`}
             />
           </Toggle>
 

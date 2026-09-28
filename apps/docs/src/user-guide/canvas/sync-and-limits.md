@@ -72,7 +72,9 @@ start memrynote and the board is still too large.
 ## Known limitations
 
 - Real-time co-editing of one canvas is not supported (see conflict copies).
-- Canvas arrows do not create backlinks between notes.
+- Arrows between cards appear in backlinks and the graph only inside memrynote.
+  They are not written into your notes as wiki links, so other apps that open
+  your vault do not see them. See [Connecting cards](./cards-and-links.md#connecting-cards).
 - There is no drag-in from the Tasks or Calendar pages — use **Add card**, as
   described in [Cards & Links](./cards-and-links.md).
 - Palm rejection and pen pressure depend on your hardware and OS.

@@ -17,6 +17,7 @@ const defaultFilterState: GraphFilterState = {
   showProjects: true,
   showTags: true,
   showOrphans: true,
+  showCanvasEdges: true,
   selectedTags: [],
   focusNodeId: null,
   focusDepth: 2,
