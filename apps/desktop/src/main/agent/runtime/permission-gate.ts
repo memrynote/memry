@@ -1,7 +1,9 @@
-import type {
-  AgentToolApprovalMode,
-  ApproveToolDecision,
-  ChangePreviewKind
+import {
+  isInPageReviewTool,
+  type AgentReviewTarget,
+  type AgentToolApprovalMode,
+  type ApproveToolDecision,
+  type ChangePreviewKind
 } from '@memry/contracts/ipc-agent'
 
 import { READ_TOOL_NAMES, previewKindForTool, type ToolName } from '../mcp/tools/schemas'
@@ -50,6 +52,13 @@ export function decideToolGate(input: GateInput): GateDecision {
     return awaitUser(input.toolName)
   }
 
+  // A rewrite of the user's own note or journal is reviewed in the page every
+  // time. Grants recorded before this rule existed stay on disk and in
+  // Settings, but no longer skip the review.
+  if (isInPageReviewTool(input.toolName)) {
+    return awaitUser(input.toolName)
+  }
+
   const trusted =
     input.trustList.includes(input.toolName) ||
     (input.vaultTrustList ?? []).includes(input.toolName)
@@ -61,6 +70,30 @@ export function decideToolGate(input: GateInput): GateDecision {
   // not been taught about still lands on "ask", just without a preview: the
   // gate must never fall through to allowing a write it cannot describe.
   return awaitUser(input.toolName)
+}
+
+/**
+ * Which page reviews this write in place, or null when the agent pane keeps the
+ * approval card. A journal update that carries no body (tags or properties
+ * only) has nothing to show in the page, so it stays in the pane.
+ */
+export function reviewTargetForTool(toolName: string, args: unknown): AgentReviewTarget | null {
+  if (!isInPageReviewTool(toolName)) return null
+  const record =
+    args && typeof args === 'object' && !Array.isArray(args)
+      ? (args as Record<string, unknown>)
+      : {}
+  if (toolName === 'vault_update_note' && typeof record.id === 'string') {
+    return { kind: 'note', id: record.id }
+  }
+  if (
+    toolName === 'vault_update_journal_entry' &&
+    typeof record.date === 'string' &&
+    typeof record.content_markdown === 'string'
+  ) {
+    return { kind: 'journal', date: record.date }
+  }
+  return null
 }
 
 export type { ToolName }

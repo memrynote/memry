@@ -10,6 +10,7 @@ import type {
   AgentToolApprovalMode,
   BackendStatusesResponse
 } from '@memry/contracts/ipc-agent'
+import { isInPageReviewTool } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -474,9 +475,19 @@ export function AgentProvidersSection({
         ) : (
           alwaysAllowed.map((toolName) => (
             <div key={toolName} className="flex min-h-11 items-center justify-between gap-4 py-2.5">
-              <code className="min-w-0 truncate font-mono text-xs/4 text-foreground">
-                {toolName}
-              </code>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <code className="min-w-0 truncate font-mono text-xs/4 text-foreground">
+                  {toolName}
+                </code>
+                {/* Granted before note and journal edits moved to in-page
+                    review. Kept so it can still be revoked, but the gate no
+                    longer honours it, and the row has to say so. */}
+                {isInPageReviewTool(toolName) ? (
+                  <span className="text-xs/4 text-muted-foreground">
+                    {t('agentProviders.alwaysAllowed.ignoredInPageReview')}
+                  </span>
+                ) : null}
+              </div>
               <button
                 type="button"
                 className={QUIET_ACTION}

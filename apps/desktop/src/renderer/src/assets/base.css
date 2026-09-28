@@ -1146,6 +1146,46 @@
   background: color-mix(in srgb, var(--accent-orange) 30%, transparent);
 }
 
+/* Agent edit review (components/note/agent-review). The style values and block
+   id prefixes come from block-diff.ts; the document they mark is display-only. */
+.memry-agent-diff [data-style-type='backgroundColor'][data-value='memry-diff-add'] {
+  background: var(--diff-add-surface);
+  color: var(--diff-add);
+  border-radius: 3px;
+}
+
+.memry-agent-diff [data-style-type='backgroundColor'][data-value='memry-diff-del'] {
+  background: var(--diff-del-surface);
+  color: var(--diff-del);
+  border-radius: 3px;
+}
+
+.memry-agent-diff .bn-block[data-id^='diff-add-'] > .bn-block-content,
+.memry-agent-diff .bn-block[data-id^='diff-del-'] > .bn-block-content,
+.memry-agent-diff .bn-block[data-id^='diff-mod-'] > .bn-block-content {
+  position: relative;
+}
+
+.memry-agent-diff .bn-block[data-id^='diff-add-'] > .bn-block-content::before,
+.memry-agent-diff .bn-block[data-id^='diff-del-'] > .bn-block-content::before,
+.memry-agent-diff .bn-block[data-id^='diff-mod-'] > .bn-block-content::before {
+  content: '';
+  position: absolute;
+  inset-block: 3px;
+  inset-inline-start: -14px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--diff-add);
+}
+
+.memry-agent-diff .bn-block[data-id^='diff-del-'] > .bn-block-content::before {
+  background: var(--diff-del);
+}
+
+.memry-agent-diff .bn-block[data-id^='diff-del-'] > .bn-block-content {
+  opacity: 0.7;
+}
+
 .review-rail {
   position: sticky;
   top: 24px;

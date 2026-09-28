@@ -547,9 +547,10 @@ A paused request always shows what it would change, in the shape that fits the i
 - **Field changes** for tasks, projects, statuses, inbox items, tags, moves and renames. Each
   changed column is one row: the value now, then the value the agent proposes. A value that is not
   set yet reads as such rather than as an empty string.
-- **A body diff** for note and journal markdown, and for the text of a new note or inbox item. The
-  changed words are highlighted in place and long runs of untouched lines are collapsed, so a
-  one-word edit in a long note reads as a one-word edit.
+- **A body diff** for the text of a new note or inbox item. The changed words are highlighted in
+  place and long runs of untouched lines are collapsed, so a one-word edit reads as a one-word
+  edit. Edits to an existing note or journal entry are reviewed in the note itself instead; see
+  [Reviewing an edit in the note](#reviewing-an-edit-in-the-note).
 - **What would be lost** for deletes. A delete has no "after", so the card names the item and what
   goes with it instead.
 
@@ -561,6 +562,33 @@ A body diff also offers **Edit before applying**, which opens the proposed markd
 Applying from there replaces the whole body with what you see, so an append you edited is applied as
 the finished document rather than appended a second time. Field changes and deletes have no text
 box; use **Edit and allow** on the tool row to change raw arguments instead.
+
+### Reviewing an edit in the note
+
+When the agent wants to change the body of an existing note or journal entry, the change is shown
+in that note, not in the chat. The note's text is drawn with the change in place: added words are
+highlighted, removed words are struck through, and each changed block has a bar at its start. A
+bar at the bottom of the note offers **Accept**, **Edit** and **Reject**.
+
+- **Accept** applies the change as shown.
+- **Edit** turns the suggestion into an editable copy. Add, change or delete anything, switch back
+  with **Show changes** to see the result against the current note, then **Accept edits**. Your
+  copy stays on this device until you accept it: nothing reaches the note, the vault file or your
+  other devices before that.
+- **Reject** refuses the change and puts the note back as it was.
+
+While a change is under review the note's own editor is set aside, and it comes back exactly as
+you left it once you decide. If the note changes underneath the review, from sync or another
+window, the changes are recomputed against the new version. If you were already editing the
+suggestion, the bar tells you, and you can start over from the latest version or keep your copy.
+
+The chat row points at the note while this happens. If the note is not open, the row offers
+**Open note** (or **Open journal**) to see the change, or **Accept** to apply it without looking.
+
+Note and journal edits ask every time. They cannot be given a standing approval, and one granted
+before this change is ignored; Settings → Agent → **Always allowed** marks it as such, and
+**Revoke** still removes it. Only the global **Always allow** confirmation setting skips the
+review.
 
 ### Always allow
 

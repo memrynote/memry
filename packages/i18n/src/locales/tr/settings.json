@@ -1451,7 +1451,8 @@
       "description": "Bu kasada kalıcı izin verdiğin araçlar. Silmelere hiçbir zaman kalıcı izin verilemez.",
       "empty": "Her zaman izinli araç yok. Her değişiklik yine sorulur.",
       "revoke": "Geri al",
-      "revokeLabel": "{tool} için kalıcı izni geri al"
+      "revokeLabel": "{tool} için kalıcı izni geri al",
+      "ignoredInPageReview": "Yok sayılıyor: not ve günlük düzenlemeleri her zaman sorulur."
     }
   },
   "commandLine": {

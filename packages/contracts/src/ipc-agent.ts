@@ -607,6 +607,34 @@ export const PreviewDiffResponseSchema = z.object({
 })
 export type PreviewDiffResponse = z.infer<typeof PreviewDiffResponseSchema>
 
+/**
+ * The page that reviews a pending body edit in place, instead of the agent pane.
+ *
+ * A note is addressed by id. A journal is addressed by date, because that is
+ * what both the tool and the journal page key on, and the entry may not exist
+ * yet when the agent asks to write it.
+ */
+export const AgentReviewTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('note'), id: z.string() }),
+  z.object({ kind: z.literal('journal'), date: z.string() })
+])
+export type AgentReviewTarget = z.infer<typeof AgentReviewTargetSchema>
+
+/**
+ * Body edits the user reviews inside the note or journal itself. These always
+ * ask: a standing approval (conversation or vault) is ignored for them, so the
+ * user sees every rewrite of their own writing before it lands. Only the global
+ * `always_accept` preference skips the review.
+ */
+export const IN_PAGE_REVIEW_TOOL_NAMES = [
+  'vault_update_note',
+  'vault_update_journal_entry'
+] as const
+
+export function isInPageReviewTool(toolName: string): boolean {
+  return (IN_PAGE_REVIEW_TOOL_NAMES as readonly string[]).includes(toolName)
+}
+
 export const BinaryStatusSchema = z.object({
   detected: z.boolean(),
   version: z.string().nullable(),
@@ -650,7 +678,13 @@ export const AgentEventSchema = z.discriminatedUnion('kind', [
      * older window render no preview at all rather than a coarser one.
      */
     requiresDiff: z.boolean(),
-    previewKind: ChangePreviewKindSchema
+    previewKind: ChangePreviewKindSchema,
+    /**
+     * Set when the edit is reviewed in the note or journal page rather than in
+     * the agent pane. Optional so events from an older main still parse; absent
+     * or null means the pane keeps showing the full approval card.
+     */
+    reviewTarget: AgentReviewTargetSchema.nullable().optional()
   }),
   z.object({
     kind: z.literal('tool_call_completed'),

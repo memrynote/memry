@@ -1,7 +1,8 @@
-import type {
-  AgentPreferences,
-  ApproveToolDecision,
-  ChangePreviewKind
+import {
+  isInPageReviewTool,
+  type AgentPreferences,
+  type ApproveToolDecision,
+  type ChangePreviewKind
 } from '@memry/contracts/ipc-agent'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
 
@@ -16,7 +17,7 @@ import {
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
 import { broadcastAgentEvent } from './event-bus'
-import { decideToolGate } from './permission-gate'
+import { decideToolGate, reviewTargetForTool } from './permission-gate'
 
 const logger = createLogger('AgentRuntime')
 
@@ -174,7 +175,8 @@ export class AgentRuntime {
         name: ctx.toolName,
         args: ctx.parsedArgs,
         requiresDiff,
-        previewKind
+        previewKind,
+        reviewTarget: reviewTargetForTool(ctx.toolName, ctx.parsedArgs)
       })
       // Tool name only, never args.
       trackMainEvent('ai_action_completed', {
@@ -208,7 +210,10 @@ export class AgentRuntime {
         return { approved: false, reason: 'User denied request.' }
       }
 
-      if (userDecision.kind === 'allow_always') {
+      // The gate ignores a standing approval for in-page review tools, so
+      // recording one would only add a grant that does nothing. The renderer
+      // does not offer it; this covers a window running an older bundle.
+      if (userDecision.kind === 'allow_always' && !isInPageReviewTool(ctx.toolName)) {
         if (userDecision.scope === 'vault') this.deps.grantVaultTool?.(ctx.toolName)
         else this.deps.conversations.addToTrustList(conversationId, ctx.toolName)
       }
