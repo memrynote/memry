@@ -9,7 +9,8 @@ import {
   sameMembership,
   makeCardSkeleton,
   findFreeCardCenter,
-  readCanvasDragItem,
+  readCanvasDragItems,
+  canvasDragPayloadMany,
   canvasDragPayload,
   CANVAS_ITEM_DRAG_MIME,
   CARD_DEFAULT_WIDTH,
@@ -361,17 +362,47 @@ describe('findFreeCardCenter', () => {
   })
 })
 
-describe('readCanvasDragItem / canvasDragPayload', () => {
-  it('round-trips a valid payload', () => {
+describe('readCanvasDragItems / canvasDragPayload', () => {
+  it('round-trips a single payload', () => {
     const payload = canvasDragPayload('task', 't1')
     const getData = (type: string): string => (type === CANVAS_ITEM_DRAG_MIME ? payload : '')
-    expect(readCanvasDragItem(getData)).toEqual({ entityType: 'task', entityId: 't1' })
+    expect(readCanvasDragItems(getData)).toEqual([{ entityType: 'task', entityId: 't1' }])
   })
 
-  it('returns null for missing MIME, bad JSON, or invalid content', () => {
-    expect(readCanvasDragItem(() => '')).toBeNull()
-    expect(readCanvasDragItem(() => 'not json')).toBeNull()
-    expect(readCanvasDragItem(() => JSON.stringify({ entityType: 'x', entityId: 'y' }))).toBeNull()
-    expect(readCanvasDragItem(() => JSON.stringify({ entityType: 'note' }))).toBeNull()
+  it('round-trips a multi-item payload, dropping invalid and repeated entries', () => {
+    const payload = JSON.stringify([
+      { entityType: 'note', entityId: 'n1' },
+      { entityType: 'x', entityId: 'y' },
+      { entityType: 'file', entityId: 'f1' },
+      { entityType: 'note', entityId: 'n1' }
+    ])
+    expect(readCanvasDragItems(() => payload)).toEqual([
+      { entityType: 'note', entityId: 'n1' },
+      { entityType: 'file', entityId: 'f1' }
+    ])
+  })
+
+  it('keeps the single-object shape for a one-item multi payload', () => {
+    expect(canvasDragPayloadMany([{ entityType: 'note', entityId: 'n1' }])).toBe(
+      canvasDragPayload('note', 'n1')
+    )
+    const many = canvasDragPayloadMany([
+      { entityType: 'note', entityId: 'n1' },
+      { entityType: 'task', entityId: 't1' }
+    ])
+    expect(readCanvasDragItems(() => many)).toEqual([
+      { entityType: 'note', entityId: 'n1' },
+      { entityType: 'task', entityId: 't1' }
+    ])
+  })
+
+  it('returns [] for missing MIME, bad JSON, or invalid content', () => {
+    expect(readCanvasDragItems(() => '')).toEqual([])
+    expect(readCanvasDragItems(() => 'not json')).toEqual([])
+    expect(readCanvasDragItems(() => JSON.stringify({ entityType: 'x', entityId: 'y' }))).toEqual(
+      []
+    )
+    expect(readCanvasDragItems(() => JSON.stringify({ entityType: 'note' }))).toEqual([])
+    expect(readCanvasDragItems(() => 'null')).toEqual([])
   })
 })

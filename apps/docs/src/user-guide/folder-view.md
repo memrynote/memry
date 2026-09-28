@@ -103,6 +103,10 @@ Select rows with checkboxes for:
 
 The bulk action bar appears at the top of the table when rows are selected.
 
+### Dragging rows onto a canvas
+
+With a canvas open in the other half of a split view, drag a row onto it to place it as a card. Drag one of several selected rows and the whole selection goes over, laid out as a grid; rows already on that canvas are skipped. This works in every layout and on tag pages too. To add a whole folder, tag or saved view without selecting anything, use **Add card → Add all from** on the canvas (see [Cards & Links](/user-guide/canvas/cards-and-links#adding-a-whole-tag-or-folder)).
+
 ## Saved Views
 
 Save the current columns, sort, group, and filters as a named view with **Add view** in the toolbar. Switch between saved views from the same dropdown, duplicate one as a starting point, set one as the default, or delete it. Saved views persist across restarts and sync to your other devices.

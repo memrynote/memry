@@ -484,7 +484,27 @@
       "addGroupTasks": "Tasks",
       "addGroupEvents": "Events",
       "addOnCanvas": "On canvas",
-      "addCreatedAt": "Created {date}"
+      "addCreatedAt": "Created {date}",
+      "bulkGroup": "Add all from",
+      "bulkFromTag": "A tag…",
+      "bulkFromFolder": "A folder…",
+      "bulkSearchTags": "Search tags…",
+      "bulkSearchFolders": "Search folders…",
+      "bulkTagsHeading": "Tags",
+      "bulkFoldersHeading": "Folders",
+      "bulkItemCount": "{count, plural, one {# item} other {# items}}",
+      "bulkViewsHeading": "Add from {name}",
+      "bulkAllItems": "All items",
+      "bulkConfirmTitle": "{count, plural, one {Add # card from {name}?} other {Add # cards from {name}?}}",
+      "bulkConfirmBody": "Large boards get slower to move around and can pass the sync size limit.",
+      "bulkConfirmSkipped": "{count, plural, one {# item is already on this canvas and will be skipped.} other {# items are already on this canvas and will be skipped.}}",
+      "bulkConfirmAdd": "{count, plural, one {Add # card} other {Add # cards}}",
+      "bulkBack": "Back",
+      "bulkEmpty": "No notes, files or tasks to add",
+      "bulkLoadFailed": "Could not load items",
+      "bulkAdded": "{count, plural, one {Added # card} other {Added # cards}}",
+      "bulkAddedSkipped": "{count, plural, one {Added # card} other {Added # cards}} · {skipped} already on canvas",
+      "bulkAllOnCanvas": "{count, plural, one {Already on this canvas} other {All # are already on this canvas}}"
     }
   },
   "phaseF": {
