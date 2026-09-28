@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Global fangst",
       "description": "Ta et notat fra hvor som helst",
-      "permissionNeeded": "Trenger tillatelse",
-      "active": "Aktiv",
-      "permissionHint": "Globale snarveier krever tilgjengelighetstillatelse. Gå til Systeminnstillinger → Personvern → Tilgjengelighet og aktiver memrynote."
+      "active": "Aktiv"
     },
     "toasts": {
       "saveGlobalFailed": "Kunne ikke lagre global opptakssnarvei",

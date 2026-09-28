@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "グローバルキャプチャー",
       "description": "どこからでもメモを取り込む",
-      "permissionNeeded": "許可が必要です",
-      "active": "アクティブ",
-      "permissionHint": "グローバル ショートカットにはアクセシビリティ権限が必要です。 [システム設定] → [プライバシー] → [アクセシビリティ] に移動し、memrynote を有効にします。"
+      "active": "アクティブ"
     },
     "toasts": {
       "saveGlobalFailed": "グローバル キャプチャ ショートカットの保存に失敗しました",

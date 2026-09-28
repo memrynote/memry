@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Tangkapan Global",
       "description": "Tangkap nota dari mana-mana sahaja",
-      "permissionNeeded": "Kebenaran diperlukan",
-      "active": "Aktif",
-      "permissionHint": "Pintasan global memerlukan kebenaran Kebolehaksesan. Pergi ke Tetapan Sistem → Privasi → Kebolehcapaian dan dayakan memrynote."
+      "active": "Aktif"
     },
     "toasts": {
       "saveGlobalFailed": "Gagal menyimpan pintasan tangkapan global",

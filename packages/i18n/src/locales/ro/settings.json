@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Captură globală",
       "description": "Capturați o notă de oriunde",
-      "permissionNeeded": "Este nevoie de permisiunea",
-      "active": "Activ",
-      "permissionHint": "Comenzile rapide globale necesită permisiunea de accesibilitate. Accesați Setări sistem → Confidențialitate → Accesibilitate și activați memrynote."
+      "active": "Activ"
     },
     "toasts": {
       "saveGlobalFailed": "Nu s-a salvat comanda rapidă de captură globală",

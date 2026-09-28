@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "글로벌 캡처",
       "description": "어디서나 메모를 캡처하세요",
-      "permissionNeeded": "권한이 필요합니다",
-      "active": "활성",
-      "permissionHint": "전역 바로가기를 사용하려면 접근성 권한이 필요합니다. 시스템 설정 → 개인정보 → 접근성으로 이동하여 memrynote를 활성화하세요."
+      "active": "활성"
     },
     "toasts": {
       "saveGlobalFailed": "전역 캡처 바로가기를 저장하지 못했습니다.",

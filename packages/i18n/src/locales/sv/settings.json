@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Global fånga",
       "description": "Fånga en anteckning från var som helst",
-      "permissionNeeded": "Behörighet behövs",
-      "active": "Aktiv",
-      "permissionHint": "Globala genvägar kräver åtkomstbehörighet. Gå till Systeminställningar → Integritet → Tillgänglighet och aktivera memrynote."
+      "active": "Aktiv"
     },
     "toasts": {
       "saveGlobalFailed": "Misslyckades med att spara global fångstgenväg",

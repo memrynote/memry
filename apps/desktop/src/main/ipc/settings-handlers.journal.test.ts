@@ -41,9 +41,6 @@ vi.mock('electron', () => ({
     unregister: vi.fn(),
     register: vi.fn()
   },
-  systemPreferences: {
-    isTrustedAccessibilityClient: vi.fn()
-  },
   shell: {
     openExternal: vi.fn()
   }

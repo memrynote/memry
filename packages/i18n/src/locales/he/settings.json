@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "לכידה עולמית",
       "description": "צלם הערה מכל מקום",
-      "permissionNeeded": "צריך רשות",
-      "active": "פעיל",
-      "permissionHint": "קיצורי דרך גלובליים דורשים הרשאת נגישות. עבור אל הגדרות מערכת ← פרטיות ← נגישות והפעל את memrynote."
+      "active": "פעיל"
     },
     "toasts": {
       "saveGlobalFailed": "שמירת קיצור הדרך לצילום גלובלי נכשלה",

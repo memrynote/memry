@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Globálne zachytenie",
       "description": "Zachytiť poznámku odkiaľkoľvek",
-      "permissionNeeded": "Potrebné povolenie",
-      "active": "Aktívne",
-      "permissionHint": "Globálne skratky vyžadujú povolenie prístupnosti. Prejdite do Systémových nastavení → Ochrana súkromia → Prístupnosť a povolte memrynote."
+      "active": "Aktívne"
     },
     "toasts": {
       "saveGlobalFailed": "Nepodarilo sa uložiť globálnu skratku zachytenia",

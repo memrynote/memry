@@ -1118,9 +1118,7 @@
     "globalCapture": {
       "title": "Küresel Yakalama",
       "description": "İstediğiniz yerden not yakalayın",
-      "permissionNeeded": "İzin gerekli",
-      "active": "Aktif",
-      "permissionHint": "Genel kısayollar Erişilebilirlik izni gerektirir. Sistem Ayarları → Gizlilik → Erişilebilirlik seçeneğine gidin ve belleği etkinleştirin."
+      "active": "Aktif"
     },
     "toasts": {
       "saveGlobalFailed": "Genel yakalama kısayolu kaydedilemedi",

@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "全球捕获",
       "description": "随时随地捕捉笔记",
-      "permissionNeeded": "需要权限",
-      "active": "活跃",
-      "permissionHint": "全局快捷键需要辅助功能权限。前往系统设置 → 隐私 → 辅助功能并启用 memrynote。"
+      "active": "活跃"
     },
     "toasts": {
       "saveGlobalFailed": "无法保存全局捕获快捷键",

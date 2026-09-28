@@ -221,8 +221,7 @@ export const KEYBOARD_SHORTCUTS_DEFAULTS: KeyboardShortcuts = {
  * `in_use`: the OS refused the accelerator because another app holds it.
  * `unsupported`: Electron cannot parse the binding as an accelerator.
  */
-export type GlobalCaptureStatus =
-  'unbound' | 'registered' | 'permission_required' | 'in_use' | 'unsupported'
+export type GlobalCaptureStatus = 'unbound' | 'registered' | 'in_use' | 'unsupported'
 
 export interface GlobalCaptureResult {
   status: GlobalCaptureStatus

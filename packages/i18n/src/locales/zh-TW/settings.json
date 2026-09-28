@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "全域截取",
       "description": "從任何地方截取筆記",
-      "permissionNeeded": "需要權限",
-      "active": "啟用中",
-      "permissionHint": "全域快捷鍵需要輔助功能權限。前往系統設定 → 隱私 → 輔助功能並啟用 memrynote。"
+      "active": "啟用中"
     },
     "toasts": {
       "saveGlobalFailed": "無法保存全域截取快捷鍵",

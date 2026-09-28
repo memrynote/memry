@@ -7,7 +7,7 @@
  * @module main/ipc/settings-handlers
  */
 
-import { ipcMain, app, globalShortcut, systemPreferences, shell } from 'electron'
+import { ipcMain, app, globalShortcut, shell } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import {
@@ -1488,12 +1488,10 @@ function registerGlobalCaptureBinding(binding: ShortcutBinding | null): GlobalCa
     return 'unbound'
   }
 
-  if (process.platform === 'darwin' && !systemPreferences.isTrustedAccessibilityClient(false)) {
-    logger.warn('Global capture: accessibility permission not granted on macOS')
-    releaseGlobalCaptureAccelerator()
-    return 'permission_required'
-  }
-
+  // No Accessibility check: macOS registers ordinary key combos without it (only
+  // media keys need a trusted accessibility client, and those cannot be recorded).
+  // Gating on it blocked the binding for users whose permission entry was missing
+  // or stale, while the ungated fallback shortcut kept working (#2452).
   const accelerator = toElectronAccelerator(binding)
   if (accelerator === registeredGlobalCaptureAccelerator) return 'registered'
 

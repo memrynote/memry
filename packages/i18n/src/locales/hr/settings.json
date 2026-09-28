@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Globalno snimanje",
       "description": "Snimite bilješku s bilo kojeg mjesta",
-      "permissionNeeded": "Potrebno dopuštenje",
-      "active": "Aktivno",
-      "permissionHint": "Za globalne prečace potrebna je dozvola pristupačnosti. Idite na Postavke sustava → Privatnost → Pristupačnost i omogućite memrynote."
+      "active": "Aktivno"
     },
     "toasts": {
       "saveGlobalFailed": "Spremanje globalnog prečaca za snimanje nije uspjelo",

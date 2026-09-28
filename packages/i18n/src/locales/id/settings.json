@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Penangkapan Global",
       "description": "Ambil catatan dari mana saja",
-      "permissionNeeded": "Diperlukan izin",
-      "active": "Aktif",
-      "permissionHint": "Pintasan global memerlukan izin Aksesibilitas. Buka Pengaturan Sistem → Privasi → Aksesibilitas dan aktifkan memrynote."
+      "active": "Aktif"
     },
     "toasts": {
       "saveGlobalFailed": "Gagal menyimpan pintasan pengambilan global",

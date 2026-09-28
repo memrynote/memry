@@ -390,7 +390,7 @@ Zoom is the one Appearance setting that does **not** sync to your other devices,
 
 ### Global Capture
 
-Set a system-wide hotkey that opens quick capture from any app. macOS requires Accessibility permission.
+Set a system-wide hotkey that opens quick capture from any app. No extra system permission is needed, including Accessibility on macOS.
 
 Until you set one, the built-in hotkey `Cmd`/`Ctrl` + `Shift` + `Space` opens quick capture. memrynote releases it once your own hotkey registers.
 

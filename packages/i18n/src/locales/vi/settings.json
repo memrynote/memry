@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Chụp toàn cầu",
       "description": "Chụp một ghi chú từ bất kỳ đâu",
-      "permissionNeeded": "Cần quyền",
-      "active": "Đang hoạt động",
-      "permissionHint": "Phím tắt toàn cầu yêu cầu quyền Truy cập. Đi tới Cài đặt Hệ thống → Quyền riêng tư → Truy cập và bật memrynote."
+      "active": "Đang hoạt động"
     },
     "toasts": {
       "saveGlobalFailed": "Không thể lưu phím tắt chụp toàn cầu",

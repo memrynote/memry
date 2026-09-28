@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "الالتقاط العالمي",
       "description": "التقط ملاحظة من أي مكان",
-      "permissionNeeded": "الإذن مطلوب",
-      "active": "نشط",
-      "permissionHint": "تتطلب الاختصارات العامة إذن الوصول. انتقل إلى إعدادات النظام → الخصوصية → إمكانية الوصول وقم بتمكين memrynote."
+      "active": "نشط"
     },
     "toasts": {
       "saveGlobalFailed": "فشل في حفظ اختصار الالتقاط الشامل",

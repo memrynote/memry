@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Globale Erfassung",
       "description": "Erfassen Sie eine Notiz von überall",
-      "permissionNeeded": "Erlaubnis erforderlich",
-      "active": "Aktiv",
-      "permissionHint": "Für globale Verknüpfungen ist die Berechtigung „Barrierefreiheit“ erforderlich. Gehen Sie zu Systemeinstellungen → Datenschutz → Barrierefreiheit und aktivieren Sie memrynote."
+      "active": "Aktiv"
     },
     "toasts": {
       "saveGlobalFailed": "Die globale Erfassungsverknüpfung konnte nicht gespeichert werden",

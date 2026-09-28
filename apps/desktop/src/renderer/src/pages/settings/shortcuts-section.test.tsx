@@ -198,15 +198,13 @@ describe('ShortcutsSettings', () => {
     expect(screen.queryByText('Capture a note from anywhere')).not.toBeInTheDocument()
   })
 
-  it('shows global capture permission guidance and save failures', async () => {
+  it('shows global capture save failures', async () => {
     const { setGlobalCapture } = mockGlobalCaptureApi(
-      { status: 'permission_required', fallbackRegistered: true },
+      { status: 'unbound', fallbackRegistered: true },
       new Error('No vault is open')
     )
 
     render(<ShortcutsSettings />)
-
-    await waitFor(() => expect(screen.getByText('Permission needed')).toBeInTheDocument())
 
     await userEvent.click(screen.getByText('Click to set'))
     fireEvent.keyDown(window, { key: 'x', code: 'KeyX', ctrlKey: true })

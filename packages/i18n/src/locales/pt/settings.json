@@ -1052,9 +1052,7 @@
     "globalCapture": {
       "title": "Captura Global",
       "description": "Capture uma nota de qualquer lugar",
-      "permissionNeeded": "Permissão necessária",
-      "active": "Ativo",
-      "permissionHint": "Os atalhos globais requerem permissão de acessibilidade. Vá para Configurações do sistema → Privacidade → Acessibilidade e habilite memrynote."
+      "active": "Ativo"
     },
     "toasts": {
       "saveGlobalFailed": "Falha ao salvar o atalho de captura global",
