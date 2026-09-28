@@ -48,7 +48,6 @@ export function GraphContextMenu({
   onUnlink,
   onClose
 }: GraphContextMenuProps): React.JSX.Element {
-  const { t } = useT('graph')
   const menuRef = useRef<HTMLDivElement>(null)
   const [mode, setMode] = useState<MenuMode>('main')
 
@@ -71,11 +70,7 @@ export function GraphContextMenu({
 
   if (!graph.hasNode(menu.nodeId)) return <></>
 
-  const attrs = graph.getNodeAttributes(menu.nodeId)
-  const label = (attrs.label as string) || t('context-menu.untitled')
-  const isUnresolved = attrs.isUnresolved as boolean
-  const editable = isEditableGraphNode(graph, menu.nodeId)
-  const relationLinks = onUnlink ? relationLinksOf(graph, menu.nodeId) : []
+  const nodeTags = (graph.getNodeAttribute(menu.nodeId, 'tags') as string[] | undefined) ?? []
 
   return (
     <div
@@ -96,7 +91,7 @@ export function GraphContextMenu({
       ) : mode === 'tag' && onAddTag ? (
         <TagPicker
           graph={graph}
-          nodeTags={(attrs.tags as string[] | undefined) ?? []}
+          nodeTags={nodeTags}
           onBack={() => setMode('main')}
           onPick={(tag) => {
             onAddTag(menu.nodeId, tag)
@@ -104,107 +99,148 @@ export function GraphContextMenu({
           }}
         />
       ) : (
-        <>
-          <div className="px-2 py-1.5 mb-0.5">
-            <span className="text-xs font-medium text-foreground truncate block max-w-[180px]">
-              {label}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            className={ITEM_CLASS}
-            onClick={() => {
-              onFocusNode(menu.nodeId)
-              onClose()
-            }}
-          >
-            <Focus className="size-3.5 text-muted-foreground" />
-            {t('context-menu.focus-node')}
-          </button>
-
-          {!isUnresolved && (
-            <button
-              type="button"
-              className={ITEM_CLASS}
-              onClick={() => {
-                onOpenInTab(menu.nodeId)
-                onClose()
-              }}
-            >
-              <ExternalLink className="size-3.5 text-muted-foreground" />
-              {t('context-menu.open-new-tab')}
-            </button>
-          )}
-
-          {isUnresolved && onCreateNote && (
-            <button
-              type="button"
-              className={ITEM_CLASS}
-              onClick={() => {
-                onCreateNote(label)
-                onClose()
-              }}
-            >
-              <FilePlus className="size-3.5 text-muted-foreground" />
-              {t('context-menu.create-note')}
-            </button>
-          )}
-
-          {editable && onLinkTo && (
-            <button type="button" className={ITEM_CLASS} onClick={() => setMode('link')}>
-              <Link2 className="size-3.5 text-muted-foreground" />
-              {t('context-menu.link-to')}
-            </button>
-          )}
-
-          {editable && onAddTag && (
-            <button type="button" className={ITEM_CLASS} onClick={() => setMode('tag')}>
-              <Tag className="size-3.5 text-muted-foreground" />
-              {t('context-menu.add-tag')}
-            </button>
-          )}
-
-          <button
-            type="button"
-            className={ITEM_CLASS}
-            onClick={() => {
-              void navigator.clipboard.writeText(label)
-              onClose()
-            }}
-          >
-            <Copy className="size-3.5 text-muted-foreground" />
-            {t('context-menu.copy-title')}
-          </button>
-
-          {relationLinks.length > 0 && onUnlink && (
-            <>
-              <div className="my-1 h-px bg-border" />
-              <div className="max-h-40 overflow-y-auto">
-                {relationLinks.map((link) => (
-                  <button
-                    key={`${link.sourceId}-${link.targetId}`}
-                    type="button"
-                    className={ITEM_CLASS}
-                    onClick={() => {
-                      onUnlink(link)
-                      onClose()
-                    }}
-                  >
-                    <Unlink className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="truncate">
-                      {t('context-menu.remove-link', {
-                        title: link.otherLabel || t('context-menu.untitled')
-                      })}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </>
+        <MainMenu
+          nodeId={menu.nodeId}
+          graph={graph}
+          onFocusNode={onFocusNode}
+          onOpenInTab={onOpenInTab}
+          onCreateNote={onCreateNote}
+          onStartLink={onLinkTo ? () => setMode('link') : undefined}
+          onStartTag={onAddTag ? () => setMode('tag') : undefined}
+          onUnlink={onUnlink}
+          onClose={onClose}
+        />
       )}
     </div>
+  )
+}
+
+interface MainMenuProps {
+  nodeId: string
+  graph: Graph
+  onFocusNode: (nodeId: string) => void
+  onOpenInTab: (nodeId: string) => void
+  onCreateNote?: (title: string) => void
+  onStartLink?: () => void
+  onStartTag?: () => void
+  onUnlink?: (link: GraphRelationLink) => void
+  onClose: () => void
+}
+
+function MainMenu({
+  nodeId,
+  graph,
+  onFocusNode,
+  onOpenInTab,
+  onCreateNote,
+  onStartLink,
+  onStartTag,
+  onUnlink,
+  onClose
+}: MainMenuProps): React.JSX.Element {
+  const { t } = useT('graph')
+  const attrs = graph.getNodeAttributes(nodeId)
+  const label = (attrs.label as string) || t('context-menu.untitled')
+  const isUnresolved = attrs.isUnresolved as boolean
+  const editable = isEditableGraphNode(graph, nodeId)
+
+  /** Runs `action`, then closes the menu. */
+  const closing = (action: () => void) => () => {
+    action()
+    onClose()
+  }
+
+  return (
+    <>
+      <div className="px-2 py-1.5 mb-0.5">
+        <span className="text-xs font-medium text-foreground truncate block max-w-[180px]">
+          {label}
+        </span>
+      </div>
+
+      <button type="button" className={ITEM_CLASS} onClick={closing(() => onFocusNode(nodeId))}>
+        <Focus className="size-3.5 text-muted-foreground" />
+        {t('context-menu.focus-node')}
+      </button>
+
+      {!isUnresolved && (
+        <button type="button" className={ITEM_CLASS} onClick={closing(() => onOpenInTab(nodeId))}>
+          <ExternalLink className="size-3.5 text-muted-foreground" />
+          {t('context-menu.open-new-tab')}
+        </button>
+      )}
+
+      {isUnresolved && onCreateNote && (
+        <button type="button" className={ITEM_CLASS} onClick={closing(() => onCreateNote(label))}>
+          <FilePlus className="size-3.5 text-muted-foreground" />
+          {t('context-menu.create-note')}
+        </button>
+      )}
+
+      {editable && onStartLink && (
+        <button type="button" className={ITEM_CLASS} onClick={onStartLink}>
+          <Link2 className="size-3.5 text-muted-foreground" />
+          {t('context-menu.link-to')}
+        </button>
+      )}
+
+      {editable && onStartTag && (
+        <button type="button" className={ITEM_CLASS} onClick={onStartTag}>
+          <Tag className="size-3.5 text-muted-foreground" />
+          {t('context-menu.add-tag')}
+        </button>
+      )}
+
+      <button
+        type="button"
+        className={ITEM_CLASS}
+        onClick={closing(() => void navigator.clipboard.writeText(label))}
+      >
+        <Copy className="size-3.5 text-muted-foreground" />
+        {t('context-menu.copy-title')}
+      </button>
+
+      {onUnlink && (
+        <RelationLinkList
+          links={relationLinksOf(graph, nodeId)}
+          onUnlink={(link) => closing(() => onUnlink(link))()}
+        />
+      )}
+    </>
+  )
+}
+
+function RelationLinkList({
+  links,
+  onUnlink
+}: {
+  links: GraphRelationLink[]
+  onUnlink: (link: GraphRelationLink) => void
+}): React.JSX.Element | null {
+  const { t } = useT('graph')
+  if (links.length === 0) return null
+
+  return (
+    <>
+      <div className="my-1 h-px bg-border" />
+      <div className="max-h-40 overflow-y-auto">
+        {links.map((link) => (
+          <button
+            key={`${link.sourceId}-${link.targetId}`}
+            type="button"
+            className={ITEM_CLASS}
+            onClick={() => onUnlink(link)}
+          >
+            <Unlink className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">
+              {t('context-menu.remove-link', {
+                title: link.otherLabel || t('context-menu.untitled')
+              })}
+            </span>
+          </button>
+        ))}
+      </div>
+    </>
   )
 }
 
