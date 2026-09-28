@@ -22,7 +22,6 @@ import { calendarBindingHandler } from '@memry/sync-client/item-handlers/calenda
 import { calendarExternalEventHandler } from '@memry/sync-client/item-handlers/calendar-external-event-handler'
 import { calendarSourceHandler } from '@memry/sync-client/item-handlers/calendar-source-handler'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
-import { initCrypto } from '../../crypto/index'
 import { encryptItemForPush } from '../encrypt'
 import { decryptItemFromPull } from '../decrypt'
 
@@ -48,7 +47,7 @@ describe('foreign-provider calendar rows through the shared sync handlers (#1396
   let db: DrizzleDb
 
   beforeAll(async () => {
-    await initCrypto()
+    await sodium.ready
   })
 
   beforeEach(() => {
