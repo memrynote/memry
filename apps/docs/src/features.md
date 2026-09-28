@@ -53,7 +53,7 @@ The desktop app ships a `memrynote` CLI that can be enabled from Settings with a
 
 ## Canvas
 
-Infinite boards with ink, shapes, and live cards for notes, tasks, and events. Opt-in under Settings → Features.
+Infinite boards with ink, shapes, and live cards for notes, tasks, and events. Sections tied to a tag or property value categorize the cards you drop into them. Opt-in under Settings → Features.
 
 → [Canvas Overview](/user-guide/canvas/overview)
 

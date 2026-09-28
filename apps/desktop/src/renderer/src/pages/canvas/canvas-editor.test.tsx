@@ -185,6 +185,7 @@ vi.mock('@/services/canvas-service', () => ({
   }
 }))
 vi.mock('./canvas-card-overlay', () => ({ CanvasCardLayer: () => null }))
+vi.mock('./canvas-frame-layer', () => ({ CanvasFrameLayer: () => null }))
 vi.mock('@/contexts/tabs', () => ({
   useTabActions: () => ({ openTab: mocks.openTab }),
   // The camera lives in the owning tab's viewState, so the view-state hooks
