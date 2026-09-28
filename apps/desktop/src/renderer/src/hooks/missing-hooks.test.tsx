@@ -635,6 +635,8 @@ describe('state and settings hooks', () => {
     act(() => filters.result.current.dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: 'note' }))
     expect(filters.result.current.filterState.showNotes).toBe(false)
     act(() => filters.result.current.dispatch({ type: 'TOGGLE_ORPHANS' }))
+    act(() => filters.result.current.dispatch({ type: 'TOGGLE_CANVAS_EDGES' }))
+    expect(filters.result.current.filterState.showCanvasEdges).toBe(false)
     act(() => filters.result.current.dispatch({ type: 'SET_SELECTED_TAGS', tags: ['work'] }))
     act(() =>
       filters.result.current.dispatch({ type: 'SET_FOCUS_NODE', nodeId: 'note-1', depth: 3 })
