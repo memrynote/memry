@@ -20,8 +20,11 @@ import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { useTabActions } from '@/contexts/tabs'
 import { useNoteMutations } from '@/hooks/use-notes-query'
+import { useGraphEdits, type GraphEdits } from '@/hooks/use-graph-edits'
+import { isEditableGraphNode, type GraphRelationLink } from '@/lib/graph-edits'
+import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import { GraphEvents } from './graph-events'
+import { GraphEvents, type LinkDragState } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
 import { GraphContextMenu, type ContextMenuState } from './graph-context-menu'
 import { GraphRenderUnavailable } from './graph-render-unavailable'
@@ -87,6 +90,9 @@ export function GraphCanvas({
   const fadeRef = useRef(0)
   const hoverTargetRef = useRef<string | null>(null)
   const physicsHandleRef = useRef<PhysicsHandle | null>(null)
+  const [linkDrag, setLinkDrag] = useState<LinkDragState | null>(null)
+  const graphEdits = useGraphEdits()
+  const { t } = useT('graph')
 
   const handleNodeGrab = useCallback((nodeId: string) => {
     physicsHandleRef.current?.grab(nodeId)
@@ -268,6 +274,22 @@ export function GraphCanvas({
 
   const handleCloseContextMenu = useCallback(() => setContextMenu(null), [])
 
+  const canStartLink = useCallback((nodeId: string) => isEditableGraphNode(graph, nodeId), [graph])
+
+  const handleLinkDrop = useCallback(
+    (sourceId: string, targetId: string) => {
+      if (!isEditableGraphNode(graph, targetId)) {
+        toast(t('edit.link-unsupported'))
+        return
+      }
+      void graphEdits.linkNotes(sourceId, targetId, {
+        source: nodeLabel(graph, sourceId, t('context-menu.untitled')),
+        target: nodeLabel(graph, targetId, t('context-menu.untitled'))
+      })
+    },
+    [graph, graphEdits, t]
+  )
+
   if (!webglAvailable) return <GraphRenderUnavailable onClose={onClose} />
 
   return (
@@ -300,9 +322,30 @@ export function GraphCanvas({
           onNodeGrab={handleNodeGrab}
           onNodeDrag={handleNodeDrag}
           onNodeRelease={handleNodeRelease}
+          canStartLink={canStartLink}
+          onLinkDrag={setLinkDrag}
+          onLinkDrop={handleLinkDrop}
         />
       </SigmaContainer>
-      {hoveredNode && tooltipPos && !contextMenu && (
+      {linkDrag && (
+        <svg
+          aria-hidden
+          data-testid="graph-link-preview"
+          className="pointer-events-none absolute inset-0 size-full text-foreground/60"
+        >
+          <line
+            x1={linkDrag.fromX}
+            y1={linkDrag.fromY}
+            x2={linkDrag.x}
+            y2={linkDrag.y}
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+          />
+          <circle cx={linkDrag.x} cy={linkDrag.y} r={3} fill="currentColor" />
+        </svg>
+      )}
+      {hoveredNode && tooltipPos && !contextMenu && !linkDrag && (
         <GraphTooltip nodeId={hoveredNode} graph={graph} x={tooltipPos.x} y={tooltipPos.y} />
       )}
       {contextMenu && (
@@ -310,6 +353,7 @@ export function GraphCanvas({
           menu={contextMenu}
           graph={graph}
           onFocusNode={onFocusNode}
+          graphEdits={graphEdits}
           onClose={handleCloseContextMenu}
         />
       )}
@@ -362,15 +406,22 @@ function useLiveGraph(
   return { graph, revision }
 }
 
+function nodeLabel(graph: Graph, nodeId: string, fallback: string): string {
+  if (!graph.hasNode(nodeId)) return fallback
+  return (graph.getNodeAttribute(nodeId, 'label') as string) || fallback
+}
+
 function ContextMenuWithTabAction({
   menu,
   graph,
   onFocusNode,
+  graphEdits,
   onClose
 }: {
   menu: ContextMenuState
   graph: ReturnType<typeof buildGraphologyGraph>
   onFocusNode: (nodeId: string) => void
+  graphEdits: GraphEdits
   onClose: () => void
 }): React.JSX.Element {
   const { openTab } = useTabActions()
@@ -432,6 +483,8 @@ function ContextMenuWithTabAction({
     [createNote, openTab]
   )
 
+  const untitled = t('context-menu.untitled')
+
   return (
     <GraphContextMenu
       menu={menu}
@@ -439,6 +492,19 @@ function ContextMenuWithTabAction({
       onFocusNode={onFocusNode}
       onOpenInTab={handleOpenInTab}
       onCreateNote={(...args) => void handleCreateNote(...args)}
+      onLinkTo={(sourceId, targetId) =>
+        void graphEdits.linkNotes(sourceId, targetId, {
+          source: nodeLabel(graph, sourceId, untitled),
+          target: nodeLabel(graph, targetId, untitled)
+        })
+      }
+      onAddTag={(nodeId, tag) => void graphEdits.addTag(nodeId, tag)}
+      onUnlink={(link: GraphRelationLink) =>
+        void graphEdits.unlinkNotes(link.sourceId, link.targetId, {
+          source: nodeLabel(graph, link.sourceId, untitled),
+          target: nodeLabel(graph, link.targetId, untitled)
+        })
+      }
       onClose={onClose}
     />
   )

@@ -382,6 +382,137 @@ describe('GraphEvents', () => {
     })
   })
 
+  describe('Alt-drag linking', () => {
+    const alt = { altKey: true } as MouseEvent
+
+    function renderWithLink(canStartLink: (nodeId: string) => boolean = () => true): {
+      onNodeGrab: ReturnType<typeof vi.fn>
+      onLinkDrag: ReturnType<typeof vi.fn>
+      onLinkDrop: ReturnType<typeof vi.fn>
+    } {
+      const handlers = { onNodeGrab: vi.fn(), onLinkDrag: vi.fn(), onLinkDrop: vi.fn() }
+      render(
+        <GraphEvents
+          onHoverNode={vi.fn()}
+          onTooltipMove={vi.fn()}
+          onFocusNode={vi.fn()}
+          onContextMenu={vi.fn()}
+          onNodeDrag={vi.fn()}
+          onNodeRelease={vi.fn()}
+          canStartLink={canStartLink}
+          {...handlers}
+        />
+      )
+      mocks.graph.hasNode.mockReturnValue(true)
+      mocks.graph.getNodeAttributes.mockReturnValue({
+        nodeType: 'note',
+        label: 'Roadmap',
+        isUnresolved: false
+      })
+      return handlers
+    }
+
+    it('links the pressed node to the node the pointer is released over', () => {
+      const { onNodeGrab, onLinkDrag, onLinkDrop } = renderWithLink()
+      const preventSigmaDefault = vi.fn()
+
+      mocks.events.enterNode({ node: 'a', event: { x: 5, y: 5 } })
+      mocks.events.downNode({ node: 'a', event: { x: 5, y: 5, original: alt } })
+      expect(onNodeGrab).not.toHaveBeenCalled()
+      expect(document.body.style.cursor).toBe('crosshair')
+
+      mocks.events.leaveNode()
+      mocks.events.mousemovebody({ x: 50, y: 60, preventSigmaDefault })
+      expect(onLinkDrag).toHaveBeenLastCalledWith({
+        sourceId: 'a',
+        fromX: 5,
+        fromY: 5,
+        x: 50,
+        y: 60
+      })
+      expect(preventSigmaDefault).toHaveBeenCalled()
+      expect(document.body.style.cursor).toBe('crosshair')
+
+      mocks.events.enterNode({ node: 'b', event: { x: 90, y: 90 } })
+      expect(document.body.style.cursor).toBe('crosshair')
+      window.dispatchEvent(new Event('pointerup'))
+      mocks.events.mouseup()
+
+      expect(onLinkDrop).toHaveBeenCalledTimes(1)
+      expect(onLinkDrop).toHaveBeenCalledWith('a', 'b')
+      expect(onLinkDrag).toHaveBeenLastCalledWith(null)
+
+      // The DOM click that follows the release must not open the target.
+      mocks.events.clickNode({ node: 'b' })
+      expect(mocks.openTab).not.toHaveBeenCalled()
+    })
+
+    it('does nothing when released over empty canvas or the source itself', () => {
+      const { onLinkDrop } = renderWithLink()
+
+      mocks.events.downNode({ node: 'a', event: { x: 5, y: 5, original: alt } })
+      mocks.events.mouseup()
+      mocks.events.clickStage()
+
+      mocks.events.enterNode({ node: 'a', event: { x: 5, y: 5 } })
+      mocks.events.downNode({ node: 'a', event: { x: 5, y: 5, original: alt } })
+      mocks.events.mouseup()
+
+      expect(onLinkDrop).not.toHaveBeenCalled()
+    })
+
+    it('drops the gesture without linking when the window loses focus', () => {
+      const { onLinkDrop, onLinkDrag } = renderWithLink()
+
+      mocks.events.downNode({ node: 'a', event: { x: 5, y: 5, original: alt } })
+      mocks.events.enterNode({ node: 'b', event: { x: 90, y: 90 } })
+      window.dispatchEvent(new Event('blur'))
+
+      expect(onLinkDrop).not.toHaveBeenCalled()
+      expect(onLinkDrag).toHaveBeenLastCalledWith(null)
+
+      // Nothing was released on the canvas, so the next click is a real one.
+      mocks.events.clickNode({ node: 'b' })
+      expect(mocks.openTab).toHaveBeenCalled()
+    })
+
+    it('falls back to a normal node drag without Alt or for a non-linkable node', () => {
+      const { onNodeGrab, onLinkDrag } = renderWithLink((nodeId) => nodeId !== 'task-1')
+
+      mocks.events.downNode({ node: 'a', event: { x: 5, y: 5 } })
+      mocks.events.mouseup()
+      mocks.events.downNode({ node: 'task-1', event: { x: 5, y: 5, original: alt } })
+      mocks.events.mouseup()
+
+      expect(onNodeGrab).toHaveBeenNthCalledWith(1, 'a')
+      expect(onNodeGrab).toHaveBeenNthCalledWith(2, 'task-1')
+      expect(onLinkDrag).not.toHaveBeenCalled()
+    })
+  })
+
+  it('does not let a drag released over the stage swallow the next node click', () => {
+    render(
+      <GraphEvents
+        onHoverNode={vi.fn()}
+        onTooltipMove={vi.fn()}
+        onFocusNode={vi.fn()}
+        onContextMenu={vi.fn()}
+        onNodeDrag={vi.fn()}
+      />
+    )
+    mocks.viewportToGraph.mockReturnValue({ x: 0, y: 0 })
+    mocks.graph.hasNode.mockReturnValue(true)
+    mocks.graph.getNodeAttributes.mockReturnValue({ nodeType: 'note', isUnresolved: false })
+
+    mocks.events.downNode({ node: 'note-1', event: { x: 5, y: 5 } })
+    mocks.events.mousemovebody({ x: 90, y: 90, preventSigmaDefault: vi.fn() })
+    mocks.events.mouseup()
+    mocks.events.clickStage()
+    mocks.events.clickNode({ node: 'note-1' })
+
+    expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'note-1' }))
+  })
+
   describe('live physics frame loop', () => {
     let pending: Map<number, FrameRequestCallback>
     let raf: ReturnType<typeof vi.fn>

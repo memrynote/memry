@@ -20,7 +20,14 @@ const graphCanvasMocks = vi.hoisted(() => ({
   layoutStart: vi.fn(),
   layoutStop: vi.fn(),
   openTab: vi.fn(),
-  createNote: vi.fn()
+  createNote: vi.fn(),
+  graphEdits: {
+    linkNotes: vi.fn(),
+    unlinkNotes: vi.fn(),
+    addTag: vi.fn()
+  },
+  toast: vi.fn(),
+  canStartLink: null as null | ((nodeId: string) => boolean)
 }))
 
 vi.mock('@react-sigma/core', () => ({
@@ -52,6 +59,14 @@ vi.mock('@/hooks/use-notes-query', () => ({
   })
 }))
 
+vi.mock('@/hooks/use-graph-edits', () => ({
+  useGraphEdits: () => graphCanvasMocks.graphEdits
+}))
+
+vi.mock('sonner', () => ({
+  toast: graphCanvasMocks.toast
+}))
+
 vi.mock('./graph-events', () => ({
   GraphEvents: ({
     onHoverNode,
@@ -60,7 +75,10 @@ vi.mock('./graph-events', () => ({
     onContextMenu,
     onNodeGrab,
     onNodeDrag,
-    onNodeRelease
+    onNodeRelease,
+    canStartLink,
+    onLinkDrag,
+    onLinkDrop
   }: {
     onHoverNode: (id: string | null) => void
     onTooltipMove: (pos: { x: number; y: number } | null) => void
@@ -69,46 +87,69 @@ vi.mock('./graph-events', () => ({
     onNodeGrab?: (id: string) => void
     onNodeDrag?: (id: string, x: number, y: number) => void
     onNodeRelease?: (id: string) => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => {
-          onHoverNode('note-a')
-          onTooltipMove({ x: 10, y: 20 })
-        }}
-      >
-        hover note
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          onHoverNode(null)
-          onTooltipMove(null)
-        }}
-      >
-        unhover note
-      </button>
-      <button type="button" onClick={() => onFocusNode('note-b')}>
-        focus note
-      </button>
-      <button type="button" onClick={() => onContextMenu?.({ nodeId: 'note-a', x: 1, y: 2 })}>
-        context note
-      </button>
-      <button type="button" onClick={() => onContextMenu?.({ nodeId: 'ghost', x: 3, y: 4 })}>
-        context ghost
-      </button>
-      <button type="button" onClick={() => onNodeGrab?.('note-a')}>
-        grab note
-      </button>
-      <button type="button" onClick={() => onNodeDrag?.('note-a', 777, -321)}>
-        drag note
-      </button>
-      <button type="button" onClick={() => onNodeRelease?.('note-a')}>
-        release note
-      </button>
-    </div>
-  )
+    canStartLink?: (id: string) => boolean
+    onLinkDrag?: (
+      drag: { sourceId: string; fromX: number; fromY: number; x: number; y: number } | null
+    ) => void
+    onLinkDrop?: (sourceId: string, targetId: string) => void
+  }) => {
+    graphCanvasMocks.canStartLink = canStartLink ?? null
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            onHoverNode('note-a')
+            onTooltipMove({ x: 10, y: 20 })
+          }}
+        >
+          hover note
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onHoverNode(null)
+            onTooltipMove(null)
+          }}
+        >
+          unhover note
+        </button>
+        <button type="button" onClick={() => onFocusNode('note-b')}>
+          focus note
+        </button>
+        <button type="button" onClick={() => onContextMenu?.({ nodeId: 'note-a', x: 1, y: 2 })}>
+          context note
+        </button>
+        <button type="button" onClick={() => onContextMenu?.({ nodeId: 'ghost', x: 3, y: 4 })}>
+          context ghost
+        </button>
+        <button type="button" onClick={() => onNodeGrab?.('note-a')}>
+          grab note
+        </button>
+        <button type="button" onClick={() => onNodeDrag?.('note-a', 777, -321)}>
+          drag note
+        </button>
+        <button type="button" onClick={() => onNodeRelease?.('note-a')}>
+          release note
+        </button>
+        <button
+          type="button"
+          onClick={() => onLinkDrag?.({ sourceId: 'note-a', fromX: 1, fromY: 2, x: 30, y: 40 })}
+        >
+          link drag
+        </button>
+        <button type="button" onClick={() => onLinkDrag?.(null)}>
+          link end
+        </button>
+        <button type="button" onClick={() => onLinkDrop?.('note-a', 'note-b')}>
+          link drop note
+        </button>
+        <button type="button" onClick={() => onLinkDrop?.('note-a', 'task-1')}>
+          link drop task
+        </button>
+      </div>
+    )
+  }
 }))
 
 vi.mock('./graph-tooltip', () => ({
@@ -125,12 +166,23 @@ vi.mock('./graph-context-menu', () => ({
     onFocusNode,
     onOpenInTab,
     onCreateNote,
+    onLinkTo,
+    onAddTag,
+    onUnlink,
     onClose
   }: {
     menu: { nodeId: string }
     onFocusNode: (nodeId: string) => void
     onOpenInTab: (nodeId: string) => void
     onCreateNote?: (title: string) => void
+    onLinkTo?: (sourceId: string, targetId: string) => void
+    onAddTag?: (nodeId: string, tag: string) => void
+    onUnlink?: (link: {
+      sourceId: string
+      targetId: string
+      otherId: string
+      otherLabel: string
+    }) => void
     onClose: () => void
   }) => (
     <div data-testid="context-menu">
@@ -142,6 +194,25 @@ vi.mock('./graph-context-menu', () => ({
       </button>
       <button type="button" onClick={() => onCreateNote?.('Created from graph')}>
         menu create
+      </button>
+      <button type="button" onClick={() => onLinkTo?.(menu.nodeId, 'note-b')}>
+        menu link
+      </button>
+      <button type="button" onClick={() => onAddTag?.(menu.nodeId, 'reading')}>
+        menu tag
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onUnlink?.({
+            sourceId: 'note-a',
+            targetId: 'note-b',
+            otherId: 'note-b',
+            otherLabel: 'Beta'
+          })
+        }
+      >
+        menu unlink
       </button>
       <button type="button" onClick={onClose}>
         menu close
@@ -385,6 +456,68 @@ describe('GraphCanvas', () => {
         isPreview: false
       })
     )
+  })
+
+  it('links notes by Alt-drag and draws a preview while dragging', () => {
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={settings}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    expect(graphCanvasMocks.canStartLink?.('note-a')).toBe(true)
+    expect(graphCanvasMocks.canStartLink?.('task-1')).toBe(false)
+    expect(graphCanvasMocks.canStartLink?.('ghost')).toBe(false)
+
+    fireEvent.click(screen.getByText('hover note'))
+    fireEvent.click(screen.getByText('link drag'))
+    const preview = screen.getByTestId('graph-link-preview')
+    expect(preview.querySelector('line')).toHaveAttribute('x2', '30')
+    // The tooltip would sit under the pointer and hide the drop target.
+    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('link end'))
+    expect(screen.queryByTestId('graph-link-preview')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('link drop note'))
+    expect(graphCanvasMocks.graphEdits.linkNotes).toHaveBeenCalledWith('note-a', 'note-b', {
+      source: 'Alpha',
+      target: 'Beta'
+    })
+
+    fireEvent.click(screen.getByText('link drop task'))
+    expect(graphCanvasMocks.graphEdits.linkNotes).toHaveBeenCalledTimes(1)
+    expect(graphCanvasMocks.toast).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes context menu edits to the graph edit hook', () => {
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={settings}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByText('context note'))
+    fireEvent.click(screen.getByText('menu link'))
+    expect(graphCanvasMocks.graphEdits.linkNotes).toHaveBeenCalledWith('note-a', 'note-b', {
+      source: 'Alpha',
+      target: 'Beta'
+    })
+
+    fireEvent.click(screen.getByText('menu tag'))
+    expect(graphCanvasMocks.graphEdits.addTag).toHaveBeenCalledWith('note-a', 'reading')
+
+    fireEvent.click(screen.getByText('menu unlink'))
+    expect(graphCanvasMocks.graphEdits.unlinkNotes).toHaveBeenCalledWith('note-a', 'note-b', {
+      source: 'Alpha',
+      target: 'Beta'
+    })
   })
 
   it('does not push settings into a sigma instance that does not own our graph', () => {
