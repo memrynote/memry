@@ -95,8 +95,13 @@ test.describe('Editor command flows E2E', () => {
     await expect.poll(() => editorBlockTypes(page)).toContain('callout')
 
     await resetEditorDocument(page, 'Bold from toolbar')
-    await focusEditor(page)
-    await page.keyboard.press(`${MOD}+a`)
+    // Triple-click selects the paragraph's text. Cmd/Ctrl+A selects every block
+    // instead, which shows no formatting toolbar.
+    await page
+      .locator(SELECTORS.noteEditor)
+      .first()
+      .getByText('Bold from toolbar')
+      .click({ clickCount: 3 })
     await page.getByRole('button', { name: 'Bold' }).first().click()
     await expect.poll(() => firstBlockHasBoldText(page)).toBe(true)
   })

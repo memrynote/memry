@@ -2089,10 +2089,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       const blockEl = container.querySelector<HTMLElement>(`[data-id="${prevTaskBlock.id}"]`)
       if (!blockEl) return
-      // The clickable title (role="button") inside the renderer flips
+      // The clickable title button inside the renderer flips
       // isEditingTitle → true, which triggers a focus effect that places
       // the cursor at the end of the title input.
-      const clickable = blockEl.querySelector<HTMLElement>('[role="button"][tabindex="0"]')
+      const clickable = blockEl.querySelector<HTMLElement>('[data-task-title-trigger]')
       if (!clickable) return
 
       e.preventDefault()

@@ -103,10 +103,10 @@ test.describe('Task block — empty title CRUD', () => {
     await page.locator(EDITOR_SELECTOR).first().getByText('click-away anchor').click()
     await page.waitForTimeout(250)
 
-    // #then — placeholder span is visible (regression check: pre-fix this
-    // span rendered empty content, collapsing to zero width — there was
+    // #then — placeholder title button is visible (regression check: pre-fix
+    // it rendered empty content, collapsing to zero width — there was
     // nothing for the user to click).
-    const placeholder = taskBlock.locator('[role="button"][tabindex="0"]')
+    const placeholder = taskBlock.locator('[data-task-title-trigger]')
     await expect(placeholder).toBeVisible()
     await expect(placeholder).toHaveText(/Task name/)
     const box = await placeholder.boundingBox()

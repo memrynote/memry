@@ -673,7 +673,7 @@ test.describe('Inline Subtasks', () => {
         // enter edit mode and re-query.
         let input = secondBlock.querySelector<HTMLInputElement>('input[type="text"]')
         if (!input) {
-          const clickable = secondBlock.querySelector<HTMLElement>('[role="button"][tabindex="0"]')
+          const clickable = secondBlock.querySelector<HTMLElement>('[data-task-title-trigger]')
           if (clickable) {
             clickable.click()
             await new Promise((r) => requestAnimationFrame(() => r(null)))
@@ -710,14 +710,13 @@ test.describe('Inline Subtasks', () => {
     expect(childRow!.parentId).toBe(parentTaskId)
   })
 
-  test('should debounce standalone auto-convert and let a Tab-indent win', async ({ page }) => {
-    // Reproduces the race the user reported: a checkListItem typed under a
-    // pre-existing parent taskBlock used to be auto-converted to a top-level
-    // task immediately, locking focus into the read-only renderer before the
-    // user could press Tab. With the debounce in place, the checkbox stays a
-    // checklist for ~600ms; if it ends up nested under a taskBlock (Tab-indent
-    // path) within that window, the conversion routes through the SUBTASK
-    // path and writes parent_id to the DB.
+  test('should convert a typed checkbox at once and let Tab in its title nest it', async ({
+    page
+  }) => {
+    // A checkListItem typed below a parent taskBlock converts to a top-level
+    // task in the same change (no plain-checkbox window, no debounce). The
+    // user then presses Tab in the new task's title input, which nests it
+    // under the parent and writes parent_id to the DB.
     const parentTitle = `Cook dinner ${Date.now()}`
     const childTitle = `Chop veggies ${Date.now()}`
 
@@ -740,9 +739,7 @@ test.describe('Inline Subtasks', () => {
     )
     await waitForTaskBlockCount(page, 1)
 
-    // #when — drop a top-level checkListItem (the "typed but not yet
-    // converted" state). The standalone-convert path should NOT fire
-    // immediately because of the debounce.
+    // #when - a top-level checkListItem lands below the parent.
     await page.evaluate(
       ({ parentTaskId, parentTitle, childTitle }) => {
         const editor = (window as any).__memryEditor
@@ -761,40 +758,50 @@ test.describe('Inline Subtasks', () => {
       { parentTaskId, parentTitle, childTitle }
     )
 
-    // Less than the debounce window: simulate the user pressing Tab while the
-    // standalone-convert timer is still pending. We re-shape the document so
-    // the checkListItem becomes a child of the parent — exactly what
-    // BlockNote's nestBlock command would do for a real Tab keypress.
-    await page.waitForTimeout(150)
-    await page.evaluate(
-      ({ parentTaskId, parentTitle }) => {
-        const editor = (window as any).__memryEditor
-        const doc = editor.document as any[]
-        const parent = doc.find((b) => b.type === 'taskBlock')
-        const checkbox = doc.find((b) => b.type === 'checkListItem')
-        if (!parent || !checkbox) throw new Error('expected parent + checkbox in doc')
-        editor.replaceBlocks(doc, [
-          {
-            type: 'taskBlock',
-            props: { taskId: parentTaskId, title: parentTitle, checked: false, parentTaskId: '' },
-            children: [checkbox]
-          }
-        ])
-      },
-      { parentTaskId, parentTitle }
-    )
+    // #then - it is a top-level task right away.
+    await waitForTaskBlockCount(page, 2)
+    await expect
+      .poll(
+        async () => {
+          const [row] = await findTasksByTitles(page, [childTitle])
+          return row ? row.parentId : 'missing'
+        },
+        { timeout: 8000, intervals: [200, 400, 800] }
+      )
+      .toBeNull()
 
-    // Wait for: debounce expiry → re-scan picks subtask path → DB create.
-    await page.waitForTimeout(2000)
+    // #when - Tab in the new task's title input.
+    const dispatched = await page.evaluate(async () => {
+      const taskBlocks = document.querySelectorAll<HTMLElement>('[data-content-type="taskBlock"]')
+      if (taskBlocks.length !== 2) return { reason: 'taskBlock count', count: taskBlocks.length }
+      const childBlock = taskBlocks[1]
+      let input = childBlock.querySelector<HTMLInputElement>('input[type="text"]')
+      if (!input) {
+        childBlock.querySelector<HTMLElement>('[data-task-title-trigger]')?.click()
+        await new Promise((r) => requestAnimationFrame(() => r(null)))
+        await new Promise((r) => requestAnimationFrame(() => r(null)))
+        input = childBlock.querySelector<HTMLInputElement>('input[type="text"]')
+      }
+      if (!input) return { reason: 'no input' }
+      input.focus()
+      const ev = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        code: 'Tab',
+        bubbles: true,
+        cancelable: true
+      })
+      input.dispatchEvent(ev)
+      return { reason: 'ok' }
+    })
+    expect(dispatched.reason).toBe('ok')
 
-    const rows = await findTasksByTitles(page, [parentTitle, childTitle])
-    const parentRow = rows.find((r) => r.title === parentTitle)
-    const childRow = rows.find((r) => r.title === childTitle)
-    expect(parentRow).toBeDefined()
-    expect(childRow).toBeDefined()
-    // The standalone-convert MUST NOT have fired — the child should be a
-    // subtask, not a top-level task.
-    expect(childRow!.parentId).toBe(parentRow!.id)
+    // #then - the child is a subtask of the parent in the DB.
+    await expect
+      .poll(async () => (await findTasksByTitles(page, [childTitle]))[0]?.parentId ?? null, {
+        timeout: 8000,
+        intervals: [200, 400, 800]
+      })
+      .toBe(parentTaskId)
   })
 
   test('should write parent_id when a draft taskBlock has parentTaskId pre-set (Tab-then-type)', async ({
@@ -1033,7 +1040,7 @@ test.describe('Inline Subtasks', () => {
       const block = taskBlocks[0]
       let input = block.querySelector<HTMLInputElement>('input[type="text"]')
       if (!input) {
-        const clickable = block.querySelector<HTMLElement>('[role="button"][tabindex="0"]')
+        const clickable = block.querySelector<HTMLElement>('[data-task-title-trigger]')
         if (clickable) {
           clickable.click()
           await new Promise((r) => requestAnimationFrame(() => r(null)))

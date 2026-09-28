@@ -827,8 +827,11 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       // A real <button>, not a span: tiptap's NodeView.stopEvent hands button
       // mousedowns to us, so ProseMirror never NodeSelects the block on the way
       // to the title input, which flashed its selection ring.
+      // `data-task-title-trigger` is what ContentArea's Backspace guard clicks
+      // to move the caret into this title.
       <button
         type="button"
+        data-task-title-trigger=""
         aria-label={isEmpty ? 'Edit task name' : undefined}
         onClick={(e) => {
           e.stopPropagation()

@@ -211,7 +211,7 @@ vi.mock('@blocknote/shadcn', () => ({
         long tag checklist target
       </div>
       <div data-id="task-prev">
-        <button type="button" role="button" tabIndex={0}>
+        <button type="button" data-task-title-trigger="">
           task title
         </button>
       </div>
