@@ -354,7 +354,7 @@
     },
     "updateError": "Die Einstellung konnte nicht aktualisiert werden",
     "dateFormat": {
-      "description": "Dateinamenformat für tägliche Notizen (z. B. YYYY-MM-DD)",
+      "description": "Dateinamenformat für tägliche Notizen (z. B. YYYY-MM-DD dddd)",
       "label": "Datumsformat",
       "placeholder": "YYYY-MM-DD"
     },

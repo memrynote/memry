@@ -354,7 +354,7 @@
     },
     "updateError": "עדכון ההגדרה נכשל",
     "dateFormat": {
-      "description": "פורמט שם הקובץ לפתקים יומיים (למשל YYYY-MM-DD)",
+      "description": "פורמט שם הקובץ לפתקים יומיים (למשל YYYY-MM-DD dddd)",
       "label": "פורמט תאריך",
       "placeholder": "YYYY-MM-DD"
     },

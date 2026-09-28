@@ -16,6 +16,7 @@ import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
 import { orderedWeekdays, weekdayLabel } from '@/lib/journal-template-resolution'
 import { getI18n } from 'react-i18next'
 import { formatJournalFilename } from '@memry/storage-vault/journal-format'
+import { toLocalDateString } from '@/components/calendar/date-utils'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import {
@@ -75,7 +76,8 @@ export function JournalSettings() {
     }
   }, [config, journalDateFormat, updateConfig])
 
-  const todayIso = new Date().toISOString().slice(0, 10)
+  // Local date, not UTC: near midnight a UTC date shows the wrong day (and weekday).
+  const todayIso = toLocalDateString(new Date())
   const previewFilename = `${formatJournalFilename(todayIso, journalDateFormat)}.md`
   const previewPath = journalFolder ? `${journalFolder}/${previewFilename}` : previewFilename
 

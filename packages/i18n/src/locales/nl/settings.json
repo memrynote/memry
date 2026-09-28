@@ -354,7 +354,7 @@
     },
     "updateError": "Kan de instelling niet updaten",
     "dateFormat": {
-      "description": "Bestandsnaamnotatie voor dagelijkse notities (bijv. YYYY-MM-DD)",
+      "description": "Bestandsnaamnotatie voor dagelijkse notities (bijv. YYYY-MM-DD dddd)",
       "label": "Datumnotatie",
       "placeholder": "YYYY-MM-DD"
     },

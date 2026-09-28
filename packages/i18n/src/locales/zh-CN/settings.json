@@ -354,7 +354,7 @@
     },
     "updateError": "更新设置失败",
     "dateFormat": {
-      "description": "每日笔记的文件名格式（例如 YYYY-MM-DD）",
+      "description": "每日笔记的文件名格式（例如 YYYY-MM-DD dddd）",
       "label": "日期格式",
       "placeholder": "YYYY-MM-DD"
     },

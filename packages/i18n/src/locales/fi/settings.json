@@ -354,7 +354,7 @@
     },
     "updateError": "Asetuksen päivittäminen epäonnistui",
     "dateFormat": {
-      "description": "Päivittäisten muistiinpanojen tiedostonimen muoto (esim. YYYY-MM-DD)",
+      "description": "Päivittäisten muistiinpanojen tiedostonimen muoto (esim. YYYY-MM-DD dddd)",
       "label": "Päivämäärämuoto",
       "placeholder": "YYYY-MM-DD"
     },

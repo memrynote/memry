@@ -354,7 +354,7 @@
     },
     "updateError": "فشل تحديث الإعداد",
     "dateFormat": {
-      "description": "تنسيق اسم الملف للملاحظات اليومية (مثل YYYY-MM-DD)",
+      "description": "تنسيق اسم الملف للملاحظات اليومية (مثل YYYY-MM-DD dddd)",
       "label": "تنسيق التاريخ",
       "placeholder": "YYYY-MM-DD"
     },

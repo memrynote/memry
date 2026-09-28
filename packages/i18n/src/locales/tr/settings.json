@@ -363,7 +363,7 @@
     },
     "updateError": "Ayar güncellenemedi",
     "dateFormat": {
-      "description": "Günlük notlar için dosya adı biçimi (örn. YYYY-MM-DD)",
+      "description": "Günlük notlar için dosya adı biçimi (örn. YYYY-MM-DD dddd)",
       "label": "Tarih Biçimi",
       "placeholder": "YYYY-MM-DD"
     },

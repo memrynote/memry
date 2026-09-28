@@ -354,7 +354,7 @@
     },
     "updateError": "설정을 업데이트하지 못했습니다.",
     "dateFormat": {
-      "description": "매일 노트의 파일 이름 형식 (예: YYYY-MM-DD)",
+      "description": "매일 노트의 파일 이름 형식 (예: YYYY-MM-DD dddd)",
       "label": "날짜 형식",
       "placeholder": "YYYY-MM-DD"
     },

@@ -354,7 +354,7 @@
     },
     "updateError": "Nabigong i-update ang setting",
     "dateFormat": {
-      "description": "Format ng filename para sa mga pang-araw-araw na tala (hal. YYYY-MM-DD)",
+      "description": "Format ng filename para sa mga pang-araw-araw na tala (hal. YYYY-MM-DD dddd)",
       "label": "Format ng Petsa",
       "placeholder": "YYYY-MM-DD"
     },

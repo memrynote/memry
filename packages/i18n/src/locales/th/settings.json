@@ -354,7 +354,7 @@
     },
     "updateError": "ไม่สามารถอัปเดตการตั้งค่าได้",
     "dateFormat": {
-      "description": "รูปแบบชื่อไฟล์สำหรับโน้ตรายวัน (เช่น YYYY-MM-DD)",
+      "description": "รูปแบบชื่อไฟล์สำหรับโน้ตรายวัน (เช่น YYYY-MM-DD dddd)",
       "label": "รูปแบบวันที่",
       "placeholder": "YYYY-MM-DD"
     },

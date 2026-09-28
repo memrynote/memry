@@ -354,7 +354,7 @@
     },
     "updateError": "Setarea nu a fost actualizată",
     "dateFormat": {
-      "description": "Formatul numelui de fișier pentru notițele zilnice (de ex. YYYY-MM-DD)",
+      "description": "Formatul numelui de fișier pentru notițele zilnice (de ex. YYYY-MM-DD dddd)",
       "label": "Format dată",
       "placeholder": "YYYY-MM-DD"
     },

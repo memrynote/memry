@@ -354,7 +354,7 @@
     },
     "updateError": "Misslyckades med att uppdatera inställning",
     "dateFormat": {
-      "description": "Filnamnsformat för dagliga anteckningar (t.ex. YYYY-MM-DD)",
+      "description": "Filnamnsformat för dagliga anteckningar (t.ex. YYYY-MM-DD dddd)",
       "label": "Datumformat",
       "placeholder": "YYYY-MM-DD"
     },

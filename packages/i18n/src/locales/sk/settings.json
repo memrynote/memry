@@ -354,7 +354,7 @@
     },
     "updateError": "Nepodarilo sa aktualizovať nastavenie",
     "dateFormat": {
-      "description": "Formát názvu súboru pre denné poznámky (napr. YYYY-MM-DD)",
+      "description": "Formát názvu súboru pre denné poznámky (napr. YYYY-MM-DD dddd)",
       "label": "Formát dátumu",
       "placeholder": "YYYY-MM-DD"
     },

@@ -354,7 +354,7 @@
     },
     "updateError": "Nie udało się zaktualizować ustawienia",
     "dateFormat": {
-      "description": "Format nazwy pliku codziennych notatek (np. YYYY-MM-DD)",
+      "description": "Format nazwy pliku codziennych notatek (np. YYYY-MM-DD dddd)",
       "label": "Format daty",
       "placeholder": "YYYY-MM-DD"
     },

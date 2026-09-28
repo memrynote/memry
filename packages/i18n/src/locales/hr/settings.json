@@ -354,7 +354,7 @@
     },
     "updateError": "Ažuriranje postavke nije uspjelo",
     "dateFormat": {
-      "description": "Format naziva datoteke za dnevne bilješke (npr. YYYY-MM-DD)",
+      "description": "Format naziva datoteke za dnevne bilješke (npr. YYYY-MM-DD dddd)",
       "label": "Format datuma",
       "placeholder": "YYYY-MM-DD"
     },

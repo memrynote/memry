@@ -354,7 +354,7 @@
     },
     "updateError": "No se pudo actualizar la configuración",
     "dateFormat": {
-      "description": "Formato del nombre de archivo de las notas diarias (p. ej. YYYY-MM-DD)",
+      "description": "Formato del nombre de archivo de las notas diarias (p. ej. YYYY-MM-DD dddd)",
       "label": "Formato de fecha",
       "placeholder": "YYYY-MM-DD"
     },

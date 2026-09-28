@@ -545,7 +545,7 @@
     },
     "dateFormat": {
       "label": "Date Format",
-      "description": "Filename format for daily notes (e.g. YYYY-MM-DD)",
+      "description": "Filename format for daily notes (e.g. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD"
     },
     "preview": {

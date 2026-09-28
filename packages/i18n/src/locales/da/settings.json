@@ -354,7 +354,7 @@
     },
     "updateError": "Indstillingen kunne ikke opdateres",
     "dateFormat": {
-      "description": "Filnavnsformat for daglige noter (f.eks. YYYY-MM-DD)",
+      "description": "Filnavnsformat for daglige noter (f.eks. YYYY-MM-DD dddd)",
       "label": "Datoformat",
       "placeholder": "YYYY-MM-DD"
     },

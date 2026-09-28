@@ -354,7 +354,7 @@
     },
     "updateError": "Не удалось обновить настройку.",
     "dateFormat": {
-      "description": "Формат имени файла для ежедневных заметок (напр. YYYY-MM-DD)",
+      "description": "Формат имени файла для ежедневных заметок (напр. YYYY-MM-DD dddd)",
       "label": "Формат даты",
       "placeholder": "YYYY-MM-DD"
     },

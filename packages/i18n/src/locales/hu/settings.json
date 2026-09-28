@@ -354,7 +354,7 @@
     },
     "updateError": "Nem sikerült frissíteni a beállítást",
     "dateFormat": {
-      "description": "A napi jegyzetek fájlnévformátuma (pl. YYYY-MM-DD)",
+      "description": "A napi jegyzetek fájlnévformátuma (pl. YYYY-MM-DD dddd)",
       "label": "Dátumformátum",
       "placeholder": "YYYY-MM-DD"
     },

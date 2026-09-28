@@ -6,7 +6,13 @@
  *   YYYY (4-digit year)  YY (2-digit year)
  *   MM   (2-digit month) M  (1-2 digit month)
  *   DD   (2-digit day)   D  (1-2 digit day)
+ *   dddd (weekday name, `Saturday`)  ddd (short weekday name, `Sat`)
  * Everything else in the format is a literal separator (e.g. `-`, `_`, `.`, ` `).
+ *
+ * Weekday names are always English, never the UI locale: a filename has to parse
+ * back to the same date after the user switches app language, otherwise existing
+ * journal files would silently stop being recognised. Parsing rejects a stem whose
+ * weekday does not match its date, so every date maps to exactly one filename.
  *
  * The functions operate on the filename STEM (no `.md` extension). Callers add
  * the folder and extension.
@@ -14,7 +20,10 @@
 
 export const DEFAULT_JOURNAL_DATE_FORMAT = 'YYYY-MM-DD'
 
-type DateField = 'year' | 'month' | 'day'
+type DateField = 'year' | 'month' | 'day' | 'weekday'
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const SHORT_WEEKDAYS = WEEKDAYS.map((name) => name.slice(0, 3))
 
 interface TokenInfo {
   field: DateField
@@ -27,11 +36,14 @@ const TOKEN_TABLE: Record<string, TokenInfo> = {
   MM: { field: 'month', pattern: '\\d{2}' },
   M: { field: 'month', pattern: '\\d{1,2}' },
   DD: { field: 'day', pattern: '\\d{2}' },
-  D: { field: 'day', pattern: '\\d{1,2}' }
+  D: { field: 'day', pattern: '\\d{1,2}' },
+  dddd: { field: 'weekday', pattern: WEEKDAYS.join('|') },
+  ddd: { field: 'weekday', pattern: SHORT_WEEKDAYS.join('|') }
 }
 
-// Longest tokens first so `YYYY` wins over `YY` and `MM`/`DD` over `M`/`D`.
-const TOKEN_ORDER = ['YYYY', 'YY', 'MM', 'DD', 'M', 'D']
+// Longest tokens first so `YYYY` wins over `YY`, `dddd` over `ddd`, and `MM`/`DD`
+// over `M`/`D`.
+const TOKEN_ORDER = ['YYYY', 'YY', 'dddd', 'ddd', 'MM', 'DD', 'M', 'D']
 
 function escapeLiteral(ch: string): string {
   return ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -72,6 +84,13 @@ function pad(value: number, width: number): string {
   return String(value).padStart(width, '0')
 }
 
+/** 0 (Sunday) - 6 (Saturday). `setUTCFullYear` keeps years below 100 literal. */
+function weekdayOf(year: number, month: number, day: number): number {
+  const date = new Date(0)
+  date.setUTCFullYear(year, month - 1, day)
+  return date.getUTCDay()
+}
+
 /**
  * An anchored RegExp matching a journal filename stem (no extension) for `format`.
  * Falls back to the default format when `format` is empty.
@@ -92,9 +111,15 @@ export function parseJournalDate(stem: string, format: string): string | null {
   let year: number | null = null
   let month = 1
   let day = 1
+  let weekday: number | null = null
 
   for (let g = 0; g < fields.length; g++) {
-    const value = parseInt(match[g + 1], 10)
+    const raw = match[g + 1]
+    if (fields[g] === 'weekday') {
+      weekday = raw.length === 3 ? SHORT_WEEKDAYS.indexOf(raw) : WEEKDAYS.indexOf(raw)
+      continue
+    }
+    const value = parseInt(raw, 10)
     if (Number.isNaN(value)) return null
     if (fields[g] === 'year') year = value < 100 ? 2000 + value : value
     else if (fields[g] === 'month') month = value
@@ -104,6 +129,7 @@ export function parseJournalDate(stem: string, format: string): string | null {
   if (year === null) return null
   if (month < 1 || month > 12) return null
   if (day < 1 || day > 31) return null
+  if (weekday !== null && weekday !== weekdayOf(year, month, day)) return null
 
   return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`
 }
@@ -151,6 +177,10 @@ function renderToken(token: string, year: number, month: number, day: number): s
       return pad(day, 2)
     case 'D':
       return String(day)
+    case 'dddd':
+      return WEEKDAYS[weekdayOf(year, month, day)] ?? ''
+    case 'ddd':
+      return SHORT_WEEKDAYS[weekdayOf(year, month, day)] ?? ''
     default:
       return token
   }

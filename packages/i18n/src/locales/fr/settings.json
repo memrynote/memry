@@ -354,7 +354,7 @@
     },
     "updateError": "Échec de la mise à jour du paramètre",
     "dateFormat": {
-      "description": "Format du nom de fichier des notes quotidiennes (p. ex. YYYY-MM-DD)",
+      "description": "Format du nom de fichier des notes quotidiennes (p. ex. YYYY-MM-DD dddd)",
       "label": "Format de la date",
       "placeholder": "YYYY-MM-DD"
     },

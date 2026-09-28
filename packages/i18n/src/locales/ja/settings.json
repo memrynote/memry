@@ -354,7 +354,7 @@
     },
     "updateError": "設定の更新に失敗しました",
     "dateFormat": {
-      "description": "日々のメモのファイル名の形式（例: YYYY-MM-DD）",
+      "description": "日々のメモのファイル名の形式（例: YYYY-MM-DD dddd）",
       "label": "日付の形式",
       "placeholder": "YYYY-MM-DD"
     },

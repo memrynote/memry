@@ -354,7 +354,7 @@
     },
     "updateError": "Не вдалося оновити налаштування",
     "dateFormat": {
-      "description": "Формат назви файлу для щоденних нотаток (напр. YYYY-MM-DD)",
+      "description": "Формат назви файлу для щоденних нотаток (напр. YYYY-MM-DD dddd)",
       "label": "Формат дати",
       "placeholder": "YYYY-MM-DD"
     },

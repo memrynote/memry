@@ -354,7 +354,7 @@
     },
     "updateError": "Cập nhật cài đặt thất bại",
     "dateFormat": {
-      "description": "Định dạng tên tệp cho ghi chú hàng ngày (vd. YYYY-MM-DD)",
+      "description": "Định dạng tên tệp cho ghi chú hàng ngày (vd. YYYY-MM-DD dddd)",
       "label": "Định dạng ngày",
       "placeholder": "YYYY-MM-DD"
     },

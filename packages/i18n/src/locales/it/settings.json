@@ -354,7 +354,7 @@
     },
     "updateError": "Impossibile aggiornare l'impostazione",
     "dateFormat": {
-      "description": "Formato del nome file per le note quotidiane (es. YYYY-MM-DD)",
+      "description": "Formato del nome file per le note quotidiane (es. YYYY-MM-DD dddd)",
       "label": "Formato data",
       "placeholder": "YYYY-MM-DD"
     },
