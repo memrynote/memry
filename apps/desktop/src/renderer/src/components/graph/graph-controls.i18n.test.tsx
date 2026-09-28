@@ -145,4 +145,61 @@ describe('graph controls i18n', () => {
     expect(screen.getByLabelText('Toggle orphan nodes')).toBeInTheDocument()
     expect(screen.getByLabelText('Reset filters')).toBeInTheDocument()
   })
+
+  it('lists tag categories as a legend with collapse controls', () => {
+    const onColorByChange = vi.fn()
+    const onToggleCategory = vi.fn()
+    const categories = [
+      { id: 'work', label: 'Work', colorVar: '--graph-group-1', tags: ['job'], count: 3 },
+      { id: 'home', label: 'Home', colorVar: '--graph-group-2', tags: ['kids'], count: 0 },
+      { id: 'old', label: 'Old', colorVar: '--graph-group-3', tags: ['x'], count: 0 }
+    ]
+    renderWithI18n(
+      <GraphControlPanel
+        filterState={defaultFilterState}
+        dispatch={vi.fn()}
+        isFiltered={false}
+        focusLabel={null}
+        settings={GRAPH_SETTINGS_DEFAULTS}
+        updateSettings={vi.fn()}
+        viewsMenu={<div data-testid="views-menu" />}
+        colorBy="tag-category"
+        onColorByChange={onColorByChange}
+        categories={categories}
+        collapsedCategoryIds={['old']}
+        onToggleCategory={onToggleCategory}
+      />
+    )
+
+    expect(screen.getByTestId('views-menu')).toBeInTheDocument()
+    expect(screen.getByText('Uncategorized')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('Collapse Work'))
+    expect(onToggleCategory).toHaveBeenCalledWith('work')
+    // An empty category has nothing to collapse, but a collapsed one can still expand.
+    expect(screen.getByLabelText('Collapse Home')).toBeDisabled()
+    expect(screen.getByLabelText('Expand Old')).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Color by category' }))
+    expect(onColorByChange).toHaveBeenCalledWith('type')
+  })
+
+  it('explains tag categories when there are none', () => {
+    renderWithI18n(
+      <GraphControlPanel
+        filterState={defaultFilterState}
+        dispatch={vi.fn()}
+        isFiltered={false}
+        focusLabel={null}
+        settings={GRAPH_SETTINGS_DEFAULTS}
+        updateSettings={vi.fn()}
+        colorBy="type"
+        onColorByChange={vi.fn()}
+        categories={[]}
+        onToggleCategory={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText(/Group tags into categories/)).toBeInTheDocument()
+  })
 })

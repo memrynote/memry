@@ -8,7 +8,9 @@ import {
   Tag,
   Unlink,
   ChevronLeft,
-  Pin
+  Pin,
+  Expand,
+  Shrink
 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type Graph from 'graphology'
@@ -27,9 +29,19 @@ export interface ContextMenuState {
   y: number
 }
 
+/** Collapse or expand the tag category the right-clicked node belongs to. */
+export interface GraphCategoryAction {
+  categoryId: string
+  label: string
+  /** True when the node IS the collapsed category's super-node. */
+  collapsed: boolean
+}
+
 interface GraphContextMenuProps {
   menu: ContextMenuState
   graph: Graph
+  categoryAction?: GraphCategoryAction | null
+  onToggleCategory?: (categoryId: string) => void
   onFocusNode: (nodeId: string) => void
   onOpenInTab: (nodeId: string) => void
   onCreateNote?: (title: string) => void
@@ -52,6 +64,8 @@ const ITEM_CLASS =
 export function GraphContextMenu({
   menu,
   graph,
+  categoryAction,
+  onToggleCategory,
   onFocusNode,
   onOpenInTab,
   onCreateNote,
@@ -115,6 +129,8 @@ export function GraphContextMenu({
         <MainMenu
           nodeId={menu.nodeId}
           graph={graph}
+          categoryAction={categoryAction}
+          onToggleCategory={onToggleCategory}
           onFocusNode={onFocusNode}
           onOpenInTab={onOpenInTab}
           onCreateNote={onCreateNote}
@@ -132,6 +148,8 @@ export function GraphContextMenu({
 interface MainMenuProps {
   nodeId: string
   graph: Graph
+  categoryAction?: GraphCategoryAction | null
+  onToggleCategory?: (categoryId: string) => void
   onFocusNode: (nodeId: string) => void
   onOpenInTab: (nodeId: string) => void
   onCreateNote?: (title: string) => void
@@ -145,6 +163,8 @@ interface MainMenuProps {
 function MainMenu({
   nodeId,
   graph,
+  categoryAction,
+  onToggleCategory,
   onFocusNode,
   onOpenInTab,
   onCreateNote,
@@ -159,6 +179,8 @@ function MainMenu({
   const label = (attrs.label as string) || t('context-menu.untitled')
   const isUnresolved = attrs.isUnresolved as boolean
   const isPinned = attrs[PINNED_ATTRIBUTE] === true
+  // A collapsed category's super-node stands for many notes: no open or copy.
+  const isGroup = attrs.nodeType === 'group'
   const editable = isEditableGraphNode(graph, nodeId)
 
   /** Runs `action`, then closes the menu. */
@@ -180,7 +202,26 @@ function MainMenu({
         {t('context-menu.focus-node')}
       </button>
 
-      {!isUnresolved && (
+      {categoryAction && onToggleCategory && (
+        <button
+          type="button"
+          className={ITEM_CLASS}
+          onClick={closing(() => onToggleCategory(categoryAction.categoryId))}
+        >
+          {categoryAction.collapsed ? (
+            <Expand className="size-3.5 text-muted-foreground" />
+          ) : (
+            <Shrink className="size-3.5 text-muted-foreground" />
+          )}
+          <span className="truncate">
+            {categoryAction.collapsed
+              ? t('context-menu.expand-category', { name: categoryAction.label })
+              : t('context-menu.collapse-category', { name: categoryAction.label })}
+          </span>
+        </button>
+      )}
+
+      {!isUnresolved && !isGroup && (
         <button type="button" className={ITEM_CLASS} onClick={closing(() => onOpenInTab(nodeId))}>
           <ExternalLink className="size-3.5 text-muted-foreground" />
           {t('context-menu.open-new-tab')}
@@ -215,14 +256,16 @@ function MainMenu({
         </button>
       )}
 
-      <button
-        type="button"
-        className={ITEM_CLASS}
-        onClick={closing(() => void navigator.clipboard.writeText(label))}
-      >
-        <Copy className="size-3.5 text-muted-foreground" />
-        {t('context-menu.copy-title')}
-      </button>
+      {!isGroup && (
+        <button
+          type="button"
+          className={ITEM_CLASS}
+          onClick={closing(() => void navigator.clipboard.writeText(label))}
+        >
+          <Copy className="size-3.5 text-muted-foreground" />
+          {t('context-menu.copy-title')}
+        </button>
+      )}
 
       {onUnlink && (
         <RelationLinkList

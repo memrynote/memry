@@ -31,6 +31,7 @@ import type {
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
+import type { GraphViewsSettings, GraphViewsSettingsPatch } from '@memry/contracts/graph-api'
 import type {
   AppleNotesFoldersInput,
   AppleNotesFoldersResult,
@@ -1487,6 +1488,8 @@ export interface SettingsClientAPI {
   setGraphSettings(
     settings: Partial<GraphSettingsDTO>
   ): Promise<{ success: boolean; error?: string }>
+  getGraphViews(): Promise<GraphViewsSettings>
+  setGraphViews(patch: GraphViewsSettingsPatch): Promise<GraphViewsSettings>
   registerGlobalCapture(): Promise<GlobalCaptureResult>
   setGlobalCapture(binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult>
 }

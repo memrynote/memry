@@ -120,6 +120,12 @@ vi.mock('./graph-events', () => ({
         <button type="button" onClick={() => onContextMenu?.({ nodeId: 'note-a', x: 1, y: 2 })}>
           context note
         </button>
+        <button
+          type="button"
+          onClick={() => onContextMenu?.({ nodeId: 'group:alpha-cat', x: 5, y: 6 })}
+        >
+          context group
+        </button>
         <button type="button" onClick={() => onContextMenu?.({ nodeId: 'ghost', x: 3, y: 4 })}>
           context ghost
         </button>
@@ -171,6 +177,8 @@ vi.mock('./graph-tooltip', () => ({
 vi.mock('./graph-context-menu', () => ({
   GraphContextMenu: ({
     menu,
+    categoryAction,
+    onToggleCategory,
     onFocusNode,
     onOpenInTab,
     onCreateNote,
@@ -181,6 +189,8 @@ vi.mock('./graph-context-menu', () => ({
     onClose
   }: {
     menu: { nodeId: string }
+    categoryAction?: { categoryId: string; label: string; collapsed: boolean } | null
+    onToggleCategory?: (categoryId: string) => void
     onFocusNode: (nodeId: string) => void
     onOpenInTab: (nodeId: string) => void
     onCreateNote?: (title: string) => void
@@ -196,6 +206,11 @@ vi.mock('./graph-context-menu', () => ({
     onClose: () => void
   }) => (
     <div data-testid="context-menu">
+      {categoryAction && (
+        <button type="button" onClick={() => onToggleCategory?.(categoryAction.categoryId)}>
+          {categoryAction.collapsed ? 'menu expand' : 'menu collapse'} {categoryAction.label}
+        </button>
+      )}
       <button type="button" onClick={() => onFocusNode(menu.nodeId)}>
         menu focus
       </button>
@@ -235,6 +250,7 @@ vi.mock('./graph-context-menu', () => ({
 }))
 
 import { GraphCanvas } from './graph-canvas'
+import { buildGraphCategoryIndex } from '@/lib/graph-categories'
 
 const data: GraphDataResponse = {
   nodes: [
@@ -339,6 +355,124 @@ describe('GraphCanvas', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
+  })
+
+  describe('tag categories', () => {
+    const categoryIndex = buildGraphCategoryIndex([
+      { id: 'alpha-cat', name: 'Alpha cat', tags: [{ tag: 'alpha' }] },
+      { id: 'beta-cat', name: 'Beta cat', tags: [{ tag: 'beta' }] }
+    ])
+    const latestNodeReducer = () =>
+      graphCanvasMocks.sigma.setSetting.mock.calls
+        .filter(([key]) => key === 'nodeReducer')
+        .at(-1)?.[1]
+
+    beforeEach(() => {
+      document.documentElement.style.setProperty('--graph-group-1', '#aa0000')
+      document.documentElement.style.setProperty('--graph-group-2', '#00aa00')
+      document.documentElement.style.setProperty('--graph-group-none', '#999999')
+    })
+
+    it('colours nodes by their tag category', () => {
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{ ...settings, showTagEdges: false }}
+          viewState={{ colorBy: 'tag-category', collapsedCategoryIds: [] }}
+          categoryIndex={categoryIndex}
+          onFocusNode={vi.fn()}
+        />
+      )
+      const reducer = latestNodeReducer()
+      const node = (id: string, tags: string[], nodeType = 'note') =>
+        reducer(id, { nodeType, tags, label: id, isOrphan: false, color: '#000000' })
+      expect(node('note-a', ['alpha']).color).toBe('#aa0000')
+      expect(node('note-b', ['beta']).color).toBe('#00aa00')
+      expect(node('task-1', [], 'task').color).toBe('#999999')
+      expect(node('tag:beta', [], 'tag').color).toBe('#00aa00')
+    })
+
+    it('collapses a category, focuses its super-node, and expands it from the menu', () => {
+      const onToggleCategory = vi.fn()
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={{ ...filters, focusNodeId: 'note-a' }}
+          graphSettings={{ ...settings, showTagEdges: false }}
+          viewState={{ colorBy: 'type', collapsedCategoryIds: ['alpha-cat'] }}
+          categoryIndex={categoryIndex}
+          onFocusNode={vi.fn()}
+          onToggleCategory={onToggleCategory}
+        />
+      )
+      const graph = graphCanvasMocks.sigmaContainerProps?.graph
+      expect(graph.hasNode('note-a')).toBe(false)
+      expect(graph.getNodeAttribute('group:alpha-cat', 'color')).toBe('#aa0000')
+
+      // note-a is folded away; its focus lands on the super-node, not an empty graph.
+      const reducer = latestNodeReducer()
+      expect(
+        reducer('group:alpha-cat', { nodeType: 'group', tags: [], label: 'x' }).hidden
+      ).toBeUndefined()
+      expect(
+        reducer('note-b', { nodeType: 'note', tags: ['beta'], label: 'Beta' }).hidden
+      ).toBeUndefined()
+      expect(reducer('ghost', { nodeType: 'note', tags: [], label: 'Ghost' }).hidden).toBe(true)
+
+      fireEvent.click(screen.getByText('context group'))
+      fireEvent.click(screen.getByText('menu expand Alpha cat'))
+      expect(onToggleCategory).toHaveBeenCalledWith('alpha-cat')
+
+      fireEvent.click(screen.getByText('context note'))
+      expect(screen.queryByText(/menu (expand|collapse)/)).not.toBeInTheDocument()
+    })
+
+    it('saves collapsed members with the layout and restores them from it', () => {
+      const onLayoutChange = vi.fn()
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{
+            ...settings,
+            layout: 'forceatlas2',
+            animateLayout: false,
+            showTagEdges: false
+          }}
+          viewState={{ colorBy: 'type', collapsedCategoryIds: ['alpha-cat'] }}
+          categoryIndex={categoryIndex}
+          savedLayout={{ 'note-a': { x: 7, y: 8, pinned: true }, 'note-b': { x: 1, y: 1 } }}
+          onLayoutChange={onLayoutChange}
+          onFocusNode={vi.fn()}
+        />
+      )
+      const graph = graphCanvasMocks.sigmaContainerProps?.graph
+      expect(graph.hasNode('note-a')).toBe(false)
+
+      // The settled layout covers only what is on screen; the folded member
+      // rides along from where it was saved.
+      const saved = onLayoutChange.mock.calls.at(-1)?.[0]
+      expect(saved['note-a']).toEqual({ x: 7, y: 8, pinned: true })
+      expect(saved['group:alpha-cat']).toBeDefined()
+      expect(saved['note-b']).toBeDefined()
+    })
+
+    it('offers collapse on a node whose category is expanded', () => {
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{ ...settings, showTagEdges: false }}
+          viewState={{ colorBy: 'type', collapsedCategoryIds: [] }}
+          categoryIndex={categoryIndex}
+          onFocusNode={vi.fn()}
+          onToggleCategory={vi.fn()}
+        />
+      )
+      fireEvent.click(screen.getByText('context note'))
+      expect(screen.getByText('menu collapse Alpha cat')).toBeInTheDocument()
+    })
   })
 
   it('renders a safe fallback when WebGL is unavailable', () => {

@@ -1,19 +1,24 @@
-import { useReducer, type Dispatch } from 'react'
+/**
+ * The graph tab's view state: filters, colouring, and collapsed tag categories.
+ *
+ * Lives in the tab's `viewState` under {@link GRAPH_VIEW_TAB_KEY}, so it
+ * survives a tab switch and an app restart. A graph tab opened from scratch
+ * has nothing stored and starts from `initialState` — the page passes the
+ * last state any graph tab used, which is what makes filters survive closing
+ * the tab and opening the graph again.
+ */
 
-export interface GraphFilterState {
-  showNotes: boolean
-  showTasks: boolean
-  showJournals: boolean
-  showProjects: boolean
-  showTags: boolean
-  showOrphans: boolean
-  /** Edges drawn as arrows between cards on a canvas. */
-  showCanvasEdges: boolean
-  selectedTags: string[]
-  focusNodeId: string | null
-  focusDepth: number
-  searchQuery: string
-}
+import { useCallback, useMemo, type Dispatch } from 'react'
+import {
+  GRAPH_VIEW_FILTER_DEFAULTS,
+  parseGraphViewState,
+  type GraphColorBy,
+  type GraphViewFilters,
+  type GraphViewState
+} from '@memry/contracts/graph-api'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+
+export type GraphFilterState = GraphViewFilters
 
 export type GraphFilterAction =
   | { type: 'TOGGLE_ENTITY_TYPE'; entityType: 'note' | 'task' | 'journal' | 'project' | 'tag' }
@@ -26,18 +31,28 @@ export type GraphFilterAction =
   | { type: 'SET_SEARCH_QUERY'; query: string }
   | { type: 'RESET_FILTERS' }
 
-const INITIAL_STATE: GraphFilterState = {
-  showNotes: true,
-  showTasks: true,
-  showJournals: true,
-  showProjects: true,
-  showTags: true,
-  showOrphans: true,
-  showCanvasEdges: true,
-  selectedTags: [],
-  focusNodeId: null,
-  focusDepth: 2,
-  searchQuery: ''
+/**
+ * Name inside `Tab.viewState`. Load-bearing for sessions on disk: renaming it
+ * silently resets every open graph tab on upgrade.
+ */
+export const GRAPH_VIEW_TAB_KEY = 'graphView'
+
+export interface StoredGraphTabView {
+  state: GraphViewState
+  /** The saved view this tab last applied, or null for an unsaved arrangement. */
+  activeViewId: string | null
+}
+
+export function parseStoredGraphTabView(raw: unknown): StoredGraphTabView | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined
+  const record = raw as { state?: unknown; activeViewId?: unknown }
+  return {
+    state: parseGraphViewState(record.state),
+    activeViewId:
+      typeof record.activeViewId === 'string' && record.activeViewId !== ''
+        ? record.activeViewId
+        : null
+  }
 }
 
 const ENTITY_TYPE_KEYS = {
@@ -48,7 +63,10 @@ const ENTITY_TYPE_KEYS = {
   tag: 'showTags'
 } as const
 
-function filterReducer(state: GraphFilterState, action: GraphFilterAction): GraphFilterState {
+export function filterReducer(
+  state: GraphFilterState,
+  action: GraphFilterAction
+): GraphFilterState {
   switch (action.type) {
     case 'TOGGLE_ENTITY_TYPE': {
       const key = ENTITY_TYPE_KEYS[action.entityType]
@@ -69,18 +87,12 @@ function filterReducer(state: GraphFilterState, action: GraphFilterAction): Grap
     case 'SET_SEARCH_QUERY':
       return { ...state, searchQuery: action.query }
     case 'RESET_FILTERS':
-      return INITIAL_STATE
+      return GRAPH_VIEW_FILTER_DEFAULTS
   }
 }
 
-export function useGraphFilters(): {
-  filterState: GraphFilterState
-  dispatch: Dispatch<GraphFilterAction>
-  isFiltered: boolean
-} {
-  const [filterState, dispatch] = useReducer(filterReducer, INITIAL_STATE)
-
-  const isFiltered =
+export function isGraphFiltered(filterState: GraphFilterState): boolean {
+  return (
     !filterState.showNotes ||
     !filterState.showTasks ||
     !filterState.showJournals ||
@@ -91,6 +103,73 @@ export function useGraphFilters(): {
     filterState.selectedTags.length > 0 ||
     filterState.focusNodeId !== null ||
     filterState.searchQuery.length > 0
+  )
+}
 
-  return { filterState, dispatch, isFiltered }
+export interface UseGraphFiltersResult {
+  viewState: GraphViewState
+  activeViewId: string | null
+  filterState: GraphFilterState
+  dispatch: Dispatch<GraphFilterAction>
+  isFiltered: boolean
+  setColorBy: (colorBy: GraphColorBy) => void
+  toggleCollapsed: (categoryId: string) => void
+  /** Replace the whole view state, e.g. when a saved view is applied or re-saved. */
+  applyView: (state: GraphViewState, activeViewId: string | null) => void
+}
+
+export function useGraphFilters(initialState: GraphViewState): UseGraphFiltersResult {
+  const defaultValue = useMemo<StoredGraphTabView>(
+    () => ({ state: initialState, activeViewId: null }),
+    [initialState]
+  )
+  const [stored, setStored] = useTabViewState<StoredGraphTabView>({
+    key: GRAPH_VIEW_TAB_KEY,
+    defaultValue,
+    parse: parseStoredGraphTabView
+  })
+
+  const updateState = useCallback(
+    (update: (state: GraphViewState) => GraphViewState) =>
+      setStored((previous) => ({ ...previous, state: update(previous.state) })),
+    [setStored]
+  )
+
+  const dispatch = useCallback<Dispatch<GraphFilterAction>>(
+    (action) =>
+      updateState((state) => ({ ...state, filters: filterReducer(state.filters, action) })),
+    [updateState]
+  )
+
+  const setColorBy = useCallback(
+    (colorBy: GraphColorBy) => updateState((state) => ({ ...state, colorBy })),
+    [updateState]
+  )
+
+  const toggleCollapsed = useCallback(
+    (categoryId: string) =>
+      updateState((state) => ({
+        ...state,
+        collapsedCategoryIds: state.collapsedCategoryIds.includes(categoryId)
+          ? state.collapsedCategoryIds.filter((id) => id !== categoryId)
+          : [...state.collapsedCategoryIds, categoryId]
+      })),
+    [updateState]
+  )
+
+  const applyView = useCallback(
+    (state: GraphViewState, activeViewId: string | null) => setStored({ state, activeViewId }),
+    [setStored]
+  )
+
+  return {
+    viewState: stored.state,
+    activeViewId: stored.activeViewId,
+    filterState: stored.state.filters,
+    dispatch,
+    isFiltered: isGraphFiltered(stored.state.filters),
+    setColorBy,
+    toggleCollapsed,
+    applyView
+  }
 }

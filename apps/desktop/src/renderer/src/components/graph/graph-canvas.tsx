@@ -8,10 +8,20 @@ import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import {
   buildGraphologyGraph,
   computeFocusSet,
+  createGraphPositionCache,
+  groupNodeId,
   keepsOwnEdgeColor,
   syncGraphologyGraph,
-  type BuildGraphOptions
+  tagOfTagNode,
+  type BuildGraphOptions,
+  type CollapsedGraphGroup,
+  type GraphPositionCache
 } from '@/lib/graph-builder'
+import {
+  categoryRankOf,
+  GRAPH_GROUP_NONE_VAR,
+  type GraphCategoryIndex
+} from '@/lib/graph-categories'
 import { graphLabelRenderedSizeThreshold } from '@/lib/graph-labels'
 import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
 import { hasWebGLSupport } from '@/lib/webgl-support'
@@ -24,7 +34,7 @@ import {
 } from './physics-layout'
 import { GraphPinMarkers } from './graph-pin-markers'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
-import type { GraphSettings } from '@memry/contracts/graph-api'
+import type { GraphSettings, GraphViewState } from '@memry/contracts/graph-api'
 import { useTabActions } from '@/contexts/tabs'
 import { useNoteMutations } from '@/hooks/use-notes-query'
 import { useGraphEdits, type GraphEdits } from '@/hooks/use-graph-edits'
@@ -78,7 +88,12 @@ interface GraphCanvasProps {
   data: GraphDataResponse
   filterState: GraphFilterState
   graphSettings: GraphSettings
+  /** Colouring and collapsed categories. Omitted means entity-type colours, nothing collapsed. */
+  viewState?: Pick<GraphViewState, 'colorBy' | 'collapsedCategoryIds'>
+  categoryIndex?: GraphCategoryIndex
   onFocusNode: (nodeId: string) => void
+  /** A collapsed category's super-node was clicked or its menu asked to expand it. */
+  onToggleCategory?: (categoryId: string) => void
   onClose?: () => void
   /** Positions to start from; read once, when the graph is built. */
   savedLayout?: Readonly<Record<string, NodePosition>> | null
@@ -87,12 +102,16 @@ interface GraphCanvasProps {
 }
 
 const RESTORED_PHYSICS_OPTIONS: GraphPhysicsOptions = { initialAlpha: RESTORED_ALPHA }
+const NO_CATEGORIES: GraphCategoryIndex = { categories: [], rankByTag: new Map() }
 
 export function GraphCanvas({
   data,
   filterState,
   graphSettings,
+  viewState,
+  categoryIndex = NO_CATEGORIES,
   onFocusNode,
+  onToggleCategory,
   onClose,
   savedLayout,
   onLayoutChange
@@ -137,24 +156,107 @@ export function GraphCanvas({
 
   const labelColor = useMemo(() => resolveGraphVar('--graph-label-color', '#1a1a1a'), [])
 
-  const graphBuildOptions: BuildGraphOptions = useMemo(
-    () => ({ showTags: graphSettings.showTagEdges }),
-    [graphSettings.showTagEdges]
+  const colorBy = viewState?.colorBy ?? 'type'
+  const collapsedIds = viewState?.collapsedCategoryIds
+
+  // Resolved per theme: the palette is CSS variables, and graphology stores
+  // plain colour strings.
+  const categoryColors = useMemo(
+    () => categoryIndex.categories.map((category) => resolveGraphVar(category.colorVar, '#8c8c8c')),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [categoryIndex, resolvedTheme]
+  )
+  const uncategorizedColor = useMemo(
+    () => resolveGraphVar(GRAPH_GROUP_NONE_VAR, '#c4c2bc'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resolvedTheme]
   )
 
-  const { graph, revision } = useLiveGraph(data, graphBuildOptions, resolvedTheme, savedLayout)
+  const collapsedGroups = useMemo<CollapsedGraphGroup[]>(() => {
+    if (!collapsedIds || collapsedIds.length === 0) return []
+    const collapsed = new Set(collapsedIds)
+    return categoryIndex.categories.flatMap((category, index) =>
+      collapsed.has(category.id)
+        ? [
+            {
+              id: category.id,
+              label: category.label,
+              color: categoryColors[index],
+              tags: category.tags
+            }
+          ]
+        : []
+    )
+  }, [collapsedIds, categoryIndex, categoryColors])
+
+  const graphBuildOptions: BuildGraphOptions = useMemo(
+    () => ({ showTags: graphSettings.showTagEdges, collapsedGroups }),
+    [graphSettings.showTagEdges, collapsedGroups]
+  )
+
+  const { graph, revision, positionCache } = useLiveGraph(
+    data,
+    graphBuildOptions,
+    resolvedTheme,
+    savedLayout
+  )
+
+  // The physics snapshot only covers nodes on screen. Members folded into a
+  // collapsed category are off screen, so without this every save while
+  // collapsed would forget where they sat.
+  const dataRef = useRef(data)
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
+  const handleLayoutChange = useMemo<LayoutChangeHandler | undefined>(() => {
+    if (!onLayoutChange) return undefined
+    return (positions) => {
+      if (positionCache.positions.size === 0) {
+        onLayoutChange(positions)
+        return
+      }
+      const known = graphNodeIds(dataRef.current)
+      const merged: Record<string, NodePosition> = {}
+      for (const [id, position] of positionCache.positions) {
+        if (!graph.hasNode(id) && known.has(id)) merged[id] = position
+      }
+      onLayoutChange({ ...merged, ...positions })
+    }
+  }, [onLayoutChange, positionCache, graph])
+
+  // A focused node folded into a collapsed category is represented by its
+  // super-node; focusing on a node that is not on screen at all would hide
+  // the whole graph.
+  const focusNodeId = useMemo(() => {
+    const focus = filterState.focusNodeId
+    if (!focus || graph.hasNode(focus)) return focus
+    // Same rule the builder folds by: the first collapsed group sharing a tag.
+    const ownTag = tagOfTagNode(focus)
+    const tags = ownTag !== null ? [ownTag] : (data.nodes.find((n) => n.id === focus)?.tags ?? [])
+    const group = collapsedGroups.find((candidate) => candidate.tags.some((t) => tags.includes(t)))
+    return group && graph.hasNode(groupNodeId(group.id)) ? groupNodeId(group.id) : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graph, revision, filterState.focusNodeId, data, collapsedGroups])
 
   const focusVisibleSet = useMemo(() => {
-    if (!filterState.focusNodeId) return null
-    return computeFocusSet(graph, filterState.focusNodeId, filterState.focusDepth)
+    if (!focusNodeId) return null
+    return computeFocusSet(graph, focusNodeId, filterState.focusDepth)
     // `revision` is not read here — it marks the patch that changed the topology
     // this focus neighbourhood is derived from.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graph, revision, filterState.focusNodeId, filterState.focusDepth])
+  }, [graph, revision, focusNodeId, filterState.focusDepth])
 
   const searchLower = useMemo(
     () => filterState.searchQuery.toLowerCase(),
     [filterState.searchQuery]
+  )
+
+  const categoryColorOf = useCallback(
+    (node: string, tags: readonly string[] | undefined): string => {
+      const rank = categoryRankOf(node, tags, categoryIndex.rankByTag)
+      return rank === undefined ? uncategorizedColor : categoryColors[rank]
+    },
+    [categoryIndex, categoryColors, uncategorizedColor]
   )
 
   const nodeReducer = useCallback(
@@ -163,32 +265,37 @@ export function GraphCanvas({
       const tags = attrs.tags as string[]
       const isOrphan = attrs.isOrphan as boolean
       const label = attrs.label as string
+      const base = (
+        colorBy === 'tag-category' && nodeType !== 'group' && !attrs.isUnresolved
+          ? { ...attrs, color: categoryColorOf(node, tags) }
+          : attrs
+      ) as Partial<NodeDisplayData> & Record<string, unknown>
 
       const visKey = ENTITY_TYPE_VISIBILITY[nodeType]
       if (visKey && !filterState[visKey]) {
-        return { ...(attrs as Partial<NodeDisplayData>), hidden: true }
+        return { ...base, hidden: true }
       }
 
       if (isOrphan && !filterState.showOrphans) {
-        return { ...(attrs as Partial<NodeDisplayData>), hidden: true }
+        return { ...base, hidden: true }
       }
 
       if (filterState.selectedTags.length > 0) {
         const hasMatchingTag = filterState.selectedTags.some((t) => tags.includes(t))
         if (!hasMatchingTag) {
-          return { ...(attrs as Partial<NodeDisplayData>), hidden: true }
+          return { ...base, hidden: true }
         }
       }
 
       if (focusVisibleSet && !focusVisibleSet.has(node)) {
-        return { ...(attrs as Partial<NodeDisplayData>), hidden: true }
+        return { ...base, hidden: true }
       }
 
       if (searchLower && label) {
         const matches = label.toLowerCase().includes(searchLower)
         if (matches) {
           return {
-            ...(attrs as Partial<NodeDisplayData>),
+            ...base,
             highlighted: true,
             forceLabel: true,
             zIndex: 1
@@ -199,7 +306,7 @@ export function GraphCanvas({
       const activeHover = hoverTargetRef.current
       const fade = fadeRef.current
 
-      if (!activeHover || fade === 0) return attrs as Partial<NodeDisplayData>
+      if (!activeHover || fade === 0) return base
 
       const isHovered = node === activeHover
       const isNeighbor =
@@ -207,25 +314,25 @@ export function GraphCanvas({
 
       if (isHovered) {
         return {
-          ...(attrs as Partial<NodeDisplayData>),
+          ...base,
           highlighted: true,
           forceLabel: true,
           zIndex: 1
         }
       }
       if (isNeighbor) {
-        return attrs as Partial<NodeDisplayData>
+        return base
       }
 
-      const originalColor = (attrs.color as string) || '#999'
+      const originalColor = (base.color as string) || '#999'
       return {
-        ...(attrs as Partial<NodeDisplayData>),
+        ...base,
         label: fade > 0.5 ? '' : (attrs.label as string),
         color: lerpColor(originalColor, dimmedColor, fade),
         zIndex: 0
       }
     },
-    [graph, filterState, focusVisibleSet, searchLower, dimmedColor]
+    [graph, filterState, focusVisibleSet, searchLower, dimmedColor, colorBy, categoryColorOf]
   )
 
   const edgeReducer = useCallback(
@@ -339,7 +446,7 @@ export function GraphCanvas({
           revision={revision}
           physicsHandleRef={physicsHandleRef}
           physicsOptions={physicsOptions}
-          onLayoutChange={onLayoutChange}
+          onLayoutChange={handleLayoutChange}
         />
         {graphSettings.layout === 'forceatlas2' && (
           <GraphPinMarkers graph={graph} color={labelColor} />
@@ -348,6 +455,7 @@ export function GraphCanvas({
           onHoverNode={setHoveredNode}
           onTooltipMove={setTooltipPos}
           onFocusNode={onFocusNode}
+          onToggleCategory={onToggleCategory}
           onContextMenu={setContextMenu}
           onNodeGrab={handleNodeGrab}
           onNodeDrag={handleNodeDrag}
@@ -382,9 +490,12 @@ export function GraphCanvas({
         <ContextMenuWithTabAction
           menu={contextMenu}
           graph={graph}
+          categoryIndex={categoryIndex}
+          collapsedIds={collapsedIds}
           onFocusNode={onFocusNode}
           onUnpin={handleUnpin}
           graphEdits={graphEdits}
+          onToggleCategory={onToggleCategory}
           onClose={handleCloseContextMenu}
         />
       )}
@@ -407,10 +518,19 @@ function useLiveGraph(
   options: BuildGraphOptions,
   themeKey: string | undefined,
   savedLayout: Readonly<Record<string, NodePosition>> | null | undefined
-): { graph: Graph; revision: number } {
+): { graph: Graph; revision: number; positionCache: GraphPositionCache } {
   const [graph] = useState(() => buildGraphologyGraph(data, options, savedLayout))
   const [revision, setRevision] = useState(0)
   const appliedRef = useRef({ data, options, themeKey })
+  // Where collapsed members sat, so expanding a category puts them back. Seeded
+  // with the saved positions of nodes that start out folded into a category.
+  const [positionCache] = useState(() => {
+    const cache = createGraphPositionCache()
+    for (const [id, position] of Object.entries(savedLayout ?? {})) {
+      if (!graph.hasNode(id)) cache.positions.set(id, position)
+    }
+    return cache
+  })
 
   /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change,
      react-you-might-not-need-an-effect/no-event-handler,
@@ -427,15 +547,25 @@ function useLiveGraph(
       return
     }
     appliedRef.current = { data, options, themeKey }
-    if (syncGraphologyGraph(graph, data, options).changed) {
+    if (syncGraphologyGraph(graph, data, options, positionCache).changed) {
       setRevision((current) => current + 1)
     }
-  }, [graph, data, options, themeKey])
+  }, [graph, data, options, themeKey, positionCache])
   /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change,
      react-you-might-not-need-an-effect/no-event-handler,
      react-you-might-not-need-an-effect/no-chain-state-updates */
 
-  return { graph, revision }
+  return { graph, revision, positionCache }
+}
+
+/** Every node id `data` can put on screen: entities and their `tag:` nodes. */
+function graphNodeIds(data: GraphDataResponse): Set<string> {
+  const ids = new Set<string>()
+  for (const node of data.nodes) {
+    ids.add(node.id)
+    for (const tag of node.tags) ids.add(`tag:${tag}`)
+  }
+  return ids
 }
 
 function nodeLabel(graph: Graph, nodeId: string, fallback: string): string {
@@ -446,16 +576,22 @@ function nodeLabel(graph: Graph, nodeId: string, fallback: string): string {
 function ContextMenuWithTabAction({
   menu,
   graph,
+  categoryIndex,
+  collapsedIds,
   onFocusNode,
   onUnpin,
   graphEdits,
+  onToggleCategory,
   onClose
 }: {
   menu: ContextMenuState
   graph: ReturnType<typeof buildGraphologyGraph>
+  categoryIndex: GraphCategoryIndex
+  collapsedIds: readonly string[] | undefined
   onFocusNode: (nodeId: string) => void
   onUnpin: (nodeId: string) => void
   graphEdits: GraphEdits
+  onToggleCategory?: (categoryId: string) => void
   onClose: () => void
 }): React.JSX.Element {
   const { openTab } = useTabActions()
@@ -518,11 +654,30 @@ function ContextMenuWithTabAction({
   )
 
   const untitled = t('context-menu.untitled')
+  // A super-node offers "Expand"; a node whose category is expanded offers
+  // "Collapse <category>".
+  const categoryAction = useMemo(() => {
+    if (!onToggleCategory || !graph.hasNode(menu.nodeId)) return null
+    const attrs = graph.getNodeAttributes(menu.nodeId)
+    if (attrs.nodeType === 'group') {
+      return {
+        categoryId: attrs.categoryId as string,
+        label: attrs.groupLabel as string,
+        collapsed: true
+      }
+    }
+    const rank = categoryRankOf(menu.nodeId, attrs.tags as string[], categoryIndex.rankByTag)
+    const category = rank === undefined ? undefined : categoryIndex.categories[rank]
+    if (!category || collapsedIds?.includes(category.id)) return null
+    return { categoryId: category.id, label: category.label, collapsed: false }
+  }, [graph, menu.nodeId, categoryIndex, collapsedIds, onToggleCategory])
 
   return (
     <GraphContextMenu
       menu={menu}
       graph={graph}
+      categoryAction={categoryAction}
+      onToggleCategory={onToggleCategory}
       onFocusNode={onFocusNode}
       onOpenInTab={handleOpenInTab}
       onCreateNote={(...args) => void handleCreateNote(...args)}

@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
-import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
+import { GRAPH_SETTINGS_DEFAULTS, GRAPH_VIEW_STATE_DEFAULTS } from '@memry/contracts/graph-api'
 import { GraphPage } from './graph-page'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
@@ -12,10 +12,16 @@ const graphHookMocks = vi.hoisted(() => ({
   useGraphData: vi.fn(),
   useGraphReactivity: vi.fn(),
   useGraphFilters: vi.fn(),
-  useGraphSettings: vi.fn()
+  useGraphSettings: vi.fn(),
+  useGraphViews: vi.fn(),
+  useTagCategories: vi.fn()
 }))
 
-const renderingMocks = vi.hoisted(() => ({ webglAvailable: true }))
+const renderingMocks = vi.hoisted(() => ({
+  webglAvailable: true,
+  panelProps: null as null | Record<string, any>,
+  canvasProps: null as null | Record<string, any>
+}))
 
 vi.mock('@/hooks/use-graph-data', () => ({
   useGraphData: graphHookMocks.useGraphData,
@@ -23,7 +29,16 @@ vi.mock('@/hooks/use-graph-data', () => ({
 }))
 
 vi.mock('@/hooks/use-graph-filters', () => ({
-  useGraphFilters: graphHookMocks.useGraphFilters
+  useGraphFilters: graphHookMocks.useGraphFilters,
+  isGraphFiltered: () => false
+}))
+
+vi.mock('@/hooks/use-graph-views', () => ({
+  useGraphViews: graphHookMocks.useGraphViews
+}))
+
+vi.mock('@/hooks/use-tag-categories', () => ({
+  useTagCategories: graphHookMocks.useTagCategories
 }))
 
 vi.mock('@/hooks/use-graph-layout', () => ({
@@ -40,11 +55,21 @@ vi.mock('@/lib/webgl-support', () => ({
 }))
 
 vi.mock('./graph-canvas', () => ({
-  GraphCanvas: () => <div data-testid="graph-canvas" />
+  GraphCanvas: (props: Record<string, any>) => {
+    renderingMocks.canvasProps = props
+    return <div data-testid="graph-canvas" />
+  }
+}))
+
+vi.mock('./graph-views-menu', () => ({
+  GraphViewsMenu: () => null
 }))
 
 vi.mock('./graph-control-panel', () => ({
-  GraphControlPanel: () => <div data-testid="graph-control-panel" />
+  GraphControlPanel: (props: Record<string, any>) => {
+    renderingMocks.panelProps = props
+    return <div data-testid="graph-control-panel" />
+  }
 }))
 
 const defaultFilterState: GraphFilterState = {
@@ -76,10 +101,25 @@ beforeEach(() => {
     refetch: vi.fn()
   })
   graphHookMocks.useGraphFilters.mockReturnValue({
+    viewState: { ...GRAPH_VIEW_STATE_DEFAULTS, filters: defaultFilterState },
+    activeViewId: null,
     filterState: defaultFilterState,
     dispatch: vi.fn(),
-    isFiltered: false
+    isFiltered: false,
+    setColorBy: vi.fn(),
+    toggleCollapsed: vi.fn(),
+    applyView: vi.fn()
   })
+  graphHookMocks.useGraphViews.mockReturnValue({
+    views: [],
+    lastState: null,
+    isLoading: false,
+    saveView: vi.fn(),
+    updateView: vi.fn(),
+    deleteView: vi.fn(),
+    rememberState: vi.fn()
+  })
+  graphHookMocks.useTagCategories.mockReturnValue({ categories: [], isLoading: false })
   graphHookMocks.useGraphSettings.mockReturnValue({
     settings: GRAPH_SETTINGS_DEFAULTS,
     updateSettings: vi.fn()
@@ -197,5 +237,119 @@ describe('GraphPage i18n', () => {
       })
     ).toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Graph nodes' })).toBeInTheDocument()
+  })
+
+  describe('saved views wiring', () => {
+    const noteNode = {
+      id: 'note-1',
+      type: 'note' as const,
+      label: 'Alpha',
+      tags: ['job'],
+      wordCount: 0,
+      connectionCount: 0,
+      emoji: null,
+      color: '#000000',
+      isOrphan: false,
+      isUnresolved: false
+    }
+    const savedView = {
+      id: 'v1',
+      name: 'Work',
+      state: GRAPH_VIEW_STATE_DEFAULTS,
+      layout: 'circular' as const,
+      createdAt: '',
+      updatedAt: ''
+    }
+
+    function setup(
+      filterOverrides: Partial<GraphFilterState> = {},
+      activeViewId: string | null = null
+    ) {
+      const filters = { ...defaultFilterState, ...filterOverrides }
+      const hooks = {
+        applyView: vi.fn(),
+        saveView: vi.fn(() => savedView),
+        updateView: vi.fn(),
+        deleteView: vi.fn(),
+        rememberState: vi.fn(),
+        updateSettings: vi.fn()
+      }
+      graphHookMocks.useGraphData.mockReturnValue({
+        data: graphData({ nodes: [noteNode], edges: [] }),
+        isLoading: false,
+        error: null,
+        refetch: vi.fn()
+      })
+      graphHookMocks.useGraphFilters.mockReturnValue({
+        viewState: { ...GRAPH_VIEW_STATE_DEFAULTS, filters },
+        activeViewId,
+        filterState: filters,
+        dispatch: vi.fn(),
+        isFiltered: false,
+        setColorBy: vi.fn(),
+        toggleCollapsed: vi.fn(),
+        applyView: hooks.applyView
+      })
+      graphHookMocks.useGraphViews.mockReturnValue({
+        views: [savedView],
+        lastState: null,
+        isLoading: false,
+        saveView: hooks.saveView,
+        updateView: hooks.updateView,
+        deleteView: hooks.deleteView,
+        rememberState: hooks.rememberState
+      })
+      graphHookMocks.useGraphSettings.mockReturnValue({
+        settings: GRAPH_SETTINGS_DEFAULTS,
+        updateSettings: hooks.updateSettings
+      })
+      graphHookMocks.useTagCategories.mockReturnValue({
+        categories: [{ id: 'work', name: 'Work', sortOrder: 0, tags: [{ tag: 'job' }] }],
+        isLoading: false
+      })
+      const view = render(
+        <I18nextProvider i18n={i18nEn}>
+          <GraphPage />
+        </I18nextProvider>
+      )
+      return { hooks, view, menu: renderingMocks.panelProps!.viewsMenu.props }
+    }
+
+    it('counts category members and drops a focus on a node that no longer exists', () => {
+      setup({ focusNodeId: 'deleted-note' })
+      expect(renderingMocks.panelProps!.categories).toMatchObject([{ id: 'work', count: 1 }])
+      expect(renderingMocks.canvasProps!.filterState.focusNodeId).toBeNull()
+    })
+
+    it('applies, saves, updates and deletes views', () => {
+      const { hooks, menu } = setup({}, 'v1')
+      expect(menu.activeView).toBe(savedView)
+      // The saved view uses a circular layout; the current one does not.
+      expect(menu.isModified).toBe(true)
+
+      menu.onApply(savedView)
+      expect(hooks.applyView).toHaveBeenCalledWith(savedView.state, 'v1')
+      expect(hooks.updateSettings).toHaveBeenCalledWith({ layout: 'circular' })
+
+      expect(menu.onSaveAs('Work')).toBe(true)
+      expect(hooks.saveView).toHaveBeenCalledWith('Work', expect.any(Object), 'forceatlas2')
+      expect(hooks.applyView).toHaveBeenLastCalledWith(expect.any(Object), 'v1')
+
+      menu.onUpdate(savedView)
+      expect(hooks.updateView).toHaveBeenCalledWith('v1', expect.any(Object), 'forceatlas2')
+
+      menu.onDelete(savedView)
+      expect(hooks.deleteView).toHaveBeenCalledWith('v1')
+      expect(hooks.applyView).toHaveBeenLastCalledWith(expect.any(Object), null)
+    })
+
+    it('reports a failed save and remembers the state on unmount', () => {
+      const { hooks, menu, view } = setup()
+      hooks.saveView.mockReturnValueOnce(null as never)
+      expect(menu.onSaveAs('Work')).toBe(false)
+      expect(hooks.rememberState).not.toHaveBeenCalled()
+      view.unmount()
+      expect(hooks.rememberState).toHaveBeenCalledOnce()
+    })
   })
 })

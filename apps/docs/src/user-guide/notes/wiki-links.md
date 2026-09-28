@@ -321,6 +321,43 @@ default, and names then appear only on hover. With it on, most names show at the
 and every name shows once you zoom in; where names would overlap, the graph shows one per
 area and fills in the rest as you zoom closer.
 
+### Filters and saved views
+
+The gear icon's **Filters** section hides entity types, orphans, or everything outside a
+search. Right-click a node → **Focus on this node** to show only its neighbourhood. The
+graph tab remembers all of it: switching tabs, restarting Memry, or closing the graph and
+opening it again brings back the same filters. A graph tab opened from scratch starts from
+whatever the last graph tab showed.
+
+The menu at the top of the gear panel saves the current arrangement as a named **view** —
+filters, colouring, and collapsed categories together. Pick a view to switch to it.
+When you change something after picking one, the menu marks it **Edited** and offers
+**Update** to overwrite it; the trash icon deletes a view. Saved views stay on the device
+they were made on and do not sync. Node positions and pins are not part of a view: every
+view shares the one saved arrangement.
+
+### Tag categories
+
+The **Tag categories** section uses the categories from the
+[tag hub](/user-guide/notes/properties-tags#tag-categories):
+
+- **Color by category** colours each note by the category of its tags, with a legend next to
+  each category. A note whose tags fall in several categories takes the first one in the
+  hub's order; notes without a categorised tag are grey.
+- The collapse button next to a category folds every note carrying one of its tags into a
+  single node, sized by how many it holds and labelled with the count. Links from those
+  notes to the rest of the graph are merged onto that node. Click the node (or right-click
+  → **Expand**) to open it again; its notes return to where they were, and pinned notes keep
+  their pin, including after a restart while collapsed. Right-clicking any note in a
+  category also offers **Collapse**.
+
+### Local graph
+
+The local graph panel under a note follows the note the page shows. The pin button keeps it
+on the current note instead, so it stays put while you move through linked notes in the same
+tab; the panel then names the note it is pinned to. Click the pin again to follow the open
+note.
+
 Memry turns on Chromium's software WebGL renderer, so a device without GPU acceleration — a
 remote desktop session, a virtual machine, a blocklisted graphics driver, or a launch where Memry
 disabled hardware acceleration after a GPU crash — still draws the graph, only more slowly.

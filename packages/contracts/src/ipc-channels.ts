@@ -520,6 +520,10 @@ export const SettingsChannels = {
     GET_GRAPH_SETTINGS: 'settings:getGraphSettings',
     /** Update graph view settings */
     SET_GRAPH_SETTINGS: 'settings:setGraphSettings',
+    /** Get saved graph views and the last-used graph view state */
+    GET_GRAPH_VIEWS: 'settings:getGraphViews',
+    /** Patch saved graph views and/or the last-used graph view state */
+    SET_GRAPH_VIEWS: 'settings:setGraphViews',
     /** Reset all settings to defaults */
     RESET_ALL: 'settings:resetAll',
     /** Trigger manual sync */

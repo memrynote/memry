@@ -29,6 +29,8 @@ interface GraphEventsProps {
   onHoverNode: (nodeId: string | null) => void
   onTooltipMove: (pos: { x: number; y: number } | null) => void
   onFocusNode: (nodeId: string) => void
+  /** Clicking a collapsed category's super-node expands it. */
+  onToggleCategory?: (categoryId: string) => void
   onContextMenu?: (menu: { nodeId: string; x: number; y: number } | null) => void
   onNodeGrab?: (nodeId: string) => void
   onNodeDrag?: (nodeId: string, x: number, y: number) => void
@@ -50,6 +52,7 @@ export function GraphEvents({
   onHoverNode,
   onTooltipMove,
   onFocusNode,
+  onToggleCategory,
   onContextMenu,
   onNodeGrab,
   onNodeDrag,
@@ -150,6 +153,12 @@ export function GraphEvents({
           suppressClickRef.current = false
           return
         }
+        const graph = sigma.getGraph()
+        const attrs = graph.hasNode(node) ? graph.getNodeAttributes(node) : null
+        if (attrs?.nodeType === 'group') {
+          onToggleCategory?.(attrs.categoryId as string)
+          return
+        }
         openNodeInTab(sigma, openTab, node, t('context-menu.untitled'))
       },
       rightClickNode: ({ node, event }) => {
@@ -189,6 +198,7 @@ export function GraphEvents({
     onHoverNode,
     onTooltipMove,
     onFocusNode,
+    onToggleCategory,
     onContextMenu,
     onNodeGrab,
     onNodeDrag,
