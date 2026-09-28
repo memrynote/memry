@@ -29,7 +29,8 @@
     "goToToday": "Go to Today",
     "copyUnsavedContent": "Copy unsaved content to clipboard",
     "addBookmark": "Add bookmark",
-    "removeBookmark": "Remove bookmark"
+    "removeBookmark": "Remove bookmark",
+    "deleteEntry": "Delete entry"
   },
   "editor": {
     "placeholder": {
@@ -213,7 +214,9 @@
     "createLinkedFailed": "Failed to create linked note",
     "fileNotFound": "File not found: {target}",
     "openLinkedItemFailed": "Failed to open linked item",
-    "errorPrefix": "Error:"
+    "errorPrefix": "Error:",
+    "deleteFailed": "Failed to delete journal entry",
+    "bookmarkFailed": "Failed to update bookmark"
   },
   "export": {
     "noteTitle": "Journal - {month} {day}, {year}"
@@ -239,5 +242,9 @@
       "failedToLoadJournalSettings": "Failed to load journal settings",
       "failedToUpdateSettings": "Failed to update settings"
     }
+  },
+  "deleteConfirm": {
+    "title": "Delete journal entry",
+    "description": "Are you sure you want to delete \"{title}\"? This action cannot be undone."
   }
 }

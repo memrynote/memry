@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => ({
   retrySave: vi.fn(),
   dismissSaveError: vi.fn(),
   toggleBookmark: vi.fn(),
+  updateEntry: vi.fn(),
+  bookmarksToggle: vi.fn(),
+  deleteEntry: vi.fn(),
   resolveWikiLink: vi.fn(),
   handlePropertyChange: vi.fn(),
   handleAddProperty: vi.fn(),
@@ -36,7 +39,8 @@ const mocks = vi.hoisted(() => ({
   } as Record<number, Array<{ date: string; level: number; characterCount: number }>>,
   noHeatmap: [] as Array<{ date: string; level: number; characterCount: number }>,
   yearStats: [{ month: 1, entryCount: 1, totalCharacterCount: 7, averageLevel: 2 }],
-  entry: {
+  entry: null as any,
+  baseEntry: {
     id: 'j2026-01-15',
     date: '2026-01-15',
     content: '# Today',
@@ -108,7 +112,8 @@ vi.mock('@/hooks/use-journal', () => ({
     updateTags: mocks.updateTags,
     forceReload: mocks.forceReload,
     retrySave: mocks.retrySave,
-    dismissSaveError: mocks.dismissSaveError
+    dismissSaveError: mocks.dismissSaveError,
+    deleteEntry: mocks.deleteEntry
   }),
   useJournalHeatmap: (year: number) => {
     mocks.heatmapYears.push(year)
@@ -245,7 +250,8 @@ vi.mock('@/components/journal', () => ({
     onBookmarkToggle,
     onVersionHistory,
     onExport,
-    onOpenSettings
+    onOpenSettings,
+    onMenuAction
   }: any) => (
     <div data-testid="header-actions">
       <button onClick={onPrevious}>header prev</button>
@@ -255,6 +261,7 @@ vi.mock('@/components/journal', () => ({
       <button onClick={onVersionHistory}>history</button>
       <button onClick={onExport}>export</button>
       <button onClick={onOpenSettings}>settings</button>
+      <button onClick={() => onMenuAction?.('delete')}>delete entry</button>
     </div>
   ),
   JournalDateDisplay: ({ viewState }: any) => (
@@ -404,6 +411,44 @@ vi.mock('@/components/shared', () => ({
   )
 }))
 
+vi.mock('@/services/journal-service', () => ({
+  journalService: { updateEntry: mocks.updateEntry }
+}))
+
+vi.mock('@/hooks/use-feature-flags', () => ({
+  useFeatureFlags: () => ({
+    flags: { spatialCanvas: false },
+    isLoading: false,
+    error: null,
+    isEnabled: (feature: string) => feature !== 'spatialCanvas',
+    setFlag: vi.fn()
+  })
+}))
+
+// Sigma needs WebGL, which jsdom does not have.
+vi.mock('@/components/graph/local-graph-panel', () => ({
+  LocalGraphPanel: () => <div data-testid="local-graph" />
+}))
+
+// The real navigation hook, so outline clicks still scroll this pane; the map
+// itself (Excalidraw) and its tab-state hook are stubbed.
+vi.mock('@/components/note/mind-map', async () => ({
+  ...(await vi.importActual<Record<string, unknown>>(
+    '@/components/note/mind-map/use-mind-map-navigation'
+  )),
+  MindMapView: () => <div data-testid="mind-map" />,
+  useMindMap: ({ onEditorReady }: { onEditorReady: (editor: unknown) => void }) => ({
+    isAvailable: false,
+    isOpen: false,
+    toggle: vi.fn(),
+    close: vi.fn(),
+    map: null,
+    expandBranch: vi.fn(),
+    handleEditorReady: onEditorReady,
+    refresh: vi.fn()
+  })
+}))
+
 vi.mock('@/components/note/export-dialog', () => ({
   ExportDialog: ({ open, noteTitle }: any) => (
     <div data-testid="export-dialog">{open ? noteTitle : 'closed export'}</div>
@@ -433,7 +478,7 @@ describe('JournalPage', () => {
     mocks.contentAreaMounts = 0
     mocks.heatmapYears = []
     mocks.yearStats = [{ month: 1, entryCount: 1, totalCharacterCount: 7, averageLevel: 2 }]
-    mocks.entry = { ...mocks.entry, id: 'j2026-01-15', date: '2026-01-15', content: '# Today' }
+    mocks.entry = { ...mocks.baseEntry }
     mocks.resolveWikiLink.mockResolvedValue({ type: 'note', id: 'note-2', title: 'Linked Note' })
     vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => 'false'),
@@ -779,5 +824,35 @@ describe('JournalPage', () => {
 
     fireEvent.click(screen.getByText('restore version'))
     await waitFor(() => expect(mocks.forceReload).toHaveBeenCalled())
+  })
+
+  it('creates the entry before bookmarking an empty day', async () => {
+    mocks.entry = null
+    mocks.updateEntry.mockResolvedValue({ id: 'j2026-01-15', date: '2026-01-15' })
+    vi.mocked(window.api.bookmarks.toggle).mockImplementation(mocks.bookmarksToggle)
+    render(<JournalPage />)
+
+    fireEvent.click(screen.getByText('bookmark'))
+
+    await waitFor(() =>
+      expect(mocks.bookmarksToggle).toHaveBeenCalledWith({
+        itemType: 'journal',
+        itemId: 'j2026-01-15'
+      })
+    )
+    expect(mocks.updateEntry).toHaveBeenCalledWith({ date: '2026-01-15' })
+    expect(mocks.toggleBookmark).not.toHaveBeenCalled()
+  })
+
+  it('deletes the entry after confirmation and remounts the editor', async () => {
+    mocks.deleteEntry.mockResolvedValue(true)
+    render(<JournalPage />)
+    const mountsBefore = mocks.contentAreaMounts
+
+    fireEvent.click(screen.getByText('delete entry'))
+    fireEvent.click(await screen.findByRole('button', { name: 'page.deleteConfirm.confirm' }))
+
+    await waitFor(() => expect(mocks.deleteEntry).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.contentAreaMounts).toBeGreaterThan(mountsBefore))
   })
 })

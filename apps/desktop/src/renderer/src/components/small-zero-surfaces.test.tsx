@@ -21,17 +21,34 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
 }))
 
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({ children, onClick }: { children: ReactNode; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-  DropdownMenuSeparator: () => <hr />,
-  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
-}))
+vi.mock('@/components/ui/picker', () => {
+  let onValueChange: ((value: string) => void) | undefined
+  return {
+    Picker: Object.assign(
+      ({
+        children,
+        onValueChange: handler
+      }: {
+        children: ReactNode
+        onValueChange?: (value: string) => void
+      }) => {
+        onValueChange = handler
+        return <div>{children}</div>
+      },
+      {
+        Trigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+        Content: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+        List: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+        Separator: () => <hr />,
+        Item: ({ label, value }: { label: string; value: string }) => (
+          <button type="button" onClick={() => onValueChange?.(value)}>
+            {label}
+          </button>
+        )
+      }
+    )
+  }
+})
 
 vi.mock('@/components/ui/popover', () => ({
   Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -206,7 +223,9 @@ describe('small zero-line renderer surfaces', () => {
       onBookmarkToggle: vi.fn(),
       onVersionHistory: vi.fn(),
       onExport: vi.fn(),
-      onOpenSettings: vi.fn()
+      onOpenSettings: vi.fn(),
+      onToggleMindMap: vi.fn(),
+      onMenuAction: vi.fn()
     }
 
     const { rerender } = render(
@@ -248,5 +267,47 @@ describe('small zero-line renderer surfaces', () => {
     expect(handlers.onExport).toHaveBeenCalledTimes(1)
     expect(handlers.onToggleFullWidth).toHaveBeenCalledTimes(1)
     expect(handlers.onOpenSettings).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /showLocalGraph/ }))
+    fireEvent.click(screen.getByRole('button', { name: /copyPath/ }))
+    fireEvent.click(screen.getByRole('button', { name: /deleteEntry/ }))
+    expect(handlers.onMenuAction.mock.calls).toEqual([['local-graph'], ['copy-path'], ['delete']])
+  })
+
+  it('offers reminder, bookmark and mind map on an empty journal day', () => {
+    const handlers = {
+      onPrevious: vi.fn(),
+      onNext: vi.fn(),
+      onToggleFullWidth: vi.fn(),
+      onBookmarkToggle: vi.fn(),
+      onVersionHistory: vi.fn(),
+      onExport: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onToggleMindMap: vi.fn(),
+      onMenuAction: vi.fn()
+    }
+
+    render(
+      <JournalHeaderActions
+        viewState={{ type: 'day', date: '2026-05-11' }}
+        isBookmarked={false}
+        isFullWidth={false}
+        hasEntry={false}
+        journalDate="2026-05-11"
+        isMindMapAvailable
+        {...handlers}
+      />
+    )
+
+    expect(screen.getByText('reminder:2026-05-11')).toBeInTheDocument()
+    fireEvent.click(screen.getByTitle('addBookmark'))
+    fireEvent.click(screen.getByTestId('journal-mind-map-toggle'))
+    fireEvent.click(screen.getByRole('button', { name: 'title' }))
+    expect(handlers.onBookmarkToggle).toHaveBeenCalledTimes(1)
+    expect(handlers.onToggleMindMap).toHaveBeenCalledTimes(1)
+    expect(handlers.onMenuAction).toHaveBeenCalledWith('insert-template')
+    // Entry-bound actions wait for the entry file.
+    expect(screen.queryByRole('button', { name: /versionHistory/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /deleteEntry/ })).toBeNull()
   })
 })

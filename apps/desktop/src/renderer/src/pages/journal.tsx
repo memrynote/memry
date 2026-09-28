@@ -26,8 +26,29 @@ import {
   JournalHeaderActions,
   JournalDateDisplay,
   JournalStatsFooter,
+  type JournalMenuAction,
   type JournalViewState
 } from '@/components/journal'
+import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
+import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
+import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
+import {
+  NoteAttachmentsDialog,
+  collectOriginalNames
+} from '@/components/note/note-attachments-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { notesService } from '@/services/notes-service'
+import { journalService } from '@/services/journal-service'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 import { useJournalInlineTags } from '@/hooks/use-journal-inline-tags'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
@@ -138,6 +159,7 @@ interface JournalPageProps {
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
   const { t, i18n: _i18n } = useT('journal')
   const { t: commonT } = useT('common')
+  const { t: notesT } = useT('notes')
   const activeTab = useActiveTab()
   const { openTab, state: tabState } = useTabs()
   const identity = useTabIdentity()
@@ -175,6 +197,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const { createNote } = useNoteMutations()
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
+  const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
+  const [isSaveAsTemplateOpen, setIsSaveAsTemplateOpen] = useState(false)
+  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  // Opens the editor's template picker at the caret, same path as the note menu.
+  const openTemplateInsertRef = useRef<(() => void) | null>(null)
 
   // Headings state for outline panel
   const [headings, setHeadings] = useState<HeadingItem[]>([])
@@ -191,8 +220,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     updateTags,
     forceReload,
     retrySave,
-    dismissSaveError
+    dismissSaveError,
+    deleteEntry
   } = useJournalEntry(selectedDate)
+  const entryId = entry?.id ?? null
 
   // Show toast when save error occurs
   useEffect(() => {
@@ -251,7 +282,24 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { open: openSettingsModal } = useSettingsModal()
 
   // Bookmark state - use entry.id (e.g., "j2026-01-13") to match notes_cache lookup
-  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.id ?? '')
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entryId ?? '')
+
+  // An empty day has no entry file to bookmark yet, so bookmarking it creates
+  // the entry first. `updateEntry` creates a missing entry and leaves an
+  // existing entry's content alone, so it cannot clobber the editor's own save.
+  const handleBookmarkToggle = useCallback(async () => {
+    if (entryId) {
+      await toggleBookmark()
+      return
+    }
+    try {
+      const created = await journalService.updateEntry({ date: selectedDate })
+      await window.api.bookmarks.toggle({ itemType: 'journal', itemId: created.id })
+    } catch (err) {
+      log.error('Failed to bookmark journal entry:', err)
+      toast.error(extractErrorMessage(err, t('toast.bookmarkFailed')))
+    }
+  }, [entryId, toggleBookmark, selectedDate, t])
 
   const entryTags = useMemo(() => entry?.tags ?? [], [entry?.tags])
 
@@ -655,6 +703,35 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [isDayView, selectedDate]
   )
   const agentReview = useAgentBodyReview(agentReviewTarget)
+
+  // Mind map, wired as on the note page: composed onto the review's
+  // editor-ready callback so it reads the live block tree of the editor that
+  // stays mounted (hidden) behind it.
+  const mindMap = useMindMap({
+    noteId: entryId ?? '',
+    noteTitle: journalNoteTitle,
+    onEditorReady: review.handleEditorReady
+  })
+  const { refresh: refreshMindMap, handleEditorReady: mindMapEditorReady } = mindMap
+  const isMindMapOpen = isDayView && mindMap.isOpen
+  // The attachments dialog reads original filenames off the live block tree.
+  const attachmentsEditorRef = useRef<unknown>(null)
+  const handleEditorReady = useCallback(
+    (editor: unknown) => {
+      attachmentsEditorRef.current = editor
+      mindMapEditorReady(editor)
+    },
+    [mindMapEditorReady]
+  )
+  const getAttachmentOriginalNames = useCallback(
+    () => collectOriginalNames(attachmentsEditorRef.current),
+    []
+  )
+  // A restored tab reopens the map before the body has loaded; the heading set
+  // arriving is the signal that the block tree behind the map is real.
+  useEffect(() => {
+    refreshMindMap()
+  }, [headings, refreshMindMap])
   const {
     shiftStyle: railShiftStyle,
     railHidden,
@@ -793,17 +870,142 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [createNote, openTab, t]
   )
 
-  const handleHeadingClick = useCallback(
-    (headingId: string) => {
-      // Scoped to this pane. `document.querySelector` returns whichever pane is
-      // first in the DOM, so in split view the outline scrolled the pane the
-      // user was not looking at.
-      scrollToHeadingBlock(editorContainerRef.current, headingId, {
-        smooth: !prefersReducedMotion
+  const handleOpenTask = useCallback(
+    (taskId: string) => {
+      openTab({
+        type: 'tasks',
+        title: 'Tasks',
+        icon: 'check-square',
+        path: '/tasks',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false,
+        viewState: { openTaskId: taskId, activeTab: 'all' }
       })
     },
-    [prefersReducedMotion]
+    [openTab]
   )
+
+  // Mind map navigation. Outline clicks go through it too: with the map closed
+  // it scrolls the heading into view scoped to this pane's editor container,
+  // which is what the outline did before.
+  const dayBodyRef = useRef<HTMLDivElement>(null)
+  const mindMapFocusRef = useRef<((blockId: string) => boolean) | null>(null)
+  const handleMindMapFocusChange = useCallback(
+    (focusBlock: ((blockId: string) => boolean) | null) => {
+      mindMapFocusRef.current = focusBlock
+    },
+    []
+  )
+  const getEditorContainer = useCallback(() => editorContainerRef.current, [])
+  const getDayBody = useCallback(() => dayBodyRef.current, [])
+  const openLinkedNote = useCallback(
+    (wikiTarget: string) => void handleInternalLinkClick(wikiTarget),
+    [handleInternalLinkClick]
+  )
+  const mindMapNavigation = useMindMapNavigation({
+    close: mindMap.close,
+    expandBranch: mindMap.expandBranch,
+    getContainer: getEditorContainer,
+    getTopElement: getDayBody,
+    smooth: !prefersReducedMotion,
+    openNote: openLinkedNote,
+    openTask: handleOpenTask,
+    focusBlock: (blockId: string) => mindMapFocusRef.current?.(blockId) === true
+  })
+
+  // Overflow-menu file actions. Journal entries live in the notes cache, so
+  // the note file APIs resolve them by id.
+  const handleCopyPath = useCallback(async () => {
+    if (!entryId) return
+    try {
+      const note = await notesService.get(entryId)
+      if (!note) throw new Error(notesT('page.toast.copyPathFailed'))
+      await navigator.clipboard.writeText(note.path)
+      toast.success(notesT('page.toast.pathCopied'))
+    } catch (err) {
+      toast.error(extractErrorMessage(err, notesT('page.toast.copyPathFailed')))
+    }
+  }, [entryId, notesT])
+
+  const handleRevealInFinder = useCallback(async () => {
+    if (!entryId) return
+    try {
+      await notesService.revealInFinder(entryId)
+    } catch (err) {
+      toast.error(extractErrorMessage(err, notesT('page.toast.revealFailed')))
+    }
+  }, [entryId, notesT])
+
+  const handleOpenExternal = useCallback(async () => {
+    if (!entryId) return
+    try {
+      await notesService.openExternal(entryId)
+    } catch (err) {
+      toast.error(extractErrorMessage(err, notesT('page.toast.openExternalFailed')))
+    }
+  }, [entryId, notesT])
+
+  const openFind = findInPage.open
+  const handleMenuAction = useCallback(
+    (action: JournalMenuAction) => {
+      switch (action) {
+        case 'local-graph':
+          setIsLocalGraphOpen((prev) => !prev)
+          break
+        case 'find':
+          openFind()
+          break
+        case 'insert-template':
+          openTemplateInsertRef.current?.()
+          break
+        case 'save-as-template':
+          setIsSaveAsTemplateOpen(true)
+          break
+        case 'copy-path':
+          void handleCopyPath()
+          break
+        case 'reveal-in-finder':
+          void handleRevealInFinder()
+          break
+        case 'open-external':
+          void handleOpenExternal()
+          break
+        case 'attachments':
+          setIsAttachmentsOpen(true)
+          break
+        case 'delete':
+          setIsDeleteConfirmOpen(true)
+          break
+        case 'version-history':
+        case 'export':
+        case 'settings':
+          // Routed through their dedicated header props.
+          break
+      }
+    },
+    [openFind, handleCopyPath, handleRevealInFinder, handleOpenExternal]
+  )
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (isDeleting) return
+    setIsDeleting(true)
+    try {
+      const deleted = await deleteEntry()
+      if (!deleted) {
+        toast.error(t('toast.deleteFailed'))
+        return
+      }
+      setIsDeleteConfirmOpen(false)
+      setIsLocalGraphOpen(false)
+      // The editor still holds the deleted body; a fresh one starts the day
+      // empty instead of saving the old text back on the next keystroke.
+      setEditorRevision((count) => count + 1)
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [isDeleting, deleteEntry, t])
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
     setHeadings(
@@ -983,14 +1185,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isBookmarked={isBookmarked}
               isFullWidth={isFullWidth}
               hasEntry={!!entry}
-              journalDate={entry?.date ?? null}
+              journalDate={selectedDate}
+              isMindMapAvailable={mindMap.isAvailable}
+              isMindMapOpen={isMindMapOpen}
+              isLocalGraphOpen={isLocalGraphOpen}
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={toggleJournalWidth}
-              onBookmarkToggle={(...args) => void toggleBookmark(...args)}
+              onBookmarkToggle={() => void handleBookmarkToggle()}
+              onToggleMindMap={mindMap.toggle}
               onVersionHistory={() => setIsVersionHistoryOpen(true)}
               onExport={() => setIsExportDialogOpen(true)}
               onOpenSettings={() => openSettingsModal('journal')}
+              onMenuAction={handleMenuAction}
             />
           </div>
 
@@ -1024,12 +1231,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   {currentViewState.type === 'day' && (
                     <div
                       ref={setRailContentEl}
+                      // Hidden, never unmounted, while the mind map is open: the
+                      // editor keeps its CRDT binding and undo history.
+                      inert={isMindMapOpen || undefined}
+                      aria-hidden={isMindMapOpen || undefined}
                       className={cn(
                         'w-full',
                         showGridRail
                           ? 'grid items-start gap-x-12 [grid-template-columns:minmax(0,1fr)_20rem] max-[920px]:grid-cols-1'
                           : 'mx-auto flex flex-col flex-1',
-                        showCanvasRail && 'review-canvas'
+                        showCanvasRail && 'review-canvas',
+                        isMindMapOpen && 'invisible pointer-events-none'
                       )}
                       style={
                         {
@@ -1038,7 +1250,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         } as CSSProperties
                       }
                     >
-                      <div className="min-w-0 flex flex-col flex-1">
+                      <div ref={dayBodyRef} className="min-w-0 flex flex-col flex-1">
                         <div
                           className="group/metadata flex flex-col gap-2.5 pb-[15px]"
                           data-marquee-ignore
@@ -1138,12 +1350,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                   tagIconMap={tagIconMap}
                                   onInlineTagsChange={handleInlineTagsChange}
                                   focusAtEndRef={focusAtEndRef}
+                                  openTemplateInsertRef={openTemplateInsertRef}
                                   marqueeZoneEl={marqueeZoneEl}
                                   review={{
                                     plainMarkdown: review.plainMarkdown,
                                     marks: review.marks,
                                     hoveredMarkId: review.hoveredMarkId,
-                                    onEditorReady: review.handleEditorReady,
+                                    onEditorReady: handleEditorReady,
                                     onAddComment: review.openCommentComposer,
                                     getMarkdownSourceOffsetForEditorOffset:
                                       review.getMarkdownSourceOffsetForEditorOffset,
@@ -1168,6 +1381,29 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             />
                           )}
                         </div>
+
+                        {/* Excluded from marquee/focus-at-end so graph drags and
+                            clicks are not hijacked by the editor's marquee zone. */}
+                        {isLocalGraphOpen && entryId && (
+                          <div className="mt-6" data-marquee-ignore>
+                            <LocalGraphPanel
+                              noteId={entryId}
+                              onClose={() => setIsLocalGraphOpen(false)}
+                              onOpenFullGraph={() => {
+                                openTab({
+                                  type: 'graph',
+                                  title: 'Graph',
+                                  icon: 'graph',
+                                  path: '/graph',
+                                  isPinned: false,
+                                  isModified: false,
+                                  isPreview: false,
+                                  isDeleted: false
+                                })
+                              }}
+                            />
+                          </div>
+                        )}
 
                         {entry && (backlinks.length > 0 || outgoingLinks.length > 0) && (
                           <div className="mt-6 flex flex-col gap-6" data-marquee-ignore>
@@ -1251,10 +1487,26 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               )}
           </div>
 
+          {isMindMapOpen && mindMap.map && (
+            <div
+              data-journal-mind-map-overlay
+              className="absolute inset-x-0 bottom-0 top-[var(--note-chrome-height)] z-20"
+            >
+              <MindMapView
+                map={mindMap.map}
+                noteId={entryId ?? ''}
+                noteTitle={journalNoteTitle}
+                onActivateNode={mindMapNavigation.activateNode}
+                initialFocusBlockId={activeHeadingId ?? null}
+                onFocusChange={handleMindMapFocusChange}
+              />
+            </div>
+          )}
+
           {currentViewState.type === 'day' && (
             <OutlineInfoPanel
               headings={headings}
-              onHeadingClick={handleHeadingClick}
+              onHeadingClick={mindMapNavigation.navigateFromOutline}
               activeHeadingId={activeHeadingId ?? undefined}
               stats={documentStats}
             />
@@ -1275,6 +1527,49 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             noteTitle={journalNoteTitle}
           />
         )}
+        {entryId && (
+          <NoteAttachmentsDialog
+            open={isAttachmentsOpen}
+            onOpenChange={setIsAttachmentsOpen}
+            noteId={entryId}
+            getOriginalNames={getAttachmentOriginalNames}
+          />
+        )}
+        <SaveNoteAsTemplateDialog
+          noteId={entryId}
+          isOpen={isSaveAsTemplateOpen}
+          onClose={() => setIsSaveAsTemplateOpen(false)}
+        />
+        <AlertDialog
+          open={isDeleteConfirmOpen}
+          onOpenChange={(open) => !open && setIsDeleteConfirmOpen(false)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t('deleteConfirm.description', { title: journalNoteTitle })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>
+                {notesT('page.deleteConfirm.cancel')}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  void handleDeleteConfirm()
+                }}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting
+                  ? notesT('page.deleteConfirm.deleting')
+                  : notesT('page.deleteConfirm.confirm')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {entry && (
           <VersionHistory
             open={isVersionHistoryOpen}
