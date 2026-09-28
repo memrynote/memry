@@ -21,9 +21,11 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAgentOptional } from '../agent-context'
+import { editedArgsWithCandidate } from '../approval-args'
 import type { PendingToolApproval } from '../agent-context.reducer'
 import { ApprovalActions } from './approval-actions'
 import { ChangePreviewView } from './change-preview'
+import { InPageReviewPointer } from './in-page-review-pointer'
 
 /**
  * A standing approval is only offered for a write the gate is willing to trust.
@@ -150,26 +152,6 @@ interface AgentDiffApi {
 
 function getAgentDiffApi(): AgentDiffApi {
   return (window.api as typeof window.api & { agent: AgentDiffApi }).agent
-}
-
-/**
- * Put an edited body back into the tool's own argument shape.
- *
- * `vault_update_note` also has its mode forced to `replace`: the text in the
- * box is the whole document the user just read and approved, so appending it to
- * itself is never what they meant.
- */
-function editedArgsWithCandidate(
-  args: unknown,
-  candidate: string,
-  toolName: string
-): Record<string, unknown> {
-  const base = args && typeof args === 'object' && !Array.isArray(args) ? args : {}
-  if (toolName === 'vault_add_to_inbox') return { ...base, content: candidate }
-  if (toolName === 'vault_update_note') {
-    return { ...base, mode: 'replace', content_markdown: candidate }
-  }
-  return { ...base, content_markdown: candidate }
 }
 
 function InlineDiffApproval({
@@ -357,7 +339,15 @@ export function ToolCallMessage({ message }: { message: Message }): React.JSX.El
         <ToolText value={message.content.data.tool} />
         <ToolInput input={message.content.data.args} label={t('agentChat.toolCall.parameters')} />
         <ToolOutput errorText={errorText} output={message.content.data.output} />
-        {agent && pending?.requiresDiff && (
+        {agent && pending?.reviewTarget && (
+          <InPageReviewPointer
+            key={pending.toolCallId}
+            agent={agent}
+            pending={pending}
+            target={pending.reviewTarget}
+          />
+        )}
+        {agent && pending?.requiresDiff && !pending.reviewTarget && (
           <InlineDiffApproval
             key={pending.toolCallId}
             agent={agent}

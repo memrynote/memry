@@ -93,6 +93,7 @@ import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
+import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Journal')
@@ -646,6 +647,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     onMarkdownChange: handleMarkdownChange
   })
   const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
+  // An agent edit to this day's entry is reviewed here, in place of the editor.
+  // Only the day view shows a body to review it in.
+  const isDayView = currentViewState.type === 'day'
+  const agentReviewTarget = useMemo(
+    () => (isDayView ? ({ kind: 'journal', date: selectedDate } as const) : null),
+    [isDayView, selectedDate]
+  )
+  const agentReview = useAgentBodyReview(agentReviewTarget)
   const {
     shiftStyle: railShiftStyle,
     railHidden,
@@ -1086,63 +1095,78 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               <Loader2 className="size-6 animate-spin text-muted-foreground" />
                             </div>
                           ) : (
-                            <ContentArea
-                              key={editorState.key}
-                              noteId={entry?.id}
-                              initialContent={review.editorInitialContent}
-                              contentType="markdown"
-                              externalContentRevision={externalUpdateCount}
-                              placeholder={
-                                selectedDate > today
-                                  ? t('editor.placeholder.future')
-                                  : isToday
-                                    ? t('editor.placeholder.today')
-                                    : t('editor.placeholder.past')
-                              }
-                              stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                              onStickyToolbarChange={(sticky) =>
-                                void updateEditorSettings({
-                                  toolbarMode: sticky ? 'sticky' : 'floating'
-                                })
-                              }
-                              spellCheck={editorSettings.spellCheck}
-                              onContentChange={handleContentChange}
-                              onMarkdownChange={handleMarkdownChange}
-                              onHeadingsChange={handleHeadingsChange}
-                              onLinkClick={handleLinkClick}
-                              onInternalLinkClick={(...args) =>
-                                void handleInternalLinkClick(...args)
-                              }
-                              noteTags={entryTags}
-                              tagColorMap={tagColorMap}
-                              tagIconMap={tagIconMap}
-                              onInlineTagsChange={handleInlineTagsChange}
-                              focusAtEndRef={focusAtEndRef}
-                              marqueeZoneEl={marqueeZoneEl}
-                              review={{
-                                plainMarkdown: review.plainMarkdown,
-                                marks: review.marks,
-                                hoveredMarkId: review.hoveredMarkId,
-                                onEditorReady: review.handleEditorReady,
-                                onAddComment: review.openCommentComposer,
-                                getMarkdownSourceOffsetForEditorOffset:
-                                  review.getMarkdownSourceOffsetForEditorOffset,
-                                getEditorOffsetForMarkdownSourceOffset:
-                                  review.getEditorOffsetForMarkdownSourceOffset,
-                                onPersistCurrentMarkdown: review.persistCurrentMarkdown,
-                                onPlainMarkdownChange: review.handlePlainMarkdownChange,
-                                onHoveredMarkChange: review.setHoveredMarkId,
-                                onMarkPositionsChange: review.setMarkPositions,
-                                onReplaceMarksFromYjs: review.replaceMarksFromYjs
-                              }}
+                            <>
+                              {agentReview ? (
+                                <AgentReviewSurface review={agentReview} noteId={entry?.id} />
+                              ) : null}
+                              {/* Hidden, never unmounted, while an agent edit is under
+                              review: the editor keeps its Y.Doc binding and undo
+                              history until the review is settled. */}
+                              <div
+                                className={cn(agentReview && 'hidden')}
+                                inert={Boolean(agentReview) || undefined}
+                              >
+                                <ContentArea
+                                  key={editorState.key}
+                                  noteId={entry?.id}
+                                  initialContent={review.editorInitialContent}
+                                  contentType="markdown"
+                                  externalContentRevision={externalUpdateCount}
+                                  placeholder={
+                                    selectedDate > today
+                                      ? t('editor.placeholder.future')
+                                      : isToday
+                                        ? t('editor.placeholder.today')
+                                        : t('editor.placeholder.past')
+                                  }
+                                  stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                                  onStickyToolbarChange={(sticky) =>
+                                    void updateEditorSettings({
+                                      toolbarMode: sticky ? 'sticky' : 'floating'
+                                    })
+                                  }
+                                  spellCheck={editorSettings.spellCheck}
+                                  onContentChange={handleContentChange}
+                                  onMarkdownChange={handleMarkdownChange}
+                                  onHeadingsChange={handleHeadingsChange}
+                                  onLinkClick={handleLinkClick}
+                                  onInternalLinkClick={(...args) =>
+                                    void handleInternalLinkClick(...args)
+                                  }
+                                  noteTags={entryTags}
+                                  tagColorMap={tagColorMap}
+                                  tagIconMap={tagIconMap}
+                                  onInlineTagsChange={handleInlineTagsChange}
+                                  focusAtEndRef={focusAtEndRef}
+                                  marqueeZoneEl={marqueeZoneEl}
+                                  review={{
+                                    plainMarkdown: review.plainMarkdown,
+                                    marks: review.marks,
+                                    hoveredMarkId: review.hoveredMarkId,
+                                    onEditorReady: review.handleEditorReady,
+                                    onAddComment: review.openCommentComposer,
+                                    getMarkdownSourceOffsetForEditorOffset:
+                                      review.getMarkdownSourceOffsetForEditorOffset,
+                                    getEditorOffsetForMarkdownSourceOffset:
+                                      review.getEditorOffsetForMarkdownSourceOffset,
+                                    onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                                    onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                                    onHoveredMarkChange: review.setHoveredMarkId,
+                                    onMarkPositionsChange: review.setMarkPositions,
+                                    onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                                  }}
+                                />
+                              </div>
+                            </>
+                          )}
+                          {agentReview ? null : (
+                            <ReviewBadgeLayer
+                              review={review}
+                              targetId={entry?.id}
+                              containerRef={editorContainerRef}
+                              active={railHidden}
                             />
                           )}
-                          <ReviewBadgeLayer
-                            review={review}
-                            targetId={entry?.id}
-                            containerRef={editorContainerRef}
-                            active={railHidden}
-                          />
                         </div>
 
                         {entry && (backlinks.length > 0 || outgoingLinks.length > 0) && (

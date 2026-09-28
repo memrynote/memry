@@ -174,6 +174,12 @@ export interface ContentAreaProps {
    */
   openTemplateInsertRef?: React.RefObject<(() => void) | null>
   /**
+   * Ref that receives a function running the debounced markdown save now, for
+   * owners that must read the latest text at a moment of their choosing (the
+   * agent review draft reads it on Accept) instead of waiting out the debounce.
+   */
+  flushMarkdownRef?: React.RefObject<(() => Promise<void>) | null>
+  /**
    * The outer wrapper element that owns the marquee selection trigger area
    * (and the overlay's coordinate space). When omitted, falls back to the
    * inner `.bn-container` so callers that don't want the extended hit area

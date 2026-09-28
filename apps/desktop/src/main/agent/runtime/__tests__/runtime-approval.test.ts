@@ -312,7 +312,8 @@ describe('AgentRuntime approval gate', () => {
       name: 'vault_create_task',
       args: { title: 'Task' },
       requiresDiff: true,
-      previewKind: 'fields'
+      previewKind: 'fields',
+      reviewTarget: null
     })
     expect(runtime.getPendingApproval('gate-100-i')).toEqual({
       conversationId: 'conversation-1',
@@ -328,6 +329,32 @@ describe('AgentRuntime approval gate', () => {
     await expect(pending).resolves.toEqual({ approved: true, args: { title: 'Task' } })
     expect(conversations.addToTrustList).toHaveBeenCalledWith('conversation-1', 'vault_create_task')
     expect(runtime.getPendingApproval('gate-100-i')).toBeNull()
+  })
+
+  it('points a note body edit at the note and never records a standing grant for it', async () => {
+    const { runtime, conversations } = createRuntime('ask')
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const args = { id: 'note-1', mode: 'replace', content_markdown: 'Draft' }
+    const pending = installedGate()({
+      writeGrant: grantFor('conversation-1'),
+      toolName: 'vault_update_note',
+      parsedArgs: args
+    })
+
+    expect(mocks.broadcastAgentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'tool_call_pending_approval',
+        name: 'vault_update_note',
+        reviewTarget: { kind: 'note', id: 'note-1' }
+      })
+    )
+
+    runtime.resolveApproval('gate-100-i', { kind: 'allow_always', scope: 'vault' })
+
+    await expect(pending).resolves.toEqual({ approved: true, args })
+    expect(conversations.addToTrustList).not.toHaveBeenCalled()
   })
 
   it('returns edited args and denial decisions from pending approvals', async () => {

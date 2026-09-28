@@ -330,6 +330,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   onInlineTagsChange,
   focusAtEndRef,
   openTemplateInsertRef,
+  flushMarkdownRef,
   yjsFragment,
   yjsDoc,
   isRemoteUpdateRef,
@@ -1692,6 +1693,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       openTemplateInsertRef.current = null
     }
   }, [editor, openTemplateInsertRef])
+
+  useEffect(() => {
+    if (!flushMarkdownRef) return
+    flushMarkdownRef.current = () => flushPendingMarkdown()
+    return () => {
+      flushMarkdownRef.current = null
+    }
+  }, [flushMarkdownRef, flushPendingMarkdown])
 
   /**
    * BlockNote's file panel, replaced outright.

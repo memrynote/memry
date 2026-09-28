@@ -285,6 +285,13 @@ vi.mock('@/components/journal', () => ({
   )
 }))
 
+// The in-page agent review mounts a real BlockNote editor; these tests cover
+// the page with no agent edit pending.
+vi.mock('@/components/note/agent-review', () => ({
+  AgentReviewSurface: () => null,
+  useAgentBodyReview: () => null
+}))
+
 vi.mock('@/components/note', () => ({
   ContentArea: (props: any) => {
     const {

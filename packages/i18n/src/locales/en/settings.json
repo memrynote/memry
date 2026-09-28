@@ -2263,7 +2263,8 @@
       "description": "Tools you granted a standing approval for in this vault. Deletes can never be granted one.",
       "empty": "Nothing is always allowed. Every change still asks.",
       "revoke": "Revoke",
-      "revokeLabel": "Revoke the standing approval for {tool}"
+      "revokeLabel": "Revoke the standing approval for {tool}",
+      "ignoredInPageReview": "Ignored: note and journal edits always ask."
     },
     "v2": {
       "permissions": {

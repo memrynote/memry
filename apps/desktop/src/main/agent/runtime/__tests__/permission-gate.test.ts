@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { decideToolGate } from '../permission-gate'
+import { decideToolGate, reviewTargetForTool } from '../permission-gate'
 
 describe('decideToolGate', () => {
   /**
@@ -95,8 +95,8 @@ describe('decideToolGate', () => {
   it('honours a standing approval on an update tool, at either scope', () => {
     expect(
       decideToolGate({
-        toolName: 'vault_update_note',
-        trustList: ['vault_update_note'],
+        toolName: 'vault_update_task',
+        trustList: ['vault_update_task'],
         pendingDecision: null,
         toolApprovalMode: 'ask'
       })
@@ -194,6 +194,24 @@ describe('decideToolGate', () => {
     })
   })
 
+  /**
+   * Note and journal body edits are reviewed in the page every time. A grant
+   * written by an older version must not quietly skip that review.
+   */
+  it('ignores a standing approval for note and journal body edits', () => {
+    for (const toolName of ['vault_update_note', 'vault_update_journal_entry']) {
+      expect(
+        decideToolGate({
+          toolName,
+          trustList: [toolName],
+          vaultTrustList: [toolName],
+          pendingDecision: null,
+          toolApprovalMode: 'ask'
+        })
+      ).toEqual({ outcome: 'await_user', requiresDiff: true, previewKind: 'body' })
+    }
+  })
+
   it('forwards an existing decision without re-asking', () => {
     const decision = decideToolGate({
       toolName: 'vault_create_task',
@@ -202,5 +220,34 @@ describe('decideToolGate', () => {
     })
 
     expect(decision).toEqual({ outcome: 'apply_decision', decision: { kind: 'allow' } })
+  })
+})
+
+describe('reviewTargetForTool', () => {
+  it('targets the note for a note body update', () => {
+    expect(
+      reviewTargetForTool('vault_update_note', {
+        id: 'n1',
+        mode: 'append',
+        content_markdown: 'x'
+      })
+    ).toEqual({ kind: 'note', id: 'n1' })
+  })
+
+  it('targets the journal date only when the update carries a body', () => {
+    expect(
+      reviewTargetForTool('vault_update_journal_entry', {
+        date: '2026-05-12',
+        content_markdown: 'Today'
+      })
+    ).toEqual({ kind: 'journal', date: '2026-05-12' })
+    expect(
+      reviewTargetForTool('vault_update_journal_entry', { date: '2026-05-12', tags: ['a'] })
+    ).toBeNull()
+  })
+
+  it('keeps every other write in the agent pane', () => {
+    expect(reviewTargetForTool('vault_create_note', { title: 'x' })).toBeNull()
+    expect(reviewTargetForTool('vault_update_task', { id: 't1' })).toBeNull()
   })
 })
