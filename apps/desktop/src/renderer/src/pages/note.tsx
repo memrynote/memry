@@ -58,12 +58,7 @@ import {
   backlinkId
 } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
-import { SimilarNotesSection, SuggestedTagsRow } from '@/components/note/similar-notes'
-import { createWikiLinkInlineContent } from '@/components/note/content-area/wiki-link'
-import { useSimilarNotes, useTagSuggestions } from '@/hooks/use-note-similarity'
-import { useFeatureFlags } from '@/hooks/use-feature-flags'
-import { addItemsToCanvas } from '@/pages/canvas/canvas-write'
-import type { SimilarNoteItem } from '@memry/contracts/notes-api'
+import { NoteSimilarNotes, NoteSuggestedTags } from '@/components/note/similar-notes'
 import {
   useNote,
   useNoteMutations,
@@ -221,14 +216,6 @@ export function NotePage({ noteId }: NotePageProps) {
     isLoading: backlinksLoading
   } = useNoteLinksQuery(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
-  const similarNotes = useSimilarNotes(noteId ?? null)
-  const { flags: featureFlags } = useFeatureFlags()
-  // Category suggestions are for a note that has none yet (#2490). Dismissing
-  // them holds for this note until the tab moves to another one.
-  const [tagSuggestionsDismissedFor, setTagSuggestionsDismissedFor] = useState<string | null>(null)
-  const tagSuggestions = useTagSuggestions(noteId ?? null, {
-    enabled: note?.tags.length === 0 && tagSuggestionsDismissedFor !== noteId
-  })
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab, saveTabState } = useTabs()
   const activeTab = useActiveTab()
@@ -929,6 +916,7 @@ export function NotePage({ noteId }: NotePageProps) {
     () => collectOriginalNames(attachmentsEditorRef.current),
     []
   )
+  const getAttachmentsEditor = useCallback(() => attachmentsEditorRef.current, [])
   const getEditorContainer = useCallback(() => editorContainerRef.current, [])
   const getNoteBody = useCallback(() => noteBodyRef.current, [])
   // The map is built when it opens, but a restored tab reopens it before the
@@ -1296,105 +1284,6 @@ export function NotePage({ noteId }: NotePageProps) {
       }
     },
     [openTab, reusePreferred, activeTab, noteId]
-  )
-
-  // ── Similar notes (#2490) ─────────────────────────────────────────────────
-
-  /**
-   * Link a similar note from this one: a `[[Title]]` paragraph at the end of
-   * the body, written through the live editor so the CRDT binding and undo
-   * history see it like typing. A trailing empty paragraph is reused so
-   * repeated links do not leave blank lines between them.
-   */
-  const handleLinkSimilar = useCallback(
-    (similar: SimilarNoteItem) => {
-      const editor = attachmentsEditorRef.current as {
-        document: Array<{ id: string; type: string; content?: unknown }>
-        insertBlocks: (blocks: unknown[], reference: string, placement: 'after') => unknown
-        updateBlock: (reference: string, update: unknown) => unknown
-      } | null
-      if (!editor || isDeleted) return
-      const content = [createWikiLinkInlineContent(similar.title, '')]
-      const last = editor.document[editor.document.length - 1]
-      if (!last) return
-      const lastIsEmpty =
-        last.type === 'paragraph' && Array.isArray(last.content) && last.content.length === 0
-      if (lastIsEmpty) editor.updateBlock(last.id, { type: 'paragraph', content })
-      else editor.insertBlocks([{ type: 'paragraph', content }], last.id, 'after')
-      toast.success(t('similarNotes.linked', { title: similar.title }))
-    },
-    [isDeleted, t]
-  )
-
-  const handleAddSimilarToCanvas = useCallback(
-    async (similar: SimilarNoteItem, canvas: { id: string; title: string }) => {
-      try {
-        const { mutation } = await addItemsToCanvas(canvas.id, [
-          { entityType: 'note', entityId: similar.id }
-        ])
-        if (mutation.applied.length === 0) {
-          toast.info(
-            t('similarNotes.alreadyOnCanvas', { title: similar.title, canvas: canvas.title })
-          )
-          return
-        }
-        toast.success(
-          t('similarNotes.addedToCanvas', { title: similar.title, canvas: canvas.title }),
-          {
-            action: {
-              label: t('similarNotes.openCanvas'),
-              onClick: () =>
-                openTab({
-                  type: 'canvas',
-                  title: canvas.title,
-                  icon: 'pen-tool',
-                  path: `/canvas/${canvas.id}`,
-                  entityId: canvas.id,
-                  isPinned: false,
-                  isModified: false,
-                  isPreview: false,
-                  isDeleted: false
-                })
-            }
-          }
-        )
-      } catch (err) {
-        log.error('Failed to add similar note to canvas', err)
-        toast.error(extractErrorMessage(err, t('similarNotes.addToCanvasFailed')))
-      }
-    },
-    [openTab, t]
-  )
-
-  const handleOpenSimilar = useCallback(
-    (similar: SimilarNoteItem) => {
-      openLinked({
-        type: 'note',
-        title: similar.title,
-        icon: 'file-text',
-        path: `/notes/${similar.id}`,
-        entityId: similar.id,
-        isPinned: false,
-        isModified: false,
-        isPreview: false,
-        isDeleted: false
-      })
-    },
-    [openLinked]
-  )
-
-  const handleAcceptSuggestedTag = useCallback(
-    async (tag: string) => {
-      if (!noteId || !note || isDeleted) return
-      if (note.tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) return
-      try {
-        await updateNote.mutateAsync({ id: noteId, tags: [...note.tags, tag] })
-      } catch (err) {
-        log.error('Failed to add suggested tag:', err)
-        toast.error(extractErrorMessage(err, t('suggestedTags.failed')))
-      }
-    },
-    [noteId, note, isDeleted, updateNote, t]
   )
 
   const handleInternalLinkClick = useCallback(
@@ -1995,14 +1884,7 @@ export function NotePage({ noteId }: NotePageProps) {
             hideAddButton
           />
 
-          {note.tags.length === 0 && tagSuggestionsDismissedFor !== noteId && (
-            <SuggestedTagsRow
-              suggestions={tagSuggestions}
-              onAccept={(tag) => void handleAcceptSuggestedTag(tag)}
-              onDismiss={() => setTagSuggestionsDismissedFor(noteId)}
-              disabled={isDeleted}
-            />
-          )}
+          <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted} />
 
           {properties.length > 0 && (
             <InfoSection
@@ -2190,19 +2072,13 @@ export function NotePage({ noteId }: NotePageProps) {
             onTaskClick={handleLinkedTaskClick}
           />
 
-          <SimilarNotesSection
-            notes={similarNotes}
-            onOpen={handleOpenSimilar}
-            onLink={
-              note.sizeClass !== 'large-file' && !agentReview && !isDeleted
-                ? handleLinkSimilar
-                : undefined
-            }
-            onAddToCanvas={
-              featureFlags.spatialCanvas
-                ? (similar, canvas) => void handleAddSimilarToCanvas(similar, canvas)
-                : undefined
-            }
+          <NoteSimilarNotes
+            noteId={noteId}
+            getEditor={getAttachmentsEditor}
+            largeFile={isLargeFile}
+            reviewing={Boolean(agentReview)}
+            deleted={isDeleted}
+            openLinked={openLinked}
           />
         </div>
       </div>
