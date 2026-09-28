@@ -66,6 +66,26 @@ describe('graph controls i18n', () => {
     expect(screen.getByText('Show labels')).toBeInTheDocument()
   })
 
+  it('offers a canvas connections switch that toggles canvas edges', () => {
+    const dispatch = vi.fn()
+    renderWithI18n(
+      <GraphControlPanel
+        filterState={defaultFilterState}
+        dispatch={dispatch}
+        isFiltered={false}
+        focusLabel={null}
+        settings={GRAPH_SETTINGS_DEFAULTS}
+        updateSettings={vi.fn()}
+      />
+    )
+
+    const toggle = screen.getByRole('switch', { name: 'Canvas connections' })
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(toggle)
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'TOGGLE_CANVAS_EDGES' })
+  })
+
   it('renders focused node depth and clear-focus accessible label', () => {
     renderControlPanel({ focusNodeId: 'note-1', focusDepth: 2 })
     fireEvent.click(screen.getByTitle('Graph settings'))

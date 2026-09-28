@@ -265,7 +265,7 @@ or the arrows on the canvas.
 The sidebar **Graph** entry opens a force-directed map of your notes and the links between them. Useful for finding orphan notes or unexpectedly large clusters.
 
 - Nodes are notes; edges are wiki links and [relation properties](/user-guide/notes/properties-tags#relation-properties) (drawn thinner, to tell them apart from wiki links).
-- Arrows between cards on a [canvas](/user-guide/canvas/cards-and-links#connecting-cards) are edges too, drawn in their own colour. The pen button in the filter bar hides or shows them.
+- Arrows between cards on a [canvas](/user-guide/canvas/cards-and-links#connecting-cards) are edges too, drawn in their own colour. Turn them off with **Canvas connections** under the gear icon → **Filters**.
 - Click a node to open the note in a tab.
 - Hover to highlight neighbors.
 - Drag a node to pull it around — linked notes follow it, and the graph settles again when you let go.
