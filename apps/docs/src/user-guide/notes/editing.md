@@ -176,8 +176,10 @@ the view shows as a few lines of JSON:
 ```
 ````
 
-Put the cursor in the block to see that text under the list and edit it by hand;
-the list follows as you type. If the text stops being valid, the block says so
+Move the cursor into the block with the arrow keys, from the line above or below,
+to see that text under the list and edit it by hand; the list follows as you
+type. Clicking the list itself never moves the cursor into it, so a click on a
+row or a menu cannot type into the text by accident. If the text stops being valid, the block says so
 and keeps the text visible until it is fixed. Obsidian, GitHub, the phone and
 older versions of memrynote show the fence as an ordinary code block and leave it
 as it is.
