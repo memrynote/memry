@@ -21,7 +21,14 @@ const mocks = vi.hoisted(() => ({
   apply: vi.fn(),
   remove: vi.fn(),
   revert: vi.fn(),
-  toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() })
+  toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
+  propsGet: vi.fn(),
+  bindingDialog: null as null | {
+    open: boolean
+    onPick: (binding: unknown) => void
+    onUnbind: () => void
+  },
+  layoutDialog: null as null | { onPick: (property: unknown) => void }
 }))
 
 vi.mock('sonner', () => ({ toast: mocks.toast }))
@@ -29,9 +36,26 @@ vi.mock('./canvas-frame-categorize', () => ({
   applyFrameBinding: mocks.apply,
   removeFrameBinding: mocks.remove
 }))
-vi.mock('./canvas-frame-binding-dialog', () => ({ CanvasFrameBindingDialog: () => null }))
-vi.mock('./canvas-frame-layout-dialog', () => ({ CanvasFrameLayoutDialog: () => null }))
-vi.mock('@/services/properties-service', () => ({ propertiesService: { get: vi.fn() } }))
+// The dialogs have their own suite; here they only hand their callbacks out.
+vi.mock('./canvas-frame-binding-dialog', () => ({
+  CanvasFrameBindingDialog: (props: {
+    open: boolean
+    onPick: (binding: unknown) => void
+    onUnbind: () => void
+  }) => {
+    mocks.bindingDialog = props
+    return null
+  }
+}))
+vi.mock('./canvas-frame-layout-dialog', () => ({
+  CanvasFrameLayoutDialog: (props: { onPick: (property: unknown) => void }) => {
+    mocks.layoutDialog = props
+    return null
+  }
+}))
+vi.mock('@/services/properties-service', () => ({
+  propertiesService: { get: (id: string) => mocks.propsGet(id) }
+}))
 
 const tag = { kind: 'tag', tag: 'health/sleep' }
 
@@ -59,7 +83,7 @@ const boundFrame: FrameSceneElement = {
   customData: { [FRAME_BINDING_KEY]: tag }
 }
 
-function fakeApi(initial: FrameSceneElement[]) {
+function fakeApi(initial: FrameSceneElement[], selectedElementIds: Record<string, boolean> = {}) {
   const listeners = new Set<() => void>()
   const scene = { elements: initial as readonly FrameSceneElement[] }
   const api = {
@@ -69,14 +93,16 @@ function fakeApi(initial: FrameSceneElement[]) {
       scrollX: 0,
       scrollY: 0,
       zoom: { value: 1 },
-      selectedElementIds: {}
+      selectedElementIds
     }),
     onChange: (listener: () => void) => {
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
+    // Like the real editor, a scene update is followed by onChange.
     updateScene: vi.fn(({ elements }: { elements: FrameSceneElement[] }) => {
       scene.elements = elements
+      for (const listener of listeners) listener()
     }),
     scrollToContent: vi.fn()
   }
@@ -89,8 +115,12 @@ function fakeApi(initial: FrameSceneElement[]) {
   return { api, scene, commit }
 }
 
-function mount(elements: FrameSceneElement[], editable = true) {
-  const fake = fakeApi(elements)
+function mount(
+  elements: FrameSceneElement[],
+  editable = true,
+  selectedElementIds: Record<string, boolean> = {}
+) {
+  const fake = fakeApi(elements, selectedElementIds)
   const onSceneMutated = vi.fn()
   render(
     <CanvasFrameLayer
@@ -203,5 +233,81 @@ describe('CanvasFrameLayer', () => {
     commit([card('c1', 'f1', 600), plain])
     await flush()
     expect(mocks.apply).not.toHaveBeenCalled()
+  })
+
+  it('binds a selected plain frame and categorizes the cards already inside', async () => {
+    const plain = { ...boundFrame, customData: null, name: null }
+    const { scene, onSceneMutated } = mount([card('c1', 'f1'), plain], true, { f1: true })
+    fireEvent.click(screen.getByTestId('canvas-frame-chip-f1'))
+    expect(mocks.bindingDialog?.open).toBe(true)
+
+    act(() => mocks.bindingDialog!.onPick(tag))
+    await flush()
+
+    const frame = scene.elements.find((el) => el.id === 'f1')!
+    expect(frame.customData).toEqual({ [FRAME_BINDING_KEY]: tag })
+    expect(frame.name).toBe('#health/sleep')
+    expect(onSceneMutated).toHaveBeenCalled()
+    expect(mocks.apply).toHaveBeenCalledWith({ entityType: 'note', entityId: 'n-c1' }, tag)
+
+    // Undo reverts the write but leaves the card where it is.
+    const [, options] = mocks.toast.success.mock.calls[0] as [
+      string,
+      { action: { onClick: () => void } }
+    ]
+    act(() => options.action.onClick())
+    await flush()
+    expect(mocks.revert).toHaveBeenCalledTimes(1)
+    expect(scene.elements.find((el) => el.id === 'c1')!.frameId).toBe('f1')
+  })
+
+  it('unbinding keeps a name the user chose and strips nothing from cards', async () => {
+    const named = { ...boundFrame, name: 'My section' }
+    const { scene } = mount([card('c1', 'f1'), named])
+    fireEvent.click(screen.getByTestId('canvas-frame-chip-f1'))
+    act(() => mocks.bindingDialog!.onUnbind())
+    await flush()
+    const frame = scene.elements.find((el) => el.id === 'f1')!
+    expect(frame.customData).toBeNull()
+    expect(frame.name).toBe('My section')
+    expect(mocks.remove).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('canvas-frame-chip-f1')).toBeNull()
+  })
+
+  it('reports skipped cards and failed writes', async () => {
+    mocks.apply
+      .mockResolvedValueOnce({ status: 'skipped', reason: 'file' })
+      .mockRejectedValueOnce(new Error('disk full'))
+    const { commit } = mount([card('c1', null), card('c2', null), boundFrame])
+    commit([card('c1', 'f1'), card('c2', 'f1'), boundFrame])
+    await flush()
+    await flush()
+    expect(mocks.toast).toHaveBeenCalledWith('canvas.frame.skippedFile {"count":1}')
+    expect(mocks.toast.error).toHaveBeenCalledWith('disk full')
+    expect(mocks.toast.success).not.toHaveBeenCalled()
+  })
+
+  it('lays the board out by property into new bound frames', async () => {
+    mocks.propsGet.mockImplementation(async (id: string) =>
+      id === 'n-c1' ? [{ name: 'Status', value: 'Done', type: 'status' }] : []
+    )
+    const { scene, api } = mount([card('c1', null), card('c2', null, 400)])
+    await act(async () => {
+      mocks.layoutDialog!.onPick({ name: 'Status', type: 'status', values: ['Todo', 'Done'] })
+    })
+    await flush()
+
+    const frames = scene.elements.filter((el) => el.type === 'frame')
+    expect(frames.map((f) => f.name)).toEqual(['Status: Todo', 'Status: Done'])
+    const moved = scene.elements.find((el) => el.id === 'c1')!
+    expect(moved.frameId).toBe(frames[1].id)
+    // The frame's children sit right before it.
+    const ids = scene.elements.map((el) => el.id)
+    expect(ids.indexOf('c1')).toBe(ids.indexOf(frames[1].id) - 1)
+    expect(scene.elements.find((el) => el.id === 'c2')!.frameId).toBeNull()
+    expect(api.scrollToContent).toHaveBeenCalled()
+    // Laying out is not a drop: nothing is written to notes.
+    expect(mocks.apply).not.toHaveBeenCalled()
+    expect(mocks.toast.success).toHaveBeenCalledTimes(1)
   })
 })
