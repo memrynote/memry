@@ -125,6 +125,7 @@ function unifiedSidebar() {
             { text: 'Overview', link: '/user-guide/canvas/overview' },
             { text: 'Organizing Canvases', link: '/user-guide/canvas/organizing' },
             { text: 'Cards & Links', link: '/user-guide/canvas/cards-and-links' },
+            { text: 'Sections & Categorizing', link: '/user-guide/canvas/sections' },
             { text: 'Sync & Limits', link: '/user-guide/canvas/sync-and-limits' }
           ]
         },

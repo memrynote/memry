@@ -96,4 +96,5 @@ a file you bring in from elsewhere.
 
 - [Organizing Canvases](./organizing.md) — folders, drag & drop, renaming, duplicating, deleting
 - [Cards & Links](./cards-and-links.md) — putting notes, tasks, and events on a canvas
+- [Sections & Categorizing](./sections.md) — group cards in sections that tag or set a property on them
 - [Sync & Limits](./sync-and-limits.md) — how canvases sync, and what to watch out for

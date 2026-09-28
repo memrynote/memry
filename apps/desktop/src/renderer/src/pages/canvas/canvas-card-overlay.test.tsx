@@ -304,6 +304,40 @@ describe('CanvasCardLayer', () => {
     expect(onSceneMutated).toHaveBeenCalled()
   })
 
+  it('puts a card dropped onto a frame inside that frame, just before it', async () => {
+    const frame = {
+      id: 'f1',
+      type: 'frame',
+      x: 0,
+      y: 0,
+      width: 1000,
+      height: 800,
+      angle: 0
+    } as CardElement
+    const { api, updateScene } = makeApi([frame])
+    render(<Harness api={api} />)
+
+    const drop = new Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperty(drop, 'dataTransfer', {
+      value: {
+        types: [CANVAS_ITEM_DRAG_MIME],
+        getData: (t: string) =>
+          t === CANVAS_ITEM_DRAG_MIME ? JSON.stringify({ entityType: 'task', entityId: 't1' }) : ''
+      }
+    })
+    Object.defineProperty(drop, 'clientX', { value: 400 })
+    Object.defineProperty(drop, 'clientY', { value: 300 })
+    screen.getByTestId('wrapper').dispatchEvent(drop)
+
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
+    const elements = updateScene.mock.calls[0][0].elements as Array<{
+      id: string
+      frameId?: string
+    }>
+    expect(elements.map((e) => e.id)).toEqual(['new-0', 'f1'])
+    expect(elements[0].frameId).toBe('f1')
+  })
+
   it('sizes a dropped note card from its body, not a fixed frame', async () => {
     // The "hey" regression: every note card opened at the maximum frame. The
     // drop path must read the body and hand makeCardSkeleton a measured size.

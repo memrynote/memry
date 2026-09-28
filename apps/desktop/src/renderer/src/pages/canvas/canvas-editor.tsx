@@ -61,6 +61,8 @@ import { externalizeSceneAssets, retryCanvasAssetUploads } from './canvas-extern
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
 import { CanvasNodeLinkLayer } from './canvas-node-link-overlay'
+import { CanvasFrameLayer } from './canvas-frame-layer'
+import { LayoutGrid } from '@/lib/icons'
 import { createVaultLibraryAdapter } from './canvas-library-adapter'
 import { extractEntityRefs, type CardElement } from './canvas-cards'
 import {
@@ -157,6 +159,7 @@ export const CanvasEditor = ({
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
   const [linkPickerOpen, setLinkPickerOpen] = useState(false)
   const [linkTargetId, setLinkTargetId] = useState<string | null>(null)
+  const [layoutOpen, setLayoutOpen] = useState(false)
   /** Latched while Excalidraw's own link editor is being intercepted. */
   const linkEditorHandledRef = useRef(false)
   /** Card titles already resolved for the link bubble, so relabels are stable. */
@@ -982,6 +985,28 @@ export const CanvasEditor = ({
               excalidrawAPI={api}
               wrapperRef={wrapperRef}
               onSceneMutated={() => persisterRef.current?.notifyChange()}
+              extraActions={
+                viewMode ? null : (
+                  <button
+                    type="button"
+                    onClick={() => setLayoutOpen(true)}
+                    data-testid="canvas-layout-by-property"
+                    className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <LayoutGrid className="size-3.5" aria-hidden="true" />
+                    {t('canvas.frame.layoutAction')}
+                  </button>
+                )
+              }
+            />
+            {/* Frames bound to a tag or property value: chips, and the
+                metadata writes a card entering one of them triggers. */}
+            <CanvasFrameLayer
+              excalidrawAPI={api}
+              editable={!viewMode}
+              onSceneMutated={() => persisterRef.current?.notifyChange()}
+              layoutOpen={layoutOpen}
+              onLayoutOpenChange={setLayoutOpen}
             />
             {/* A saved mind map's boxes keep their href out of `element.link`,
                 where the library would paint a glyph on every one of them; this

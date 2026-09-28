@@ -58,6 +58,7 @@ import {
   pointerFromDragEnd
 } from './canvas-drop-entity'
 import { buildMemryHref, tabFromMemryHref } from '@/lib/memry-links'
+import { frameAtPoint, placeInFrame, type FrameSceneElement } from './canvas-frame-binding'
 import { noteCardClaims } from './canvas-note-lock'
 import { useNoteEditLock, lockReasonForCard } from './use-note-edit-lock'
 import { CanvasAddCardDialog } from './canvas-add-card-dialog'
@@ -95,12 +96,15 @@ interface CanvasCardLayerProps {
   wrapperRef: React.RefObject<HTMLDivElement | null>
   /** Notifies the scene persister after a card is created. */
   onSceneMutated: () => void
+  /** Further board actions shown beside Add card. */
+  extraActions?: React.ReactNode
 }
 
 export const CanvasCardLayer = ({
   excalidrawAPI,
   wrapperRef,
-  onSceneMutated
+  onSceneMutated,
+  extraActions
 }: CanvasCardLayerProps): React.JSX.Element => {
   const { t } = useT('common')
   const { openTab } = useTabActions()
@@ -382,7 +386,8 @@ export const CanvasCardLayer = ({
       refs: readonly CanvasEntityRef[],
       centers: readonly { x: number; y: number }[],
       sizes: readonly { width: number; height: number }[],
-      select: boolean
+      select: boolean,
+      joinFrames: boolean
     ): ReturnType<typeof convertToExcalidrawElements> => {
       const existing = excalidrawAPI.getSceneElementsIncludingDeleted()
       const skeletons = refs.map((ref, index) =>
@@ -398,8 +403,24 @@ export const CanvasCardLayer = ({
       const created = convertToExcalidrawElements(
         skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0]
       )
+      // A card put down on a frame joins it, as a card dragged there would:
+      // that is what files it under a bound frame's category (#2483).
+      let elements = [...existing, ...created] as unknown as FrameSceneElement[]
+      if (joinFrames) {
+        const byFrame = new Map<string, Set<string>>()
+        for (const element of created) {
+          const frameId = frameAtPoint(existing as unknown as FrameSceneElement[], {
+            x: element.x + element.width / 2,
+            y: element.y + element.height / 2
+          })
+          if (frameId) byFrame.set(frameId, (byFrame.get(frameId) ?? new Set()).add(element.id))
+        }
+        for (const [frameId, childIds] of byFrame) {
+          elements = placeInFrame(elements, childIds, frameId)
+        }
+      }
       excalidrawAPI.updateScene({
-        elements: [...existing, ...created],
+        elements: elements as never,
         ...(select
           ? {
               appState: {
@@ -478,7 +499,7 @@ export const CanvasCardLayer = ({
         })
         return center
       })
-      insertCards(refs, centers, resolvedSizes, false)
+      insertCards(refs, centers, resolvedSizes, false, true)
     },
     [excalidrawAPI, insertCards]
   )
@@ -511,7 +532,15 @@ export const CanvasCardLayer = ({
             width: clipRef.current?.clientWidth ?? 0,
             height: clipRef.current?.clientHeight ?? 0
           })
-      const created = insertCards(fresh, planBatchPlacement(sizes, cards, rect), sizes, true)
+      // A batch dropped onto a frame joins it; one the board placed on its own
+      // must not categorize every item it happens to land near.
+      const created = insertCards(
+        fresh,
+        planBatchPlacement(sizes, cards, rect),
+        sizes,
+        true,
+        at !== null
+      )
       if (!at) {
         excalidrawAPI.scrollToContent(created, {
           fitToContent: true,
@@ -960,17 +989,22 @@ export const CanvasCardLayer = ({
           {cards}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={openAddDialog}
-        data-testid="canvas-add-card"
+      <div
         // Horizontally centered (symmetric in RTL) via inline left/translate.
         style={{ left: '50%', transform: 'translateX(-50%)' }}
-        className="pointer-events-auto absolute bottom-4 z-10 flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+        className="pointer-events-none absolute bottom-4 z-10 flex items-center gap-2"
       >
-        <Plus className="size-3.5" aria-hidden="true" />
-        {t('canvas.card.addCard')}
-      </button>
+        <button
+          type="button"
+          onClick={openAddDialog}
+          data-testid="canvas-add-card"
+          className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+          {t('canvas.card.addCard')}
+        </button>
+        {extraActions}
+      </div>
       <CanvasAddCardDialog
         open={addOpen}
         onOpenChange={setAddOpen}
