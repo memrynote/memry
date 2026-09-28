@@ -163,4 +163,60 @@ describe('AssistantMessage', () => {
 
     expect(screen.queryByRole('button', { name: 'Copy' })).not.toBeInTheDocument()
   })
+
+  it('shows live reasoning under a thinking label, then folds it into a summary', async () => {
+    const withReasoning = (
+      text: string,
+      status: Message['status'],
+      reasoningDurationMs?: number
+    ): Message => ({
+      ...assistantMessage(text),
+      status,
+      content: {
+        role: 'assistant',
+        data: { text, reasoning: 'Checking the vault first.', reasoningDurationMs }
+      }
+    })
+    const { rerender } = render(<AssistantMessage message={withReasoning('', 'streaming')} />)
+
+    expect(screen.getByText('Thinking…')).toBeInTheDocument()
+    expect(screen.getByText('Checking the vault first.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Show or hide reasoning' })).toBeNull()
+
+    rerender(<AssistantMessage message={withReasoning('Answer', 'completed', 4200)} />)
+
+    const toggle = screen.getByRole('button', { name: 'Show or hide reasoning' })
+    expect(toggle).toHaveTextContent('Thought for 4s')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('types in text that arrives mid-stream and keeps the caret until it catches up', async () => {
+    const streaming = (text: string): Message => ({
+      ...assistantMessage(text),
+      status: 'streaming'
+    })
+    const { container, rerender } = render(<AssistantMessage message={streaming('Hello')} />)
+
+    // Text present at mount is shown at once, not re-typed.
+    expect(screen.getByText('Hello')).toBeInTheDocument()
+
+    rerender(<AssistantMessage message={streaming('Hello there, this arrived later')} />)
+    expect(screen.queryByText('Hello there, this arrived later')).not.toBeInTheDocument()
+    expect(container.querySelector('.aicss-stream-caret-steady')).not.toBeNull()
+
+    expect(await screen.findByText('Hello there, this arrived later')).toBeInTheDocument()
+    expect(container.querySelector('.aicss-stream-caret-steady')).toBeNull()
+    expect(container.querySelector('.aicss-stream-caret')).not.toBeNull()
+
+    rerender(
+      <AssistantMessage
+        message={{ ...assistantMessage('Hello there, this arrived later'), status: 'completed' }}
+      />
+    )
+    expect(container.querySelector('.aicss-stream-caret')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument()
+  })
 })

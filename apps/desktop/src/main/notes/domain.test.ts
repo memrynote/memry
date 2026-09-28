@@ -14,7 +14,8 @@ vi.mock('./runtime-effects', () => ({
   syncNoteUpdate: vi.fn(),
   syncNoteDelete: vi.fn(),
   setNoteLocalOnlyState: vi.fn(),
-  cleanupProjectLinksForDeletedNote: vi.fn()
+  cleanupProjectLinksForDeletedNote: vi.fn(),
+  unlinkTasksFromDeletedNote: vi.fn()
 }))
 
 import {
@@ -153,11 +154,22 @@ describe('notes domain adapter', () => {
     expect(runtimeEffects.cleanupProjectLinksForDeletedNote).toHaveBeenCalledWith('note-1')
   })
 
+  it("drops the deleted note from its tasks' links, keeping the tasks", async () => {
+    vi.mocked(noteVault.deleteNote).mockResolvedValue(
+      undefined as Awaited<ReturnType<typeof noteVault.deleteNote>>
+    )
+
+    await deleteNoteCommand('note-1')
+
+    expect(runtimeEffects.unlinkTasksFromDeletedNote).toHaveBeenCalledWith('note-1')
+  })
+
   it('does not clean up project links when the note delete fails', async () => {
     vi.mocked(noteVault.deleteNote).mockRejectedValue(new Error('locked'))
 
     await expect(deleteNoteCommand('note-1')).rejects.toThrow('locked')
     expect(runtimeEffects.cleanupProjectLinksForDeletedNote).not.toHaveBeenCalled()
+    expect(runtimeEffects.unlinkTasksFromDeletedNote).not.toHaveBeenCalled()
   })
 
   it('does not call syncNoteUpdate when only content changes', async () => {

@@ -1130,6 +1130,7 @@ signed-in account for sync, so another account's vaults never reach this account
 | `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
 | `GET /sync/vaults`                     | down      | List the account's registered vaults                                                          |
 | `POST /sync/vaults`                    | up        | Register or update a vault's encrypted name                                                   |
+| `PUT /sync/vaults/:vaultId/icon`       | up        | Set or reset a vault's encrypted icon; last writer wins on the client's change time           |
 | `POST /sync/bootstrap`                 | mixed     | Open an elevated bootstrap window; returns a token, the first manifest page and a tail cursor |
 | `POST /sync/bootstrap/renew`           | mixed     | Slide the window's TTL under the same session id                                              |
 | `POST /sync/bootstrap/close`           | up        | Release the window and its per-user session slot (idempotent)                                 |

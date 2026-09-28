@@ -18,7 +18,7 @@ import {
   createSeededRandom
 } from '@memry/editor-schema/conformance'
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
-import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
+import { markdownToYFragment, yDocToMarkdown, yFragmentToBlocks } from './blocknote-converter'
 import { parseNote } from '../vault/frontmatter'
 
 /**
@@ -107,6 +107,18 @@ describe('round-trip fuzz, main pipeline', () => {
       async ({ generate }) => assertFamily(generate)
     )
   }
+})
+
+describe('plain checkboxes, main pipeline', () => {
+  it('seeds a `{check}` line as a plain checkbox, marker off the text', async () => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment('- [ ] Passport {check}\n- [ ] Book flights', fragment)
+
+    const blocks = (await yFragmentToBlocks(fragment)) ?? []
+    expect(blocks.map((block) => (block.props as { plain?: boolean }).plain)).toEqual([true, false])
+    expect(JSON.stringify(blocks[0].content)).not.toContain('{check}')
+  })
 })
 
 describe('golden vault round-trip fixtures, main pipeline', () => {

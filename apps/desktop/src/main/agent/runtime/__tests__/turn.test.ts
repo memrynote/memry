@@ -184,6 +184,41 @@ describe('runTurn against a stub backend', () => {
     )
   })
 
+  it('records the full tool arguments from a repeated tool_use and ignores one after the result', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'tool_use', toolUseId: 'tool-1', name: 'vault_read_note', args: {} },
+        { kind: 'tool_use', toolUseId: 'tool-1', name: 'vault_read_note', args: { id: 'n1' } },
+        { kind: 'tool_result', toolUseId: 'tool-1', ok: true, data: { ok: true } },
+        { kind: 'tool_use', toolUseId: 'tool-1', name: 'vault_read_note', args: { id: 'late' } },
+        { kind: 'assistant_delta', text: 'Read it.' },
+        { kind: 'message_stop' }
+      ]
+    })
+
+    await runTurn(
+      { conversations, messages, backends: createFakeRegistry(backend) },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'read my note',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+      }
+    )
+
+    const toolRows = messages
+      .listByConversation('conversation-1')
+      .filter((message) => message.content.role === 'tool_call')
+    expect(toolRows).toHaveLength(1)
+    expect(toolRows[0].content).toMatchObject({
+      role: 'tool_call',
+      data: { tool: 'vault_read_note', args: { id: 'n1' } }
+    })
+  })
+
   it('persists assistant source refs collected from tool results', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({ title: 'Existing conversation' })
@@ -677,6 +712,50 @@ describe('runTurn against a stub backend', () => {
       { title: 'Draft launch checklist' },
       ['title']
     )
+  })
+
+  it('streams and persists reasoning with a break between thinking blocks', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'reasoning_delta', text: '', startsBlock: true },
+        { kind: 'reasoning_delta', text: 'First.', startsBlock: false },
+        { kind: 'reasoning_delta', text: '', startsBlock: true },
+        { kind: 'reasoning_delta', text: 'Second.', startsBlock: false },
+        { kind: 'assistant_delta', text: 'Answer' },
+        { kind: 'message_stop' }
+      ]
+    })
+
+    await runTurn(
+      { conversations, messages, backends: createFakeRegistry(backend) },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hi',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+      }
+    )
+
+    const assistant = messages.listByConversation('conversation-1')[1]
+    expect(assistant.content).toEqual({
+      role: 'assistant',
+      data: {
+        text: 'Answer',
+        reasoning: 'First.\n\nSecond.',
+        reasoningDurationMs: expect.any(Number)
+      }
+    })
+    const reasoningDeltas = vi
+      .mocked(broadcastAgentEvent)
+      .mock.calls.map(([event]) => event)
+      .filter((event) => event.kind === 'assistant_reasoning_delta')
+    expect(reasoningDeltas).toEqual([
+      expect.objectContaining({ messageId: assistant.id, text: 'First.' }),
+      expect.objectContaining({ messageId: assistant.id, text: '\n\nSecond.' })
+    ])
   })
 
   it('broadcasts failed tool results and ignores unknown backend events', async () => {

@@ -214,6 +214,15 @@ export const patchToServer = async <T>(
   return syncFetch<T>('PATCH', path, body, token, fetchFn)
 }
 
+export const putToServer = async <T>(
+  path: string,
+  body?: unknown,
+  token?: string,
+  fetchFn?: FetchFn
+): Promise<T> => {
+  return syncFetch<T>('PUT', path, body, token, fetchFn)
+}
+
 export interface CrdtSnapshotResponse {
   snapshot: string | null
   sequenceNum: number

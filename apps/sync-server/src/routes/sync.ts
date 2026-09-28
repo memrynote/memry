@@ -33,6 +33,7 @@ import {
   listUserVaults,
   processRecordPushBatch,
   pullItems,
+  setVaultIcon,
   setVaultName,
   updateDeviceCursor,
   type ManifestPage,
@@ -154,6 +155,49 @@ const handleDeleteVault = async (c: Context<AppContext>): Promise<Response> => {
 }
 
 sync.delete('/vaults/:vaultId', vaultsRateLimit, handleDeleteVault)
+
+/** A change time this far past the server clock is a broken client clock, not a real edit. */
+const ICON_MAX_FUTURE_MS = 24 * 60 * 60 * 1000
+
+const SetVaultIconSchema = z
+  .object({
+    encryptedIcon: z.string().min(1).max(2048).nullable(),
+    iconNonce: z.string().min(1).max(128).nullable(),
+    iconUpdatedAt: z.number().int().positive()
+  })
+  // Both set (an icon) or both null (a reset), never half of an envelope.
+  .refine((body) => (body.encryptedIcon === null) === (body.iconNonce === null))
+
+// Auth-only and above paidSyncMiddleware for the same reason as DELETE: that
+// middleware UPSERTS the vault row, and an icon write must never create a vault.
+// Paid access is enforced inline, like registration.
+const handleSetVaultIcon = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const vaultId = c.req.param('vaultId')
+
+  if (!vaultId || !/^[a-zA-Z0-9_-]{1,128}$/.test(vaultId)) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)
+  }
+
+  const parsed = SetVaultIconSchema.safeParse(await c.req.json().catch(() => null))
+  if (!parsed.success || parsed.data.iconUpdatedAt > Date.now() + ICON_MAX_FUTURE_MS) {
+    return c.json({ error: 'Invalid vault icon payload' }, 400)
+  }
+
+  const entitlement = await getSyncEntitlement(c.env.DB, userId)
+  if (!isPaidSyncEntitlementActive(entitlement)) {
+    return c.json({ error: 'Active sync subscription required' }, 402)
+  }
+
+  if (!(await vaultExistsForUser(c.env.DB, userId, vaultId))) {
+    throw new AppError(ErrorCodes.SYNC_VAULT_NOT_FOUND, 'Vault not found', 404)
+  }
+
+  const applied = await setVaultIcon(c.env.DB, userId, vaultId, parsed.data)
+  return c.json({ success: true, applied })
+}
+
+sync.put('/vaults/:vaultId/icon', vaultsRateLimit, handleSetVaultIcon)
 
 sync.use('*', paidSyncMiddleware)
 sync.use('*', syncTypesMiddleware)

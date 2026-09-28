@@ -24,7 +24,8 @@ form** (chapter 00 §0.3.1).
 | POST                | `/sync/pull`                            | `PullRequestSchema`, 1 to 100 item ids                                                                               |
 | GET                 | `/sync/items/:id`                       | one item                                                                                                             |
 | GET                 | `/sync/packs`                           | keyset `cursor` (chapter 08)                                                                                         |
-| GET / POST / DELETE | `/sync/vaults`, `/sync/vaults/:vaultId` | the vault registry (`apps/sync-server/src/routes/sync.ts:79`, `:116`, `:140`)                                        |
+| GET / POST / DELETE | `/sync/vaults`, `/sync/vaults/:vaultId` | the vault registry (`apps/sync-server/src/routes/sync.ts:96`, `:133`, `:157`)                                        |
+| PUT                 | `/sync/vaults/:vaultId/icon`            | the vault icon, last writer wins (§5.11.1, `apps/sync-server/src/routes/sync.ts:200`)                                |
 | GET                 | `/sync/storage`                         | quota (`apps/sync-server/src/routes/sync.ts:280`)                                                                    |
 
 ## 5.2 Headers on every request
@@ -650,11 +651,31 @@ Response: `{ accepted: string[], rejected: [{ id, reason }], serverTime: integer
 `rejected` is per item, so a partially accepted batch is normal and a client
 must read it rather than infer success from the status code.
 
-**`GET /sync/vaults`** → `{ vaults: [{ vaultUuid, itemCount, createdAt, encryptedName, nameNonce }] }`.
+**`GET /sync/vaults`** → `{ vaults: [{ vaultUuid, itemCount, createdAt, encryptedName, nameNonce, encryptedIcon, iconNonce, iconUpdatedAt }] }`.
 
 **The id field is `vaultUuid`**, not `id` and not `vaultId`. `encryptedName`
 and `nameNonce` are exactly that — the server never sees a vault's name — and
-`createdAt`, `encryptedName` and `nameNonce` may each be null.
+`createdAt`, `encryptedName` and `nameNonce` may each be null. The three icon
+fields (chapter 04 §4.16) are null for a vault whose icon was never set, and
+absent from servers that predate vault icons; a reader MUST treat absent as
+null.
+
+**`PUT /sync/vaults/:vaultId/icon`** — request
+`{ encryptedIcon: string | null, iconNonce: string | null, iconUpdatedAt: integer }`,
+response `{ success: true, applied: boolean }`. Both icon fields set is an icon,
+both null is a reset to the default; half an envelope is `400`. `iconUpdatedAt`
+is the client's change time in epoch ms, and more than 24 hours past the server
+clock is `400`. The write is last writer wins: it lands only when
+`iconUpdatedAt` is greater than the stored one (`applied: false` otherwise), so
+a stale replay never undoes a newer change. Like `DELETE`, the route sits above
+the vault middleware (it must never create a vault row), answers `402` without
+an active sync entitlement and `404` for a vault the caller does not own.
+
+A client reconciles on every vault list refresh: a local change not yet
+accepted is pushed when it is newer than `iconUpdatedAt`; an account copy newer
+than the local one is adopted. A client that failed to push keeps the change
+pending and retries on the next refresh
+(`apps/desktop/src/main/sync/vault-directory.ts`, `syncVaultIcon`).
 
 A reader that cannot find the id field MUST report a malformed response rather
 than skip the row: skipping turns a field-name mismatch into "this account has

@@ -31,6 +31,7 @@
 
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { parseTaskBlockSuffix } from '@memry/shared/task-block'
+import { hasPlainCheckboxMarker } from '@memry/shared/plain-checkbox'
 import { obsidianTaskImportBlocker } from '@memry/shared/obsidian-tasks'
 import {
   buildObsidianTaskImport,
@@ -188,6 +189,9 @@ function planChecklistLine(input: ChecklistLineInput): ChecklistLineResult {
   // editor would nest the lines below it under.
   const suffix = parseTaskBlockSuffix(text)
   if (suffix !== null) return { planIndex: null, existingTaskId: suffix.taskId }
+
+  // Kept as a plain checkbox on purpose, as the editor keeps it.
+  if (hasPlainCheckboxMarker(text)) return PARENTS_NOTHING
 
   if (obsidianTaskImportBlocker(text) !== null) return PARENTS_NOTHING
 

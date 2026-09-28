@@ -20,6 +20,7 @@ export interface VaultSwitchTarget {
   path: string
   name: string
   accentColor?: string
+  icon?: string
 }
 
 export interface VaultSwitchState {

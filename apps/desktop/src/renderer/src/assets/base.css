@@ -413,6 +413,34 @@
   outline: none !important;
 }
 
+/* A node-selected task block only means "Backspace deletes this" while the
+   editor itself holds focus. Once focus sits in any task's title input or row
+   (or anywhere else), drop BlockNote's ::after overlay (inset 4px blue) and the
+   task block's own ring (task-block-renderer.tsx); otherwise they linger or
+   flash on the task that was selected before the click. */
+:root
+  .bn-editor:not(:focus)
+  .bn-block-content[data-content-type='taskBlock'].ProseMirror-selectednode,
+:root
+  .bn-editor:not(:focus)
+  .bn-block[data-id]:has(
+    > .bn-block-content[data-content-type='taskBlock'].ProseMirror-selectednode
+  ) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+:root
+  .bn-editor:not(:focus)
+  .bn-block-content[data-content-type='taskBlock'].ProseMirror-selectednode
+  > ::after,
+:root
+  .bn-editor:not(:focus)
+  .ProseMirror-selectednode
+  > .bn-block-content[data-content-type='taskBlock']
+  > ::after {
+  display: none !important;
+}
+
 /* Reveal the PDF resize brackets while the embed is node-selected, not just on
    hover (so a click surfaces them too). */
 .ProseMirror-selectednode [data-pdf-resize-handle] {
@@ -4760,61 +4788,255 @@ del.bn-inline-content {
 }
 
 /*
- * Agent waiting state: a pixel grid whose chevron wavefront drives to the
- * trailing edge, next to a label that shimmers along the same axis.
+ * AICSS agent-chat primitives (https://www.aicss.dev), recoloured onto Memry
+ * tokens: the library's fixed #a1a1a1 greys become --muted-foreground and its
+ * near-black ink becomes currentColor.
  *
- * Cells sit dim and are lit by their own delayed cycle, so the dim opacity is
- * the resting value the animation returns to — reduced motion just drops the
- * animation and the grid stays at rest.
+ * Thinking State: a soft brightness valley sweeps through the label, holding
+ * at each end so the sweep reads as a pulse rather than a scroll.
  */
-.agent-thinking-pixel {
-  opacity: 0.15;
-  animation-name: agent-thinking-pixel-on;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
+.aicss-thinking-shimmer {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    var(--muted-foreground) 0%,
+    var(--muted-foreground) 30%,
+    color-mix(in srgb, var(--muted-foreground) 45%, transparent) 45%,
+    color-mix(in srgb, var(--muted-foreground) 45%, transparent) 55%,
+    var(--muted-foreground) 70%,
+    var(--muted-foreground) 100%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: aicss-label-shine 2.25s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
 }
 
-@keyframes agent-thinking-pixel-on {
+[dir='rtl'] .aicss-thinking-shimmer {
+  animation-direction: reverse;
+}
+
+@keyframes aicss-label-shine {
+  0%,
+  18% {
+    background-position: 100% 0;
+  }
+  82%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+/*
+ * Orbs, S3: a comet runs the perimeter of a 3x3 lattice. The lattice is drawn
+ * on a 28px stage and scaled by --orb-k; unlit cells keep a resting ink so the
+ * grid stays legible between beats, and the centre cell sits out dimmer.
+ */
+.aicss-orb {
+  --orb-rest-ink: 0.14;
+  --orb-dim-ink: 0.07;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  vertical-align: middle;
+  color: var(--foreground);
+}
+
+.dark .aicss-orb {
+  --orb-rest-ink: 0.2;
+  --orb-dim-ink: 0.1;
+}
+
+.aicss-orb-glyph {
+  position: relative;
+  display: block;
+  flex: none;
+  overflow: hidden;
+  contain: strict;
+}
+
+.aicss-orb-lattice {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  transform-origin: 0 0;
+  transform: scale(var(--orb-k, 1)) translate(6.5px, 6.5px);
+}
+
+.aicss-orb-cell {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: var(--orb-rest-ink);
+  animation: aicss-orb-comet 1.7s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+}
+
+.aicss-orb-cell[data-still] {
+  animation: none;
+  opacity: var(--orb-dim-ink);
+}
+
+/* Starts lit and decays linearly, so staggered ring cells form a head and an even tail. */
+@keyframes aicss-orb-comet {
+  0% {
+    opacity: 1;
+    transform: scale(1.2);
+    animation-timing-function: linear;
+  }
+  45% {
+    opacity: var(--orb-rest-ink);
+    transform: scale(1);
+  }
+  100% {
+    opacity: var(--orb-rest-ink);
+    transform: scale(1);
+  }
+}
+
+/*
+ * Streaming Text caret: a solid block after the last line while text is still
+ * being revealed, blinking once the reveal has caught up and the turn is only
+ * waiting. Code blocks and tables get no caret.
+ */
+.aicss-stream-caret {
+  --aicss-caret-animation: aicss-caret-blink 1s step-end infinite;
+}
+
+.aicss-stream-caret-steady {
+  --aicss-caret-animation: none;
+}
+
+.aicss-stream-caret > :is(p, h1, h2, h3, h4, h5, h6):last-child::after,
+.aicss-stream-caret > blockquote:last-child > p:last-child::after,
+.aicss-stream-caret > :is(ul, ol):last-child > li:last-child:not(:has(> p))::after,
+.aicss-stream-caret > :is(ul, ol):last-child > li:last-child > p:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 1.05em;
+  margin-inline-start: 2px;
+  background: currentColor;
+  vertical-align: text-bottom;
+  animation: var(--aicss-caret-animation);
+}
+
+@keyframes aicss-caret-blink {
   0%,
   100% {
-    opacity: 0.15;
+    opacity: 1;
   }
   50% {
+    opacity: 0;
+  }
+}
+
+/*
+ * Thinking + Reasoning: the block fades in, the reasoning folds on a grid-row
+ * transition, and the chevron turns with it. The viewport's cap and fade mask
+ * are set inline from thinking-reasoning.tsx.
+ */
+.aicss-tr {
+  animation: aicss-tr-block-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes aicss-tr-block-in {
+  from {
+    opacity: 0;
+  }
+  to {
     opacity: 1;
   }
 }
 
-.agent-thinking-label {
-  color: transparent;
-  background-image: linear-gradient(
-    90deg,
-    var(--muted-foreground) 35%,
-    var(--foreground) 50%,
-    var(--muted-foreground) 65%
-  );
-  background-size: 200% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  animation: agent-thinking-shimmer 1.4s linear infinite;
+.aicss-tr-header {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
 }
 
-@keyframes agent-thinking-shimmer {
-  from {
-    background-position: 200% 0;
-  }
-  to {
-    background-position: -200% 0;
-  }
+.aicss-tr-header.is-clickable {
+  cursor: pointer;
+}
+
+.aicss-tr-label,
+.aicss-tr-chevron {
+  color: var(--muted-foreground);
+  transition: color 150ms ease;
+}
+
+.aicss-tr-chevron {
+  transition:
+    color 150ms ease,
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.aicss-tr-header[aria-expanded='true'] .aicss-tr-chevron {
+  transform: rotate(180deg);
+}
+
+.aicss-tr-header.is-clickable:hover .aicss-tr-label,
+.aicss-tr-header.is-clickable:hover .aicss-tr-chevron {
+  color: var(--foreground);
+}
+
+.aicss-tr-collapsible {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease;
+}
+
+.aicss-tr-collapsible.is-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aicss-tr-viewport {
+  overflow: hidden;
+}
+
+.aicss-tr-viewport.is-scroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.aicss-tr-viewport.is-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .agent-thinking-pixel {
+  .aicss-thinking-shimmer {
+    color: var(--muted-foreground);
+    -webkit-text-fill-color: currentColor;
+    background-image: none;
     animation: none;
   }
 
-  .agent-thinking-label {
-    color: var(--muted-foreground);
-    background-image: none;
+  .aicss-orb-cell {
     animation: none;
+  }
+
+  .aicss-orb-cell[data-mid] {
+    opacity: 1;
+  }
+
+  .aicss-stream-caret {
+    --aicss-caret-animation: none;
+  }
+
+  .aicss-tr,
+  .aicss-tr-collapsible,
+  .aicss-tr-chevron {
+    animation: none;
+    transition: none;
   }
 }

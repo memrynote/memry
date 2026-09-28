@@ -12,6 +12,7 @@ import { resolvePropertyShortcut, type TaskPropertyId } from './properties/task-
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import { tasksService } from '@/services/tasks-service'
+import { markTaskRemovalsHandled } from '../task-removal'
 import { toTaskUpdateInput } from '@/features/tasks/task-update-input'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
@@ -537,7 +538,12 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
         isNewBlockRef.current = false
         setIsEditingTitle(false)
-        if (taskId) void tasksService.delete(taskId)
+        // Emptying the title and pressing Backspace is deleting the task, not
+        // just its line, so the editor's removal prompt stays out of it.
+        if (taskId) {
+          markTaskRemovalsHandled(editor, [taskId])
+          void tasksService.delete(taskId)
+        }
 
         const doc = editor.document
         const blockIdx = doc.findIndex((b) => b.id === block.id)
@@ -593,7 +599,10 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         } else {
           isNewBlockRef.current = false
           setIsEditingTitle(false)
-          if (taskId) void tasksService.delete(taskId)
+          if (taskId) {
+            markTaskRemovalsHandled(editor, [taskId])
+            void tasksService.delete(taskId)
+          }
           const doc = editor.document
           const blockIdx = doc.findIndex((b) => b.id === block.id)
           const anchor = blockIdx > 0 ? doc[blockIdx - 1] : null
@@ -815,9 +824,11 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     const resolvedTitle = displayTask?.title ?? title
     const isEmpty = !resolvedTitle.trim()
     return (
-      <span
-        role="button"
-        tabIndex={0}
+      // A real <button>, not a span: tiptap's NodeView.stopEvent hands button
+      // mousedowns to us, so ProseMirror never NodeSelects the block on the way
+      // to the title input, which flashed its selection ring.
+      <button
+        type="button"
         aria-label={isEmpty ? 'Edit task name' : undefined}
         onClick={(e) => {
           e.stopPropagation()
@@ -831,7 +842,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           }
         }}
         className={cn(
-          'grow shrink min-w-24 truncate cursor-text',
+          'grow shrink min-w-24 truncate cursor-text text-start',
           'text-[13px] font-medium',
           isEmpty
             ? 'text-muted-foreground/70 italic'
@@ -841,7 +852,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         )}
       >
         {isEmpty ? 'Task name…' : resolvedTitle}
-      </span>
+      </button>
     )
   }, [displayTask?.title, title, isCompleted])
 
@@ -967,7 +978,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         onClick={handleRowClick}
         className={cn(
           'group/taskblock rounded-md transition-colors',
-          'focus:bg-surface-active/60 focus:shadow-[inset_0_0_0_1px_var(--border)]',
+          'focus:bg-surface-active/60',
           parentTaskId && 'ms-7'
         )}
       >

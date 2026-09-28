@@ -213,10 +213,22 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   }
 
   let buffered = ''
+  // Reasoning is display-only: persisted beside the answer, never re-prompted.
+  let reasoning = ''
+  let reasoningBreakPending = false
+  let reasoningDurationMs = 0
+  // Measured from the backend's first chance to think, not from turn start:
+  // context compaction before the spawn is not the model thinking.
+  const reasoningClockStart = Date.now()
+  const reasoningData = (): { reasoning?: string; reasoningDurationMs?: number } =>
+    reasoning.trim() ? { reasoning, reasoningDurationMs } : {}
   let backendError: string | null = null
   let exitObserved = false
   let unknownEventCount = 0
   const toolCalls = new Map<string, { name: string; args: unknown }>()
+  // A backend may repeat a tool_use to deliver its full arguments. One arriving
+  // after the result would record nothing and reopen a finished row, so drop it.
+  const settledToolCalls = new Set<string>()
   const sourceRefs = new Map<string, AgentSourceRef>()
   try {
     for await (const event of sub.events) {
@@ -228,9 +240,12 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         conversationId: input.conversationId,
         assistantMessageId: assistant.id,
         onToolUse: (toolUseId, name, args) => {
+          if (settledToolCalls.has(toolUseId)) return false
           toolCalls.set(toolUseId, { name, args })
+          return true
         },
         onToolResult: (toolUseId, data) => {
+          settledToolCalls.add(toolUseId)
           const toolCall = toolCalls.get(toolUseId)
           // An unmatched result names no tool, so there is nothing to record.
           if (!toolCall) return
@@ -248,6 +263,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         onToolFailed: (toolUseId, error) => {
           // The only tool-failure signal for CLI backends — transport failures
           // never reach the MCP server's own catch. Tool name only, never args.
+          settledToolCalls.add(toolUseId)
           const toolCall = toolCalls.get(toolUseId)
           const toolName = toolCall?.name
           if (toolCall) {
@@ -271,6 +287,15 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         onAssistantText: (text) => {
           buffered += text
         },
+        onReasoningText: (text, startsBlock) => {
+          if (startsBlock && reasoning.length > 0) reasoningBreakPending = true
+          if (!text) return ''
+          const piece = reasoningBreakPending ? `\n\n${text}` : text
+          reasoningBreakPending = false
+          reasoning += piece
+          reasoningDurationMs = Date.now() - reasoningClockStart
+          return piece
+        },
         onUnknownEvent: () => {
           unknownEventCount += 1
         }
@@ -289,7 +314,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         backendError
       })
       const errored = deps.messages.markTerminal(assistant.id, 'error', {
-        content: { role: 'assistant', data: { text: message } }
+        content: { role: 'assistant', data: { text: message, ...reasoningData() } }
       })
       broadcastAgentEvent({
         kind: 'message_upserted',
@@ -310,7 +335,8 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         role: 'assistant',
         data: {
           text: buffered,
-          ...(sourceRefs.size > 0 && { sources: [...sourceRefs.values()] })
+          ...(sourceRefs.size > 0 && { sources: [...sourceRefs.values()] }),
+          ...reasoningData()
         }
       }
     })
@@ -620,10 +646,13 @@ async function handleBackendEvent(
   ctx: {
     conversationId: string
     assistantMessageId: string
-    onToolUse: (toolUseId: string, name: string, args: unknown) => void
+    /** False when the call is already settled and the event must be dropped. */
+    onToolUse: (toolUseId: string, name: string, args: unknown) => boolean
     onToolResult: (toolUseId: string, data: unknown) => void
     onToolFailed: (toolUseId: string, error: { code: string; message: string } | undefined) => void
     onAssistantText: (text: string) => void
+    /** Folds a reasoning piece into the turn and returns what to stream, block break included. */
+    onReasoningText: (text: string, startsBlock: boolean) => string
     onUnknownEvent: () => void
   }
 ): Promise<void> {
@@ -638,8 +667,20 @@ async function handleBackendEvent(
     return
   }
 
+  if (event.kind === 'reasoning_delta') {
+    const text = ctx.onReasoningText(event.text, event.startsBlock)
+    if (!text) return
+    broadcastAgentEvent({
+      kind: 'assistant_reasoning_delta',
+      conversationId: ctx.conversationId,
+      messageId: ctx.assistantMessageId,
+      text
+    })
+    return
+  }
+
   if (event.kind === 'tool_use') {
-    ctx.onToolUse(event.toolUseId, event.name, event.args)
+    if (!ctx.onToolUse(event.toolUseId, event.name, event.args)) return
     broadcastAgentEvent({
       kind: 'tool_call_started',
       conversationId: ctx.conversationId,

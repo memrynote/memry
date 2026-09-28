@@ -22,7 +22,9 @@ export const vaultApi = {
   deleteFromAccount: (vaultUuid: string) =>
     invoke(VaultChannels.invoke.DELETE_FROM_ACCOUNT, vaultUuid),
   resolveEmbeds: (input: { refs: string[]; notePath?: string }) =>
-    invoke(VaultChannels.invoke.RESOLVE_EMBEDS, input)
+    invoke(VaultChannels.invoke.RESOLVE_EMBEDS, input),
+  setIcon: (path: string, icon: string | null) =>
+    invoke(VaultChannels.invoke.SET_ICON, { path, icon })
 }
 
 export const vaultEvents = {
@@ -34,6 +36,9 @@ export const vaultEvents = {
 
   onVaultError: (callback: (error: string) => void): (() => void) =>
     subscribe<string>(VaultChannels.events.ERROR, callback),
+
+  onVaultListChanged: (callback: () => void): (() => void) =>
+    subscribe<void>(VaultChannels.events.LIST_CHANGED, () => callback()),
 
   onVaultIndexRecovered: (
     callback: (event: { reason: string; filesIndexed: number; duration: number }) => void

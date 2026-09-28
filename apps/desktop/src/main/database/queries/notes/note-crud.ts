@@ -232,6 +232,26 @@ export function listNoteCacheFilesAfter(
     .all()
 }
 
+/**
+ * Every cached file under `folder`, at any depth, journals included.
+ *
+ * LIKE is only the index-friendly first cut: `_` and `%` are wildcards to it,
+ * and `my_notes/%` also matches `myXnotes/…`. The prefix check is what decides,
+ * because the caller deletes the tasks these notes carry.
+ */
+export function listNoteCacheUnderFolder(
+  db: IndexDb,
+  folder: string
+): Array<{ id: string; path: string }> {
+  const prefix = `${folder.replace(/\/+$/, '')}/`
+  return db
+    .select({ id: noteCache.id, path: noteCache.path })
+    .from(noteCache)
+    .where(like(noteCache.path, `${prefix}%`))
+    .all()
+    .filter((row) => row.path.startsWith(prefix))
+}
+
 export function countNotes(db: IndexDb, folder?: string): number {
   const conditions: SQL<unknown>[] = [sql`${noteCache.date} IS NULL`]
 

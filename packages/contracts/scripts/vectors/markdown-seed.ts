@@ -18,7 +18,8 @@
  * `ServerBlockNoteEditor` on desktop's schema (code block options included),
  * the untagged-fence repair, and `blocksToYXmlFragment`. The layers it does not
  * reproduce (CriticMarkup, link references, embeds, colour spans, toggles,
- * callouts, math, structured quotes, marker lines, task blocks) are refused by
+ * callouts, math, structured quotes, marker lines, task blocks, plain-checkbox
+ * markers) are refused by
  * {@link refuseUnreproduced} rather than skipped. The proof that the result is
  * desktop's is `apps/desktop/src/main/sync/markdown-seed-vectors.test.ts`,
  * which runs the real `markdownToYFragment` over every case here.
@@ -84,6 +85,7 @@ function refuseUnreproduced(name: string, markdown: string): void {
     ['math', /\$\$/],
     ['inline token', /\(\((mention|date):/],
     ['task block', /\{task:/],
+    ['plain checkbox', /\{check\}/],
     ['structured quote', /^(>|> >.*)$/m],
     ['table', /^\s*\|.*\|\s*$/m],
     ['masking token', /MEMRY/],

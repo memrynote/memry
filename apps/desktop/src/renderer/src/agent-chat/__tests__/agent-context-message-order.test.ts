@@ -274,4 +274,55 @@ describe('agent reducer message ordering', () => {
 
     expect(ids(transcript(state))).toEqual(['a', 'b', 'tool-call-call-1', 'c'])
   })
+
+  it('fills in the arguments of a repeated tool_call_started without moving the row', () => {
+    const started = (args: Record<string, unknown>): AgentEvent => ({
+      kind: 'tool_call_started',
+      conversationId: CONVERSATION_ID,
+      toolCallId: 'call-1',
+      name: 'vault_read_note',
+      args
+    })
+    let state = hydrated([message({ id: 'a', createdAt: 100 })])
+    state = agentReducer(state, { type: 'event', event: started({}) })
+    state = agentReducer(state, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_started',
+        conversationId: CONVERSATION_ID,
+        toolCallId: 'call-2',
+        name: 'vault_search_notes',
+        args: {}
+      }
+    })
+    state = agentReducer(state, { type: 'event', event: started({ id: 'note-1' }) })
+
+    const rows = transcript(state)
+    expect(ids(rows)).toEqual(['a', 'tool-call-call-1', 'tool-call-call-2'])
+    expect(rows[1].content).toMatchObject({
+      role: 'tool_call',
+      data: { args: { id: 'note-1' }, status: 'input-available' }
+    })
+  })
+})
+
+describe('agent reducer reasoning deltas', () => {
+  it('folds reasoning and answer deltas into separate fields of the same message', () => {
+    let state = hydrated([message({ id: 'a', createdAt: 100, text: '' })])
+    const delta = (kind: 'assistant_text_delta' | 'assistant_reasoning_delta', text: string) => {
+      state = agentReducer(state, {
+        type: 'event',
+        event: { kind, conversationId: CONVERSATION_ID, messageId: 'a', text }
+      })
+    }
+
+    delta('assistant_reasoning_delta', 'Look ')
+    delta('assistant_reasoning_delta', 'first.')
+    delta('assistant_text_delta', 'Done')
+
+    expect(transcript(state)[0].content).toEqual({
+      role: 'assistant',
+      data: { text: 'Done', reasoning: 'Look first.' }
+    })
+  })
 })

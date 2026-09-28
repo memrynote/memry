@@ -223,7 +223,7 @@ const TaskRowComponent = ({
               'group group/row relative flex items-center py-[7px] px-3 gap-3 transition-colors',
               'rounded-md hover:bg-accent/60',
               onClick && 'focus-visible:outline-none',
-              dragHandleListeners && !isDragging && 'cursor-grab',
+
               isDragging &&
                 'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
               !isDragging && !dragHandleListeners && onClick && 'cursor-pointer',

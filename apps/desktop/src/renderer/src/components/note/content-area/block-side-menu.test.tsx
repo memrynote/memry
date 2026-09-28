@@ -2,9 +2,13 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockSideMenuController } from './block-side-menu'
+import { registerCheckboxTaskActions } from './checkbox-task-actions'
 
 const state = vi.hoisted(() => ({
-  block: undefined as { id: string; type: string; content: unknown } | undefined
+  block: undefined as
+    | { id: string; type: string; content?: unknown; props?: object; children?: unknown[] }
+    | undefined,
+  editor: { schema: { blockSchema: { paragraph: {} } } } as Record<string, unknown>
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -18,7 +22,10 @@ vi.mock('@memry/i18n/renderer', () => ({
         'editor.blockMenu.insertTemplate': 'Insert template…',
         'editor.blockMenu.moveTo': 'Move to…',
         'editor.blockMenu.delete': 'Delete',
-        'editor.blockMenu.comment': 'Comment'
+        'editor.blockMenu.comment': 'Comment',
+        'editor.blockMenu.turnIntoTypes.checkbox': 'Checkbox',
+        'editor.blockMenu.turnIntoTypes.task': 'Task',
+        'editor.blockMenu.turnIntoCheckbox': 'Turn into checkbox'
       }
       return messages[key] ?? key
     }
@@ -41,7 +48,7 @@ vi.mock('@blocknote/react', () => ({
   SideMenuController: ({ sideMenu: SideMenuComponent }: { sideMenu: React.FC }) => (
     <SideMenuComponent />
   ),
-  useBlockNoteEditor: () => ({ schema: { blockSchema: { paragraph: {} } } }),
+  useBlockNoteEditor: () => state.editor,
   useComponentsContext: () => ({
     Generic: {
       Menu: {
@@ -111,5 +118,72 @@ describe('BlockSideMenuController insert template item', () => {
     render(<BlockSideMenuController onRequestInsertTemplate={vi.fn()} />)
 
     expect(screen.queryByRole('menuitem', { name: 'Insert template…' })).toBeNull()
+  })
+})
+
+describe('BlockSideMenuController checkbox and task crossings', () => {
+  const updateBlock = vi.fn()
+  const actions = { toTask: vi.fn(), toCheckbox: vi.fn() }
+  let unregister: () => void = () => {}
+
+  beforeEach(() => {
+    updateBlock.mockReset()
+    actions.toTask.mockReset()
+    actions.toCheckbox.mockReset()
+    state.editor = {
+      schema: { blockSchema: { paragraph: {}, checkListItem: {} } },
+      transact: (fn: () => void) => fn(),
+      updateBlock,
+      getBlock: vi.fn()
+    }
+    unregister()
+    unregister = registerCheckboxTaskActions(state.editor, actions)
+  })
+
+  it('turns text into a plain checkbox, which stays a checkbox', async () => {
+    state.block = { id: 'b1', type: 'paragraph', content: [{ type: 'text', text: 'Passport' }] }
+    render(<BlockSideMenuController />)
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Checkbox' }))
+
+    expect(updateBlock).toHaveBeenCalledWith('b1', {
+      type: 'checkListItem',
+      props: { plain: true }
+    })
+    expect(actions.toTask).not.toHaveBeenCalled()
+  })
+
+  it('turns text into a task through the editor converter', async () => {
+    state.block = { id: 'b1', type: 'paragraph', content: [{ type: 'text', text: 'Book flights' }] }
+    render(<BlockSideMenuController />)
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Task' }))
+
+    expect(updateBlock).toHaveBeenCalledWith('b1', {
+      type: 'checkListItem',
+      props: { plain: false }
+    })
+    expect(actions.toTask).toHaveBeenCalledWith('b1')
+  })
+
+  it('offers a task block the way back to a checkbox, but not one with subtasks', async () => {
+    state.block = { id: 't1', type: 'taskBlock', props: { taskId: 'task-1' } }
+    const { unmount } = render(<BlockSideMenuController />)
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Turn into checkbox' }))
+    expect(actions.toCheckbox).toHaveBeenCalledWith('t1')
+    unmount()
+
+    state.block = { ...state.block, children: [{ id: 't2' }] }
+    render(<BlockSideMenuController />)
+    expect(screen.queryByRole('menuitem', { name: 'Turn into checkbox' })).toBeNull()
+  })
+
+  it('leaves the task block alone in an editor that converts nothing', () => {
+    unregister()
+    state.block = { id: 't1', type: 'taskBlock', props: { taskId: 'task-1' } }
+    render(<BlockSideMenuController />)
+
+    expect(screen.queryByRole('menuitem', { name: 'Turn into checkbox' })).toBeNull()
   })
 })

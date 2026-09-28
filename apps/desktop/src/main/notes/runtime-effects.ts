@@ -88,6 +88,32 @@ export async function cleanupProjectLinksForDeletedNote(noteId: string): Promise
   await domain.cleanupProjectLinksForDeletedNote(noteId)
 }
 
+/**
+ * A deleted note stops being one of its tasks' linked notes.
+ *
+ * The rows themselves stay: whether a note's tasks go with it is the delete
+ * dialog's question, answered in the renderer. Left in `task_notes`, the id
+ * named a note nothing could open, on every device the task synced to. Done
+ * through `updateTask` so the link change syncs like any other edit.
+ *
+ * Never throws: the note is already gone when this runs, and a delete that
+ * reported failure over a stale link would be the bigger lie.
+ */
+export async function unlinkTasksFromDeletedNote(noteId: string): Promise<void> {
+  try {
+    const domain = createDesktopTasksDomain(getDatabase(), createTasksPublisher(), generateId)
+    for (const task of domain.getLinkedTasks(noteId)) {
+      await domain.updateTask({
+        id: task.id,
+        linkedNoteIds: (task.linkedNoteIds ?? []).filter((linked) => linked !== noteId)
+      })
+    }
+  } catch (error) {
+    logger.warn('Failed to unlink tasks from deleted note', { noteId, error })
+    trackMainError('notes', 'unlink_tasks_from_deleted_note', error)
+  }
+}
+
 export function emitNoteAttachmentSaved(noteId: string, diskPath: string): void {
   attachmentEvents.emitSaved({ noteId, diskPath })
 }

@@ -190,18 +190,24 @@ export function writePreferences(
     }
   }
 
-  const newConfig = {
+  writeConfigFileAtomic(configPath, {
     ...existingConfig,
     preferences: merged
-  }
+  })
 
-  // Atomic write: create a uniquely-named temp file exclusively (wx) with
-  // owner-only permissions, then rename it over the config. This avoids
-  // following a shared-dir symlink and never leaves a half-written config.
+  return merged
+}
+
+/**
+ * Atomic config.json write: create a uniquely-named temp file exclusively (wx)
+ * with owner-only permissions, then rename it over the config. This avoids
+ * following a shared-dir symlink and never leaves a half-written config.
+ */
+export function writeConfigFileAtomic(configPath: string, config: Record<string, unknown>): void {
   const tempPath = `${configPath}.${randomUUID()}.tmp`
   const fd = fs.openSync(tempPath, 'wx', 0o600)
   try {
-    fs.writeFileSync(fd, JSON.stringify(newConfig, null, 2), 'utf-8')
+    fs.writeFileSync(fd, JSON.stringify(config, null, 2), 'utf-8')
     fs.closeSync(fd)
     fs.renameSync(tempPath, configPath)
   } catch (error) {
@@ -213,8 +219,6 @@ export function writePreferences(
     fs.rmSync(tempPath, { force: true })
     throw error
   }
-
-  return merged
 }
 
 type DeepPartial<T> = {

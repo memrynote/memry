@@ -35,6 +35,7 @@ import {
   serializeBlocksPreservingBlanks
 } from './markdown-utils'
 import { normalizeNoteBlocks } from './normalize-note-blocks'
+import { turnTaskIntoCheckbox } from './task-to-checkbox'
 
 const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } as never)
 
@@ -71,5 +72,43 @@ describe('checkbox to task conversion', () => {
     ]
   ])('keeps the inline content of %s and only adds the task suffix', async (line, expected) => {
     expect(await convertAndSave(line)).toBe(expected)
+  })
+})
+
+describe('task to plain checkbox', () => {
+  // The editor above is typed for the helpers that take it; these tests drive
+  // its document directly.
+  const live = editor as unknown as {
+    document: Block[]
+    replaceBlocks: (remove: Block[], insert: Block[]) => void
+  }
+
+  async function open(markdown: string): Promise<string> {
+    const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
+    live.replaceBlocks(live.document, normalizeNoteBlocks(parsed as Block[], markdown))
+    return live.document[0].id
+  }
+
+  it('puts the task line back as a plain checkbox, links and styles intact', async () => {
+    const taskId = await open(
+      '- [x] Read the [lease](https://example.com/lease) **today** {task:t1}'
+    )
+
+    await turnTaskIntoCheckbox(editor as never, taskId)
+
+    const [checkbox] = live.document
+    expect(checkbox.type).toBe('checkListItem')
+    expect(checkbox.props).toMatchObject({ checked: true, plain: true })
+    expect(await serializeBlocksPreservingBlanks(editor, live.document)).toBe(
+      '- [x] Read the [lease](https://example.com/lease) **today** {check}'
+    )
+  })
+
+  it('refuses a task with subtasks under it', async () => {
+    const taskId = await open('- [ ] Trip {task:t1}\n  - [ ] Pack {task:t2}')
+
+    await turnTaskIntoCheckbox(editor as never, taskId)
+
+    expect(live.document[0].type).toBe('taskBlock')
   })
 })

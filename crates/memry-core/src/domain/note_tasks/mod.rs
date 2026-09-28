@@ -164,7 +164,8 @@ pub fn checkbox_flip(blocks: &[Block], edit: &BlockEdit) -> Option<TaskCheckboxF
 ///
 /// `None` for anything else: not a `checkListItem`, a checkbox already carrying
 /// a `{task:<id>}` suffix (a persisted task — converting it would mint a
-/// duplicate), or one with nothing typed on it yet (desktop #2271).
+/// duplicate), one with nothing typed on it yet (desktop #2271), or one the
+/// user keeps as a plain checkbox (`plain` prop).
 pub fn checklist_conversion(blocks: &[Block], block_id: &str) -> Option<ChecklistConversion> {
     conversion_candidates(blocks)
         .into_iter()
@@ -185,6 +186,10 @@ pub fn conversion_candidates(blocks: &[Block]) -> Vec<ChecklistConversion> {
         let Some(block_id) = block.id.clone() else {
             continue;
         };
+        // Kept as a checkbox on purpose (`editor-schema/src/blocks/plain-checkbox.ts`).
+        if prop(block, "plain").as_deref() == Some("true") {
+            continue;
+        }
         let text = typed_text(block);
         // Wider than desktop's `hasTaskSuffix`, deliberately: without the
         // Obsidian field parser a suffix followed by plugin fields cannot be

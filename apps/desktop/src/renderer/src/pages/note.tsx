@@ -23,6 +23,11 @@ import { VersionHistory } from '@/components/note/version-history'
 import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
+import {
+  DeleteNoteTasksOption,
+  deleteNoteTasks,
+  useNoteTasksChoice
+} from '@/components/note/delete-note-tasks'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
 import {
   NoteLayout,
@@ -1228,6 +1233,9 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, moveNote, t]
   )
 
+  const deleteTasksChoice = useNoteTasksChoice(isDeleteConfirmOpen, noteId ? [noteId] : [])
+  const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
+
   // Delete the current note, then close its tab
   const handleDeleteConfirm = useCallback(async () => {
     if (!noteId || isDeleting) return
@@ -1235,6 +1243,7 @@ export function NotePage({ noteId }: NotePageProps) {
     try {
       const result = await deleteNote.mutateAsync(noteId)
       if (result.success) {
+        await deleteNoteTasks(carriedTaskIdsToDelete)
         setIsDeleteConfirmOpen(false)
         closeTab(activeTab?.id ?? `/notes/${noteId}`)
       } else {
@@ -1245,7 +1254,7 @@ export function NotePage({ noteId }: NotePageProps) {
     } finally {
       setIsDeleting(false)
     }
-  }, [noteId, isDeleting, deleteNote, closeTab, activeTab?.id, t])
+  }, [noteId, isDeleting, deleteNote, carriedTaskIdsToDelete, closeTab, activeTab?.id, t])
 
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
@@ -2157,6 +2166,7 @@ export function NotePage({ noteId }: NotePageProps) {
               {t('page.deleteConfirm.description', { title: note.title })}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <DeleteNoteTasksOption choice={deleteTasksChoice} disabled={isDeleting} />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>
               {t('page.deleteConfirm.cancel')}

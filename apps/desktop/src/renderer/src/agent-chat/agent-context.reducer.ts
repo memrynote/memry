@@ -124,7 +124,9 @@ function sortMerged(messages: Message[], existing: number, nextMessage: Message)
 }
 
 function appendAssistantDelta(messages: Message[], event: AgentEvent): Message[] {
-  if (event.kind !== 'assistant_text_delta') return messages
+  if (event.kind !== 'assistant_text_delta' && event.kind !== 'assistant_reasoning_delta') {
+    return messages
+  }
 
   const index = messages.findIndex(
     (message) => message.id === event.messageId && message.content.role === 'assistant'
@@ -137,14 +139,16 @@ function appendAssistantDelta(messages: Message[], event: AgentEvent): Message[]
   const target = messages[index]
   if (target.content.role !== 'assistant') return messages
 
+  const data = target.content.data
   const next = messages.slice()
   next[index] = {
     ...target,
     content: {
       role: 'assistant',
-      data: {
-        text: `${target.content.data.text}${event.text}`
-      }
+      data:
+        event.kind === 'assistant_text_delta'
+          ? { ...data, text: `${data.text}${event.text}` }
+          : { ...data, reasoning: `${data.reasoning ?? ''}${event.text}` }
     }
   }
   return carryOrder(messages, next)
@@ -199,10 +203,7 @@ function upsertToolCallMessage(
       role: 'tool_call',
       data: {
         tool: input.name,
-        args:
-          input.args && typeof input.args === 'object' && !Array.isArray(input.args)
-            ? (input.args as Record<string, unknown>)
-            : {},
+        args: toToolArgs(input.args),
         status: input.status
       }
     },
@@ -214,6 +215,45 @@ function upsertToolCallMessage(
     updatedAt: newest + 1,
     deletedAt: null
   })
+}
+
+function toToolArgs(args: unknown): Record<string, unknown> {
+  return args && typeof args === 'object' && !Array.isArray(args)
+    ? (args as Record<string, unknown>)
+    : {}
+}
+
+/**
+ * The Claude backend reports a call twice: once when the block opens, with
+ * empty arguments, and again once the arguments are complete. The repeat only
+ * fills in the arguments; re-upserting would restamp `createdAt` and move the
+ * row to the end of the transcript. Returns null when there is no started call
+ * to refresh, so the caller falls back to an upsert.
+ */
+function refreshStartedToolCallArgs(
+  messages: Message[],
+  toolCallId: string,
+  args: unknown
+): Message[] | null {
+  let matched = false
+  const next: Message[] = messages.map((message) => {
+    if (
+      message.toolCallId !== toolCallId ||
+      message.content.role !== 'tool_call' ||
+      message.content.data.status !== 'input-available'
+    ) {
+      return message
+    }
+    matched = true
+    return {
+      ...message,
+      content: {
+        role: 'tool_call',
+        data: { ...message.content.data, args: toToolArgs(args) }
+      }
+    }
+  })
+  return matched ? carryOrder(messages, next) : null
 }
 
 function updateToolCallStatus(
@@ -348,9 +388,15 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
   const next = reduceAgentState(state, action)
   // The transcripts are untouched, so no message status can have changed.
   if (next.messagesByConversation === state.messagesByConversation) return next
-  // `assistant_text_delta` only appends text to an existing message: it never adds,
-  // removes, or restatuses one, so the derived flag survives every streamed token.
-  if (action.type === 'event' && action.event.kind === 'assistant_text_delta') return next
+  // The per-token deltas only append text to an existing message: they never add,
+  // remove, or restatus one, so the derived flag survives every streamed token.
+  if (
+    action.type === 'event' &&
+    (action.event.kind === 'assistant_text_delta' ||
+      action.event.kind === 'assistant_reasoning_delta')
+  ) {
+    return next
+  }
   const hasStreamingMessage = scanForStreamingMessage(next.messagesByConversation)
   if (hasStreamingMessage === next.hasStreamingMessage) return next
   return { ...next, hasStreamingMessage }
@@ -467,7 +513,7 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
           }
         }
       }
-      if (event.kind === 'assistant_text_delta') {
+      if (event.kind === 'assistant_text_delta' || event.kind === 'assistant_reasoning_delta') {
         const current = state.messagesByConversation[event.conversationId] ?? []
         const next = appendAssistantDelta(current, event)
         if (next === current) return state
@@ -499,20 +545,20 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
         }
       }
       if (event.kind === 'tool_call_started') {
+        const messages = state.messagesByConversation[event.conversationId] ?? []
         return {
           ...state,
           messagesByConversation: {
             ...state.messagesByConversation,
-            [event.conversationId]: upsertToolCallMessage(
-              state.messagesByConversation[event.conversationId] ?? [],
-              {
+            [event.conversationId]:
+              refreshStartedToolCallArgs(messages, event.toolCallId, event.args) ??
+              upsertToolCallMessage(messages, {
                 conversationId: event.conversationId,
                 toolCallId: event.toolCallId,
                 name: event.name,
                 args: event.args,
                 status: 'input-available'
-              }
-            )
+              })
           }
         }
       }

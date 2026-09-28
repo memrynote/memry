@@ -267,11 +267,44 @@ Any list marker works (`-`, `*`, `+`), as does an uppercase `- [X]`. Other marke
 
 A checklist line is only a task once memrynote has a task for it. Two cases where it does not, both common in a vault you brought over from somewhere else:
 
-A **plain checkbox with no `{task:…}` suffix** — the shape Obsidian and most other editors write — is turned into a task as you go, once it has something on it to name the task with. An empty `- [ ]` you have just typed is left as a checkbox until you write the title; a line of nothing but markers (`- [ ] #errand`) stays a checkbox too, since there is no title left after the markers are read off. If the task cannot be saved — no project to create it in, or the vault is not open — the line stays a plain checklist item, keeping its text and its tick, and memrynote tries again on your next edit. It never sits there looking like a task you cannot touch.
+A **checkbox with no `{task:…}` suffix** — the shape Obsidian and most other editors write — is turned into a task as you go, once it has something on it to name the task with. An empty `- [ ]` you have just typed is left as a checkbox until you write the title; a line of nothing but markers (`- [ ] #errand`) stays a checkbox too, since there is no title left after the markers are read off. If the task cannot be saved — no project to create it in, or the vault is not open — the line stays a plain checklist item, keeping its text and its tick, and memrynote tries again on your next edit. It never sits there looking like a task you cannot touch.
 
-Turning the line into a task only adds the `{task:…}` suffix. Everything already on the line stays as written, including `[[wiki links]]`, links, and **bold** or _italic_ text, and the task takes that same text as its title. Opening a note that holds plain checkboxes, including one that just synced in from another device, never strips them.
+Turning the line into a task only adds the `{task:…}` suffix. Everything already on the line stays as written, including `[[wiki links]]`, links, and **bold** or _italic_ text, and the task takes that same text as its title. Opening a note that holds checkboxes like these, including one that just synced in from another device, never strips them.
 
 A **`{task:…}` suffix naming a task that is not in this vault** — usually a note copied out of another install, where the ids belong to that install's tasks — shows as "Task deleted", with a button to take the line out of the note. Its text and its tick are left exactly as they are in the file; nothing is rewritten and nothing is deleted until you ask. The same holds for a task line whose task has not synced to this device yet: its links, wiki links, code, colours and bold or italic text survive opening the note, an edit made to the file outside memrynote, and the next save.
+
+## Keeping a Checkbox a Checkbox
+
+Not every checkbox is a task. A packing list or a checklist inside meeting notes can stay a
+**plain checkbox**: it ticks like any other, never becomes a task, and never shows up in Tasks.
+
+- **Undo right after it becomes a task.** The line goes back to a checkbox, now a plain one, and
+  the task it had just become is deleted. The first time a checkbox becomes a task, a note in the
+  corner says so and offers **Keep as checkbox**, which does the same.
+- **Pick Check List from the `/` menu.** That makes a plain checkbox. Hold `Cmd`/`Ctrl` and press
+  Enter on the row to get a task instead. Typing `[ ] ` is still the quick way to a task.
+- **Turn into > Checkbox** from the block menu, on any line of text. **Turn into > Task** goes
+  the other way.
+- **Turn into checkbox** from the block menu of a task. The line goes back to a plain checkbox,
+  and memrynote asks whether the task stays in Tasks.
+
+Pressing Enter at the end of a plain checkbox gives another plain one, and so does a checkbox
+indented under one, so a plain checklist stays plain as you write it. Right-clicking a checkbox
+still turns it into a task, plain or not.
+
+In the file a plain checkbox carries a `{check}` marker at the end of its line:
+
+```md
+- [ ] Passport {check}
+- [ ] Book flights {task:0f2a…}
+```
+
+The marker is what keeps the line a checkbox when the note is opened on another device or edited
+in another app; remove it and the line becomes a task the next time memrynote reads it. The same
+goes for a checkbox you add in another app: without the marker it becomes a task when the note
+opens, even under a plain one. An older
+version of memrynote does not know plain checkboxes and turns them into tasks, as it does every
+checkbox.
 
 ## Deleting a Task You Wrote in a Note
 
@@ -284,6 +317,30 @@ One exception: if the note is open in an editor at that moment, the line is left
 rewriting the file underneath you could discard what you were typing. Deleting the task block from
 inside the editor removes the line directly, so this only shows up when you delete from the task
 list while the note happens to be open.
+
+## Deleting the Line, or the Whole Note
+
+The other direction asks first. Delete a task block from a note (select it and press
+<kbd>Delete</kbd>, use the block menu's **Delete**, or select several blocks and delete them
+together) and memrynote asks what should happen to the task:
+
+- **Keep in Tasks** — the default, and what <kbd>Esc</kbd> does. The task stays in Tasks; the note
+  just stops being one of its linked notes. Undo the delete and the line and the link both come back.
+- **Delete task** — the task is deleted everywhere, on every device.
+
+Several task blocks deleted at once are asked about together, once.
+
+Some removals are not deletions and never ask:
+
+- **Cut** keeps the task, so pasting the line back finds it.
+- **Move to** another note moves the task with its line: it is linked to the new note instead.
+- **Emptying a task's title** and pressing <kbd>Backspace</kbd> deletes the task, as it always has.
+
+Deleting a whole note, several notes, or a folder works the same way. When the notes hold task
+lines, the delete dialog offers **Also delete the tasks inside**, unticked. Left unticked, the tasks
+stay in Tasks and the deleted note is dropped from their linked notes. Only tasks actually written in
+the notes count: a task that is also linked to a note you are keeping is left alone, and so is one
+that was only linked to the deleted note from its **Related** section.
 
 While a task is still loading, its row shows but its controls are inert for that moment. A control you can click is a control that works.
 

@@ -3,12 +3,12 @@ import { useState } from 'react'
 import type { Message, ToolCallStatus } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
+import { Orb } from '@/components/ai-elements/orb'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 import { humanizeToolName } from './tool-call-message'
-import { ThinkingPixels } from './thinking-indicator'
 
 const settledStatuses = new Set<ToolCallStatus>([
   'completed',
@@ -85,7 +85,7 @@ export function ToolActivityGroup({
         {activeHeadline !== null && count > 1 && (
           <span className="shrink-0 tabular-nums opacity-60">{count}</span>
         )}
-        {running && <ThinkingPixels />}
+        {running && <Orb size={18} />}
         <span className="sr-only">{statusLabel}</span>
       </CollapsibleTrigger>
       <CollapsibleContent className="ms-1.5 space-y-1 border-s border-border ps-3">

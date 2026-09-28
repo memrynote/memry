@@ -12,7 +12,8 @@ import {
   onVaultStatusChanged,
   onVaultIndexProgress,
   onVaultError,
-  onVaultIndexRecovered
+  onVaultIndexRecovered,
+  onVaultListChanged
 } from '../services/vault-service'
 import { getI18n } from 'react-i18next'
 import { clearTabStateForVault } from '@/contexts/tabs/persistence'
@@ -40,6 +41,7 @@ export interface SwitchVaultOptions {
   /** Display name for the in-between screen; defaults to the folder name. */
   name?: string
   accentColor?: string
+  icon?: string
   /** Set by the sidebar gesture so the incoming vault can enter from that side. */
   direction?: VaultSwitchDirection
 }
@@ -260,7 +262,8 @@ export function useVault() {
         {
           path: vaultPath,
           name: options.name ?? (vaultPath.split(/[\\/]/).pop() || vaultPath),
-          accentColor: options.accentColor
+          accentColor: options.accentColor,
+          icon: options.icon
         },
         options.direction ?? null
       )
@@ -411,6 +414,9 @@ export function useVaultList() {
   const refresh = useCallback(async () => {
     apply(await vaultService.getAll())
   }, [apply])
+
+  // An icon changed here or arrived from another device.
+  useEffect(() => onVaultListChanged(() => void refresh()), [refresh])
 
   const removeVault = useCallback(
     async (path: string) => {

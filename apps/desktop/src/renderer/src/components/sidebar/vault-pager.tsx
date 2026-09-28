@@ -611,7 +611,8 @@ export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPage
           ) : (
             <VaultTitleRow
               name={peekVault.name}
-              dotColor={resolveVaultAccent(peekVault.accentColor)}
+              icon={peekVault.icon}
+              accent={resolveVaultAccent(peekVault.accentColor)}
               className="pt-2"
             />
           ))}

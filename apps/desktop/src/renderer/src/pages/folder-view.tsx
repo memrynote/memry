@@ -54,6 +54,11 @@ import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
+import {
+  DeleteNoteTasksOption,
+  deleteNoteTasks,
+  useNoteTasksChoice
+} from '@/components/note/delete-note-tasks'
 import { useFolderView } from '@/hooks/use-folder-view'
 import { useFolderNoteIcons } from '@/hooks/use-folder-note-icons'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
@@ -807,9 +812,13 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [notesToMove, removeNotesOptimistically, refresh]
   )
 
+  const deleteTasksChoice = useNoteTasksChoice(deleteDialogOpen, notesToDelete)
+  const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
+
   // Confirm and execute delete (T121: with opacity fade animation)
   const handleDeleteConfirm = useCallback(async () => {
     if (notesToDelete.length === 0) return
+    const taskIds = carriedTaskIdsToDelete
 
     setIsDeleting(true)
 
@@ -845,6 +854,10 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         log.error(`${failures.length} notes failed to delete:`, failures)
         await refresh() // Restore correct state on failure
       }
+
+      // The tasks go only if every note they came from did.
+      const everyDeleteSucceeded = results.every((r) => r.status === 'fulfilled' && r.value.success)
+      if (everyDeleteSucceeded) await deleteNoteTasks(taskIds)
     } catch (err) {
       log.error('Failed to delete notes:', err)
       await refresh() // Restore correct state on error
@@ -853,7 +866,13 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       setDeleteDialogOpen(false)
       setNotesToDelete([])
     }
-  }, [notesToDelete, removeNotesOptimistically, refresh, EXIT_ANIMATION_DURATION])
+  }, [
+    notesToDelete,
+    carriedTaskIdsToDelete,
+    removeNotesOptimistically,
+    refresh,
+    EXIT_ANIMATION_DURATION
+  ])
 
   // Navigate to a breadcrumb ancestor folder
   const handleBreadcrumbNav = useCallback(
@@ -1450,6 +1469,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                 : `Are you sure you want to delete ${notesToDelete.length} notes? This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <DeleteNoteTasksOption choice={deleteTasksChoice} disabled={isDeleting} />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>
               {tPhaseF('phaseF.pagesFolderView.cancel')}

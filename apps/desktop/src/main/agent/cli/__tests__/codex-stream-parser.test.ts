@@ -205,6 +205,17 @@ describe('Codex JSONL stream parser', () => {
     expect(events[1]).toMatchObject({ kind: 'unknown' })
   })
 
+  it('turns each reasoning summary item into its own reasoning block', () => {
+    const events: unknown[] = []
+    const parser = createCodexStreamParser((event) => events.push(event))
+
+    parser.feed(
+      `${JSON.stringify({ type: 'item.completed', item: { id: 'item_0', type: 'reasoning', text: '**Planning**' } })}\n`
+    )
+
+    expect(events).toEqual([{ kind: 'reasoning_delta', text: '**Planning**', startsBlock: true }])
+  })
+
   it('ignores lifecycle noise and preserves unknown JSON events', () => {
     const events: unknown[] = []
     const parser = createCodexStreamParser((event) => events.push(event))

@@ -3,6 +3,7 @@ import Database from 'better-sqlite3'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { CHUNK_CRYPTO_OVERHEAD, expectedEncryptedTotal } from '../src/services/upload-size'
+import { SET_VAULT_ICON_SQL } from '../src/services/sync'
 
 const migrationsDir = resolve(__dirname, '../migrations')
 
@@ -460,6 +461,61 @@ describe('D1 schema', () => {
       expect(columns.find((entry) => entry.name === 'delete_attestation')).toMatchObject({
         notnull: 0,
         dflt_value: null
+      })
+    })
+  })
+  // The vault icon columns are additive and never backfilled: every existing
+  // vault reads NULL and draws the default icon. The icon write is last writer
+  // wins on the client's change time.
+  describe('0016_sync_vaults_icon', () => {
+    const setup = (): Database.Database => {
+      const db = new Database(':memory:')
+      for (const file of migrationFiles().filter((name) => name < '0016')) {
+        db.exec(loadMigrationSql(file))
+      }
+      db.prepare(
+        `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'a@b.com', 'otp', 1, 1)`
+      ).run()
+      db.prepare(
+        `INSERT INTO sync_vaults (id, user_id, vault_id, encrypted_name, name_nonce, created_at, updated_at)
+         VALUES ('row-1', 'user-1', 'vault-a', 'enc', 'n', 1, 1)`
+      ).run()
+      db.exec(loadMigrationSql('0016_sync_vaults_icon.sql'))
+      return db
+    }
+    const readIcon = (db: Database.Database): unknown =>
+      db
+        .prepare(
+          "SELECT encrypted_name, encrypted_icon, icon_nonce, icon_updated_at FROM sync_vaults WHERE vault_id = 'vault-a'"
+        )
+        .get()
+    const write = (db: Database.Database, icon: string | null, at: number): number =>
+      db
+        .prepare(SET_VAULT_ICON_SQL)
+        .run(icon, icon === null ? null : 'nonce', at, 2, 'user-1', 'vault-a', at).changes
+
+    it('keeps existing vaults untouched, with NULL icon columns', () => {
+      expect(readIcon(setup())).toEqual({
+        encrypted_name: 'enc',
+        encrypted_icon: null,
+        icon_nonce: null,
+        icon_updated_at: null
+      })
+    })
+
+    it('applies a newer write and ignores a stale or equal one', () => {
+      const db = setup()
+      expect(write(db, 'first', 100)).toBe(1)
+      expect(write(db, 'stale', 50)).toBe(0)
+      expect(write(db, 'same-time', 100)).toBe(0)
+      expect(readIcon(db)).toMatchObject({ encrypted_icon: 'first', icon_updated_at: 100 })
+
+      expect(write(db, null, 200)).toBe(1)
+      expect(readIcon(db)).toMatchObject({
+        encrypted_icon: null,
+        icon_nonce: null,
+        icon_updated_at: 200
       })
     })
   })

@@ -109,19 +109,27 @@ const AgentContext = createContext<AgentContextValue | null>(null)
 const AGENT_BOOTSTRAP_ATTEMPTS = 40
 const AGENT_BOOTSTRAP_RETRY_MS = 250
 
-type AssistantTextDelta = Extract<AgentEvent, { kind: 'assistant_text_delta' }>
+type AssistantStreamDelta = Extract<
+  AgentEvent,
+  { kind: 'assistant_text_delta' | 'assistant_reasoning_delta' }
+>
 
 /**
  * Folds a delta into the tail of the pending buffer when it continues the same
- * message. Backends emit dozens of tiny deltas per second and each one used to
+ * message on the same channel (answer text or reasoning). Backends emit dozens of tiny deltas per second and each one used to
  * dispatch on its own, re-rendering every agent-context consumer per token.
  * Merging only into the *adjacent* entry keeps interleaved messages in their
  * exact arrival order, and the buffer stays at one entry per streamed message
  * even when a hidden window goes a long time without a frame.
  */
-function bufferAssistantDelta(pending: AssistantTextDelta[], event: AssistantTextDelta): void {
+function bufferAssistantDelta(pending: AssistantStreamDelta[], event: AssistantStreamDelta): void {
   const last = pending[pending.length - 1]
-  if (last && last.conversationId === event.conversationId && last.messageId === event.messageId) {
+  if (
+    last &&
+    last.kind === event.kind &&
+    last.conversationId === event.conversationId &&
+    last.messageId === event.messageId
+  ) {
     pending[pending.length - 1] = { ...last, text: `${last.text}${event.text}` }
     return
   }
@@ -197,7 +205,7 @@ export function AgentProvider({
   // Streamed text is buffered here and committed once per animation frame. A
   // hidden window gets no frames, so a background window stops re-rendering
   // altogether until the next event that has to be applied immediately.
-  const pendingDeltasRef = useRef<AssistantTextDelta[]>([])
+  const pendingDeltasRef = useRef<AssistantStreamDelta[]>([])
   const deltaFrameRef = useRef<number | null>(null)
 
   const flushAssistantDeltas = useCallback(() => {
@@ -434,7 +442,7 @@ export function AgentProvider({
       })
 
     const unsubscribe = api.onEvent((event) => {
-      if (event.kind === 'assistant_text_delta') {
+      if (event.kind === 'assistant_text_delta' || event.kind === 'assistant_reasoning_delta') {
         bufferAssistantDelta(pendingDeltasRef.current, event)
         if (deltaFrameRef.current === null) {
           deltaFrameRef.current = requestAnimationFrame(() => {

@@ -100,6 +100,7 @@ export interface VaultInfo {
   vaultUuid?: string
   isMissing?: boolean
   accentColor?: string
+  icon?: string
 }
 
 export type NoteFrontmatter = NotesRpc.Note['frontmatter']
@@ -520,6 +521,7 @@ export interface VaultClientAPI {
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
   resolveEmbeds(input: { refs: string[]; notePath?: string }): Promise<Record<string, string>>
+  setIcon(path: string, icon: string | null): Promise<void>
 }
 
 // Notes client API interface
@@ -1942,6 +1944,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
   onVaultError: (callback: (error: string) => void) => () => void
+  onVaultListChanged: (callback: () => void) => () => void
   onVaultIndexRecovered: (callback: (event: IndexRecoveredEvent) => void) => () => void
   onVaultActivityChanged: (callback: () => void) => () => void
   // Saved Filters event subscriptions

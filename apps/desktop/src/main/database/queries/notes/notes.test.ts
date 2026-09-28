@@ -10,6 +10,7 @@ import {
   getNoteCacheByPath,
   noteCacheExists,
   listNotesFromCache,
+  listNoteCacheUnderFolder,
   countNotes,
   setNoteTags,
   getNoteTags,
@@ -251,6 +252,18 @@ describe('notes cache queries', () => {
 
     expect(countNotes(db)).toBe(3)
     expect(countNotes(db, 'projects')).toBe(2)
+  })
+
+  it('lists every file under a folder, and only that folder, whatever LIKE wildcards its name holds', () => {
+    createNote('under-1', { path: 'my_notes/a.md' })
+    createNote('under-2', { path: 'my_notes/deep/b.md' })
+    createNote('under-3', { path: 'myXnotes/c.md' })
+    createNote('under-4', { path: 'my_notes.md' })
+
+    const ids = listNoteCacheUnderFolder(db, 'my_notes/')
+      .map((row) => row.id)
+      .sort()
+    expect(ids).toEqual(['under-1', 'under-2'])
   })
 
   it('manages note tags and tag listings, preserving case', () => {

@@ -279,6 +279,79 @@ describe('Claude stream-json parser', () => {
     ])
   })
 
+  it('re-emits tool_use with full arguments from the complete assistant message', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    parser.feed(
+      [
+        {
+          type: 'stream_event',
+          event: {
+            type: 'content_block_start',
+            content_block: { type: 'tool_use', id: 'tool-1', name: 'vault_read_note', input: {} }
+          }
+        },
+        {
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'text', text: 'Reading it.' },
+              { type: 'tool_use', id: 'tool-1', name: 'vault_read_note', input: { id: 'n1' } }
+            ]
+          }
+        },
+        { type: 'assistant', message: { content: [{ type: 'text', text: 'Done.' }] } }
+      ]
+        .map((line) => JSON.stringify(line))
+        .join('\n') + '\n'
+    )
+
+    expect(events).toEqual([
+      { kind: 'tool_use', toolUseId: 'tool-1', name: 'vault_read_note', args: {} },
+      { kind: 'tool_use', toolUseId: 'tool-1', name: 'vault_read_note', args: { id: 'n1' } },
+      { kind: 'noop' }
+    ])
+  })
+
+  it('treats known Claude Code side-channel events as noop, not unknown', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    const lines = [
+      { type: 'content_block_start', content_block: { type: 'redacted_thinking', data: 'x' } },
+      { type: 'content_block_delta', delta: { type: 'signature_delta', signature: 'x' } },
+      { type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: '{"a' } },
+      { type: 'tool_progress' },
+      { type: 'rate_limit_event', rate_limit_info: { status: 'allowed' } }
+    ]
+    parser.feed(
+      lines.map((line) => JSON.stringify({ type: 'stream_event', event: line })).join('\n') + '\n'
+    )
+
+    expect(events).toEqual(lines.map(() => ({ kind: 'noop' })))
+  })
+
+  it('surfaces thinking as reasoning deltas, marking where each block starts', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    const lines = [
+      { type: 'content_block_start', content_block: { type: 'thinking', thinking: '' } },
+      { type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'Reading ' } },
+      { type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'the note.' } }
+    ]
+    parser.feed(
+      lines.map((line) => JSON.stringify({ type: 'stream_event', event: line })).join('\n') + '\n'
+    )
+
+    expect(events).toEqual([
+      { kind: 'reasoning_delta', text: '', startsBlock: true },
+      { kind: 'reasoning_delta', text: 'Reading ', startsBlock: false },
+      { kind: 'reasoning_delta', text: 'the note.', startsBlock: false }
+    ])
+  })
+
   it('falls through to unknown for malformed JSON instead of crashing', () => {
     const events: unknown[] = []
     const parser = createStreamParser((event) => events.push(event))

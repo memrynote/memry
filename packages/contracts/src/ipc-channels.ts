@@ -58,6 +58,8 @@ export const VaultChannels = {
     DOWNLOAD_REMOTE: 'vault:download-remote',
     /** Purge a vault from the sync account; never touches files on disk */
     DELETE_FROM_ACCOUNT: 'vault:delete-from-account',
+    /** Set or reset (null) a listed vault's icon; synced account-wide */
+    SET_ICON: 'vault:set-icon',
     /** Map Obsidian image embed targets (`![[photo.png]]`) to memry-file:// URLs */
     RESOLVE_EMBEDS: 'vault:resolve-embeds'
   },
@@ -65,7 +67,9 @@ export const VaultChannels = {
     STATUS_CHANGED: 'vault:status-changed',
     INDEX_PROGRESS: 'vault:index-progress',
     INDEX_RECOVERED: 'vault:index-recovered',
-    ERROR: 'vault:error'
+    ERROR: 'vault:error',
+    /** The vault list's display data changed (an icon, locally or from sync); refetch `vault:get-all` */
+    LIST_CHANGED: 'vault:list-changed'
   }
 } as const
 

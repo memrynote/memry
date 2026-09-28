@@ -34,6 +34,7 @@ import {
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { withPlainCheckboxMarkers } from '@memry/shared/plain-checkbox'
 import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 import {
@@ -159,7 +160,9 @@ async function parseMarkdownChunkPreservingNesting(
 // text/background colors would be dropped by blocksToMarkdownLossy, so colored
 // runs are wrapped in tokens first and re-emitted as `<span style="…">` after.
 async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
-  const { blocks: wrapped, replacements } = extractInlineColorRuns(blocks as never[])
+  const { blocks: wrapped, replacements } = extractInlineColorRuns(
+    withPlainCheckboxMarkers(blocks) as never[]
+  )
   const md = normalizeSerializedMarkdown(await editor.blocksToMarkdownLossy(wrapped))
   return restoreInlineColorTokens(md, replacements)
 }

@@ -36,6 +36,12 @@ export interface VaultInfo {
    * to the default tint.
    */
   accentColor?: string
+  /**
+   * The vault's own icon (`icon:<HugeiconName>` or an emoji), read from its
+   * config.json. Set by `vault:get-all` only; absent when never set, reset, or
+   * the folder is missing, and consumers draw the default icon.
+   */
+  icon?: string
 }
 
 export interface AccountVaultInfo {
@@ -89,6 +95,27 @@ export const CreateVaultSchema = z.object({
 export const DownloadRemoteVaultSchema = z.object({
   vaultUuid: z.string().min(1),
   parentPath: z.string().optional()
+})
+
+/**
+ * A vault icon: a Hugeicons library icon (`icon:<Name>`) or an emoji. Uploaded
+ * `custom:` icons are refused: their image lives in one vault, while a vault
+ * icon is drawn for every vault in the list and synced account-wide.
+ */
+export const VaultIconSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine((value) =>
+    value.startsWith('icon:')
+      ? /^icon:[A-Za-z0-9]+$/.test(value)
+      : !value.startsWith('custom:') && value.length <= 32 && !/[\s\p{Cc}]/u.test(value)
+  )
+
+export const SetVaultIconSchema = z.object({
+  path: z.string().min(1),
+  /** null resets to the default icon. */
+  icon: VaultIconSchema.nullable()
 })
 
 export const UpdateVaultConfigSchema = z.object({
@@ -177,6 +204,8 @@ export interface VaultHandlers {
 
   [VaultChannels.invoke.DELETE_FROM_ACCOUNT]: (vaultUuid: string) => Promise<void>
 
+  [VaultChannels.invoke.SET_ICON]: (input: z.infer<typeof SetVaultIconSchema>) => Promise<void>
+
   [VaultChannels.invoke.RESOLVE_EMBEDS]: (input: ResolveEmbedsInput) => Promise<ResolvedEmbeds>
 }
 
@@ -220,5 +249,6 @@ export interface VaultClientAPI {
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
+  setIcon(path: string, icon: string | null): Promise<void>
   resolveEmbeds(input: ResolveEmbedsInput): Promise<ResolvedEmbeds>
 }

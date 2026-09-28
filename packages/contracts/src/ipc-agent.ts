@@ -300,7 +300,15 @@ export type AgentSourceRef = z.infer<typeof AgentSourceRefSchema>
 
 export const AssistantContentSchema = z.object({
   text: z.string(),
-  sources: z.array(AgentSourceRefSchema).optional()
+  sources: z.array(AgentSourceRefSchema).optional(),
+  /**
+   * The model's visible reasoning (Claude thinking, Codex reasoning summary).
+   * Optional: messages written before it existed, and backends that expose no
+   * reasoning, simply have none. Display only; never fed back into a prompt.
+   */
+  reasoning: z.string().optional(),
+  /** Turn start to the last reasoning token, for the "Thought for Ns" summary. */
+  reasoningDurationMs: z.number().int().nonnegative().optional()
 })
 export const ToolCallStatusSchema = z.enum([
   'pending',
@@ -655,6 +663,13 @@ export const AgentEventSchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     kind: z.literal('assistant_text_delta'),
+    conversationId: z.string(),
+    messageId: z.string(),
+    text: z.string()
+  }),
+  /** Per-token like `assistant_text_delta`, and addressed the same way. */
+  z.object({
+    kind: z.literal('assistant_reasoning_delta'),
     conversationId: z.string(),
     messageId: z.string(),
     text: z.string()

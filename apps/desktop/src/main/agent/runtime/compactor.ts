@@ -70,5 +70,10 @@ function findLastCompactedIndex(messages: Message[]): number {
 }
 
 function renderForSummary(message: Message): string {
+  // Reasoning is display-only; it would only bloat the summary prompt.
+  if (message.content.role === 'assistant') {
+    const { reasoning: _reasoning, reasoningDurationMs: _duration, ...data } = message.content.data
+    return `[${message.role}] ${JSON.stringify(data)}`
+  }
   return `[${message.role}] ${JSON.stringify(message.content.data)}`
 }

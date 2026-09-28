@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
@@ -26,7 +26,8 @@ const contentAreaMocks = vi.hoisted(() => ({
     create: vi.fn(),
     complete: vi.fn(),
     update: vi.fn(),
-    delete: vi.fn()
+    delete: vi.fn(),
+    bulkDelete: vi.fn()
   },
   getTaskSettings: vi.fn(),
   notesService: {
@@ -40,6 +41,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   insertTemplateBlocks: vi.fn(),
   fetchLinkPreview: vi.fn(),
   toastError: vi.fn(),
+  toast: vi.fn(),
   defaultFileItemClick: vi.fn(),
   pickImageForCell: vi.fn(),
   openSuggestionMenu: vi.fn(),
@@ -175,7 +177,10 @@ vi.mock('@blocknote/react', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: { error: contentAreaMocks.toastError, success: vi.fn() }
+  toast: Object.assign(contentAreaMocks.toast, {
+    error: contentAreaMocks.toastError,
+    success: vi.fn()
+  })
 }))
 
 vi.mock('@blocknote/shadcn', () => ({
@@ -398,6 +403,7 @@ vi.mock('./ai-menu', () => ({
 vi.mock('./editor-schema', () => ({ editorSchema: {} }))
 
 import { ContentArea } from './ContentArea'
+import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
@@ -545,6 +551,8 @@ function emptyIntents(currentTaskIds = new Set<string>()) {
   return {
     subtaskCandidate: null,
     standaloneCandidate: null,
+    plainByContext: [] as string[],
+    emptyCheckbox: null,
     draftTaskBlock: null,
     demotedTaskBlocks: [],
     unindentedTaskBlocks: [],
@@ -609,6 +617,7 @@ describe('ContentArea', () => {
     contentAreaMocks.tasksService.complete.mockResolvedValue({ success: true })
     contentAreaMocks.tasksService.update.mockResolvedValue({ success: true })
     contentAreaMocks.tasksService.delete.mockResolvedValue({ success: true })
+    contentAreaMocks.tasksService.bulkDelete.mockResolvedValue({ success: true, count: 1 })
     contentAreaMocks.notesService.uploadAttachment.mockResolvedValue({
       success: true,
       path: 'attachments/file.png'
@@ -959,7 +968,7 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
   })
 
-  it('converts task intents and cleans up deleted task blocks on editor changes', async () => {
+  it('converts task intents and asks about deleted task blocks on editor changes', async () => {
     contentAreaMocks.analyzeTaskIntents
       .mockReturnValueOnce({
         ...emptyIntents(new Set(['existing-task'])),
@@ -988,9 +997,237 @@ describe('ContentArea', () => {
     })
 
     fireEvent.click(screen.getByText('change'))
+    // The block is gone; the task is asked about, never deleted on the spot.
+    const dialog = await screen.findByTestId('task-removal-dialog')
+    expect(contentAreaMocks.tasksService.delete).not.toHaveBeenCalled()
+    expect(contentAreaMocks.tasksService.bulkDelete).not.toHaveBeenCalled()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete task' }))
     await waitFor(() =>
-      expect(contentAreaMocks.tasksService.delete).toHaveBeenCalledWith('existing-task')
+      expect(contentAreaMocks.tasksService.bulkDelete).toHaveBeenCalledWith(['existing-task'])
     )
+    await waitFor(() => expect(screen.queryByTestId('task-removal-dialog')).toBeNull())
+    // Closing after delete must not also run keep.
+    expect(contentAreaMocks.tasksService.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'existing-task' })
+    )
+  })
+
+  describe('plain checkboxes', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    // One conversion through the immediate (subtask) path, so the tests do not
+    // wait out the standalone debounce. `created-task` lands on `sub-check`.
+    async function convertSubCheck(): Promise<void> {
+      contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        subtaskCandidate: { blockId: 'sub-check', parentTaskId: 'parent-task' }
+      })
+      fireEvent.click(screen.getByText('change'))
+      await waitFor(() =>
+        expect(contentAreaMocks.blocks.get('sub-check').props.taskId).toBe('created-task')
+      )
+      // The id is on the block now: the next change takes it as the baseline.
+      contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce(
+        emptyIntents(new Set(['created-task']))
+      )
+      fireEvent.click(screen.getByText('change'))
+    }
+
+    it('makes a checkbox that continues a plain list plain, off the undo stack', () => {
+      const meta = vi.fn()
+      contentAreaMocks.editor.transact = vi.fn((fn: (tr: unknown) => void) => fn({ setMeta: meta }))
+      render(<ContentArea noteId="note-1" />)
+
+      contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce({
+        ...emptyIntents(),
+        plainByContext: ['standalone']
+      })
+      fireEvent.click(screen.getByText('change'))
+
+      expect(meta).toHaveBeenCalledWith('addToHistory', false)
+      expect(contentAreaMocks.blocks.get('standalone').props.plain).toBe(true)
+      // Blocks the note opened with are named, so the analyzer converts those
+      // rather than continuing a plain list with them.
+      const options = contentAreaMocks.analyzeTaskIntents.mock.calls.at(-1)?.[2]
+      expect([...options.openedBlockIds]).toEqual(
+        expect.arrayContaining(['standalone', 'sub-check', 'para'])
+      )
+      expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    })
+
+    it('undoing a conversion leaves a plain checkbox and deletes the task, without asking', async () => {
+      render(<ContentArea noteId="note-1" />)
+      await convertSubCheck()
+
+      // Undo: the checkbox is back where the task block was.
+      const block = contentAreaMocks.blocks.get('sub-check')
+      block.type = 'checkListItem'
+      block.props = { checked: false }
+      contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce(emptyIntents(new Set()))
+      fireEvent.click(screen.getByText('change'))
+
+      expect(block.props.plain).toBe(true)
+      await waitFor(() =>
+        expect(contentAreaMocks.tasksService.delete).toHaveBeenCalledWith('created-task')
+      )
+      expect(screen.queryByTestId('task-removal-dialog')).toBeNull()
+    })
+
+    it('deletes the task when the conversion is undone before the row exists', async () => {
+      let resolveCreate: (value: unknown) => void = () => {}
+      contentAreaMocks.tasksService.create.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveCreate = resolve
+        })
+      )
+      render(<ContentArea noteId="note-1" />)
+      contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        subtaskCandidate: { blockId: 'sub-check', parentTaskId: 'parent-task' }
+      })
+      fireEvent.click(screen.getByText('change'))
+      await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
+
+      const block = contentAreaMocks.blocks.get('sub-check')
+      block.type = 'checkListItem'
+      block.props = { checked: false }
+      resolveCreate({ success: true, task: { id: 'late-task', title: 'Sub task' } })
+
+      await waitFor(() =>
+        expect(contentAreaMocks.tasksService.delete).toHaveBeenCalledWith('late-task')
+      )
+      expect(block.type).toBe('checkListItem')
+      expect(block.props.plain).toBe(true)
+    })
+
+    it('says once, on the first conversion, how to keep a checkbox', async () => {
+      render(<ContentArea noteId="note-1" />)
+      await convertSubCheck()
+
+      expect(contentAreaMocks.toast).toHaveBeenCalledTimes(1)
+      const [message, options] = contentAreaMocks.toast.mock.calls[0]
+      expect(message).toBe('Checkbox turned into a task')
+
+      // Its action is the undo, from a button.
+      act(() => options.action.onClick())
+      const block = contentAreaMocks.blocks.get('sub-check')
+      expect(block.type).toBe('checkListItem')
+      expect(block.props.plain).toBe(true)
+      await waitFor(() =>
+        expect(contentAreaMocks.tasksService.delete).toHaveBeenCalledWith('created-task')
+      )
+
+      // And the removal that follows is not asked about.
+      contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce(emptyIntents(new Set()))
+      fireEvent.click(screen.getByText('change'))
+      expect(screen.queryByTestId('task-removal-dialog')).toBeNull()
+
+      // A second conversion says nothing.
+      contentAreaMocks.toast.mockClear()
+      contentAreaMocks.blocks.get('sub-check').props.taskId = ''
+      contentAreaMocks.blocks.get('sub-check').type = 'checkListItem'
+      await convertSubCheck()
+      expect(contentAreaMocks.toast).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('a task block leaving the note', () => {
+    function removeExistingTaskOnNextChange(): void {
+      contentAreaMocks.analyzeTaskIntents
+        .mockReturnValueOnce(emptyIntents(new Set(['existing-task'])))
+        .mockReturnValueOnce(emptyIntents(new Set()))
+        .mockReturnValue(emptyIntents(new Set()))
+      contentAreaMocks.tasksService.get.mockResolvedValue({
+        id: 'existing-task',
+        linkedNoteIds: ['note-1', 'other-note']
+      })
+    }
+
+    it('keeps the task and drops this note from its links when the user keeps it', async () => {
+      removeExistingTaskOnNextChange()
+      render(<ContentArea noteId="note-1" />)
+
+      fireEvent.click(screen.getByText('change'))
+      fireEvent.click(screen.getByText('change'))
+      const dialog = await screen.findByTestId('task-removal-dialog')
+      expect(within(dialog).getByText('Task removed from this note')).toBeInTheDocument()
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Keep in Tasks' }))
+      await waitFor(() =>
+        expect(contentAreaMocks.tasksService.update).toHaveBeenCalledWith({
+          id: 'existing-task',
+          linkedNoteIds: ['other-note']
+        })
+      )
+      expect(contentAreaMocks.tasksService.bulkDelete).not.toHaveBeenCalled()
+      expect(contentAreaMocks.tasksService.delete).not.toHaveBeenCalled()
+    })
+
+    it('links the note again when undo brings a kept task back', async () => {
+      contentAreaMocks.analyzeTaskIntents
+        .mockReturnValueOnce(emptyIntents(new Set(['existing-task'])))
+        .mockReturnValueOnce(emptyIntents(new Set()))
+        .mockReturnValueOnce(emptyIntents(new Set(['existing-task'])))
+        .mockReturnValue(emptyIntents(new Set(['existing-task'])))
+      contentAreaMocks.tasksService.get
+        .mockResolvedValueOnce({ id: 'existing-task', linkedNoteIds: ['note-1'] })
+        .mockResolvedValue({ id: 'existing-task', linkedNoteIds: [] })
+      render(<ContentArea noteId="note-1" />)
+
+      fireEvent.click(screen.getByText('change'))
+      fireEvent.click(screen.getByText('change'))
+      const dialog = await screen.findByTestId('task-removal-dialog')
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Keep in Tasks' }))
+      await waitFor(() =>
+        expect(contentAreaMocks.tasksService.update).toHaveBeenCalledWith({
+          id: 'existing-task',
+          linkedNoteIds: []
+        })
+      )
+
+      fireEvent.click(screen.getByText('change'))
+      await waitFor(() =>
+        expect(contentAreaMocks.tasksService.update).toHaveBeenLastCalledWith({
+          id: 'existing-task',
+          linkedNoteIds: ['note-1']
+        })
+      )
+    })
+
+    it('treats a cut as a move: no prompt, no delete, the note unlinked', async () => {
+      removeExistingTaskOnNextChange()
+      render(<ContentArea noteId="note-1" />)
+
+      fireEvent.click(screen.getByText('change'))
+      fireEvent.cut(screen.getByTestId('blocknote-view'))
+      fireEvent.click(screen.getByText('change'))
+
+      await waitFor(() =>
+        expect(contentAreaMocks.tasksService.update).toHaveBeenCalledWith({
+          id: 'existing-task',
+          linkedNoteIds: ['other-note']
+        })
+      )
+      expect(screen.queryByTestId('task-removal-dialog')).toBeNull()
+      expect(contentAreaMocks.tasksService.delete).not.toHaveBeenCalled()
+    })
+
+    it('stays out of a removal the task renderer already handled', async () => {
+      removeExistingTaskOnNextChange()
+      render(<ContentArea noteId="note-1" />)
+
+      fireEvent.click(screen.getByText('change'))
+      markTaskRemovalsHandled(contentAreaMocks.editor, ['existing-task'])
+      fireEvent.click(screen.getByText('change'))
+
+      await act(async () => {})
+      expect(screen.queryByTestId('task-removal-dialog')).toBeNull()
+      expect(contentAreaMocks.tasksService.update).not.toHaveBeenCalled()
+      expect(contentAreaMocks.tasksService.bulkDelete).not.toHaveBeenCalled()
+    })
   })
 
   it('handles paste-link mention and YouTube embed selections', async () => {
@@ -1310,6 +1547,34 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.pickImageForCell).not.toHaveBeenCalled()
   })
 
+  it('makes a plain checkbox from the Check List row, outside a table cell', async () => {
+    vi.mocked(getDefaultReactSlashMenuItems).mockReturnValueOnce([
+      { key: 'check_list', title: 'Check List', group: 'Basic blocks', onItemClick: vi.fn() }
+    ] as never)
+    const empty = createBlock('empty-line', { content: [] })
+    contentAreaMocks.editor.getTextCursorPosition.mockReturnValue({ block: empty })
+    contentAreaMocks.editor.setTextCursorPosition = vi.fn()
+    contentAreaMocks.editor.schema = {
+      blockSchema: { diagram: {}, paragraph: { content: 'inline' } }
+    }
+    // BlockNote's helper reads the updated block back to place the caret.
+    contentAreaMocks.editor.updateBlock.mockImplementationOnce(
+      (block: any, update: Record<string, unknown>) => ({ ...block, ...update })
+    )
+
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+    const [checkList] = await slashController.getItems('check')
+    checkList.onItemClick()
+
+    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(empty, {
+      type: 'checkListItem',
+      props: { plain: true }
+    })
+  })
+
   it('inserts new tables with the header row markdown is going to give them anyway', async () => {
     const defaultTableClick = vi.fn()
     const table = {
@@ -1620,57 +1885,32 @@ describe('ContentArea', () => {
     await expect(slashItems('meeting')).resolves.toEqual([])
   })
 
-  it('debounces standalone checkbox conversion and clears pending conversion on unmount', async () => {
-    vi.useFakeTimers()
-    contentAreaMocks.analyzeTaskIntents
-      .mockReturnValueOnce({
-        ...emptyIntents(new Set()),
-        standaloneCandidate: { blockId: 'standalone' }
-      })
-      .mockReturnValueOnce({
-        ...emptyIntents(new Set()),
-        standaloneCandidate: { blockId: 'standalone' }
-      })
-      .mockReturnValueOnce({
-        ...emptyIntents(new Set()),
-        standaloneCandidate: { blockId: 'standalone' }
-      })
-
-    const { unmount } = render(<ContentArea noteId="note-1" />)
-
-    fireEvent.click(screen.getByText('change'))
-    fireEvent.click(screen.getByText('change'))
-    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
-
-    await act(async () => {
-      vi.advanceTimersByTime(600)
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        // `#urgent` is a tag now, so it leaves the title and lands on the task.
-        title: 'Standalone',
-        tags: ['urgent'],
-        linkedNoteIds: ['note-1']
-      })
-    )
-
-    contentAreaMocks.tasksService.create.mockClear()
+  it('converts a standalone checkbox in the same change, without a debounce', async () => {
     contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce({
       ...emptyIntents(new Set()),
       standaloneCandidate: { blockId: 'standalone' }
     })
+
+    render(<ContentArea noteId="note-1" />)
+
     fireEvent.click(screen.getByText('change'))
-    unmount()
+    // The block is rewritten to a taskBlock synchronously, so the plain
+    // checkbox never paints.
+    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ type: 'taskBlock' })
+    )
 
-    await act(async () => {
-      vi.advanceTimersByTime(600)
-      await Promise.resolve()
-    })
-
-    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          // `#urgent` is a tag now, so it leaves the title and lands on the task.
+          title: 'Standalone',
+          tags: ['urgent'],
+          linkedNoteIds: ['note-1']
+        })
+      )
+    )
   })
 
   // y-prosemirror renders the Y.Doc into the view while it mounts, before

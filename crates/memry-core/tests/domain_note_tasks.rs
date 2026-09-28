@@ -567,6 +567,30 @@ fn a_checkbox_becomes_a_task_block_the_way_desktops_editor_writes_one() {
 }
 
 #[test]
+fn a_plain_checkbox_is_never_offered_for_conversion() {
+    let db = open("convert-plain");
+    db.call_blocking(|conn| {
+        let mut plain = checkbox("c1", "Passport", false);
+        plain.props.insert(2, ("plain", Any::Bool(true)));
+        let mut ordinary = checkbox("c2", "Buy bread", false);
+        ordinary.props.insert(2, ("plain", Any::Bool(false)));
+        seed_note(conn, &[plain, ordinary]);
+
+        let candidates = note_tasks::read_conversion_candidates(conn, NOTE)
+            .expect("the body op")
+            .expect("here");
+        let ids: Vec<_> = candidates.iter().map(|c| c.block_id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec!["c2"],
+            "desktop's analyzer skips `plain`, and so does this"
+        );
+        Ok(())
+    })
+    .expect("plain");
+}
+
+#[test]
 fn a_checkbox_tab_nested_under_a_task_becomes_its_subtask_one_level_deep() {
     let db = open("convert-subtask");
     db.call_blocking(|conn| {

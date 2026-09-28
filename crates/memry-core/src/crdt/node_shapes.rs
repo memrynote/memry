@@ -116,6 +116,9 @@ pub fn defaults_for(kind: &str) -> Option<Vec<PropDefault>> {
         "checkListItem" => vec![
             text("backgroundColor", "default"),
             boolean("checked", false),
+            // Memry's addition (`editor-schema/src/blocks/plain-checkbox.ts`):
+            // a checkbox the user keeps as one, never converted to a task.
+            boolean("plain", false),
             text("textAlignment", "left"),
             text("textColor", "default"),
         ],

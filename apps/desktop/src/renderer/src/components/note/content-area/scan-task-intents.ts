@@ -5,6 +5,10 @@
  * subtask, or unwire a Shift+Tab-promoted subtask). Kept side-effect-free so
  * it can be exhaustively unit-tested.
  *
+ * A checkbox with `plain: true` is one the user keeps as a checkbox
+ * (`@memry/shared/plain-checkbox`). It is never a candidate, and a new
+ * checkbox that continues a plain list is made plain rather than converted.
+ *
  * Hierarchy rules:
  *   - 1-level subtask depth: a checkListItem nested directly under a
  *     top-level taskBlock is a subtask candidate. Anything deeper is ignored.
@@ -43,6 +47,19 @@ export interface DemotedTaskBlock {
 export interface TaskIntents {
   subtaskCandidate: SubtaskCandidate | null
   standaloneCandidate: StandaloneCandidate | null
+  /**
+   * Checkboxes that continue a plain checklist: the one right above them (or,
+   * for a first child, the one they are nested under) is plain. They are made
+   * plain instead of being converted, which is what makes Enter in a plain
+   * list give another plain checkbox.
+   */
+  plainByContext: string[]
+  /**
+   * A checkbox typed in this editor with nothing on it yet. It is shown as a
+   * draft taskBlock right away (no row created); the draft path creates the
+   * task once a title is typed.
+   */
+  emptyCheckbox: { blockId: string; parentTaskId: string } | null
   draftTaskBlock: DraftTaskBlock | null
   unindentedTaskBlocks: UnindentedTaskBlock[]
   demotedTaskBlocks: DemotedTaskBlock[]
@@ -56,6 +73,7 @@ interface TaskIntentBlock {
     taskId?: string
     parentTaskId?: string
     title?: unknown
+    plain?: unknown
   }
   content?: unknown
   children?: TaskIntentBlock[]
@@ -67,6 +85,11 @@ function isTaskBlock(block: TaskIntentBlock): boolean {
 
 function isCheckListItem(block: TaskIntentBlock): boolean {
   return block?.type === 'checkListItem'
+}
+
+// A checkbox the user keeps as one. Never a conversion candidate.
+function isPlainCheckbox(block: TaskIntentBlock | null | undefined): boolean {
+  return !!block && isCheckListItem(block) && block.props?.plain === true
 }
 
 // A checkbox that already carries a `{task:<id>}` suffix is a persisted task
@@ -96,13 +119,25 @@ function isImportBlocked(block: TaskIntentBlock): boolean {
   return obsidianTaskImportBlocker(extractInlineText(block.content)) !== null
 }
 
+export interface TaskIntentOptions {
+  /**
+   * Blocks the note opened with. A checkbox already in the file when the note
+   * opened converts like any other, even under a plain one: only a checkbox
+   * made in this editor continues a plain list.
+   */
+  openedBlockIds?: ReadonlySet<string>
+}
+
 export function analyzeTaskIntents(
   blocks: TaskIntentBlock[],
-  dismissedBlockIds: Set<string>
+  dismissedBlockIds: Set<string>,
+  options: TaskIntentOptions = {}
 ): TaskIntents {
   const intents: TaskIntents = {
     subtaskCandidate: null,
     standaloneCandidate: null,
+    plainByContext: [],
+    emptyCheckbox: null,
     draftTaskBlock: null,
     unindentedTaskBlocks: [],
     demotedTaskBlocks: [],
@@ -119,8 +154,12 @@ export function analyzeTaskIntents(
     }
   }
 
-  const walk = (list: TaskIntentBlock[], parentTaskBlock: TaskIntentBlock | null): void => {
-    for (const b of list) {
+  const walk = (
+    list: TaskIntentBlock[],
+    parentTaskBlock: TaskIntentBlock | null,
+    parentIsPlain = false
+  ): void => {
+    for (const [index, b] of list.entries()) {
       if (isTaskBlock(b) && b.props?.taskId) {
         intents.currentTaskIds.add(b.props.taskId)
 
@@ -160,8 +199,23 @@ export function analyzeTaskIntents(
         }
       }
 
+      // Checked before the candidate arms below, and for empty checkboxes too:
+      // Enter in a plain list makes an empty one, and it has to be plain before
+      // the first character lands, not 600ms after.
+      const continuesPlainList =
+        !options.openedBlockIds?.has(b.id) &&
+        (index > 0 ? isPlainCheckbox(list[index - 1]) : parentIsPlain)
       if (
         isCheckListItem(b) &&
+        !isPlainCheckbox(b) &&
+        continuesPlainList &&
+        !dismissedBlockIds.has(b.id) &&
+        !hasTaskSuffix(b)
+      ) {
+        intents.plainByContext.push(b.id)
+      } else if (
+        isCheckListItem(b) &&
+        !isPlainCheckbox(b) &&
         !dismissedBlockIds.has(b.id) &&
         !hasTaskSuffix(b) &&
         hasCheckboxText(b)
@@ -176,9 +230,22 @@ export function analyzeTaskIntents(
         } else if (!intents.standaloneCandidate && !isImportBlocked(b)) {
           intents.standaloneCandidate = { blockId: b.id }
         }
+      } else if (
+        isCheckListItem(b) &&
+        !isPlainCheckbox(b) &&
+        !intents.emptyCheckbox &&
+        !options.openedBlockIds?.has(b.id) &&
+        !dismissedBlockIds.has(b.id) &&
+        !hasTaskSuffix(b) &&
+        !hasCheckboxText(b)
+      ) {
+        intents.emptyCheckbox = {
+          blockId: b.id,
+          parentTaskId: parentTaskBlock?.props?.taskId ?? ''
+        }
       }
 
-      if (b.children?.length) walk(b.children, null)
+      if (b.children?.length) walk(b.children, null, isPlainCheckbox(b))
     }
   }
 

@@ -81,6 +81,7 @@ export function createGeneratedRpcApi({
       "rename": ((id, newTitle) => invoke("notes:rename", { id, newTitle })) as GeneratedRpcApi["notes"]["rename"],
       "move": ((id, newFolder) => invoke("notes:move", { id, newFolder })) as GeneratedRpcApi["notes"]["move"],
       "delete": ((id) => invoke("notes:delete", id)) as GeneratedRpcApi["notes"]["delete"],
+      "getCarriedTasks": ((input) => invoke("notes:get-carried-tasks", input)) as GeneratedRpcApi["notes"]["getCarriedTasks"],
       "applyTemplate": ((input) => invoke("notes:apply-template", input)) as GeneratedRpcApi["notes"]["applyTemplate"],
       "appendBlocks": ((input) => invoke("notes:append-blocks", input)) as GeneratedRpcApi["notes"]["appendBlocks"],
       "list": ((options) => invoke("notes:list", options ?? {})) as GeneratedRpcApi["notes"]["list"],

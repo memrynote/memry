@@ -76,6 +76,7 @@ import { PropertyDefinitionsService } from './property-definitions'
 import { getSetting, setSetting } from '../database/queries/settings'
 import { migrateSettingsToConfig } from './settings-cache'
 import { readPreferences } from './vault-preferences'
+import { readVaultIcon } from './vault-icon'
 import { createPhaseTimer } from '../lib/phase-timer'
 import {
   applyProjectFrontmatterBackfill,
@@ -240,7 +241,9 @@ function toVaultInfo(stored: StoredVaultInfo): VaultInfo {
     // Read from the vault's own config.json, so the sidebar can paint a vault it
     // has not opened. `readPreferences` never throws and falls back to the
     // default accent for vaults written before preferences moved to disk.
-    accentColor: isMissing ? undefined : readPreferences(stored.path).accentColor
+    accentColor: isMissing ? undefined : readPreferences(stored.path).accentColor,
+    // Same source and the same fallback: no stored icon draws the default one.
+    icon: isMissing ? undefined : (readVaultIcon(stored.path)?.value ?? undefined)
   }
 }
 

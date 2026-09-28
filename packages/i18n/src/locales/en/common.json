@@ -362,6 +362,12 @@
       "awaitingApproval": "Awaiting approval",
       "done": "Completed"
     },
+    "reasoning": {
+      "thinking": "Thinking…",
+      "thought": "Thought",
+      "thoughtFor": "Thought for {seconds}s",
+      "toggle": "Show or hide reasoning"
+    },
     "sidebar": {
       "label": "Right sidebar",
       "day": "Day",
@@ -1148,7 +1154,11 @@
     "position": "{name}, vault {index} of {count}",
     "openList": "{position}. Open the vault list",
     "switchTo": "Switch to {name}",
-    "switchingTo": "Switching to {name}"
+    "switchingTo": "Switching to {name}",
+    "changeIcon": "Change icon…",
+    "resetIcon": "Reset icon",
+    "iconButton": "Change the icon of {name}",
+    "iconFailed": "Could not change the vault icon"
   },
   "sidebarHelp": {
     "label": "Help and feedback",

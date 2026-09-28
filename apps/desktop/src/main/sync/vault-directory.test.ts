@@ -1,12 +1,26 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
 
-import { encryptVaultName } from './vault-name-crypto'
+import { decryptVaultIcon, encryptVaultIcon, encryptVaultName } from './vault-name-crypto'
 
 vi.mock('./http-client', () => ({
   getFromServer: vi.fn(),
   postToServer: vi.fn(async () => ({ success: true })),
+  putToServer: vi.fn(async () => ({ success: true, applied: true })),
   deleteFromServer: vi.fn()
+}))
+
+vi.mock('../vault/init', () => ({
+  isValidDirectory: vi.fn(() => true)
+}))
+
+vi.mock('../vault/vault-icon', () => ({
+  readVaultIcon: vi.fn(() => null),
+  writeVaultIcon: vi.fn()
+}))
+
+vi.mock('../lib/window-broadcast', () => ({
+  broadcastToAllWindows: vi.fn()
 }))
 
 vi.mock('./token-manager', () => ({
@@ -58,7 +72,9 @@ vi.mock('./bootstrap-metrics', () => ({
   abandonBootstrap: vi.fn()
 }))
 
-import { getFromServer, postToServer, deleteFromServer } from './http-client'
+import { getFromServer, postToServer, putToServer, deleteFromServer } from './http-client'
+import { readVaultIcon, writeVaultIcon } from '../vault/vault-icon'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getValidAccessToken } from './token-manager'
 import { beginBootstrap, markBootstrapInteractive, abandonBootstrap } from './bootstrap-metrics'
 import {
@@ -266,6 +282,146 @@ describe('vault-directory', () => {
 
       expect(getFromServer).not.toHaveBeenCalled()
       expect(setAccountVaultsCache).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('vault icon sync', () => {
+    const syncedVault = {
+      path: '/v/alpha',
+      name: 'Alpha',
+      noteCount: 0,
+      taskCount: 0,
+      lastOpened: '',
+      isDefault: false,
+      vaultUuid: 'uuid-a',
+      accountBinding: { userId: 'user-1', mode: 'sync' as const }
+    }
+
+    function serverWithIcon(icon: string | null, iconUpdatedAt: number | null) {
+      const base = serverVault('uuid-a', 'Alpha')
+      if (iconUpdatedAt === null) return base
+      if (icon === null) return { ...base, encryptedIcon: null, iconNonce: null, iconUpdatedAt }
+      return { ...base, ...encryptVaultIcon(icon, NAME_KEY, 'uuid-a'), iconUpdatedAt }
+    }
+
+    beforeEach(() => {
+      vi.mocked(getVaults).mockReturnValue([syncedVault])
+      vi.mocked(readVaultIcon).mockReturnValue(null)
+    })
+
+    it('pushes a pending local icon the account does not have yet', async () => {
+      vi.mocked(getFromServer).mockResolvedValueOnce({ vaults: [serverWithIcon(null, null)] })
+      const pending = { value: 'icon:Book01Icon', updatedAt: 500, pendingSync: true }
+      vi.mocked(readVaultIcon).mockReturnValue(pending)
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(putToServer).toHaveBeenCalledWith(
+        '/sync/vaults/uuid-a/icon',
+        expect.objectContaining({ iconUpdatedAt: 500 }),
+        'access-token'
+      )
+      const body = vi.mocked(putToServer).mock.calls[0][1] as {
+        encryptedIcon: string
+        iconNonce: string
+      }
+      expect(decryptVaultIcon(body.encryptedIcon, body.iconNonce, NAME_KEY, 'uuid-a')).toBe(
+        'icon:Book01Icon'
+      )
+      expect(writeVaultIcon).toHaveBeenCalledWith('/v/alpha', { ...pending, pendingSync: false })
+    })
+
+    it('pushes a reset as an empty envelope', async () => {
+      vi.mocked(getFromServer).mockResolvedValueOnce({ vaults: [serverWithIcon('🌿', 100)] })
+      vi.mocked(readVaultIcon).mockReturnValue({ value: null, updatedAt: 200, pendingSync: true })
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(putToServer).toHaveBeenCalledWith(
+        '/sync/vaults/uuid-a/icon',
+        { encryptedIcon: null, iconNonce: null, iconUpdatedAt: 200 },
+        'access-token'
+      )
+    })
+
+    it('keeps the change pending when the push fails', async () => {
+      vi.mocked(getFromServer).mockResolvedValueOnce({ vaults: [serverWithIcon(null, null)] })
+      vi.mocked(readVaultIcon).mockReturnValue({ value: '🌿', updatedAt: 500, pendingSync: true })
+      vi.mocked(putToServer).mockRejectedValueOnce(new Error('404'))
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(writeVaultIcon).not.toHaveBeenCalled()
+    })
+
+    it('adopts a newer account icon and tells the windows', async () => {
+      vi.mocked(getFromServer).mockResolvedValueOnce({
+        vaults: [serverWithIcon('icon:Leaf01Icon', 900)]
+      })
+      vi.mocked(readVaultIcon).mockReturnValue({ value: '🌿', updatedAt: 500, pendingSync: true })
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(putToServer).not.toHaveBeenCalled()
+      expect(writeVaultIcon).toHaveBeenCalledWith('/v/alpha', {
+        value: 'icon:Leaf01Icon',
+        updatedAt: 900,
+        pendingSync: false
+      })
+      expect(broadcastToAllWindows).toHaveBeenCalledWith('vault:list-changed')
+    })
+
+    it('adopts an account reset over an older local icon', async () => {
+      vi.mocked(getFromServer).mockResolvedValueOnce({ vaults: [serverWithIcon(null, 900)] })
+      vi.mocked(readVaultIcon).mockReturnValue({ value: '🌿', updatedAt: 500, pendingSync: false })
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(writeVaultIcon).toHaveBeenCalledWith('/v/alpha', {
+        value: null,
+        updatedAt: 900,
+        pendingSync: false
+      })
+    })
+
+    it('keeps the local icon when the account copy cannot be decrypted', async () => {
+      vi.mocked(getFromServer).mockResolvedValueOnce({
+        vaults: [
+          {
+            ...serverVault('uuid-a', 'Alpha'),
+            encryptedIcon: 'garbage',
+            iconNonce: 'garbage',
+            iconUpdatedAt: 900
+          }
+        ]
+      })
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(writeVaultIcon).not.toHaveBeenCalled()
+      expect(broadcastToAllWindows).not.toHaveBeenCalled()
+    })
+
+    it('does nothing for a server that predates vault icons', async () => {
+      vi.mocked(getFromServer).mockResolvedValueOnce({ vaults: [serverVault('uuid-a', 'Alpha')] })
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(putToServer).not.toHaveBeenCalled()
+      expect(writeVaultIcon).not.toHaveBeenCalled()
+    })
+
+    it('never syncs the icon of a vault not bound to this account', async () => {
+      vi.mocked(getVaults).mockReturnValue([
+        { ...syncedVault, accountBinding: { userId: 'user-1', mode: 'local' as const } }
+      ])
+      vi.mocked(getFromServer).mockResolvedValueOnce({ vaults: [serverWithIcon('🌿', 900)] })
+      vi.mocked(readVaultIcon).mockReturnValue({ value: null, updatedAt: 500, pendingSync: true })
+
+      await refreshVaultDirectory({ force: true })
+
+      expect(putToServer).not.toHaveBeenCalled()
+      expect(writeVaultIcon).not.toHaveBeenCalled()
     })
   })
 
