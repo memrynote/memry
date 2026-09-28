@@ -32,7 +32,7 @@ const logger = createLogger('Updater')
  * the in-app prompt. The timer is unref'd and packaged-only, so it never blocks quit
  * and never polls in dev.
  */
-const AUTO_CHECK_INTERVAL_MS = 10 * 60 * 1000
+const AUTO_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000
 
 /**
  * Where in the update lifecycle a failure happened. Shipped verbatim as the `phase`

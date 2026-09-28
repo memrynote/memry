@@ -470,9 +470,9 @@ describe('updater', () => {
 
       // A short interval keeps freshly published releases picked up quickly while
       // the app is open (previously 6h — too slow to surface an update in-session).
-      await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+      await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
       expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2)
-      await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+      await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
       expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(3)
     } finally {
       vi.useRealTimers()
@@ -651,7 +651,7 @@ describe('updater', () => {
           })
         )
 
-        await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+        await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
         expect(mocks.logger.warn).toHaveBeenCalledWith(
           'scheduled update check failed',
           expect.any(Error),

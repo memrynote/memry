@@ -563,9 +563,9 @@ describe('velopack updater backend', () => {
         updater.initializeUpdater()
         expect(mocks.velopack.checkForUpdatesAsync).toHaveBeenCalledTimes(1)
 
-        await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+        await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
         expect(mocks.velopack.checkForUpdatesAsync).toHaveBeenCalledTimes(2)
-        await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+        await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
         expect(mocks.velopack.checkForUpdatesAsync).toHaveBeenCalledTimes(3)
       } finally {
         vi.useRealTimers()
@@ -583,7 +583,7 @@ describe('velopack updater backend', () => {
         await vi.advanceTimersByTimeAsync(0)
         expect(mocks.velopack.checkForUpdatesAsync).toHaveBeenCalledTimes(1)
 
-        await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+        await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
         expect(mocks.velopack.checkForUpdatesAsync).toHaveBeenCalledTimes(2)
       } finally {
         vi.useRealTimers()
