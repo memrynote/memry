@@ -1,4 +1,4 @@
-import { type Dispatch, useRef, useEffect, useState } from 'react'
+import { type Dispatch, useId, useRef, useEffect, useState } from 'react'
 import {
   Search,
   X,
@@ -411,10 +411,13 @@ function FilterSwitch({
   checked: boolean
   onCheckedChange: (checked: boolean) => void
 }): React.JSX.Element {
+  const id = useId()
   return (
     <div className="flex items-center justify-between">
-      <Label className="text-xs text-foreground font-normal">{label}</Label>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <Label htmlFor={id} className="text-xs text-foreground font-normal">
+        {label}
+      </Label>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
     </div>
   )
 }

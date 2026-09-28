@@ -93,4 +93,67 @@ describe('graph menu and tooltip i18n', () => {
     expect(screen.getByText('unresolved')).toBeInTheDocument()
     expect(screen.getByText('2 connections')).toBeInTheDocument()
   })
+
+  it('offers expand on a collapsed category and collapse on a member', () => {
+    const graph = new Graph()
+    graph.addNode('group:work', { label: 'Work (3)', nodeType: 'group', isUnresolved: false })
+    graph.addNode('note-1', { label: 'Alpha', nodeType: 'note', isUnresolved: false })
+    const onToggleCategory = vi.fn()
+    const onClose = vi.fn()
+    const props = {
+      graph,
+      onFocusNode: vi.fn(),
+      onOpenInTab: vi.fn(),
+      onToggleCategory,
+      onClose
+    }
+
+    const { rerender } = render(
+      <I18nextProvider i18n={i18nEn}>
+        <GraphContextMenu
+          menu={{ nodeId: 'group:work', x: 0, y: 0 }}
+          categoryAction={{ categoryId: 'work', label: 'Work', collapsed: true }}
+          {...props}
+        />
+      </I18nextProvider>
+    )
+
+    // A super-node is not a note: no open or copy actions.
+    expect(screen.queryByText('Open in new tab')).not.toBeInTheDocument()
+    expect(screen.queryByText('Copy title')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Expand Work'))
+    expect(onToggleCategory).toHaveBeenCalledWith('work')
+    expect(onClose).toHaveBeenCalledOnce()
+
+    rerender(
+      <I18nextProvider i18n={i18nEn}>
+        <GraphContextMenu
+          menu={{ nodeId: 'note-1', x: 0, y: 0 }}
+          categoryAction={{ categoryId: 'work', label: 'Work', collapsed: false }}
+          {...props}
+        />
+      </I18nextProvider>
+    )
+    fireEvent.click(screen.getByText('Collapse Work'))
+    expect(onToggleCategory).toHaveBeenLastCalledWith('work')
+  })
+
+  it('renders a collapsed category tooltip', () => {
+    const graph = new Graph()
+    graph.addNode('group:work', {
+      label: 'Work (3)',
+      nodeType: 'group',
+      tags: [],
+      memberCount: 3,
+      connectionCount: 1,
+      emoji: null,
+      isUnresolved: false
+    })
+
+    renderWithI18n(<GraphTooltip nodeId="group:work" graph={graph} x={0} y={0} />)
+
+    expect(screen.getByText('category')).toBeInTheDocument()
+    expect(screen.getByText('3 items')).toBeInTheDocument()
+    expect(screen.getByText('Click to expand')).toBeInTheDocument()
+  })
 })
