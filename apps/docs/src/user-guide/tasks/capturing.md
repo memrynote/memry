@@ -335,6 +335,9 @@ Some removals are not deletions and never ask:
 - **Cut** keeps the task, so pasting the line back finds it.
 - **Move to** another note moves the task with its line: it is linked to the new note instead.
 - **Emptying a task's title** and pressing <kbd>Backspace</kbd> deletes the task, as it always has.
+- **<kbd>Backspace</kbd> at the start of the line below a task** does not remove the task. The
+  cursor moves into the end of that task's title (the last subtask's, if it has any), so you keep
+  deleting characters of the title rather than the whole task.
 
 Deleting a whole note, several notes, or a folder works the same way. When the notes hold task
 lines, the delete dialog offers **Also delete the tasks inside**, unticked. Left unticked, the tasks
