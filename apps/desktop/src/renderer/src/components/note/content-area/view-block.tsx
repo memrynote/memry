@@ -15,6 +15,7 @@ import {
   serializeViewBlockDefinition,
   updateViewBlockDefinition,
   viewBlockScope,
+  type ParsedViewBlock,
   type ViewBlockDefinition,
   type ViewBlockLayout,
   type ViewBlockSource
@@ -40,6 +41,7 @@ import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { LayoutToggle } from '@/components/folder-view/layout-toggle'
 import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
 import { useFolderView, type NoteWithProperties } from '@/hooks/use-folder-view'
+import type { SidebarItem } from '@/contexts/tabs/types'
 import { useNoteFoldersQuery, useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { getViewDisplayName } from '@/lib/contract-display-names'
@@ -244,65 +246,194 @@ function SourcePicker({
   )
 }
 
+type DefinitionPatch = Partial<Record<keyof ViewBlockDefinition, unknown>>
+
 interface ViewBlockBodyProps {
   definition: ViewBlockDefinition
   editable: boolean
-  onChange: (patch: Partial<Record<keyof ViewBlockDefinition, unknown>>) => void
+  onChange: (patch: DefinitionPatch) => void
   sourceMenuOpen: boolean
 }
 
+type FolderViewResult = ReturnType<typeof useFolderView>
+
+/** The source's rows, narrowed by the block's own filters, order and limit. */
+function applyDefinition(
+  notes: NoteWithProperties[],
+  definition: ViewBlockDefinition,
+  activeView: FolderViewResult['activeView']
+): NoteWithProperties[] {
+  let matched = notes
+  const filters = definition.filters as FilterExpression | undefined
+  if (filters && !isFilterEmpty(filters)) {
+    try {
+      matched = matched.filter((note) => evaluateFilter(note, filters))
+    } catch (err) {
+      log.warn('View block filter failed; showing unfiltered rows', err)
+    }
+  }
+  const sorted = sortNotes(matched, definition.order ?? activeView?.order)
+  const limit = definition.limit ?? activeView?.limit
+  return limit ? sorted.slice(0, limit) : sorted
+}
+
+/** The folder or tag page this block reads, on the same saved view. */
+function sourcePageItem(definition: ViewBlockDefinition, vaultTitle: string): SidebarItem {
+  const viewState = definition.view ? { folderViewName: definition.view } : undefined
+  if (definition.source.kind === 'tag') {
+    const { tag, andTags } = definition.source
+    return {
+      type: 'tag',
+      title: tag,
+      path: '/tags/' + tag,
+      entityId: tag,
+      viewState: { ...viewState, ...(andTags?.length ? { tagAndTags: andTags } : {}) }
+    }
+  }
+  const path = definition.source.kind === 'folder' ? definition.source.path : ''
+  return {
+    type: 'folder',
+    title: sourceLabel(definition.source, vaultTitle),
+    icon: 'folder',
+    path: `/folder/${encodeURIComponent(path)}`,
+    entityId: path,
+    viewState
+  }
+}
+
 /**
- * The live list for one definition. Reads through the folder view's own hook,
- * so a view block is exactly as fresh as a folder tab: note, tag and property
- * changes invalidate the same query everywhere (`useFolderViewEvents`).
+ * A saved view on the source. Picking one clears the block's own layout,
+ * filters and order: the saved view brings its own, and the overrides would
+ * hide that the pick changed anything.
  */
-export function ViewBlockBody({
+function SavedViewPicker({
+  views,
+  selected,
+  activeName,
+  editable,
+  onChange
+}: {
+  views: FolderViewResult['views']
+  selected: string | undefined
+  activeName: string | undefined
+  editable: boolean
+  onChange: (patch: DefinitionPatch) => void
+}): React.JSX.Element {
+  const { t } = useT('notes')
+  const shown = selected ?? activeName
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={!editable}>
+        <button
+          type="button"
+          data-testid="view-block-saved-view"
+          aria-label={t('editor.viewBlock.savedView')}
+          className="inline-flex h-7 min-w-0 max-w-[160px] items-center gap-1 rounded-md px-1.5 text-[12px] text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-default disabled:hover:bg-transparent"
+        >
+          <span className="truncate">
+            {shown ? getViewDisplayName(shown) : t('editor.viewBlock.savedView')}
+          </span>
+          {editable ? <ChevronDown className="size-3 shrink-0" aria-hidden="true" /> : null}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+        {views.map((view) => (
+          <DropdownMenuItem
+            key={view.name}
+            className="gap-2"
+            onSelect={() =>
+              onChange({ view: view.name, layout: undefined, order: undefined, filters: undefined })
+            }
+          >
+            <span className="truncate">{getViewDisplayName(view.name)}</span>
+            {view.name === selected ? (
+              <Check className="ms-auto size-3.5 text-tint" aria-hidden="true" />
+            ) : null}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function ViewBlockHeader({
   definition,
   editable,
   onChange,
-  sourceMenuOpen
-}: ViewBlockBodyProps): React.JSX.Element {
+  sourceMenuOpen,
+  folderView,
+  layout
+}: ViewBlockBodyProps & { folderView: FolderViewResult; layout: ViewBlockLayout }) {
   const { t } = useT('notes')
   const { openSidebarItem } = useSidebarNavigation()
+  const { views, activeView, availableProperties, builtInColumns } = folderView
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-1 pb-1.5">
+      <SourcePicker
+        source={definition.source}
+        disabled={!editable}
+        defaultOpen={sourceMenuOpen}
+        onChange={(source) => onChange({ source, view: undefined })}
+      />
+      {views.length > 1 || definition.view ? (
+        <SavedViewPicker
+          views={views}
+          selected={definition.view}
+          activeName={activeView?.name}
+          editable={editable}
+          onChange={onChange}
+        />
+      ) : null}
+      <div className="grow" />
+      {editable ? (
+        <>
+          <FilterBuilder
+            filters={definition.filters as FilterExpression | undefined}
+            availableProperties={availableProperties}
+            builtInColumns={builtInColumns}
+            onFiltersChange={(filters) =>
+              onChange({ filters: filters && !isFilterEmpty(filters) ? filters : undefined })
+            }
+            className="h-7"
+          />
+          <LayoutToggle
+            value={layout}
+            onChange={(next) => onChange({ layout: next })}
+            className="h-7 [&>button]:h-6 [&>button]:w-6"
+          />
+        </>
+      ) : null}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-muted-foreground"
+        onClick={() =>
+          openSidebarItem(sourcePageItem(definition, t('editor.viewBlock.sourceVault')))
+        }
+      >
+        <ExternalLink />
+        {t('editor.viewBlock.openAsTab')}
+      </Button>
+    </div>
+  )
+}
+
+/** The rows in the block's layout, reusing the folder page's own views. */
+function ViewBlockRows({
+  rows,
+  layout,
+  order,
+  folderView
+}: {
+  rows: NoteWithProperties[]
+  layout: ViewBlockLayout
+  order: ViewBlockDefinition['order']
+  folderView: FolderViewResult
+}): React.JSX.Element {
+  const { openSidebarItem } = useSidebarNavigation()
   const { tags: allTags } = useNoteTagsQuery()
-  const scope = viewBlockScope(definition.source)
-  const {
-    views,
-    activeView,
-    notes,
-    unfilteredCount,
-    hasMore,
-    loadMore,
-    availableProperties,
-    builtInColumns,
-    formulasMap,
-    isLoading,
-    error,
-    folderNotFound
-  } = useFolderView({ scope, initialViewName: definition.view })
-
-  // A view is a query over the whole source, not over its first page.
-  useEffect(() => {
-    if (hasMore && unfilteredCount < MAX_ROWS_SCANNED) void loadMore()
-  }, [hasMore, unfilteredCount, loadMore])
-
-  const layout: ViewBlockLayout = definition.layout ?? activeView?.type ?? 'list'
-  const order = definition.order ?? activeView?.order
-
-  const rows = useMemo(() => {
-    let matched = notes
-    const filters = definition.filters as FilterExpression | undefined
-    if (filters && !isFilterEmpty(filters)) {
-      try {
-        matched = matched.filter((note) => evaluateFilter(note, filters))
-      } catch (err) {
-        log.warn('View block filter failed; showing unfiltered rows', err)
-      }
-    }
-    const sorted = sortNotes(matched, order)
-    const limit = definition.limit ?? activeView?.limit
-    return limit ? sorted.slice(0, limit) : sorted
-  }, [notes, definition.filters, definition.limit, activeView?.limit, order])
+  const { activeView, availableProperties, formulasMap } = folderView
 
   const tagMetaMap = useMemo<TagMetaMap>(() => {
     const map: TagMetaMap = new Map()
@@ -321,130 +452,86 @@ export function ViewBlockBody({
   }, [availableProperties])
 
   const rowById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows])
-  const openRow = (id: string, background: boolean): void => {
-    const row: NoteWithProperties | undefined = rowById.get(id)
-    if (!row) return
-    openSidebarItem(
-      sidebarItemForRow(row),
-      background ? { inNewTab: true, inBackground: true } : undefined
+  const open = (id: string): void => {
+    const row = rowById.get(id)
+    if (row) openSidebarItem(sidebarItemForRow(row), undefined)
+  }
+  const openInBackground = (id: string): void => {
+    const row = rowById.get(id)
+    if (row) openSidebarItem(sidebarItemForRow(row), { inNewTab: true, inBackground: true })
+  }
+
+  if (layout === 'table') {
+    return (
+      <FolderTableView
+        notes={rows}
+        columns={activeView?.columns ?? DEFAULT_COLUMNS}
+        formulas={formulasMap}
+        propertyTypes={propertyTypes}
+        initialSorting={order}
+        tagMetaMap={tagMetaMap}
+        onNoteOpen={open}
+        onOpenInNewTab={openInBackground}
+        onOpenInBackgroundTab={openInBackground}
+        density="compact"
+        className="max-h-[360px]"
+      />
     )
   }
-
-  const openAsTab = (): void => {
-    const viewState = definition.view ? { folderViewName: definition.view } : undefined
-    if (definition.source.kind === 'tag') {
-      const { tag, andTags } = definition.source
-      openSidebarItem({
-        type: 'tag',
-        title: tag,
-        path: '/tags/' + tag,
-        entityId: tag,
-        viewState: { ...viewState, ...(andTags?.length ? { tagAndTags: andTags } : {}) }
-      })
-      return
-    }
-    const path = definition.source.kind === 'folder' ? definition.source.path : ''
-    openSidebarItem({
-      type: 'folder',
-      title: sourceLabel(definition.source, t('editor.viewBlock.sourceVault')),
-      icon: 'folder',
-      path: `/folder/${encodeURIComponent(path)}`,
-      entityId: path,
-      viewState
-    })
+  if (layout === 'grid') {
+    return (
+      <FolderGalleryView
+        notes={rows}
+        tagMetaMap={tagMetaMap}
+        onNoteOpen={open}
+        onOpenInBackgroundTab={openInBackground}
+        className="h-auto max-h-[360px] p-1"
+      />
+    )
   }
+  return (
+    <FolderListView
+      notes={rows}
+      density="compact"
+      tagMetaMap={tagMetaMap}
+      onNoteOpen={open}
+      onOpenInBackgroundTab={openInBackground}
+      className="h-auto max-h-[360px]"
+    />
+  )
+}
 
+/**
+ * The live list for one definition. Reads through the folder view's own hook,
+ * so a view block is exactly as fresh as a folder tab: note, tag and property
+ * changes invalidate the same query everywhere (`useFolderViewEvents`).
+ */
+export function ViewBlockBody(props: ViewBlockBodyProps): React.JSX.Element {
+  const { definition } = props
+  const { t } = useT('notes')
+  const folderView = useFolderView({
+    scope: viewBlockScope(definition.source),
+    initialViewName: definition.view
+  })
+  const { views, activeView, notes, unfilteredCount, hasMore, loadMore, isLoading } = folderView
+
+  // A view is a query over the whole source, not over its first page.
+  useEffect(() => {
+    if (hasMore && unfilteredCount < MAX_ROWS_SCANNED) void loadMore()
+  }, [hasMore, unfilteredCount, loadMore])
+
+  const layout: ViewBlockLayout = definition.layout ?? activeView?.type ?? 'list'
+  const rows = useMemo(
+    () => applyDefinition(notes, definition, activeView),
+    [notes, definition, activeView]
+  )
   const savedViewMissing =
     !isLoading && definition.view !== undefined && !views.some((v) => v.name === definition.view)
 
-  const header = (
-    <div className="flex min-w-0 flex-wrap items-center gap-1 pb-1.5">
-      <SourcePicker
-        source={definition.source}
-        disabled={!editable}
-        defaultOpen={sourceMenuOpen}
-        onChange={(source) => onChange({ source, view: undefined })}
-      />
-      {views.length > 1 || definition.view ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild disabled={!editable}>
-            <button
-              type="button"
-              data-testid="view-block-saved-view"
-              aria-label={t('editor.viewBlock.savedView')}
-              className="inline-flex h-7 min-w-0 max-w-[160px] items-center gap-1 rounded-md px-1.5 text-[12px] text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-default disabled:hover:bg-transparent"
-            >
-              <span className="truncate">
-                {definition.view
-                  ? getViewDisplayName(definition.view)
-                  : activeView
-                    ? getViewDisplayName(activeView.name)
-                    : t('editor.viewBlock.savedView')}
-              </span>
-              {editable ? <ChevronDown className="size-3 shrink-0" aria-hidden="true" /> : null}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
-            {views.map((view) => (
-              <DropdownMenuItem
-                key={view.name}
-                className="gap-2"
-                onSelect={() =>
-                  // A saved view brings its own layout, filters and order;
-                  // the block's overrides would hide that it changed anything.
-                  onChange({
-                    view: view.name,
-                    layout: undefined,
-                    order: undefined,
-                    filters: undefined
-                  })
-                }
-              >
-                <span className="truncate">{getViewDisplayName(view.name)}</span>
-                {view.name === definition.view ? (
-                  <Check className="ms-auto size-3.5 text-tint" aria-hidden="true" />
-                ) : null}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
-      <div className="grow" />
-      {editable ? (
-        <FilterBuilder
-          filters={definition.filters as FilterExpression | undefined}
-          availableProperties={availableProperties}
-          builtInColumns={builtInColumns}
-          onFiltersChange={(filters) =>
-            onChange({ filters: filters && !isFilterEmpty(filters) ? filters : undefined })
-          }
-          className="h-7"
-        />
-      ) : null}
-      {editable ? (
-        <LayoutToggle
-          value={layout}
-          onChange={(next) => onChange({ layout: next })}
-          className="h-7 [&>button]:h-6 [&>button]:w-6"
-        />
-      ) : null}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 px-2 text-muted-foreground"
-        onClick={openAsTab}
-      >
-        <ExternalLink />
-        {t('editor.viewBlock.openAsTab')}
-      </Button>
-    </div>
-  )
-
   let body: React.ReactNode
-  if (folderNotFound) {
+  if (folderView.folderNotFound) {
     body = <ViewBlockNotice body={t('editor.viewBlock.folderMissing')} />
-  } else if (error) {
+  } else if (folderView.error) {
     body = <ViewBlockNotice body={t('editor.viewBlock.loadFailed')} destructive />
   } else if (isLoading) {
     body = (
@@ -456,48 +543,20 @@ export function ViewBlockBody({
     )
   } else if (rows.length === 0) {
     body = <ViewBlockNotice body={t('editor.viewBlock.empty')} />
-  } else if (layout === 'table') {
-    body = (
-      <FolderTableView
-        notes={rows}
-        columns={activeView?.columns ?? DEFAULT_COLUMNS}
-        formulas={formulasMap}
-        propertyTypes={propertyTypes}
-        initialSorting={order}
-        tagMetaMap={tagMetaMap}
-        onNoteOpen={(id) => openRow(id, false)}
-        onOpenInNewTab={(id) => openRow(id, true)}
-        onOpenInBackgroundTab={(id) => openRow(id, true)}
-        density="compact"
-        className="max-h-[360px]"
-      />
-    )
-  } else if (layout === 'grid') {
-    body = (
-      <FolderGalleryView
-        notes={rows}
-        tagMetaMap={tagMetaMap}
-        onNoteOpen={(id) => openRow(id, false)}
-        onOpenInBackgroundTab={(id) => openRow(id, true)}
-        className="h-auto max-h-[360px] p-1"
-      />
-    )
   } else {
     body = (
-      <FolderListView
-        notes={rows}
-        density="compact"
-        tagMetaMap={tagMetaMap}
-        onNoteOpen={(id) => openRow(id, false)}
-        onOpenInBackgroundTab={(id) => openRow(id, true)}
-        className="h-auto max-h-[360px]"
+      <ViewBlockRows
+        rows={rows}
+        layout={layout}
+        order={definition.order ?? activeView?.order}
+        folderView={folderView}
       />
     )
   }
 
   return (
     <>
-      {header}
+      <ViewBlockHeader {...props} folderView={folderView} layout={layout} />
       {savedViewMissing ? (
         <p className="pb-1 text-xs text-muted-foreground">
           {t('editor.viewBlock.savedViewMissing', { name: definition.view ?? '' })}
@@ -529,6 +588,49 @@ function ViewBlockNotice({
   )
 }
 
+/**
+ * The frame is not the node's content, but the node is a selectable
+ * textblock: ProseMirror answers a press anywhere in it by putting the caret
+ * in the (hidden) definition, where the next keystroke would edit JSON the
+ * reader cannot see. ProseMirror skips an event whose default is prevented
+ * (`eventBelongsToView`), so the frame claims its presses that way. Not by
+ * stopping propagation: React's handlers, the rows' middle-click among them,
+ * listen at the root and would never see the press. Native and on the frame,
+ * so it runs before ProseMirror's listener on the editor root.
+ */
+function useClaimPresses(frameRef: React.RefObject<HTMLDivElement | null>): void {
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+    const claim = (event: MouseEvent): void => event.preventDefault()
+    frame.addEventListener('mousedown', claim)
+    return () => frame.removeEventListener('mousedown', claim)
+  }, [frameRef])
+}
+
+/**
+ * The last definition that parsed, so hand-editing the JSON does not blank the
+ * list on every half-typed keystroke.
+ */
+function useLastGoodDefinition(parsed: ParsedViewBlock): ViewBlockDefinition | null {
+  const [lastGood, setLastGood] = useState<ViewBlockDefinition | null>(
+    parsed.ok ? parsed.definition : null
+  )
+  const [lastParsed, setLastParsed] = useState(parsed)
+  if (lastParsed !== parsed) {
+    setLastParsed(parsed)
+    if (parsed.ok) setLastGood(parsed.definition)
+  }
+  return lastGood
+}
+
+function problemMessage(parsed: ParsedViewBlock, t: (key: string) => string): string | null {
+  if (parsed.ok || parsed.reason === 'empty') return null
+  return parsed.reason === 'json'
+    ? t('editor.viewBlock.invalidJson')
+    : t('editor.viewBlock.invalidShape')
+}
+
 export function ViewBlockRenderer({
   block,
   editor,
@@ -550,32 +652,9 @@ export function ViewBlockRenderer({
     freshViewBlocks.delete(block.id)
   }, [block.id])
 
-  // The frame is not the node's content, but the node is a selectable
-  // textblock: ProseMirror answers a press anywhere in it by putting the caret
-  // in the (hidden) definition, where the next keystroke would edit JSON the
-  // reader cannot see. ProseMirror skips an event whose default is prevented
-  // (`eventBelongsToView`), so the frame claims its presses that way. Not by
-  // stopping propagation: React's handlers, the rows' middle-click among them,
-  // listen at the root and would never see the press. Native and on the frame,
-  // so it runs before ProseMirror's listener on the editor root.
-  useEffect(() => {
-    const frame = frameRef.current
-    if (!frame) return
-    const claim = (event: MouseEvent): void => event.preventDefault()
-    frame.addEventListener('mousedown', claim)
-    return () => frame.removeEventListener('mousedown', claim)
-  }, [])
+  useClaimPresses(frameRef)
 
-  // The last definition that parsed, so hand-editing the JSON does not blank
-  // the list on every half-typed keystroke.
-  const [lastGood, setLastGood] = useState<ViewBlockDefinition | null>(
-    parsed.ok ? parsed.definition : null
-  )
-  const [lastParsed, setLastParsed] = useState(parsed)
-  if (lastParsed !== parsed) {
-    setLastParsed(parsed)
-    if (parsed.ok) setLastGood(parsed.definition)
-  }
+  const lastGood = useLastGoodDefinition(parsed)
 
   const write = useCallback(
     (patch: Partial<Record<keyof ViewBlockDefinition, unknown>>) => {
@@ -600,12 +679,7 @@ export function ViewBlockRenderer({
   }
 
   const definition = parsed.ok ? parsed.definition : caretInside ? lastGood : null
-  const problem =
-    parsed.ok || parsed.reason === 'empty'
-      ? null
-      : parsed.reason === 'json'
-        ? t('editor.viewBlock.invalidJson')
-        : t('editor.viewBlock.invalidShape')
+  const problem = problemMessage(parsed, t)
   const showSource = caretInside || problem !== null
 
   return (
