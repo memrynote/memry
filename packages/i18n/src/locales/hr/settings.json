@@ -357,6 +357,7 @@
       "description": "Format naziva datoteke za dnevne bilješke (npr. YYYY-MM-DD dddd)",
       "label": "Format datuma",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Promjena formata preimenuje postojeće datoteke dnevnika. Datoteka čiji je novi naziv već zauzet ostaje nepromijenjena.",
       "tokensHelp": "Pomoć za format datuma",
       "tokensNote": "Ostali znakovi ostaju nepromijenjeni. Nazivi dana u tjednu uvijek su na engleskom.",
       "tokensTitle": "Oznake formata"

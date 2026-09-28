@@ -357,6 +357,7 @@
       "description": "Filnamnsformat för dagliga anteckningar (t.ex. YYYY-MM-DD dddd)",
       "label": "Datumformat",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Om du ändrar formatet byter befintliga journalfiler namn. En fil vars nya namn redan är upptaget lämnas som den är.",
       "tokensHelp": "Hjälp för datumformat",
       "tokensNote": "Övriga tecken behålls som de är. Veckodagarnas namn är alltid på engelska.",
       "tokensTitle": "Formatkoder"

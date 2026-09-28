@@ -88,6 +88,7 @@ describe('Journal settings — date format help', () => {
     expect(tooltip.textContent).toContain(`ddd${weekday.slice(0, 3)}`)
     expect(tooltip.textContent).toContain(`YYYY${new Date().getFullYear()}`)
     expect(tooltip.textContent).toContain('Weekday names are always in English.')
+    expect(tooltip.textContent).toContain('Changing the format renames existing journal files.')
   })
 })
 

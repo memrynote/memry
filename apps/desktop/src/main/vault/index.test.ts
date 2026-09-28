@@ -33,6 +33,9 @@ const mocks = vi.hoisted(() => ({
   indexVault: vi.fn(),
   startWatcher: vi.fn(),
   stopWatcher: vi.fn(),
+  watcherRunning: true,
+  flushPendingWritebacks: vi.fn(),
+  renameJournalsForFormatChange: vi.fn(),
   runMigrations: vi.fn(),
   runIndexMigrations: vi.fn(),
   initDatabase: vi.fn(),
@@ -165,7 +168,18 @@ vi.mock('../database/queries/settings', () => ({
 
 vi.mock('./watcher', () => ({
   startWatcher: (...args: unknown[]) => mocks.startWatcher(...args),
-  stopWatcher: (...args: unknown[]) => mocks.stopWatcher(...args)
+  stopWatcher: (...args: unknown[]) => mocks.stopWatcher(...args),
+  getWatcher: () => ({ isWatching: () => mocks.watcherRunning })
+}))
+
+vi.mock('./journal-format-migration', () => ({
+  renameJournalsForFormatChange: (...args: unknown[]) =>
+    mocks.renameJournalsForFormatChange(...args)
+}))
+
+vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args)
 }))
 
 vi.mock('./indexer', () => ({
@@ -966,6 +980,79 @@ describe('vault lifecycle', () => {
     await reindex()
     expect(mocks.indexVault).toHaveBeenCalledWith('/vault/config', { activity: 'scan' })
     expect(getStatus().indexProgress).toBe(100)
+  })
+
+  describe('journal date format change', () => {
+    // The journal-config holder is module state; hand the next test the config
+    // its fixture describes, not the format written here.
+    afterEach(() => {
+      const { journalDateFormat: _written, ...rest } = mocks.config as typeof mocks.config & {
+        journalDateFormat?: string
+      }
+      mocks.config = { ...rest, journalFolder: 'journal' }
+      getConfig()
+    })
+
+    it('renames journal files with the watcher off before writing a new date format', async () => {
+      await selectVault({ path: '/vault/config' })
+      vi.clearAllMocks()
+      mocks.watcherRunning = true
+
+      const order: string[] = []
+      mocks.flushPendingWritebacks.mockImplementation(async () => order.push('flush'))
+      mocks.stopWatcher.mockImplementation(async () => order.push('stop'))
+      mocks.renameJournalsForFormatChange.mockImplementation(async () => order.push('rename'))
+      mocks.writeVaultConfig.mockImplementation((_path, updates) => {
+        order.push('write')
+        mocks.config = { ...mocks.config, ...(updates as Partial<typeof mocks.config>) }
+      })
+      mocks.startWatcher.mockImplementation(async () => order.push('start'))
+      mocks.rebuildIndex.mockImplementation(async () => {
+        order.push('rebuild')
+        return { filesIndexed: 3, duration: 1 }
+      })
+
+      await updateConfig({ journalDateFormat: 'YYYY-MM-DD dddd' })
+
+      expect(mocks.renameJournalsForFormatChange).toHaveBeenCalledWith(
+        '/vault/config',
+        'journal',
+        undefined,
+        'YYYY-MM-DD dddd'
+      )
+      expect(order).toEqual(['flush', 'stop', 'rename', 'write', 'start', 'rebuild'])
+    })
+
+    it('leaves journal files alone when the format is unchanged or the folder moves too', async () => {
+      await selectVault({ path: '/vault/config' })
+      vi.clearAllMocks()
+
+      // Empty and explicit default are the same format.
+      await updateConfig({ journalDateFormat: 'YYYY-MM-DD' })
+      await updateConfig({ journalDateFormat: 'DD-MM-YYYY', journalFolder: 'diary' })
+
+      expect(mocks.renameJournalsForFormatChange).not.toHaveBeenCalled()
+      expect(mocks.stopWatcher).not.toHaveBeenCalled()
+    })
+
+    it('still writes the new format when renaming journal files throws', async () => {
+      await selectVault({ path: '/vault/config' })
+      vi.clearAllMocks()
+      mocks.watcherRunning = true
+      mocks.renameJournalsForFormatChange.mockRejectedValueOnce(new Error('EACCES'))
+
+      await updateConfig({ journalDateFormat: 'YYYY-MM-DD dddd' })
+
+      expect(mocks.writeVaultConfig).toHaveBeenCalledWith('/vault/config', {
+        journalDateFormat: 'YYYY-MM-DD dddd'
+      })
+      expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/config')
+      expect(mocks.trackMainError).toHaveBeenCalledWith(
+        'vault',
+        'journal_format_rename',
+        expect.any(Error)
+      )
+    })
   })
 
   it('#1079: drops cached vault config on vault open and on vault close', async () => {

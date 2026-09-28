@@ -547,6 +547,7 @@
       "label": "Date Format",
       "description": "Filename format for daily notes (e.g. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Changing the format renames existing journal files. A file whose new name is already taken is left as it is.",
       "tokensHelp": "Date format help",
       "tokensNote": "Other characters are kept as-is. Weekday names are always in English.",
       "tokensTitle": "Format tokens"

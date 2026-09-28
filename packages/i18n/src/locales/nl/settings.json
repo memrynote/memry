@@ -357,6 +357,7 @@
       "description": "Bestandsnaamnotatie voor dagelijkse notities (bijv. YYYY-MM-DD dddd)",
       "label": "Datumnotatie",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Als je de notatie wijzigt, worden bestaande dagboekbestanden hernoemd. Een bestand waarvan de nieuwe naam al bestaat, blijft ongewijzigd.",
       "tokensHelp": "Hulp bij datumnotatie",
       "tokensNote": "Andere tekens blijven ongewijzigd. Namen van weekdagen zijn altijd in het Engels.",
       "tokensTitle": "Notatiecodes"

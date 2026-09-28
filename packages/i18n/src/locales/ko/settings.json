@@ -357,6 +357,7 @@
       "description": "매일 노트의 파일 이름 형식 (예: YYYY-MM-DD dddd)",
       "label": "날짜 형식",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "형식을 바꾸면 기존 저널 파일의 이름이 바뀝니다. 새 이름이 이미 사용 중인 파일은 그대로 둡니다.",
       "tokensHelp": "날짜 형식 도움말",
       "tokensNote": "다른 문자는 그대로 유지됩니다. 요일 이름은 항상 영어입니다.",
       "tokensTitle": "형식 토큰"

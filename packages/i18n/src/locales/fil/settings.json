@@ -357,6 +357,7 @@
       "description": "Format ng filename para sa mga pang-araw-araw na tala (hal. YYYY-MM-DD dddd)",
       "label": "Format ng Petsa",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Pinapalitan ng pagbabago ng format ang pangalan ng mga kasalukuyang journal file. Hindi gagalawin ang file na ang bagong pangalan ay gamit na.",
       "tokensHelp": "Tulong sa format ng petsa",
       "tokensNote": "Nananatili ang ibang character. Laging nasa Ingles ang mga pangalan ng araw.",
       "tokensTitle": "Mga token ng format"

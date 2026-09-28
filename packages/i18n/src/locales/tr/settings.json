@@ -366,6 +366,7 @@
       "description": "Günlük notlar için dosya adı biçimi (örn. YYYY-MM-DD dddd)",
       "label": "Tarih Biçimi",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Biçimi değiştirmek mevcut günlük dosyalarını yeniden adlandırır. Yeni adı zaten kullanılan dosyaya dokunulmaz.",
       "tokensHelp": "Tarih biçimi yardımı",
       "tokensNote": "Diğer karakterler olduğu gibi kalır. Gün adları her zaman İngilizcedir.",
       "tokensTitle": "Biçim belirteçleri"

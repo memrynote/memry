@@ -297,6 +297,7 @@ export function JournalSettings() {
                     ))}
                   </dl>
                   <p className="mt-1.5 opacity-70">{t('journal.dateFormat.tokensNote')}</p>
+                  <p className="mt-1 opacity-70">{t('journal.dateFormat.renameNote')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

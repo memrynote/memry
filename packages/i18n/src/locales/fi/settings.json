@@ -357,6 +357,7 @@
       "description": "Päivittäisten muistiinpanojen tiedostonimen muoto (esim. YYYY-MM-DD dddd)",
       "label": "Päivämäärämuoto",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Muodon vaihtaminen nimeää olemassa olevat päiväkirjatiedostot uudelleen. Tiedosto, jonka uusi nimi on jo käytössä, jätetään ennalleen.",
       "tokensHelp": "Päivämäärämuodon ohje",
       "tokensNote": "Muut merkit säilyvät sellaisenaan. Viikonpäivien nimet ovat aina englanniksi.",
       "tokensTitle": "Muotomerkit"

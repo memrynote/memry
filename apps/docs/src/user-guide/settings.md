@@ -238,7 +238,7 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 | `DD` / `D`     | `05` / `5`         |
 | `dddd` / `ddd` | `Saturday` / `Sat` |
 
-Everything else is kept as-is, so `YYYY-MM-DD dddd` gives `2026-09-26 Saturday.md`. Weekday names are always English, whatever the app language, so filenames keep matching after a language change. A file only counts as a journal entry if its name matches the format; one whose weekday doesn't match its date (`2026-09-26 Friday.md`) stays a regular note. Changing the format doesn't rename existing files: entries saved under the old format keep their names and stop counting as journal entries until you rename them to the new format.
+Everything else is kept as-is, so `YYYY-MM-DD dddd` gives `2026-09-26 Saturday.md`. Weekday names are always English, whatever the app language, so filenames keep matching after a language change. A file only counts as a journal entry if its name matches the format; one whose weekday doesn't match its date (`2026-09-26 Friday.md`) stays a regular note. Changing the format renames the existing entries in the journal folder to match, so `2026-09-25.md` becomes `2026-09-25 Friday.md` and stays in your Journal. Only the filename changes: contents and sync are untouched, and other devices keep their own format. A file is never overwritten: if its new name is already taken it keeps its old name and shows up as a regular note. A format that leaves out the year, month or day renames nothing. Wiki links that point at an entry by its old filename are not rewritten.
 
 ### Default Template
 

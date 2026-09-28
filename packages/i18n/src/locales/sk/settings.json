@@ -357,6 +357,7 @@
       "description": "Formát názvu súboru pre denné poznámky (napr. YYYY-MM-DD dddd)",
       "label": "Formát dátumu",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Zmena formátu premenuje existujúce súbory denníka. Súbor, ktorého nový názov je už obsadený, zostane bez zmeny.",
       "tokensHelp": "Pomocník k formátu dátumu",
       "tokensNote": "Ostatné znaky zostávajú bez zmeny. Názvy dní v týždni sú vždy po anglicky.",
       "tokensTitle": "Zástupné znaky formátu"

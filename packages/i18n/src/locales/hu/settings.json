@@ -357,6 +357,7 @@
       "description": "A napi jegyzetek fájlnévformátuma (pl. YYYY-MM-DD dddd)",
       "label": "Dátumformátum",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "A formátum módosítása átnevezi a meglévő naplófájlokat. Az a fájl, amelynek új neve már foglalt, változatlan marad.",
       "tokensHelp": "Súgó a dátumformátumhoz",
       "tokensNote": "A többi karakter változatlan marad. A hét napjainak neve mindig angol.",
       "tokensTitle": "Formátumjelölők"

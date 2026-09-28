@@ -357,6 +357,7 @@
       "description": "每日笔记的文件名格式（例如 YYYY-MM-DD dddd）",
       "label": "日期格式",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "更改格式会重命名现有的日记文件。新名称已被占用的文件保持不变。",
       "tokensHelp": "日期格式帮助",
       "tokensNote": "其他字符保持不变。星期名称始终为英文。",
       "tokensTitle": "格式标记"

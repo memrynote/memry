@@ -357,6 +357,7 @@
       "description": "Format nazwy pliku codziennych notatek (np. YYYY-MM-DD dddd)",
       "label": "Format daty",
       "placeholder": "YYYY-MM-DD",
+      "renameNote": "Zmiana formatu zmienia nazwy istniejących plików dziennika. Plik, którego nowa nazwa jest już zajęta, pozostaje bez zmian.",
       "tokensHelp": "Pomoc dotycząca formatu daty",
       "tokensNote": "Pozostałe znaki są zachowywane bez zmian. Nazwy dni tygodnia są zawsze po angielsku.",
       "tokensTitle": "Znaczniki formatu"
