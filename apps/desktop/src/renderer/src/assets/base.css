@@ -247,6 +247,25 @@
   color: inherit !important;
 }
 
+/* The view block renders app UI (folder list/table/gallery, tag chips, the
+   filter button) inside the editor, where two unlayered BlockNote rules beat
+   Tailwind's layered utilities: `.bn-default-styles li` resets font-size and
+   padding (a TagChip is an <li>, so it grew to body size and lost its pill),
+   and `.bn-shadcn svg:not([class*=size-])` reverts icon sizes (the filter icon
+   is `h-3.5 w-3.5`, so it grew to 24px). `revert-layer` hands both back to the
+   utilities, so the block looks the way the same components do everywhere
+   else. */
+.bn-default-styles .memry-view-block :is(p, li, h1, h2, h3, h4, h5, h6) {
+  font-size: revert-layer;
+  margin: revert-layer;
+  padding: revert-layer;
+}
+
+.bn-shadcn .memry-view-block svg:not([class*='size-']) {
+  width: revert-layer;
+  height: revert-layer;
+}
+
 /* Code text size. A bare `font-family: monospace` with no explicit font-size
    makes browsers fall back to their own fixed default (~13px), unrelated to the
    editor's S/M/L setting. `0.875em` re-ties code to that setting and keeps it a
