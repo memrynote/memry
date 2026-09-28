@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import {
   existsSync,
   lstatSync,
@@ -175,8 +176,47 @@ export function assertEventKitHelperPlacement(context) {
   }
 }
 
+const MAC_CALENDAR_USAGE_KEYS = [
+  'NSCalendarsFullAccessUsageDescription',
+  'NSCalendarsUsageDescription'
+]
+
+/**
+ * Without a top-level calendar usage string, tccd refuses the EventKit request
+ * without showing a dialog and EventKit never answers, so "This Mac" hangs on
+ * Connecting. A `mac.extendInfo` written as a YAML list shipped exactly that.
+ * Info.plist is written before afterPack runs. Mac builds only run on macOS
+ * (Swift helper, signing), which is also where `plutil` exists.
+ */
+export function assertMacCalendarUsageStrings(context) {
+  if (context.electronPlatformName !== 'darwin' || process.platform !== 'darwin') return
+  const plistPath = join(
+    context.appOutDir,
+    `${context.packager.appInfo.productFilename}.app`,
+    'Contents',
+    'Info.plist'
+  )
+  const missing = MAC_CALENDAR_USAGE_KEYS.filter((key) => {
+    try {
+      const value = execFileSync('plutil', ['-extract', key, 'raw', '-o', '-', plistPath], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      })
+      return value.trim().length === 0
+    } catch {
+      return true
+    }
+  })
+  if (missing.length > 0) {
+    throw new Error(
+      `macOS Info.plist has no top-level ${missing.join(', ')} at ${plistPath}; check mac.extendInfo is a map`
+    )
+  }
+}
+
 export default async function prunePackagedApp(context) {
   assertEventKitHelperPlacement(context)
+  assertMacCalendarUsageStrings(context)
 
   const resourcesDir = resolve(getResourcesDir(context))
   const archName = resolveArchName(context.arch)
