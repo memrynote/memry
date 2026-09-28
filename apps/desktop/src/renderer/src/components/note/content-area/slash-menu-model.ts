@@ -68,6 +68,7 @@ const CATALOG: ReadonlyArray<readonly [SlashMenuGroupId, readonly string[]]> = [
       'math',
       'diagram',
       'whiteboard',
+      'view',
       'emoji',
       'insert_template'
     ]

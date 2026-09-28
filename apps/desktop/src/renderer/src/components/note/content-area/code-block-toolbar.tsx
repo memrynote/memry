@@ -4,6 +4,7 @@ import { Check, ChevronDown, Copy } from 'lucide-react'
 import { useBlockNoteEditor, useEditorSelectionChange } from '@blocknote/react'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { useT } from '@memry/i18n/renderer'
+import { VIEW_BLOCK_LANGUAGE } from '@memry/shared/view-block'
 
 /**
  * One toolbar in a code block's block-start / inline-end corner: the language
@@ -23,7 +24,10 @@ import { useT } from '@memry/i18n/renderer'
  * every user has, and without the second the picker is unreachable by keyboard.
  */
 
-const CODE_BLOCK_SELECTOR = '[data-content-type="codeBlock"]'
+// A `memry-view` code block is drawn as a live list (view-block.tsx) and has
+// its own header; a language picker on it would offer to turn the list into
+// code.
+const CODE_BLOCK_SELECTOR = `[data-content-type="codeBlock"]:not([data-language="${VIEW_BLOCK_LANGUAGE}"])`
 
 /** Marks the toolbar, so the pointer leaving the block for it is not "left". */
 const TOOLBAR_ATTR = 'data-memry-code-toolbar'
@@ -119,7 +123,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
 
   useEditorSelectionChange(() => {
     const caretBlock = editor.getTextCursorPosition().block
-    if (caretBlock.type !== 'codeBlock') {
+    if (caretBlock.type !== 'codeBlock' || caretBlock.props.language === VIEW_BLOCK_LANGUAGE) {
       setFocused(null)
       return
     }
