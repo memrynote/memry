@@ -428,6 +428,36 @@ describe('GraphCanvas', () => {
       expect(screen.queryByText(/menu (expand|collapse)/)).not.toBeInTheDocument()
     })
 
+    it('saves collapsed members with the layout and restores them from it', () => {
+      const onLayoutChange = vi.fn()
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{
+            ...settings,
+            layout: 'forceatlas2',
+            animateLayout: false,
+            showTagEdges: false
+          }}
+          viewState={{ colorBy: 'type', collapsedCategoryIds: ['alpha-cat'] }}
+          categoryIndex={categoryIndex}
+          savedLayout={{ 'note-a': { x: 7, y: 8, pinned: true }, 'note-b': { x: 1, y: 1 } }}
+          onLayoutChange={onLayoutChange}
+          onFocusNode={vi.fn()}
+        />
+      )
+      const graph = graphCanvasMocks.sigmaContainerProps?.graph
+      expect(graph.hasNode('note-a')).toBe(false)
+
+      // The settled layout covers only what is on screen; the folded member
+      // rides along from where it was saved.
+      const saved = onLayoutChange.mock.calls.at(-1)?.[0]
+      expect(saved['note-a']).toEqual({ x: 7, y: 8, pinned: true })
+      expect(saved['group:alpha-cat']).toBeDefined()
+      expect(saved['note-b']).toBeDefined()
+    })
+
     it('offers collapse on a node whose category is expanded', () => {
       render(
         <GraphCanvas

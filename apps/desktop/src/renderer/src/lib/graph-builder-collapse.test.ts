@@ -111,6 +111,24 @@ describe('collapsed tag categories', () => {
   })
 })
 
+describe('collapsed members and pins', () => {
+  it('keeps a pinned member pinned and in place across collapse and expand', () => {
+    const graph = buildGraphologyGraph(data, options([]))
+    const cache = createGraphPositionCache()
+    graph.mergeNodeAttributes('a', { x: 0, y: 0, pinned: true })
+    graph.mergeNodeAttributes('b', { x: 10, y: 20 })
+
+    syncGraphologyGraph(graph, data, options([work]), cache)
+    graph.mergeNodeAttributes(groupNodeId('work'), { x: 105, y: 10 })
+    syncGraphologyGraph(graph, data, options([]), cache)
+
+    // The pinned node stays exactly where the user put it; the other follows the group.
+    expect(graph.getNodeAttributes('a')).toMatchObject({ x: 0, y: 0, pinned: true })
+    expect(graph.getNodeAttributes('b')).toMatchObject({ x: 110, y: 20 })
+    expect(graph.getNodeAttribute('b', 'pinned')).toBeUndefined()
+  })
+})
+
 describe('graph categories', () => {
   const index = buildGraphCategoryIndex([
     { id: 'work', name: 'Work', tags: [{ tag: 'job' }] },

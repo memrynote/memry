@@ -330,10 +330,11 @@ opening it again brings back the same filters. A graph tab opened from scratch s
 whatever the last graph tab showed.
 
 The menu at the top of the gear panel saves the current arrangement as a named **view** —
-filters, colouring, collapsed categories, and layout together. Pick a view to switch to it.
+filters, colouring, and collapsed categories together. Pick a view to switch to it.
 When you change something after picking one, the menu marks it **Edited** and offers
 **Update** to overwrite it; the trash icon deletes a view. Saved views stay on the device
-they were made on and do not sync.
+they were made on and do not sync. Node positions and pins are not part of a view: every
+view shares the one saved arrangement.
 
 ### Tag categories
 
@@ -346,8 +347,9 @@ The **Tag categories** section uses the categories from the
 - The collapse button next to a category folds every note carrying one of its tags into a
   single node, sized by how many it holds and labelled with the count. Links from those
   notes to the rest of the graph are merged onto that node. Click the node (or right-click
-  → **Expand**) to open it again; its notes return to where they were. Right-clicking any
-  note in a category also offers **Collapse**.
+  → **Expand**) to open it again; its notes return to where they were, and pinned notes keep
+  their pin, including after a restart while collapsed. Right-clicking any note in a
+  category also offers **Collapse**.
 
 ### Local graph
 
