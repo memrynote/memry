@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -94,6 +95,7 @@ interface ViewBlockNode {
 
 interface ViewBlockEditor {
   isEditable: boolean
+  focus: () => void
   updateBlock: (block: string, update: { content: string }) => unknown
   getTextCursorPosition: () => { block: { id: string } }
   onSelectionChange: (callback: () => void) => () => void
@@ -125,7 +127,21 @@ function useCaretInBlock(editor: ViewBlockEditor, blockId: string): boolean {
     (onChange: () => void) => editor.onSelectionChange(onChange),
     [editor]
   )
-  return useSyncExternalStore(subscribe, read)
+  const inside = useSyncExternalStore(subscribe, read)
+
+  // The caret moves in while the definition is still `display: none`, so the
+  // DOM selection ProseMirror set in the same transaction has nowhere to go and
+  // the typed key would land nowhere. Once the definition is on screen, have
+  // ProseMirror write the selection to the DOM again. Only on the way in: a
+  // block that mounts with the caret already inside (a tab switch) must not
+  // take focus from wherever it is.
+  const wasInside = useRef(inside)
+  useLayoutEffect(() => {
+    if (inside && !wasInside.current) editor.focus()
+    wasInside.current = inside
+  }, [editor, inside])
+
+  return inside
 }
 
 function sourceLabel(source: ViewBlockSource, allNotesLabel: string): string {
