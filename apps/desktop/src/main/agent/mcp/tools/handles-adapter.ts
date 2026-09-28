@@ -35,6 +35,8 @@ import {
 import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
 import { AgentToolError } from '../errors'
+import { saveAttachment } from '../../../vault/attachments'
+import { serializeFileBlockMarker } from '../../../import/_shared/attachment-markdown'
 import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
@@ -291,6 +293,21 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!sameTagList(note.tags, updated.tags)) {
           replaceNoteTagsInCrdt(input.id, updated.tags)
         }
+      },
+      async saveHtmlAttachment({ id, title, html }) {
+        const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
+        if (fileType !== 'markdown') {
+          throw new AgentToolError(
+            'VALIDATION',
+            `Note ${id} is a filed ${fileType} file, not a markdown note.`,
+            { id, file_type: fileType }
+          )
+        }
+        const result = await saveAttachment(id, Buffer.from(html, 'utf8'), `${title}.html`)
+        if (!result.success || !result.path) {
+          throw new Error(result.error ?? 'Failed to save HTML artifact')
+        }
+        return { marker: serializeFileBlockMarker(result), url: result.path }
       },
       async addTag({ id, tag }) {
         const note = await getNoteById(id)

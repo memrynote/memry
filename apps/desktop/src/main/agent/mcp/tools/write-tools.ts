@@ -541,6 +541,24 @@ export function buildWriteTools(
         return { id: args.id }
       }
     },
+    vault_add_html_artifact: {
+      name: 'vault_add_html_artifact',
+      description: TOOL_SCHEMAS.vault_add_html_artifact.description,
+      inputSchema: TOOL_SCHEMAS.vault_add_html_artifact.input,
+      handler: async (input, ctx) => {
+        const parsed = parse<{ id: string; title: string; html: string }>(
+          TOOL_SCHEMAS.vault_add_html_artifact.input,
+          input
+        )
+        const args = await approvedArgs(gate, 'vault_add_html_artifact', parsed, ctx)
+        // Save first: if the note turns out not to be writable the attachment is
+        // an unreferenced file, which is harmless; the reverse order would leave
+        // a block pointing at nothing.
+        const { marker, url } = await handles.notes.saveHtmlAttachment(args)
+        await handles.notes.update({ id: args.id, mode: 'append', content_markdown: marker })
+        return { id: args.id, url }
+      }
+    },
     vault_update_task: {
       name: 'vault_update_task',
       description: TOOL_SCHEMAS.vault_update_task.description,
