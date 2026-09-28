@@ -271,6 +271,32 @@ The sidebar **Graph** entry opens a force-directed map of your notes and the lin
 - Drag a node to pull it around — linked notes follow it, and the graph settles again when you let go.
 - A node you drag stays where you drop it. Pinned nodes carry a thin ring; right-click one → **Unpin** to let it drift back into the layout.
 
+### Editing From the Graph
+
+You can connect notes without leaving the graph:
+
+- **Link by dragging.** Hold <kbd>Alt</kbd> (<kbd>Option</kbd> on macOS) and drag from one
+  note onto another. A dashed line follows the pointer; releasing over a note adds that note
+  to the first note's `related` [relation property](/user-guide/notes/properties-tags#relation-properties),
+  and the edge appears right away. The note body is not touched. `related` is created the
+  first time you use it. If the note already has a `related` property holding something other
+  than note links, nothing is written and a message says so.
+- **Right-click a note** for **Link to…** (search the notes in the graph and pick one) and
+  **Add tag…** (pick a tag already in use, or type a new one). A new tag recolours and
+  refilters the graph like any other tag change.
+- **Remove a relation link** from the same menu: every relation edge on the note, in either
+  direction, is listed as **Remove link to …**. Removing one takes that note out of every
+  relation property on the linking note. Wiki links are not listed, since they live in the
+  note text; open the note to change them.
+
+Each edit shows a short message with **Undo**. Undo reverses only that edit and keeps
+anything you changed in the note since.
+
+These edits work between notes only. Journal entries, tasks, projects, tag nodes, and
+not-yet-created notes cannot be edited from the graph; to link a note to a journal entry or
+a task, use the relation property in the note's properties panel. The local graph panel
+inside a note is view-only.
+
 The layout is a live simulation: it arranges itself when the view opens, comes to rest on
 its own, and wakes up again whenever you drag something. Where everything came to rest,
 pins included, is saved, so the graph reopens the way you left it, including after a restart.

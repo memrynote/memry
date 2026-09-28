@@ -7,7 +7,6 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import type { SettingsSyncPayload } from '@memry/contracts/settings-sync'
-import { initCrypto } from '../crypto/index'
 import { encryptItemForPush } from './encrypt'
 import { decryptItemFromPull } from './decrypt'
 import type { DecryptItemInput } from './decrypt'
@@ -15,7 +14,7 @@ import { SyncQueueManager } from '@memry/sync-client/queue'
 import { SettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 
 beforeAll(async () => {
-  await initCrypto()
+  await sodium.ready
 })
 
 describe('SettingsSyncManager', () => {
@@ -86,7 +85,7 @@ describe('SettingsSyncManager', () => {
         settings: { general: { theme: 'light' } },
         fieldClocks: { 'general.theme': { 'device-A': 5 } }
       }
-      manager.mergeRemote(remote, 'device-B')
+      manager.mergeRemote(remote)
 
       // #then
       const payload = manager.getPayload()
@@ -106,7 +105,7 @@ describe('SettingsSyncManager', () => {
         settings: { general: { theme: 'light' } },
         fieldClocks: { 'general.theme': { 'device-A': 1 } }
       }
-      manager.mergeRemote(remote, 'device-B')
+      manager.mergeRemote(remote)
 
       // #then
       const payload = manager.getPayload()
@@ -125,7 +124,7 @@ describe('SettingsSyncManager', () => {
       }
 
       // #when
-      manager.mergeRemote(remote, 'device-B')
+      manager.mergeRemote(remote)
 
       // #then — both fields present
       const payload = manager.getPayload()
@@ -144,7 +143,7 @@ describe('SettingsSyncManager', () => {
       }
 
       // #when
-      manager.mergeRemote(remote, 'device-B')
+      manager.mergeRemote(remote)
 
       // #then remote wins (tick 2 > tick 1), clocks merged
       const payload = manager.getPayload()
@@ -166,7 +165,7 @@ describe('SettingsSyncManager', () => {
       }
 
       // #when
-      manager.mergeRemote(remote, 'device-B')
+      manager.mergeRemote(remote)
 
       // #then local wins (tick 3 > tick 1), clocks merged
       const payload = manager.getPayload()

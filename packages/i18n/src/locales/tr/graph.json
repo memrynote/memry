@@ -67,6 +67,14 @@
     "open-new-tab": "Yeni sekmede aç",
     "create-note": "Not oluştur",
     "copy-title": "Başlığı kopyala",
+    "link-to": "Bağlantı ekle…",
+    "add-tag": "Etiket ekle…",
+    "back": "Geri",
+    "link-search": "Not ara…",
+    "tag-search": "Etiket ara veya oluştur…",
+    "no-matches": "Eşleşme yok",
+    "create-tag": "#{tag} oluştur",
+    "remove-link": "{title} bağlantısını kaldır",
     "unpin": "Sabitlemeyi kaldır"
   },
   "tooltip": {
@@ -78,6 +86,19 @@
     "empty": "Bağlantı bulunamadı",
     "open-full": "Grafiğin tamamını aç",
     "close": "Grafiği kapat"
+  },
+  "edit": {
+    "linked": "{source}, \"{property}\" içinde {target} notuna bağlandı",
+    "unlinked": "{source} ile {target} arasındaki bağlantı kaldırıldı",
+    "already-linked": "{source} zaten {target} notuna bağlı",
+    "property-conflict": "Bu nottaki \"{property}\" bir ilişki özelliği değil, bağlantı eklenmedi",
+    "link-unsupported": "Bağlantılar yalnızca notlar arasında kurulabilir",
+    "link-failed": "Bağlantı eklenemedi",
+    "unlink-failed": "Bağlantı kaldırılamadı",
+    "tag-added": "#{tag} etiketi {note} notuna eklendi",
+    "tag-exists": "Bu notta zaten #{tag} var",
+    "tag-failed": "Etiket eklenemedi",
+    "undo-failed": "Değişiklik geri alınamadı"
   },
   "relayout-confirm": {
     "title": "Grafik yeniden yerleştirilsin mi?",

@@ -71,7 +71,3 @@ export const constantTimeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   }
   return sodium.memcmp(a, b)
 }
-
-export const initCrypto = async (): Promise<void> => {
-  await sodium.ready
-}

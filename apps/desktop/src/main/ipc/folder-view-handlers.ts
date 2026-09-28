@@ -347,7 +347,10 @@ export function registerFolderViewHandlers(): void {
             wordCount: 0,
             properties: propertiesMap.get(item.id) ?? {},
             kind: item.kind,
-            fileType: 'markdown'
+            // A tagged PDF/image is a note row too; its real type keeps its
+            // metadata cells read-only (#2073) and lets the canvas card it as
+            // a file rather than a note (#2484).
+            fileType: item.fileType
           }))
 
           const page = rows.slice(input.offset, input.offset + input.limit)

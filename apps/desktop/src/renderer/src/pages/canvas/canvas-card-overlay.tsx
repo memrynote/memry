@@ -43,7 +43,7 @@ import {
   isEditableInPlace,
   makeCardSkeleton,
   overlayTransform,
-  readCanvasDragItem,
+  readCanvasDragItems,
   sameMembership,
   viewportSceneRect,
   CANVAS_ITEM_DRAG_MIME,
@@ -62,6 +62,7 @@ import { noteCardClaims } from './canvas-note-lock'
 import { useNoteEditLock, lockReasonForCard } from './use-note-edit-lock'
 import { CanvasAddCardDialog } from './canvas-add-card-dialog'
 import { onCanvasKeys, revealScroll } from './canvas-add-card'
+import { planBatchPlacement, splitNewRefs } from './canvas-bulk-add'
 
 const log = createLogger('SpatialCanvas')
 
@@ -371,6 +372,64 @@ export const CanvasCardLayer = ({
   )
 
   /**
+   * Inserts cards at the given centres in ONE scene update, so one undo step
+   * takes the whole batch back off the board. With `select`, the new cards
+   * come back selected: a batch the user did not place by hand is one drag
+   * away from wherever they want it.
+   */
+  const insertCards = useCallback(
+    (
+      refs: readonly CanvasEntityRef[],
+      centers: readonly { x: number; y: number }[],
+      sizes: readonly { width: number; height: number }[],
+      select: boolean
+    ): ReturnType<typeof convertToExcalidrawElements> => {
+      const existing = excalidrawAPI.getSceneElementsIncludingDeleted()
+      const skeletons = refs.map((ref, index) =>
+        makeCardSkeleton({
+          entityType: ref.entityType,
+          entityId: ref.entityId,
+          centerX: centers[index].x,
+          centerY: centers[index].y,
+          width: sizes[index].width,
+          height: sizes[index].height
+        })
+      )
+      const created = convertToExcalidrawElements(
+        skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0]
+      )
+      excalidrawAPI.updateScene({
+        elements: [...existing, ...created],
+        ...(select
+          ? {
+              appState: {
+                selectedElementIds: Object.fromEntries(
+                  created.map((element) => [element.id, true as const])
+                )
+              }
+            }
+          : {}),
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      // Every UI placement path (add-card picker, bulk add, dnd drop, HTML5
+      // drop, create-note) funnels through here, so this is the one choke
+      // point for the created → opened → carded funnel.
+      for (const ref of refs) {
+        void trackTelemetry('canvas_card_added', {
+          surface: 'canvas',
+          action: 'added',
+          objectType: ref.entityType,
+          result: 'success'
+        })
+      }
+      onSceneMutated()
+      recompute()
+      return created
+    },
+    [excalidrawAPI, onSceneMutated, recompute]
+  )
+
+  /**
    * Cards for one or more entities in a single scene update. The first lands
    * exactly on (centerX, centerY) — the user picked that point by dropping
    * there — and each further card spirals out to the nearest free cell so a
@@ -393,8 +452,11 @@ export const CanvasCardLayer = ({
       // Occupancy grows as we place, so cards in the same drop avoid each other
       // and not just the cards that were already on the scene.
       const occupied = getCardRefs(existing as unknown as CardElement[])
-      const skeletons = refs.map((ref, index) => {
-        const size = sizes?.[index] ?? cardDefaultSize(ref.entityType)
+      const resolvedSizes = refs.map(
+        (ref, index) => sizes?.[index] ?? cardDefaultSize(ref.entityType)
+      )
+      const centers = refs.map((ref, index) => {
+        const size = resolvedSizes[index]
         const center =
           index === 0
             ? { x: centerX, y: centerY }
@@ -414,37 +476,56 @@ export const CanvasCardLayer = ({
           height: size.height,
           angle: 0
         })
-        return makeCardSkeleton({
-          entityType: ref.entityType,
-          entityId: ref.entityId,
-          centerX: center.x,
-          centerY: center.y,
-          width: size.width,
-          height: size.height
-        })
+        return center
       })
-      const created = convertToExcalidrawElements(
-        skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0]
-      )
-      excalidrawAPI.updateScene({
-        elements: [...existing, ...created],
-        captureUpdate: CaptureUpdateAction.IMMEDIATELY
-      })
-      // Every UI placement path (add-card picker, dnd drop, HTML5 drop,
-      // create-note) funnels through here, so this is the one choke point for
-      // the created → opened → carded funnel.
-      for (const ref of refs) {
-        void trackTelemetry('canvas_card_added', {
-          surface: 'canvas',
-          action: 'added',
-          objectType: ref.entityType,
-          result: 'success'
+      insertCards(refs, centers, resolvedSizes, false)
+    },
+    [excalidrawAPI, insertCards]
+  )
+
+  /**
+   * Many entities at once: every item of a tag, folder or saved view, or a
+   * multi-row drag out of one (#2484).
+   *
+   * Entities already on the board are skipped and counted, never duplicated:
+   * a canvas holds one card per entity so arrows never fragment. The rest go
+   * down as one grid in their incoming order, all at the compact card size —
+   * measuring every note body first would cost a read per card and leave a
+   * ragged wall of mixed sizes. `at` is a drop point; without one the grid
+   * takes the free spot nearest the viewport centre and the camera follows it
+   * (zooming out only, never in).
+   */
+  const placeBatch = useCallback(
+    (refs: readonly CanvasEntityRef[], at: { x: number; y: number } | null): void => {
+      const { cards, appState } = readScene()
+      const { fresh, skipped } = splitNewRefs(refs, onCanvasKeys(cards))
+      const tr = getI18n().getFixedT(null, 'common')
+      if (fresh.length === 0) {
+        toast(tr('canvas.card.bulkAllOnCanvas', { count: skipped }))
+        return
+      }
+      const sizes = fresh.map((ref) => cardDefaultSize(ref.entityType))
+      const rect = at
+        ? { minX: at.x, maxX: at.x, minY: at.y, maxY: at.y }
+        : viewportSceneRect(appState, {
+            width: clipRef.current?.clientWidth ?? 0,
+            height: clipRef.current?.clientHeight ?? 0
+          })
+      const created = insertCards(fresh, planBatchPlacement(sizes, cards, rect), sizes, true)
+      if (!at) {
+        excalidrawAPI.scrollToContent(created, {
+          fitToContent: true,
+          animate: true,
+          maxZoom: appState.zoom.value
         })
       }
-      onSceneMutated()
-      recompute()
+      toast.success(
+        skipped > 0
+          ? tr('canvas.card.bulkAddedSkipped', { count: fresh.length, skipped })
+          : tr('canvas.card.bulkAdded', { count: fresh.length })
+      )
     },
-    [excalidrawAPI, onSceneMutated, recompute]
+    [readScene, insertCards, excalidrawAPI]
   )
 
   const createCardElement = useCallback(
@@ -501,6 +582,13 @@ export const CanvasCardLayer = ({
         return
       }
       const pointer = pointerFromDragEnd(event.activatorEvent, event.delta)
+      if (refs.length > 1) {
+        placeBatch(
+          refs,
+          pointer ? viewportCoordsToSceneCoords(pointer, excalidrawAPI.getAppState()) : null
+        )
+        return
+      }
       if (!pointer) {
         // Keyboard sensor: there is no pointer to drop on, so fall back to the
         // automatic placement the Add-card picker uses.
@@ -538,8 +626,8 @@ export const CanvasCardLayer = ({
       if (!e.dataTransfer) {
         return
       }
-      const item = readCanvasDragItem((type) => e.dataTransfer!.getData(type))
-      if (!item) {
+      const items = readCanvasDragItems((type) => e.dataTransfer!.getData(type))
+      if (items.length === 0) {
         return
       }
       e.preventDefault()
@@ -550,7 +638,13 @@ export const CanvasCardLayer = ({
         appState
       )
       // The reads are async, but the drop point is not — capture it here.
-      void resolveDroppedRef(item).then(async (ref) => {
+      if (items.length > 1) {
+        void Promise.all(items.map(resolveDroppedRef)).then((refs) =>
+          placeBatch(refs, { x: scene.x, y: scene.y })
+        )
+        return
+      }
+      void resolveDroppedRef(items[0]).then(async (ref) => {
         const size = await resolveCardSize(ref.entityType, ref.entityId)
         createCardElement(ref.entityType, ref.entityId, scene.x, scene.y, size)
       })
@@ -671,6 +765,7 @@ export const CanvasCardLayer = ({
     wrapperRef,
     excalidrawAPI,
     createCardElement,
+    placeBatch,
     resolveCardSize,
     dispatchActive,
     redirect,
@@ -882,6 +977,7 @@ export const CanvasCardLayer = ({
         onCanvasKeys={addKeys}
         onCreateNote={(title) => void handleCreateNote(title)}
         onPick={(entityType, entityId) => void placeCard(entityType, entityId)}
+        onAddAll={(refs) => placeBatch(refs, null)}
         onReveal={handleReveal}
       />
     </>

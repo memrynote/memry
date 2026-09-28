@@ -69,6 +69,18 @@ function meanTopK(sims: number[]): number {
 }
 
 /**
+ * One candidate's score from the similarities of the notes that back it: the
+ * mean of its best few, discounted when only one or two notes agree. A cluster
+ * beats a single fluke, and volume alone cannot win. Shared with the note-side
+ * tag suggestions, which rank tags the same way folders are ranked here.
+ */
+export function corroboratedSimilarity(sims: number[]): number {
+  if (sims.length === 0) return 0
+  const corroboration = 1 - LONE_HIT_PENALTY / Math.min(sims.length, SUPPORT_CAP)
+  return meanTopK(sims) * corroboration
+}
+
+/**
  * Proper ancestor folders of `folder`, nearest first, excluding root ('').
  * 'a/b/c' → ['a/b', 'a']; 'recipes' → [] (its only ancestor is root).
  * Stopping before root keeps a flat vault from vacuuming all evidence into ''.
@@ -115,8 +127,7 @@ function aggregateSimilarity(hits: FolderHit[]): Map<string, SimAggregate> {
   const out = new Map<string, SimAggregate>()
   for (const [folder, list] of contribs) {
     const support = list.length
-    const corroboration = 1 - LONE_HIT_PENALTY / Math.min(support, SUPPORT_CAP)
-    const score = meanTopK(list.map((c) => c.similarity)) * corroboration
+    const score = corroboratedSimilarity(list.map((c) => c.similarity))
     const top = list.reduce((best, c) => (c.similarity > best.similarity ? c : best))
     out.set(folder, { score, support, topNoteTitle: top.noteTitle })
   }
