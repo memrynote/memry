@@ -546,7 +546,10 @@
     "dateFormat": {
       "label": "Date Format",
       "description": "Filename format for daily notes (e.g. YYYY-MM-DD dddd)",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Date format help",
+      "tokensNote": "Other characters are kept as-is. Weekday names are always in English.",
+      "tokensTitle": "Format tokens"
     },
     "preview": {
       "label": "Preview",

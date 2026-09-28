@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Dateinamenformat für tägliche Notizen (z. B. YYYY-MM-DD dddd)",
       "label": "Datumsformat",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Hilfe zum Datumsformat",
+      "tokensNote": "Andere Zeichen bleiben unverändert. Wochentagsnamen sind immer auf Englisch.",
+      "tokensTitle": "Formatplatzhalter"
     },
     "folder": {
       "description": "Ordner, in dem tägliche Notizen gespeichert werden",

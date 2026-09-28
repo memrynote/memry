@@ -229,7 +229,7 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 ### Location & Format
 
-**Journal Folder** is where daily notes are stored. **Date Format** sets their filename; **Preview** shows today's resulting path. Supported tokens:
+**Journal Folder** is where daily notes are stored. **Date Format** sets their filename; **Preview** shows today's resulting path, and the info icon next to the field lists the tokens with today's date rendered through each. Supported tokens:
 
 | Token          | Output             |
 | -------------- | ------------------ |
@@ -238,7 +238,7 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 | `DD` / `D`     | `05` / `5`         |
 | `dddd` / `ddd` | `Saturday` / `Sat` |
 
-Everything else is kept as-is, so `YYYY-MM-DD dddd` gives `2026-09-26 Saturday.md`. Weekday names are always English, whatever the app language, so filenames keep matching after a language change. A file only counts as a journal entry if its name matches the format; one whose weekday doesn't match its date (`2026-09-26 Friday.md`) stays a regular note. Changing the format doesn't rename existing files.
+Everything else is kept as-is, so `YYYY-MM-DD dddd` gives `2026-09-26 Saturday.md`. Weekday names are always English, whatever the app language, so filenames keep matching after a language change. A file only counts as a journal entry if its name matches the format; one whose weekday doesn't match its date (`2026-09-26 Friday.md`) stays a regular note. Changing the format doesn't rename existing files: entries saved under the old format keep their names and stop counting as journal entries until you rename them to the new format.
 
 ### Default Template
 

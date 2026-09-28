@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "日々のメモのファイル名の形式（例: YYYY-MM-DD dddd）",
       "label": "日付の形式",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "日付形式のヘルプ",
+      "tokensNote": "その他の文字はそのまま使われます。曜日名は常に英語です。",
+      "tokensTitle": "形式トークン"
     },
     "folder": {
       "description": "日々のメモが保存されるフォルダ",

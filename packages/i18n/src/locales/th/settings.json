@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "รูปแบบชื่อไฟล์สำหรับโน้ตรายวัน (เช่น YYYY-MM-DD dddd)",
       "label": "รูปแบบวันที่",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "ความช่วยเหลือเกี่ยวกับรูปแบบวันที่",
+      "tokensNote": "อักขระอื่นจะคงไว้ตามเดิม ชื่อวันในสัปดาห์เป็นภาษาอังกฤษเสมอ",
+      "tokensTitle": "โทเค็นรูปแบบ"
     },
     "folder": {
       "description": "โฟลเดอร์ที่เก็บโน้ตรายวัน",

@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Päivittäisten muistiinpanojen tiedostonimen muoto (esim. YYYY-MM-DD dddd)",
       "label": "Päivämäärämuoto",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Päivämäärämuodon ohje",
+      "tokensNote": "Muut merkit säilyvät sellaisenaan. Viikonpäivien nimet ovat aina englanniksi.",
+      "tokensTitle": "Muotomerkit"
     },
     "folder": {
       "description": "Kansio, johon päivittäiset muistiinpanot tallennetaan",

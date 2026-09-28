@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Formát názvu súboru pre denné poznámky (napr. YYYY-MM-DD dddd)",
       "label": "Formát dátumu",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Pomocník k formátu dátumu",
+      "tokensNote": "Ostatné znaky zostávajú bez zmeny. Názvy dní v týždni sú vždy po anglicky.",
+      "tokensTitle": "Zástupné znaky formátu"
     },
     "folder": {
       "description": "Priečinok, kde sa ukladajú denné poznámky",

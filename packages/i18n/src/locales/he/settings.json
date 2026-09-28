@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "פורמט שם הקובץ לפתקים יומיים (למשל YYYY-MM-DD dddd)",
       "label": "פורמט תאריך",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "עזרה לגבי תבנית התאריך",
+      "tokensNote": "שאר התווים נשמרים כפי שהם. שמות ימי השבוע תמיד באנגלית.",
+      "tokensTitle": "סימני תבנית"
     },
     "folder": {
       "description": "התיקייה שבה נשמרים הפתקים היומיים",

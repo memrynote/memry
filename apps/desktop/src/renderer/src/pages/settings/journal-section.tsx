@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
-import { Lock, ChevronDown, ChevronRight } from '@/lib/icons'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Lock, ChevronDown, ChevronRight, Info } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useVault } from '@/hooks/use-vault'
@@ -31,6 +32,10 @@ import {
 // Radix Select has no empty-string value, so "fall back to the default" needs a
 // sentinel. It is mapped to a stored `null` at the write boundary.
 const INHERIT_VALUE = '__inherit__'
+
+// Tokens understood by `formatJournalFilename`, shown in the Date Format help
+// tooltip with today's rendering of each.
+const DATE_FORMAT_TOKENS = ['YYYY', 'YY', 'MM', 'M', 'DD', 'D', 'dddd', 'ddd']
 
 export function JournalSettings() {
   const { t } = useT('settings')
@@ -268,13 +273,41 @@ export function JournalSettings() {
           label={t('journal.dateFormat.label')}
           description={t('journal.dateFormat.description')}
         >
-          <Input
-            value={journalDateFormat}
-            onChange={(e) => setJournalDateFormat(e.target.value)}
-            onBlur={handleJournalDateFormatBlur}
-            placeholder={t('journal.dateFormat.placeholder')}
-            className="h-7 w-40 font-mono text-xs/4"
-          />
+          <div className="flex items-center gap-1.5">
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={t('journal.dateFormat.tokensHelp')}
+                    data-testid="journal-date-format-help"
+                    className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Info className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="end" className="max-w-64 px-3 py-2">
+                  <p className="mb-1.5 font-medium">{t('journal.dateFormat.tokensTitle')}</p>
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono">
+                    {DATE_FORMAT_TOKENS.map((token) => (
+                      <Fragment key={token}>
+                        <dt>{token}</dt>
+                        <dd className="opacity-70">{formatJournalFilename(todayIso, token)}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                  <p className="mt-1.5 opacity-70">{t('journal.dateFormat.tokensNote')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Input
+              value={journalDateFormat}
+              onChange={(e) => setJournalDateFormat(e.target.value)}
+              onBlur={handleJournalDateFormatBlur}
+              placeholder={t('journal.dateFormat.placeholder')}
+              className="h-7 w-40 font-mono text-xs/4"
+            />
+          </div>
         </SettingRow>
 
         <SettingRowTall

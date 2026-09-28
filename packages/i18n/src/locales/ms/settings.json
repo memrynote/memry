@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Format nama fail untuk nota harian (cth. YYYY-MM-DD dddd)",
       "label": "Format Tarikh",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Bantuan format tarikh",
+      "tokensNote": "Aksara lain dikekalkan seperti asal. Nama hari sentiasa dalam bahasa Inggeris.",
+      "tokensTitle": "Token format"
     },
     "folder": {
       "description": "Folder tempat nota harian disimpan",

@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Format nazwy pliku codziennych notatek (np. YYYY-MM-DD dddd)",
       "label": "Format daty",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Pomoc dotycząca formatu daty",
+      "tokensNote": "Pozostałe znaki są zachowywane bez zmian. Nazwy dni tygodnia są zawsze po angielsku.",
+      "tokensTitle": "Znaczniki formatu"
     },
     "folder": {
       "description": "Folder, w którym przechowywane są codzienne notatki",

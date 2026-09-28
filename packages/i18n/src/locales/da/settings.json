@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Filnavnsformat for daglige noter (f.eks. YYYY-MM-DD dddd)",
       "label": "Datoformat",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Hjælp til datoformat",
+      "tokensNote": "Andre tegn bevares uændret. Ugedagsnavne er altid på engelsk.",
+      "tokensTitle": "Formatkoder"
     },
     "folder": {
       "description": "Mappe, hvor daglige noter gemmes",

@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Formato do nome de ficheiro das notas diárias (ex.: YYYY-MM-DD dddd)",
       "label": "Formato de data",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Ajuda do formato de data",
+      "tokensNote": "Os restantes caracteres mantêm-se. Os nomes dos dias da semana estão sempre em inglês.",
+      "tokensTitle": "Códigos de formato"
     },
     "folder": {
       "description": "Pasta onde as notas diárias são guardadas",

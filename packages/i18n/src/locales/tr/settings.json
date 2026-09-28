@@ -365,7 +365,10 @@
     "dateFormat": {
       "description": "Günlük notlar için dosya adı biçimi (örn. YYYY-MM-DD dddd)",
       "label": "Tarih Biçimi",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Tarih biçimi yardımı",
+      "tokensNote": "Diğer karakterler olduğu gibi kalır. Gün adları her zaman İngilizcedir.",
+      "tokensTitle": "Biçim belirteçleri"
     },
     "folder": {
       "description": "Günlük notların depolandığı klasör",

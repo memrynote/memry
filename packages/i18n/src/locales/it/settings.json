@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Formato del nome file per le note quotidiane (es. YYYY-MM-DD dddd)",
       "label": "Formato data",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Guida al formato data",
+      "tokensNote": "Gli altri caratteri restano invariati. I nomi dei giorni sono sempre in inglese.",
+      "tokensTitle": "Segnaposto del formato"
     },
     "folder": {
       "description": "Cartella in cui vengono archiviate le note quotidiane",

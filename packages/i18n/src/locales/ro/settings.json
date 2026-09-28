@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Formatul numelui de fișier pentru notițele zilnice (de ex. YYYY-MM-DD dddd)",
       "label": "Format dată",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Ajutor pentru formatul datei",
+      "tokensNote": "Celelalte caractere rămân neschimbate. Numele zilelor săptămânii sunt întotdeauna în engleză.",
+      "tokensTitle": "Simboluri de format"
     },
     "folder": {
       "description": "Dosarul în care sunt stocate notițele zilnice",

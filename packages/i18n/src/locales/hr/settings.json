@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Format naziva datoteke za dnevne bilješke (npr. YYYY-MM-DD dddd)",
       "label": "Format datuma",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Pomoć za format datuma",
+      "tokensNote": "Ostali znakovi ostaju nepromijenjeni. Nazivi dana u tjednu uvijek su na engleskom.",
+      "tokensTitle": "Oznake formata"
     },
     "folder": {
       "description": "Mapa u koju se spremaju dnevne bilješke",

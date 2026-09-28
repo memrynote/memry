@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Bestandsnaamnotatie voor dagelijkse notities (bijv. YYYY-MM-DD dddd)",
       "label": "Datumnotatie",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Hulp bij datumnotatie",
+      "tokensNote": "Andere tekens blijven ongewijzigd. Namen van weekdagen zijn altijd in het Engels.",
+      "tokensTitle": "Notatiecodes"
     },
     "folder": {
       "description": "Map waar dagelijkse notities worden opgeslagen",

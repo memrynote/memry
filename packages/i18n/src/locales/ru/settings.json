@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Формат имени файла для ежедневных заметок (напр. YYYY-MM-DD dddd)",
       "label": "Формат даты",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Справка по формату даты",
+      "tokensNote": "Остальные символы сохраняются как есть. Названия дней недели всегда на английском.",
+      "tokensTitle": "Токены формата"
     },
     "folder": {
       "description": "Папка, где хранятся ежедневные заметки",

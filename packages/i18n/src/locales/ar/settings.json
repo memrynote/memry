@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "تنسيق اسم الملف للملاحظات اليومية (مثل YYYY-MM-DD dddd)",
       "label": "تنسيق التاريخ",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "مساعدة حول تنسيق التاريخ",
+      "tokensNote": "تبقى الأحرف الأخرى كما هي. أسماء أيام الأسبوع دائمًا بالإنجليزية.",
+      "tokensTitle": "رموز التنسيق"
     },
     "folder": {
       "description": "المجلد الذي تُخزَّن فيه الملاحظات اليومية",

@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "每日笔记的文件名格式（例如 YYYY-MM-DD dddd）",
       "label": "日期格式",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "日期格式帮助",
+      "tokensNote": "其他字符保持不变。星期名称始终为英文。",
+      "tokensTitle": "格式标记"
     },
     "folder": {
       "description": "存储每日笔记的文件夹",

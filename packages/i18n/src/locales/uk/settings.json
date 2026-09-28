@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Формат назви файлу для щоденних нотаток (напр. YYYY-MM-DD dddd)",
       "label": "Формат дати",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Довідка щодо формату дати",
+      "tokensNote": "Інші символи залишаються без змін. Назви днів тижня завжди англійською.",
+      "tokensTitle": "Токени формату"
     },
     "folder": {
       "description": "Папка, де зберігаються щоденні нотатки",

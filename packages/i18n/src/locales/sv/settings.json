@@ -356,7 +356,10 @@
     "dateFormat": {
       "description": "Filnamnsformat för dagliga anteckningar (t.ex. YYYY-MM-DD dddd)",
       "label": "Datumformat",
-      "placeholder": "YYYY-MM-DD"
+      "placeholder": "YYYY-MM-DD",
+      "tokensHelp": "Hjälp för datumformat",
+      "tokensNote": "Övriga tecken behålls som de är. Veckodagarnas namn är alltid på engelska.",
+      "tokensTitle": "Formatkoder"
     },
     "folder": {
       "description": "Mapp där dagliga anteckningar lagras",
