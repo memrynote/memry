@@ -212,6 +212,11 @@ describe('syncReleaseDownloadCounts', () => {
       'MemryNote-1.0.0-arm64.zip',
       'MemryNote-1.0.0-win.zip',
       'MemryNote-1.0.0-setup.exe',
+      'MemryNote-win-Setup.exe',
+      'MemryNote-1.0.0-full.nupkg',
+      'MemryNote-1.0.0-delta.nupkg',
+      'releases.win.json',
+      'RELEASES',
       'MemryNote-1.0.0-amd64.deb',
       'MemryNote-1.0.0-x86_64.AppImage',
       'MemryNote-1.0.0-arm64.dmg.blockmap',
@@ -246,9 +251,42 @@ describe('syncReleaseDownloadCounts', () => {
       platform: 'macos',
       asset_kind: 'installer'
     })
-    expect(byName.get('MemryNote-1.0.0-arm64.zip')).toMatchObject({ platform: 'macos' })
-    expect(byName.get('MemryNote-1.0.0-win.zip')).toMatchObject({ platform: 'windows' })
-    expect(byName.get('MemryNote-1.0.0-setup.exe')).toMatchObject({ platform: 'windows' })
+    // The macOS zip is the Squirrel.Mac update payload; the landing site never links it.
+    expect(byName.get('MemryNote-1.0.0-arm64.zip')).toMatchObject({
+      platform: 'macos',
+      asset_kind: 'update_package'
+    })
+    // The Windows zip is a portable build a person downloads, not an update payload.
+    expect(byName.get('MemryNote-1.0.0-win.zip')).toMatchObject({
+      platform: 'windows',
+      asset_kind: 'installer'
+    })
+    expect(byName.get('MemryNote-1.0.0-setup.exe')).toMatchObject({
+      platform: 'windows',
+      asset_kind: 'installer'
+    })
+    expect(byName.get('MemryNote-win-Setup.exe')).toMatchObject({
+      platform: 'windows',
+      asset_kind: 'installer'
+    })
+    // Velopack's feed is polled by every Windows install on each update check; counting
+    // it as installer downloads once inflated a week's Windows total to ~7000.
+    expect(byName.get('releases.win.json')).toMatchObject({
+      platform: 'windows',
+      asset_kind: 'update_metadata'
+    })
+    expect(byName.get('RELEASES')).toMatchObject({
+      platform: 'windows',
+      asset_kind: 'update_metadata'
+    })
+    expect(byName.get('MemryNote-1.0.0-full.nupkg')).toMatchObject({
+      platform: 'windows',
+      asset_kind: 'update_package'
+    })
+    expect(byName.get('MemryNote-1.0.0-delta.nupkg')).toMatchObject({
+      platform: 'windows',
+      asset_kind: 'update_package'
+    })
     expect(byName.get('MemryNote-1.0.0-amd64.deb')).toMatchObject({ platform: 'linux' })
     expect(byName.get('MemryNote-1.0.0-x86_64.AppImage')).toMatchObject({ platform: 'linux' })
     expect(byName.get('MemryNote-1.0.0-arm64.dmg.blockmap')).toMatchObject({

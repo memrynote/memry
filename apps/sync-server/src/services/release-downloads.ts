@@ -78,15 +78,33 @@ interface AssetSnapshot {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
-// electron-builder publishes auto-update metadata (`latest*.yml`) and delta
-// `.blockmap` files as release assets. Every installed app polls those on its update
-// schedule, so counting them as downloads would swamp the number that matters.
-const assetKind = (name: string): string =>
-  /\.(?:blockmap|ya?ml)$/i.test(name) ? 'update_metadata' : 'installer'
+// Velopack's Windows update feed: `releases.<channel>.json` plus the legacy `RELEASES`.
+const VELOPACK_FEED = /^(?:releases|releases\.[\w-]+\.json)$/i
+
+// Some release assets are only ever fetched by the auto-updater. The landing site never
+// links to them (apps/landing/api/download.ts), so a count on one is an installed app
+// updating itself, not a new user, and counting it as a download swamps the real number:
+// - `update_metadata`: what every install polls on its update schedule — electron-builder's
+//   `latest*.yml` and `.blockmap` diffs, and the Velopack feed.
+// - `update_package`: the payload an update then downloads — Velopack `.nupkg` and the
+//   macOS `.zip` Squirrel.Mac installs from. The Windows `-win.zip` is a portable build,
+//   not an update payload.
+// `-setup.exe` and `.AppImage` stay `installer` even though electron-updater also fetches
+// them on NSIS and AppImage installs: the filename cannot tell those two apart.
+const assetKind = (name: string): string => {
+  if (/\.(?:blockmap|ya?ml)$/i.test(name) || VELOPACK_FEED.test(name)) return 'update_metadata'
+  if (/\.nupkg$/i.test(name) || (/\.zip$/i.test(name) && !/-win\.zip$/i.test(name))) {
+    return 'update_package'
+  }
+  return 'installer'
+}
 
 const platformOf = (name: string): string => {
   const base = name.replace(/\.blockmap$/i, '').toLowerCase()
-  if (/\.(?:exe|msi|appx)$/.test(base) || base.includes('win')) return 'windows'
+  // Velopack ships Windows only; `RELEASES` and `.nupkg` carry no platform in the name.
+  if (VELOPACK_FEED.test(base) || /\.(?:exe|msi|appx|nupkg)$/.test(base) || base.includes('win')) {
+    return 'windows'
+  }
   if (/\.dmg$/.test(base) || base.includes('mac') || base.includes('darwin')) return 'macos'
   if (/\.(?:deb|rpm|appimage|snap|tar\.gz|tar\.xz)$/.test(base) || base.includes('linux')) {
     return 'linux'

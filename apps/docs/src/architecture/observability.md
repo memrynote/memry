@@ -740,13 +740,27 @@ so — as everywhere else — an insight that does not filter `environment` blen
 | `release_tag`          | Release the asset belongs to (`v2026-08-06`)                         |
 | `asset_name`           | Published filename                                                   |
 | `platform`             | `macos` / `windows` / `linux` / `unknown`, derived from the filename |
-| `asset_kind`           | `installer`, or `update_metadata` for `latest*.yml` and `.blockmap`  |
+| `asset_kind`           | `installer`, `update_metadata`, or `update_package` (see below)      |
 | `downloads`            | **The delta** — sum this, never `cumulative_downloads`               |
 | `cumulative_downloads` | Total GitHub reported at pull time, for context only                 |
 
-`asset_kind` is load-bearing: every installed app polls `latest*.yml` and fetches `.blockmap`
-deltas on its update schedule, so counting those as downloads would swamp the number that
-matters. Filter to `asset_kind = 'installer'` for real downloads.
+`asset_kind` is load-bearing. Some assets are only ever fetched by the auto-updater. The landing
+site never links to them (`apps/landing/api/download.ts`), so every count on one is an installed
+app updating itself, and counting it as a download swamps the number that matters:
+
+| `asset_kind`      | Assets                                                                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `update_metadata` | Polled on every update check: electron-builder `latest*.yml` and `.blockmap`, Velopack `releases.<channel>.json` and legacy `RELEASES` |
+| `update_package`  | Downloaded when an update applies: Velopack `.nupkg`, and the macOS `.zip` Squirrel.Mac installs from                                  |
+| `installer`       | Everything else: `.dmg`, `-setup.exe`, `MemryNote-win-Setup.exe`, `.AppImage`, `.deb`, the portable `-win.zip`                         |
+
+Filter to `asset_kind = 'installer'` for real downloads. Two caveats remain. `-setup.exe` and
+`.AppImage` are also fetched by electron-updater on NSIS and AppImage installs, and the filename
+cannot tell the two apart, so `installer` still carries some update traffic. And until 2026-09-28
+the Velopack feed, `.nupkg`, and the macOS `.zip` were all labelled `installer` (Velopack assets
+also `platform: unknown` for `RELEASES` and `.nupkg`). `releases.win.json` alone put ~7,000
+phantom Windows "downloads" into the week of 2026-09-21. Queries spanning that cutover must
+classify by `asset_name`, not `asset_kind`.
 
 **Downloads cannot be joined to activation.** An anonymous downloader and a desktop install share
 no key. The funnel only works for people who sign up on the landing site _and_ sign in on the
