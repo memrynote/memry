@@ -135,57 +135,9 @@ struct NoteTitleEditor: View {
             }
         }
         .sheet(isPresented: $pickingIcon) {
-            NoteIconPicker(current: icon) { chosen in
+            EmojiPickerSheet(current: icon) { chosen in
                 setIcon(chosen)
                 pickingIcon = false
-            }
-        }
-    }
-}
-
-/// Emoji and SF Symbol names, which is what the field can hold.
-///
-/// The payload spells the field `emoji` and nothing restricts it to one, so a
-/// symbol name is offered too — a note about a file is better served by a
-/// document glyph than by an approximation in emoji.
-struct NoteIconPicker: View {
-    let current: String?
-    let choose: (String?) -> Void
-
-    private static let emoji = [
-        "📝", "🌱", "📌", "⭐️", "🔖", "💡", "📦", "🗂", "🧭", "🔬",
-        "🎯", "🛠", "📚", "✈️", "🍎", "🎵", "💬", "⏳", "🔒", "🏷",
-    ]
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVGrid(
-                    columns: Array(
-                        repeating: GridItem(.flexible()),
-                        count: 5
-                    ),
-                    spacing: Tokens.Space.medium
-                ) {
-                    ForEach(Self.emoji, id: \.self) { symbol in
-                        Button {
-                            choose(symbol)
-                        } label: {
-                            Text(symbol).font(Tokens.Typography.sectionTitle.font)
-                        }
-                        .accessibilityLabel(symbol)
-                    }
-                }
-                .padding(Tokens.Space.screenInline)
-            }
-            .navigationTitle("Icon")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    // Clearing is the action a grid usually hides, and it is
-                    // the one a user most often wants back.
-                    Button("Remove") { choose(nil) }
-                        .disabled(current == nil)
-                }
             }
         }
     }

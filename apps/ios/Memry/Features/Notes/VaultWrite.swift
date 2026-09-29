@@ -45,6 +45,9 @@ protocol NotesWriting: Sendable {
     func snoozeReminder(id: String, until: String) async throws
     /// Creates a `folder_config` at `path` (N806). A path is a folder's id.
     func createFolder(path: String) async throws
+    /// Sets a folder's icon, or clears it with `nil`. A folder that only exists
+    /// because a note names it gets its `folder_config` created.
+    func setFolderIcon(path: String, icon: String?) async throws
     /// Renames a folder in place; its notes and subfolders follow the path.
     func renameFolder(path: String, newName: String) async throws
     /// Moves a folder under `newParent`, or to the vault root with `nil`.
@@ -119,6 +122,10 @@ struct CoreNotesWriter: NotesWriting {
 
     func createFolder(path: String) async throws {
         try await executor.run { try writer().createFolder(path: path, icon: nil) }
+    }
+
+    func setFolderIcon(path: String, icon: String?) async throws {
+        try await executor.run { try writer().setFolderIcon(path: path, icon: icon) }
     }
 
     func renameFolder(path: String, newName: String) async throws {
@@ -232,6 +239,17 @@ extension VaultBrowseViewModel {
         } catch {
             report(error, "a folder could not be created")
             return nil
+        }
+    }
+
+    /// Sets or clears a folder's icon from its row. `nil` clears.
+    func setFolderIcon(path: String, to icon: String?) async {
+        guard let writer else { return }
+        do {
+            try await writer.setFolderIcon(path: path, icon: icon)
+            await reload()
+        } catch {
+            report(error, "a folder icon could not be set")
         }
     }
 

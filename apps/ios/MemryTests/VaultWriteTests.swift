@@ -23,6 +23,7 @@ struct VaultWriteTests {
             case delete(String)
             case createFolder(String)
             case renameFolder(String, String)
+            case setFolderIcon(String, String?)
             case moveFolder(String, String?)
             case deleteFolder(String)
         }
@@ -48,6 +49,9 @@ struct VaultWriteTests {
         func move(id: String, folderPath: String?) async throws { try record(.move(id, folderPath)) }
         func delete(id: String) async throws { try record(.delete(id)) }
         func createFolder(path: String) async throws { try record(.createFolder(path)) }
+        func setFolderIcon(path: String, icon: String?) async throws {
+            try record(.setFolderIcon(path, icon))
+        }
         func renameFolder(path: String, newName: String) async throws {
             try record(.renameFolder(path, newName))
         }
@@ -182,6 +186,18 @@ struct VaultWriteTests {
         await model.createFolder(named: "   ", in: nil)
 
         #expect(writer.calls.withLock { $0 } == [.createFolder("Work/Ideas")])
+    }
+
+    @Test("a folder icon is set and cleared through the writer")
+    func folderIcon() async {
+        let writer = ScriptedWriter()
+        let model = model(writer: writer, reader: TreeReader())
+        await model.loadIfNeeded()
+
+        await model.setFolderIcon(path: "Work", to: "📚")
+        await model.setFolderIcon(path: "Work", to: nil)
+
+        #expect(writer.calls.withLock { $0 } == [.setFolderIcon("Work", "📚"), .setFolderIcon("Work", nil)])
     }
 
     @Test("the move to the vault root travels as the root, not as a folder named for it")

@@ -329,3 +329,39 @@ fn a_folder_re_created_at_a_deleted_path_succeeds_and_is_after_its_tombstone() {
     })
     .expect("re-create");
 }
+
+#[test]
+fn setting_a_folder_icon_edits_in_place_creates_when_missing_and_clears_with_null() {
+    let db = open("folders-icon");
+    db.call_blocking(|conn| {
+        // No folder_config yet: the icon creates one.
+        note_in(conn, "note1", "Inbox")?;
+        folders::set_icon(conn, "Inbox", Some("📚"), DEVICE, NOW)?.acknowledge();
+        assert_eq!(
+            payload_of(conn, "folder_config", "Inbox")["icon"],
+            json!("📚")
+        );
+
+        // A config that exists is edited, keeping its clock lineage and unknown keys.
+        folders::create(conn, "Notes", None, DEVICE, NOW)?.acknowledge();
+        folders::set_icon(conn, "Notes", Some("🌱"), DEVICE, NOW + 1)?.acknowledge();
+        let edited = payload_of(conn, "folder_config", "Notes");
+        assert_eq!(edited["icon"], json!("🌱"));
+        assert_eq!(edited["clock"], json!({"device-a": 2}));
+
+        let projected: Option<String> = conn
+            .query_row("SELECT icon FROM folders WHERE path = 'Notes'", [], |r| {
+                r.get(0)
+            })
+            .expect("the projection row");
+        assert_eq!(projected.as_deref(), Some("🌱"));
+
+        // Clearing writes an explicit null, never an absent key.
+        folders::set_icon(conn, "Notes", None, DEVICE, NOW + 2)?.acknowledge();
+        let cleared = payload_of(conn, "folder_config", "Notes");
+        assert!(cleared.get("icon").is_some());
+        assert_eq!(cleared["icon"], Value::Null);
+        Ok(())
+    })
+    .expect("icon");
+}

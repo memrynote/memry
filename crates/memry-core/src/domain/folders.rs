@@ -89,6 +89,51 @@ pub fn create(
     )
 }
 
+/// Sets or clears a folder's icon.
+///
+/// A folder that holds notes exists on desktop with no `folder_config`, so a
+/// folder without a live row gets one created here, carrying the icon. A
+/// folder with a row is edited in place: only `icon` and `modifiedAt` change,
+/// so a key this build does not model survives (FR-033).
+///
+/// `None` writes an explicit **`null`**, never an absent key (§13.7.10, §13.4):
+/// an absent key reads as "this sender does not know", not "cleared".
+pub fn set_icon(
+    conn: &Connection,
+    path: &str,
+    icon: Option<&str>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<String>, StorageError> {
+    let path = valid_path(path)?;
+    let exists = conn
+        .query_row(
+            "SELECT 1 FROM folders WHERE path = ?1 AND deleted_at IS NULL",
+            [path],
+            |_| Ok(()),
+        )
+        .map(|()| true)
+        .or_else(|error| match error {
+            rusqlite::Error::QueryReturnedNoRows => Ok(false),
+            other => Err(failed(other)),
+        })?;
+    if !exists {
+        return create(conn, path, icon, device_id, now_ms);
+    }
+    let value = match icon {
+        Some(icon) => Change::set(icon),
+        None => Change::Set(serde_json::Value::Null),
+    };
+    notes::edit(
+        conn,
+        ITEM_TYPE,
+        path,
+        vec![("icon", value), ("modifiedAt", Change::set(iso(now_ms)?))],
+        device_id,
+        now_ms,
+    )
+}
+
 /// Renames a folder in place, keeping its parent.
 pub fn rename(
     conn: &Connection,

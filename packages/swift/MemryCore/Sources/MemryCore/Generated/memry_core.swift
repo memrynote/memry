@@ -5936,6 +5936,14 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func setCover(id: String, url: String?, offsetY: Double) throws 
     
     /**
+     * Sets or clears a folder's icon. `nil` writes an explicit null.
+     *
+     * A folder that only exists because notes are in it gets its
+     * `folder_config` created with the icon, as desktop does.
+     */
+    func setFolderIcon(path: String, icon: String?) throws 
+    
+    /**
      * Sets or clears a note's icon (N701).
      *
      * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
@@ -6313,6 +6321,22 @@ open func setCover(id: String, url: String?, offsetY: Double)throws   {try rustC
         FfiConverterString.lower(id),
         FfiConverterOptionString.lower(url),
         FfiConverterDouble.lower(offsetY),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Sets or clears a folder's icon. `nil` writes an explicit null.
+     *
+     * A folder that only exists because notes are in it gets its
+     * `folder_config` created with the icon, as desktop does.
+     */
+open func setFolderIcon(path: String, icon: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_folder_icon(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterOptionString.lower(icon),uniffiCallStatus
     )
 }
 }
@@ -31955,6 +31979,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_cover() != 11273) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_folder_icon() != 36082) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_icon() != 32942) {

@@ -438,6 +438,18 @@ impl NotesWriter {
         })
     }
 
+    /// Sets or clears a folder's icon. `nil` writes an explicit null.
+    ///
+    /// A folder that only exists because notes are in it gets its
+    /// `folder_config` created with the icon, as desktop does.
+    pub fn set_folder_icon(&self, path: String, icon: Option<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            folders::set_icon(conn, &path, icon.as_deref(), &device_id, now_ms())?;
+            Ok(())
+        })
+    }
+
     /// Renames a folder in place, keeping its parent.
     ///
     /// - Returns: the ids of the notes whose `folderPath` was rewritten, so a

@@ -73,7 +73,7 @@ struct NoteRowActions: ViewModifier {
                     Text("It leaves every device on this account. Your computer keeps no copy of it either.")
                 }
                 .sheet(isPresented: $isPickingIcon) {
-                    NoteIconPicker(current: note.emoji) { chosen in
+                    EmojiPickerSheet(current: note.emoji) { chosen in
                         isPickingIcon = false
                         Task { await model.setNoteIcon(id: note.id, to: chosen) }
                     }
@@ -164,10 +164,14 @@ struct FolderRowActions: ViewModifier {
     @State private var isRenaming = false
     @State private var isNamingSubfolder = false
     @State private var isConfirmingDelete = false
+    @State private var isPickingIcon = false
     @State private var draftName = ""
 
     private var node: FolderNode? { model.outline?.node(at: context.path) }
     private var noteCount: Int { node?.subtreeNotes.count ?? 0 }
+    /// The stored icon when it is an emoji: what the picker can replace and
+    /// Remove can clear. An `icon:` or `custom:` value from desktop is not one.
+    private var currentIcon: String? { ProjectIconValue.emoji(node?.folder.icon) }
 
     func body(content: Content) -> some View {
         content
@@ -184,8 +188,15 @@ struct FolderRowActions: ViewModifier {
                         draftName = context.title
                         isRenaming = true
                     },
+                    pickIcon: { isPickingIcon = true },
                     delete: { isConfirmingDelete = true }
                 )
+            }
+            .sheet(isPresented: $isPickingIcon) {
+                EmojiPickerSheet(current: currentIcon) { chosen in
+                    isPickingIcon = false
+                    Task { await model.setFolderIcon(path: context.path, to: chosen) }
+                }
             }
             .alert("New folder", isPresented: $isNamingSubfolder) {
                 TextField("Name", text: $draftName)
@@ -241,7 +252,13 @@ private struct FolderRowMenu: View {
     let hasSubfolders: Bool
     let newFolder: () -> Void
     let rename: () -> Void
+    let pickIcon: () -> Void
     let delete: () -> Void
+
+    /// Any stored icon, including a desktop `icon:` value, can be removed.
+    private var hasIcon: Bool {
+        !(model.outline?.node(at: context.path)?.folder.icon ?? "").isEmpty
+    }
 
     private var parent: String? {
         guard let slash = context.path.lastIndex(of: "/") else { return nil }
@@ -286,6 +303,14 @@ private struct FolderRowMenu: View {
                     }
                 }
                 Button("Rename", systemImage: "pencil") { rename() }
+            }
+            Section {
+                Button("Set icon", systemImage: "face.smiling") { pickIcon() }
+                if hasIcon {
+                    Button("Remove icon", systemImage: "xmark") {
+                        Task { await model.setFolderIcon(path: context.path, to: nil) }
+                    }
+                }
             }
             Section {
                 Button("Delete folder", systemImage: "trash", role: .destructive) { delete() }
