@@ -65,6 +65,7 @@ import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
+import { markExpectedWarning } from '../telemetry/expected-conditions'
 import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
 import { getStatus, getConfig } from './index'
 import {
@@ -877,7 +878,24 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<vo
   const oldAbsPath = path.join(notesDir, oldPath)
   const newAbsPath = path.join(notesDir, newPath)
 
-  await moveDirectory(oldAbsPath, newAbsPath)
+  try {
+    await moveDirectory(oldAbsPath, newAbsPath)
+  } catch (error) {
+    // The folder was already moved or deleted on disk (another window, sync, a
+    // file manager) before the sidebar caught up. The rename still fails for the
+    // user, but it is a stale view, not a defect (#2531). ENOENT with the source
+    // still present means the destination's parent is missing: keep that an error.
+    if (
+      (error as NodeJS.ErrnoException | null)?.code === 'ENOENT' &&
+      !(await fs.access(oldAbsPath).then(
+        () => true,
+        () => false
+      ))
+    ) {
+      throw markExpectedWarning(error)
+    }
+    throw error
+  }
 
   carryFolderPositions(getDatabase(), oldPath, newPath)
 }

@@ -18,7 +18,8 @@ import {
   startActiveHeartbeat,
   stopActiveHeartbeat
 } from './diagnostics'
-import { markExpectedCondition } from './expected-conditions'
+import { markExpectedCondition, markExpectedWarning } from './expected-conditions'
+import { RateLimitError } from '@memry/sync-client/http-errors'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 
 describe('telemetry diagnostics', () => {
@@ -310,6 +311,42 @@ describe('telemetry diagnostics', () => {
 
       // #then it is reported — the suppression is not blanket
       expect(trackMainEventMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('expected warnings (#2531)', () => {
+    it('reports a marked expected state as a warn log line, not an exception', () => {
+      // #given a Google account with no refresh token left
+      const error = markExpectedWarning(
+        new Error('Google Calendar is not connected for account acc-1')
+      )
+
+      // #when a background sync reports it
+      trackMainError('calendar', 'google_periodic_sync', error)
+
+      // #then it stays queryable as a warn with its code, outside Error Tracking
+      expect(trackMainEventMock).toHaveBeenCalledTimes(1)
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({
+          action: 'warn',
+          objectType: 'log',
+          source: 'calendar',
+          errorCode: 'Error',
+          dimensions: { log_action: 'google_periodic_sync' }
+        })
+      )
+      expect(trackMainEventMock).not.toHaveBeenCalledWith('app_error_seen', expect.anything())
+    })
+
+    it('reports a sync server 429 as a warn log line', () => {
+      trackMainError('ipc', 'sync_now', new RateLimitError(60))
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({ action: 'warn', errorCode: 'RateLimitError' })
+      )
+      expect(trackMainEventMock).not.toHaveBeenCalledWith('app_error_seen', expect.anything())
     })
   })
 

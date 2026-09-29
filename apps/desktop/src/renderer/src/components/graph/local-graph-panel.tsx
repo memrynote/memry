@@ -11,7 +11,11 @@ import { useLocalGraphData } from '@/hooks/use-graph-data'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import { cn } from '@/lib/utils'
 import { buildGraphologyGraph, keepsOwnEdgeColor } from '@/lib/graph-builder'
-import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
+import {
+  refreshSigmaIfMeasurable,
+  SIGMA_ALLOW_INVALID_CONTAINER,
+  useRepaintSigmaWhenContainerRegainsWidth
+} from '@/lib/sigma-refresh'
 import { hasWebGLSupport } from '@/lib/webgl-support'
 import type { GraphPhysicsOptions } from '@/lib/graph-physics'
 import { useT } from '@memry/i18n/renderer'
@@ -174,7 +178,8 @@ export function LocalGraphPanel({
       labelSize: 11,
       defaultEdgeType: 'line' as const,
       renderEdgeLabels: false,
-      minEdgeThickness: 0.5
+      minEdgeThickness: 0.5,
+      ...SIGMA_ALLOW_INVALID_CONTAINER
     }),
     // Frozen on purpose: a new settings object makes SigmaContainer rebuild the
     // renderer. Reducers that change afterwards are pushed by LocalSigmaSettingsSync.
@@ -368,6 +373,7 @@ function LocalSigmaSettingsSync({
   edgeReducer: (edge: string, attrs: Record<string, unknown>) => Partial<EdgeDisplayData>
 }): null {
   const sigma = useSigma()
+  useRepaintSigmaWhenContainerRegainsWidth(sigma)
 
   useEffect(() => {
     sigma.setSetting('nodeReducer', nodeReducer)

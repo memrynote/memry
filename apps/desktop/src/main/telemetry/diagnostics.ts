@@ -6,7 +6,7 @@ import {
   toSafeToken
 } from '@memry/contracts/telemetry-api'
 
-import { isExpectedConditionError } from './expected-conditions'
+import { isExpectedConditionError, isExpectedWarningError } from './expected-conditions'
 import { getMainRedactOptions } from './redact-options'
 import { shouldEmitThrottled } from './throttle'
 import { trackMainEvent, type TrackMainEventOptions } from './track'
@@ -188,6 +188,12 @@ export const trackMainError = (source: string, action: string, error: unknown): 
   // reach the UI as an error envelope, but they are normal states — reporting
   // them here drowns the real signal.
   if (isExpectedConditionError(error)) return
+  // Expected states still worth counting (a 429, a disconnected Google account)
+  // move to a warn line: same code and redacted detail, no Error Tracking issue.
+  if (isExpectedWarningError(error)) {
+    trackMainWarning(source, action, error)
+    return
+  }
 
   trackMainEvent('app_error_seen', {
     surface: 'app',

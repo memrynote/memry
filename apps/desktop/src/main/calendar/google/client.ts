@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { createLogger } from '../../lib/logger'
+import { markExpectedWarning } from '../../telemetry/expected-conditions'
 import {
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,
@@ -320,7 +321,12 @@ async function refreshAccessTokenInner(accountId: string): Promise<string> {
   const clientSecret = resolveGoogleClientSecret()
   const { refreshToken } = await getGoogleCalendarTokens(accountId)
   if (!refreshToken) {
-    throw new Error(`Google Calendar is not connected for account ${accountId}`)
+    // No refresh token is the disconnected state: the user never finished
+    // connecting, disconnected, or Google revoked the grant (invalid_grant below
+    // clears the tokens). The user reconnects; it is not a defect (#2531).
+    throw markExpectedWarning(
+      new Error(`Google Calendar is not connected for account ${accountId}`)
+    )
   }
 
   const params = new URLSearchParams({

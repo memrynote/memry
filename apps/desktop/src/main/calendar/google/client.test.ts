@@ -41,6 +41,7 @@ vi.mock('../../lib/main-i18n', () => ({
 }))
 
 import { createGoogleCalendarClient } from './client'
+import { isExpectedWarningError } from '../../telemetry/expected-conditions'
 import {
   LEGACY_DEFAULT_ACCOUNT_ID,
   clearGoogleCalendarTokens,
@@ -329,6 +330,23 @@ describe('google calendar client — push channels (Task 7)', () => {
         accessToken: null,
         refreshToken: null
       })
+    })
+
+    it('marks a missing refresh token as an expected warning, not a fault (#2531)', async () => {
+      // #given an account whose grant is gone, as after invalid_grant cleared it
+      await clearGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
+      fetchMock.mockResolvedValue(new Response('expired', { status: 401 }))
+
+      // #when the client needs a fresh token
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const error = await client.listCalendars().catch((cause: unknown) => cause)
+
+      // #then the caller still sees the failure, marked as an expected state
+      expect(error).toBeInstanceOf(Error)
+      expect((error as Error).message).toBe(
+        `Google Calendar is not connected for account ${LEGACY_DEFAULT_ACCOUNT_ID}`
+      )
+      expect(isExpectedWarningError(error)).toBe(true)
     })
   })
 

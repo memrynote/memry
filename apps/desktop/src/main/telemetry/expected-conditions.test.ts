@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
+import { RateLimitError, SyncServerError } from '@memry/sync-client/http-errors'
+
 import {
   isConnectionRefusedError,
   isExpectedConditionError,
+  isExpectedWarningError,
   isWatchEnvironmentError,
-  markExpectedCondition
+  markExpectedCondition,
+  markExpectedWarning
 } from './expected-conditions'
 
 describe('markExpectedCondition', () => {
@@ -41,6 +45,29 @@ describe('isExpectedConditionError', () => {
   it('is false for null/undefined', () => {
     expect(isExpectedConditionError(null)).toBe(false)
     expect(isExpectedConditionError(undefined)).toBe(false)
+  })
+})
+
+describe('isExpectedWarningError', () => {
+  it('is true for a marked error, with identity and JSON shape untouched', () => {
+    const error = new Error('Google Calendar is not connected for account acc-1')
+
+    expect(markExpectedWarning(error)).toBe(error)
+    expect(isExpectedWarningError(error)).toBe(true)
+    expect(Object.keys(error)).toEqual([])
+    // a warning is still reported, so it must not read as a suppressed condition
+    expect(isExpectedConditionError(error)).toBe(false)
+  })
+
+  it('is true for the sync server 429 without any marking', () => {
+    expect(isExpectedWarningError(new RateLimitError(30))).toBe(true)
+  })
+
+  it('is false for other sync server failures and unmarked errors', () => {
+    expect(isExpectedWarningError(new SyncServerError('Internal error', 500))).toBe(false)
+    expect(isExpectedWarningError(new Error('Too many requests'))).toBe(false)
+    expect(isExpectedWarningError(null)).toBe(false)
+    expect(markExpectedWarning('boom')).toBe('boom')
   })
 })
 

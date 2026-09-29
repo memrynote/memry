@@ -273,6 +273,12 @@ records one `app_log_recorded` `warn` per session (`source: WebGLSupport`,
 `log_action: webgl_unavailable`) so affected installs can be counted in PostHog. The fallback is an
 expected device condition, never an `app_error_seen` exception.
 
+Graph renderers set Sigma's `allowInvalidContainer`, so a render Sigma schedules itself into a
+detached 0px container during teardown does not throw `Sigma: Container has no width`;
+`useRepaintSigmaWhenContainerRegainsWidth` repaints once when the container gets its width back.
+The renderer also ignores Chromium's benign `ResizeObserver loop completed with undelivered
+notifications` window error (exact message only).
+
 ### Events Before the Runtime Exists
 
 `trackMainEvent` used to no-op while `getTelemetryRuntime()` was still `null`, so anything that
@@ -938,7 +944,12 @@ runtime is up go through `invokeWhenAgentReady`, which retries `errors:agent.run
 instead of surfacing an unhandled rejection.
 
 Agent tool failures report once: `ai_action_completed` carries no `errorCode`, and the code rides a
-warn-level `tool_call_failed_<tool>` log. On the MCP server, `INTERNAL` failures ship a redacted
+warn-level `tool_call_failed_<tool>` log.
+
+Expected states still worth counting (a sync-server 429 `RateLimitError`, a Google account with no
+refresh token, a folder rename whose source is already gone) are marked with `markExpectedWarning`
+and reported by `trackMainError` as warn-level `app_log_recorded` lines instead of
+`app_error_seen` exceptions. On the MCP server, `INTERNAL` failures ship a redacted
 message and stack; `NOT_FOUND` and `VALIDATION` are warnings the model recovers from.
 
 ### Vault File Errors

@@ -1,3 +1,5 @@
+import { RateLimitError } from '@memry/sync-client/http-errors'
+
 // Some failures are normal states, not faults: Ollama is not running, the user
 // walked away from an OAuth consent screen. They still surface to the UI as an
 // error envelope, but reporting them as error telemetry drowns the real signal.
@@ -30,6 +32,40 @@ export const isExpectedConditionError = (error: unknown): boolean =>
     error &&
     typeof error === 'object' &&
     (error as Record<symbol, unknown>)[EXPECTED_CONDITION] === true
+  )
+
+const EXPECTED_WARNING = Symbol.for('memry.telemetry.expectedWarning')
+
+/**
+ * Mark an error as an expected state whose volume is still worth watching: a
+ * Google account with no refresh token, a folder rename whose source is already
+ * gone. trackMainError reports a marked error as a warn-level log line instead
+ * of an exception, so it stays queryable but out of Error Tracking (#2531).
+ * Same contract as markExpectedCondition: same value back, non-enumerable.
+ */
+export const markExpectedWarning = <T>(error: T): T => {
+  if (error && (typeof error === 'object' || typeof error === 'function')) {
+    Object.defineProperty(error, EXPECTED_WARNING, {
+      value: true,
+      enumerable: false,
+      configurable: true
+    })
+  }
+  return error
+}
+
+/**
+ * True for an error marked with markExpectedWarning, and for the sync server's
+ * 429: the server is enforcing its limit and every caller already backs off on
+ * `retryAfterMs`. RateLimitError is matched by class so no throw site has to
+ * remember to mark it.
+ */
+export const isExpectedWarningError = (error: unknown): boolean =>
+  error instanceof RateLimitError ||
+  Boolean(
+    error &&
+    typeof error === 'object' &&
+    (error as Record<symbol, unknown>)[EXPECTED_WARNING] === true
   )
 
 /**

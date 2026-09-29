@@ -65,8 +65,18 @@ export const trackNoteReadable = (durationMs: number): void => {
   })
 }
 
+// Chromium's notice that a ResizeObserver callback resized an observed element
+// and the follow-up notifications were deferred to the next frame. Nothing is
+// thrown and nothing is lost; the browser reports it through window.onerror
+// anyway. Exact messages only, so any other ResizeObserver failure still ships.
+const BENIGN_WINDOW_ERROR_MESSAGES = new Set([
+  'ResizeObserver loop completed with undelivered notifications.',
+  'ResizeObserver loop completed with undelivered notifications'
+])
+
 export const registerRendererDiagnostics = (): void => {
   window.addEventListener('error', (event) => {
+    if (BENIGN_WINDOW_ERROR_MESSAGES.has(event.message)) return
     // `event.error` is absent for cross-origin scripts and some Chromium failure
     // paths; passing the bare message string on landed in telemetry as
     // `StringError` with no stack. Normalize so a class name and the source

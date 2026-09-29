@@ -21,13 +21,15 @@ const mocks = vi.hoisted(() => ({
   getDatabase: vi.fn(),
   getNoteCacheById: vi.fn(),
   rm: vi.fn(),
-  rename: vi.fn()
+  rename: vi.fn(),
+  access: vi.fn()
 }))
 
 vi.mock('fs/promises', () => ({
-  default: { rm: mocks.rm, rename: mocks.rename },
+  default: { rm: mocks.rm, rename: mocks.rename, access: mocks.access },
   rm: mocks.rm,
-  rename: mocks.rename
+  rename: mocks.rename,
+  access: mocks.access
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
@@ -88,6 +90,7 @@ vi.mock('../sync/local-mutations', () => ({
 }))
 
 import { createFolder, createNote, deleteFolder, deleteNote, renameFolder } from './notes-crud'
+import { isExpectedWarningError } from '../telemetry/expected-conditions'
 
 describe('sidebar order across the note lifecycle (#1646)', () => {
   let testDb: TestDatabaseResult
@@ -177,5 +180,57 @@ describe('sidebar order across the note lifecycle (#1646)', () => {
     await deleteFolder('Work')
 
     expect(getAllNotePositions(db).map((r) => r.path)).toEqual(['Other/a.md'])
+  })
+})
+
+describe('renameFolder when the rename fails (#2531)', () => {
+  let testDb: TestDatabaseResult
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    testDb = createTestDataDb()
+    mocks.getDatabase.mockReturnValue(testDb.db as unknown as DataDb)
+  })
+
+  afterEach(() => {
+    testDb.close()
+  })
+
+  const enoent = (): NodeJS.ErrnoException =>
+    Object.assign(new Error("ENOENT: no such file or directory, rename '/vault/Work'"), {
+      code: 'ENOENT'
+    })
+
+  it('marks ENOENT as an expected warning when the source folder is already gone', async () => {
+    // #given the folder vanished on disk before the sidebar caught up
+    mocks.rename.mockRejectedValueOnce(enoent())
+    mocks.access.mockRejectedValueOnce(enoent())
+
+    // #when the user renames it
+    const error = await renameFolder('Work', 'Projects').catch((cause: unknown) => cause)
+
+    // #then the failure still reaches the caller, marked as a stale view
+    expect((error as NodeJS.ErrnoException).code).toBe('ENOENT')
+    expect(isExpectedWarningError(error)).toBe(true)
+  })
+
+  it('keeps ENOENT a genuine failure while the source folder still exists', async () => {
+    // #given the source is there but the destination parent is missing
+    mocks.rename.mockRejectedValueOnce(enoent())
+    mocks.access.mockResolvedValueOnce(undefined)
+
+    const error = await renameFolder('Work', 'Missing/Projects').catch((cause: unknown) => cause)
+
+    expect((error as NodeJS.ErrnoException).code).toBe('ENOENT')
+    expect(isExpectedWarningError(error)).toBe(false)
+  })
+
+  it('keeps any other error code a genuine failure', async () => {
+    mocks.rename.mockRejectedValueOnce(Object.assign(new Error('EEXIST'), { code: 'EEXIST' }))
+
+    const error = await renameFolder('Work', 'Projects').catch((cause: unknown) => cause)
+
+    expect(isExpectedWarningError(error)).toBe(false)
+    expect(mocks.access).not.toHaveBeenCalled()
   })
 })

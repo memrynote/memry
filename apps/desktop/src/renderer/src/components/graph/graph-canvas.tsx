@@ -23,7 +23,11 @@ import {
   type GraphCategoryIndex
 } from '@/lib/graph-categories'
 import { graphLabelRenderedSizeThreshold } from '@/lib/graph-labels'
-import { refreshSigmaIfMeasurable } from '@/lib/sigma-refresh'
+import {
+  refreshSigmaIfMeasurable,
+  SIGMA_ALLOW_INVALID_CONTAINER,
+  useRepaintSigmaWhenContainerRegainsWidth
+} from '@/lib/sigma-refresh'
 import { hasWebGLSupport } from '@/lib/webgl-support'
 import { RESTORED_ALPHA, type GraphPhysicsOptions, type NodePosition } from '@/lib/graph-physics'
 import {
@@ -398,7 +402,8 @@ export function GraphCanvas({
       labelSize: 12,
       defaultEdgeType: 'line' as const,
       renderEdgeLabels: false,
-      minEdgeThickness: 0.5
+      minEdgeThickness: 0.5,
+      ...SIGMA_ALLOW_INVALID_CONTAINER
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
@@ -772,6 +777,7 @@ function SigmaSettingsSync({
   labelColor: string
 }): null {
   const sigma = useSigma()
+  useRepaintSigmaWhenContainerRegainsWidth(sigma)
 
   // SigmaContainer kills and recreates Sigma whenever the `graph` prop changes.
   // React runs child effects before the container's create effect, so useSigma()

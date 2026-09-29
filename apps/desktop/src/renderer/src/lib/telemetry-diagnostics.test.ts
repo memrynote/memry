@@ -128,6 +128,36 @@ describe('renderer telemetry diagnostics', () => {
     expect(JSON.stringify(trackTelemetryMock.mock.calls[0])).not.toContain('/Users/kaan')
   })
 
+  it('ignores the benign ResizeObserver loop notice but keeps other window errors', () => {
+    // #given the Chromium notice that ResizeObserver deferred notifications a frame
+    registerRendererDiagnostics()
+
+    // #when the window reports it, with and without the trailing period
+    for (const message of [
+      'ResizeObserver loop completed with undelivered notifications.',
+      'ResizeObserver loop completed with undelivered notifications'
+    ]) {
+      window.dispatchEvent(Object.assign(new Event('error'), { error: null, message }))
+    }
+
+    // #then nothing is captured
+    expect(trackTelemetryMock).not.toHaveBeenCalled()
+
+    // #when a different message merely mentioning ResizeObserver arrives
+    window.dispatchEvent(
+      Object.assign(new Event('error'), {
+        error: null,
+        message: 'Uncaught TypeError: ResizeObserver loop completed with undelivered notifications.'
+      })
+    )
+
+    // #then the exact-match filter lets it through
+    expect(trackTelemetryMock).toHaveBeenCalledWith(
+      'app_error_seen',
+      expect.objectContaining({ action: 'window_error' })
+    )
+  })
+
   it('emits structured renderer logs', () => {
     // #given a warning breadcrumb
     trackRendererLog('warn', 'boot_failed', 'RendererBoot')

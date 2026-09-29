@@ -17,7 +17,8 @@ const ZERO_WIDTH_ERROR =
 
 const mocks = vi.hoisted(() => ({
   localGraph: { data: null as GraphDataResponse | null, isLoading: false },
-  refreshCount: 0
+  refreshCount: 0,
+  constructedSettings: null as Record<string, unknown> | null
 }))
 
 vi.mock('sigma', () => {
@@ -31,7 +32,9 @@ vi.mock('sigma', () => {
       public graph: unknown,
       public container: HTMLElement,
       public settings: Record<string, unknown>
-    ) {}
+    ) {
+      mocks.constructedSettings = settings
+    }
 
     getGraph(): unknown {
       return this.graph
@@ -114,6 +117,7 @@ describe('LocalGraphPanel on a container with no width', () => {
   beforeEach(() => {
     mocks.localGraph = { data: baseData, isLoading: false }
     mocks.refreshCount = 0
+    mocks.constructedSettings = null
     frames = new Map()
     nextFrameHandle = 0
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
@@ -162,6 +166,14 @@ describe('LocalGraphPanel on a container with no width', () => {
     runFrames(3)
 
     expect(mocks.refreshCount).toBeGreaterThan(0)
+  })
+
+  it('builds Sigma with allowInvalidContainer so its own scheduled renders cannot throw', () => {
+    // Sigma schedules render frames of its own (setSetting, graph updates from
+    // the physics loop) that no refresh guard can reach (#2531).
+    renderPanel()
+
+    expect(mocks.constructedSettings).toMatchObject({ allowInvalidContainer: true })
   })
 
   it('does not throw when a queued frame lands after the container is detached', () => {
