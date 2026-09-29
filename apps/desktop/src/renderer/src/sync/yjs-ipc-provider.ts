@@ -17,6 +17,11 @@ export interface YjsIpcProviderConfig {
    * last reset: `undefined` when none arrived or an older main sent no payload.
    */
   canRebind?: (readyVaultPath: string | null | undefined) => boolean
+  /**
+   * Vault workspace this doc belongs to, sent with every open so main refuses
+   * it when its provider serves another vault. Null outside a workspace.
+   */
+  vaultPath?: string | null
 }
 
 export class YjsIpcProvider extends Observable<string> {
@@ -38,6 +43,7 @@ export class YjsIpcProvider extends Observable<string> {
   /** Serialises rebinds so two ready events in a row cannot interleave handshakes. */
   private rebinding: Promise<void> | null = null
   private readonly canRebind: (readyVaultPath: string | null | undefined) => boolean
+  private readonly vaultPath: string | null
   /** Vault of the provider main last announced ready; cleared on reset. */
   private readyVaultPath: string | null | undefined = undefined
 
@@ -46,6 +52,7 @@ export class YjsIpcProvider extends Observable<string> {
     this.noteId = config.noteId
     this.doc = config.doc
     this.canRebind = config.canRebind ?? (() => true)
+    this.vaultPath = config.vaultPath ?? null
   }
 
   /**
@@ -217,7 +224,11 @@ export class YjsIpcProvider extends Observable<string> {
 
   private async openDoc(): Promise<void> {
     try {
-      const result = await window.api.syncCrdt.openDoc({ noteId: this.noteId })
+      const result = await window.api.syncCrdt.openDoc(
+        this.vaultPath === null
+          ? { noteId: this.noteId }
+          : { noteId: this.noteId, vaultPath: this.vaultPath }
+      )
       if (!result.success) {
         throw new Error(result.error ?? 'Failed to open CRDT doc')
       }

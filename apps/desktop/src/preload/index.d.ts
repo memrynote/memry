@@ -1950,7 +1950,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
     setAutoCheck: (enabled: boolean) => Promise<AppUpdateState>
   }
   syncCrdt: {
-    openDoc: (input: { noteId: string }) => Promise<CrdtOpenDocResult>
+    openDoc: (input: { noteId: string; vaultPath?: string }) => Promise<CrdtOpenDocResult>
     closeDoc: (input: { noteId: string }) => Promise<void>
     applyUpdate: (input: { noteId: string; update: Uint8Array }) => Promise<void>
     syncStep1: (input: {
