@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 # Build + run the iOS app on a simulator.
 #
-#   pnpm dev:mobile                 # iPhone 17
-#   pnpm dev:mobile "iPhone 17 Pro" # any available simulator
+#   pnpm dev:mobile             # iPhone 17 Pro
+#   pnpm dev:mobile "iPhone Air" # any available simulator
+#
+# iPhone 17 Pro is Kaan's hot-reload simulator. Agents build and test on
+# iPhone 17 (see apps/ios/AGENTS.md) so their installs never kill this app.
 #
 # Rebuilds the Rust core first: the committed xcframework goes stale whenever
 # the UniFFI surface moves, and the Swift build then fails on a checksum symbol.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-device="${1:-${MEMRY_IOS_DEVICE:-iPhone 17}}"
+device="${1:-${MEMRY_IOS_DEVICE:-iPhone 17 Pro}}"
 
 "$repo_root/crates/memry-core/build-xcframework.sh"
 

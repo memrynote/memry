@@ -27,6 +27,8 @@ Three test plans, run the narrowest that covers the change:
 
 If you create or modify a test, run it and iterate until it passes. There is no pnpm entry point; drive builds and tests through `xcodebuild` or Xcode.
 
+- Agents build, test, and install only on `-destination 'platform=iOS Simulator,name=iPhone 17'`. `iPhone 17 Pro` belongs to Kaan's `pnpm dev:mobile` hot-reload session; any `xcodebuild test` or `simctl install` there kills his running app. Never touch it.
+
 - The Unit plan runs inside the app on the shared simulator, and its sign-out tests wipe the app's keychain. Anything that needs a signed-in app (the UI plan, manual simulator checks) comes after a fresh sign-in, never straight after a Unit run.
 - `TasksUITests` needs the simulator signed in to the staging test account; it fails, rather than skips, when it lands on sign-in.
 - `JournalUITests` needs the same sign-in plus the synced journal settings its header names (a Wednesday template); it pins today with `-MEMRY_JOURNAL_TODAY <date>`, always a 2099 day.
