@@ -296,6 +296,12 @@ past the first batch. Shutdown now drains in bounded rounds
 (`ceil(TELEMETRY_QUEUE_LIMIT / TELEMETRY_BATCH_LIMIT)`), stopping at the first failed round so an
 offline quit never stalls the exit.
 
+In the quit sequence `flush-telemetry` runs last and is capped at `SHUTDOWN_TELEMETRY_FLUSH_MS`
+(1s, clamped to the remaining budget); the log-ship and telemetry flushes run concurrently. Both
+queues persist to disk, so events cut off here ship on the next launch. Durable steps come first:
+`flush-activity-log` runs right after `flush-writebacks`, and `stop-sync-runtime` bounds its final
+snapshot push so `close-vault` always keeps at least 2s of the shared budget.
+
 ## Event Categories
 
 | Category        | Events                                                                                                                                                                                                                           |
@@ -340,6 +346,10 @@ A marker file (`apps/desktop/src/main/telemetry/crash-marker.ts`):
 - A marker still present at the **next** launch means the previous session died uncleanly, and
   that launch emits `app_crashed` on its behalf. Detection runs before the new session writes its
   own marker.
+- Each shutdown step is stamped into the marker as it starts (`markShutdownStep`), and the first
+  stamp stops the alive tick so it cannot rewrite the marker without the step. A process killed
+  mid-shutdown therefore reports `UNCLEAN_SHUTDOWN` with the step it died in instead of
+  `step=unknown`.
 
 The marker's _presence_ is the signal; its contents only enrich the event. An unparseable marker
 still reports the crash, just without the observed-uptime metric (`metrics.durationMs`, derived

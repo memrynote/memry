@@ -287,6 +287,15 @@ only when the server positively says its parent is gone, never because a parent 
 An unattested purged parent counts as gone, the same as a parent the server omits.
 Nothing on the desktop deletes a local row because the server does not list it, and the manifest
 check re-uploads local rows the server lacks only after a pull that delivered in the same run.
+It re-queues a note or journal only when push can rebuild it: the data row exists, is not
+local-only, and (for journals) has a date. Otherwise the placeholder payload would go out without a
+clock and be rejected on every check. CRDT batch pulls dedupe note ids before the probe and apply
+requests; the server rejects a batch that repeats one.
+
+If sync startup cannot read secrets from the OS keychain (a timed-out read, or a stored master key
+that safeStorage cannot decrypt this run), sync pauses with `errorCategory: 'keychain_unavailable'`
+and retries after 15s, 30s, 1m, 2m, then every 5m, and immediately once a timed-out keychain call
+returns. Secrets are never rewritten or deleted on this path.
 Tombstones the server hard-deleted before markers existed stay unprotected. Protocol 05 §5.12.3 and
 §5.12.4 have the full rules.
 
