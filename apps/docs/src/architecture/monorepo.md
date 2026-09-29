@@ -65,7 +65,8 @@ in packaged builds. The exact set is asserted by
 `apps/desktop/src/main/runtime-dependencies.test.ts` and re-verified against
 the packaged app by `apps/desktop/scripts/check-packaged-runtime-deps.js`;
 `apps/desktop/scripts/check-worker-bundles.mjs` additionally fails the build
-if any worker entry's chunk graph reaches a literal `require("electron")`.
+if any worker entry's chunk graph reaches a literal `require("electron")`, or if the
+renderer's Excalidraw `subset-worker.chunk` imports the renderer entry chunk.
 `pnpm --filter @memry/desktop check:main-startup-set` (after an
 `electron-vite build`) walks the top-level requires of `out/main/index.js` and
 fails if the startup set reaches jsdom, `ai`, `@ai-sdk/*` or `@blocknote/*`.

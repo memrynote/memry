@@ -10,12 +10,18 @@
 //
 // Walks each worker entry's chunk require-graph and fails the build if any
 // reachable chunk contains a literal require("electron").
+//
+// Also guards the renderer's Excalidraw font-subset worker against importing the
+// renderer entry chunk. Rollup once hoisted shared modules into that entry, the
+// module worker evaluated app code, and it died on a top-level `window` read
+// (#2530). See scripts/excalidraw-subset-worker-plugin.ts.
 
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const outMain = resolve(dirname(fileURLToPath(import.meta.url)), '../out/main')
+const outRenderer = resolve(dirname(fileURLToPath(import.meta.url)), '../out/renderer')
 
 const WORKER_ENTRIES = [
   // Not a worker_thread, but it runs under ELECTRON_RUN_AS_NODE as a fallback
@@ -64,6 +70,58 @@ for (const entry of WORKER_ENTRIES) {
     failed = true
   } else {
     console.log(`check-worker-bundles: ${entry} OK`)
+  }
+}
+
+// Static ESM imports only: `import ... from "./x.js"` and `import "./x.js"`.
+const RELATIVE_STATIC_IMPORT = /(?:^|[;\n])\s*import\s*(?:[^'"();]*?\sfrom\s*)?["'](\.[^"']+)["']/g
+const ENTRY_SCRIPT = /<script[^>]*type="module"[^>]*src="\.\/([^"]+)"/g
+
+function collectEsmGraph(entryPath, seen = new Set()) {
+  if (seen.has(entryPath)) return seen
+  seen.add(entryPath)
+  const source = readFileSync(entryPath, 'utf8')
+  for (const match of source.matchAll(RELATIVE_STATIC_IMPORT)) {
+    const dep = resolve(dirname(entryPath), match[1])
+    if (existsSync(dep)) collectEsmGraph(dep, seen)
+  }
+  return seen
+}
+
+const rendererAssets = resolve(outRenderer, 'assets')
+const rendererHtml = resolve(outRenderer, 'index.html')
+if (!existsSync(rendererHtml) || !existsSync(rendererAssets)) {
+  console.error('check-worker-bundles: missing out/renderer — run electron-vite build first')
+  failed = true
+} else {
+  const entryChunks = new Set(
+    [...readFileSync(rendererHtml, 'utf8').matchAll(ENTRY_SCRIPT)].map((match) =>
+      resolve(outRenderer, match[1])
+    )
+  )
+  const subsetWorkerChunks = readdirSync(rendererAssets).filter(
+    (file) => file.startsWith('subset-worker.chunk') && file.endsWith('.js')
+  )
+  if (entryChunks.size === 0 || subsetWorkerChunks.length === 0) {
+    console.error(
+      'check-worker-bundles: could not find the renderer entry chunk or the Excalidraw subset worker in out/renderer'
+    )
+    failed = true
+  }
+  for (const chunk of subsetWorkerChunks) {
+    const reached = [...collectEsmGraph(resolve(rendererAssets, chunk))].filter((file) =>
+      entryChunks.has(file)
+    )
+    if (reached.length > 0) {
+      console.error(
+        `check-worker-bundles: renderer ${chunk} imports the renderer entry chunk — the Excalidraw ` +
+          'subset worker would evaluate app code and crash on `window` (#2530).\n' +
+          'Fix: keep excalidrawSubsetWorker() in the renderer plugins so the worker builds as its own entry.'
+      )
+      failed = true
+    } else {
+      console.log(`check-worker-bundles: renderer ${chunk} OK`)
+    }
   }
 }
 

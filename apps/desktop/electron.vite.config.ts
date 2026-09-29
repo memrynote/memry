@@ -5,6 +5,7 @@ import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import type { Plugin } from 'vite'
+import { excalidrawSubsetWorker } from './scripts/excalidraw-subset-worker-plugin'
 
 const appRoot = fileURLToPath(new URL('.', import.meta.url))
 const workspaceRoot = resolve(appRoot, '../..')
@@ -151,7 +152,10 @@ export default defineConfig({
         '@': resolve(appRoot, 'src/renderer/src')
       }
     },
-    plugins: [devCsp(), react(), tailwindcss()],
+    plugins: [devCsp(), react(), tailwindcss(), excalidrawSubsetWorker()],
+    // Excalidraw constructs its subset worker with `{ type: 'module' }`; see
+    // scripts/excalidraw-subset-worker-plugin.ts.
+    worker: { format: 'es' },
     build: {
       rollupOptions: {
         // No `manualChunks` here, unlike main above. The renderer emits 908 chunks and

@@ -47,6 +47,11 @@ onboarding, the keyboard shortcuts dialog, the command palette) sit behind `lazy
 command palette is mounted closed on the first idle callback so the first Cmd+K opens an
 already loaded palette. Keep new closed-by-default shell surfaces on the same pattern.
 
+Excalidraw's font-subset worker is built as its own Vite worker entry by
+`apps/desktop/scripts/excalidraw-subset-worker-plugin.ts` (production builds only). As a plain
+lazy chunk, rollup hoisted shared modules into the renderer entry and made the worker import it,
+so the worker crashed on the entry's top-level `window` read.
+
 Before that split, exactly one chunk was reachable from the entry without an `import()`, a
 single file of roughly 4.5 to 4.9 MB. `manualChunks`
 cannot shrink the startup path, because it moves modules between chunks rather than off the startup
