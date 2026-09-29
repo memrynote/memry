@@ -711,10 +711,17 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     // applied before the chunking below rather than inside it, so a vault with
     // many local-only notes still fills each chunk with notes that can sync
     // instead of spending whole paced chunks on ones that are all skipped.
-    const syncable = noteIds.filter((noteId) => !crdtProvider.isNoteLocalOnly(noteId))
-    if (syncable.length !== noteIds.length) {
+    //
+    // Deduped first: the server answers a batch that names a note twice with a
+    // 400 ("Duplicate noteIds are not allowed") that fails the whole chunk, and
+    // the pull run collects `crdtNoteIds` into one array from several passes
+    // (schema retries, page slices, deferred retries), so one note can arrive
+    // twice (#2520).
+    const uniqueNoteIds = [...new Set(noteIds)]
+    const syncable = uniqueNoteIds.filter((noteId) => !crdtProvider.isNoteLocalOnly(noteId))
+    if (syncable.length !== uniqueNoteIds.length) {
       log.debug('Skipping local-only notes in a CRDT batch pull', {
-        skipped: noteIds.length - syncable.length
+        skipped: uniqueNoteIds.length - syncable.length
       })
     }
     if (syncable.length === 0) return cost

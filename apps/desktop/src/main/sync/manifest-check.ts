@@ -196,7 +196,7 @@ export async function checkManifestIntegrity(
         // but (type, id), so a clean vault never materializes a single row.
         const payload = buildRefPayload(deps.db, local)
         if (payload === null) {
-          log.warn('Local item missing from server manifest but row is gone, skipping', {
+          log.warn('Local item missing from server manifest but has nothing to push, skipping', {
             id: local.id,
             type: local.type
           })
@@ -581,7 +581,7 @@ function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
  * Materializes the repair payload for one ref, byte-identical to the eager
  * pass this replaced: the same full-row select feeds the same `JSON.stringify`,
  * so what a manifest repair pushes is unchanged for existing installs.
- * Returns null when the row is gone (nothing to re-create).
+ * Returns null when the row is gone or cannot be pushed (nothing to re-create).
  */
 function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
   switch (ref.type) {
@@ -664,7 +664,24 @@ function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
       return row ? JSON.stringify(row) : null
     }
     // Note and journal bodies never travel in the manifest payload — the CRDT
-    // push path owns them. The eager pass emitted '' here too.
+    // push path owns them. The eager pass emitted '' here too. That '' is only a
+    // placeholder: the push rebuilds the record from the data-DB row. When the
+    // rebuild returns nothing (a local-only note, or a journal row without its
+    // date), '' is what gets pushed. It is not JSON, so it never gets a clock,
+    // and the push drops it as "requires clock metadata". The index-DB refs above
+    // do not filter on `localOnly`, so without this check every manifest pass
+    // queued that same doomed create again (#2520).
+    case 'note':
+    case 'journal': {
+      const row = db
+        .select({ localOnly: noteMetadata.localOnly, journalDate: noteMetadata.journalDate })
+        .from(noteMetadata)
+        .where(eq(noteMetadata.id, ref.id))
+        .get()
+      if (!row || row.localOnly) return null
+      if (ref.type === 'journal' && !row.journalDate) return null
+      return ''
+    }
     default:
       return ''
   }

@@ -1265,6 +1265,79 @@ describe('checkManifestIntegrity', () => {
     })
   })
 
+  // #2520: the note/journal repair payload is '' and the push rebuilds it from
+  // the data-DB row. A row that rebuild refuses left '' on the wire: no clock,
+  // dropped as "requires clock metadata", and queued again every pass.
+  describe('#given an index-listed note the push cannot rebuild #when check runs', () => {
+    it('#then queues no create for a local-only note or a journal row without its date', async () => {
+      // #given
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(noteMetadata)
+        .values([
+          {
+            id: 'note-local-only',
+            path: 'notes/private.md',
+            title: 'Private',
+            clock,
+            localOnly: true,
+            createdAt: 'x',
+            modifiedAt: 'x'
+          },
+          // No clock in the data DB, so only the index lists it, as a journal
+          {
+            id: 'journal-undated',
+            path: 'journals/2026-02-18.md',
+            title: '2026-02-18',
+            createdAt: 'x',
+            modifiedAt: 'x'
+          }
+        ])
+        .run()
+      testIndexDb.db
+        .insert(noteCache)
+        .values([
+          {
+            id: 'note-local-only',
+            path: 'notes/private.md',
+            title: 'Private',
+            clock,
+            createdAt: 'x',
+            modifiedAt: 'x'
+          },
+          {
+            id: 'journal-undated',
+            path: 'journals/2026-02-18.md',
+            title: '2026-02-18',
+            date: '2026-02-18',
+            clock,
+            createdAt: 'x',
+            modifiedAt: 'x'
+          }
+        ])
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(queue.getPendingCount()).toBe(0)
+      expect(result.rePullNeeded).toBe(false)
+    })
+  })
+
   describe('#2302 absence never deletes', () => {
     const seedTask = (id: string) =>
       testDb.db

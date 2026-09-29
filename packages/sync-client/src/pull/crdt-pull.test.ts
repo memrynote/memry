@@ -184,6 +184,40 @@ describe('CrdtBodyPuller', () => {
     expect(store.since.get('n1')).toBe(7)
   })
 
+  // #2520: the server answers a batch naming a note twice with a 400 that
+  // fails every note in it.
+  it('names each note once in the batch request when a caller repeats one', async () => {
+    const store = memoryCrdtStore()
+    store.since.set('n1', 5)
+    await store.saveSnapshot('n1', new Uint8Array(), 5, 'rev-a')
+    store.snapshots.length = 0
+
+    const http = fakeHttp((req) => {
+      if (req.path === '/sync/crdt/updates/batch') {
+        const { notes } = JSON.parse(String(req.body)) as { notes: Array<{ noteId: string }> }
+        const ids = notes.map((n) => n.noteId)
+        if (new Set(ids).size !== ids.length) throw new Error('Duplicate noteIds are not allowed')
+        return {
+          notes: {
+            n1: {
+              updates: [
+                { sequenceNum: 7, data: packUpdate('u7'), createdAt: 1, signerDeviceId: 'd1' }
+              ],
+              hasMore: false
+            }
+          },
+          snapshotMeta: { n1: { sequenceNum: 5, revision: 'rev-a', signerDeviceId: 'd1' } }
+        }
+      }
+      throw new Error(`unexpected ${req.path}`)
+    })
+
+    const result = await makePuller(http, store).pullBodies(['n1', 'n1'])
+
+    expect(result).toEqual({ notesUpdated: 1, notesFailed: 0 })
+    expect(store.updates.map((u) => u.seq)).toEqual([7])
+  })
+
   // #2299 review round 2 (A-8): the same revision rule as body_pull.rs
   // `baseline_due`. A coversThrough push can replace the snapshot without its
   // watermark passing this cursor; only the revision says it moved.

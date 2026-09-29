@@ -76,8 +76,11 @@ export class CrdtBodyPuller {
     }
   }
 
-  async pullBodies(noteIds: string[]): Promise<CrdtPullResult> {
+  async pullBodies(requested: string[]): Promise<CrdtPullResult> {
     const result: CrdtPullResult = { notesUpdated: 0, notesFailed: 0 }
+    // The server refuses a batch that names a note twice (400 "Duplicate
+    // noteIds are not allowed"), which would fail every note in the chunk.
+    const noteIds = [...new Set(requested)]
     const vaultKey = this.deps.getVaultKey()
     if (!vaultKey || noteIds.length === 0) return result
 

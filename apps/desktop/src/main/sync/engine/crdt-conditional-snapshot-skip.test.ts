@@ -451,6 +451,38 @@ describe('CRDT sweep: conditional snapshot baseline', () => {
     expect(applyRequests()).toHaveLength(1)
   })
 
+  // #2520: the server refuses a batch that names a note twice with a 400 that
+  // fails the whole chunk, and the pull run can hand the same note over twice.
+  it('names each note once in the probe and apply requests when a caller repeats one', async () => {
+    server = {
+      'note-1': {
+        snapshot: { sequenceNum: 90, revision: 'rev-1' },
+        meta: { sequenceNum: 90, revision: 'rev-1' },
+        updates: []
+      },
+      'note-2': {
+        snapshot: { sequenceNum: 12, revision: 'rev-2' },
+        meta: { sequenceNum: 12, revision: 'rev-2' },
+        updates: []
+      }
+    }
+    const { coordinator } = setup()
+    await coordinator.pullCrdtForNotes(['note-1', 'note-2', 'note-1'])
+
+    server['note-2'].updates = [update(13)]
+    batchRequests = []
+
+    await coordinator.pullCrdtForNotes(['note-2', 'note-1', 'note-2'])
+
+    expect(probeRequests()).toHaveLength(1)
+    expect(applyRequests()).toHaveLength(1)
+    for (const request of batchRequests) {
+      const ids = request.notes.map((n) => n.noteId)
+      expect(new Set(ids).size).toBe(ids.length)
+    }
+    expect(probeRequests()[0].notes.map((n) => n.noteId)).toEqual(['note-2', 'note-1'])
+  })
+
   it('clearing caches drops both halves of the watermark, so the next sweep fetches again', async () => {
     server = {
       'note-1': {
