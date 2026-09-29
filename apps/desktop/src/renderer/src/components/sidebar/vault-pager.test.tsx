@@ -131,7 +131,7 @@ describe('VaultPager', () => {
     expect(consumed).toBe(true)
     await settle()
 
-    expect(onSwitch).toHaveBeenCalledWith(vaults[2], 'next')
+    expect(onSwitch).toHaveBeenCalledWith(vaults[2], 'next', 'swipe')
   })
 
   it('switches to the previous vault the other way', async () => {
@@ -142,7 +142,7 @@ describe('VaultPager', () => {
     })
     await settle()
 
-    expect(onSwitch).toHaveBeenCalledWith(vaults[0], 'prev')
+    expect(onSwitch).toHaveBeenCalledWith(vaults[0], 'prev', 'swipe')
   })
 
   it('springs back from a short drag', async () => {
@@ -193,7 +193,7 @@ describe('VaultPager', () => {
     })
     await settle()
 
-    expect(onSwitch).toHaveBeenCalledWith(vaults[2], 'next')
+    expect(onSwitch).toHaveBeenCalledWith(vaults[2], 'next', 'shortcut')
   })
 
   it('ignores the next-vault chord while paused', async () => {
@@ -245,7 +245,7 @@ describe('VaultPager', () => {
 
     act(() => requestVaultPage({ path: '/vaults/personal' }))
     await settle()
-    expect(onSwitch).toHaveBeenCalledWith(vaults[0], 'prev')
+    expect(onSwitch).toHaveBeenCalledWith(vaults[0], 'prev', 'indicator')
   })
 
   it('brings the list back when the switch fails, and accepts the next gesture', async () => {
@@ -258,7 +258,7 @@ describe('VaultPager', () => {
 
     act(() => requestVaultPage({ step: -1 }))
     await settle()
-    expect(onSwitch).toHaveBeenLastCalledWith(vaults[0], 'prev')
+    expect(onSwitch).toHaveBeenLastCalledWith(vaults[0], 'prev', 'shortcut')
     expect(viewport.firstElementChild).toHaveStyle({ transform: '' })
   })
 
@@ -408,6 +408,6 @@ describe('VaultPager', () => {
 
     act(() => requestVaultPage({ step: -1 }))
     await settle()
-    expect(onSwitch).toHaveBeenLastCalledWith(vaults[0], 'prev')
+    expect(onSwitch).toHaveBeenLastCalledWith(vaults[0], 'prev', 'shortcut')
   })
 })

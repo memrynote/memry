@@ -34,8 +34,12 @@ import {
   getVaultSwitchState,
   isVaultRevealHeld,
   subscribeVaultSwitchState,
-  type VaultSwitchDirection
+  type VaultSwitchDirection,
+  type VaultSwitchSource
 } from '@/lib/vault-switch-state'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Vault')
 
 export interface SwitchVaultOptions {
   /** Display name for the in-between screen; defaults to the folder name. */
@@ -44,6 +48,7 @@ export interface SwitchVaultOptions {
   icon?: string
   /** Set by the sidebar gesture so the incoming vault can enter from that side. */
   direction?: VaultSwitchDirection
+  source?: VaultSwitchSource
 }
 
 /**
@@ -245,6 +250,12 @@ export function useVault() {
    */
   const switchVault = useCallback(
     async (vaultPath: string, options: SwitchVaultOptions = {}): Promise<SelectVaultResponse> => {
+      log.info('Vault switch requested', {
+        source: options.source ?? 'unknown',
+        from: latestStatusRef.current?.path ?? null,
+        to: vaultPath,
+        refused: getVaultSwitchState().pending !== null
+      })
       // One switch at a time. Starting another would overwrite the running
       // switch's target, and its `endVaultSwitch` would then clear this one's.
       if (getVaultSwitchState().pending) {
