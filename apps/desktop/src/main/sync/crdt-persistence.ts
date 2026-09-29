@@ -1,11 +1,21 @@
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
 import { app } from 'electron'
-import { existsSync, rmSync } from 'fs'
+import { existsSync, readdirSync, readFileSync, rmSync } from 'fs'
 import os from 'os'
+import path from 'path'
 import { createLogger } from '../lib/logger'
-import { getCrdtPersistenceGuard, type CrdtPersistenceGuard } from '../store'
-import { runCrdtPreflight, type CrdtPreflightResult } from './crdt-preflight'
+import {
+  getCrdtPersistenceGuard,
+  recordCrdtPreflightFailure,
+  type CrdtPersistenceGuard
+} from '../store'
+import {
+  preflightMachineFields,
+  runCrdtPreflight,
+  stripAbsolutePaths,
+  type CrdtPreflightResult
+} from './crdt-preflight'
 import { moveStoreDir } from './crdt-store-move'
 import { trackMainEvent } from '../telemetry/track'
 import { getMainRedactOptions } from '../telemetry/redact-options'
@@ -43,6 +53,22 @@ export const CRDT_LEVEL_OPTIONS = {
  * giving up early would strand an install that was about to be fine.
  */
 const PREFLIGHT_GIVE_UP_AFTER_SESSIONS = 3
+
+/**
+ * How long a given-up build waits before running the preflight again.
+ *
+ * Without it the only retry was a new build, and some Windows installs ran a
+ * whole release in memory (90+ launches on 2026.928.1, issue #2519). A day
+ * keeps the cost at one failed probe — at most four crashed children, none of
+ * which can touch the store — per day, against the 83 crashes in three days
+ * that the give-up was built to stop (#2217).
+ */
+export const PREFLIGHT_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1000
+
+/** The most control-directory entries worth naming in a telemetry message. */
+const MAX_CONTROL_DIR_FILES = 12
+/** How much of LevelDB's own LOG tail rides in the local log line. */
+const CONTROL_LOG_TAIL_CHARS = 1024
 
 export interface CrdtPersistence {
   getYDoc(noteId: string): Promise<Y.Doc>
@@ -90,13 +116,23 @@ type FailurePoint = CrdtPreflightResult['stage'] | 'probe' | 'guard'
  * preflight automatically — the auto-update is the retry. An install whose
  * streak predates this field has no owning build and is re-armed once, which is
  * also what makes the new field safe to add to configs that never had it.
+ *
+ * Time bounds it too (#2519): a build waits `PREFLIGHT_RETRY_INTERVAL_MS`
+ * after its last failed run and then probes again, so an install is never in
+ * memory for longer than a day on account of the gate alone. A missing stamp
+ * (a give-up recorded before the stamp existed) or one from the future (a clock
+ * that moved backwards) is no evidence, and runs the preflight.
  */
 export function shouldSkipCrdtPreflight(
   guard: CrdtPersistenceGuard,
-  currentVersion: string
+  currentVersion: string,
+  now: number
 ): boolean {
   if (guard.sessions < PREFLIGHT_GIVE_UP_AFTER_SESSIONS) return false
-  return guard.appVersion === currentVersion
+  if (guard.appVersion !== currentVersion) return false
+  const failedAt = guard.preflightFailedAt
+  if (failedAt === undefined || failedAt > now) return false
+  return now - failedAt < PREFLIGHT_RETRY_INTERVAL_MS
 }
 
 /**
@@ -119,14 +155,29 @@ export function shouldSkipCrdtPreflight(
  */
 function reportPersistenceUnavailable(
   preflight: CrdtPreflightResult | null,
+  storagePath: string,
   failedAt?: FailurePoint
 ): void {
   const at: FailurePoint =
     failedAt ?? (preflight && !preflight.ok ? (preflight.stage ?? 'bootstrap') : 'probe')
+  // Every token before `reason` is bounded and path-free, and together they
+  // stay well under the 512-char cap, so the cap only ever trims the reason.
+  const machine = preflightMachineFields()
+  const binding = preflight?.binding
   const message = [
     `CRDT persistence unavailable at ${at}`,
     `transport=${preflight?.transport ?? 'none'}`,
+    ...(preflight?.storeOp ? [`op=${preflight.storeOp}`] : []),
     `os=${os.platform()} ${os.release()}`,
+    `arch=${machine.arch}`,
+    `cpu=${machine.cpuVendor}`,
+    `electron=${machine.electron}`,
+    `abi=${machine.abi}`,
+    ...(binding ? [`classicLevel=${binding.classicLevel}`, `binary=${binding.binary}`] : []),
+    `asciiPath=${isAscii(storagePath)}`,
+    ...(preflight?.controlDirFiles
+      ? [`controlFiles=${preflight.controlDirFiles.join(',') || 'none'}`]
+      : []),
     `reason=${preflight?.reason ?? 'unknown'}`
   ].join(' ')
   trackMainEvent('app_error_seen', {
@@ -168,7 +219,7 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
       storagePath,
       reason: skipped
     })
-    reportPersistenceUnavailable({ ok: false, reason: skipped }, 'guard')
+    reportPersistenceUnavailable({ ok: false, reason: skipped }, storagePath, 'guard')
     return null
   }
   try {
@@ -208,9 +259,29 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
       'CRDT persistence unavailable — continuing in-memory (notes still load from vault files)',
       { storagePath, error: err }
     )
-    reportPersistenceUnavailable(lastPreflight)
+    reportPersistenceUnavailable(lastPreflight, storagePath)
+    // Only a launch that actually ran the preflight starts the retry clock.
+    if (lastPreflight) stampPreflightFailure()
     return null
   }
+}
+
+function stampPreflightFailure(): void {
+  try {
+    recordCrdtPreflightFailure(Date.now())
+  } catch (err) {
+    // Bookkeeping for the gate must never be what stops in-memory mode.
+    log.warn('Could not record the CRDT preflight failure time', { error: err })
+  }
+}
+
+/**
+ * Whether a path is plain ASCII. LevelDB's Windows port opens its LOG with a
+ * narrow `fopen`, so a non-ASCII profile path is the one path property worth
+ * shipping — as a boolean, never the path.
+ */
+function isAscii(value: string): boolean {
+  return /^[\x20-\x7E]*$/.test(value)
 }
 
 /**
@@ -223,8 +294,10 @@ function skipPreflightVerdict(): string | null {
   try {
     const guard = getCrdtPersistenceGuard()
     const version = app.getVersion()
-    if (!shouldSkipCrdtPreflight(guard, version)) return null
-    return `preflight skipped after ${guard.sessions} in-memory launches on ${version}`
+    const now = Date.now()
+    if (!shouldSkipCrdtPreflight(guard, version, now)) return null
+    const hoursSinceRun = Math.floor((now - (guard.preflightFailedAt ?? now)) / 3_600_000)
+    return `preflight skipped after ${guard.sessions} in-memory launches on ${version}, last failed run ${hoursSinceRun}h ago`
   } catch (err) {
     log.warn('Could not read the CRDT persistence guard — running the preflight', { error: err })
     return null
@@ -270,6 +343,9 @@ async function settleStoreStageFailure(
   }
 
   const control = await runCrdtPreflight(controlPath)
+  // Read before the clear: what LevelDB managed to write into an empty
+  // directory is how far its open got before the child died.
+  const controlDir = control.ok ? null : describeControlDir(controlPath)
   clearPath(controlPath, 'CRDT preflight control directory')
 
   if (!control.ok) {
@@ -279,14 +355,18 @@ async function settleStoreStageFailure(
       stage: control.stage,
       storeOp: control.storeOp,
       transport: control.transport,
-      platform: process.platform,
-      osRelease: os.release(),
-      osVersion: os.version(),
-      arch: process.arch
+      binding: control.binding,
+      controlDirFiles: controlDir?.files,
+      controlDirLogTail: controlDir?.logTail,
+      ...preflightMachineFields()
     })
     // Restage so telemetry stops reporting a data problem that does not exist.
     // Never derived from stderr — only a second child's verdict can say this.
-    return { ...control, stage: 'binding-in-use' }
+    return {
+      ...control,
+      stage: 'binding-in-use',
+      ...(controlDir ? { controlDirFiles: controlDir.files } : {})
+    }
   }
 
   const quarantinePath = `${storagePath}.broken-${Date.now()}`
@@ -299,6 +379,26 @@ async function settleStoreStageFailure(
     quarantinePath
   })
   return control
+}
+
+/**
+ * The file names LevelDB left in the control directory, and the tail of its own
+ * LOG (flushed per line, so it survives the crash). Only the probe ever wrote
+ * there, so nothing in it is user data; absolute paths are stripped anyway.
+ * Null when the directory cannot be read — a diagnostic never fails the verdict.
+ */
+function describeControlDir(controlPath: string): { files: string[]; logTail?: string } | null {
+  try {
+    const files = readdirSync(controlPath).sort().slice(0, MAX_CONTROL_DIR_FILES)
+    let logTail: string | undefined
+    if (files.includes('LOG')) {
+      const levelDbLog = readFileSync(path.join(controlPath, 'LOG'), 'utf8')
+      logTail = stripAbsolutePaths(levelDbLog.slice(-CONTROL_LOG_TAIL_CHARS))
+    }
+    return { files, logTail }
+  } catch {
+    return null
+  }
 }
 
 /** Remove a path if it exists. False means it is still there. */

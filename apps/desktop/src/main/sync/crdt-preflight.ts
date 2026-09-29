@@ -4,10 +4,12 @@ import path from 'path'
 import { utilityProcess } from 'electron'
 import { createLogger } from '../lib/logger'
 import {
+  PREFLIGHT_MARK_BINDING_INFO,
   PREFLIGHT_MARK_BINDING_LOADED,
   PREFLIGHT_MARK_STARTED,
   PREFLIGHT_MARK_STORE_OPS,
   PREFLIGHT_STORE_OP_ORDER,
+  type CrdtPreflightBindingInfo,
   type CrdtPreflightStage,
   type CrdtPreflightStoreOp
 } from '@memry/sync-client/crdt-preflight-protocol'
@@ -21,14 +23,33 @@ const log = createLogger('CrdtPreflight')
  * `os.version()` names the edition) and the CPU target the prebuilt binary was
  * chosen for. Attached to every failure line so the fleet query can group by
  * them instead of guessing.
+ *
+ * `arch` is the PROCESS architecture, so an x64 build running under emulation
+ * on a Windows-on-ARM laptop reads `x64` like any Intel machine; the CPU model
+ * is what tells those apart. The Electron version and module ABI pin which
+ * runtime the binary was loaded into — the same for both child transports,
+ * since both run this executable.
  */
-function machineFields(): Record<string, string> {
+export function preflightMachineFields(): Record<string, string> {
+  const cpuModel = os.cpus()[0]?.model?.trim() ?? ''
   return {
     platform: process.platform,
     osRelease: os.release(),
     osVersion: os.version(),
-    arch: process.arch
+    arch: process.arch,
+    cpu: cpuModel || 'unknown',
+    cpuVendor: cpuVendor(cpuModel),
+    electron: process.versions.electron ?? 'none',
+    abi: process.versions.modules
   }
+}
+
+/** A bounded token for the CPU family, safe to ship in a telemetry message. */
+export function cpuVendor(model: string): 'intel' | 'amd' | 'arm' | 'other' {
+  if (/intel/i.test(model)) return 'intel'
+  if (/amd|ryzen|epyc/i.test(model)) return 'amd'
+  if (/qualcomm|snapdragon|oryon|arm|apple/i.test(model)) return 'arm'
+  return 'other'
 }
 
 const PREFLIGHT_TIMEOUT_MS = 10_000
@@ -44,6 +65,11 @@ const REASON_DETAIL_CHARS = 200
 // that path would ship verbatim. The message is the signal; the path is not.
 const ABSOLUTE_PATH = /(?:[A-Za-z]:\\|\/)[^\s'"]*[\\/][^\s'"]*/g
 
+/** `text` with every absolute path replaced by `<path>`. */
+export function stripAbsolutePaths(text: string): string {
+  return text.replace(ABSOLUTE_PATH, '<path>')
+}
+
 /**
  * The child's first real error line, bounded and path-free.
  *
@@ -56,7 +82,26 @@ function firstErrorLine(stderr: string): string | undefined {
   for (const raw of stderr.split('\n')) {
     const line = raw.trim()
     if (!line || line.startsWith('@@memry-preflight:') || line.startsWith('at ')) continue
-    return line.replace(ABSOLUTE_PATH, '<path>').slice(0, REASON_DETAIL_CHARS)
+    return stripAbsolutePaths(line).slice(0, REASON_DETAIL_CHARS)
+  }
+  return undefined
+}
+
+/** The binding-info line the child wrote before loading the binding, if any. */
+function bindingInfoFromStderr(stderr: string): CrdtPreflightBindingInfo | undefined {
+  for (const raw of stderr.split('\n')) {
+    const line = raw.trim()
+    if (!line.startsWith(PREFLIGHT_MARK_BINDING_INFO)) continue
+    try {
+      const parsed = JSON.parse(line.slice(PREFLIGHT_MARK_BINDING_INFO.length)) as unknown
+      if (!parsed || typeof parsed !== 'object') return undefined
+      const { classicLevel, binary } = parsed as Record<string, unknown>
+      if (typeof classicLevel !== 'string' || typeof binary !== 'string') return undefined
+      // Bounded: this rides in telemetry, and the child is the thing under suspicion.
+      return { classicLevel: classicLevel.slice(0, 32), binary: binary.slice(0, 96) }
+    } catch {
+      return undefined
+    }
   }
   return undefined
 }
@@ -81,6 +126,18 @@ export interface CrdtPreflightResult {
    * recover) and "the binding is broken for this machine" (we don't).
    */
   transport?: Transport
+  /**
+   * The classic-level version and binary the child resolved, when it got far
+   * enough to say. Present on passing verdicts too.
+   */
+  binding?: CrdtPreflightBindingInfo
+  /**
+   * What LevelDB left in the EMPTY control directory before the child died —
+   * file names only (`LOCK`, `LOG`, `CURRENT`, `MANIFEST-000001`, ...), which
+   * is how far the open got. Set by the provider on a `binding-in-use` verdict;
+   * the child cannot report it.
+   */
+  controlDirFiles?: string[]
 }
 
 export type Transport = 'utility' | 'node'
@@ -145,7 +202,8 @@ async function probeWithFallback(storeDir: string): Promise<CrdtPreflightResult>
       reason: result.reason,
       stage: result.stage,
       storeOp: result.storeOp,
-      ...machineFields()
+      binding: result.binding,
+      ...preflightMachineFields()
     })
     result = await execPreflight(storeDir, 'node')
   }
@@ -158,7 +216,8 @@ async function probeWithFallback(storeDir: string): Promise<CrdtPreflightResult>
       reason: result.reason,
       stage: result.stage,
       storeOp: result.storeOp,
-      ...machineFields(),
+      binding: result.binding,
+      ...preflightMachineFields(),
       elapsedMs: Date.now() - startedAt
     })
   }
@@ -201,11 +260,13 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
      */
     const failure = (reason: string): CrdtPreflightResult => {
       const detail = firstErrorLine(stderr)
+      const binding = bindingInfoFromStderr(stderr)
       return {
         ok: false,
         stage: stageFromMarkers(),
         storeOp: storeOpFromMarkers(),
-        reason: detail ? `${reason}: ${detail}` : reason
+        reason: detail ? `${reason}: ${detail}` : reason,
+        ...(binding ? { binding } : {})
       }
     }
 
@@ -220,7 +281,7 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
           reason: result.reason,
           stage: result.stage,
           storeOp: result.storeOp,
-          ...machineFields(),
+          ...preflightMachineFields(),
           stderr: stderr.slice(0, STDERR_CAPTURE_CHARS)
         })
       }
@@ -259,7 +320,8 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
 
     child.once('exit', (code: number | null) => {
       if (code === 0) {
-        settle({ ok: true })
+        const binding = bindingInfoFromStderr(stderr)
+        settle(binding ? { ok: true, binding } : { ok: true })
         return
       }
       // Log the code in hex too: Windows reports these as huge unsigned

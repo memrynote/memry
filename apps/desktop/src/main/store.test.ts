@@ -30,7 +30,8 @@ import {
   setWindowBounds,
   getCrdtInMemorySessions,
   getCrdtPersistenceGuard,
-  recordCrdtPersistenceOutcome
+  recordCrdtPersistenceOutcome,
+  recordCrdtPreflightFailure
 } from './store'
 
 describe('store', () => {
@@ -242,6 +243,29 @@ describe('store', () => {
 
       expect(recordCrdtPersistenceOutcome(true)).toBe(0)
       expect(getCrdtInMemorySessions()).toBe(0)
+    })
+
+    // #2519: the give-up is bounded in time, so the stamp of the last failed
+    // run has to survive the streak growing and die with it.
+    it('keeps the preflight failure stamp through the streak and drops it when the store returns', () => {
+      recordCrdtPreflightFailure(1_000)
+      recordCrdtPersistenceOutcome(false)
+      expect(getCrdtPersistenceGuard()).toEqual({
+        sessions: 1,
+        appVersion: '1.0.0',
+        preflightFailedAt: 1_000
+      })
+
+      recordCrdtPersistenceOutcome(true)
+      expect(getCrdtPersistenceGuard().preflightFailedAt).toBeUndefined()
+    })
+
+    it('drops a failure stamp left without a streak', () => {
+      recordCrdtPreflightFailure(1_000)
+
+      recordCrdtPersistenceOutcome(true)
+
+      expect(getCrdtPersistenceGuard().preflightFailedAt).toBeUndefined()
     })
   })
 })

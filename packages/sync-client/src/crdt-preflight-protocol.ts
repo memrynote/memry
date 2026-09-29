@@ -17,6 +17,30 @@ export const PREFLIGHT_MARK_STARTED = '@@memry-preflight:started@@'
 export const PREFLIGHT_MARK_BINDING_LOADED = '@@memry-preflight:binding-loaded@@'
 
 /**
+ * Prefix of the one line that names the native binary the child is ABOUT to
+ * load, followed by a `CrdtPreflightBindingInfo` JSON object on the same line.
+ *
+ * Written before the binding loads, because an access violation afterwards
+ * leaves nothing else behind: the Windows crash (issue #2519) reproduces with
+ * both a Node-built prebuild and an Electron-built binary, and telemetry could
+ * not say which one a given crash ran.
+ */
+export const PREFLIGHT_MARK_BINDING_INFO = '@@memry-preflight:binding-info@@'
+
+/** Which classic-level copy and which of its binaries the child resolved. */
+export interface CrdtPreflightBindingInfo {
+  /** classic-level package version, e.g. `1.4.1`. */
+  classicLevel: string
+  /**
+   * The `.node` file node-gyp-build picked, relative to the classic-level
+   * package root with `/` separators — `build/Release/classic_level.node` for a
+   * from-source build, `prebuilds/win32-x64/node.napi.node` for an upstream
+   * prebuild. Relative so no install path (and so no user name) rides along.
+   */
+  binary: string
+}
+
+/**
  * Written immediately BEFORE each store operation — so the LAST one on stderr
  * names the operation that was in flight when the child died, not one that
  * completed. (The two markers above report a step that finished; these cannot,

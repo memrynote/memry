@@ -7,6 +7,9 @@ const mockTrackMainEvent = vi.hoisted(() => vi.fn())
 const mockExistsSync = vi.hoisted(() => vi.fn())
 const mockRmSync = vi.hoisted(() => vi.fn())
 const mockGuard = vi.hoisted(() => vi.fn())
+const mockRecordPreflightFailure = vi.hoisted(() => vi.fn())
+const mockReaddirSync = vi.hoisted(() => vi.fn())
+const mockReadFileSync = vi.hoisted(() => vi.fn())
 const mockLevelCtor = vi.hoisted(() => vi.fn())
 
 const APP_VERSION = '2026.9.14'
@@ -16,11 +19,23 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../store', () => ({
-  getCrdtPersistenceGuard: () => mockGuard()
+  getCrdtPersistenceGuard: () => mockGuard(),
+  recordCrdtPreflightFailure: (...args: unknown[]) => mockRecordPreflightFailure(...args)
 }))
 
 vi.mock('./crdt-preflight', () => ({
-  runCrdtPreflight: (...args: unknown[]) => mockPreflight(...args)
+  runCrdtPreflight: (...args: unknown[]) => mockPreflight(...args),
+  preflightMachineFields: () => ({
+    platform: 'win32',
+    osRelease: '10.0.26200',
+    osVersion: 'Windows 11 Home',
+    arch: 'x64',
+    cpu: 'Snapdragon(R) X Elite - X1E78100 - Qualcomm(R) Oryon(TM) CPU',
+    cpuVendor: 'arm',
+    electron: '43.1.1',
+    abi: '148'
+  }),
+  stripAbsolutePaths: (text: string) => text.replace(/\/[^\s]*/g, '<path>')
 }))
 
 vi.mock('./crdt-store-move', () => ({
@@ -33,7 +48,9 @@ vi.mock('../telemetry/track', () => ({
 
 vi.mock('fs', () => ({
   existsSync: (...args: unknown[]) => mockExistsSync(...args),
-  rmSync: (...args: unknown[]) => mockRmSync(...args)
+  rmSync: (...args: unknown[]) => mockRmSync(...args),
+  readdirSync: (...args: unknown[]) => mockReaddirSync(...args),
+  readFileSync: (...args: unknown[]) => mockReadFileSync(...args)
 }))
 
 // The real module reaches into the electron store for the vault root. Mask mode
@@ -70,6 +87,7 @@ vi.mock('y-leveldb', () => ({
 
 import {
   CRDT_LEVEL_OPTIONS,
+  PREFLIGHT_RETRY_INTERVAL_MS,
   openCrdtPersistence,
   shouldSkipCrdtPreflight
 } from './crdt-persistence'
@@ -99,6 +117,9 @@ describe('openCrdtPersistence telemetry', () => {
     mockExistsSync.mockReturnValue(false)
     mockMoveStoreDir.mockResolvedValue(true)
     mockGuard.mockReturnValue({ sessions: 0 })
+    mockReaddirSync.mockImplementation(() => {
+      throw new Error('ENOENT')
+    })
   })
 
   it('reports the failure point when the binding aborts opening the store', async () => {
@@ -247,6 +268,51 @@ describe('openCrdtPersistence telemetry', () => {
     expect(message).toContain('0xC0000005')
   })
 
+  // #2519: the event said `binding-in-use` and an exit code, and nothing that
+  // could separate the remaining hypotheses — which operation died, which
+  // binary, which CPU, and how far LevelDB got in an empty directory.
+  it('ships the failing store op, the binary and what LevelDB left in the control directory', async () => {
+    mockExistsSync.mockReturnValue(true)
+    mockReaddirSync.mockReturnValue(['LOG', 'LOCK', 'CURRENT', 'MANIFEST-000001'])
+    mockReadFileSync.mockReturnValue('2026/10/01-10:00:00.000 1a Delete type=3 #1\n')
+    const binding = { classicLevel: '1.4.1', binary: 'build/Release/classic_level.node' }
+    mockPreflight
+      .mockResolvedValueOnce({ ...failed('store', 'utility'), storeOp: 'write', binding })
+      .mockResolvedValueOnce({ ...failed('store', 'node'), storeOp: 'open', binding })
+
+    expect(await openCrdtPersistence(STORE)).toBeNull()
+
+    // Read before the directory is cleared, and only the control directory.
+    expect(mockReaddirSync).toHaveBeenCalledWith(`${STORE}.probe`)
+    expect(mockReaddirSync).not.toHaveBeenCalledWith(STORE)
+    const { message } = reportedEvent().error as { message: string }
+    expect(message).toContain('at binding-in-use transport=node op=open')
+    expect(message).toContain('arch=x64 cpu=arm electron=43.1.1 abi=148')
+    expect(message).toContain('classicLevel=1.4.1 binary=build/Release/classic_level.node')
+    expect(message).toContain('asciiPath=true')
+    expect(message).toContain('controlFiles=CURRENT,LOCK,LOG,MANIFEST-000001')
+    expect(message).toContain('0xC0000005')
+  })
+
+  it('flags a non-ASCII store path without shipping the path', async () => {
+    const store = 'C:\\Users\\\u00c7a\u011fr\u0131\\AppData\\Roaming\\MemryNote\\crdt-store'
+    mockPreflight.mockResolvedValue({ ok: false, stage: 'bootstrap', transport: 'node' })
+
+    expect(await openCrdtPersistence(store)).toBeNull()
+
+    const event = reportedEvent()
+    expect((event.error as { message: string }).message).toContain('asciiPath=false')
+    expect(JSON.stringify(event)).not.toContain('\u00c7a\u011fr\u0131')
+  })
+
+  it('stamps a failed preflight run so the gate can time its retry', async () => {
+    mockPreflight.mockResolvedValue(failed('bootstrap', 'node'))
+
+    await openCrdtPersistence(STORE)
+
+    expect(mockRecordPreflightFailure).toHaveBeenCalledTimes(1)
+  })
+
   // This event is ~100% win32, where the store path is C:\\Users\\<name>\\... and
   // is masked by a DIFFERENT regex than the darwin case above. Pinning only the
   // darwin branch would leave the branch that always fires unguarded.
@@ -300,33 +366,92 @@ describe('openCrdtPersistence telemetry', () => {
 // machines (83 crashes in three days for one user), and each launch re-derived
 // a verdict the previous one had already reached.
 describe('shouldSkipCrdtPreflight', () => {
+  const NOW = 1_800_000_000_000
+  const HOUR = 60 * 60 * 1000
+  const recentFailure = NOW - HOUR
+
   it('runs the preflight while the streak is still short enough to self-heal', () => {
-    expect(shouldSkipCrdtPreflight({ sessions: 0, appVersion: APP_VERSION }, APP_VERSION)).toBe(
-      false
-    )
-    expect(shouldSkipCrdtPreflight({ sessions: 2, appVersion: APP_VERSION }, APP_VERSION)).toBe(
-      false
-    )
+    expect(
+      shouldSkipCrdtPreflight(
+        { sessions: 0, appVersion: APP_VERSION, preflightFailedAt: recentFailure },
+        APP_VERSION,
+        NOW
+      )
+    ).toBe(false)
+    expect(
+      shouldSkipCrdtPreflight(
+        { sessions: 2, appVersion: APP_VERSION, preflightFailedAt: recentFailure },
+        APP_VERSION,
+        NOW
+      )
+    ).toBe(false)
   })
 
   it('stops paying for the child once this build has failed it three times', () => {
-    expect(shouldSkipCrdtPreflight({ sessions: 3, appVersion: APP_VERSION }, APP_VERSION)).toBe(
-      true
-    )
+    expect(
+      shouldSkipCrdtPreflight(
+        { sessions: 3, appVersion: APP_VERSION, preflightFailedAt: recentFailure },
+        APP_VERSION,
+        NOW
+      )
+    ).toBe(true)
   })
 
   // The auto-update is the retry: a new binary is the only thing that can
   // plausibly change a native abort's verdict.
   it('re-arms the preflight when a different build is running', () => {
-    expect(shouldSkipCrdtPreflight({ sessions: 83, appVersion: '2026.9.14' }, '2026.10.1')).toBe(
-      false
-    )
+    expect(
+      shouldSkipCrdtPreflight(
+        { sessions: 83, appVersion: '2026.9.14', preflightFailedAt: recentFailure },
+        '2026.10.1',
+        NOW
+      )
+    ).toBe(false)
   })
 
   // Configs written before this field existed carry a streak with no owning
   // build. Honouring it would disable the store on evidence no build claims.
   it('re-arms a streak recorded before the version was persisted', () => {
-    expect(shouldSkipCrdtPreflight({ sessions: 56 }, APP_VERSION)).toBe(false)
+    expect(shouldSkipCrdtPreflight({ sessions: 56 }, APP_VERSION, NOW)).toBe(false)
+  })
+
+  // #2519: 9 users sat at 90+ in-memory launches on one build, with the next
+  // release as their only way out.
+  it('retries under the same build once the last failed run is a day old', () => {
+    const guard = { sessions: 90, appVersion: APP_VERSION }
+    expect(
+      shouldSkipCrdtPreflight(
+        { ...guard, preflightFailedAt: NOW - PREFLIGHT_RETRY_INTERVAL_MS + HOUR },
+        APP_VERSION,
+        NOW
+      )
+    ).toBe(true)
+    expect(
+      shouldSkipCrdtPreflight(
+        { ...guard, preflightFailedAt: NOW - PREFLIGHT_RETRY_INTERVAL_MS },
+        APP_VERSION,
+        NOW
+      )
+    ).toBe(false)
+  })
+
+  // A give-up recorded before the stamp existed has no retry clock: run once
+  // and let that launch start it.
+  it('runs the preflight when the give-up carries no failure stamp', () => {
+    expect(
+      shouldSkipCrdtPreflight({ sessions: 90, appVersion: APP_VERSION }, APP_VERSION, NOW)
+    ).toBe(false)
+  })
+
+  // A clock that moved backwards must not stretch the give-up indefinitely.
+  it('runs the preflight when the failure stamp is in the future', () => {
+    expect(
+      shouldSkipCrdtPreflight(
+        { sessions: 90, appVersion: APP_VERSION, preflightFailedAt: NOW + HOUR },
+        APP_VERSION,
+        NOW
+      )
+    ).toBe(false)
   })
 })
 
@@ -334,7 +459,11 @@ describe('openCrdtPersistence preflight gate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockExistsSync.mockReturnValue(false)
-    mockGuard.mockReturnValue({ sessions: 5, appVersion: APP_VERSION })
+    mockGuard.mockReturnValue({
+      sessions: 5,
+      appVersion: APP_VERSION,
+      preflightFailedAt: Date.now() - 60 * 60 * 1000
+    })
   })
 
   it('goes straight to in-memory without spawning the child that keeps crashing', async () => {
@@ -342,6 +471,22 @@ describe('openCrdtPersistence preflight gate', () => {
 
     expect(mockPreflight).not.toHaveBeenCalled()
     expect(mockMoveStoreDir).not.toHaveBeenCalled()
+    // A skipped launch never ran the probe, so it must not restart the clock.
+    expect(mockRecordPreflightFailure).not.toHaveBeenCalled()
+  })
+
+  it('runs the preflight again once the last failed run is older than the retry interval', async () => {
+    mockGuard.mockReturnValue({
+      sessions: 90,
+      appVersion: APP_VERSION,
+      preflightFailedAt: Date.now() - PREFLIGHT_RETRY_INTERVAL_MS - 1
+    })
+    mockPreflight.mockResolvedValue(failed('bootstrap', 'node'))
+
+    expect(await openCrdtPersistence(STORE)).toBeNull()
+
+    expect(mockPreflight).toHaveBeenCalledTimes(1)
+    expect(mockRecordPreflightFailure).toHaveBeenCalledWith(expect.any(Number))
   })
 
   // The fleet count of installs running in memory must not silently drop to

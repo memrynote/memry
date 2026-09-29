@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  PREFLIGHT_MARK_BINDING_INFO,
   PREFLIGHT_MARK_BINDING_LOADED,
   PREFLIGHT_MARK_STARTED,
   PREFLIGHT_MARK_STORE_OPS
@@ -41,7 +42,7 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { runCrdtPreflight } from './crdt-preflight'
+import { cpuVendor, runCrdtPreflight } from './crdt-preflight'
 
 const STORE_DIR = '/tmp/memry-preflight-test/crdt-store'
 
@@ -246,6 +247,38 @@ describe('runCrdtPreflight', () => {
       expect(result.storeOp).toBe('write')
     })
 
+    // #2519: which binary a crash ran was unknowable — a Node-built prebuild
+    // and an Electron-built binary both access-violate.
+    it('carries the binary the child named before loading it', async () => {
+      const binding = { classicLevel: '1.4.1', binary: 'build/Release/classic_level.node' }
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.say(`${PREFLIGHT_MARK_BINDING_INFO}${JSON.stringify(binding)}`)
+      child.say(PREFLIGHT_MARK_BINDING_LOADED)
+      child.say(PREFLIGHT_MARK_STORE_OPS.open)
+      child.emit('exit', -1073741819)
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
+      nodeChild.say(PREFLIGHT_MARK_STARTED)
+      nodeChild.say(`${PREFLIGHT_MARK_BINDING_INFO}${JSON.stringify(binding)}`)
+      nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
+      nodeChild.say(PREFLIGHT_MARK_STORE_OPS.open)
+      nodeChild.emit('exit', -1073741819)
+
+      const result = await pending
+      expect(result).toMatchObject({ stage: 'store', storeOp: 'open', binding })
+      // The info line is a marker, never the child's error line.
+      expect(result.reason).not.toContain('classic_level')
+    })
+
+    it('ignores a malformed binding-info line', async () => {
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.say(`${PREFLIGHT_MARK_BINDING_INFO}{not json`)
+      child.emit('exit', 0)
+
+      expect(await pending).toEqual({ ok: true, transport: 'utility' })
+    })
+
     it('leaves the store operation unset when the child died before announcing one', async () => {
       const pending = runCrdtPreflight(STORE_DIR)
       child.say(PREFLIGHT_MARK_STARTED)
@@ -375,5 +408,16 @@ describe('runCrdtPreflight', () => {
       await expect(pending).resolves.toMatchObject({ ok: false, stage: 'binding' })
       expect(mockSpawn).not.toHaveBeenCalled()
     })
+  })
+})
+
+// An x64 build under emulation on Windows-on-ARM reports `process.arch` x64,
+// so the CPU model is the only thing that tells it apart from an Intel laptop.
+describe('cpuVendor', () => {
+  it('buckets the CPU model strings Windows reports', () => {
+    expect(cpuVendor('Intel(R) Core(TM) i7-1165G7 @ 2.80GHz')).toBe('intel')
+    expect(cpuVendor('AMD Ryzen 7 7840U w/ Radeon 780M Graphics')).toBe('amd')
+    expect(cpuVendor('Snapdragon(R) X Elite - X1E78100 - Qualcomm(R) Oryon(TM) CPU')).toBe('arm')
+    expect(cpuVendor('')).toBe('other')
   })
 })

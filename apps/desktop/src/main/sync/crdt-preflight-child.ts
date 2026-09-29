@@ -22,11 +22,14 @@
  */
 import { writeSync } from 'fs'
 import { createRequire } from 'module'
+import path from 'path'
 import * as Y from 'yjs'
 import {
+  PREFLIGHT_MARK_BINDING_INFO,
   PREFLIGHT_MARK_BINDING_LOADED,
   PREFLIGHT_MARK_STARTED,
-  PREFLIGHT_MARK_STORE_OPS
+  PREFLIGHT_MARK_STORE_OPS,
+  type CrdtPreflightBindingInfo
 } from '@memry/sync-client/crdt-preflight-protocol'
 
 const PROBE_DOC = '__memry_preflight__'
@@ -61,6 +64,36 @@ function describeErrorChain(err: unknown): string {
   return parts.reverse().join(' <- ')
 }
 
+/** The part of node-gyp-build this file uses: resolve a binary without loading it. */
+interface NodeGypBuild {
+  path?: (dir: string) => string
+}
+
+/**
+ * Name the classic-level binary y-leveldb is about to load, WITHOUT loading it.
+ *
+ * Same resolution chain as the load itself (y-leveldb -> level ->
+ * classic-level -> node-gyp-build), so the answer is the file the next
+ * `require` maps. Undefined when anything in that chain cannot be resolved:
+ * this is a diagnostic, and it must never be the reason a probe fails.
+ */
+function resolveBindingInfo(yLeveldbPath: string): CrdtPreflightBindingInfo | undefined {
+  try {
+    const levelRequire = createRequire(createRequire(yLeveldbPath).resolve('level'))
+    const packageJsonPath = levelRequire.resolve('classic-level/package.json')
+    const { version } = levelRequire('classic-level/package.json') as { version?: unknown }
+    const packageRoot = path.dirname(packageJsonPath)
+    const nodeGypBuild = createRequire(packageJsonPath)('node-gyp-build') as NodeGypBuild
+    const binary =
+      typeof nodeGypBuild.path === 'function'
+        ? path.relative(packageRoot, nodeGypBuild.path(packageRoot)).split(path.sep).join('/')
+        : 'unresolved'
+    return { classicLevel: typeof version === 'string' ? version : 'unknown', binary }
+  } catch {
+    return undefined
+  }
+}
+
 function mark(marker: string): void {
   // writeSync, not process.stderr.write: stderr is a pipe here, so Node's
   // stream write is async and a native abort microseconds later would eat the
@@ -89,6 +122,9 @@ async function main(): Promise<void> {
   // an external dep resolved relative to this bundle, and CJS require is what
   // works from inside the packaged app.
   const childRequire = createRequire(__filename)
+  const yLeveldbPath = childRequire.resolve('y-leveldb')
+  const bindingInfo = resolveBindingInfo(yLeveldbPath)
+  if (bindingInfo) mark(`${PREFLIGHT_MARK_BINDING_INFO}${JSON.stringify(bindingInfo)}`)
   const { LeveldbPersistence } = childRequire('y-leveldb') as typeof import('y-leveldb')
   mark(PREFLIGHT_MARK_BINDING_LOADED)
 
@@ -97,7 +133,7 @@ async function main(): Promise<void> {
   // reference. Resolved THROUGH y-leveldb's own resolution: the app's module
   // graph carries a second, newer classic-level, and probing the store with a
   // different native binding than the one y-leveldb will use proves nothing.
-  const { Level } = createRequire(childRequire.resolve('y-leveldb'))('level') as {
+  const { Level } = createRequire(yLeveldbPath)('level') as {
     Level: LevelAdapter
   }
   const adapters: LevelInstance[] = []

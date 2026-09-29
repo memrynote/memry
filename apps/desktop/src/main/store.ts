@@ -186,6 +186,20 @@ export interface CrdtStoreData {
    * as a match.
    */
   inMemoryAppVersion?: string
+  /**
+   * When the CRDT preflight last actually ran and failed, in epoch ms.
+   *
+   * The version scope above re-arms the preflight only when a new build ships,
+   * so an install whose build keeps failing it stayed in memory for the whole
+   * life of that build — 90+ launches for some Windows users on 2026.928.1
+   * (issue #2519). This bounds the give-up in time as well: once it is old
+   * enough, the preflight runs again under the same build.
+   *
+   * Optional, and absent on every install that gave up under an older build —
+   * which reads as "never retried", so the next launch runs the preflight once
+   * and stamps it. Dropped on a healthy launch together with the streak.
+   */
+  inMemoryPreflightFailedAt?: number
 }
 
 /**
@@ -592,6 +606,8 @@ export function getCrdtInMemorySessions(): number {
 export interface CrdtPersistenceGuard {
   sessions: number
   appVersion?: string
+  /** Epoch ms of the last preflight that ran and failed. */
+  preflightFailedAt?: number
 }
 
 /**
@@ -603,7 +619,21 @@ export interface CrdtPersistenceGuard {
  */
 export function getCrdtPersistenceGuard(): CrdtPersistenceGuard {
   const current = store.get('crdtStore')
-  return { sessions: current.inMemorySessions ?? 0, appVersion: current.inMemoryAppVersion }
+  return {
+    sessions: current.inMemorySessions ?? 0,
+    appVersion: current.inMemoryAppVersion,
+    preflightFailedAt: current.inMemoryPreflightFailedAt
+  }
+}
+
+/**
+ * Record that the CRDT preflight ran on this launch and did not yield a store.
+ *
+ * Written only on that failure path, so a healthy install never writes config
+ * for it.
+ */
+export function recordCrdtPreflightFailure(at: number): void {
+  store.set('crdtStore', { ...store.get('crdtStore'), inMemoryPreflightFailedAt: at })
 }
 
 /**
@@ -619,8 +649,16 @@ export function recordCrdtPersistenceOutcome(healthy: boolean): number {
   // Stamped on the degraded path only. A healthy launch drops it so the streak
   // and the build that owns it can never disagree.
   const nextVersion = healthy ? undefined : app.getVersion()
-  if (next !== previous || current.inMemoryAppVersion !== nextVersion) {
-    store.set('crdtStore', { ...current, inMemorySessions: next, inMemoryAppVersion: nextVersion })
+  // A healthy launch also drops the preflight failure stamp: it belongs to the
+  // streak and must not outlive it.
+  const staleFailureStamp = healthy && current.inMemoryPreflightFailedAt !== undefined
+  if (next !== previous || current.inMemoryAppVersion !== nextVersion || staleFailureStamp) {
+    store.set('crdtStore', {
+      ...current,
+      inMemorySessions: next,
+      inMemoryAppVersion: nextVersion,
+      inMemoryPreflightFailedAt: healthy ? undefined : current.inMemoryPreflightFailedAt
+    })
   }
   return next
 }

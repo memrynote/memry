@@ -12,6 +12,7 @@ import {
   type MockInstance
 } from 'vitest'
 import {
+  PREFLIGHT_MARK_BINDING_INFO,
   PREFLIGHT_MARK_BINDING_LOADED,
   PREFLIGHT_MARK_STARTED,
   PREFLIGHT_MARK_STORE_OPS
@@ -247,6 +248,38 @@ describe('crdt-preflight-child', () => {
         `${PREFLIGHT_MARK_STORE_OPS.clear}\n`,
         `${PREFLIGHT_MARK_STORE_OPS.close}\n`
       ])
+    })
+
+    // #2519: the Windows crash reproduces on a Node-built prebuild and on an
+    // Electron-built binary alike, and nothing said which one a crash ran.
+    it('names the classic-level binary before loading it', async () => {
+      const packageRoot = '/fake/node_modules/classic-level'
+      const yLeveldbEntry = '/fake/node_modules/y-leveldb/dist/y-leveldb.cjs'
+      mockRequire.resolve = (id: string) =>
+        id === 'classic-level/package.json' ? `${packageRoot}/package.json` : yLeveldbEntry
+      const loadModule = mockRequire.getMockImplementation() as
+        ((id: string) => unknown) | undefined
+      mockRequire.mockImplementation((id: string) => {
+        if (id === 'classic-level/package.json') return { version: '1.4.1' }
+        if (id === 'node-gyp-build') {
+          return { path: (dir: string) => `${dir}/build/Release/classic_level.node` }
+        }
+        return loadModule?.(id)
+      })
+
+      expect(await runChild()).toBe(0)
+
+      const lines = marks()
+      const infoLine = lines.find((line) => line.startsWith(PREFLIGHT_MARK_BINDING_INFO))
+      expect(infoLine).toBeDefined()
+      expect(JSON.parse(infoLine!.slice(PREFLIGHT_MARK_BINDING_INFO.length))).toEqual({
+        classicLevel: '1.4.1',
+        binary: 'build/Release/classic_level.node'
+      })
+      // Out before the load: an access violation afterwards leaves nothing.
+      expect(lines.indexOf(infoLine!)).toBeLessThan(
+        lines.indexOf(`${PREFLIGHT_MARK_BINDING_LOADED}\n`)
+      )
     })
 
     it('stops at the operation that failed, so the last marker names the suspect', async () => {

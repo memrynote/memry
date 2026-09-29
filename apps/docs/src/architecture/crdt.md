@@ -336,6 +336,26 @@ preflight automatically, the same way `gpu-crash-guard.json` re-enables hardware
 acceleration on a new version. A streak written by a build that predates the
 field has no owning version and is re-armed once.
 
+Giving up is also bounded in time. A launch that runs the preflight and still
+ends in memory stamps `crdtStore.inMemoryPreflightFailedAt`; the gate honours a
+streak only while that stamp is under 24 hours old, so an install is never kept
+out of its store by the gate for more than a day, even when no new build ships.
+A missing stamp (a give-up recorded before the field existed) or one in the
+future (a clock that moved backwards) re-arms the preflight. A healthy launch
+drops the stamp with the streak.
+
+For the Windows access violation (issues #1583, #2217, #2519), the
+`CRDT_PERSISTENCE_UNAVAILABLE` message carries what separates the remaining
+hypotheses: the store operation in flight (`op=`), process arch, a CPU vendor
+bucket (`cpu=intel|amd|arm|other`, which exposes an x64 build under emulation on
+Windows-on-ARM), the Electron version and module ABI, the classic-level version
+and the exact `.node` file it resolved (`binary=build/Release/...` for a
+from-source build, `prebuilds/...` for an upstream prebuild; the child names it
+before loading it), whether the store path is plain ASCII, and on a
+`binding-in-use` verdict the file names LevelDB left in the empty control
+directory, which shows how far its open got. The local log line also carries
+the tail of LevelDB's own `LOG` from that directory, paths stripped.
+
 There is deliberately no bounded retry of a failed store open within a session.
 The failure it guards against is a native abort in the binding, which in the
 field is deterministic per machine rather than transient, and every retry costs

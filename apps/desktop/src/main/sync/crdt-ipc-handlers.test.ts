@@ -73,7 +73,9 @@ vi.mock('./crdt-preflight', () => ({
   runCrdtPreflight: vi.fn(async () => {
     if (preflight.gate) await preflight.gate
     return { ok: true }
-  })
+  }),
+  preflightMachineFields: () => ({}),
+  stripAbsolutePaths: (text: string) => text
 }))
 vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: vi.fn(),

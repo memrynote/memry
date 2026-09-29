@@ -137,7 +137,9 @@ vi.mock('./crdt-preflight', () => ({
     const { onCall, ...verdict } = queued ?? mocks.preflightResult
     onCall?.()
     return verdict
-  })
+  }),
+  preflightMachineFields: () => ({}),
+  stripAbsolutePaths: (text: string) => text
 }))
 
 vi.mock('y-leveldb', () => ({
@@ -186,7 +188,8 @@ vi.mock('../store', () => ({
   // Healthy install: the preflight gate in crdt-persistence.ts reads this and
   // must let every test below reach the (mocked) preflight.
   getCrdtPersistenceGuard: () => ({ sessions: 0 }),
-  recordCrdtPersistenceOutcome: (...args: unknown[]) => mocks.recordPersistenceOutcome(...args)
+  recordCrdtPersistenceOutcome: (...args: unknown[]) => mocks.recordPersistenceOutcome(...args),
+  recordCrdtPreflightFailure: vi.fn()
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
