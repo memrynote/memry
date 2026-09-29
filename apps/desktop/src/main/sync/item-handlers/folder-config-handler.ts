@@ -13,7 +13,8 @@ import { createLogger } from '../../lib/logger'
 import { VaultError, VaultErrorCode } from '../../lib/errors'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
-import { readFolderConfig, writeFolderConfig } from '../../vault/folders'
+import { folderExists, readFolderConfig, writeFolderConfig } from '../../vault/folders'
+import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
 
 const log = createLogger('FolderConfigHandler')
 
@@ -46,13 +47,36 @@ async function writeMergedFolderConfig(folderPath: string, icon: string | null):
  * else is a genuine write failure and is logged at error with the itemId.
  */
 function mirrorFolderConfigToVault(itemId: string, icon: string | null): void {
-  void writeMergedFolderConfig(itemId, icon).catch((error: unknown) => {
-    if (error instanceof VaultError && error.code === VaultErrorCode.NOT_INITIALIZED) {
-      log.warn('Skipped folder config file write, no vault is open', { itemId })
-      return
-    }
-    log.error('Failed to write synced folder config file', { itemId, error })
-  })
+  void writeMergedFolderConfig(itemId, icon).catch((error: unknown) =>
+    logMirrorFailure(itemId, error)
+  )
+}
+
+function logMirrorFailure(itemId: string, error: unknown): void {
+  if (error instanceof VaultError && error.code === VaultErrorCode.NOT_INITIALIZED) {
+    log.warn('Skipped folder config file write, no vault is open', { itemId })
+    return
+  }
+  log.error('Failed to write synced folder config file', { itemId, error })
+}
+
+/**
+ * A remote folder_config delete means the folder was deleted (or renamed away)
+ * on another device. Clearing the icon used to be all it did, and the write
+ * went through writeFolderConfig, which creates the folder when it is missing,
+ * so the deleted folder stayed on this device and the next backfill synced it
+ * back to the device that deleted it (#2512).
+ *
+ * The icon is cleared only on a folder that still exists, for the case where
+ * the folder is kept because it still holds notes; then the folder itself is
+ * removed once it is empty (see scheduleDeletedFolderPrune).
+ */
+function applyDeletedFolderToVault(db: DrizzleDb, itemId: string): void {
+  void (async () => {
+    if (folderExists(itemId)) await writeMergedFolderConfig(itemId, null)
+  })()
+    .catch((error: unknown) => logMirrorFailure(itemId, error))
+    .then(() => scheduleDeletedFolderPrune(db, itemId, { folderConfigDeleted: true }))
 }
 
 class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
@@ -118,7 +142,14 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get()
-    if (!existing) return 'skipped'
+    if (!existing) {
+      // The folder can still be on disk without a row (made before rows were
+      // backfilled, or the backfill has not run yet), so it is removed all the
+      // same when empty.
+      log.info('Remote folder config delete has no local row', { itemId })
+      scheduleDeletedFolderPrune(ctx.db, itemId, { folderConfigDeleted: true })
+      return 'skipped'
+    }
 
     if (clock && existing.clock) {
       const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
@@ -131,7 +162,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
     }
 
     ctx.db.delete(folderConfigs).where(eq(folderConfigs.path, itemId)).run()
-    mirrorFolderConfigToVault(itemId, null)
+    applyDeletedFolderToVault(ctx.db, itemId)
     ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
     return 'applied'
   }

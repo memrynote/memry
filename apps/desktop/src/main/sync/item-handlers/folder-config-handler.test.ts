@@ -16,8 +16,12 @@ function makeMockQueue(): { mock: MockQueue; queue: SyncQueueManager } {
 
 vi.mock('../../vault/folders', () => ({
   writeFolderConfig: vi.fn(),
-  readFolderConfig: vi.fn()
+  readFolderConfig: vi.fn(),
+  folderExists: vi.fn()
 }))
+
+const scheduleDeletedFolderPrune = vi.hoisted(() => vi.fn())
+vi.mock('../deleted-folder-prune', () => ({ scheduleDeletedFolderPrune }))
 
 // Shared stub (not a fresh object per createLogger call) so the vault-write
 // failure paths can be asserted on.
@@ -33,7 +37,7 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 import { folderConfigHandler } from './folder-config-handler'
-import { writeFolderConfig, readFolderConfig } from '../../vault/folders'
+import { writeFolderConfig, readFolderConfig, folderExists } from '../../vault/folders'
 import { VaultError, VaultErrorCode } from '../../lib/errors'
 
 /**
@@ -63,6 +67,7 @@ async function captureUnhandledRejections(run: () => void): Promise<unknown[]> {
 
 const mockWriteFolderConfig = vi.mocked(writeFolderConfig)
 const mockReadFolderConfig = vi.mocked(readFolderConfig)
+const mockFolderExists = vi.mocked(folderExists)
 
 function makeCtx(testDb: TestDatabaseResult): ApplyContext {
   return {
@@ -80,6 +85,7 @@ describe('folderConfigHandler', () => {
     ctx = makeCtx(testDb)
     vi.clearAllMocks()
     mockReadFolderConfig.mockResolvedValue(null)
+    mockFolderExists.mockReturnValue(true)
   })
 
   afterEach(() => {
@@ -410,6 +416,35 @@ describe('folderConfigHandler', () => {
     it('#given no existing row #when delete arrives #then skips', () => {
       const result = folderConfigHandler.applyDelete(ctx, 'nonexistent')
       expect(result).toBe('skipped')
+    })
+
+    // #2512: the delete used to write an empty config through writeFolderConfig,
+    // which mkdir -p's the folder, so a deleted folder was never removed here.
+    it('#given the folder is already gone on disk #when delete arrives #then does not re-create it and schedules the folder removal', async () => {
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'old-folder',
+          icon: null,
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
+      mockFolderExists.mockReturnValue(false)
+
+      const result = folderConfigHandler.applyDelete(ctx, 'old-folder', {
+        'device-A': 1,
+        'device-B': 2
+      })
+
+      expect(result).toBe('applied')
+      await vi.waitFor(() => {
+        expect(scheduleDeletedFolderPrune).toHaveBeenCalledWith(ctx.db, 'old-folder', {
+          folderConfigDeleted: true
+        })
+      })
+      expect(mockWriteFolderConfig).not.toHaveBeenCalled()
     })
 
     it('#given existing row #when local clock is newer #then skips delete', () => {

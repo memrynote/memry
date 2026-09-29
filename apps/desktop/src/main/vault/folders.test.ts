@@ -13,7 +13,8 @@ import {
   writeFolderConfig,
   getFolderTemplate,
   setFolderTemplate,
-  isFolderConfigFile
+  isFolderConfigFile,
+  removeFolderIfEmpty
 } from './folders'
 
 // ============================================================================
@@ -409,5 +410,64 @@ template: projects-template
       expect(config!.template).toBe('my-template')
       expect(config!.views).toHaveLength(1)
     })
+  })
+})
+
+// ============================================================================
+// removeFolderIfEmpty (#2512)
+// ============================================================================
+
+describe('removeFolderIfEmpty', () => {
+  let tempVault: TestDir
+
+  beforeEach(async () => {
+    tempVault = createTempVault()
+    mockVaultPath = tempVault.path
+    const indexModule = await import('./index')
+    ;(indexModule.getStatus as ReturnType<typeof vi.fn>).mockReturnValue({
+      path: tempVault.path,
+      isOpen: true
+    })
+  })
+
+  afterEach(() => {
+    tempVault.cleanup()
+  })
+
+  it('removes a tree holding only subfolders, .folder.md and OS view caches', async () => {
+    fs.mkdirSync(path.join(tempVault.path, 'a', 'b', 'c'), { recursive: true })
+    fs.writeFileSync(path.join(tempVault.path, 'a', '.folder.md'), '---\nicon: x\n---\n')
+    fs.writeFileSync(path.join(tempVault.path, 'a', 'b', 'desktop.ini'), '')
+
+    expect(await removeFolderIfEmpty('a')).toEqual({ removed: true })
+    expect(fs.existsSync(path.join(tempVault.path, 'a'))).toBe(false)
+  })
+
+  it('deletes nothing when any file below it is kept', async () => {
+    fs.mkdirSync(path.join(tempVault.path, 'a', 'b'), { recursive: true })
+    fs.writeFileSync(path.join(tempVault.path, 'a', '.folder.md'), '---\nicon: x\n---\n')
+    fs.writeFileSync(path.join(tempVault.path, 'a', 'b', 'note.md'), '# Note')
+
+    expect(await removeFolderIfEmpty('a')).toEqual({
+      removed: false,
+      reason: 'holds-files',
+      file: 'a/b/note.md'
+    })
+    expect(fs.existsSync(path.join(tempVault.path, 'a', '.folder.md'))).toBe(true)
+    expect(fs.existsSync(path.join(tempVault.path, 'a', 'b', 'note.md'))).toBe(true)
+  })
+
+  it('never removes the vault root or a path outside the vault', async () => {
+    expect(await removeFolderIfEmpty('')).toEqual({ removed: false, reason: 'vault-root' })
+    expect(await removeFolderIfEmpty('a/..')).toEqual({ removed: false, reason: 'vault-root' })
+    expect(await removeFolderIfEmpty('../outside')).toEqual({
+      removed: false,
+      reason: 'outside-vault'
+    })
+    expect(fs.existsSync(tempVault.path)).toBe(true)
+  })
+
+  it('reports a folder that is already gone', async () => {
+    expect(await removeFolderIfEmpty('missing')).toEqual({ removed: false, reason: 'missing' })
   })
 })

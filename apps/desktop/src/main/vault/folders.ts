@@ -269,3 +269,89 @@ export async function setFolderTemplate(
 export function isFolderConfigFile(filePath: string): boolean {
   return path.basename(filePath) === FOLDER_CONFIG_FILE
 }
+
+/**
+ * Files a folder can hold and still count as empty: its own config and the
+ * view caches the OS drops into any folder a file manager opened.
+ */
+const DISPOSABLE_FOLDER_FILES = new Set([
+  FOLDER_CONFIG_FILE,
+  '.DS_Store',
+  'Thumbs.db',
+  'desktop.ini'
+])
+
+export type RemoveEmptyFolderResult =
+  | { removed: true }
+  | { removed: false; reason: 'missing' | 'vault-root' | 'outside-vault' }
+  | { removed: false; reason: 'holds-files'; file: string }
+
+interface FolderTreeScan {
+  /** Directories, deepest first, so they can be rmdir'd in order. */
+  dirs: string[]
+  disposableFiles: string[]
+  /** First entry that makes the folder non-empty (a note, an attachment, a symlink). */
+  retained: string | null
+}
+
+async function scanFolderTree(absDir: string): Promise<FolderTreeScan> {
+  const scan: FolderTreeScan = { dirs: [], disposableFiles: [], retained: null }
+  const visit = async (dir: string): Promise<void> => {
+    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+      const entryPath = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        await visit(entryPath)
+      } else if (entry.isFile() && DISPOSABLE_FOLDER_FILES.has(entry.name)) {
+        scan.disposableFiles.push(entryPath)
+      } else {
+        scan.retained = entryPath
+      }
+      if (scan.retained) return
+    }
+    scan.dirs.push(dir)
+  }
+  await visit(absDir)
+  return scan
+}
+
+/**
+ * Remove a folder another device deleted, but only when nothing in it is worth
+ * keeping: subfolders, `.folder.md` and OS view caches only. A note that is
+ * still there (one edited here after the other device deleted the folder, or
+ * one whose own delete has not been pulled yet) keeps the folder.
+ *
+ * Nothing is deleted when the scan finds a retained file, and directories go
+ * with `rmdir`, which refuses a non-empty directory, so a file written between
+ * the scan and the removal survives with its folder.
+ */
+export async function removeFolderIfEmpty(folderPath: string): Promise<RemoveEmptyFolderResult> {
+  const vaultPath = getVaultPath()
+  if (!folderPath || folderPath === '.') return { removed: false, reason: 'vault-root' }
+
+  const absDir = path.resolve(vaultPath, folderPath)
+  const relative = path.relative(vaultPath, absDir)
+  if (!relative) return { removed: false, reason: 'vault-root' }
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    return { removed: false, reason: 'outside-vault' }
+  }
+
+  let scan: FolderTreeScan
+  try {
+    scan = await scanFolderTree(absDir)
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | null)?.code
+    if (code === 'ENOENT' || code === 'ENOTDIR') return { removed: false, reason: 'missing' }
+    throw error
+  }
+  if (scan.retained) {
+    return {
+      removed: false,
+      reason: 'holds-files',
+      file: path.relative(vaultPath, scan.retained).split(path.sep).join('/')
+    }
+  }
+
+  for (const file of scan.disposableFiles) await fs.rm(file, { force: true })
+  for (const dir of scan.dirs) await fs.rmdir(dir)
+  return { removed: true }
+}
