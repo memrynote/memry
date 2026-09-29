@@ -63,6 +63,28 @@ function wheel(target: HTMLElement, deltaX: number, deltaY = 0): WheelEvent {
   return event
 }
 
+function focusedInput(): HTMLInputElement {
+  const input = document.createElement('input')
+  document.body.appendChild(input)
+  input.focus()
+  return input
+}
+
+/** Ctrl+Alt+→, the default next-vault chord off macOS (jsdom reports no Mac). */
+function nextVaultChord(target: HTMLElement, init: KeyboardEventInit = {}): void {
+  target.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      code: 'ArrowRight',
+      ctrlKey: true,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+      ...init
+    })
+  )
+}
+
 async function settle(): Promise<void> {
   await act(async () => {
     vi.advanceTimersByTime(VAULT_SWIPE.idleMs + 10)
@@ -84,6 +106,7 @@ describe('VaultPager', () => {
   afterEach(() => {
     // Unmount before the stores reset, so the reset does not render a live pager.
     cleanup()
+    document.body.innerHTML = ''
     vi.useRealTimers()
     vi.restoreAllMocks()
     resetVaultSwitchState()
@@ -147,6 +170,58 @@ describe('VaultPager', () => {
     await settle()
 
     expect(prevented).toBe(false)
+    expect(onSwitch).not.toHaveBeenCalled()
+  })
+
+  it('does not switch on a single horizontal wheel notch', async () => {
+    // A mouse tilt wheel, or Shift+wheel on Windows, sends one discrete event.
+    const { onSwitch, viewport } = renderPager()
+
+    act(() => {
+      wheel(viewport, 100)
+    })
+    await settle()
+
+    expect(onSwitch).not.toHaveBeenCalled()
+  })
+
+  it('switches on the next-vault chord from a text field', async () => {
+    const { onSwitch } = renderPager()
+
+    act(() => {
+      nextVaultChord(focusedInput())
+    })
+    await settle()
+
+    expect(onSwitch).toHaveBeenCalledWith(vaults[2], 'next')
+  })
+
+  it('ignores the next-vault chord while paused', async () => {
+    const onSwitch = vi.fn().mockResolvedValue(true)
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <VaultPager vaults={vaults} activePath="/vaults/work" onSwitch={onSwitch} paused>
+          <div>list</div>
+        </VaultPager>
+      </QueryClientProvider>
+    )
+
+    act(() => {
+      nextVaultChord(focusedInput())
+    })
+    await settle()
+
+    expect(onSwitch).not.toHaveBeenCalled()
+  })
+
+  it('ignores the next-vault chord typed with AltGr', async () => {
+    const { onSwitch } = renderPager()
+
+    act(() => {
+      nextVaultChord(focusedInput(), { modifierAltGraph: true })
+    })
+    await settle()
+
     expect(onSwitch).not.toHaveBeenCalled()
   })
 
