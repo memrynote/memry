@@ -13,6 +13,7 @@ import type {
 import { isInPageReviewTool } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
+import { invokeWhenAgentReady } from '@/agent-chat/agent-runtime-ready'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -89,9 +90,14 @@ export function AgentProvidersSection({
       setSettings(nextSettings)
       setPreferences(nextPreferences)
     })
-    void window.api.agent.getBackendStatuses().then((statuses) => {
-      if (!cancelled) setBackendStatuses(statuses)
-    })
+    // The agent runtime starts lazily and rejects with runtimeStarting until it
+    // is up; retry through that window. If it never answers, the rows keep
+    // their no-status fallback and the next visit re-reads it.
+    void invokeWhenAgentReady(() => window.api.agent.getBackendStatuses())
+      .then((statuses) => {
+        if (!cancelled) setBackendStatuses(statuses)
+      })
+      .catch(() => {})
     // A standing approval the user cannot find is a standing approval they
     // cannot take back, so this list is not optional chrome.
     void window.api.agent

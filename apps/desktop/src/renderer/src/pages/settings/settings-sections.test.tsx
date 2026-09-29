@@ -1185,6 +1185,31 @@ describe('settings section coverage', () => {
     await waitFor(() => expect(window.api.agent.testLocalProvider).toHaveBeenCalledTimes(2))
   })
 
+  // #2523: the lazy agent runtime rejects with runtimeStarting while it boots;
+  // the section must retry instead of leaking an unhandled rejection.
+  it('retries CLI status detection while the agent runtime is starting', async () => {
+    vi.mocked(window.api.agent.getBackendStatuses).mockRejectedValueOnce(
+      new Error(
+        "Error invoking remote method 'agent:getBackendStatuses': errors:agent.runtimeStarting"
+      )
+    )
+    render(<AgentProvidersSection />)
+
+    expect(
+      await screen.findByText('agentProviders.cliAgents.status.detected {"version":"2.3.0"}')
+    ).toBeInTheDocument()
+    expect(window.api.agent.getBackendStatuses).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the no-status fallback when CLI status detection fails', async () => {
+    vi.mocked(window.api.agent.getBackendStatuses).mockRejectedValueOnce(new Error('boom'))
+    render(<AgentProvidersSection />)
+
+    expect(await screen.findByText('agentProviders.cliAgents.claude.label')).toBeInTheDocument()
+    await waitFor(() => expect(window.api.agent.getBackendStatuses).toHaveBeenCalledTimes(1))
+    expect(screen.getAllByText('agentProviders.cliAgents.status.notDetected')).toHaveLength(3)
+  })
+
   it('lists and revokes always-allowed agent tools', async () => {
     vi.mocked(window.api.agent.getToolGrants)
       .mockResolvedValueOnce({ tools: ['create_note'] })
