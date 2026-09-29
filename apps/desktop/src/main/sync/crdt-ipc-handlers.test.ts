@@ -289,6 +289,35 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
     })
   })
 
+  describe('an editor kept for another vault', () => {
+    it('crdt:open-doc refuses a note from a vault this provider does not serve', async () => {
+      // #given — the provider was opened for vault B, and note ids repeat across
+      // vaults (journal dates, copied vaults), so the id alone resolves here too
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+      const provider = getCrdtProvider()
+      await provider.initPersistence('/vaults/b')
+
+      // #when — vault A's hidden editor tries to rebind after the switch
+      const foreign = await invokeHandler<{ success: boolean; error?: string }>(
+        CRDT_CHANNELS.OPEN_DOC,
+        { noteId: 'n1', vaultPath: '/vaults/a' }
+      )
+
+      // #then — nothing binds, so its handshake cannot push A's doc into B's store
+      expect(foreign.success).toBe(false)
+      expect(foreign.error).toMatch(/another vault/i)
+      expect(provider.getOpenNoteIds()).toEqual([])
+
+      // #and B's own editors, and editors that name no vault, still open
+      await expect(
+        invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1', vaultPath: '/vaults/b' })
+      ).resolves.toEqual({ success: true })
+      await expect(invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n2' })).resolves.toEqual({
+        success: true
+      })
+    })
+  })
+
   describe('window teardown releases the docs it pinned', () => {
     beforeEach(() => {
       senderWindow.current = { id: 42, once: vi.fn() }

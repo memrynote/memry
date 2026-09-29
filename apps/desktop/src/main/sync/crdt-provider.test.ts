@@ -1847,6 +1847,31 @@ describe('CrdtProvider', () => {
     expect(initializedWhenAnnounced).toEqual([true, true])
   })
 
+  it('names the vault it was opened for in the ready broadcast, before the vault status has it', async () => {
+    // #given a vault switch: closeVault cleared the status path, and openVault
+    // starts the store init before it publishes the new one, so the vault root
+    // cannot be read here (this suite's vault/notes mock has none to give)
+    createWindow(1)
+    resetCrdtProvider()
+    mocks.sent = []
+
+    // #when openVault brings the provider up for the vault it is opening
+    const provider = getCrdtProvider()
+    await provider.initPersistence('/vaults/garden')
+
+    // #then the broadcast names that vault. Sent as null, the renderer could not
+    // tell which workspace's editors may rebind, and the one left behind
+    // re-opened its note in this vault's store.
+    const readies = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_READY)
+    expect(readies.map((sent) => sent.payload)).toEqual([{ vaultPath: '/vaults/garden' }])
+    expect(provider.servesVault('/vaults/garden')).toBe(true)
+    expect(provider.servesVault('/vaults/vocab')).toBe(false)
+
+    // #and a destroyed provider no longer claims the vault
+    await provider.destroy()
+    expect(provider.servesVault('/vaults/vocab')).toBe(true)
+  })
+
   it('still reports the editors it stranded after destroy has emptied the doc map', async () => {
     // #given sign-out wipes storage (which destroys) before it resets the singleton
     createWindow(1)
