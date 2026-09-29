@@ -67,9 +67,19 @@ function toLocalDateTime(dateStr: string, timeStr: string | null): string {
   return new Date(year, month - 1, day, hours, minutes, 0, 0).toISOString()
 }
 
-function toLocalAllDayEnd(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  return new Date(year, month - 1, day + 1, 0, 0, 0, 0).toISOString()
+/**
+ * An all-day date travels as UTC midnight of that calendar day, the same
+ * convention the Google and CalDAV readers use. Local midnight converted to
+ * UTC lands on the previous day east of UTC, and writers slice the date part.
+ */
+function toAllDayStart(dateStr: string): string {
+  return `${dateStr}T00:00:00.000Z`
+}
+
+function toAllDayEnd(dateStr: string): string {
+  const date = new Date(`${dateStr}T00:00:00.000Z`)
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString()
 }
 
 function toGoogleRecurrenceArray(
@@ -171,8 +181,10 @@ export function mapTaskToGoogleInput(
     title: row.title,
     description: row.description ?? null,
     location: null,
-    startAt: toLocalDateTime(row.dueDate, row.dueTime ?? null),
-    endAt: isAllDay ? toLocalAllDayEnd(row.dueDate) : null,
+    startAt: isAllDay
+      ? toAllDayStart(row.dueDate)
+      : toLocalDateTime(row.dueDate, row.dueTime ?? null),
+    endAt: isAllDay ? toAllDayEnd(row.dueDate) : null,
     isAllDay,
     timezone: LOCAL_TIMEZONE,
     recurrence: null
@@ -279,11 +291,9 @@ export function mapGoogleEventToTaskSchedule(event: GoogleCalendarRemoteEvent): 
   const timeZone = event.timezone || LOCAL_TIMEZONE
 
   if (event.isAllDay) {
-    const parts = toTimeZoneDateParts(event.startAt, timeZone)
-    return {
-      dueDate: `${parts.year}-${parts.month}-${parts.day}`,
-      dueTime: null
-    }
+    // All-day startAt is UTC midnight of the calendar day; the date part is
+    // the day. Projecting it into a zone west of UTC would yield the day before.
+    return { dueDate: event.startAt.slice(0, 10), dueTime: null }
   }
 
   const parts = toTimeZoneDateParts(event.startAt, timeZone)
