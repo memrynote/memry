@@ -208,7 +208,7 @@ status, <kbd>P</kbd> priority, <kbd>⇧</kbd>+<kbd>P</kbd> project, <kbd>D</kbd>
 date, <kbd>⇧</kbd>+<kbd>D</kbd> start date, <kbd>R</kbd> repeat, <kbd>H</kbd>
 reminder, <kbd>L</kbd> tags, <kbd>E</kbd> description, <kbd>⇧</kbd>+<kbd>L</kbd>
 related items. <kbd>Enter</kbd> edits the title and <kbd>⌘</kbd>+<kbd>Enter</kbd>
-opens the task in Tasks. See
+opens the task's detail drawer beside the note. See
 [Editing a Task From the Note](/user-guide/tasks/capturing#editing-a-task-from-the-note).
 
 ## Global Undo (Tasks)

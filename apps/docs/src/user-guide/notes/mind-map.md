@@ -125,7 +125,8 @@ The map is navigation, not just a picture.
 - Click a **heading, list, toggle or callout node** and the map closes and the
   note reopens at that block.
 - Click the **root** — the note's title — to come back to the top of the note.
-- Click a **task node** and the task opens, so you can act on it rather than
+- Click a **task node** and the map closes and the task opens in its detail
+  drawer beside the note, so you can act on it rather than
   merely find where it was written. A task block written before memrynote gave
   tasks their own identity has none to open, and lands at its block instead.
 - Click a **wiki-link node** and the linked note — or file — opens, in a new tab
