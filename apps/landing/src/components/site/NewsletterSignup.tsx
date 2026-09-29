@@ -53,7 +53,7 @@ export function NewsletterSignup({ location }: { location: string }) {
   }
 
   return (
-    <HomeSection>
+    <HomeSection id="newsletter" className="scroll-mt-24">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}

@@ -1,11 +1,15 @@
 import { useSyncExternalStore } from 'react'
 
-export type DetectedOS = 'mac' | 'windows' | 'linux' | null
+export type DetectedOS = 'mac' | 'windows' | 'linux' | 'mobile' | null
 export type DownloadPlatform = 'mac-arm64' | 'mac-x64' | 'windows' | 'linux' | 'linux-deb'
 
 export function detectOS(): DetectedOS {
   if (typeof navigator === 'undefined') return null
   const ua = navigator.userAgent
+  // Checked first: iPhone UAs contain "Mac OS X" and Android UAs contain "Linux".
+  // iPadOS reports a desktop Mac UA, so touch support is the only tell there.
+  if (/iPhone|iPad|iPod|Android|Mobile/i.test(ua)) return 'mobile'
+  if (/Mac/i.test(ua) && navigator.maxTouchPoints > 1) return 'mobile'
   if (/Mac/i.test(ua)) return 'mac'
   if (/Win/i.test(ua)) return 'windows'
   if (/Linux|X11/i.test(ua)) return 'linux'

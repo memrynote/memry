@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { Mascot } from '@/components/ui/mascot'
 import { HeroDemoDialog } from '@/components/site/HeroDemoDialog'
 import { DownloadPill } from '@/components/shared/DownloadCTA'
+import { MobileComingSoon } from '@/components/site/MobileComingSoon'
 import { trackLandingEvent } from '@/lib/analytics'
 import { useDetectedOS } from '@/lib/download'
 
@@ -178,6 +179,7 @@ export function Hero2() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pauseTimer = useRef<number | null>(null)
   const reduceMotion = useReducedMotion()
+  const isMobile = useDetectedOS() === 'mobile'
 
   useEffect(
     () => () => {
@@ -312,15 +314,17 @@ export function Hero2() {
             animate={{ opacity: 1, y: 0 }}
             transition={HERO_IN}
           >
-            <DownloadPill location="hero" />
-            <Link
-              to="/pricing"
-              onClick={() => trackLandingEvent('landing_nav_click', 'pricing:hero')}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] px-4 text-[14px] font-medium leading-[18px] text-ink transition-colors duration-200 hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
-            >
-              See pricing
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
+            {isMobile ? <MobileComingSoon location="hero" /> : <DownloadPill location="hero" />}
+            {!isMobile && (
+              <Link
+                to="/pricing"
+                onClick={() => trackLandingEvent('landing_nav_click', 'pricing:hero')}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] px-4 text-[14px] font-medium leading-[18px] text-ink transition-colors duration-200 hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+              >
+                See pricing
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            )}
           </motion.div>
 
           <motion.div
