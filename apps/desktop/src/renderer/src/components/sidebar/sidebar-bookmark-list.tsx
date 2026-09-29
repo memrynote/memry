@@ -5,19 +5,7 @@
  */
 
 import * as React from 'react'
-import {
-  Star,
-  FileText,
-  Calendar,
-  CheckSquare,
-  Image,
-  FileAudio,
-  File,
-  Folder,
-  Hash,
-  MoreHorizontal,
-  Trash2
-} from '@/lib/icons'
+import { Star, MoreHorizontal, Trash2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -41,72 +29,31 @@ import { useOpenTarget } from '@/hooks/use-open-target'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useBookmarks, type BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
-import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
-import type { SidebarItem, TabType } from '@/contexts/tabs/types'
+import { bookmarkIcon, bookmarkSidebarItem } from '@/lib/bookmark-items'
+import type { SidebarItem } from '@/contexts/tabs/types'
 import { useT } from '@memry/i18n/renderer'
 
 interface SidebarBookmarkListProps {
   /** Maximum number of bookmarks to show before "Show more" */
   maxVisible?: number
-  /** Callback when a bookmark is clicked */
-  onBookmarkClick?: (bookmark: BookmarkWithItem) => void
   /** Custom class name */
   className?: string
   /** Which order to show them in; only 'manual' allows drag-to-reorder. */
   sortMode?: SidebarSortMode
 }
 
-/**
- * Get icon for bookmark item type
- */
-function getBookmarkIcon(itemType: string) {
-  switch (itemType) {
-    case BookmarkItemTypes.NOTE:
-      return FileText
-    case BookmarkItemTypes.JOURNAL:
-      return Calendar
-    case BookmarkItemTypes.TASK:
-      return CheckSquare
-    case BookmarkItemTypes.FOLDER:
-      return Folder
-    case BookmarkItemTypes.TAG:
-      return Hash
-    case BookmarkItemTypes.IMAGE:
-      return Image
-    case BookmarkItemTypes.AUDIO:
-      return FileAudio
-    default:
-      return File
-  }
-}
-
-/**
- * Get color class for bookmark item type
- */
-function getBookmarkIconColor(_itemType: string): string {
-  return 'text-sidebar-foreground'
-}
-
-// Map bookmark item type to tab type
-const bookmarkItemTypeToTabType: Record<string, TabType> = {
-  [BookmarkItemTypes.NOTE]: 'note',
-  [BookmarkItemTypes.JOURNAL]: 'journal',
-  [BookmarkItemTypes.TASK]: 'tasks',
-  [BookmarkItemTypes.FOLDER]: 'folder'
-}
-
 export function SidebarBookmarkList({
   maxVisible = 8,
-  onBookmarkClick,
   className,
   sortMode = 'manual'
 }: SidebarBookmarkListProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+  const { t } = useT('common')
   const { bookmarks, isLoading, error, removeBookmark, reorderBookmarks } = useBookmarks({
     sortBy: 'position',
     sortOrder: 'asc'
   })
-  const { isActiveItem } = useSidebarNavigation()
+  const { isActiveItem, openSidebarItem } = useSidebarNavigation()
   const [showAll, setShowAll] = React.useState(false)
 
   const reorderable = isReorderable(sortMode)
@@ -144,9 +91,9 @@ export function SidebarBookmarkList({
   const visibleBookmarks = showAll ? validBookmarks : validBookmarks.slice(0, maxVisible)
   const hasMore = validBookmarks.length > maxVisible
 
-  const handleBookmarkClick = (bookmark: BookmarkWithItem) => (e: React.MouseEvent) => {
+  const handleBookmarkClick = (item: SidebarItem) => (e: React.MouseEvent) => {
     e.preventDefault()
-    onBookmarkClick?.(bookmark)
+    openSidebarItem(item)
   }
 
   // Middle-click opens the bookmarked item in a background tab — the same tab
@@ -203,19 +150,9 @@ export function SidebarBookmarkList({
         strategy={verticalListSortingStrategy}
       >
         {visibleBookmarks.map((bookmark) => {
-          const Icon = getBookmarkIcon(bookmark.itemType)
-          const iconColor = getBookmarkIconColor(bookmark.itemType)
-          const title = bookmark.itemTitle || 'Untitled'
-          const emoji = bookmark.itemMeta?.emoji
-
-          // Create SidebarItem to check active state from tab system
-          const tabType = bookmarkItemTypeToTabType[bookmark.itemType] || 'note'
-          const sidebarItem: SidebarItem = {
-            type: tabType,
-            title,
-            path: bookmark.itemMeta?.path || `/${bookmark.itemType}/${bookmark.itemId}`,
-            entityId: bookmark.itemId
-          }
+          const Icon = bookmarkIcon(bookmark.itemType)
+          const sidebarItem = bookmarkSidebarItem(bookmark, t('home.widget.untitled'))
+          const { title, emoji } = sidebarItem
 
           return (
             <SortableBookmarkItem key={bookmark.id} id={bookmark.id} disabled={!reorderable}>
@@ -223,7 +160,7 @@ export function SidebarBookmarkList({
                 <ContextMenuTrigger asChild>
                   <SidebarMenuButton
                     tooltip={title}
-                    onClick={handleBookmarkClick(bookmark)}
+                    onClick={handleBookmarkClick(sidebarItem)}
                     onMouseDown={handleBookmarkMiddleClick(sidebarItem)}
                     isActive={isActiveItem(sidebarItem)}
                     className="group h-7 gap-1.5 rounded-[5px] py-0 ps-1 pe-8"
@@ -238,7 +175,7 @@ export function SidebarBookmarkList({
                             className="size-4 flex items-center justify-center text-sm shrink-0"
                           />
                         ) : (
-                          <Icon className={cn('size-4 shrink-0', iconColor)} />
+                          <Icon className="size-4 shrink-0 text-sidebar-foreground" />
                         )}
                       </span>
                     </span>

@@ -64,8 +64,6 @@ import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { Project } from '@/data/tasks-data'
 import type { AppPage } from '@/App'
-import type { BookmarkWithItem } from '@/hooks/use-bookmarks'
-import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
 import { getAllSupportedExtensions, getExtension, getFileType } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -354,57 +352,6 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // While the modifier is held, section icons swap to their shortcut number.
   const isModifierHeld = useModifierHeld()
 
-  // Handle bookmark click - navigate to bookmarked item
-  const handleBookmarkClick = useCallback(
-    (bookmark: BookmarkWithItem) => {
-      // Folders open as a folder-view tab; tags open the tag tab.
-      if (bookmark.itemType === BookmarkItemTypes.FOLDER) {
-        openPage({
-          type: 'folder',
-          title: bookmark.itemTitle || 'Folder',
-          icon: 'folder',
-          emoji: bookmark.itemMeta?.emoji,
-          path: `/folder/${encodeURIComponent(bookmark.itemId)}`,
-          entityId: bookmark.itemId,
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false
-        })
-        return
-      }
-      if (bookmark.itemType === BookmarkItemTypes.TAG) {
-        openSidebarItem({
-          type: 'tag',
-          title: bookmark.itemId,
-          path: '/tags/' + bookmark.itemId,
-          entityId: bookmark.itemId,
-          color: ''
-        })
-        return
-      }
-
-      // Map bookmark item type to tab type
-      const itemTypeToTabType: Record<string, TabType> = {
-        [BookmarkItemTypes.NOTE]: 'note',
-        [BookmarkItemTypes.JOURNAL]: 'journal',
-        [BookmarkItemTypes.TASK]: 'tasks'
-      }
-
-      const tabType = itemTypeToTabType[bookmark.itemType] || 'note'
-
-      // Open the bookmarked item in a tab
-      const item: SidebarItem = {
-        type: tabType,
-        title: bookmark.itemTitle || 'Untitled',
-        path: bookmark.itemMeta?.path || `/${bookmark.itemType}/${bookmark.itemId}`,
-        entityId: bookmark.itemId
-      }
-      openSidebarItem(item)
-    },
-    [openSidebarItem, openPage]
-  )
-
   // Open a canvas in a tab (entityId dedupe keeps it to one tab per canvas)
   const handleCanvasOpen = useCallback(
     (canvas: Pick<CanvasSummary, 'id' | 'title'>) => {
@@ -688,11 +635,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           />
         }
       >
-        <SidebarBookmarkList
-          maxVisible={6}
-          onBookmarkClick={handleBookmarkClick}
-          sortMode={bookmarksSortMode}
-        />
+        <SidebarBookmarkList maxVisible={6} sortMode={bookmarksSortMode} />
       </SidebarSection>
     ),
     // Canvases stays out of the map entirely while its flag is off, so the
