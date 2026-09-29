@@ -29,6 +29,8 @@
   "devDependencies": {
     "@blocknote/server-util": "0.54.2",
     "@memry/typescript-config": "workspace:*",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "yjs": "^13.6.29"
   }
 }

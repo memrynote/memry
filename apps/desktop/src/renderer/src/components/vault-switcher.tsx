@@ -131,7 +131,8 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
       await switchVault(vault.path, {
         name: vault.name,
         accentColor: vault.accentColor,
-        icon: vault.icon
+        icon: vault.icon,
+        source: 'menu'
       })
     },
     [switchVault]

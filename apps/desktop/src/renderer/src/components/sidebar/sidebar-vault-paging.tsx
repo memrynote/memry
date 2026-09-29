@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { VaultInfo } from '../../../../preload/index.d'
 import { useVault, useVaultList } from '@/hooks/use-vault'
-import type { VaultSwitchDirection } from '@/lib/vault-switch-state'
+import type { VaultSwitchDirection, VaultSwitchSource } from '@/lib/vault-switch-state'
 import { VaultSwitcher } from '@/components/vault-switcher'
 import { VaultPager } from '@/components/sidebar/vault-pager'
 import { VaultPill } from '@/components/sidebar/vault-pill'
@@ -18,7 +18,11 @@ export interface SidebarVaultPages {
   activePath: string | null
   /** The open vault's list entry; null until the list has loaded. */
   activeVault: VaultInfo | null
-  switchTo: (vault: VaultInfo, direction: VaultSwitchDirection) => Promise<boolean>
+  switchTo: (
+    vault: VaultInfo,
+    direction: VaultSwitchDirection,
+    source: VaultSwitchSource
+  ) => Promise<boolean>
 }
 
 /** The vault pages the sidebar swipes between, and the switch they perform. */
@@ -34,12 +38,13 @@ export function useSidebarVaultPages(): SidebarVaultPages {
   const activeVault = vaults.find((vault) => vault.path === activePath) ?? null
 
   const switchTo = useCallback(
-    async (vault: VaultInfo, direction: VaultSwitchDirection) => {
+    async (vault: VaultInfo, direction: VaultSwitchDirection, source: VaultSwitchSource) => {
       const result = await switchVault(vault.path, {
         name: vault.name,
         accentColor: vault.accentColor,
         icon: vault.icon,
-        direction
+        direction,
+        source
       })
       return result.success
     },
@@ -57,14 +62,22 @@ export function useSidebarVaultPages(): SidebarVaultPages {
 /** The sidebar list, paged between vaults once a vault is open. */
 export function SidebarVaultPager({
   pages,
+  paused = false,
   children
 }: {
   pages: SidebarVaultPages
+  /** See `VaultPager`'s `paused`. */
+  paused?: boolean
   children: ReactNode
 }) {
   if (!pages.activePath) return <>{children}</>
   return (
-    <VaultPager vaults={pages.vaults} activePath={pages.activePath} onSwitch={pages.switchTo}>
+    <VaultPager
+      vaults={pages.vaults}
+      activePath={pages.activePath}
+      onSwitch={pages.switchTo}
+      paused={paused}
+    >
       {children}
     </VaultPager>
   )

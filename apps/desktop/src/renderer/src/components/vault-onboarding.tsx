@@ -76,7 +76,7 @@ export function VaultOnboarding(): React.JSX.Element {
   )
 
   const handleOpenRecent = async (path: string): Promise<void> => {
-    const result = await switchVault(path)
+    const result = await switchVault(path, { source: 'onboarding' })
     if (result.success) trackCompleted()
   }
 

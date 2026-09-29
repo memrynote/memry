@@ -130,7 +130,7 @@ With more than one vault, the sidebar panel pages between them. Swipe sideways w
 trackpad over the panel and the neighbouring vault's page follows your fingers in, its name at the top; let go
 past the middle to switch, or short of it to spring back.
 <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on
-Windows and Linux) play the same move.
+Windows and Linux) play the same move. A single click of a tilt wheel or <kbd>Shift</kbd>+wheel does not switch vaults, and the shortcut does nothing while Settings is open or while <kbd>AltGr</kbd> is held, so typing on a keyboard layout that uses <kbd>AltGr</kbd> never moves you to another vault.
 
 Under the panel, one icon per vault shows where you are, in each vault's accent color, the open
 vault's icon solid and the rest dimmed. The icons stay put while the pages move and blend toward the

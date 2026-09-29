@@ -24,6 +24,7 @@ import {
   useVaultPageRequest,
   type VaultPageRequest,
   type VaultSwitchDirection,
+  type VaultSwitchSource,
   type VaultSwitchState
 } from '@/lib/vault-switch-state'
 import {
@@ -157,7 +158,16 @@ interface VaultPagerProps {
   vaults: VaultInfo[]
   activePath: string
   /** Performs the switch; resolves false when it failed and the list must return. */
-  onSwitch: (vault: VaultInfo, direction: VaultSwitchDirection) => Promise<boolean>
+  onSwitch: (
+    vault: VaultInfo,
+    direction: VaultSwitchDirection,
+    source: VaultSwitchSource
+  ) => Promise<boolean>
+  /**
+   * The list is hidden (Settings covers the sidebar): the next/previous chord
+   * stands down, so it cannot switch vaults behind a view that does not show it.
+   */
+  paused?: boolean
   children: ReactNode
 }
 
@@ -173,7 +183,13 @@ interface VaultPagerProps {
  * right after a switch until the new vault's queries have loaded, so the page
  * the user swiped to is the page they land on.
  */
-export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPagerProps) {
+export function VaultPager({
+  vaults,
+  activePath,
+  onSwitch,
+  paused = false,
+  children
+}: VaultPagerProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLDivElement>(null)
@@ -269,7 +285,7 @@ export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPage
    * `fromOffset` is 0 for clicks and shortcuts, which play the whole transition.
    */
   const commit = useCallback(
-    async (targetIndex: number, fromOffset: number) => {
+    async (targetIndex: number, fromOffset: number, source: VaultSwitchSource) => {
       const target = vaults[targetIndex]
       const track = trackRef.current
       const peek = peekRef.current
@@ -289,7 +305,7 @@ export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPage
       // of the switch is hidden behind the motion. The hold keeps the incoming
       // vault from being revealed before the page has landed.
       const releaseReveal = holdVaultReveal()
-      const switching = onSwitch(target, direction)
+      const switching = onSwitch(target, direction, source)
 
       try {
         await settleTo(track, peek, fromOffset, exitSign, width)
@@ -361,7 +377,7 @@ export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPage
       const sign = offset < 0 ? -1 : 1
       const target = neighborIndex(activeIndex, sign, isRtl(), vaults.length)
       if (target !== null) {
-        void commit(target, offset)
+        void commit(target, offset, 'swipe')
         return
       }
     }
@@ -456,13 +472,13 @@ export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPage
             ? vaults.findIndex((vault) => vault.path === request.path)
             : activeIndex + request.step
         if (targetIndex < 0 || targetIndex >= vaults.length || targetIndex === activeIndex) return
-        void commit(targetIndex, 0)
+        void commit(targetIndex, 0, 'path' in request ? 'indicator' : 'shortcut')
       },
       [activeIndex, commit, vaults]
     )
   )
 
-  useAdjacentVaultShortcuts()
+  useAdjacentVaultShortcuts(!paused)
 
   // Arriving under a cover: lift it once the new vault's list has loaded, both
   // its queries and the reads made outside TanStack Query (sort modes, section
@@ -622,12 +638,16 @@ export function VaultPager({ vaults, activePath, onSwitch, children }: VaultPage
 }
 
 /** Next/previous vault from the keyboard; bindings live in the shortcut registry. */
-function useAdjacentVaultShortcuts(): void {
+function useAdjacentVaultShortcuts(enabled: boolean): void {
   const next = useShortcutBinding('nav.nextVault')
   const prev = useShortcutBinding('nav.prevVault')
 
   useEffect(() => {
+    if (!enabled) return
     const onKeyDown = (event: KeyboardEvent): void => {
+      // AltGr arrives as Ctrl+Alt on Windows, where Ctrl+Alt is the default
+      // chord: a layout that types characters with AltGr must not page vaults.
+      if (event.getModifierState('AltGraph')) return
       const isNext = matchesShortcut(event, next.key, next.modifiers)
       const isPrev = !isNext && matchesShortcut(event, prev.key, prev.modifiers)
       if (!isNext && !isPrev) return
@@ -641,5 +661,5 @@ function useAdjacentVaultShortcuts(): void {
     }
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [next, prev])
+  }, [enabled, next, prev])
 }

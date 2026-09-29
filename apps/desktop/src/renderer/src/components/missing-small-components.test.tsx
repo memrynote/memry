@@ -255,7 +255,7 @@ describe('missing small component surfaces', () => {
     expect(screen.getByText('Vault failed')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Work Vault/ }))
-    expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/work')
+    expect(mocks.switchVault).toHaveBeenCalledWith('/vaults/work', { source: 'onboarding' })
   })
 
   it('changes language from the vault picker supported-language dropdown', async () => {

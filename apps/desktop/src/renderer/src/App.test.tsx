@@ -6,6 +6,8 @@ import { QueryObserver } from '@tanstack/react-query'
 import type * as ReactQuery from '@tanstack/react-query'
 import App from './App'
 import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
+import { useVaultScope } from '@/contexts/vault-scope'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 /** Every QueryClient VaultStack created, in creation order. */
 const { createdQueryClients } = vi.hoisted(() => ({
@@ -66,6 +68,19 @@ let projects = [
 ]
 let settingsOpenListener: ((section?: string) => void) | undefined
 let newNoteShortcut: (() => void) | undefined
+/** Rendered inside every vault workspace's (mocked) sidebar. */
+let sidebarSlot: React.ReactNode = null
+
+/** Vault A's vault menu, open on the row for vault B. */
+function VaultAMenu(): React.JSX.Element | null {
+  if (useVaultScope() !== '/vault/a') return null
+  return (
+    <Popover open>
+      <PopoverTrigger>Vault A</PopoverTrigger>
+      <PopoverContent>Vault B</PopoverContent>
+    </Popover>
+  )
+}
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof ReactQuery>()
@@ -318,7 +333,12 @@ vi.mock('@/contexts/settings-modal-context', () => ({
 vi.mock('@/components/app-sidebar', () => ({
   AppSidebar: ({ viewCounts }: { viewCounts: Record<string, number> }) => {
     treeRenders.appSidebar += 1
-    return <aside data-testid="app-sidebar">all:{viewCounts.all}</aside>
+    return (
+      <aside data-testid="app-sidebar">
+        all:{viewCounts.all}
+        {sidebarSlot}
+      </aside>
+    )
   }
 }))
 
@@ -435,6 +455,7 @@ describe('App', () => {
     ]
     settingsOpenListener = undefined
     newNoteShortcut = undefined
+    sidebarSlot = null
     createNote.mockResolvedValue({
       success: true,
       note: { id: 'note-1', title: 'Created note' }
@@ -502,6 +523,25 @@ describe('App', () => {
     view.rerender(<App />)
     expect(screen.getAllByTestId('sidebar-provider')).toContain(first)
     expect(first).toBeVisible()
+  })
+
+  it('hides a menu the leaving vault has open along with its workspace, and brings it back', () => {
+    // Menus portal to <body>, outside the hidden workspace. The reported case
+    // (#2504) is the vault menu still fading out when the switch lands. That
+    // menu stayed on screen, invisible, and its rows switched vaults on click.
+    // jsdom plays no animations, so here the menu is simply left open.
+    sidebarSlot = <VaultAMenu />
+    const view = render(<App />)
+    const row = screen.getByText('Vault B')
+    expect(row).toBeVisible()
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/b' } }
+    view.rerender(<App />)
+    expect(row).not.toBeVisible()
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/a' } }
+    view.rerender(<App />)
+    expect(row).toBeVisible()
   })
 
   it('keeps the rows a leaving vault has, and never takes the next vault reads as its own', async () => {

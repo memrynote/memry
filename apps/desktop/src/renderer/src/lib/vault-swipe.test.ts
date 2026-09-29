@@ -112,6 +112,15 @@ describe('resolveRelease', () => {
     expect(resolveRelease(state, onlyNext)).toBe('cancel')
   })
 
+  it('cancels a single wheel notch, however far it reaches', () => {
+    expect(resolveRelease(run(stream(1, 100)), both)).toBe('cancel')
+    expect(resolveRelease(run(stream(1, 400)), both)).toBe('cancel')
+  })
+
+  it('commits two notches in a row', () => {
+    expect(resolveRelease(run(stream(2, 100)), both)).toBe('commit')
+  })
+
   it('cancels anything that never tracked', () => {
     expect(resolveRelease(run(stream(3, 0, 10)), both)).toBe('cancel')
   })

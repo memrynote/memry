@@ -819,7 +819,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           {/* Hidden, not unmounted, while settings is open: the tree keeps its
               expansion and scroll position for the way back. */}
           <div className={isSettingsOpen ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>
-            <SidebarVaultPager pages={vaultPages}>
+            <SidebarVaultPager pages={vaultPages} paused={isSettingsOpen}>
               <SidebarPanelHeader
                 pages={vaultPages}
                 onNewNote={() => void handleNewNote()}

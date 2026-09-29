@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import type { SelectVaultResponse } from '../../../../preload/index.d'
+import { getVaultSwitchState, resetVaultSwitchState } from '@/lib/vault-switch-state'
 
 const mocks = vi.hoisted(() => ({
   accountVaults: [
@@ -37,6 +39,7 @@ import { VaultSettings } from './vault-section'
 describe('VaultSettings account vaults', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetVaultSwitchState()
     mocks.accountVaults = [
       {
         vaultUuid: 'uuid-active',
@@ -111,6 +114,13 @@ describe('VaultSettings account vaults', () => {
       vaults: [{ path: '/vaults/Unregistered', vaultUuid: 'uuid-unregistered' }],
       currentVault: '/vaults/Unregistered'
     })
+    let finishSwitch: (result: SelectVaultResponse) => void = () => {}
+    window.api.vault.switch = vi.fn(
+      () =>
+        new Promise<SelectVaultResponse>((resolve) => {
+          finishSwitch = resolve
+        })
+    )
 
     render(<VaultSettings />)
 
@@ -122,6 +132,12 @@ describe('VaultSettings account vaults', () => {
     await waitFor(() =>
       expect(window.api.vault.switch).toHaveBeenCalledWith('/vaults/Memry Note Vault')
     )
+    // An in-app switch, so the app keeps its shell up and fences the leaving
+    // vault's reads while main swaps vaults.
+    expect(getVaultSwitchState().pending?.path).toBe('/vaults/Memry Note Vault')
+
+    finishSwitch({ success: true, vault: null })
+    await waitFor(() => expect(getVaultSwitchState().pending).toBeNull())
   })
 
   it('offers download when the account vault is not on this device', async () => {

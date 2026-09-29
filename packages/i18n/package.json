@@ -18,7 +18,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
-    "@memry/typescript-config": "workspace:*"
+    "@memry/typescript-config": "workspace:*",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "dependencies": {
     "@memry/contracts": "workspace:*",

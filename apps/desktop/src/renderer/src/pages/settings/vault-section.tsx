@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw } from '@/lib/icons'
 import { useStorageUsage } from '@/hooks/use-storage-usage'
 import { useAccountVaults } from '@/hooks/use-account-vaults'
+import { useVault } from '@/hooks/use-vault'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { formatBytes } from '@/lib/format'
 import {
@@ -47,6 +48,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
   const { t: tCommon } = useT('common')
   const { data, loading, refresh } = useStorageUsage()
   const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
+  const { switchVault } = useVault()
   const [vaultPath, setVaultPath] = useState<string | null>(null)
   const [currentVaultUuid, setCurrentVaultUuid] = useState<string | null>(null)
   const [currentVaultName, setCurrentVaultName] = useState<string | null>(null)
@@ -109,19 +111,20 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
     }
   }, [vaultToDelete, refreshAccountVaults, t])
 
+  // Through useVault, like every other vault list. It writes pending edits to
+  // this vault before main closes it, and keeps the leaving workspace from
+  // reading the next vault's data. Calling main directly skipped both.
   const handleSwitchTo = useCallback(
-    async (path: string) => {
+    async (path: string, name: string | null) => {
       setSwitchError(null)
-      try {
-        const result = await window.api.vault.switch(path)
-        if (!result.success) {
-          setSwitchError(result.error ?? t('vault.accountVaults.unsyncedSwitchFailed'))
-        }
-      } catch (err) {
-        setSwitchError(extractErrorMessage(err, t('vault.accountVaults.unsyncedSwitchFailed')))
+      const result = await switchVault(path, { name: name ?? undefined, source: 'settings' })
+      if (!result.success) {
+        setSwitchError(
+          extractErrorMessage(result.error, t('vault.accountVaults.unsyncedSwitchFailed'))
+        )
       }
     },
-    [t]
+    [switchVault, t]
   )
 
   // Sync refuses a vault that is not in the account (402 vault limit on paid
@@ -263,7 +266,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
                 variant="outline"
                 size="sm"
                 className="h-7 self-start px-3 text-xs/4"
-                onClick={() => void handleSwitchTo(suggestedLocalPath)}
+                onClick={() => void handleSwitchTo(suggestedLocalPath, suggestedVault.name)}
               >
                 {t('vault.accountVaults.unsyncedOpen')}
               </Button>

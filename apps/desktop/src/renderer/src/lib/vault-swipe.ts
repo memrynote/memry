@@ -37,6 +37,8 @@ export interface SwipeState {
   /** Fastest recent speed in the direction of `rawOffset`, px/ms. */
   peakVelocity: number
   lastTime: number
+  /** Wheel events in this gesture so far. */
+  samples: number
 }
 
 export const INITIAL_SWIPE: SwipeState = {
@@ -45,7 +47,8 @@ export const INITIAL_SWIPE: SwipeState = {
   accY: 0,
   rawOffset: 0,
   peakVelocity: 0,
-  lastTime: 0
+  lastTime: 0,
+  samples: 0
 }
 
 export interface SwipeContext {
@@ -77,10 +80,11 @@ export function applyWheel(state: SwipeState, sample: WheelSample, ctx: SwipeCon
     case 'deciding': {
       const accX = state.accX + sample.dx
       const accY = state.accY + sample.dy
+      const samples = state.samples + 1
       const absX = Math.abs(accX)
       const absY = Math.abs(accY)
       if (Math.max(absX, absY) < VAULT_SWIPE.axisLockPx) {
-        return { ...INITIAL_SWIPE, phase: 'deciding', accX, accY, lastTime: sample.time }
+        return { ...INITIAL_SWIPE, phase: 'deciding', accX, accY, lastTime: sample.time, samples }
       }
       if (absX <= VAULT_SWIPE.axisRatio * absY) {
         return { ...INITIAL_SWIPE, phase: 'ignoring', lastTime: sample.time }
@@ -91,7 +95,8 @@ export function applyWheel(state: SwipeState, sample: WheelSample, ctx: SwipeCon
         accX,
         accY,
         rawOffset: clamp(-accX, -ctx.width, ctx.width),
-        lastTime: sample.time
+        lastTime: sample.time,
+        samples
       }
     }
 
@@ -107,7 +112,13 @@ export function applyWheel(state: SwipeState, sample: WheelSample, ctx: SwipeCon
         // A deliberate move back cancels the flick that came before it.
         peakVelocity = 0
       }
-      return { ...state, rawOffset, peakVelocity, lastTime: sample.time }
+      return {
+        ...state,
+        rawOffset,
+        peakVelocity,
+        lastTime: sample.time,
+        samples: state.samples + 1
+      }
     }
   }
 }
@@ -139,6 +150,9 @@ export function reachedFullWidth(state: SwipeState, ctx: SwipeContext): boolean 
 
 export function resolveRelease(state: SwipeState, ctx: SwipeContext): 'commit' | 'cancel' {
   if (state.phase !== 'tracking') return 'cancel'
+  // A trackpad swipe is a stream of events. One event is a mouse wheel notch
+  // (tilt wheel, Shift+wheel on Windows) and reads as scrolling, not paging.
+  if (state.samples < 2) return 'cancel'
   const direction = signOf(state.rawOffset)
   if (direction === 0 || !ctx.hasTarget(direction)) return 'cancel'
   if (Math.abs(state.rawOffset) >= VAULT_SWIPE.commitRatio * ctx.width) return 'commit'

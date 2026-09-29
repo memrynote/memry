@@ -161,8 +161,14 @@ describe('zero-covered leaf surfaces', () => {
     ;(window as any).api = {
       vault: {
         getStatus: vi.fn().mockResolvedValue({ path: '/Users/kaan/Vault' }),
+        getConfig: vi.fn().mockResolvedValue({}),
         reveal: vi.fn().mockResolvedValue(undefined)
       },
+      // VaultSettings switches vaults through useVault, which subscribes to these.
+      onVaultStatusChanged: vi.fn(() => () => {}),
+      onVaultIndexProgress: vi.fn(() => () => {}),
+      onVaultError: vi.fn(() => () => {}),
+      onVaultIndexRecovered: vi.fn(() => () => {}),
       syncOps: {
         getLargeNotes: vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] })
       }
