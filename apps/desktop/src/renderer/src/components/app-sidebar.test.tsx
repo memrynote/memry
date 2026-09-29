@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import { DndContext } from '@dnd-kit/core'
 
 import { AppSidebar } from './app-sidebar'
-import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
 
 const mocks = vi.hoisted(() => ({
   setSelectedFolder: vi.fn(),
@@ -198,32 +197,7 @@ vi.mock('@/components/sidebar/sidebar-tag-list', () => ({
 }))
 
 vi.mock('@/components/sidebar/sidebar-bookmark-list', () => ({
-  SidebarBookmarkList: ({
-    onBookmarkClick
-  }: {
-    onBookmarkClick: (bookmark: {
-      id: string
-      itemType: string
-      itemTitle: string
-      itemId: string
-      itemMeta: { path: string }
-    }) => void
-  }) => (
-    <button
-      type="button"
-      onClick={() =>
-        onBookmarkClick({
-          id: 'bookmark-1',
-          itemType: BookmarkItemTypes.NOTE,
-          itemTitle: 'Bookmarked note',
-          itemId: 'note-1',
-          itemMeta: { path: '/note/note-1' }
-        })
-      }
-    >
-      Bookmark item
-    </button>
-  )
+  SidebarBookmarkList: () => <div>Bookmark list</div>
 }))
 
 vi.mock('@/components/sidebar/sidebar-drill-down-container', () => ({
@@ -465,7 +439,7 @@ describe('AppSidebar', () => {
     })
   })
 
-  it('opens tags, bookmarks, account settings, and the settings panel via the gear', () => {
+  it('opens tags, account settings, and the settings panel via the gear', () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
     fireEvent.click(screen.getByRole('button', { name: 'Tag work' }))
@@ -475,14 +449,6 @@ describe('AppSidebar', () => {
       path: '/tags/work',
       entityId: 'work',
       color: '#2563eb'
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Bookmark item' }))
-    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
-      type: 'note',
-      title: 'Bookmarked note',
-      path: '/note/note-1',
-      entityId: 'note-1'
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'syncDisabled' }))

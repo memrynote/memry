@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => ({
   bookmarksError: null as Error | null,
   removeBookmark: vi.fn(),
   isActiveItem: vi.fn(),
+  openSidebarItem: vi.fn(),
   openTab: vi.fn(),
   activeTab: null as Record<string, unknown> | null,
   dayPanelOpen: false,
@@ -145,7 +146,10 @@ vi.mock('@/hooks/use-bookmarks', () => ({
 }))
 
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
-  useSidebarNavigation: () => ({ isActiveItem: mocks.isActiveItem })
+  useSidebarNavigation: () => ({
+    isActiveItem: mocks.isActiveItem,
+    openSidebarItem: mocks.openSidebarItem
+  })
 }))
 
 vi.mock('@/contexts/day-panel-context', () => ({
@@ -1090,15 +1094,20 @@ describe('cold major renderer components', () => {
   })
 
   it('renders bookmarks and tab bar actions across empty, error, and populated states', async () => {
-    const onBookmarkClick = vi.fn()
     const { rerender } = render(
       <DndContext>
-        <SidebarBookmarkList maxVisible={1} onBookmarkClick={onBookmarkClick} />
+        <SidebarBookmarkList maxVisible={1} />
       </DndContext>
     )
 
     fireEvent.click(screen.getByText('Bookmarked note'))
-    expect(onBookmarkClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'bookmark-1' }))
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith({
+      type: 'note',
+      title: 'Bookmarked note',
+      emoji: 'star',
+      path: '/notes/note-1',
+      entityId: 'note-1'
+    })
     fireEvent.click(screen.getByText('+1 more'))
     expect(screen.getByText('Bookmarked task')).toBeInTheDocument()
     fireEvent.click(screen.getAllByText('phaseF.componentsSidebarSidebarBookmarkList.remove')[0])
