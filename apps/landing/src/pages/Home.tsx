@@ -9,7 +9,10 @@ import { PrivacyShowcase } from '@/components/site/PrivacyShowcase'
 import { CommunityLoop } from '@/components/site/CommunityLoop'
 import { FinalCta } from '@/components/site/FinalCta'
 import { NewsletterSignup } from '@/components/site/NewsletterSignup'
-import { SectionRule } from '@/components/site/primitives'
+import { FeatureChip, SectionRule } from '@/components/site/primitives'
+import { Faq } from '@/components/site/Faq'
+import { HOME_FAQ_ITEMS } from '@/lib/constants'
+import { ArrowRight } from 'lucide-react'
 
 export function Home() {
   return (
@@ -31,6 +34,28 @@ export function Home() {
         <UseCasesGallery />
         <SectionRule />
         <PrivacyShowcase />
+        <SectionRule />
+        <Faq
+          className="border-t-0"
+          eyebrow="FAQ"
+          title={
+            <>
+              Common <em className="text-terracotta">questions.</em>
+            </>
+          }
+          sub={
+            <>
+              <span className="block">The short answers. The full list lives on its own page.</span>
+              <FeatureChip
+                label="All questions"
+                href="/faq"
+                trailingIcon={<ArrowRight className="h-4 w-4" />}
+                className="mt-6"
+              />
+            </>
+          }
+          items={HOME_FAQ_ITEMS}
+        />
         <SectionRule />
         <CommunityLoop />
         <SectionRule />

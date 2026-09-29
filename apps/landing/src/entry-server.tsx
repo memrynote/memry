@@ -20,6 +20,7 @@ import { UseCasesPage } from '@/pages/UseCases'
 import { AboutPage } from '@/pages/About'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
+import { FaqPage } from '@/pages/Faq'
 import { ChangelogPage } from '@/pages/Changelog'
 import { RoadmapPage } from '@/pages/Roadmap'
 import { TermsPage } from '@/pages/Terms'
@@ -102,6 +103,7 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/tana-alternative': () => <TanaAlternativePage />,
   '/heptabase-alternative': () => <HeptabaseAlternativePage />,
   '/pricing': () => <PricingPage />,
+  '/faq': () => <FaqPage />,
   '/changelog': () => <ChangelogPage />,
   '/roadmap': () => <RoadmapPage />,
   '/terms': () => <TermsPage />,

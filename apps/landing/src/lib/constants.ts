@@ -128,6 +128,7 @@ export const FOOTER_LINKS = {
     { label: 'Features', href: '/features' },
     { label: 'Download', href: '/download/desktop' },
     { label: 'Pricing', href: '/pricing' },
+    { label: 'FAQ', href: '/faq' },
     { label: 'Changelog', href: '/changelog' },
     { label: 'Security', href: '/security' }
   ],
@@ -219,48 +220,74 @@ export const FEATURES = [
   }
 ] as const
 
+// Ordered by how often the question comes up: the homepage shows the first
+// HOME_FAQ_COUNT, /faq shows all of them. Answers stay plain strings because they
+// also feed the FAQPage JSON-LD.
 export const FAQ_ITEMS = [
   {
     question: 'Is memrynote free?',
     answer:
-      'Yes. The desktop app is free for local use with no account required. Plus, Pro, and Believer are only for hosted encrypted sync.'
+      'Yes. The desktop app is free for local use, with no account required. Plus, Pro, and Believer only pay for hosted end-to-end encrypted sync between devices.'
+  },
+  {
+    question: 'What can I use without sync?',
+    answer:
+      'Almost everything. Notes, journal, tasks, projects, calendar, inbox, search, the graph, and the AI agent all run on your machine. Sync only adds access from more than one device and an encrypted copy off your computer.'
+  },
+  {
+    question: 'Can I bring my own AI?',
+    answer:
+      'Yes, and AI stays off until you turn it on. Point the agent at a local model through any OpenAI-compatible server (Ollama, LM Studio, and llama.cpp have presets), or use the Claude Code, Codex, or Antigravity CLI you already pay for. Voice memos transcribe on-device with Whisper, or with your own OpenAI key. API keys are protected by your OS keychain. With a local model, nothing leaves your machine.'
   },
   {
     question: 'Where is my data stored?',
     answer:
-      'Your data lives in a "vault" folder on your computer that you choose. Notes are stored as plain Markdown files with YAML frontmatter for metadata. You can open them in any text editor.'
+      'In a vault folder you choose. Notes are plain Markdown files with YAML frontmatter, readable in any text editor. Tasks, projects, and the search index live in SQLite databases inside the hidden .memry folder of that same vault.'
+  },
+  {
+    question: 'Can I keep my vault on my own NAS?',
+    answer:
+      'Yes. The vault is a normal folder, so it can live wherever you choose, including your own NAS.'
   },
   {
     question: 'Is my data secure?',
     answer:
-      'Yes. Your local vault stays on your device. When you use paid Sync, everything is encrypted end-to-end before upload. Only your devices can read your content.'
+      'Your local vault stays on your device. When you turn on Sync, everything is encrypted with XChaCha20-Poly1305 before upload, using keys derived on your machine. Our servers store ciphertext and cannot read your notes.'
   },
   {
     question: 'Can I sync between devices?',
     answer:
-      'Yes. Hosted memrynote Sync is paid and end-to-end encrypted. You can also keep the app local and use your own folder sync setup if that fits your workflow.'
+      'Yes. Hosted memrynote Sync is end-to-end encrypted and starts at $5/month. A self-hosted sync server is on the roadmap.'
   },
   {
-    question: 'Is there a mobile app?',
+    question: 'What happens to my notes if I cancel Sync?',
     answer:
-      'Desktop first (macOS, Windows, Linux) to nail the experience. Mobile apps for iOS and Android are targeting late 2026. In the meantime, your vault folder syncs with any cloud service you already use.'
+      'Nothing. Sync pauses and the local app keeps working with every note, task, and journal entry you already have. Turn Sync back on whenever you want your devices connected again.'
+  },
+  {
+    question: 'Which platforms are supported?',
+    answer:
+      'macOS, Windows, and Linux today. Mobile apps for iPhone, iPad, and Android are planned and targeting late 2026. A command-line tool ships with the desktop app, and a web clipper is available for Chrome and Firefox.'
   },
   {
     question: 'What file format does memrynote use?',
     answer:
-      'Standard Markdown with YAML frontmatter for properties. Your notes are 100% portable and can be read by any Markdown-compatible app like Obsidian, iA Writer, or even VS Code.'
+      'Standard Markdown with YAML frontmatter for properties. Your notes stay portable and open in any Markdown app, such as Obsidian, iA Writer, or VS Code.'
   },
   {
     question: 'Can I import from other apps?',
     answer:
-      'Yes! We will support importing from Obsidian (direct vault), Notion (export), Roam Research, and plain Markdown folders. Your existing knowledge base can move with you.'
+      'Yes. memrynote imports Markdown folders (including Obsidian vaults), Notion, Evernote, Apple Notes, Apple Journal, Bear, Roam Research, Google Keep, NotePlan, Todoist, TickTick, Raindrop, and CSV.'
   },
   {
-    question: 'Is memrynote available now?',
+    question: 'Is memrynote open source?',
     answer:
-      'Yes. The desktop app is available now — download the free, local-first app for macOS, Windows, or Linux and pick a vault in under a minute.'
+      'Yes. The code is on GitHub under the AGPL-3.0 license, so you can read exactly what the app does with your data.'
   }
 ] as const
+
+export const HOME_FAQ_COUNT = 6
+export const HOME_FAQ_ITEMS = FAQ_ITEMS.slice(0, HOME_FAQ_COUNT)
 
 export const ROADMAP_DATA = {
   releaseDate: 'Available now',

@@ -117,6 +117,7 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
   { path: '/tana-alternative', Component: AlternativePages.tana },
   { path: '/heptabase-alternative', Component: AlternativePages.heptabase },
   { path: '/pricing', Component: lazyPage(() => import('@/pages/Pricing'), 'PricingPage') },
+  { path: '/faq', Component: lazyPage(() => import('@/pages/Faq'), 'FaqPage') },
   { path: '/checkout', Component: lazyPage(() => import('@/pages/Checkout'), 'CheckoutPage') },
   { path: '/changelog', Component: lazyPage(() => import('@/pages/Changelog'), 'ChangelogPage') },
   { path: '/roadmap', Component: lazyPage(() => import('@/pages/Roadmap'), 'RoadmapPage') },

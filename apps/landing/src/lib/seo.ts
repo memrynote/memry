@@ -1,4 +1,11 @@
-import { FAQ_ITEMS, FEATURES, GITHUB_URL, REDDIT_URL, TWITTER_DEV_URL } from './constants'
+import {
+  FAQ_ITEMS,
+  FEATURES,
+  GITHUB_URL,
+  HOME_FAQ_ITEMS,
+  REDDIT_URL,
+  TWITTER_DEV_URL
+} from './constants'
 
 export const BASE_URL = 'https://memrynote.com'
 export const SITE_NAME = 'memrynote'
@@ -115,6 +122,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     description:
       'Local-first stays free, forever. Plus adds 1 GB sync, Pro adds 10 GB and 10 vaults, and Believer supports independent software with 50 GB and unlimited vaults.',
     path: '/pricing'
+  },
+  faq: {
+    title: 'FAQ — memrynote',
+    description:
+      'Answers about memrynote: what is free, what works without sync, bringing your own AI, where your vault lives, encryption, platforms, and importing.',
+    path: '/faq'
   },
   changelog: {
     title: 'memrynote Changelog — Release Notes & Shipped Features',
@@ -408,7 +421,7 @@ function getFaqPageJsonLdObject() {
     '@id': `${BASE_URL}/#faq`,
     // Google retired FAQ rich results (May 2026); this stays for AI-search citation
     // (Perplexity / ChatGPT / AI Overviews), since on-page answers live in a JS accordion.
-    mainEntity: FAQ_ITEMS.map((item) => ({
+    mainEntity: HOME_FAQ_ITEMS.map((item) => ({
       '@type': 'Question',
       name: item.question,
       acceptedAnswer: {
@@ -417,6 +430,20 @@ function getFaqPageJsonLdObject() {
       }
     }))
   }
+}
+
+// FAQPage graph for /faq: the full list, matching what the page renders.
+export function getFaqPageJsonLd(): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    '@id': `${BASE_URL}${PAGE_META.faq.path}#faq`,
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: { '@type': 'Answer', text: item.answer }
+    }))
+  })
 }
 
 export function getWebsiteJsonLd(): string {
