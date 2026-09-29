@@ -47,6 +47,12 @@ struct FolderNode: Equatable, Sendable, Identifiable {
 
     /// This folder's whole subtree, flattened, parent before child.
     var subtreeRows: [FolderRow] { VaultOutline.rows(children, depth: 0) }
+
+    /// Every note at or under this folder.
+    var subtreeNotes: [NoteSummary] { notes + children.flatMap(\.subtreeNotes) }
+
+    /// This folder's path and every descendant folder's path.
+    var subtreePaths: [String] { [folder.path] + children.flatMap(\.subtreePaths) }
 }
 
 /// One line of the rendered tree.
@@ -93,6 +99,15 @@ struct VaultOutline: Equatable, Sendable {
     /// Every note in the vault, however it was placed. The screen's own counts
     /// must add up to this.
     let noteCount: Int
+    /// The paths that carry a `folder_config` row, as opposed to folders
+    /// derived from a note's `folderPath`. Only these can be deleted as
+    /// folders; the rest disappear with their notes.
+    var configuredPaths: Set<String> = []
+
+    /// Whether `path` or anything under it has a `folder_config` row.
+    func hasConfiguredFolder(within path: String) -> Bool {
+        configuredPaths.contains { $0 == path || $0.hasPrefix(path + "/") }
+    }
 
     /// True only when both core reads succeeded and both were empty. A read
     /// that failed never reaches this type.
@@ -156,7 +171,8 @@ extension VaultOutline {
             roots: roots,
             rootNotes: placement.rootNotes,
             unplacedNotes: placement.unplaced,
-            noteCount: notes.count
+            noteCount: notes.count,
+            configuredPaths: Set(folders.map(\.path))
         )
     }
 

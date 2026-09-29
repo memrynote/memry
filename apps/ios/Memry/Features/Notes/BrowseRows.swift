@@ -24,10 +24,12 @@ import MemryCore
 /// One line of the browse list.
 struct BrowseRow: Identifiable, Equatable, Sendable {
     enum Kind: Equatable, Sendable {
-        /// A configured folder. `noteCount` is its own notes, never a subtree
-        /// total — a count that silently included descendants would not match
-        /// the rows it sits beside.
-        case folder(path: String, noteCount: Int, isExpanded: Bool)
+        /// A folder. `noteCount` is its own notes, never a subtree total — a
+        /// count that silently included descendants would not match the rows
+        /// it sits beside. `icon` is the stored `folder_config` icon, drawn
+        /// only when it is an emoji; `hasContents` decides whether the row
+        /// gets a disclosure chevron, as desktop's tree does.
+        case folder(path: String, icon: String?, noteCount: Int, hasContents: Bool, isExpanded: Bool)
         case note(NoteSummary)
     }
 
@@ -41,45 +43,67 @@ struct BrowseRow: Identifiable, Equatable, Sendable {
 
     var id: String {
         switch kind {
-        case let .folder(path, _, _): "folder:\(path)"
+        case let .folder(path, _, _, _, _): "folder:\(path)"
         case let .note(note): "note:\(note.id)"
         }
     }
 }
 
-/// How the list is ordered. The three keys desktop offers, and no more.
+/// How the list is ordered: desktop's Collections sort modes
+/// (`SIDEBAR_SORT_MODES.collections`) minus `manual`, whose stored positions
+/// this device does not read. Raw values are desktop's mode ids.
 enum BrowseSort: String, CaseIterable, Identifiable, Sendable {
-    case title
-    case modified
-    case created
+    case nameAscending = "name-asc"
+    case nameDescending = "name-desc"
+    case modifiedNewest = "modified-desc"
+    case modifiedOldest = "modified-asc"
+    case createdNewest = "created-desc"
+    case createdOldest = "created-asc"
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .title: "Title"
-        case .modified: "Last edited"
-        case .created: "Date created"
+        case .nameAscending: "Name A \u{2192} Z"
+        case .nameDescending: "Name Z \u{2192} A"
+        case .modifiedNewest: "Modified: newest first"
+        case .modifiedOldest: "Modified: oldest first"
+        case .createdNewest: "Created: newest first"
+        case .createdOldest: "Created: oldest first"
         }
     }
 
-    /// Folders always sort by name: neither instant exists for a folder, and
-    /// inventing one would put them in an order nobody can predict.
+    /// A note with no instant goes last in either direction rather than being
+    /// treated as 1970 (data-model §A.6).
     fileprivate func sorted(_ notes: [NoteSummary]) -> [NoteSummary] {
         switch self {
-        case .title:
-            notes.sorted { lhs, rhs in
-                lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
-            }
-        case .modified:
-            // Newest first, and a note with no instant goes last rather than
-            // being treated as 1970 (data-model §A.6).
-            notes.sorted { first, second in
-                (first.modifiedAt ?? .min) > (second.modifiedAt ?? .min)
-            }
-        case .created:
-            notes.sorted { first, second in
-                (first.createdAt ?? .min) > (second.createdAt ?? .min)
+        case .nameAscending:
+            notes.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        case .nameDescending:
+            notes.sorted { $0.title.localizedStandardCompare($1.title) == .orderedDescending }
+        case .modifiedNewest: Self.byInstant(notes, \.modifiedAt, newestFirst: true)
+        case .modifiedOldest: Self.byInstant(notes, \.modifiedAt, newestFirst: false)
+        case .createdNewest: Self.byInstant(notes, \.createdAt, newestFirst: true)
+        case .createdOldest: Self.byInstant(notes, \.createdAt, newestFirst: false)
+        }
+    }
+
+    /// Folders carry no instant, so they stay A → Z under every mode except
+    /// Name Z → A — desktop's `compareFolders`. The outline is built A → Z.
+    fileprivate func sorted(_ folders: [FolderNode]) -> [FolderNode] {
+        self == .nameDescending ? folders.reversed() : folders
+    }
+
+    private static func byInstant(
+        _ notes: [NoteSummary],
+        _ instant: KeyPath<NoteSummary, Int64?>,
+        newestFirst: Bool
+    ) -> [NoteSummary] {
+        notes.sorted { first, second in
+            switch (first[keyPath: instant], second[keyPath: instant]) {
+            case let (lhs?, rhs?): newestFirst ? lhs > rhs : lhs < rhs
+            case (.some, .none): true
+            case (.none, _): false
             }
         }
     }
@@ -88,7 +112,7 @@ enum BrowseSort: String, CaseIterable, Identifiable, Sendable {
 extension VaultOutline {
     /// The tree the screen draws, with `expanded` folders opened.
     func browseRows(expanded: Set<String>, sort: BrowseSort) -> [BrowseRow] {
-        Self.rows(of: roots, depth: 0, expanded: expanded, sort: sort)
+        Self.rows(of: sort.sorted(roots), depth: 0, expanded: expanded, sort: sort)
             + sort.sorted(rootNotes).map { BrowseRow.note($0, depth: 0) }
     }
 
@@ -134,7 +158,9 @@ extension VaultOutline {
             let row = BrowseRow(
                 kind: .folder(
                     path: node.folder.path,
+                    icon: node.folder.icon,
                     noteCount: node.notes.count,
+                    hasContents: !node.children.isEmpty || !node.notes.isEmpty,
                     isExpanded: isExpanded
                 ),
                 title: node.title,
@@ -144,7 +170,7 @@ extension VaultOutline {
             guard isExpanded else { return [row] }
             // Child folders before notes, the order the tree reads in.
             return [row]
-                + rows(of: node.children, depth: depth + 1, expanded: expanded, sort: sort)
+                + rows(of: sort.sorted(node.children), depth: depth + 1, expanded: expanded, sort: sort)
                 + sort.sorted(node.notes).map { BrowseRow.note($0, depth: depth + 1) }
         }
     }

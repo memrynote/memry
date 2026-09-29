@@ -53,7 +53,12 @@ struct NotesListView: View {
     /// model: it is where the user is looking, not what the vault contains,
     /// and a reload must not close what they opened.
     @State private var expanded: Set<String> = []
-    @State private var sort: BrowseSort = .modified
+    /// The folder last opened or closed. It carries the arrow that pushes the
+    /// folder's own screen, as the selected row does in desktop's tree.
+    @State private var selectedFolder: String?
+    /// Persisted like desktop's Collections sort mode. The raw values are
+    /// desktop's mode ids.
+    @AppStorage("notes.browseSort") private var sort: BrowseSort = .modifiedNewest
     @State private var query = ""
 
     /// The production entry point: an opened `Vault` and the shell's one core
@@ -87,7 +92,15 @@ struct NotesListView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            VaultBrowseScreen(model: model, expanded: $expanded, sort: sort, query: query)
+            VaultBrowseScreen(
+                model: model,
+                expanded: $expanded,
+                selectedFolder: $selectedFolder,
+                sort: sort,
+                query: query,
+                openFolder: { path.append(FolderRoute(path: $0)) },
+                openNote: { path.append(NoteRoute(id: $0)) }
+            )
                 .navigationTitle(title)
                 // The platform's search field: it owns the scroll-edge
                 // treatment, the cancel button and the keyboard, and on this
@@ -199,9 +212,11 @@ private struct SortMenu: View {
 
     var body: some View {
         Menu {
-            Picker("Sort by", selection: $sort) {
-                ForEach(BrowseSort.allCases) { option in
-                    Text(option.label).tag(option)
+            Section("Folders stay A \u{2192} Z under every time mode.") {
+                Picker("Sort notes", selection: $sort) {
+                    ForEach(BrowseSort.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
                 }
             }
         } label: {
@@ -214,8 +229,11 @@ private struct SortMenu: View {
 private struct VaultBrowseScreen: View {
     let model: VaultBrowseViewModel
     @Binding var expanded: Set<String>
+    @Binding var selectedFolder: String?
     let sort: BrowseSort
     let query: String
+    let openFolder: (String) -> Void
+    let openNote: (String) -> Void
 
     var body: some View {
         Group {
@@ -241,9 +259,12 @@ private struct VaultBrowseScreen: View {
                 VaultOutlineList(
                     outline: outline,
                     expanded: $expanded,
+                    selectedFolder: $selectedFolder,
                     sort: sort,
                     query: query,
-                    model: model
+                    model: model,
+                    openFolder: openFolder,
+                    openNote: openNote
                 )
             }
         }
@@ -260,11 +281,14 @@ private struct VaultBrowseScreen: View {
 private struct VaultOutlineList: View {
     let outline: VaultOutline
     @Binding var expanded: Set<String>
+    @Binding var selectedFolder: String?
     let sort: BrowseSort
     let query: String
     /// Carried down for the row actions. The rows are where a rename, a move
     /// or a delete starts, and each one needs the writer behind them.
     let model: VaultBrowseViewModel
+    let openFolder: (String) -> Void
+    let openNote: (String) -> Void
 
     private var isSearching: Bool {
         !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -286,7 +310,15 @@ private struct VaultOutlineList: View {
                 )
             } else {
                 ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
-                    BrowseRowView(row: row, toggle: toggle, model: model)
+                    BrowseRowView(
+                        row: row,
+                        toggle: toggle,
+                        model: model,
+                        selectedFolder: selectedFolder,
+                        openFolder: openFolder,
+                        openNote: openNote,
+                        setExpanded: setExpanded
+                    )
                 }
                 if !outline.unplacedNotes.isEmpty {
                     // Kaan's spec-defect 124 decision, named on screen rather
@@ -306,6 +338,8 @@ private struct VaultOutlineList: View {
             }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
         .calmAnimation(.fast, value: expanded)
         // Once per screen, before the first query: an index that was never
         // built answers nothing, and a user cannot tell that from an empty
@@ -316,6 +350,11 @@ private struct VaultOutlineList: View {
 
     private func toggle(_ path: String) {
         if expanded.contains(path) { expanded.remove(path) } else { expanded.insert(path) }
+        selectedFolder = path
+    }
+
+    private func setExpanded(_ paths: [String], _ isOpen: Bool) {
+        if isOpen { expanded.formUnion(paths) } else { expanded.subtract(paths) }
     }
 }
 

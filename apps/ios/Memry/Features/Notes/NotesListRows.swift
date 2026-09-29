@@ -172,24 +172,100 @@ struct SearchHitLabel: View {
     }
 }
 
-/// One row: a folder that opens in place, or a note that pushes.
+/// One row of the tree, drawn as desktop's Collections tree draws it: a
+/// chevron slot, an icon slot (the stored emoji, or a folder or page glyph),
+/// the name, and a trailing count or arrow. A folder toggles in place and
+/// becomes the selected row; the selected folder carries an arrow that opens
+/// it on its own screen, the phone's stand-in for desktop's hover-only
+/// "open folder view" button.
 struct BrowseRowView: View {
     let row: BrowseRow
     let toggle: (String) -> Void
     let model: VaultBrowseViewModel
+    var selectedFolder: String?
+    var openFolder: ((String) -> Void)?
+    /// Pushes a note by id, for a folder menu's "New note".
+    var openNote: ((String) -> Void)?
+    /// Opens or closes several folders at once, for the folder menu.
+    var setExpanded: (([String], Bool) -> Void)?
+
+    private var isSelected: Bool {
+        if case let .folder(path, _, _, _, _) = row.kind { return path == selectedFolder }
+        return false
+    }
 
     var body: some View {
+        content
+            .listRowInsets(EdgeInsets(
+                top: 0,
+                leading: Tokens.Space.small,
+                bottom: 0,
+                trailing: Tokens.Space.small
+            ))
+            .listRowSeparator(.hidden)
+            .listRowBackground(
+                RoundedRectangle(cornerRadius: Tokens.Radius.small)
+                    .fill(isSelected ? Tokens.Canvas.surface.color : .clear)
+                    .padding(.horizontal, Tokens.Space.small)
+            )
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch row.kind {
-        case let .folder(path, noteCount, isExpanded):
-            Button { toggle(path) } label: {
-                FolderRowLabel(row: row, noteCount: noteCount, isExpanded: isExpanded)
+        case let .folder(path, icon, noteCount, hasContents, isExpanded):
+            HStack(spacing: 0) {
+                Button { toggle(path) } label: {
+                    TreeRowLabel(
+                        depth: row.depth,
+                        disclosure: hasContents ? isExpanded : nil,
+                        emoji: ProjectIconValue.emoji(icon),
+                        symbol: "folder",
+                        symbolTint: Tokens.Text.secondary.color,
+                        title: row.title,
+                        isPlaceholderTitle: row.isPlaceholderTitle,
+                        isEmphasized: isSelected
+                    ) {
+                        // Only where it is not already on screen: an open
+                        // folder's notes are the rows underneath.
+                        if !isExpanded, noteCount > 0, !isSelected {
+                            Text(noteCount.formatted())
+                                .font(Tokens.Typography.caption.font.monospacedDigit())
+                                .foregroundStyle(Tokens.Text.tertiary.color)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(noteCount > 0 ? "\(row.title), \(noteCount) notes" : row.title)
+                // Said in words rather than as a trait: `AccessibilityTraits`
+                // has no expanded state.
+                .accessibilityValue(hasContents ? (isExpanded ? "Expanded" : "Collapsed") : "")
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityAction(named: "Open folder") { openFolder?(path) }
+                if isSelected, let openFolder {
+                    Button { openFolder(path) } label: {
+                        Image(systemName: "arrow.forward")
+                            .font(Tokens.Typography.caption.font)
+                            .foregroundStyle(Tokens.Text.tertiary.color)
+                            .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open folder")
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(.isButton)
-            // Said in words rather than as a trait: `AccessibilityTraits` has
-            // no expanded state, and a folder that does not say whether it is
-            // open is a row VoiceOver users have to guess at.
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+            .contentShape(.rect)
+            .modifier(FolderRowActions(
+                context: FolderRowContext(
+                    path: path,
+                    title: row.title,
+                    openFolder: openFolder,
+                    openNote: openNote,
+                    setExpanded: setExpanded
+                ),
+                model: model
+            ))
         case let .note(note):
             // `NavigationLink(value:)` and not `NavigationLink(destination:)`:
             // a value push resolves against the **one** registration in
@@ -198,94 +274,94 @@ struct BrowseRowView: View {
             NavigationLink(value: NoteRoute(id: note.id)) {
                 NoteRowLabel(row: row, note: note)
             }
+            .navigationLinkIndicatorVisibility(.hidden)
             .modifier(NoteRowActions(note: note, model: model))
         }
     }
 }
 
-/// A folder line: disclosure, name, and its own note count.
-private struct FolderRowLabel: View {
-    let row: BrowseRow
-    let noteCount: Int
-    let isExpanded: Bool
-
-    var body: some View {
-        HStack(spacing: Tokens.Space.small) {
-            Image(systemName: "chevron.forward")
-                .font(Tokens.Typography.caption.font)
-                .foregroundStyle(Tokens.Text.secondary.color)
-                .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                .frame(width: Tokens.Space.inset)
-                .accessibilityHidden(true)
-            Image(systemName: isExpanded ? "folder.fill" : "folder")
-                .font(Tokens.Typography.body.font)
-                .foregroundStyle(Tokens.Text.secondary.color)
-                .accessibilityHidden(true)
-            Text(row.title)
-                .font(Tokens.Typography.body.font)
-                .foregroundStyle(row.isPlaceholderTitle
-                    ? Tokens.Text.secondary.color
-                    : Tokens.Text.primary.color)
-            Spacer(minLength: Tokens.Space.tight)
-            // Only where it is not already on screen: an open folder's notes
-            // are the rows underneath, and counting them again is noise.
-            if !isExpanded, noteCount > 0 {
-                Text(noteCount.formatted())
-                    .font(Tokens.Typography.caption.font.monospacedDigit())
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
-        }
-        .padding(.leading, CGFloat(row.depth) * Tokens.Space.inset)
-        .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
-        .contentShape(.rect)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(noteCount > 0 ? "\(row.title), \(noteCount) notes" : row.title)
-    }
-}
-
-/// One note line.
+/// One note line: the note's emoji, or a page glyph, and its title.
 struct NoteRowLabel: View {
     let row: BrowseRow
     let note: NoteSummary
 
-    /// `nil` means the payload carried no such instant, never "zero"
-    /// (data-model §A.6). An absent date is rendered as nothing rather than as
-    /// an epoch nobody wrote.
-    private var modified: String? {
-        guard let milliseconds = note.modifiedAt else { return nil }
-        return Date(timeIntervalSince1970: Double(milliseconds) / 1000)
-            .formatted(date: .abbreviated, time: .omitted)
+    var body: some View {
+        TreeRowLabel(
+            depth: row.depth,
+            disclosure: nil,
+            emoji: ProjectIconValue.emoji(note.emoji),
+            symbol: "doc",
+            symbolTint: Tokens.Text.tertiary.color,
+            title: row.title,
+            isPlaceholderTitle: row.isPlaceholderTitle,
+            isEmphasized: false
+        ) { EmptyView() }
     }
+}
+
+/// The shared row layout, from the Paper "Notes \u{2014} List" artboard: 16pt a
+/// level, a 16pt chevron slot, a 20pt icon slot and 6pt before the name.
+/// `disclosure` is `nil` for a row with nothing to open, which keeps an empty
+/// chevron slot so every icon in a level lines up.
+private struct TreeRowLabel<Trailing: View>: View {
+    let depth: Int
+    let disclosure: Bool?
+    /// Drawn instead of `symbol` when present. `icon:` and `custom:` values
+    /// from desktop are not emoji and fall back to the glyph, as a project's
+    /// icon does (`ProjectIconValue`).
+    let emoji: String?
+    let symbol: String
+    let symbolTint: Color
+    let title: String
+    let isPlaceholderTitle: Bool
+    let isEmphasized: Bool
+    @ViewBuilder let trailing: () -> Trailing
+
+    @ScaledMetric(relativeTo: .subheadline) private var indent: CGFloat = 16
+    @ScaledMetric(relativeTo: .subheadline) private var chevronSlot: CGFloat = 16
+    @ScaledMetric(relativeTo: .subheadline) private var iconSlot: CGFloat = 20
+    @ScaledMetric(relativeTo: .subheadline) private var titleGap: CGFloat = 6
+    /// Past this many levels the indentation stops growing, so a deep tree
+    /// does not push its names off the edge at large Dynamic Type sizes.
+    private var indentLimit: Int { 6 }
 
     var body: some View {
-        HStack(spacing: Tokens.Space.small) {
+        HStack(spacing: 0) {
             Group {
-                if let emoji = note.emoji, !emoji.isEmpty {
-                    Text(emoji)
+                if let disclosure {
+                    Image(systemName: "chevron.forward")
+                        .font(Tokens.Typography.caption.font.weight(.semibold))
+                        .foregroundStyle(Tokens.Text.tertiary.color)
+                        .rotationEffect(.degrees(disclosure ? 90 : 0))
                 } else {
-                    Image(systemName: "doc.text")
-                        .foregroundStyle(Tokens.Text.secondary.color)
+                    Color.clear
                 }
             }
-            .font(Tokens.Typography.body.font)
-            .frame(width: Tokens.Space.section, alignment: .center)
+            .frame(width: chevronSlot)
             .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(row.title)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(row.isPlaceholderTitle
-                        ? Tokens.Text.secondary.color
-                        : Tokens.Text.primary.color)
-                if let modified {
-                    Text(modified)
-                        .font(Tokens.Typography.caption.font.monospacedDigit())
-                        .foregroundStyle(Tokens.Text.secondary.color)
+            Group {
+                if let emoji {
+                    Text(emoji).font(Tokens.Typography.supporting.font)
+                } else {
+                    Image(systemName: symbol)
+                        .font(Tokens.Typography.supporting.font)
+                        .foregroundStyle(symbolTint)
                 }
             }
+            .frame(width: iconSlot)
+            .accessibilityHidden(true)
+            Text(title)
+                .font(Tokens.Typography.supporting.font.weight(isEmphasized ? .medium : .regular))
+                .foregroundStyle(isPlaceholderTitle ? Tokens.Text.secondary.color : Tokens.Text.primary.color)
+                .lineLimit(1)
+                .padding(.leading, titleGap)
             Spacer(minLength: Tokens.Space.tight)
+            trailing()
         }
-        .padding(.leading, CGFloat(row.depth) * Tokens.Space.inset)
-        .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+        .padding(.leading, Tokens.Space.small + indent * CGFloat(min(depth, indentLimit)))
+        .padding(.trailing, Tokens.Space.tight)
+        .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+        .contentShape(.rect)
         .multilineTextAlignment(.leading)
         .accessibilityElement(children: .combine)
     }

@@ -21,6 +21,10 @@ struct VaultWriteTests {
             case rename(String, String)
             case move(String, String?)
             case delete(String)
+            case createFolder(String)
+            case renameFolder(String, String)
+            case moveFolder(String, String?)
+            case deleteFolder(String)
         }
 
         let calls = Mutex([Call]())
@@ -43,6 +47,30 @@ struct VaultWriteTests {
         func rename(id: String, title: String) async throws { try record(.rename(id, title)) }
         func move(id: String, folderPath: String?) async throws { try record(.move(id, folderPath)) }
         func delete(id: String) async throws { try record(.delete(id)) }
+        func createFolder(path: String) async throws { try record(.createFolder(path)) }
+        func renameFolder(path: String, newName: String) async throws {
+            try record(.renameFolder(path, newName))
+        }
+        func moveFolder(path: String, newParent: String?) async throws {
+            try record(.moveFolder(path, newParent))
+        }
+        func deleteFolder(path: String) async throws { try record(.deleteFolder(path)) }
+    }
+
+    /// A fixed vault: `Work` has a config row, `Work/Drafts` does not, and
+    /// `Loose` exists only because a note names it.
+    private final class TreeReader: NotesReading, @unchecked Sendable {
+        func folders() async throws -> [FolderSummary] {
+            [FolderSummary(path: "Work", parentPath: nil, name: "Work", icon: nil)]
+        }
+
+        func list() async throws -> [NoteSummary] {
+            [("a", "Work"), ("b", "Work/Drafts"), ("c", "Loose"), ("d", nil)].map { id, folder in
+                NoteSummary(id: id, title: id, folderPath: folder, emoji: nil, createdAt: nil, modifiedAt: nil)
+            }
+        }
+
+        func read(id: String) async throws -> NoteDetail? { nil }
     }
 
     /// A reader whose answers change between loads, so a reload is observable.
@@ -119,6 +147,41 @@ struct VaultWriteTests {
 
         #expect(id == nil)
         #expect(model.writeFailure == nil, "nothing was attempted, so nothing failed")
+    }
+
+    @Test("deleting a folder deletes every note under it, then its config")
+    func folderDeleteCascadesThroughNotes() async {
+        let writer = ScriptedWriter()
+        let model = model(writer: writer, reader: TreeReader())
+        await model.loadIfNeeded()
+
+        await model.deleteFolder(path: "Work")
+
+        // The core refuses a folder that still holds a note, so order matters.
+        #expect(writer.calls.withLock { $0 } == [.delete("a"), .delete("b"), .deleteFolder("Work")])
+    }
+
+    @Test("a folder with no config row goes with its notes and asks the core for nothing more")
+    func derivedFolderDeleteSkipsTheConfig() async {
+        let writer = ScriptedWriter()
+        let model = model(writer: writer, reader: TreeReader())
+        await model.loadIfNeeded()
+
+        await model.deleteFolder(path: "Loose")
+
+        #expect(writer.calls.withLock { $0 } == [.delete("c")])
+    }
+
+    @Test("a new folder is created under its parent, and a blank name writes nothing")
+    func newFolderPath() async {
+        let writer = ScriptedWriter()
+        let model = model(writer: writer, reader: TreeReader())
+        await model.loadIfNeeded()
+
+        await model.createFolder(named: "  Ideas ", in: "Work")
+        await model.createFolder(named: "   ", in: nil)
+
+        #expect(writer.calls.withLock { $0 } == [.createFolder("Work/Ideas")])
     }
 
     @Test("the move to the vault root travels as the root, not as a folder named for it")

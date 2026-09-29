@@ -43,6 +43,15 @@ protocol NotesWriting: Sendable {
     func addReminder(noteId: String, remindAt: String, title: String?) async throws -> String
     func dismissReminder(id: String) async throws
     func snoozeReminder(id: String, until: String) async throws
+    /// Creates a `folder_config` at `path` (N806). A path is a folder's id.
+    func createFolder(path: String) async throws
+    /// Renames a folder in place; its notes and subfolders follow the path.
+    func renameFolder(path: String, newName: String) async throws
+    /// Moves a folder under `newParent`, or to the vault root with `nil`.
+    func moveFolder(path: String, newParent: String?) async throws
+    /// Tombstones a folder's configs. The core refuses a subtree that still
+    /// holds a live note, so the notes go first.
+    func deleteFolder(path: String) async throws
 }
 
 /// The production writer: the core's own `NotesWriter`, over the shell's one
@@ -107,6 +116,22 @@ struct CoreNotesWriter: NotesWriting {
     func snoozeReminder(id: String, until: String) async throws {
         try await executor.run { try writer().snoozeReminder(id: id, until: until) }
     }
+
+    func createFolder(path: String) async throws {
+        try await executor.run { try writer().createFolder(path: path, icon: nil) }
+    }
+
+    func renameFolder(path: String, newName: String) async throws {
+        _ = try await executor.run { try writer().renameFolder(path: path, newName: newName) }
+    }
+
+    func moveFolder(path: String, newParent: String?) async throws {
+        _ = try await executor.run { try writer().moveFolder(path: path, newParent: newParent) }
+    }
+
+    func deleteFolder(path: String) async throws {
+        _ = try await executor.run { try writer().deleteFolder(path: path) }
+    }
 }
 
 extension VaultBrowseViewModel {
@@ -161,6 +186,98 @@ extension VaultBrowseViewModel {
             await reload()
         } catch {
             report(error, "a note could not be deleted")
+        }
+    }
+
+    /// Sets or clears a note's icon from its row (desktop's "Set icon" and
+    /// "Remove icon"). `nil` clears.
+    func setNoteIcon(id: String, to icon: String?) async {
+        guard let metadataWriter else { return }
+        do {
+            try await metadataWriter.setIcon(id: id, icon: icon)
+            await reload()
+        } catch {
+            report(error, "a note icon could not be set")
+        }
+    }
+
+    /// A note's plain text for "Share a copy", pulling the body first when
+    /// this device does not hold it yet, so a note outside the first sync's
+    /// window is not shared as an empty file.
+    func exportNote(id: String) async -> NoteExport? {
+        do {
+            guard var detail = try await reader.read(id: id) else { return nil }
+            if !detail.body.present, let filler {
+                _ = try await filler.fetchNoteBody(noteId: id)
+                detail = try await reader.read(id: id) ?? detail
+            }
+            return NoteExport(title: detail.summary.title, text: detail.body.text)
+        } catch {
+            report(error, "a note could not be read for sharing")
+            return nil
+        }
+    }
+
+    /// Creates a folder named `name` under `parent`, or at the vault root.
+    @discardableResult
+    func createFolder(named name: String, in parent: String?) async -> String? {
+        guard let writer else { return nil }
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let path = parent.map { "\($0)/\(name)" } ?? name
+        do {
+            try await writer.createFolder(path: path)
+            await reload()
+            return path
+        } catch {
+            report(error, "a folder could not be created")
+            return nil
+        }
+    }
+
+    func renameFolder(path: String, to name: String) async {
+        guard let writer else { return }
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name != path.split(separator: "/").last.map(String.init) else { return }
+        do {
+            try await writer.renameFolder(path: path, newName: name)
+            await reload()
+        } catch {
+            report(error, "a folder could not be renamed")
+        }
+    }
+
+    func moveFolder(path: String, to parent: String?) async {
+        guard let writer else { return }
+        do {
+            try await writer.moveFolder(path: path, newParent: parent)
+            await reload()
+        } catch {
+            report(error, "a folder could not be moved")
+        }
+    }
+
+    /// Deletes a folder with everything in it, as desktop's folder delete does.
+    ///
+    /// The core refuses to cascade, so the notes are tombstoned here first,
+    /// one by one, and the configs after. A folder that only exists because a
+    /// note named it has no config to delete, and asking the core to delete
+    /// one would fail after the notes were already gone.
+    func deleteFolder(path: String) async {
+        guard let writer, let outline, let node = outline.node(at: path) else { return }
+        do {
+            for note in node.subtreeNotes {
+                try await writer.delete(id: note.id)
+            }
+            if outline.hasConfiguredFolder(within: path) {
+                try await writer.deleteFolder(path: path)
+            }
+            Log.storage.info("deleted a folder", .count(node.subtreeNotes.count))
+            await reload()
+        } catch {
+            report(error, "a folder could not be deleted")
+            // Some notes may already be gone; show what is true now.
+            await reload()
         }
     }
 
