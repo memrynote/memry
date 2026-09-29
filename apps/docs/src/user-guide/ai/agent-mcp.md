@@ -630,7 +630,9 @@ An approval you never answer expires after 30 minutes. The controls disappear, t
 and the tool row is marked as expired rather than denied — the agent is told the request timed out,
 not that you refused it. Take as long as you need to read a request or its diff; half an hour is
 there so a prompt left open overnight does not keep the request waiting forever, not to hurry you.
-If a request expires and you still want it, ask the agent again.
+If a request expires and you still want it, ask the agent again. Local and OpenAI-compatible
+backends wait for the same 30 minutes: the tool call no longer fails after a minute while the
+approval is still on screen.
 
 ## Project Links
 

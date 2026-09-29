@@ -930,6 +930,17 @@ swept; if a burst of previously unseen codes fills the map inside a single windo
 expire, the oldest-inserted keys are dropped instead. Dropping a key only forfeits its throttle —
 the next error for it is reported rather than lost.
 
+A few boundaries degrade instead of throwing. `search:query` and `search:quick` answer a non-string
+`text` with their empty result and a warning (`search:query:invalid_text`, received type only, never
+the value). `agent:sendTurn` validates with `safeParse` and returns its `{ ok: false }` envelope,
+reporting the ZodError under its channel. Renderer calls that can land before the lazy agent
+runtime is up go through `invokeWhenAgentReady`, which retries `errors:agent.runtimeStarting`
+instead of surfacing an unhandled rejection.
+
+Agent tool failures report once: `ai_action_completed` carries no `errorCode`, and the code rides a
+warn-level `tool_call_failed_<tool>` log. On the MCP server, `INTERNAL` failures ship a redacted
+message and stack; `NOT_FOUND` and `VALIDATION` are warnings the model recovers from.
+
 ### Vault File Errors
 
 A class name alone is often too coarse to act on: every failed note save reported `NoteError`,
