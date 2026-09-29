@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
+import { TaskDetailHost } from '@/components/tasks/task-detail-host'
 import { NotePage } from './note'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
@@ -661,6 +662,14 @@ vi.mock('@/components/note/backlinks', async (importOriginal) => ({
   )
 }))
 
+// Stands in for the drawer the tab's host opens over the note; the drawer
+// itself is covered by its own tests.
+vi.mock('@/components/tasks/hosted-task-detail-drawer', () => ({
+  HostedTaskDetailDrawer: ({ taskId }: { taskId: string }) => (
+    <aside aria-label="Task details">{taskId}</aside>
+  )
+}))
+
 vi.mock('@/components/note/linked-tasks', () => ({
   LinkedTasksSection: ({ onTaskClick }: { onTaskClick: (id: string) => void }) => (
     <button type="button" onClick={() => onTaskClick('task-1')}>
@@ -984,7 +993,11 @@ describe('NotePage', () => {
   })
 
   it('saves title, tags, properties, backlinks, and linked task navigation', async () => {
-    renderWithProviders(<NotePage noteId="note-1" />)
+    renderWithProviders(
+      <TaskDetailHost>
+        <NotePage noteId="note-1" />
+      </TaskDetailHost>
+    )
 
     fireEvent.click(await screen.findByRole('button', { name: 'Test Note' }))
     expect(mocks.renameNote).toHaveBeenCalledWith({ id: 'note-1', newTitle: 'Renamed Note' })
@@ -1018,12 +1031,10 @@ describe('NotePage', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Open linked task' }))
-    expect(mocks.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'tasks',
-        viewState: expect.objectContaining({ openTaskId: 'task-1', selectedProjectId: 'project-1' })
-      })
+    expect(await screen.findByRole('complementary', { name: 'Task details' })).toHaveTextContent(
+      'task-1'
     )
+    expect(mocks.openTab).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'tasks' }))
   })
 
   it('assigns distinct backlink ids to a wikilink entry and a property entry sharing a sourceId', async () => {
@@ -2156,23 +2167,21 @@ describe('NotePage', () => {
       mocks.editorBlocks = [
         { id: 'b-task', type: 'taskBlock', props: { taskId: 'task-1', title: 'Linked task' } }
       ]
-      renderWithProviders(<NotePage noteId="note-1" />)
+      renderWithProviders(
+        <TaskDetailHost>
+          <NotePage noteId="note-1" />
+        </TaskDetailHost>
+      )
       await openMap()
 
       fireEvent.click(treeItemFor('b-task'))
 
-      // The linked-tasks panel's own handler, which is why the project comes
-      // along: one task-opening path, not a second one owned by the map.
-      expect(mocks.openTab).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'tasks',
-          viewState: expect.objectContaining({
-            openTaskId: 'task-1',
-            selectedProjectId: 'project-1'
-          })
-        })
+      // The linked-tasks panel's own handler: the map gives the note back and
+      // the task opens in the drawer over it.
+      expect(await screen.findByRole('complementary', { name: 'Task details' })).toHaveTextContent(
+        'task-1'
       )
-      expect(screen.getByTestId('note-mind-map')).toBeInTheDocument()
+      expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument()
     })
 
     describe('caps and folding', () => {

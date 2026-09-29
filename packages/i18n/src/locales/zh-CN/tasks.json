@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "关闭任务详情",
+    "openInTasks": "在任务中打开",
     "subIssues": "子问题",
     "addSubIssue": "添加子问题",
     "subIssuePlaceholder": "添加子问题…",

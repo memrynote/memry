@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Đóng chi tiết nhiệm vụ",
+    "openInTasks": "Mở trong Công việc",
     "subIssues": "Các vấn đề con",
     "addSubIssue": "Thêm vấn đề con",
     "subIssuePlaceholder": "Thêm vấn đề con…",

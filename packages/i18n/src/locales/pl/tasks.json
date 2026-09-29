@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Zamknij szczegóły zadania",
+    "openInTasks": "Otwórz w Zadaniach",
     "subIssues": "Podzagadnienia",
     "addSubIssue": "Dodaj podproblem",
     "subIssuePlaceholder": "Dodaj podproblem…",

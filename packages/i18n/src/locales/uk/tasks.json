@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Закрити деталі завдання",
+    "openInTasks": "Відкрити в Завданнях",
     "subIssues": "Підзавдання",
     "addSubIssue": "Додати підзавдання",
     "subIssuePlaceholder": "Додати підзавдання…",

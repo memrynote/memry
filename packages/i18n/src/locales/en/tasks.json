@@ -142,6 +142,7 @@
   },
   "drawer": {
     "close": "Close task details",
+    "openInTasks": "Open in Tasks",
     "resize": "Resize panel",
     "subIssues": "Sub-issues",
     "addSubIssue": "Add sub-issue",

@@ -220,6 +220,16 @@ describe('TaskDetailDrawer — editable properties', () => {
     expect(drawer.firstElementChild).toHaveStyle({ width: '266px' })
   })
 
+  it('offers Open in Tasks only where the host provides it', () => {
+    const { rerender } = renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
+    expect(screen.queryByRole('button', { name: 'Open in Tasks' })).not.toBeInTheDocument()
+
+    const onOpenInTasks = vi.fn()
+    rerender(<TaskDetailDrawer {...defaultProps} onOpenInTasks={onOpenInTasks} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open in Tasks' }))
+    expect(onOpenInTasks).toHaveBeenCalledTimes(1)
+  })
+
   describe('status editing', () => {
     it('renders InteractiveStatusBadge with current status', () => {
       renderWithI18n(<TaskDetailDrawer {...defaultProps} />)

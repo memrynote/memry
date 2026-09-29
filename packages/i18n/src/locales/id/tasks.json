@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Tutup detail tugas",
+    "openInTasks": "Buka di Tugas",
     "subIssues": "Sub-masalah",
     "addSubIssue": "Tambahkan sub-masalah",
     "subIssuePlaceholder": "Tambahkan sub-masalah…",

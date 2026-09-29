@@ -89,6 +89,7 @@ vi.mock('@/contexts/tabs', () => ({
     }
   }),
   useActiveTab: () => mocks.activeTab,
+  useTabActions: () => ({ openTab: mocks.openTab }),
   useTabActionsOptional: () => null
 }))
 

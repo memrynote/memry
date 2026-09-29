@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Isara ang mga detalye ng gawain",
+    "openInTasks": "Buksan sa Mga Gawain",
     "subIssues": "Mga sub-isyu",
     "addSubIssue": "Magdagdag ng sub-isyu",
     "subIssuePlaceholder": "Magdagdag ng sub-isyu...",

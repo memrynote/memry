@@ -189,6 +189,12 @@ Start and due dates share one chip — `Sep 5 → Sep 12`, or `Sep 5 →` with n
 
 The chips never touch the note's file. The line stays `- [ ] Title {task:…}`; the properties live with the task, as they do everywhere else.
 
+### The detail drawer
+
+Hover the row and click the arrow, or press <kbd>⌘</kbd>+<kbd>Enter</kbd> with the task selected, and the same detail drawer the Tasks page uses opens on the right of the note. Add sub-issues, edit any property, write a description; the row in the note updates as you go. Clicking the title still edits it in place. <kbd>Esc</kbd> closes the drawer, and the arrow in its header opens the task in Tasks. A task in a journal entry, and one in the note's **Linked Tasks** list, opens the same way.
+
+A sub-issue added in the drawer is a task under this one, not a new line in the note.
+
 ### Shorthand in the title
 
 The quick-add markers work in a task's title in a note too. Type them and they are applied when you press <kbd>Enter</kbd> or leave the title: `Buy milk #groceries @friday !high` saves as _Buy milk_, tagged, due Friday, high priority. While you type, dashed chips show what is about to be set.
@@ -212,7 +218,7 @@ Click the row's empty space, or press <kbd>Esc</kbd> in the title, to select the
 | <kbd>E</kbd>                  | Description                |
 | <kbd>⇧</kbd>+<kbd>L</kbd>     | Related notes and canvases |
 | <kbd>Enter</kbd>              | Edit the title             |
-| <kbd>⌘</kbd>+<kbd>Enter</kbd> | Open the task in Tasks     |
+| <kbd>⌘</kbd>+<kbd>Enter</kbd> | Open the detail drawer     |
 
 The same keys work inside the **+** menu. Hovering a chip shows its key.
 

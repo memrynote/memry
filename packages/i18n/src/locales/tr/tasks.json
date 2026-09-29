@@ -107,6 +107,7 @@
   },
   "drawer": {
     "close": "Görev ayrıntılarını kapat",
+    "openInTasks": "Görevlerde aç",
     "subIssues": "Alt konular",
     "addSubIssue": "Alt sayı ekle",
     "subIssuePlaceholder": "Alt sayı ekle…",

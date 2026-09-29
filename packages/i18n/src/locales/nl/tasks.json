@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Sluit taakdetails",
+    "openInTasks": "Openen in Taken",
     "subIssues": "Deelkwesties",
     "addSubIssue": "Subprobleem toevoegen",
     "subIssuePlaceholder": "Subprobleem toevoegen…",
