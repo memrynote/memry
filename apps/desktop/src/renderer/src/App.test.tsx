@@ -213,7 +213,7 @@ vi.mock('@/contexts/tabs/persistence', () => ({
   STORAGE_KEY: 'tabs-state',
   useTabPersistence: vi.fn(),
   useSessionRestore: vi.fn(),
-  useTabSessionPersistence: vi.fn()
+  useTabSessionPersistence: vi.fn(() => ({ isRestoring: false }))
 }))
 
 vi.mock('@/contexts/tasks', () => ({

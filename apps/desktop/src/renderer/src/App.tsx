@@ -171,9 +171,21 @@ function TabPersistenceManager({
   // an in-app switch always comes back as it was left, tabs and all; read once
   // at mount, since this tree lives exactly as long as the vault is open.
   const [enteredBySwitch] = useState(() => wasEnteredBySwitch(vaultPath))
-  useTabSessionPersistence({ vaultPath, restoreFullSession: enteredBySwitch })
+  const { isRestoring } = useTabSessionPersistence({
+    vaultPath,
+    restoreFullSession: enteredBySwitch
+  })
 
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      {/* Opens the ephemeral read-only release-notes tab after an update+restart.
+          Mounted only once the session restore has settled: RESTORE_SESSION replaces
+          the whole tab state, so a tab opened before it would be silently wiped
+          (and its one-shot stash already consumed). */}
+      {!isRestoring && <UpdateReleaseNotesTabOpener />}
+    </>
+  )
 }
 
 // =============================================================================
@@ -587,9 +599,6 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
                                   <VaultSwitchContentCover />
                                 </SidebarInset>
                                 <WorkspaceDragStrip />
-                                {/* Opens the ephemeral read-only release-notes tab after an
-                                    update+restart. Lives inside TabProvider for openTab(). */}
-                                <UpdateReleaseNotesTabOpener />
                                 {/* Dev-only: window.openReleaseNotesDemo() to preview the tab
                                     with dummy data (updater never fires in dev). */}
                                 {import.meta.env.DEV && <ReleaseNotesDevTrigger />}
