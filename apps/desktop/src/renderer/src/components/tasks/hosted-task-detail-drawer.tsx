@@ -84,6 +84,8 @@ export const HostedTaskDetailDrawer = ({
       onCanvasClick={handleCanvasClick}
       onDeleteTask={handleDeleteTask}
       onOpenInTasks={handleOpenInTasks}
+      // Above the note's outline rail (z-40), which sits at the same edge.
+      className="z-40"
     />
   )
 }

@@ -63,6 +63,7 @@ export interface TaskDetailDrawerProps {
   onDeleteTask?: (taskId: string) => void
   /** Shown where the drawer opens over another surface, to reach the task in Tasks. */
   onOpenInTasks?: () => void
+  className?: string
 }
 
 // ============================================================================
@@ -92,7 +93,8 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onNoteClick,
   onCanvasClick,
   onDeleteTask,
-  onOpenInTasks
+  onOpenInTasks,
+  className
 }: TaskDetailDrawerProps): React.JSX.Element | null {
   const { t, i18n } = useT('tasks')
   const { t: tCommon } = useT('common')
@@ -274,7 +276,10 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       }
       // ponytail: absolute (not fixed) so the drawer stays inside its own pane in split view
       // top-[38px] clears the toolbar chrome so the drawer header stays visible
-      className="absolute top-[38px] bottom-0 end-0 z-10 border-s border-border bg-surface overflow-hidden"
+      className={cn(
+        'absolute top-[38px] bottom-0 end-0 z-10 border-s border-border bg-surface overflow-hidden',
+        className
+      )}
       style={{ width: `${width}px` }}
     >
       <div

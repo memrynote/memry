@@ -51,6 +51,11 @@ test.describe('Note task block detail drawer', () => {
       ({ taskId, title }) => {
         const editor = (window as any).__memryEditor
         editor.replaceBlocks(editor.document, [
+          {
+            type: 'heading',
+            props: { level: 2 },
+            content: [{ type: 'text', text: 'Plan', styles: {} }]
+          },
           { type: 'taskBlock', props: { taskId, title, checked: false, parentTaskId: '' } },
           { type: 'paragraph', content: [{ type: 'text', text: 'after', styles: {} }] }
         ])
@@ -69,6 +74,15 @@ test.describe('Note task block detail drawer', () => {
     await expect(drawer).toBeVisible()
     await expect(drawer.getByRole('textbox', { name: 'Task name' })).toHaveValue(title)
     await expect(page.locator(EDITOR_SELECTOR).first()).toBeVisible()
+
+    // The note's outline rail shares the drawer's edge; the drawer must be on top.
+    const outline = await page.locator('.outline-indicator').boundingBox()
+    expect(outline).not.toBeNull()
+    const drawerOnTop = await page.evaluate(
+      ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('aside[aria-label="Task details"]'),
+      { x: outline.x + outline.width / 2, y: outline.y + outline.height / 2 }
+    )
+    expect(drawerOnTop).toBe(true)
 
     const renamed = `${title} renamed`
     await drawer.getByRole('textbox', { name: 'Task name' }).fill(renamed)
