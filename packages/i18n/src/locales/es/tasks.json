@@ -14,7 +14,10 @@
       "allProjects": "Todos los proyectos",
       "searchProjects": "Buscar proyectos…",
       "editProject": "Editar {name}",
-      "unstarSavedFilter": "Quitar la estrella a {name}"
+      "unstarSavedFilter": "Quitar la estrella a {name}",
+      "openByDefault": "Abrir Tareas en {name} por defecto",
+      "defaultProject": "Proyecto predeterminado",
+      "setAsDefault": "Establecer como predeterminado"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Cambios no guardados",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Tienes cambios sin guardar. ¿Estás seguro de que quieres descartarlos?",
       "cancel2": "Cancelar",
-      "discard": "Descartar"
+      "discard": "Descartar",
+      "defaultProject": "Proyecto predeterminado",
+      "openTasksOnThisProject": "Tareas se abre en este proyecto"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Seleccionar proyecto",

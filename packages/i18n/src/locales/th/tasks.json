@@ -14,7 +14,10 @@
       "allProjects": "ทุกโปรเจกต์",
       "searchProjects": "ค้นหาโปรเจกต์…",
       "editProject": "แก้ไข {name}",
-      "unstarSavedFilter": "เลิกติดดาว {name}"
+      "unstarSavedFilter": "เลิกติดดาว {name}",
+      "openByDefault": "เปิดงานที่ {name} เป็นค่าเริ่มต้น",
+      "defaultProject": "โปรเจกต์เริ่มต้น",
+      "setAsDefault": "ตั้งเป็นค่าเริ่มต้น"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "คุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก คุณแน่ใจหรือไม่ว่าต้องการละทิ้ง?",
       "cancel2": "ยกเลิก",
-      "discard": "ทิ้ง"
+      "discard": "ทิ้ง",
+      "defaultProject": "โปรเจกต์เริ่มต้น",
+      "openTasksOnThisProject": "งานจะเปิดที่โปรเจกต์นี้"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "เลือกโครงการ",

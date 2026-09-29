@@ -14,7 +14,10 @@
       "allProjects": " Tất cả dự án ",
       "searchProjects": " Tìm kiếm dự án… ",
       "editProject": " Chỉnh sửa {name} ",
-      "unstarSavedFilter": " Bỏ dấu sao {name} "
+      "unstarSavedFilter": " Bỏ dấu sao {name} ",
+      "openByDefault": "Mặc định mở Công việc ở {name}",
+      "defaultProject": "Dự án mặc định",
+      "setAsDefault": "Đặt làm mặc định"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Thay đổi chưa lưu",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Bạn có các thay đổi chưa lưu. Bạn có chắc chắn muốn bỏ chúng không?",
       "cancel2": "Hủy",
-      "discard": "Bỏ qua"
+      "discard": "Bỏ qua",
+      "defaultProject": "Dự án mặc định",
+      "openTasksOnThisProject": "Công việc sẽ mở ở dự án này"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Chọn dự án",

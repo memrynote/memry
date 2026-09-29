@@ -14,7 +14,10 @@
       "allProjects": "Všetky projekty",
       "searchProjects": "Hľadať projekty...",
       "editProject": "Upraviť {name}",
-      "unstarSavedFilter": "Odznačiť {name}"
+      "unstarSavedFilter": "Odznačiť {name}",
+      "openByDefault": "Predvolene otvárať Úlohy v {name}",
+      "defaultProject": "Predvolený projekt",
+      "setAsDefault": "Nastaviť ako predvolené"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Neuložené zmeny",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
       "cancel2": "Zrušiť",
-      "discard": "Vyhodiť"
+      "discard": "Vyhodiť",
+      "defaultProject": "Predvolený projekt",
+      "openTasksOnThisProject": "Úlohy sa otvoria v tomto projekte"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Vybrať projekt",

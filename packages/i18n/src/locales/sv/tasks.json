@@ -14,7 +14,10 @@
       "allProjects": "Alla projekt",
       "searchProjects": "Sök projekt…",
       "editProject": "Redigera {name}",
-      "unstarSavedFilter": "Ta bort stjärna från {name}"
+      "unstarSavedFilter": "Ta bort stjärna från {name}",
+      "openByDefault": "Öppna Uppgifter i {name} som standard",
+      "defaultProject": "Standardprojekt",
+      "setAsDefault": "Ange som standard"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Osparade ändringar",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Du har osparade ändringar. Är du säker på att du vill kassera dem?",
       "cancel2": "Avbryt",
-      "discard": "Kassera"
+      "discard": "Kassera",
+      "defaultProject": "Standardprojekt",
+      "openTasksOnThisProject": "Uppgifter öppnas i det här projektet"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Välj projekt",

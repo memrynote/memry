@@ -139,6 +139,7 @@ export const TasksPage = ({
   const currentDay = useMemo(() => new Date(`${todayKey}T00:00:00`), [todayKey])
   const { t } = useT('tasks')
   const { t: tCommon } = useT('common')
+  const { t: tSettings } = useT('settings')
 
   // Get database-aware task operations from context
   const {
@@ -164,7 +165,7 @@ export const TasksPage = ({
     removeUndoEntry
   })
 
-  const { settings: taskPrefs } = useTaskPreferences()
+  const { settings: taskPrefs, updateSettings: updateTaskPrefs } = useTaskPreferences()
   const { openTab, saveTabState } = useTabActions()
   const activeTab = useActiveTab()
 
@@ -580,6 +581,17 @@ export const TasksPage = ({
     setEditingProject(project)
     setIsProjectModalOpen(true)
   }, [])
+
+  const handleDefaultProjectChange = useCallback(
+    async (projectId: string | null) => {
+      // A tab that never picked a project follows the default. Pin its current
+      // view first so choosing a default from the dropdown does not switch it.
+      if (storedProjectId === undefined) setStoredProjectId(selectedProjectId)
+      const saved = await updateTaskPrefs({ defaultProjectId: projectId })
+      if (!saved) toast.error(tSettings('tasks.defaultProject.error'))
+    },
+    [storedProjectId, setStoredProjectId, selectedProjectId, updateTaskPrefs, tSettings]
+  )
 
   const handleSaveProject = useCallback(
     async (project: Project) => {
@@ -1049,6 +1061,8 @@ export const TasksPage = ({
               selectedProjectId={selectedProjectId}
               onProjectChange={setSelectedProjectId}
               onProjectEdit={handleEditProject}
+              defaultProjectId={taskPrefs.defaultProjectId}
+              onDefaultProjectChange={(projectId) => void handleDefaultProjectChange(projectId)}
               savedFilters={starredFilters}
               activeSavedFilterId={activeSavedFilterId}
               onApplySavedFilter={handleApplySavedFilter}

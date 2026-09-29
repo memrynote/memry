@@ -14,7 +14,10 @@
       "allProjects": "Všechny projekty",
       "searchProjects": "Hledat projekty…",
       "editProject": "Upravit {name}",
-      "unstarSavedFilter": "Odebrat hvězdičku {name}"
+      "unstarSavedFilter": "Odebrat hvězdičku {name}",
+      "openByDefault": "Ve výchozím stavu otevírat Úkoly v {name}",
+      "defaultProject": "Výchozí projekt",
+      "setAsDefault": "Nastavit jako výchozí"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Neuložené změny",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Máte neuložené změny. Opravdu je chcete zahodit?",
       "cancel2": "Zrušit",
-      "discard": "Zahodit"
+      "discard": "Zahodit",
+      "defaultProject": "Výchozí projekt",
+      "openTasksOnThisProject": "Úkoly se otevřou v tomto projektu"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Vyberte projekt",

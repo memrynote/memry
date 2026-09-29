@@ -14,7 +14,10 @@
       "allProjects": "Toate proiectele",
       "searchProjects": "Cauta proiecte...",
       "editProject": "Editați {name}",
-      "unstarSavedFilter": "Anulați marcarea {name}"
+      "unstarSavedFilter": "Anulați marcarea {name}",
+      "openByDefault": "Deschide Sarcinile în {name} implicit",
+      "defaultProject": "Proiect implicit",
+      "setAsDefault": "Setează ca implicit"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Modificări nesalvate",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Aveți modificări nesalvate. Ești sigur că vrei să le renunți?",
       "cancel2": "Anulează",
-      "discard": "Aruncă"
+      "discard": "Aruncă",
+      "defaultProject": "Proiect implicit",
+      "openTasksOnThisProject": "Sarcinile se deschid în acest proiect"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Selectați proiectul",

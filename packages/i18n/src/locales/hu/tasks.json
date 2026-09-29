@@ -14,7 +14,10 @@
       "allProjects": "Minden projekt",
       "searchProjects": "Projektek keresése…",
       "editProject": "{name} szerkesztése",
-      "unstarSavedFilter": "Csillag eltávolítása {name}"
+      "unstarSavedFilter": "Csillag eltávolítása {name}",
+      "openByDefault": "A Feladatok alapértelmezés szerint itt nyíljon meg: {name}",
+      "defaultProject": "Alapértelmezett projekt",
+      "setAsDefault": "Beállítás alapértelmezettként"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Nem mentett módosítások",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Nem mentett módosításai vannak. Biztosan el akarja dobni őket?",
       "cancel2": "Mégsem",
-      "discard": "Eldobni"
+      "discard": "Eldobni",
+      "defaultProject": "Alapértelmezett projekt",
+      "openTasksOnThisProject": "A Feladatok ezen a projekten nyílik meg"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Válassza ki a projektet",

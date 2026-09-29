@@ -14,7 +14,10 @@
       "allProjects": "Tous les projets",
       "searchProjects": "Rechercher des projets…",
       "editProject": "Modifier {name}",
-      "unstarSavedFilter": "Supprimer {name}"
+      "unstarSavedFilter": "Supprimer {name}",
+      "openByDefault": "Ouvrir les tâches sur {name} par défaut",
+      "defaultProject": "Projet par défaut",
+      "setAsDefault": "Définir par défaut"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Modifications non enregistrées",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir les supprimer ?",
       "cancel2": "Annuler",
-      "discard": "Jeter"
+      "discard": "Jeter",
+      "defaultProject": "Projet par défaut",
+      "openTasksOnThisProject": "Les tâches s’ouvrent sur ce projet"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Sélectionnez un projet",

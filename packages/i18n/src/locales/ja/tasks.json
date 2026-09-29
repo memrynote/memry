@@ -14,7 +14,10 @@
       "allProjects": "すべてのプロジェクト",
       "searchProjects": "プロジェクトを検索…",
       "editProject": "{name} を編集する",
-      "unstarSavedFilter": "{name} のスターを解除します"
+      "unstarSavedFilter": "{name} のスターを解除します",
+      "openByDefault": "タスクをデフォルトで {name} で開く",
+      "defaultProject": "デフォルトのプロジェクト",
+      "setAsDefault": "デフォルトに設定"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "未保存の変更",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "未保存の変更があります。本当に破棄してもよろしいですか?",
       "cancel2": "キャンセル",
-      "discard": "廃棄する"
+      "discard": "廃棄する",
+      "defaultProject": "デフォルトのプロジェクト",
+      "openTasksOnThisProject": "タスクはこのプロジェクトで開きます"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "プロジェクトの選択",

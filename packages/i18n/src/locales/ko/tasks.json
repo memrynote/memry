@@ -14,7 +14,10 @@
       "allProjects": "모든 프로젝트",
       "searchProjects": "프로젝트 검색…",
       "editProject": "{name} 편집",
-      "unstarSavedFilter": "{name} 별표 해제"
+      "unstarSavedFilter": "{name} 별표 해제",
+      "openByDefault": "기본적으로 {name}에서 작업 열기",
+      "defaultProject": "기본 프로젝트",
+      "setAsDefault": "기본값으로 설정"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "저장되지 않은 변경사항",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "저장되지 않은 변경사항이 있습니다. 정말로 삭제하시겠습니까?",
       "cancel2": "취소",
-      "discard": "폐기"
+      "discard": "폐기",
+      "defaultProject": "기본 프로젝트",
+      "openTasksOnThisProject": "작업이 이 프로젝트에서 열립니다"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "프로젝트 선택",

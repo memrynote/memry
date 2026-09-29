@@ -277,3 +277,75 @@ describe('ProjectPicker — all option, search, counts, actions', () => {
     expect(screen.getByTestId('actions-proj-2')).toBeInTheDocument()
   })
 })
+
+describe('ProjectPicker — default project toggle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(useTasksOptional).mockReturnValue({ addProject: vi.fn() } as never)
+  })
+
+  const renderWithDefault = (defaultProjectId: string | null) => {
+    const onChange = vi.fn()
+    const onDefaultProjectChange = vi.fn()
+    renderWithI18n(
+      <ProjectPicker
+        value={null}
+        onChange={onChange}
+        projects={projects}
+        includeAllOption
+        defaultProjectId={defaultProjectId}
+        onDefaultProjectChange={onDefaultProjectChange}
+      />
+    )
+    return { onChange, onDefaultProjectChange }
+  }
+
+  const toggleFor = (name: string) =>
+    screen.getByRole('button', { name: `Open Tasks on ${name} by default` })
+
+  it('sets a row as default without selecting it or closing the list', async () => {
+    const user = userEvent.setup()
+    const { onChange, onDefaultProjectChange } = renderWithDefault(null)
+
+    await user.click(screen.getByRole('combobox'))
+    await user.click(toggleFor('Work'))
+
+    expect(onDefaultProjectChange).toHaveBeenCalledWith('proj-2')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('option', { name: /Work/ })).toBeInTheDocument()
+  })
+
+  it('sets the default from the keyboard', async () => {
+    const user = userEvent.setup()
+    const { onChange, onDefaultProjectChange } = renderWithDefault(null)
+
+    await user.click(screen.getByRole('combobox'))
+    toggleFor('Personal').focus()
+    await user.keyboard('{Enter}')
+
+    expect(onDefaultProjectChange).toHaveBeenCalledWith('proj-1')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('marks the current default and clears it back to All projects', async () => {
+    const user = userEvent.setup()
+    const { onDefaultProjectChange } = renderWithDefault('proj-2')
+
+    await user.click(screen.getByRole('combobox'))
+    expect(toggleFor('Work')).toHaveAttribute('aria-pressed', 'true')
+    expect(toggleFor('All projects')).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(toggleFor('Work'))
+
+    expect(onDefaultProjectChange).toHaveBeenCalledWith(null)
+  })
+
+  it('treats a default on an archived project as All projects', async () => {
+    const user = userEvent.setup()
+    renderWithDefault('proj-archived')
+
+    await user.click(screen.getByRole('combobox'))
+    expect(toggleFor('All projects')).toHaveAttribute('aria-pressed', 'true')
+    expect(toggleFor('Work')).toHaveAttribute('aria-pressed', 'false')
+  })
+})

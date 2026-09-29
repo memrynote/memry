@@ -14,7 +14,10 @@
       "allProjects": "Alle projecten",
       "searchProjects": "Zoek projecten…",
       "editProject": "Bewerk {name}",
-      "unstarSavedFilter": "Verwijder de ster van {name}"
+      "unstarSavedFilter": "Verwijder de ster van {name}",
+      "openByDefault": "Taken standaard openen op {name}",
+      "defaultProject": "Standaardproject",
+      "setAsDefault": "Instellen als standaard"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Niet-opgeslagen wijzigingen",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "U heeft niet-opgeslagen wijzigingen. Weet je zeker dat je ze wilt weggooien?",
       "cancel2": "Annuleer",
-      "discard": "Gooi weg"
+      "discard": "Gooi weg",
+      "defaultProject": "Standaardproject",
+      "openTasksOnThisProject": "Taken opent op dit project"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Selecteer project",

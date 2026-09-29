@@ -14,7 +14,10 @@
       "allProjects": "Alle Projekte",
       "searchProjects": "Projekte suchen…",
       "editProject": "Bearbeiten Sie {name}",
-      "unstarSavedFilter": "Deaktivieren Sie {name}"
+      "unstarSavedFilter": "Deaktivieren Sie {name}",
+      "openByDefault": "Aufgaben standardmäßig in {name} öffnen",
+      "defaultProject": "Standardprojekt",
+      "setAsDefault": "Als Standard festlegen"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Nicht gespeicherte Änderungen",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Sie haben nicht gespeicherte Änderungen. Sind Sie sicher, dass Sie sie verwerfen möchten?",
       "cancel2": "Abbrechen",
-      "discard": "Verwerfen"
+      "discard": "Verwerfen",
+      "defaultProject": "Standardprojekt",
+      "openTasksOnThisProject": "Aufgaben öffnen sich in diesem Projekt"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Projekt auswählen",

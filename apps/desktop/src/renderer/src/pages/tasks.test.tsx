@@ -7,6 +7,7 @@ import type { Task } from '@/data/task-model'
 import type React from 'react'
 
 const mocks = vi.hoisted(() => ({
+  updateTaskSettings: vi.fn(),
   addTask: vi.fn(),
   updateTask: vi.fn(),
   deleteTask: vi.fn(),
@@ -66,8 +67,8 @@ const mocks = vi.hoisted(() => ({
     sort: { field: 'createdAt', direction: 'desc' },
     hasActiveFilters: false
   },
-  // Both tab keys are optional: one test drops them to prove the page falls
-  // back to the default-view preference when a tab has saved neither.
+  // Both tab keys and the project are optional: tests drop them to prove the
+  // page falls back to the preferences when a tab has saved none.
   activeTabViewState: {
     activeInternalTab: 'all',
     activeTab: 'all',
@@ -78,7 +79,7 @@ const mocks = vi.hoisted(() => ({
     activeInternalTab?: string
     activeTab?: string
     activeView: string
-    selectedProjectId: string | null
+    selectedProjectId?: string | null
     openTaskId: string | null
   },
   savedFilters: [
@@ -196,7 +197,10 @@ vi.mock('@/services/tasks-service', () => ({
 }))
 
 vi.mock('@/hooks/use-task-preferences', () => ({
-  useTaskPreferences: () => ({ settings: { defaultProjectId: null, defaultView: 'all' } })
+  useTaskPreferences: () => ({
+    settings: { defaultProjectId: null, defaultView: 'all' },
+    updateSettings: mocks.updateTaskSettings
+  })
 }))
 
 vi.mock('@/hooks/use-save-filter-shortcut', () => ({
@@ -310,6 +314,7 @@ vi.mock('@/components/tasks/tasks-tab-bar', () => ({
     onTabChange,
     onProjectChange,
     onProjectEdit,
+    onDefaultProjectChange,
     onApplySavedFilter,
     onUnstarSavedFilter,
     projects,
@@ -318,6 +323,7 @@ vi.mock('@/components/tasks/tasks-tab-bar', () => ({
     onTabChange: (tab: string) => void
     onProjectChange: (id: string | null) => void
     onProjectEdit: (project: Project) => void
+    onDefaultProjectChange: (id: string | null) => void
     onApplySavedFilter: (filter: unknown) => void
     onUnstarSavedFilter: (id: string) => void
     projects: Project[]
@@ -332,6 +338,9 @@ vi.mock('@/components/tasks/tasks-tab-bar', () => ({
       </button>
       <button type="button" onClick={() => onProjectEdit(projects[0])}>
         Edit project
+      </button>
+      <button type="button" onClick={() => onDefaultProjectChange(projects[0]?.id ?? null)}>
+        Make project default
       </button>
       <button type="button" onClick={() => onApplySavedFilter(savedFilters[0])}>
         Apply starred filter
@@ -923,6 +932,22 @@ describe('TasksPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Unstar filter' }))
     expect(mocks.toggleStarFilter).toHaveBeenCalledWith('saved-1')
+  })
+
+  it('keeps a fresh tab on its current view when a default project is chosen', async () => {
+    const user = userEvent.setup()
+    mocks.updateTaskSettings.mockResolvedValue(true)
+    mocks.activeTabViewState = {
+      activeInternalTab: 'all',
+      activeView: 'list',
+      openTaskId: null
+    }
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Make project default' }))
+
+    expectSavedViewState({ selectedProjectId: null })
+    expect(mocks.updateTaskSettings).toHaveBeenCalledWith({ defaultProjectId: 'project-1' })
   })
 
   it('renders kanban mode and creates completed tasks from done-column quick add', async () => {

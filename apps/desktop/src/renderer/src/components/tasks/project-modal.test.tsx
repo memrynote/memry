@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ProjectModal } from './project-modal'
@@ -299,5 +299,55 @@ describe('ProjectModal', () => {
     expect(screen.queryByRole('button', { name: 'deleteProject' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  describe('default project switch', () => {
+    const mockTaskSettings = (defaultProjectId: string | null) => {
+      const setTaskSettings = vi.fn().mockResolvedValue({ success: true })
+      const settingsApi = window.api.settings as Record<string, unknown>
+      settingsApi.getTaskSettings = vi.fn().mockResolvedValue({
+        defaultProjectId,
+        defaultSortOrder: 'manual',
+        defaultView: 'all',
+        staleInboxDays: 7
+      })
+      settingsApi.setTaskSettings = setTaskSettings
+      return setTaskSettings
+    }
+
+    it('makes the edited project the default', async () => {
+      const setTaskSettings = mockTaskSettings(null)
+      render(<ProjectModal isOpen onClose={vi.fn()} onSave={vi.fn()} project={makeProject()} />)
+
+      const toggle = await screen.findByRole('switch', { name: 'defaultProject' })
+      await waitFor(() => expect(toggle).toBeEnabled())
+      expect(toggle).toHaveAttribute('aria-checked', 'false')
+
+      fireEvent.click(toggle)
+
+      await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'))
+      expect(setTaskSettings).toHaveBeenCalledWith({ defaultProjectId: 'project-1' })
+    })
+
+    it('clears the default when the edited project holds it', async () => {
+      const setTaskSettings = mockTaskSettings('project-1')
+      render(<ProjectModal isOpen onClose={vi.fn()} onSave={vi.fn()} project={makeProject()} />)
+
+      const toggle = await screen.findByRole('switch', { name: 'defaultProject' })
+      await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'))
+
+      fireEvent.click(toggle)
+
+      await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'))
+      expect(setTaskSettings).toHaveBeenCalledWith({ defaultProjectId: null })
+    })
+
+    it('is not offered while creating a project', async () => {
+      mockTaskSettings(null)
+      render(<ProjectModal isOpen onClose={vi.fn()} onSave={vi.fn()} />)
+
+      await screen.findByRole('button', { name: 'pick Star' })
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    })
   })
 })

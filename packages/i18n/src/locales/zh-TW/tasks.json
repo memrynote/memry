@@ -14,7 +14,10 @@
       "allProjects": "所有專案",
       "searchProjects": "搜尋專案…",
       "editProject": "編輯 {name}",
-      "unstarSavedFilter": "取消標星 {name}"
+      "unstarSavedFilter": "取消標星 {name}",
+      "openByDefault": "預設在 {name} 中開啟任務",
+      "defaultProject": "預設專案",
+      "setAsDefault": "設為預設"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "未儲存的變更",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "您有未保存的更改。您確定要放棄它們嗎？",
       "cancel2": "取消",
-      "discard": "捨棄"
+      "discard": "捨棄",
+      "defaultProject": "預設專案",
+      "openTasksOnThisProject": "任務將在此專案中開啟"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "選擇專案",

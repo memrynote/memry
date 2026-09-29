@@ -14,7 +14,10 @@
       "allProjects": "Lahat ng proyekto",
       "searchProjects": "Maghanap ng mga proyekto...",
       "editProject": "I-edit ang {name}",
-      "unstarSavedFilter": "I-unstar ang {name}"
+      "unstarSavedFilter": "I-unstar ang {name}",
+      "openByDefault": "Buksan ang Tasks sa {name} bilang default",
+      "defaultProject": "Default na proyekto",
+      "setAsDefault": "Itakda bilang default"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Mga hindi na-save na pagbabago",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Mayroon kang mga hindi na-save na pagbabago. Sigurado ka bang gusto mong itapon ang mga ito?",
       "cancel2": "Kanselahin",
-      "discard": "Itapon"
+      "discard": "Itapon",
+      "defaultProject": "Default na proyekto",
+      "openTasksOnThisProject": "Magbubukas ang Tasks sa proyektong ito"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Pumili ng proyekto",

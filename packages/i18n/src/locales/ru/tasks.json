@@ -14,7 +14,10 @@
       "allProjects": "Все проекты",
       "searchProjects": "Поиск проектов…",
       "editProject": "Редактировать {name}",
-      "unstarSavedFilter": "Снять звездочку с {name}"
+      "unstarSavedFilter": "Снять звездочку с {name}",
+      "openByDefault": "Открывать Задачи в {name} по умолчанию",
+      "defaultProject": "Проект по умолчанию",
+      "setAsDefault": "Сделать по умолчанию"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Несохраненные изменения",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "У вас есть несохраненные изменения. Вы уверены, что хотите их удалить?",
       "cancel2": "Отмена",
-      "discard": "Отбросить"
+      "discard": "Отбросить",
+      "defaultProject": "Проект по умолчанию",
+      "openTasksOnThisProject": "Задачи открываются в этом проекте"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Выберите проект",

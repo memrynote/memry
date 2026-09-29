@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { FolderKanban } from '@/lib/icons'
+import { FolderKanban, Home } from '@/lib/icons'
 import { ProjectIcon } from '@/components/tasks/project-icon'
 import { cn } from '@/lib/utils'
 import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picker'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ProjectCreateFooter, useProjectQuickCreate } from './use-project-quick-create'
 import type { Project } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
@@ -30,6 +31,10 @@ export interface ProjectPickerProps {
   allowCreate?: boolean
   /** Trailing per-row actions slot (edit/archive/delete menu, edit-on-hover, …). */
   renderItemActions?: (project: Project) => React.ReactNode
+  /** The project Tasks opens on; null = "All projects". Read only with onDefaultProjectChange. */
+  defaultProjectId?: string | null
+  /** Renders a per-row "open here by default" toggle. Called with null for "All projects". */
+  onDefaultProjectChange?: (projectId: string | null) => void
   /** 'button' = bordered button+chevron; 'badge' = compact inline color badge (task rows). */
   triggerVariant?: 'button' | 'badge'
   /** Dropdown content width. Defaults to 'auto' for badge, 'trigger' for button. */
@@ -59,6 +64,60 @@ const ProjectIndicator = ({ project }: { project: Project }): React.JSX.Element 
   />
 )
 
+interface DefaultProjectToggleProps {
+  name: string
+  isDefault: boolean
+  onToggle: () => void
+}
+
+// Picker rows are <button>s, so this is a span with button semantics rather than
+// a nested <button>. stopPropagation keeps activation from selecting the row.
+const DefaultProjectToggle = ({
+  name,
+  isDefault,
+  onToggle
+}: DefaultProjectToggleProps): React.JSX.Element => {
+  const { t: tTasks } = useT('tasks')
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          role="button"
+          tabIndex={0}
+          aria-pressed={isDefault}
+          aria-label={tTasks('page.projectScope.openByDefault', { name })}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return
+            e.preventDefault()
+            e.stopPropagation()
+            onToggle()
+          }}
+          className={cn(
+            'flex items-center justify-center rounded-sm p-0.5 transition-opacity hover:bg-accent focus-visible:opacity-100 focus-visible:outline-none',
+            isDefault ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          )}
+        >
+          <Home
+            className={cn(
+              'size-3',
+              isDefault ? 'fill-current text-text-secondary' : 'text-text-tertiary'
+            )}
+          />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {isDefault
+          ? tTasks('page.projectScope.defaultProject')
+          : tTasks('page.projectScope.setAsDefault')}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 interface ProjectPickerListProps {
   projects: Project[]
   searchable: boolean
@@ -67,6 +126,8 @@ interface ProjectPickerListProps {
   showCounts: boolean
   taskCountByProject?: Record<string, number>
   renderItemActions?: (project: Project) => React.ReactNode
+  defaultProjectId?: string | null
+  onDefaultProjectChange?: (projectId: string | null) => void
 }
 
 // Rendered inside <Picker> so it can read the search query from context.
@@ -77,21 +138,40 @@ const ProjectPickerList = ({
   allOptionLabel,
   showCounts,
   taskCountByProject,
-  renderItemActions
+  renderItemActions,
+  defaultProjectId,
+  onDefaultProjectChange
 }: ProjectPickerListProps): React.JSX.Element => {
   const { t: tTasks } = useT('tasks')
   const { searchQuery } = usePickerContext()
   const filtered = usePickerSearch(projects, ['name'], searchable ? searchQuery : '')
 
+  // A default that no longer names an active project opens on "All projects".
+  const effectiveDefaultId = projects.find((p) => p.id === defaultProjectId)?.id ?? null
+
+  const defaultToggle = (projectId: string | null, name: string): React.ReactNode => {
+    if (!onDefaultProjectChange) return undefined
+    const isDefault = effectiveDefaultId === projectId
+    return (
+      <DefaultProjectToggle
+        name={name}
+        isDefault={isDefault}
+        onToggle={() => onDefaultProjectChange(isDefault ? null : projectId)}
+      />
+    )
+  }
+
   const itemTrailing = (project: Project): React.ReactNode => {
     const count = showCounts ? (taskCountByProject?.[project.id] ?? 0) : null
+    const toggle = defaultToggle(project.id, project.name)
     const actions = renderItemActions?.(project)
-    if (count == null && !actions) return undefined
+    if (count == null && !toggle && !actions) return undefined
     return (
       <div className="flex items-center gap-1">
         {count != null && count > 0 && (
           <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
         )}
+        {toggle}
         {actions}
       </div>
     )
@@ -120,6 +200,8 @@ const ProjectPickerList = ({
             <span className="size-2.5 shrink-0 rounded-full border-[1.2px] border-solid border-border" />
           }
           indicator="check"
+          trailing={defaultToggle(null, allOptionLabel)}
+          className="group"
         />
       )}
       {filtered.map((project) => (
@@ -149,6 +231,8 @@ export const ProjectPicker = ({
   taskCountByProject,
   allowCreate = true,
   renderItemActions,
+  defaultProjectId,
+  onDefaultProjectChange,
   triggerVariant = 'button',
   contentWidth,
   placeholder,
@@ -247,6 +331,8 @@ export const ProjectPicker = ({
             showCounts={showCounts}
             taskCountByProject={taskCountByProject}
             renderItemActions={renderItemActions}
+            defaultProjectId={defaultProjectId}
+            onDefaultProjectChange={onDefaultProjectChange}
           />
           {showCreate && <ProjectCreateFooter onStart={openCreate} />}
         </Picker.Content>
