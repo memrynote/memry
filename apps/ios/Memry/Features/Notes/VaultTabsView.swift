@@ -33,7 +33,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @ViewBuilder let more: () -> More
     /// Cross-tab navigation: search, note task blocks and reminder taps open a
     /// task through it.
-    @State private var router = TasksRouter()
+    @State private var router = TasksRouter.restored()
     /// Opens a day in the Journal tab from any surface (D11).
     @State private var journalRouter = JournalRouter()
     /// The Inbox tab's stack (inbox spec D1).
@@ -73,6 +73,9 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         }
         .environment(router)
         .environment(journalRouter)
+        // Where the next launch continues (`LaunchSnapshot`).
+        .onChange(of: router.selectedTab) { _, tab in LaunchSnapshot.shared.setTab(tab.rawValue) }
+        .onChange(of: router.path) { _, path in LaunchSnapshot.shared.setStack("tasks", value: path) }
         .environment(\.openJournalDay, { date in journalRouter.openDay(date) })
         .environment(inboxRouter)
         // A `memry://calendar` link opens More › Calendar; the calendar screen

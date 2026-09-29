@@ -19,7 +19,6 @@ struct JournalTabContent: View {
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(JournalRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
-    @SceneStorage("journal.stack") private var savedStack = ""
     @State private var store: JournalStore?
     @State private var failure: UserFacingError?
 
@@ -60,7 +59,7 @@ struct JournalTabContent: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { store?.clock.refresh() }
         }
-        .onChange(of: router.saved) { _, saved in savedStack = saved }
+        .onChange(of: router.saved) { _, saved in LaunchSnapshot.shared.setStack("journal", Data(saved.utf8)) }
     }
 
     private func make() {
@@ -81,6 +80,7 @@ struct JournalTabContent: View {
             Task { await Self.reindex(made) }
             // A route that arrived first (a reminder tap on a cold start) wins
             // over the saved stack; with neither, the tab opens on today.
+            let savedStack = LaunchSnapshot.shared.stack("journal").map { String(decoding: $0, as: UTF8.self) } ?? ""
             if router.path.isEmpty, !router.restore(savedStack) {
                 router.showDay(clock.today)
             }

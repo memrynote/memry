@@ -141,6 +141,8 @@ struct SignOutService: Sendable {
     /// has moved, so a failure here is a fact about the phone's disk and not a
     /// reason to tell the user their sign-out did not happen.
     private func wipe(_ reason: LocalWipeReason, leaving state: AuthState) -> LocalWipe {
+        // Where the user was names the account's vaults and notes by id.
+        LaunchSnapshot.shared.clear()
         do {
             try content.removeAllVaultContent()
             return LocalWipe(reason: reason, state: state, residue: nil)

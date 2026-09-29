@@ -38,6 +38,8 @@ struct NoteReadView: View {
     private let open: ((NoteRoute) -> Void)?
     /// Where a `#tag` goes (N600). `nil` leaves tags marked but inert.
     private let openTag: ((String) -> Void)?
+    /// Where this note's scroll offset is kept across launches.
+    private let scrollKey: String
 
     init(
         route: NoteRoute,
@@ -53,6 +55,7 @@ struct NoteReadView: View {
     ) {
         self.open = open
         self.openTag = openTag
+        scrollKey = "note.\(route.id)"
         _actions = State(initialValue: NotePageActions(noteId: route.id, writer: writer))
         _backlinks = State(
             initialValue: BacklinksViewModel(noteId: route.id, search: search)
@@ -97,6 +100,7 @@ struct NoteReadView: View {
     ) {
         self.open = open
         self.openTag = openTag
+        scrollKey = "note.\(model.route.id)"
         _actions = State(initialValue: NotePageActions(noteId: model.route.id, writer: writer))
         _backlinks = State(
             initialValue: BacklinksViewModel(noteId: model.route.id, search: search)
@@ -282,6 +286,7 @@ struct NoteReadView: View {
             .padding(.horizontal, Tokens.Space.screenInline)
             .padding(.vertical, Tokens.Space.screenBlock)
         }
+        .restoresScroll(scrollKey)
         .background(Tokens.Canvas.background.color)
         .modifier(NotePageEnvironment(model: model, taskBridge: taskBridge))
         .calmAnimation(.normal, value: model.phase)

@@ -70,6 +70,7 @@ struct TaskListBody<Header: View>: View {
         } action: { _, collapsed in
             titleCollapsed = collapsed
         }
+        .restoresScroll("tasks.list")
         .accessibilityIdentifier("tasks.list")
     }
 

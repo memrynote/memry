@@ -86,7 +86,7 @@ final class JournalRouter {
         path.removeLast()
     }
 
-    /// The saved form of the stack, for `SceneStorage`.
+    /// The saved form of the stack, for `LaunchSnapshot`.
     var saved: String {
         let state = SavedState(rootYear: rootYear, path: path)
         guard let data = try? JSONEncoder().encode(state) else { return "" }

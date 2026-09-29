@@ -76,6 +76,9 @@ struct RootView: View {
             .task { await shell.consume() }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 shell.scenePhaseChanged(to: phase)
+                // Scroll offsets are held in memory; leaving the foreground
+                // comes before any kill, so write them now.
+                if phase != .active { LaunchSnapshot.shared.flush() }
             }
             .enableInjection()
     }

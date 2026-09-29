@@ -182,8 +182,16 @@ final class VaultSelectionViewModel {
             phase = .empty
             return
         }
+        LaunchSnapshot.shared.prune(keeping: Set(summaries.map(\.id)))
         guard summaries.count > 1 else {
             await open(first)
+            return
+        }
+        // The vault open when the app was last used opens again without
+        // asking. "Switch vault" clears it, so the list still shows then.
+        if let last = LaunchSnapshot.shared.lastVault,
+           let summary = summaries.first(where: { $0.id == last }) {
+            await open(summary)
             return
         }
         phase = .choosing(summaries)
@@ -202,6 +210,9 @@ final class VaultSelectionViewModel {
             // vault that can only be read. `sync(session:)` blocks and does no
             // I/O, so this costs one trip through the core queue.
             filler = try await mint?.filler(for: opened)
+            // Before `vault` is published, so the shell built from it reads
+            // this vault's saved tab and stacks.
+            LaunchSnapshot.shared.vaultOpened(summary.id)
             vault = opened
             phase = .opened(summary)
             Log.storage.notice("a vault was opened")
@@ -224,6 +235,12 @@ final class VaultSelectionViewModel {
     /// there is no flush to wait for here, and inventing one would be a
     /// mechanism this build does not have.
     func chooseAgain() async {
+        // Leaving a vault, or one that failed to open, forgets it; a retry
+        // after an unreadable registry keeps it.
+        switch phase {
+        case .opened, .failedToOpen: LaunchSnapshot.shared.vaultClosed()
+        default: break
+        }
         vault = nil
         filler = nil
         await load()

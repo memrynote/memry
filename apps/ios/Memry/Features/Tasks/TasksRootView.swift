@@ -12,7 +12,7 @@ import SwiftUI
 // crashing or showing a ghost (FR-061).
 
 /// A place inside the Tasks tab.
-enum TasksRoute: Hashable, Sendable {
+enum TasksRoute: Hashable, Codable, Sendable {
     case task(String)
     case project(String)
     case projects
@@ -26,8 +26,17 @@ enum TasksRoute: Hashable, Sendable {
 }
 
 /// The vault shell's tabs, so a route can switch to Tasks.
-enum VaultTab: Hashable, Sendable {
+enum VaultTab: String, Hashable, Sendable {
     case notes, inbox, tasks, journal, more
+
+    @MainActor var isShown: Bool {
+        switch self {
+        case .notes, .more: true
+        case .inbox: LocalSettings.shared.isOn(.inbox)
+        case .tasks: LocalSettings.shared.isOn(.tasks)
+        case .journal: LocalSettings.shared.isOn(.journal)
+        }
+    }
 }
 
 /// Cross-tab navigation into the Tasks tab.
@@ -39,6 +48,16 @@ final class TasksRouter {
     /// The More tab's stack (spec 006 ST20): Settings routes, and the notes
     /// a Settings page opens.
     var settingsPath = NavigationPath()
+
+    /// The router for the vault ``LaunchSnapshot`` has open: the tab and the
+    /// Tasks stack the user left.
+    static func restored(from snapshot: LaunchSnapshot = .shared) -> TasksRouter {
+        let router = TasksRouter()
+        // A tab whose module was turned off since is not shown; stay on Notes.
+        if let tab = snapshot.tab.flatMap(VaultTab.init(rawValue:)), tab.isShown { router.selectedTab = tab }
+        router.path = snapshot.stack("tasks", as: [TasksRoute].self) ?? []
+        return router
+    }
 
     /// Every "… › settings" entry point: the More tab, that section, and Back
     /// returns to the Settings root (flow lane 01).

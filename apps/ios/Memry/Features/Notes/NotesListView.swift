@@ -48,7 +48,7 @@ struct NotesListView: View {
     /// second route type to the same stack. `NavigationPath` is what holds
     /// both, and it is still `Codable`-restorable, which is what research
     /// R15's rule is written for.
-    @State private var path = NavigationPath()
+    @State private var path = LaunchSnapshot.shared.path("notes")
     /// Which folders are open. Held by the screen rather than by the view
     /// model: it is where the user is looking, not what the vault contains,
     /// and a reload must not close what they opened.
@@ -181,6 +181,7 @@ struct NotesListView: View {
                     }
                 }
                 .task { await model.loadIfNeeded() }
+                .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
                 .onAppear { Task { await model.refresh() } }
                 // A failed write is an alert over a screen that still holds
                 // the vault, not a replacement for it: the outline is still
@@ -339,6 +340,7 @@ private struct VaultOutlineList: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .restoresScroll("notes.root")
         .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
         .calmAnimation(.fast, value: expanded)
         // Once per screen, before the first query: an index that was never
