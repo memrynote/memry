@@ -25,6 +25,7 @@ import {
   getIndexDatabase,
   getRawIndexDatabase,
   closeAllDatabases,
+  releaseDatabaseMemory,
   checkIndexHealth,
   withTimeout,
   SQLITE_DATA_CACHE_KIB,
@@ -114,7 +115,7 @@ describe('database client', () => {
     const live = initDatabase(dataDbPath)
     const liveClient = (live as unknown as { $client: Database.Database }).$client
 
-    // #then — the orphan (16MB page cache + fd + WAL) is gone, one live handle left
+    // #then — the orphan (page cache + fd + WAL) is gone, one live handle left
     expect(orphanClient.open).toBe(false)
     expect(liveClient).not.toBe(orphanClient)
     expect(liveClient.open).toBe(true)
@@ -131,11 +132,40 @@ describe('database client', () => {
     const live = initIndexDatabase(indexDbPath)
     const liveRaw = getRawIndexDatabase()
 
-    // #then — the orphan (32MB page cache + fd + WAL) is gone, one live handle left
+    // #then — the orphan (page cache + fd + WAL) is gone, one live handle left
     expect(orphanRaw.open).toBe(false)
     expect(liveRaw).not.toBe(orphanRaw)
     expect(liveRaw.open).toBe(true)
     expect(getIndexDatabase()).toBe(live)
+  })
+
+  it('releases page-cache memory on both connections and leaves them usable', () => {
+    // #given — both connections with warm caches
+    const db = initDatabase(dataDbPath)
+    const dataClient = (db as unknown as { $client: Database.Database }).$client
+    initIndexDatabase(indexDbPath)
+    const indexRaw = getRawIndexDatabase()
+    dataClient.exec("CREATE TABLE t (v TEXT); INSERT INTO t VALUES ('a'), ('b')")
+    const shrinkSpies = [vi.spyOn(dataClient, 'pragma'), vi.spyOn(indexRaw, 'pragma')]
+
+    // #when
+    releaseDatabaseMemory()
+
+    // #then — each connection shrinks once and keeps answering queries
+    for (const spy of shrinkSpies) expect(spy).toHaveBeenCalledWith('shrink_memory')
+    expect(dataClient.prepare('SELECT count(*) AS n FROM t').get()).toEqual({ n: 2 })
+    expect(indexRaw.prepare('SELECT count(*) AS n FROM vec_notes').get()).toEqual({ n: 0 })
+  })
+
+  it('skips closed connections when releasing memory', () => {
+    // #given — a vault that was closed before the index build tail ran
+    initDatabase(dataDbPath)
+    initIndexDatabase(indexDbPath)
+    closeAllDatabases()
+
+    // #when / #then
+    expect(() => releaseDatabaseMemory()).not.toThrow()
+    expect(loggerWarnMock).not.toHaveBeenCalled()
   })
 
   it('leaks rather than fails the open when the previous data handle refuses to close', () => {

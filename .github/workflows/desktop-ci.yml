@@ -439,6 +439,14 @@ jobs:
         working-directory: apps/desktop
         run: node scripts/check-worker-bundles.mjs
 
+      # Fails if the main bundle's top-level require graph reaches jsdom, ai,
+      # @ai-sdk/* or @blocknote/*: those load on first use, and one stray static
+      # import puts them back into every launch's memory.
+      - name: Check main startup set
+        shell: bash
+        working-directory: apps/desktop
+        run: node scripts/check-main-startup-set.mjs
+
       - name: Run Electron smoke tests
         # No xvfb/dbus/gnome-keyring: Windows runners have an interactive desktop
         # session, and keytar uses the Windows Credential Manager directly.

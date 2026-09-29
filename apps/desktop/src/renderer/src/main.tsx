@@ -16,7 +16,6 @@ import './assets/main.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider } from 'next-themes'
 import {
   createRendererI18n,
   I18nProvider,
@@ -24,14 +23,8 @@ import {
   type I18nInstance
 } from '@memry/i18n/renderer'
 import { type Locale } from '@memry/i18n/shared'
-import App from './App'
 import { setActiveLocale } from './lib/active-locale'
-import QuickCapture from './components/quick-capture'
-import { CrdtPersistenceNotice } from './components/crdt-persistence-notice'
-import { AuthProvider } from './contexts/auth-context'
-import { SyncProvider } from './contexts/sync-context'
-import { AISettingsProvider } from './contexts/ai-settings-context'
-import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
+import { THEME_STORAGE_KEY } from './lib/startup-theme'
 import { getStartupLocale } from './lib/startup-locale'
 import { prefetchRestoredTabPage } from './lib/launch-restore'
 import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
@@ -73,8 +66,15 @@ try {
 // Handle both '#/quick-capture' and '#quick-capture' formats
 const isQuickCaptureWindow =
   window.location.hash === '#/quick-capture' || window.location.hash === '#quick-capture'
-const startupTheme = getStartupTheme()
 const startupLocale = getStartupLocale()
+
+// Dynamic on purpose: the window kind is known from the hash before anything
+// else loads, so each window evaluates only its own tree. The quick capture
+// window never loads App, and the main window never loads QuickCapture.
+// Started at module scope so the chunk fetch overlaps the i18n boot below.
+const rootComponentReady: Promise<React.ComponentType> = isQuickCaptureWindow
+  ? import('./quick-capture-root').then((module) => module.QuickCaptureRoot)
+  : import('./main-window-root').then((module) => module.MainWindowRoot)
 
 // Kicked off at module scope, before `boot()` even starts, so the restored
 // tab's chunk download overlaps everything boot() awaits (i18n, vault open,
@@ -107,7 +107,7 @@ async function reconcileStartupLocale(i18n: I18nInstance): Promise<void> {
 }
 
 async function boot(): Promise<void> {
-  const i18n = await i18nReady
+  const [i18n, RootComponent] = await Promise.all([i18nReady, rootComponentReady])
 
   // Keep the module-scoped locale that pure Intl helpers read in sync. Hooked to
   // i18next itself rather than to each caller, so every changeLanguage path
@@ -124,35 +124,11 @@ async function boot(): Promise<void> {
     })()
   })
 
-  const rootComponent = isQuickCaptureWindow ? (
+  const rootComponent = (
     <StrictMode>
       <I18nProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme={startupTheme}
-            enableSystem
-            themes={['light', 'dark', 'white', 'system']}
-            storageKey={THEME_STORAGE_KEY}
-          >
-            <AISettingsProvider>
-              <QuickCapture />
-            </AISettingsProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
-      </I18nProvider>
-    </StrictMode>
-  ) : (
-    <StrictMode>
-      <I18nProvider i18n={i18n}>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <SyncProvider>
-              <App />
-              {/* After <App />, so the Toaster it renders is already mounted. */}
-              <CrdtPersistenceNotice />
-            </SyncProvider>
-          </AuthProvider>
+          <RootComponent />
         </QueryClientProvider>
       </I18nProvider>
     </StrictMode>

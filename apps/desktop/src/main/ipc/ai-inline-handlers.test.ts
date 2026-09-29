@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
       getAllWindows: vi.fn()
     },
     webContents: { send: vi.fn() },
+    chatServerModuleLoads: 0,
     startChatServer: vi.fn(),
     stopChatServer: vi.fn(),
     getServerPort: vi.fn(),
@@ -39,11 +40,14 @@ vi.mock('electron', () => ({
   BrowserWindow: mocks.BrowserWindow
 }))
 
-vi.mock('../ai-inline/ai-chat-server', () => ({
-  startChatServer: mocks.startChatServer,
-  stopChatServer: mocks.stopChatServer,
-  getServerPort: mocks.getServerPort
-}))
+vi.mock('../ai-inline/ai-chat-server', () => {
+  mocks.chatServerModuleLoads++
+  return {
+    startChatServer: mocks.startChatServer,
+    stopChatServer: mocks.stopChatServer,
+    getServerPort: mocks.getServerPort
+  }
+})
 
 vi.mock('../database', () => ({
   getDatabase: mocks.getDatabase
@@ -58,7 +62,11 @@ vi.mock('../lib/logger', () => ({
   createLogger: () => ({ info: mocks.info, error: vi.fn(), warn: vi.fn(), debug: vi.fn() })
 }))
 
-import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
+import {
+  registerAIInlineHandlers,
+  stopChatServerIfLoaded,
+  unregisterAIInlineHandlers
+} from './ai-inline-handlers'
 
 async function invoke(channel: string, input?: unknown) {
   const handler = mocks.handlers.get(channel)
@@ -137,10 +145,23 @@ describe('AI inline IPC handlers', () => {
     })
   })
 
+  // Must stay ahead of the start test below: the chat server module loads once
+  // per test file and stays loaded, so only the tests before it see it unloaded.
+  it('answers port and stop requests without loading the AI SDK chat server', async () => {
+    registerAIInlineHandlers()
+
+    await expect(invoke(AIInlineChannels.invoke.GET_SERVER_PORT)).resolves.toBeNull()
+    await expect(invoke(AIInlineChannels.invoke.STOP_SERVER)).resolves.toEqual({ success: true })
+    await stopChatServerIfLoaded()
+
+    expect(mocks.chatServerModuleLoads).toBe(0)
+    expect(mocks.getServerPort).not.toHaveBeenCalled()
+    expect(mocks.stopChatServer).not.toHaveBeenCalled()
+  })
+
   it('starts, stops, and unregisters the chat server handlers', async () => {
     registerAIInlineHandlers()
 
-    await expect(invoke(AIInlineChannels.invoke.GET_SERVER_PORT)).resolves.toBe(3434)
     await expect(invoke(AIInlineChannels.invoke.START_SERVER)).resolves.toEqual({
       success: true,
       port: 4545
@@ -149,6 +170,9 @@ describe('AI inline IPC handlers', () => {
       expect.objectContaining({ enabled: true, apiKey: 'sk-real' })
     )
 
+    expect(mocks.chatServerModuleLoads).toBe(1)
+    await expect(invoke(AIInlineChannels.invoke.GET_SERVER_PORT)).resolves.toBe(3434)
+
     mocks.getSetting.mockReturnValueOnce(JSON.stringify({ enabled: false }))
     await expect(invoke(AIInlineChannels.invoke.START_SERVER)).resolves.toEqual({
       success: false,
@@ -156,7 +180,9 @@ describe('AI inline IPC handlers', () => {
     })
 
     await expect(invoke(AIInlineChannels.invoke.STOP_SERVER)).resolves.toEqual({ success: true })
-    expect(mocks.stopChatServer).toHaveBeenCalled()
+    expect(mocks.stopChatServer).toHaveBeenCalledTimes(1)
+    await stopChatServerIfLoaded()
+    expect(mocks.stopChatServer).toHaveBeenCalledTimes(2)
 
     unregisterAIInlineHandlers()
     expect(mocks.ipcMain.removeHandler).toHaveBeenCalledWith(AIInlineChannels.invoke.GET_SETTINGS)

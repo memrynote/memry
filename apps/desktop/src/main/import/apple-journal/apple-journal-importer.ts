@@ -1,6 +1,5 @@
 import { readFile } from 'fs/promises'
 import * as path from 'path'
-import { JSDOM } from 'jsdom'
 import { createImportedNote } from '../_shared/imported-note'
 import { createLogger } from '../../lib/logger'
 import { htmlToMarkdown } from '../_shared/html-to-markdown'
@@ -62,6 +61,8 @@ export const appleJournalImporter: Importer = {
       try {
         ctx.status(importingItemStatus(basename))
         const html = await readFile(filePath, 'utf8')
+        // Lazy on purpose; see _shared/lazy-jsdom.ts.
+        const { JSDOM } = await import('../_shared/lazy-jsdom')
         const doc = new JSDOM(html).window.document
 
         // Extract date from .pageHeader

@@ -39,16 +39,24 @@ rollup splitting a circular package across chunks that then load in the wrong or
 renderer is ESM over a large graph whose lazy boundaries rollup already derives from the
 `import()` calls in the page switch.
 
-A production renderer build emits 908 chunks, and exactly one is reachable from the entry
-without an `import()`. Launch parses that single 4,485,640 byte file. `manualChunks`
-cannot shrink it, because it moves modules between chunks rather than off the startup
+The entry itself holds only the boot path: i18n, the startup locale, and a hash check that
+imports either `main-window-root` (auth and sync providers plus `App`) or
+`quick-capture-root`. The main window therefore never loads Quick Capture and the Quick
+Capture window never loads `App`. Shell surfaces that are closed on first paint (settings,
+onboarding, the keyboard shortcuts dialog, the command palette) sit behind `lazy()`; the
+command palette is mounted closed on the first idle callback so the first Cmd+K opens an
+already loaded palette. Keep new closed-by-default shell surfaces on the same pattern.
+
+Before that split, exactly one chunk was reachable from the entry without an `import()`, a
+single file of roughly 4.5 to 4.9 MB. `manualChunks`
+cannot shrink the startup path, because it moves modules between chunks rather than off the startup
 path, and V8 compiles function bodies lazily either way.
 
 It can grow it. `manualChunks` assigns a module to its named chunk whether or not the
 module was reachable only through `import()`, so one eagerly imported module in a bucket
 drags the whole bucket onto the startup path. A vendor split over react, Radix, motion,
 and the rest of `node_modules` was measured at 5 eager chunks totalling 45,050,500 bytes,
-against 4,789,586 today. It pulled Shiki's grammars, Excalidraw, Mermaid, and hls.js into
+against 4,789,586 at the time. It pulled Shiki's grammars, Excalidraw, Mermaid, and hls.js into
 launch. The narrowest rule that could help, react and react-dom and scheduler alone,
 leaves the eager total byte-identical and only spreads it over two files.
 

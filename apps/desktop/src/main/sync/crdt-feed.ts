@@ -6,11 +6,7 @@
  */
 
 import { getCrdtProvider, ORIGIN_LOCAL } from './crdt-provider'
-import {
-  prepareFragmentSeed,
-  applyFragmentSeed,
-  recordMarkdownSourceInYDoc
-} from './blocknote-converter'
+import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { getIndexDatabase } from '../database'
 import { getNoteCacheById } from '@main/database/queries/notes'
@@ -63,6 +59,8 @@ export async function replaceNoteBodyInCrdt(noteId: string, markdown: string): P
   // external edit refreshes link-reference definitions/usages (#1909) and
   // CriticMarkup marks the same way a freshly seeded note does, instead of
   // leaving the previous body's copies in place (#1959).
+  const { prepareFragmentSeed, applyFragmentSeed, recordMarkdownSourceInYDoc } =
+    await loadBlockNoteConverter()
   const prepared = await prepareFragmentSeed(markdown, noteCachePath(noteId))
   if (!prepared) return false
 

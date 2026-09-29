@@ -125,6 +125,7 @@ import {
   setOnTokenRefreshed
 } from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
+import { waitForVaultIndexBuild } from './vault-index-ready'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import {
   applyOpenVaultBinding,
@@ -313,8 +314,16 @@ export const getSyncWebSocket = (): WebSocketManager | null => runtime?.ws ?? nu
 
 async function seedExistingCrdtDocs(
   crdtProvider: ReturnType<typeof getCrdtProvider>,
-  signal?: AbortSignal
+  signal: AbortSignal
 ): Promise<void> {
+  // Wait out the open-time index build. It is the other bulk pass over every
+  // note, so running both at once stacks their garbage into one heap
+  // high-water mark that the process rarely hands back afterwards. It also
+  // completes note_cache, which is what this seed reads: a seed that started
+  // mid-build missed every note the walk had not reached yet.
+  await waitForVaultIndexBuild(signal)
+  if (signal.aborted) return
+
   const indexDb = getIndexDatabase()
   const rows = indexDb
     .select({

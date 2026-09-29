@@ -25,7 +25,13 @@ import {
   onInboxSnoozed,
   type InboxListInput
 } from '@/services/inbox-service'
-import { inboxKeys, DEFAULT_PAGE_SIZE, ITEM_STALE_TIME, STATS_STALE_TIME } from './inbox-query-keys'
+import {
+  inboxKeys,
+  DEFAULT_PAGE_SIZE,
+  ITEM_STALE_TIME,
+  LIST_GC_TIME,
+  STATS_STALE_TIME
+} from './inbox-query-keys'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 
 // =============================================================================
@@ -77,6 +83,7 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
   const { enabled = true, ...listOptions } = options
 
   const query = useInfiniteQuery({
+    gcTime: LIST_GC_TIME,
     queryKey: inboxKeys.list(listOptions),
     queryFn: async ({ pageParam = 0 }) => {
       const response = await inboxService.list({

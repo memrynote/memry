@@ -1,4 +1,3 @@
-import { JSDOM } from 'jsdom'
 import { createImportedNote } from '../_shared/imported-note'
 import { saveAttachment } from '../../vault/attachments'
 import { attachmentMarkdown, encodeAttachmentUrl } from '../_shared/attachment-markdown'
@@ -56,6 +55,8 @@ export const notionImporter: Importer = {
 
       if (entry.extension === 'html') {
         try {
+          // Lazy on purpose; see _shared/lazy-jsdom.ts.
+          const { JSDOM } = await import('../_shared/lazy-jsdom')
           const doc = new JSDOM(await entry.readText()).window.document
           const page = parsePageInfo(doc, entry.filepath)
           info.idsToFileInfo[page.id] = { ...page, path: entry.filepath }
@@ -95,6 +96,7 @@ export const notionImporter: Importer = {
 
       try {
         ctx.status(importingItemStatus(fileInfo.title))
+        const { JSDOM } = await import('../_shared/lazy-jsdom')
         const doc = new JSDOM(await entry.readText()).window.document
         const { body, properties, tags, assets } = convertHtmlToMarkdown(info, doc, entry.filepath)
         const folder = `${ROOT}/${info.getPathForFile(fileInfo)}`.replace(/\/+$/, '')

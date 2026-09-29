@@ -3,6 +3,12 @@ import type { InboxListInput } from '@memry/rpc/inbox'
 export const DEFAULT_PAGE_SIZE = 50
 export const ITEM_STALE_TIME = 30 * 1000
 export const STATS_STALE_TIME = 60 * 1000
+/**
+ * List pages drop a minute after their last observer instead of the app-wide
+ * five: every filter and page-size variant is its own cache entry, and an
+ * unobserved one is refetched on remount anyway.
+ */
+export const LIST_GC_TIME = 60 * 1000
 
 export const inboxKeys = {
   all: ['inbox'] as const,

@@ -40,7 +40,8 @@ import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
-import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
+import { loadBlockNoteConverter } from './blocknote-converter-loader'
+import { repairEmptyBlockIds } from './repair-block-ids'
 import { compactYDoc } from '@memry/sync-client/crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
@@ -1515,6 +1516,7 @@ export class CrdtProvider {
 
     // Pass the note's path so embed targets are written relative to it — this
     // fragment is what gets serialized back to the vault file.
+    const { markdownToYFragment } = await loadBlockNoteConverter()
     const ok = await markdownToYFragment(parsed.content, fragment, cached.path)
 
     // Record what this doc was built from, so the write-back's external-edit

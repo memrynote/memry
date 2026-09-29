@@ -49,6 +49,7 @@ import {
 import { ensureDefaultTaskProject } from '../database/defaults'
 import { detectCorruption } from '../database/fts-rebuild'
 import { isSqliteCorruptError } from '../database/sqlite-errors'
+import { releaseDatabaseMemory } from '../database/client'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
@@ -544,6 +545,9 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
     indexBuilt: undefined,
     indexTotal: undefined
   })
+  // The walk just pulled the whole vault through both page caches; nothing
+  // afterwards needs most of those pages hot.
+  releaseDatabaseMemory()
 
   void reconcileProjections()
     .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
@@ -551,6 +555,9 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
       logger.error('Background projection reconcile failed:', error)
       trackMainError('vault', 'projection_reconcile', error)
     })
+    // Reconcile (embedding backfill) is the other open-time burst. A no-op on
+    // connections closed meanwhile.
+    .finally(releaseDatabaseMemory)
 }
 
 /**

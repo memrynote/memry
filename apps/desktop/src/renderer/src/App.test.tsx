@@ -372,7 +372,10 @@ vi.mock('@/components/split-view', () => ({
 vi.mock('@/components/keyboard', () => ({
   ChordIndicator: ({ isActive }: { isActive: boolean }) => (
     <div data-testid="chord-indicator">{String(isActive)}</div>
-  ),
+  )
+}))
+
+vi.mock('@/components/keyboard/keyboard-shortcuts-dialog', () => ({
   KeyboardShortcutsDialog: ({ isOpen }: { isOpen: boolean }) => (
     <div data-testid="shortcuts-dialog">{String(isOpen)}</div>
   )
@@ -458,7 +461,7 @@ describe('App', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument()
   })
 
-  it('renders vault onboarding when no vault is open', () => {
+  it('renders vault onboarding when no vault is open', async () => {
     vaultState = {
       status: { isOpen: false, path: null },
       isLoading: false
@@ -466,7 +469,7 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(screen.getByTestId('vault-onboarding')).toBeInTheDocument()
+    expect(await screen.findByTestId('vault-onboarding')).toBeInTheDocument()
     expect(screen.getByTestId('toaster')).toBeInTheDocument()
   })
 
@@ -573,7 +576,8 @@ describe('App', () => {
   it('handles global search, shortcut dialog, settings section, and new note events', async () => {
     render(<App />)
 
-    expect(screen.getByTestId('command-palette')).toHaveTextContent('false')
+    // Lazy: the palette mounts closed once the window is idle, before any ⌘K.
+    expect(await screen.findByTestId('command-palette')).toHaveTextContent('false')
     fireEvent(window, new Event('memry:open-search'))
     await waitFor(() => expect(screen.getByTestId('command-palette')).toHaveTextContent('true'))
 
@@ -642,7 +646,7 @@ describe('App', () => {
 
     expect(createNote).not.toHaveBeenCalled()
     expect(openTab).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'note' }))
-    expect(screen.getByTestId('command-palette')).toHaveTextContent('false')
+    expect(await screen.findByTestId('command-palette')).toHaveTextContent('false')
 
     // A failed switch leaves the vault open, and the commands work again.
     act(() => endVaultSwitch(false))

@@ -43,7 +43,12 @@ vi.mock('../lib/logger', () => ({
   createLogger: () => logger
 }))
 
-import { MAX_CONSECUTIVE_FAILURES, MAX_PENDING_REQUESTS, SyncWorkerBridge } from './worker-bridge'
+import {
+  MAX_CONSECUTIVE_FAILURES,
+  MAX_PENDING_REQUESTS,
+  SyncWorkerBridge,
+  WORKER_IDLE_SHUTDOWN_MS
+} from './worker-bridge'
 
 describe('SyncWorkerBridge', () => {
   let bridge: SyncWorkerBridge
@@ -916,8 +921,11 @@ describe('SyncWorkerBridge', () => {
       })
       await request
 
-      // #then — the sweep interval is not left ticking for the session
-      expect(vi.getTimerCount()).toBe(0)
+      // #then — the sweep interval is not left ticking for the session; the
+      // only timer left is the one-shot idle shutdown
+      expect(vi.getTimerCount()).toBe(1)
+      vi.advanceTimersByTime(WORKER_IDLE_SHUTDOWN_MS)
+      expect(mockWorkerInstance.postMessage).toHaveBeenCalledWith({ type: 'shutdown' })
     })
   })
 
@@ -1123,6 +1131,155 @@ describe('SyncWorkerBridge', () => {
         await expect(silent).rejects.toThrow('Worker request timed out')
       }
       expect(bridge.isRunning).toBe(true)
+    })
+  })
+
+  describe('#given running bridge #when it has been idle for WORKER_IDLE_SHUTDOWN_MS', () => {
+    const startReady = async (): Promise<MockWorker> => {
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+      return mockWorkerInstance
+    }
+
+    /** Advance past the idle window and let the worker acknowledge shutdown. */
+    const goIdle = async (worker: MockWorker): Promise<void> => {
+      vi.advanceTimersByTime(WORKER_IDLE_SHUTDOWN_MS)
+      expect(worker.postMessage).toHaveBeenCalledWith({ type: 'shutdown' })
+      worker.simulateExit(0)
+      await vi.advanceTimersByTimeAsync(0)
+    }
+
+    const encrypt = (): Promise<unknown> =>
+      bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+
+    it('#then shuts the thread down but still reports running', async () => {
+      // #given
+      const worker = await startReady()
+
+      // #when
+      await goIdle(worker)
+
+      // #then — crypto keeps routing to the bridge, which respawns on demand
+      expect(bridge.isRunning).toBe(true)
+    })
+
+    it('#then respawns the thread on the next request and answers it', async () => {
+      // #given
+      const idleWorker = await startReady()
+      await goIdle(idleWorker)
+
+      // #when
+      const request = encrypt()
+      const respawned = mockWorkerInstance
+      expect(respawned).not.toBe(idleWorker)
+      respawned.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+
+      // #then
+      const posted = respawned.postMessage.mock.calls.find(([m]) => m.type === 'encrypt-batch')![0]
+      respawned.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId: posted.requestId,
+        results: [],
+        errors: []
+      })
+      await expect(request).resolves.toEqual({ results: [], errors: [] })
+      expect(bridge.isRunning).toBe(true)
+    })
+
+    it('#then a request between the idle shutdown and the exit waits for a fresh thread', async () => {
+      // #given — the idle timer fired, but the old thread has not exited yet
+      const idleWorker = await startReady()
+      vi.advanceTimersByTime(WORKER_IDLE_SHUTDOWN_MS)
+      expect(idleWorker.postMessage).toHaveBeenCalledWith({ type: 'shutdown' })
+
+      // #when
+      const request = encrypt()
+      idleWorker.simulateExit(0)
+      await vi.advanceTimersByTimeAsync(0)
+
+      // #then — the batch goes to the respawned thread, never the exiting one
+      expect(idleWorker.postMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'encrypt-batch' })
+      )
+      const respawned = mockWorkerInstance
+      expect(respawned).not.toBe(idleWorker)
+      respawned.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      const posted = respawned.postMessage.mock.calls.find(([m]) => m.type === 'encrypt-batch')![0]
+      respawned.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId: posted.requestId,
+        results: [],
+        errors: []
+      })
+      await expect(request).resolves.toEqual({ results: [], errors: [] })
+    })
+
+    it('#then a request inside the window resets the idle clock', async () => {
+      // #given
+      const worker = await startReady()
+      vi.advanceTimersByTime(WORKER_IDLE_SHUTDOWN_MS - 1_000)
+
+      // #when
+      const request = encrypt()
+      const posted = worker.postMessage.mock.calls.find(([m]) => m.type === 'encrypt-batch')![0]
+      worker.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId: posted.requestId,
+        results: [],
+        errors: []
+      })
+      await request
+      vi.advanceTimersByTime(WORKER_IDLE_SHUTDOWN_MS - 1_000)
+
+      // #then
+      expect(worker.postMessage).not.toHaveBeenCalledWith({ type: 'shutdown' })
+    })
+
+    it('#then an explicit stop() after going idle stays stopped', async () => {
+      // #given
+      const worker = await startReady()
+      await goIdle(worker)
+
+      // #when
+      await bridge.stop()
+
+      // #then — callers fall back to main-thread crypto, nothing respawns
+      expect(bridge.isRunning).toBe(false)
+      await expect(encrypt()).rejects.toThrow('Worker not started')
+      expect(mockWorkerInstance).toBe(worker)
+    })
+
+    it('#then a failed respawn falls back to main-thread crypto for the session', async () => {
+      // #given
+      const idleWorker = await startReady()
+      await goIdle(idleWorker)
+
+      // #when
+      const request = encrypt()
+      mockWorkerInstance.simulateError(new Error('respawn boom'))
+
+      // #then
+      await expect(request).rejects.toThrow('respawn boom')
+      expect(bridge.isRunning).toBe(false)
+    })
+
+    it('#then leaves a latched-off thread alive', async () => {
+      // #given
+      const worker = await startReady()
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES; i++) {
+        const request = encrypt()
+        vi.advanceTimersByTime(60_001)
+        await expect(request).rejects.toThrow('Worker request timed out')
+      }
+
+      // #when
+      vi.advanceTimersByTime(WORKER_IDLE_SHUTDOWN_MS)
+
+      // #then
+      expect(worker.postMessage).not.toHaveBeenCalledWith({ type: 'shutdown' })
     })
   })
 })

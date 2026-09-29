@@ -19,8 +19,14 @@ let indexDb: IndexDb | null = null
 let sqliteDataDb: Database.Database | null = null
 let sqliteIndexDb: Database.Database | null = null
 
-export const SQLITE_DATA_CACHE_KIB = 16000
-export const SQLITE_INDEX_CACHE_KIB = 32000
+// Page-cache caps, not reservations: SQLite fills them lazily and never gives
+// pages back on its own (see releaseDatabaseMemory). Halved from 16/32 MiB after
+// `db:benchmark` at 15k notes / 5k tasks / 2k inbox showed search, graph, task,
+// inbox and vector p50/p95 within run-to-run noise at 8/16 MiB.
+export const SQLITE_DATA_CACHE_KIB = 8000
+export const SQLITE_INDEX_CACHE_KIB = 16000
+// MEMORY stays: an isolation run with FILE temp store did not lower RSS and
+// slowed graph queries (apps/docs/src/architecture/local-storage.md).
 export const SQLITE_TEMP_STORE = 'MEMORY'
 
 /**
@@ -42,7 +48,7 @@ export function initDatabase(dbPath: string): DataDb {
   // A handle already here is an orphan: openVault can throw after this point,
   // which leaves isOpen false so closeVault() early-returns and never closes it,
   // and createDormantVault repoints this singleton with no close at all. Every
-  // orphan keeps its 16MB page cache, fd and WAL alive. Closing is safe here —
+  // orphan keeps its page cache, fd and WAL alive. Closing is safe here —
   // better-sqlite3 is synchronous, so nothing is mid-statement, and consumers
   // resolve the connection through getDatabase() per call rather than holding it.
   closeStaleHandle('data', closeDatabase)
@@ -75,7 +81,7 @@ export function initDatabase(dbPath: string): DataDb {
 }
 
 export function initIndexDatabase(dbPath: string): IndexDb {
-  // Same orphan handling as initDatabase, for the 32MB index connection.
+  // Same orphan handling as initDatabase, for the index connection.
   closeStaleHandle('index', closeIndexDatabase)
 
   sqliteIndexDb = new Database(dbPath)
@@ -177,6 +183,30 @@ export function isIndexDatabaseInitialized(): boolean {
 export function getRawIndexDatabase(): RawIndexDb {
   if (!sqliteIndexDb) throw new Error('Index database not initialized')
   return sqliteIndexDb
+}
+
+/**
+ * Hand unused page-cache memory on both connections back to the allocator
+ * (`PRAGMA shrink_memory`, i.e. sqlite3_db_release_memory).
+ *
+ * The cache never shrinks by itself, so a one-off burst such as the open-time
+ * index walk leaves it at its cap for the rest of the session. Only unpinned
+ * pages are released; the next query re-reads what it needs from disk (or the
+ * OS page cache). A closed connection is skipped, and a failure is logged and
+ * swallowed because this is purely an optimisation.
+ */
+export function releaseDatabaseMemory(): void {
+  for (const [label, sqlite] of [
+    ['data', sqliteDataDb],
+    ['index', sqliteIndexDb]
+  ] as const) {
+    if (!sqlite?.open) continue
+    try {
+      sqlite.pragma('shrink_memory')
+    } catch (error) {
+      logger.warn(`Failed to release ${label} database memory`, error)
+    }
+  }
 }
 
 export function closeDatabase(): void {

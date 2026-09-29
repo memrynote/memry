@@ -3,11 +3,8 @@ import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
-import {
-  findUnrepresentableNodes,
-  yDocToMarkdown,
-  type SourceRestoreOutcome
-} from './blocknote-converter'
+import type { SourceRestoreOutcome } from './blocknote-converter'
+import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
@@ -441,6 +438,10 @@ function resolveFromCanonicalMetadata(
 }
 
 async function performWriteback(noteId: string, doc: Y.Doc, local: boolean): Promise<void> {
+  // Loaded before the note row is read, so the row below is as fresh as it
+  // was before the converter became lazy: past this line nothing awaits until
+  // the serialization itself.
+  const { findUnrepresentableNodes, yDocToMarkdown } = await loadBlockNoteConverter()
   // A doc with no note row is never turned into a note. Its record may not
   // have arrived yet, or it may be a tombstone this device has not pulled (a
   // packed body applied before the first record pull), and both look the
