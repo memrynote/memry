@@ -18,6 +18,7 @@ import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
+import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -732,6 +733,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // Journaled with the page and unlinked after it commits (#2385): a lost
     // unlink would leave a file with no row for the indexer to push back.
     deleteSyncedVaultFile(absolutePath)
+
+    // The note may be the last one in a folder another device deleted (#2512).
+    const folder = extractFolderFromPath(existing.path)
+    if (folder) scheduleDeletedFolderPrune(ctx.db, folder)
     return 'applied'
   }
 

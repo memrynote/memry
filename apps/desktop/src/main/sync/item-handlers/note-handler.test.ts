@@ -124,6 +124,11 @@ vi.mock('../bulk-apply', async () => {
   }
 })
 
+const mockScheduleDeletedFolderPrune = vi.fn()
+vi.mock('../deleted-folder-prune', () => ({
+  scheduleDeletedFolderPrune: (...args: unknown[]) => mockScheduleDeletedFolderPrune(...args)
+}))
+
 vi.mock('../crdt-provider', () => ({
   getCrdtProvider: () => ({ purge: mockPurgeCrdtDoc })
 }))
@@ -646,6 +651,21 @@ describe('noteHandler.applyUpsert — path collision', () => {
     expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('skipped')
     expect(deleteNoteFromCache).not.toHaveBeenCalled()
     expect(mockCleanupProjectLinksForDeletedNote).not.toHaveBeenCalled()
+  })
+
+  it('re-checks the note folder after a remote delete, for a folder deleted on the peer (#2512)', () => {
+    mockGetNoteMetadataById.mockReturnValueOnce({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('a1', 'a1.md'),
+      fileType: 'markdown',
+      clock: { dev1: 1 }
+    })
+    vi.mocked(extractFolderFromPath).mockReturnValueOnce('a1')
+
+    expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('applied')
+    expect(extractFolderFromPath).toHaveBeenCalledWith(path.join('a1', 'a1.md'))
+    expect(mockScheduleDeletedFolderPrune).toHaveBeenCalledWith(ctx.db, 'a1')
   })
 
   it('purges the CRDT doc of a note deleted on a peer', async () => {

@@ -92,7 +92,9 @@ does not sync at all (signed out, or on the free plan): there is no other device
 A folder syncs in its own right, so a folder you create and leave empty — and any empty folders
 inside it — appears on your other devices without needing a note in it. Renaming or deleting a
 folder carries its whole subtree with it. Folders that already existed before this was fixed are
-picked up once, the next time sync starts.
+picked up once, the next time sync starts. A folder deleted on one device is removed on the others
+once the notes inside it are gone. If any other file is still left in it on another device, that
+device keeps the folder and the file rather than deleting something that never synced.
 
 A delete also wins against an edit made elsewhere at the same time. If you delete an item on one
 device while another device edits it without having seen the delete yet, the delete stands and the
