@@ -59,7 +59,7 @@ export function planPullSlices(changes: RecordChangesResponse): PullSlice[] {
  */
 export async function fetchSliceBody(
   ctx: SyncContext,
-  session: { accessJwt: string },
+  session: { accessJwt: string; signal: AbortSignal },
   fetchIds: string[]
 ): Promise<unknown> {
   if (fetchIds.length === 0) return { items: [] }
@@ -78,7 +78,7 @@ export async function fetchSliceBody(
           session.accessJwt = fresh
         }
       ),
-    { signal: ctx.abortController!.signal, isOnline: () => ctx.deps.network.online }
+    { signal: session.signal, isOnline: () => ctx.deps.network.online }
   )
   return result.value
 }

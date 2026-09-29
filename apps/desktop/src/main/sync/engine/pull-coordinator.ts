@@ -152,17 +152,16 @@ export class PullCoordinator {
     try {
       const pullStartedAt = Date.now()
       this.stateManager.setState('syncing')
-      this.ctx.abortController = new AbortController()
+      // The run keeps its own controller: stop(), the stale-lock watchdog and
+      // another cycle's releaseLock() null or replace ctx.abortController
+      // while this run may still be awaiting (#2526).
+      const abortController = (this.ctx.abortController = new AbortController())
 
       const credentials = await this.getPullCredentials()
       if (!credentials) return false
       vaultKey = credentials.vaultKey
 
-      const runState = this.createPullRunState(
-        credentials.accessJwt,
-        credentials.vaultKey,
-        pullStartedAt
-      )
+      const runState = this.createPullRunState(credentials, pullStartedAt, abortController.signal)
       this.pendingApplyRetries = []
       this.orphanedItems = []
       try {
@@ -273,9 +272,9 @@ export class PullCoordinator {
   }
 
   private createPullRunState(
-    accessJwt: string,
-    vaultKey: Uint8Array,
-    startTime: number
+    { accessJwt, vaultKey }: { accessJwt: string; vaultKey: Uint8Array },
+    startTime: number,
+    signal: AbortSignal
   ): PullRunState {
     return {
       timer: new SyncTimer(),
@@ -286,6 +285,7 @@ export class PullCoordinator {
       crdtNoteIds: [],
       accessJwt,
       vaultKey,
+      signal,
       latency: new PullLatencyTrace(getCurrentDeviceId(this.ctx.deps.db))
     }
   }
@@ -312,7 +312,7 @@ export class PullCoordinator {
       // cancel that lands before the first page is even fetched (vault
       // close/switch calls `engine.requestCancel()` routinely) delivered
       // nothing, so the run must not be recorded as a clean sync either.
-      if (this.ctx.abortController!.signal.aborted) {
+      if (runState.signal.aborted) {
         runState.refused = true
         break
       }
@@ -335,7 +335,7 @@ export class PullCoordinator {
       // iteration and overlapped nothing. /sync/changes is a read, so fetching
       // ahead of the stop decision costs at most one wasted GET on a run that
       // stops — the abandoned promise's rejection is swallowed either way.
-      if (changes.hasMore && !this.ctx.abortController?.signal.aborted) {
+      if (changes.hasMore && !runState.signal.aborted) {
         prefetchedNext = this.fetchChangesPage(runState, nextCursor)
         prefetchedNext.catch(() => {})
       }
@@ -356,7 +356,7 @@ export class PullCoordinator {
       // offers them again. Re-check before the cursor moves (the in-slice write
       // makes the same check), and refuse the run so an interrupted pull is not
       // recorded as a clean sync.
-      if (this.ctx.abortController!.signal.aborted) {
+      if (runState.signal.aborted) {
         runState.refused = true
         break
       }
@@ -410,7 +410,7 @@ export class PullCoordinator {
         )
       },
       {
-        signal: this.ctx.abortController!.signal,
+        signal: runState.signal,
         isOnline: () => this.ctx.deps.network.online
       }
     )
@@ -506,7 +506,7 @@ export class PullCoordinator {
     runState.timer.startPhase('crdt-batch')
     try {
       // The queued-pull path (#2421): an id whose row is gone is dropped with its debt.
-      await this.crdtSync.pullCrdtForNotes(runState.crdtNoteIds, this.ctx.abortController?.signal)
+      await this.crdtSync.pullCrdtForNotes(runState.crdtNoteIds, runState.signal)
     } finally {
       runState.timer.endPhase(runState.crdtNoteIds.length)
       runState.crdtNoteIds.length = 0
@@ -621,7 +621,7 @@ export class PullCoordinator {
     const synced: Array<() => void> = []
 
     for (let i = 0; i < retries.length; i++) {
-      if (this.ctx.abortController?.signal.aborted) break
+      if (runState.signal.aborted) break
       if (i > 0 && i % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
       const dec = retries[i]
       try {
@@ -923,7 +923,7 @@ export class PullCoordinator {
     try {
       try {
         for (let i = 0; i < orderedDecrypted.length; i++) {
-          if (this.ctx.abortController?.signal.aborted) break
+          if (runState.signal.aborted) break
           const dec = orderedDecrypted[i]
           // Read before the apply: a record with no row here lost its earlier feed bodies (#2421).
           const decision = this.noteBodyFeed.recordBodyDecision(feedPage, dec)
@@ -1007,7 +1007,7 @@ export class PullCoordinator {
           pageCursor !== null &&
           !postCommitWork &&
           pageApply.transacted &&
-          !this.ctx.abortController?.signal.aborted
+          !runState.signal.aborted
         ) {
           this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, pageCursor)
           cursorCommitted = true

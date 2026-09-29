@@ -366,7 +366,8 @@ describe('#given a pull page ending in a CRDT batch #when the batch applies', ()
       }
     }
     eng.ctx.fullSyncActive = fullSyncActive
-    eng.ctx.abortController = new AbortController()
+    const abortController = new AbortController()
+    eng.ctx.abortController = abortController
 
     const cost = await eng.pullCoordinator.applyCrdtBatch({
       timer: new SyncTimer(),
@@ -376,7 +377,8 @@ describe('#given a pull page ending in a CRDT batch #when the batch applies', ()
       applied: new RunAppliedCursors(),
       crdtNoteIds: ['note-1'],
       accessJwt: 'jwt',
-      vaultKey: new Uint8Array(32)
+      vaultKey: new Uint8Array(32),
+      signal: abortController.signal
     })
     return { provider, cost }
   }
@@ -468,6 +470,67 @@ describe('#given an abort landing inside a page apply #when the page has only pa
     expect(eng.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
     // ...and an interrupted run is not a clean sync.
     expect(historySpy).not.toHaveBeenCalled()
+
+    vi.restoreAllMocks()
+  })
+})
+
+/**
+ * #2526: `stop()` and the stale-lock watchdog abort the cycle's controller and
+ * then set `ctx.abortController` to null while the pull may still be awaiting a
+ * page. The pull used to re-read `ctx.abortController!.signal` after the page
+ * applied, threw `Cannot read properties of null (reading 'signal')`, and
+ * reported it as `pull_failed` with the sync status stuck on error.
+ */
+describe('#given teardown nulls the controller while a page applies #when the pull resumes', () => {
+  const { getDb } = setupTestDb()
+
+  it('#then the run stops as refused, not with a null signal error', async () => {
+    const deps = createMockDeps(getDb())
+    const engine = new SyncEngine(deps)
+    const eng = engine as unknown as {
+      ctx: { abortController: AbortController | null }
+      stateManager: { getStateValue: (key: string) => string | undefined }
+    }
+
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [
+        { id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 },
+        { id: 'task-2', type: 'task', version: 1, modifiedAt: 1000, size: 10 }
+      ],
+      deleted: [],
+      hasMore: true,
+      nextCursor: 42
+    })
+    vi.spyOn(http, 'postToServer').mockResolvedValue({ items: [] })
+    vi.spyOn(await import('../sync-crypto-batch'), 'decryptPullBatch').mockResolvedValue({
+      decrypted: ['task-1', 'task-2'].map((id) => ({
+        id,
+        type: 'task' as const,
+        operation: 'update' as const,
+        content: JSON.stringify({ title: id }),
+        clock: { 'device-1': 1 },
+        signerDeviceId: 'device-1'
+      })),
+      failures: []
+    })
+
+    const applied: string[] = []
+    vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation((input) => {
+      applied.push(input.itemId)
+      // What stop() and recoverStaleSyncLock() do to a running cycle.
+      eng.ctx.abortController?.abort()
+      eng.ctx.abortController = null
+      return 'applied'
+    })
+
+    await expect(engine.pull()).resolves.toBe(false)
+
+    expect(engine.getStatus().error).toBeUndefined()
+    // The run's own signal stays aborted, so the item loop stops too.
+    expect(applied).toEqual(['task-1'])
+    expect(eng.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
 
     vi.restoreAllMocks()
   })

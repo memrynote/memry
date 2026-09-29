@@ -12,6 +12,8 @@ export interface PullRunState {
   crdtNoteIds: string[]
   accessJwt: string
   vaultKey: Uint8Array
+  /** This run's own abort signal, not `ctx.abortController`, which stop/teardown nulls mid-run. */
+  signal: AbortSignal
   latency: PullLatencyTrace
   /** Set when the run stopped on a page it could not apply — no success finalize. */
   refused?: boolean
