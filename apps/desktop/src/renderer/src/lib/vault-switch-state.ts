@@ -16,8 +16,12 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 /** Which way the user moved through the vault order. */
 export type VaultSwitchDirection = 'next' | 'prev'
 
-/** What started a switch, for the log: the pager's swipe, chord and indicator, or a vault list. */
-export type VaultSwitchSource = 'swipe' | 'shortcut' | 'indicator' | 'menu' | 'onboarding'
+/**
+ * What started a switch, for the log: the pager's swipe, chord and indicator, a
+ * vault list, or the Settings prompt to open the account's vault.
+ */
+export type VaultSwitchSource =
+  'swipe' | 'shortcut' | 'indicator' | 'menu' | 'onboarding' | 'settings'
 
 export interface VaultSwitchTarget {
   path: string
