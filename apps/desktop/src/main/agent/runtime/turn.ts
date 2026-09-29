@@ -275,13 +275,23 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
               outcome: { ok: false, error }
             })
           }
+          // No errorCode on the product event: the telemetry transform promotes
+          // any event carrying one into a `$exception`, and the failure already
+          // has its owner there — the MCP server's catch (tool_failed_<name>)
+          // or the tool bridge's transport catch (mcp_tool_transport). Every
+          // tool failure used to file twice (#2524). The code stays queryable
+          // on a warn-level log line, which is never promoted.
           trackMainEvent('ai_action_completed', {
             surface: 'ai',
             action: 'tool_call',
             source: backendLabel,
             result: 'failed',
-            errorCode: toSafeToken(error?.code ?? 'INTERNAL', 'INTERNAL'),
             ...(toolName ? { dimensions: { tool: toSafeToken(toolName, 'unknown_tool') } } : {})
+          })
+          trackMainLog('warn', {
+            scope: 'AgentRuntime',
+            action: toolName ? `tool_call_failed_${toolName}` : 'tool_call_failed',
+            errorCode: toSafeToken(error?.code ?? 'INTERNAL', 'INTERNAL')
           })
         },
         onAssistantText: (text) => {

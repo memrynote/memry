@@ -33,7 +33,7 @@ vi.mock('../../mcp/lifecycle', () => ({
   getPublicStatus: mocks.getPublicStatus
 }))
 
-import { AgentToolBridge, createAiSdkToolSet } from '../tool-bridge'
+import { AgentToolBridge, createAiSdkToolSet, VAULT_TOOL_CALL_TIMEOUT_MS } from '../tool-bridge'
 import type { TurnWriteGrant } from '../../turn-grants'
 const TEST_GRANT = 'turn-grant-1' as TurnWriteGrant
 
@@ -117,11 +117,70 @@ describe('AgentToolBridge', () => {
       version: '1.0.0'
     })
     expect(mocks.clientConnect).toHaveBeenCalledWith({ type: 'transport' })
-    expect(mocks.clientCallTool).toHaveBeenCalledWith({
-      name: 'vault_create_task',
-      arguments: { title: 'Ship local backend' }
-    })
+    expect(mocks.clientCallTool).toHaveBeenCalledWith(
+      {
+        name: 'vault_create_task',
+        arguments: { title: 'Ship local backend' }
+      },
+      undefined,
+      { timeout: VAULT_TOOL_CALL_TIMEOUT_MS }
+    )
     expect(mocks.clientClose).toHaveBeenCalled()
+  })
+
+  it('waits past the SDK 60s default so a pending write approval cannot time out the call', () => {
+    // The runtime settles an unanswered approval itself after 30 minutes; the
+    // client must outlast that or the model hears -32001 while the card is open.
+    expect(VAULT_TOOL_CALL_TIMEOUT_MS).toBeGreaterThan(30 * 60 * 1000)
+  })
+
+  it('reads the top-level error shape the Vault MCP server writes', async () => {
+    mocks.clientCallTool.mockResolvedValueOnce({
+      isError: true,
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            code: 'PERMISSION_DENIED',
+            message: 'User denied request.',
+            details: undefined
+          })
+        }
+      ]
+    })
+    const bridge = new AgentToolBridge()
+
+    await expect(
+      bridge.execute({
+        writeGrant: TEST_GRANT,
+        windowId: 'window-1',
+        name: 'vault_create_task',
+        args: { title: 'Ship local backend' }
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: { code: 'PERMISSION_DENIED', message: 'User denied request.' }
+    })
+  })
+
+  it('falls back to MCP_TOOL_ERROR with the raw text for a non-JSON tool error', async () => {
+    mocks.clientCallTool.mockResolvedValueOnce({
+      isError: true,
+      content: [{ type: 'text', text: 'something broke' }]
+    })
+    const bridge = new AgentToolBridge()
+
+    await expect(
+      bridge.execute({
+        writeGrant: TEST_GRANT,
+        windowId: 'window-1',
+        name: 'vault_create_task',
+        args: {}
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: { code: 'MCP_TOOL_ERROR', message: 'something broke' }
+    })
   })
 
   it('returns MCP unavailable when the lifecycle has no public endpoint', async () => {
@@ -159,10 +218,14 @@ describe('AgentToolBridge', () => {
       })
     ).resolves.toEqual({ ok: true, data: { id: 'task-1' } })
 
-    expect(mocks.clientCallTool).toHaveBeenCalledWith({
-      name: 'vault_create_task',
-      arguments: {}
-    })
+    expect(mocks.clientCallTool).toHaveBeenCalledWith(
+      {
+        name: 'vault_create_task',
+        arguments: {}
+      },
+      undefined,
+      { timeout: VAULT_TOOL_CALL_TIMEOUT_MS }
+    )
   })
 
   it('returns parsed MCP tool errors without failing the whole turn', async () => {

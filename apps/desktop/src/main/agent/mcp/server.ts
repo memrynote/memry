@@ -3,9 +3,11 @@ import http from 'node:http'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import type { ZodTypeAny } from 'zod'
+import { buildErrorDetail } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../../lib/logger'
 import { trackMainError, trackMainLog } from '../../telemetry/diagnostics'
+import { getMainRedactOptions } from '../../telemetry/redact-options'
 import { decorateToolResultWithAgentSources } from '../source-refs'
 import { AgentToolError, toMcpToolErrorContent } from './errors'
 import { createMcpSession } from './session'
@@ -77,8 +79,21 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
             // backend and external MCP client routes through this server). A
             // user tapping Deny is a normal state, not a fault worth counting.
             const code = err instanceof AgentToolError ? err.code : 'INTERNAL'
-            if (code !== 'PERMISSION_DENIED') {
+            // NOT_FOUND and VALIDATION are the model asking for a missing item
+            // or sending bad input: the model reads the error and recovers, so
+            // they stay queryable as warnings instead of filing as exceptions.
+            // INTERNAL is the only fault code, and it ships the redacted
+            // message and stack; without them every INTERNAL issue was
+            // titled after its own code with nothing to triage (#2524).
+            if (code === 'INTERNAL') {
               trackMainLog('error', {
+                scope: 'AgentMcpServer',
+                action: `tool_failed_${reg.name}`,
+                errorCode: code,
+                error: buildErrorDetail(err, undefined, getMainRedactOptions())
+              })
+            } else if (code !== 'PERMISSION_DENIED') {
+              trackMainLog('warn', {
                 scope: 'AgentMcpServer',
                 action: `tool_failed_${reg.name}`,
                 errorCode: code

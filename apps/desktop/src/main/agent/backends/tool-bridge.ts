@@ -9,6 +9,15 @@ import type { TurnWriteGrant } from '../turn-grants'
 
 const logger = createLogger('AgentToolBridge')
 
+// A write tool call holds its MCP request open while the runtime waits for the
+// user's approval, and that wait is bounded by the runtime's 30-minute approval
+// deadline (APPROVAL_TIMEOUT_MS in runtime/runtime.ts). The SDK's default
+// 60s request timeout fired first: the model was told the call failed with
+// `McpError -32001 Request timed out` while the approval card was still on
+// screen, and approving it afterwards ran the write anyway (#2524). One minute
+// of margin lets the runtime's own expiry answer before the client gives up.
+export const VAULT_TOOL_CALL_TIMEOUT_MS = 31 * 60 * 1000
+
 export interface AgentToolCallInput {
   writeGrant: TurnWriteGrant
   windowId: string
@@ -76,10 +85,14 @@ async function callVaultMcpTool(input: AgentToolCallInput): Promise<AgentToolCal
 
   try {
     await client.connect(transport)
-    const result = await client.callTool({
-      name: input.name,
-      arguments: toRecord(input.args)
-    })
+    const result = await client.callTool(
+      {
+        name: input.name,
+        arguments: toRecord(input.args)
+      },
+      undefined,
+      { timeout: VAULT_TOOL_CALL_TIMEOUT_MS }
+    )
     if (result.isError) {
       return { ok: false, error: parseMcpError(result.content) }
     }
@@ -119,15 +132,22 @@ function extractMcpResult(result: { structuredContent?: unknown; content?: unkno
   }
 }
 
+type McpErrorPayload = { code?: unknown; message?: unknown }
+
+// The Vault MCP server writes `{ code, message, details }` at the top level
+// (toMcpToolErrorContent). Reading only a nested `{ error: {...} }` turned every
+// server failure, PERMISSION_DENIED included, into `MCP_TOOL_ERROR` with the raw
+// JSON as its message. The nested shape is still accepted for other servers.
 function parseMcpError(content: unknown): { code: string; message: string } {
   const text = firstTextContent(content)
   if (!text) return { code: 'MCP_TOOL_ERROR', message: 'Tool call failed.' }
   try {
-    const parsed = JSON.parse(text) as { error?: { code?: string; message?: string } }
-    if (parsed.error?.message) {
+    const parsed = JSON.parse(text) as (McpErrorPayload & { error?: McpErrorPayload }) | null
+    const payload = parsed?.error ?? parsed
+    if (payload && typeof payload.message === 'string' && payload.message) {
       return {
-        code: parsed.error.code ?? 'MCP_TOOL_ERROR',
-        message: parsed.error.message
+        code: typeof payload.code === 'string' && payload.code ? payload.code : 'MCP_TOOL_ERROR',
+        message: payload.message
       }
     }
   } catch {

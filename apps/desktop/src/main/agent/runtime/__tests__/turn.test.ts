@@ -861,6 +861,62 @@ describe('runTurn against a stub backend', () => {
       )
     })
 
+    it('keeps a failed tool call out of Error Tracking and logs its code at warn level', async () => {
+      const messages = createFakeMessageStore()
+      const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+      const backend = createFakeBackend({
+        turn: [
+          { kind: 'tool_use', toolUseId: 'tool-1', name: 'vault_read_note', args: {} },
+          {
+            kind: 'tool_result',
+            toolUseId: 'tool-1',
+            ok: false,
+            error: { code: 'MCP_TOOL_CALL_FAILED', message: 'Request timed out' }
+          },
+          { kind: 'message_stop' }
+        ]
+      })
+      vi.mocked(trackMainEvent).mockClear()
+
+      await runTurn(
+        { conversations, messages, backends: createFakeRegistry(backend) },
+        {
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'hello',
+          attachments: [],
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+        }
+      )
+
+      // #then the product event carries no errorCode: the transform would file
+      // it as a second $exception next to the owning report (#2524)
+      const toolCall = vi
+        .mocked(trackMainEvent)
+        .mock.calls.find(
+          ([name, options]) => name === 'ai_action_completed' && options.action === 'tool_call'
+        )
+      expect(toolCall?.[1]).toEqual({
+        surface: 'ai',
+        action: 'tool_call',
+        source: 'claude_cli',
+        result: 'failed',
+        dimensions: { tool: 'vault_read_note' }
+      })
+      expect(toolCall?.[1]).not.toHaveProperty('errorCode')
+
+      // #and the code stays queryable on a warn-level log line
+      expect(trackMainEvent).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({
+          action: 'warn',
+          source: 'AgentRuntime',
+          errorCode: 'MCP_TOOL_CALL_FAILED',
+          dimensions: { log_action: 'tool_call_failed_vault_read_note' }
+        })
+      )
+    })
+
     it('does not include input text in tracked telemetry payloads', async () => {
       const messages = createFakeMessageStore()
       const conversations = createFakeConversationStore({ title: 'Existing conversation' })
