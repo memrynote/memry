@@ -133,6 +133,13 @@ const METADATA_STALE_TIME = 60_000
 /** 5 minutes - keep in cache for quick access */
 const NOTE_GC_TIME = 5 * 60 * 1000
 
+/**
+ * 1 minute for list pages. Loading more notes changes the key, so each smaller
+ * page left behind stays cached until this runs out; there is no reason to keep
+ * those for the full five.
+ */
+const NOTES_LIST_GC_TIME = 60 * 1000
+
 /** Stable empty arrays/objects to avoid recreating on every render */
 const EMPTY_FOLDERS: FolderInfo[] = []
 const EMPTY_TAGS: Array<{
@@ -230,7 +237,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     queryFn: () => notesService.list(listOptions),
     enabled,
     staleTime: NOTE_STALE_TIME,
-    gcTime: NOTE_GC_TIME
+    gcTime: NOTES_LIST_GC_TIME
   })
 
   // Subscribe to note events for list invalidation

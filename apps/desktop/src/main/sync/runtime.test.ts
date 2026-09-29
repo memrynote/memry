@@ -244,6 +244,28 @@ vi.mock('../database/client', () => ({
   getIndexDatabase: runtimeMocks.getIndexDatabase
 }))
 
+const vaultMocks = vi.hoisted(() => {
+  type Status = { isOpen: boolean; path: string | null; isIndexing: boolean }
+  const listeners = new Set<(status: Status) => void>()
+  const state = {
+    status: { isOpen: false, path: null, isIndexing: false } as Status,
+    listeners,
+    setStatus(update: Partial<Status>): void {
+      state.status = { ...state.status, ...update }
+      for (const listener of listeners) listener(state.status)
+    }
+  }
+  return state
+})
+
+vi.mock('../vault/index', () => ({
+  getStatus: () => vaultMocks.status,
+  onVaultStatusChanged: (listener: (status: typeof vaultMocks.status) => void) => {
+    vaultMocks.listeners.add(listener)
+    return () => vaultMocks.listeners.delete(listener)
+  }
+}))
+
 vi.mock('../crypto', () => ({
   getDevicePublicKey: runtimeMocks.deriveDevicePublicKey,
   getOrInitializeLocalVaultKey: runtimeMocks.getOrInitializeLocalVaultKey,
@@ -503,6 +525,8 @@ describe('sync runtime', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    vaultMocks.status = { isOpen: false, path: null, isIndexing: false }
+    vaultMocks.listeners.clear()
     runtimeMocks.SyncQueueManager.instances = []
     runtimeMocks.NoteBodyOutbox.instances = []
     runtimeMocks.NetworkMonitor.instances = []
@@ -762,6 +786,46 @@ describe('sync runtime', () => {
     expect(runtimeMocks.WebSocketManager.instances[0].disconnect).toHaveBeenCalledTimes(1)
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalledTimes(1)
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  it('defers the CRDT seed until the open-time index build finishes', async () => {
+    // #given - the vault is still running its open-time index build
+    vaultMocks.status = { isOpen: true, path: '/vault', isIndexing: true }
+    const runtime = await loadRuntime()
+
+    // #when
+    await runtime.startSyncRuntime()
+    await Promise.resolve()
+
+    // #then - the seed has not touched note_cache yet
+    expect(runtimeMocks.crdtProvider.seedExistingDocs).not.toHaveBeenCalled()
+
+    // #when - the build finishes
+    vaultMocks.setStatus({ isIndexing: false })
+    await vi.waitFor(() => expect(runtimeMocks.crdtProvider.seedExistingDocs).toHaveBeenCalled())
+
+    // #then
+    expect(runtimeMocks.crdtProvider.seedExistingDocs).toHaveBeenCalledWith(
+      [{ id: 'note-1', title: 'Note 1', date: undefined }],
+      undefined,
+      expect.any(AbortSignal)
+    )
+    expect(vaultMocks.listeners.size).toBe(0)
+    await runtime.stopSyncRuntime()
+  })
+
+  it('drops a deferred CRDT seed when the runtime stops before the index build finishes', async () => {
+    // #given
+    vaultMocks.status = { isOpen: true, path: '/vault', isIndexing: true }
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+
+    // #when - the runtime stops while the build is still running
+    await runtime.stopSyncRuntime()
+
+    // #then - nothing seeds and the status listener is released
+    expect(runtimeMocks.crdtProvider.seedExistingDocs).not.toHaveBeenCalled()
+    expect(vaultMocks.listeners.size).toBe(0)
   })
 
   it('prompts cancel on the in-flight start instead of waiting out the first full sync', async () => {

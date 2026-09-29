@@ -102,7 +102,17 @@ const serverSchema = createMemrySchema({
   inline: createServerInlineSpecs()
 })
 
+/**
+ * How long the server editor outlives its last use. Each editor owns a JSDOM
+ * window, and conversions come in bursts (a note open, a write-back, a sync
+ * pull), so the editor is dropped once a burst is over and rebuilt from the
+ * same schema on the next one. The rebuilt editor converts identically; only
+ * the first conversion after a release pays the construction cost again.
+ */
+export const SERVER_EDITOR_IDLE_RELEASE_MS = 3 * 60_000
+
 let serverEditor: ServerBlockNoteEditor | null = null
+let serverEditorReleaseTimer: ReturnType<typeof setTimeout> | null = null
 
 function getEditor(): ServerBlockNoteEditor {
   if (!serverEditor) {
@@ -113,6 +123,15 @@ function getEditor(): ServerBlockNoteEditor {
     // helpers keep working.
     serverEditor = ServerBlockNoteEditor.create({ schema: serverSchema }) as ServerBlockNoteEditor
   }
+  // Re-armed on every use. A conversion still running when the timer fires
+  // keeps the editor it was handed; the release only stops new ones from
+  // reusing it.
+  if (serverEditorReleaseTimer) clearTimeout(serverEditorReleaseTimer)
+  serverEditorReleaseTimer = setTimeout(() => {
+    serverEditorReleaseTimer = null
+    serverEditor = null
+  }, SERVER_EDITOR_IDLE_RELEASE_MS)
+  serverEditorReleaseTimer.unref?.()
   return serverEditor
 }
 
@@ -391,28 +410,7 @@ export function blocksToYFragment(blocks: Block[], fragment: Y.XmlFragment): boo
   }
 }
 
-const BLOCK_CONTAINER_NODES = new Set(['blockContainer', 'columnList', 'column'])
-
-// Repair notes already persisted with empty-string block ids: walk the CRDT
-// fragment and stamp a fresh id on any block container missing one. Runs on
-// note open so previously-corrupted notes heal instead of showing "Editor
-// Error". Returns the number of blocks repaired.
-export function repairEmptyBlockIds(fragment: Y.XmlFragment): number {
-  let repaired = 0
-  const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
-    for (const child of node.toArray()) {
-      const el = child as Y.XmlElement
-      if (typeof el.nodeName !== 'string' || typeof el.getAttribute !== 'function') continue
-      if (BLOCK_CONTAINER_NODES.has(el.nodeName) && !el.getAttribute('id')) {
-        el.setAttribute('id', crypto.randomUUID())
-        repaired++
-      }
-      visit(el)
-    }
-  }
-  visit(fragment)
-  return repaired
-}
+export { repairEmptyBlockIds } from './repair-block-ids'
 
 export async function markdownToYFragment(
   markdown: string,

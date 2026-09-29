@@ -24,7 +24,6 @@
  * @module main/import/onenote/onenote-importer
  */
 
-import { JSDOM } from 'jsdom'
 import {
   extensionForMime,
   extractDataImages,
@@ -189,6 +188,8 @@ async function importPage(
   const prepared = preparePageHtml(parts.html)
   const { html: withPlaceholders, images: dataImages } = extractDataImages(prepared.html)
 
+  // Lazy on purpose; see _shared/lazy-jsdom.ts.
+  const { JSDOM } = await import('../_shared/lazy-jsdom')
   const dom = new JSDOM(withPlaceholders)
   const body = dom.window.document.body
 

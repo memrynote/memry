@@ -423,15 +423,22 @@ on the shared tick — do not start another interval.
 
 The desktop main process opens both databases with bounded SQLite page caches:
 
-- `data.db`: `PRAGMA cache_size = -16000` (about 16 MiB)
-- `index.db`: `PRAGMA cache_size = -32000` (about 32 MiB)
+- `data.db`: `PRAGMA cache_size = -8000` (about 8 MiB)
+- `index.db`: `PRAGMA cache_size = -16000` (about 16 MiB)
 - both databases use WAL, `synchronous = NORMAL`, and `temp_store = MEMORY`
 
-The previous caps were about 64 MiB for `data.db` and 128 MiB for `index.db`. A controlled
+SQLite never shrinks a page cache on its own, so the vault-open index build would otherwise leave
+both caches at their cap for the rest of the session. `releaseDatabaseMemory()` runs
+`PRAGMA shrink_memory` on both connections when that build finishes and again when the embedding
+backfill settles.
+
+The original caps were about 64 MiB for `data.db` and 128 MiB for `index.db`. A controlled
 main-process benchmark with 15,000 notes, 5,000 tasks, 2,000 inbox items, FTS, graph links, and
 `sqlite-vec` showed the smaller caches kept focused query latency flat while reducing the maximum
 SQLite page-cache budget by about 144 MiB. Observed warm RSS was effectively flat because SQLite
-does not preallocate the full cache cap.
+does not preallocate the full cache cap. The later cut from 16 / 32 MiB to 8 / 16 MiB repeated the
+benchmark four times per configuration and stayed within run-to-run noise on warm RSS (199.0 vs
+199.2 MiB) and on every query p50. It lowers the ceiling for large vaults, not typical RSS.
 
 | Configuration                               |  Warm RSS | Search p50 / p95 |  Graph p50 / p95 | Tasks p50 / p95 | Inbox p50 / p95 | Vector p50 / p95 |
 | ------------------------------------------- | --------: | ---------------: | ---------------: | --------------: | --------------: | ---------------: |

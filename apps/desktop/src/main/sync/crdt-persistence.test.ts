@@ -7,6 +7,7 @@ const mockTrackMainEvent = vi.hoisted(() => vi.fn())
 const mockExistsSync = vi.hoisted(() => vi.fn())
 const mockRmSync = vi.hoisted(() => vi.fn())
 const mockGuard = vi.hoisted(() => vi.fn())
+const mockLevelCtor = vi.hoisted(() => vi.fn())
 
 const APP_VERSION = '2026.9.14'
 
@@ -56,6 +57,9 @@ vi.mock('../lib/logger', () => ({
 // open LevelDB for real.
 vi.mock('y-leveldb', () => ({
   LeveldbPersistence: class {
+    constructor(...args: unknown[]) {
+      mockLevelCtor(...args)
+    }
     storeUpdate = vi.fn().mockRejectedValue(new Error('binding unavailable in tests'))
     getYDoc = vi.fn()
     clearDocument = vi.fn()
@@ -64,7 +68,11 @@ vi.mock('y-leveldb', () => ({
   }
 }))
 
-import { openCrdtPersistence, shouldSkipCrdtPreflight } from './crdt-persistence'
+import {
+  CRDT_LEVEL_OPTIONS,
+  openCrdtPersistence,
+  shouldSkipCrdtPreflight
+} from './crdt-persistence'
 
 const STORE = '/tmp/memry-test/crdt-store'
 
@@ -148,6 +156,18 @@ describe('openCrdtPersistence telemetry', () => {
 
     expect(reportedEvent()).toMatchObject({
       errorCode: 'CRDT_PERSISTENCE_UNAVAILABLE:probe'
+    })
+  })
+
+  it('opens the store with the bounded LevelDB cache and write buffer', async () => {
+    mockPreflight.mockResolvedValue({ ok: true, transport: 'node' } as CrdtPreflightResult)
+
+    await openCrdtPersistence(STORE)
+
+    expect(mockLevelCtor).toHaveBeenCalledWith(STORE, { levelOptions: CRDT_LEVEL_OPTIONS })
+    expect(CRDT_LEVEL_OPTIONS).toEqual({
+      cacheSize: 2 * 1024 * 1024,
+      writeBufferSize: 1024 * 1024
     })
   })
 

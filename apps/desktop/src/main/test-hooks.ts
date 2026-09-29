@@ -3,11 +3,8 @@ import { broadcastToAllWindows } from './lib/window-broadcast'
 import { join } from 'node:path'
 import { store } from './store'
 import { persistKeysAndRegisterDevice } from './sync/device-registration'
-import {
-  yDocToCanonicalMarkdown,
-  yDocToMarkdown,
-  type SourceRestoreOutcome
-} from './sync/blocknote-converter'
+import type { SourceRestoreOutcome } from './sync/blocknote-converter'
+import { loadBlockNoteConverter } from './sync/blocknote-converter-loader'
 import { readMarkdownSourceFromYDoc } from '@memry/shared/markdown-source'
 import { getCrdtProvider, resetCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
@@ -555,13 +552,14 @@ export function registerTestHooks(): void {
       if (!doc) {
         return null
       }
+      const { yDocToMarkdown } = await loadBlockNoteConverter()
       return yDocToMarkdown(doc)
     },
 
     async hasNoteOnDevice(noteId: string): Promise<NoteOnDeviceStatus> {
       const record = getNoteMetadataById(getDatabase(), noteId)
       const doc = getCrdtProvider().getDoc(noteId)
-      const crdtBody = doc ? await yDocToMarkdown(doc) : null
+      const crdtBody = doc ? await (await loadBlockNoteConverter()).yDocToMarkdown(doc) : null
       return {
         recordPresent: record != null,
         crdtPresent: doc != null,
@@ -577,6 +575,7 @@ export function registerTestHooks(): void {
       const doc = getCrdtProvider().getDoc(noteId)
       const source = doc ? readMarkdownSourceFromYDoc(doc) : null
       if (!doc || source === null) return null
+      const { yDocToCanonicalMarkdown } = await loadBlockNoteConverter()
       return { source, current: await yDocToCanonicalMarkdown(doc) }
     },
 

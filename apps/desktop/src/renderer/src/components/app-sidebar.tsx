@@ -55,7 +55,6 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboar
 import { useModifierHeld } from '@/hooks/use-modifier-held'
 import { newItemViewState } from '@/contexts/tabs/helpers'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
-import { SettingsNav } from '@/pages/settings'
 import { notesService } from '@/services/notes-service'
 import { canvasService, type CanvasSummary } from '@/services/canvas-service'
 import { useTasksOptional } from '@/contexts/tasks'
@@ -77,6 +76,13 @@ import { useT } from '@memry/i18n/renderer'
 import { useFirstRunTour } from '@/components/onboarding/use-first-run-tour'
 
 const log = createLogger('Component:AppSidebar')
+
+// Loaded through import() like SettingsView in App.tsx: `@/pages/settings` pulls
+// in every settings section, and a static import here would keep all of them in
+// the entry chunk while settings is closed.
+const LazySettingsNav = React.lazy(async () => ({
+  default: (await import('@/pages/settings')).SettingsNav
+}))
 
 const mainNav: AppRailItem[] = [
   { title: 'Home', page: 'home', icon: PageHomeIcon },
@@ -862,7 +868,11 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         )}
       >
         <SidebarContent className="flex flex-col overflow-hidden gap-0">
-          {isSettingsOpen && <SettingsNav />}
+          {isSettingsOpen && (
+            <React.Suspense fallback={null}>
+              <LazySettingsNav />
+            </React.Suspense>
+          )}
           {/* Hidden, not unmounted, while settings is open: the tree keeps its
               expansion and scroll position for the way back. */}
           <div className={isSettingsOpen ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>

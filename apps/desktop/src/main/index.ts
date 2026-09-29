@@ -185,7 +185,7 @@ import { reconcileBillingAndSync, startBillingCheckout } from './billing/paddle-
 import { openPairingWindow } from './capture/pairing'
 import { startCaptureServer, stopCaptureServer } from './capture/server'
 import { showPairConsentDialog } from './capture/consent-dialog'
-import { stopChatServer } from './ai-inline/ai-chat-server'
+import { stopChatServerIfLoaded } from './ipc/ai-inline-handlers'
 import {
   startLoginShellPathAugmentation,
   whenLoginShellPathApplied
@@ -2399,7 +2399,7 @@ app.on('before-quit', (event) => {
       name: 'stop-chat-server',
       run: () => {
         shutdownLog.info('stopping AI inline chat server...')
-        return stopChatServer()
+        return stopChatServerIfLoaded()
       }
     },
     {

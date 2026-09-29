@@ -68,6 +68,18 @@ const PENDING_STALE_AFTER_MS = REQUEST_TIMEOUT_MS + 5_000
 export const MAX_CONSECUTIVE_FAILURES = 3
 
 /**
+ * Quiet time after which a healthy worker is shut down to give back its V8
+ * isolate and libsodium WASM heap. The next crypto request respawns it.
+ *
+ * The worker holds no session state — every request carries its own keys — so
+ * a respawned thread is indistinguishable from the one it replaces. Two minutes
+ * rather than the utility processes' 30 s: the engine pulls every 60 s and an
+ * editing session pushes in bursts, so a shorter window would respawn the
+ * thread (and re-initialise libsodium) on almost every batch.
+ */
+export const WORKER_IDLE_SHUTDOWN_MS = 2 * 60_000
+
+/**
  * A protocol-known error reply (`{ type: 'error', requestId }` — e.g. a
  * mixed-build worker answering an unknown message kind).
  *
@@ -90,6 +102,14 @@ export class SyncWorkerBridge {
   private sweepTimer: ReturnType<typeof setInterval> | null = null
   /** Non-null for exactly as long as a stop() is inside its shutdown window. */
   private stopPromise: Promise<void> | null = null
+  private idleShutdownTimer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * True while the thread is down only because it went idle. Such a bridge
+   * still reports `isRunning` and respawns the thread on the next request; an
+   * explicit stop() or a failed respawn clears it.
+   */
+  private idleStopped = false
+  private respawnPromise: Promise<void> | null = null
 
   async start(): Promise<void> {
     // stop() keeps `this.worker` non-null for the whole of its 3 s shutdown
@@ -106,6 +126,10 @@ export class SyncWorkerBridge {
     while (this.stopPromise) await this.stopPromise.catch(() => {})
 
     if (this.worker) return
+
+    // Whatever happens next, the thread is no longer down for being idle: it
+    // either comes up, or it fails and callers fall back to main-thread crypto.
+    this.idleStopped = false
 
     // A freshly spawned thread is not the thread that failed, so it gets a
     // clean slate. Reaching here after a latch (stop() then start()) is the
@@ -137,6 +161,7 @@ export class SyncWorkerBridge {
           worker.off('error', initErrorHandler)
           this.setupMessageHandler()
           log.info('Sync worker ready')
+          this.scheduleIdleShutdown()
           resolve()
         }
       }
@@ -201,7 +226,10 @@ export class SyncWorkerBridge {
         if (pending) {
           clearTimeout(pending.timer)
           this.pendingRequests.delete(msg.requestId)
-          if (this.pendingRequests.size === 0) this.stopSweepTimer()
+          if (this.pendingRequests.size === 0) {
+            this.stopSweepTimer()
+            this.scheduleIdleShutdown()
+          }
           pending.resolve(msg)
           return
         }
@@ -319,12 +347,59 @@ export class SyncWorkerBridge {
     return `req_${++this.requestCounter}_${Date.now()}`
   }
 
+  /**
+   * Stop a healthy worker that has had nothing to do for
+   * WORKER_IDLE_SHUTDOWN_MS. A latched-off thread is left alone, per
+   * recordRequestFailure: it is already out of the routing and stop()/start()
+   * is its recovery path.
+   */
+  private scheduleIdleShutdown(): void {
+    this.clearIdleShutdown()
+    if (!this.worker || this.pendingRequests.size > 0 || this.stopPromise) return
+
+    this.idleShutdownTimer = setTimeout(() => {
+      this.idleShutdownTimer = null
+      if (!this.worker || this.pendingRequests.size > 0 || this.stopPromise) return
+      if (this.latchedOff) return
+
+      log.info('Sync worker idle — stopping until the next crypto request')
+      this.idleStopped = true
+      void this.shutdown().catch((error: unknown) => {
+        log.warn('Sync worker idle shutdown failed', { error })
+      })
+    }, WORKER_IDLE_SHUTDOWN_MS)
+    this.idleShutdownTimer.unref?.()
+  }
+
+  private clearIdleShutdown(): void {
+    if (!this.idleShutdownTimer) return
+    clearTimeout(this.idleShutdownTimer)
+    this.idleShutdownTimer = null
+  }
+
+  /** Bring an idle-stopped thread back; concurrent callers share one spawn. */
+  private respawnIdleWorker(): Promise<void> {
+    if (!this.respawnPromise) {
+      this.respawnPromise = this.start().finally(() => {
+        this.respawnPromise = null
+      })
+    }
+    return this.respawnPromise
+  }
+
   private sendRequest(
     msg: MainToWorkerMessage & { requestId: string }
   ): Promise<WorkerToMainMessage> {
+    // Checked before `this.worker`: an idle shutdown keeps the field set until
+    // the thread exits, and posting to that exiting thread would reject with
+    // 'Worker exited' and count toward the latch. start() waits the stop out.
+    if (this.idleStopped) {
+      return this.respawnIdleWorker().then(() => this.sendRequest(msg))
+    }
     if (!this.worker) {
       return Promise.reject(new Error('Worker not started'))
     }
+    this.clearIdleShutdown()
 
     if (this.pendingRequests.size >= MAX_PENDING_REQUESTS) {
       // Never enqueued, so nothing to sweep later. The caller degrades to
@@ -339,7 +414,10 @@ export class SyncWorkerBridge {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(msg.requestId)
-        if (this.pendingRequests.size === 0) this.stopSweepTimer()
+        if (this.pendingRequests.size === 0) {
+          this.stopSweepTimer()
+          this.scheduleIdleShutdown()
+        }
         reject(new Error(`Worker request timed out: ${msg.type}`))
       }, REQUEST_TIMEOUT_MS)
 
@@ -464,11 +542,24 @@ export class SyncWorkerBridge {
   // answer again, and a batch handed to it inside the shutdown window buys a
   // full REQUEST_TIMEOUT_MS wait and a latch step for a reply that is not
   // coming. Main-thread crypto is the same crypto and is available now.
+  //
+  // An idle-stopped bridge still counts as running: the thread is down only to
+  // save memory, and the next request respawns it.
   get isRunning(): boolean {
-    return this.worker !== null && !this.latchedOff && this.stopPromise === null
+    return (
+      (this.worker !== null || this.idleStopped) && !this.latchedOff && this.stopPromise === null
+    )
   }
 
   stop(): Promise<void> {
+    // An explicit stop means stopped, not idle: nothing may respawn the thread
+    // behind the lifecycle caller's back.
+    this.idleStopped = false
+    this.clearIdleShutdown()
+    return this.shutdown()
+  }
+
+  private shutdown(): Promise<void> {
     // A second stop() means the same thing as the one already in flight —
     // posting another shutdown and racing a second exit against the same thread
     // only gives the two overlapping windows to null `this.worker` out from

@@ -1,4 +1,14 @@
-import { Activity, useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import {
+  Activity,
+  lazy,
+  Suspense,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef
+} from 'react'
 import { MotionConfig } from 'motion/react'
 import { useToday } from '@/hooks/use-today'
 import { resolveProjectReorderTarget } from '@/components/sidebar/sidebar-drag-types'
@@ -40,7 +50,7 @@ import { useTabSessionPersistence } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
 import { TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer } from '@/components/split-view'
-import { ChordIndicator, KeyboardShortcutsDialog } from '@/components/keyboard'
+import { ChordIndicator } from '@/components/keyboard'
 import {
   useTabKeyboardShortcuts,
   useChordShortcuts,
@@ -63,10 +73,8 @@ import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { requestVaultSwitcherOpen } from '@/lib/vault-switcher-open'
 import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
-import { CommandPalette } from '@/components/search/command-palette'
 import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
 import { onOpenSettingsRequested } from '@/lib/settings-navigation'
-import { SettingsView } from '@/components/settings-view'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
 import { useJournalChangeEvents } from '@/hooks/use-journal-change-events'
@@ -77,7 +85,6 @@ import { useMenuCommands } from '@/hooks/use-menu-commands'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { IncidentReportProvider } from '@/components/diagnostics/incident-report-provider'
-import { VaultOnboarding } from '@/components/vault-onboarding'
 import { VaultSwitchingScreen } from '@/components/vault-switching-screen'
 import { VaultSwitchContentCover } from '@/components/vault-switch-content-cover'
 import {
@@ -114,6 +121,26 @@ import { HomeTabTitleSync } from '@/components/tabs/home-tab-title-sync'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
+
+// Shell surfaces that are closed on first paint load through import() so their
+// dependency trees stay out of the entry chunk. The settings pages behind
+// SettingsView and first-run onboarding are the large ones.
+const loadCommandPalette = () => import('@/components/search/command-palette')
+const LazyCommandPalette = lazy(async () => ({
+  default: (await loadCommandPalette()).CommandPalette
+}))
+const LazyKeyboardShortcutsDialog = lazy(async () => ({
+  default: (await import('@/components/keyboard/keyboard-shortcuts-dialog')).KeyboardShortcutsDialog
+}))
+const LazySettingsView = lazy(async () => ({
+  default: (await import('@/components/settings-view')).SettingsView
+}))
+const LazyVaultOnboarding = lazy(async () => ({
+  default: (await import('@/components/vault-onboarding')).VaultOnboarding
+}))
+
+/** Upper bound on waiting for an idle slot before the palette mounts anyway. */
+const COMMAND_PALETTE_IDLE_TIMEOUT_MS = 2000
 
 // Base pages (non-task)
 export type BasePage = 'inbox' | 'journal' | 'calendar' | 'graph'
@@ -231,6 +258,32 @@ const AppContent = (): React.JSX.Element => {
   const { openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+
+  // The palette mounts closed once the window is idle, so the first ⌘K opens an
+  // already loaded and initialized palette. Opening it earlier mounts it then.
+  // Both stay mounted afterwards, as they did when they were eager.
+  const [commandPaletteMounted, setCommandPaletteMounted] = useState(false)
+  if (searchOpen && !commandPaletteMounted) setCommandPaletteMounted(true)
+  const [shortcutsDialogMounted, setShortcutsDialogMounted] = useState(false)
+  if (showShortcutsDialog && !shortcutsDialogMounted) setShortcutsDialogMounted(true)
+
+  useEffect(() => {
+    const mountPalette = (): void => {
+      loadCommandPalette().then(
+        () => setCommandPaletteMounted(true),
+        (error: unknown) => log.warn('Command palette preload failed', error)
+      )
+    }
+    // jsdom has no requestIdleCallback; Chromium always does.
+    if (typeof window.requestIdleCallback !== 'function') {
+      const timer = setTimeout(mountPalette, 0)
+      return () => clearTimeout(timer)
+    }
+    const handle = window.requestIdleCallback(mountPalette, {
+      timeout: COMMAND_PALETTE_IDLE_TIMEOUT_MS
+    })
+    return () => window.cancelIdleCallback(handle)
+  }, [])
 
   // Fire `page_viewed` whenever the active tab type changes. Only ever surface enums,
   // never tab titles, file paths, or note IDs.
@@ -434,7 +487,13 @@ const AppContent = (): React.JSX.Element => {
       <div className={isSettingsOpen ? 'hidden' : 'flex flex-1 overflow-hidden'} id="main-content">
         <SplitViewContainer />
       </div>
-      {isSettingsOpen ? <SettingsView /> : <GlobalDayPanel />}
+      {isSettingsOpen ? (
+        <Suspense fallback={null}>
+          <LazySettingsView />
+        </Suspense>
+      ) : (
+        <GlobalDayPanel />
+      )}
 
       {/* Chord Indicator */}
       <ChordIndicator isActive={isChordActive} />
@@ -444,13 +503,21 @@ const AppContent = (): React.JSX.Element => {
       <HintIndicator />
 
       {/* Keyboard Shortcuts Dialog */}
-      <KeyboardShortcutsDialog
-        isOpen={showShortcutsDialog}
-        onClose={() => setShowShortcutsDialog(false)}
-      />
+      {shortcutsDialogMounted && (
+        <Suspense fallback={null}>
+          <LazyKeyboardShortcutsDialog
+            isOpen={showShortcutsDialog}
+            onClose={() => setShowShortcutsDialog(false)}
+          />
+        </Suspense>
+      )}
 
       {/* Global Search Command Palette */}
-      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+      {commandPaletteMounted && (
+        <Suspense fallback={null}>
+          <LazyCommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+        </Suspense>
+      )}
     </TabDragProvider>
   )
 }
@@ -647,8 +714,12 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
 // VAULT STACK
 // =============================================================================
 
-/** Vault workspaces kept mounted, the open one included. */
-const MAX_KEPT_VAULTS = 3
+/**
+ * Vault workspaces kept mounted, the open one included. Two keeps the previous
+ * vault warm for switching back and forth; every extra one holds a full hidden
+ * workspace (DOM, tabs, query cache) in memory.
+ */
+const MAX_KEPT_VAULTS = 2
 
 /**
  * Main opens one vault at a time, but the renderer does not have to forget the
@@ -907,7 +978,9 @@ function App(): React.JSX.Element {
               )
             }
           >
-            <VaultOnboarding />
+            <Suspense fallback={null}>
+              <LazyVaultOnboarding />
+            </Suspense>
           </TabErrorBoundary>
         </IncidentReportProvider>
         <UpdateInstallFailedDialog />

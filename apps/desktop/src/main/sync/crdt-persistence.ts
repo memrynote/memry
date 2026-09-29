@@ -20,6 +20,21 @@ const PERSISTENCE_PROBE_KEY = '__memry_crdt_probe__'
 const PERSISTENCE_PROBE_TIMEOUT_MS = 15_000
 
 /**
+ * classic-level memory knobs, passed through y-leveldb's `levelOptions`.
+ *
+ * The defaults (8 MiB block cache, 4 MiB write buffer, up to two buffers live)
+ * are sized for a server. Here every read is one note's update log, loaded once
+ * into a Y.Doc that then stays in memory, so the block cache barely hits, and
+ * writes are small per-keystroke updates. Both are runtime-only settings: the
+ * on-disk format is unchanged, and a store written with either size opens with
+ * the other.
+ */
+export const CRDT_LEVEL_OPTIONS = {
+  cacheSize: 2 * 1024 * 1024,
+  writeBufferSize: 1024 * 1024
+} as const
+
+/**
  * Consecutive in-memory launches after which this build stops running the
  * preflight at all.
  *
@@ -177,7 +192,9 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
     if (!preflight.ok) {
       throw new Error(`CRDT store preflight failed: ${preflight.reason ?? 'unknown'}`)
     }
-    const persistence = new LeveldbPersistence(storagePath) as CrdtPersistence
+    const persistence = new LeveldbPersistence(storagePath, {
+      levelOptions: CRDT_LEVEL_OPTIONS
+    }) as CrdtPersistence
     await probePersistence(persistence)
     log.debug('CrdtProvider persistence initialized', { storagePath })
     return persistence

@@ -3,7 +3,7 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { AIInlineChannels, AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 
-import { startChatServer, stopChatServer, getServerPort } from '../ai-inline/ai-chat-server'
+import type * as AIChatServer from '../ai-inline/ai-chat-server'
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { getSetting, setSetting } from '../settings/settings-store'
@@ -15,6 +15,39 @@ const logger = createLogger('IPC:AIInline')
 
 const SETTINGS_KEY = 'ai-inline'
 const MASKED_KEY = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'
+
+let chatServerLoad: Promise<typeof AIChatServer> | null = null
+let chatServer: typeof AIChatServer | null = null
+
+// Lazy on purpose: ai-chat-server imports `ai`, `@blocknote/xl-ai/server` and
+// the @ai-sdk providers, which stay out of the main process until the user
+// actually starts inline AI. See scripts/check-main-startup-set.mjs.
+function loadChatServer(): Promise<typeof AIChatServer> {
+  if (!chatServerLoad) {
+    chatServerLoad = import('../ai-inline/ai-chat-server').then(
+      (loaded) => {
+        chatServer = loaded
+        return loaded
+      },
+      (error: unknown) => {
+        chatServerLoad = null
+        throw error
+      }
+    )
+  }
+  return chatServerLoad
+}
+
+/**
+ * Stop the inline AI chat server if this session ever loaded it. A server can
+ * only be running once its module has loaded, so an unloaded module means
+ * there is nothing to stop and nothing to import on the way out.
+ */
+export async function stopChatServerIfLoaded(): Promise<void> {
+  if (!chatServerLoad) return
+  const loaded = await chatServerLoad.catch(() => null)
+  await loaded?.stopChatServer()
+}
 
 function getDbOrNull() {
   try {
@@ -72,8 +105,9 @@ export function registerAIInlineHandlers(): void {
     }
   )
 
+  // Answered without loading the server: an unloaded module has no server.
   ipcMain.handle(AIInlineChannels.invoke.GET_SERVER_PORT, () => {
-    return getServerPort()
+    return chatServer?.getServerPort() ?? null
   })
 
   ipcMain.handle(
@@ -83,13 +117,14 @@ export function registerAIInlineHandlers(): void {
       if (!settings.enabled) {
         return { success: false, error: getMainI18n().t('errors:ai.inlineDisabled') }
       }
+      const { startChatServer } = await loadChatServer()
       const port = await startChatServer(settings)
       return { success: true, port }
     }, 'errors:generic.unknown')
   )
 
   ipcMain.handle(AIInlineChannels.invoke.STOP_SERVER, async () => {
-    await stopChatServer()
+    await stopChatServerIfLoaded()
     return { success: true }
   })
 

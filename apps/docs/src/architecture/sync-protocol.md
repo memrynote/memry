@@ -2086,6 +2086,15 @@ rejected at the door and fall to the main thread, which is the same degradation 
 already triggers. A sweep runs while requests are outstanding and collects any request that outlived
 its own timeout, and it stops itself as soon as nothing is pending, so an idle bridge costs nothing.
 
+A healthy worker that has had no request for two minutes is stopped to give back its V8 isolate and
+libsodium heap. The bridge still reports itself running while the thread is down for being idle, so
+crypto keeps routing to it, and the next request spawns a fresh thread; concurrent requests share
+that spawn. A request that arrives after the idle stop began but before the old thread exited waits
+for the fresh thread instead of being posted to the exiting one, so it cannot count toward the
+failure latch. An explicit stop stays stopped, a failed respawn falls back to main-thread crypto,
+and a latched-off worker is never idle-stopped. The first batch after an idle stop pays the thread
+and libsodium startup, which runs off the UI path.
+
 Shutting the bridge down asks the worker to exit and waits three seconds before terminating it. A
 worker that misses that window is fully detached first, so the exit that terminating eventually
 produces cannot land on a bridge that has already been restarted and cancel the new worker's

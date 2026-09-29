@@ -24,7 +24,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as crypto from 'crypto'
-import { JSDOM } from 'jsdom'
 import { parseEnex, prepareEnml, resourceByHash } from '@memry/importers/evernote'
 import { IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 import { createImportedNote } from '../_shared/imported-note'
@@ -136,6 +135,8 @@ export const evernoteImporter: Importer = {
           const mediaHtml = substituteEnMedia(innerHtml)
 
           // Parse the HTML fragment in jsdom
+          // Lazy on purpose; see _shared/lazy-jsdom.ts.
+          const { JSDOM } = await import('../_shared/lazy-jsdom')
           const dom = new JSDOM(`<html><body>${mediaHtml}</body></html>`)
           const body = dom.window.document.body
 

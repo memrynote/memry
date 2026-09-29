@@ -1,4 +1,3 @@
-import { JSDOM } from 'jsdom'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { createImportedNote } from '../_shared/imported-note'
@@ -96,6 +95,8 @@ export const htmlImporter: Importer = {
 
       try {
         const html = await fs.readFile(sourcePath, 'utf8')
+        // Lazy on purpose; see _shared/lazy-jsdom.ts.
+        const { JSDOM } = await import('../_shared/lazy-jsdom')
         const doc = new JSDOM(html).window.document
         const title = extractTitle(doc, sourcePath)
         descriptors.push({ relPath: path.basename(sourcePath), absPath: sourcePath, title })
@@ -125,6 +126,7 @@ export const htmlImporter: Importer = {
         ctx.status(importingItemStatus(notePlan.title))
 
         const html = await fs.readFile(notePlan.absPath, 'utf8')
+        const { JSDOM } = await import('../_shared/lazy-jsdom')
         const doc = new JSDOM(html).window.document
 
         const { markdown, assets } = htmlToMarkdown(doc.body, {
