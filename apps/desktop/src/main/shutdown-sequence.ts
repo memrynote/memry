@@ -34,8 +34,10 @@ const log = createLogger('ShutdownSequence')
  * + 3,000 ms  voice + image + embeddings utility stops (now run concurrently,
  *             so 3,000 ms together instead of 9,000 ms in a row)
  * = 5,000 ms  of bounded waiting, leaving 3,000 ms of headroom for the
- *             unbounded steps (close snapshots, local servers, telemetry flush,
- *             final sync push, vault close).
+ *             remaining steps (close snapshots, local servers, sync stop, vault
+ *             close). The final snapshot push and the telemetry flush draw on
+ *             that headroom only through their own clamps below, so neither can
+ *             starve the vault close (#2522).
  *
  * A quit where nothing is wedged still finishes in milliseconds; this ceiling is
  * only ever reached when a teardown step is genuinely stuck.
@@ -56,6 +58,43 @@ export const SHUTDOWN_LAST_CHANCE_MS = 1_500
  * path can exit on its own (8,000 + 1,500).
  */
 export const SHUTDOWN_HARD_BACKSTOP_MS = 10_000
+
+/**
+ * Ceiling on the final CRDT snapshot push in `stop-sync-runtime`. Unbounded, it
+ * retried each note with 2s/4s/8s backoff one note at a time and routinely
+ * outlived the whole budget (#2522). Skipping it is the same outcome as an
+ * offline quit or an update install, which already skip it.
+ */
+export const SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS = 2_000
+
+/**
+ * Budget the final snapshot push must leave for the steps behind it
+ * (provider flush, vault close: watcher, projection drain, activity log,
+ * SQLite checkpoint). Without it a slow push ran `close-vault` out of time.
+ */
+export const SHUTDOWN_CLOSE_VAULT_RESERVE_MS = 2_000
+
+/**
+ * Ceiling on the telemetry + log-ship flush. Both queues are mirrored to disk
+ * on every enqueue and drain on the next launch, so an unsent batch is delayed,
+ * not lost; a network flush must never hold a quit open.
+ */
+export const SHUTDOWN_TELEMETRY_FLUSH_MS = 1_000
+
+/**
+ * The final snapshot push's timeout: `SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS`, clamped
+ * so `SHUTDOWN_CLOSE_VAULT_RESERVE_MS` of the shared budget is still left after
+ * it. Zero when the budget is already that thin: the push is skipped outright.
+ */
+export function finalSnapshotPushTimeoutMs(deadline: ShutdownDeadline): number {
+  return Math.max(
+    0,
+    Math.min(
+      SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS,
+      deadline.remainingMs() - SHUTDOWN_CLOSE_VAULT_RESERVE_MS
+    )
+  )
+}
 
 export interface ShutdownDeadline {
   /** Milliseconds left in the shared budget. Never negative. */
@@ -95,7 +134,15 @@ export interface ShutdownOutcome {
  */
 export async function runShutdownSequence(
   steps: readonly ShutdownStep[],
-  options: { budgetMs?: number } = {}
+  options: {
+    budgetMs?: number
+    /**
+     * Called synchronously as each step starts. The quit path persists the name
+     * here, so a process that dies mid-step (and never sees the outcome) still
+     * leaves the step behind for the next launch to report.
+     */
+    onStepStart?: (name: string) => void
+  } = {}
 ): Promise<ShutdownOutcome> {
   const budgetMs = options.budgetMs ?? SHUTDOWN_BUDGET_MS
   const startedAt = Date.now()
@@ -115,6 +162,7 @@ export async function runShutdownSequence(
     for (const step of steps) {
       const stepStartedAt = Date.now()
       inFlight = { name: step.name, startedAt: stepStartedAt }
+      options.onStepStart?.(step.name)
       await step.run(deadline)
       log.info('step complete', { step: step.name, elapsedMs: Date.now() - stepStartedAt })
       inFlight = null

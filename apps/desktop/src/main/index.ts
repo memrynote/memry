@@ -109,7 +109,8 @@ import {
   clearCrashMarker,
   detectUncleanShutdown,
   installCrashMarker,
-  markShutdownFailure
+  markShutdownFailure,
+  markShutdownStep
 } from './telemetry/crash-marker'
 import { detectFailedUpdateInstall } from './telemetry/update-install-marker'
 import {
@@ -146,11 +147,14 @@ import { stopSyncRuntime } from './sync/runtime'
 import { beginAppShutdown, isAppShuttingDown } from './app-shutdown'
 import {
   completeWithin,
+  finalSnapshotPushTimeoutMs,
   runShutdownSequence,
   SHUTDOWN_HARD_BACKSTOP_MS,
   SHUTDOWN_LAST_CHANCE_MS,
+  SHUTDOWN_TELEMETRY_FLUSH_MS,
   type ShutdownStep
 } from './shutdown-sequence'
+import { flushActivityLog } from './vault/activity-log'
 import { getValidAccessToken } from './sync/token-manager'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { closeAllDatabases, getIndexDatabase } from './database/client'
@@ -2283,10 +2287,16 @@ async function createCloseSnapshots(): Promise<void> {
  * budget is gone. A hung teardown degrades to a slow quit, not to lost work.
  */
 async function flushDurabilityBeforeForcedExit(): Promise<void> {
+  // The activity log buffers entries for 250ms and is otherwise flushed only
+  // by closeVault() near the end of the chain, so a timed-out close dropped
+  // them (#2522).
   const flushed = await completeWithin(
-    flushPendingWritebacks().catch((error) => {
-      shutdownLog.error('last-chance write-back flush failed', error)
-    }),
+    Promise.all([
+      flushPendingWritebacks().catch((error) => {
+        shutdownLog.error('last-chance write-back flush failed', error)
+      }),
+      flushActivityLog()
+    ]),
     SHUTDOWN_LAST_CHANCE_MS
   )
   if (!flushed) shutdownLog.error('last-chance write-back flush did not finish in time')
@@ -2340,6 +2350,10 @@ app.on('before-quit', (event) => {
   // guarantees the process always exits.
   const hardBackstop = setTimeout(() => {
     shutdownLog.error('hard backstop reached')
+    // No-op after a completed cleanup cleared the marker. Otherwise it keeps
+    // the step markShutdownStep stamped, instead of exiting as a bare
+    // UNCLEAN_SHUTDOWN with step=unknown (#2522).
+    markShutdownFailure('timeout')
     forceExit()
   }, SHUTDOWN_HARD_BACKSTOP_MS)
 
@@ -2359,6 +2373,12 @@ app.on('before-quit', (event) => {
       // exactly why a timed-out quit dropped the last seconds of typing.
       name: 'flush-writebacks',
       run: () => flushPendingWritebacks()
+    },
+    {
+      // Buffered vault activity entries -> activity.jsonl. Otherwise written
+      // only inside closeVault(), behind every network-bound step (#2522).
+      name: 'flush-activity-log',
+      run: () => flushActivityLog()
     },
     { name: 'close-snapshots', run: () => createCloseSnapshots() },
     {
@@ -2426,19 +2446,8 @@ app.on('before-quit', (event) => {
       }
     },
     {
-      name: 'flush-telemetry',
-      run: async () => {
-        shutdownLog.info('stopping active heartbeat...')
-        stopActiveHeartbeat()
-        shutdownLog.info('flushing log-ship transport...')
-        await getLogShip()?.dispose()
-        shutdownLog.info('flushing telemetry runtime...')
-        return disposeTelemetryRuntime()
-      }
-    },
-    {
       name: 'stop-sync-runtime',
-      run: () => {
+      run: (deadline) => {
         // When installing an update, skip the final CRDT snapshot push: it's an
         // unbounded network round-trip that can stall shutdown for tens of
         // seconds (and the installer is about to swap the binary anyway). The
@@ -2448,8 +2457,10 @@ app.on('before-quit', (event) => {
           shutdownLog.info('stopping sync runtime (skip final push for update)...')
           return stopSyncRuntime({ skipFinalSync: true })
         }
+        // The final push is bounded so it cannot eat the budget the provider
+        // flush and close-vault behind it need (#2522).
         shutdownLog.info('stopping sync runtime...')
-        return stopSyncRuntime()
+        return stopSyncRuntime({ finalSyncTimeoutMs: finalSnapshotPushTimeoutMs(deadline) })
       }
     },
     {
@@ -2458,10 +2469,28 @@ app.on('before-quit', (event) => {
         shutdownLog.info('closing vault and stopping watcher...')
         return closeVault()
       }
+    },
+    {
+      // Last, and bounded: both queues are mirrored to disk and drain on the
+      // next launch, so a flush cut short delays events instead of losing them.
+      // It used to sit ahead of the sync stop and vault close, where a slow
+      // network (each request may wait up to 30s) spent the budget those
+      // durability steps needed (#2522).
+      name: 'flush-telemetry',
+      run: async (deadline) => {
+        shutdownLog.info('stopping active heartbeat...')
+        stopActiveHeartbeat()
+        shutdownLog.info('flushing log-ship transport and telemetry runtime...')
+        const flushed = await completeWithin(
+          Promise.allSettled([getLogShip()?.dispose(), disposeTelemetryRuntime()]),
+          deadline.cap(SHUTDOWN_TELEMETRY_FLUSH_MS)
+        )
+        if (!flushed) shutdownLog.warn('telemetry flush cut short; queued events ship next launch')
+      }
     }
   ]
 
-  runShutdownSequence(steps)
+  runShutdownSequence(steps, { onStepStart: markShutdownStep })
     .then(async (outcome) => {
       if (outcome.status === 'timeout') {
         // Stamped before anything else: whatever happens next, the next launch

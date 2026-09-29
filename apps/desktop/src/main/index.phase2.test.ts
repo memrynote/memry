@@ -73,6 +73,8 @@ const stopSyncRuntimeMock = vi.fn(async () => undefined)
 const flushPendingWritebacksMock = vi.fn(async () => undefined)
 const closeAllDatabasesMock = vi.fn()
 const markShutdownFailureMock = vi.fn()
+const markShutdownStepMock = vi.fn()
+const flushActivityLogMock = vi.fn(async () => undefined)
 const stopEmbeddingModelMock = vi.fn(async () => undefined)
 const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
 const stopGoogleCalendarSyncRunnerMock = vi.fn()
@@ -304,7 +306,12 @@ vi.mock('./telemetry/crash-marker', () => ({
   clearCrashMarker: vi.fn(),
   detectUncleanShutdown: vi.fn(),
   installCrashMarker: vi.fn(),
-  markShutdownFailure: markShutdownFailureMock
+  markShutdownFailure: markShutdownFailureMock,
+  markShutdownStep: markShutdownStepMock
+}))
+
+vi.mock('./vault/activity-log', () => ({
+  flushActivityLog: flushActivityLogMock
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
@@ -2317,6 +2324,7 @@ describe('main index phase2 exports', () => {
     expect(markShutdownFailureMock).toHaveBeenCalledWith('timeout', 'close-vault')
     await flushUntil(() => vi.mocked(app.exit).mock.calls.length > 0)
     expect(flushPendingWritebacksMock).toHaveBeenCalled()
+    expect(flushActivityLogMock).toHaveBeenCalled()
     expect(closeAllDatabasesMock).toHaveBeenCalled()
     expect(app.exit).toHaveBeenCalledWith(1)
   })
@@ -2365,6 +2373,56 @@ describe('main index phase2 exports', () => {
     await flushUntil(() => vi.mocked(app.exit).mock.calls.length > 0)
 
     expect(app.exit).toHaveBeenCalledWith(1)
+  })
+
+  // #2522: a network-bound telemetry flush sat ahead of the vault close and
+  // ran the quit out of budget; a process that died mid-step reported
+  // step=unknown.
+  it('closes the vault before a hung telemetry flush, which cannot hold the quit open', async () => {
+    // #given a telemetry flush that never settles
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    disposeTelemetryRuntimeMock.mockImplementationOnce(() => new Promise(() => {}))
+
+    await importMainModule()
+    await flushReadyWork()
+    const { app } = await import('electron')
+    const { SHUTDOWN_TELEMETRY_FLUSH_MS } = await import('./shutdown-sequence')
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    completeFlush(browserWindows[0])
+    await flushUntil(() => disposeTelemetryRuntimeMock.mock.calls.length > 0)
+
+    // #then the vault was already closed and the activity log flushed
+    expect(closeVaultMock).toHaveBeenCalled()
+    expect(flushActivityLogMock).toHaveBeenCalled()
+    expect(stopSyncRuntimeMock).toHaveBeenCalledWith({ finalSyncTimeoutMs: expect.any(Number) })
+
+    // #when the telemetry cap passes
+    await vi.advanceTimersByTimeAsync(SHUTDOWN_TELEMETRY_FLUSH_MS)
+    await flushUntil(() => vi.mocked(app.quit).mock.calls.length > 0)
+
+    // #then the quit completes cleanly, and every step was stamped as it began
+    expect(app.quit).toHaveBeenCalled()
+    expect(app.exit).not.toHaveBeenCalled()
+    expect(markShutdownFailureMock).not.toHaveBeenCalled()
+    expect(markShutdownStepMock.mock.calls.map(([step]) => step)).toEqual([
+      'flush-windows',
+      'flush-writebacks',
+      'flush-activity-log',
+      'close-snapshots',
+      'stop-schedulers',
+      'stop-capture-server',
+      'stop-chat-server',
+      'stop-utility-processes',
+      'stop-sync-runtime',
+      'close-vault',
+      'flush-telemetry'
+    ])
   })
 
   it('starts the crash reporter without ever uploading minidumps', async () => {

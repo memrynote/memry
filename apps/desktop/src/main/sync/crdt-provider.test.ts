@@ -1104,6 +1104,24 @@ describe('CrdtProvider', () => {
     expect(pushSnapshot).not.toHaveBeenCalled()
   })
 
+  it('stops the snapshot walk before the next note once aborted', async () => {
+    // #given two notes with pending snapshots and a push that aborts the walk
+    await provider.open('note-1', undefined, { skipSeed: true })
+    await provider.open('note-2', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Pending one' })
+    provider.updateMeta('note-2', { title: 'Pending two' })
+    const abort = new AbortController()
+    pushSnapshot.mockImplementationOnce(async () => {
+      abort.abort()
+    })
+
+    // #when the shutdown walk runs under that signal
+    await expect(provider.pushAllSnapshots(abort.signal)).resolves.toBe(1)
+
+    // #then the note in flight finished and the second was never sent
+    expect(pushSnapshot).toHaveBeenCalledTimes(1)
+  })
+
   describe('purging the doc of a note the user deleted', () => {
     beforeEach(async () => {
       await provider.open('note-1', undefined, { skipSeed: true })

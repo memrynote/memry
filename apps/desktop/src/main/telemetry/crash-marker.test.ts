@@ -18,7 +18,8 @@ import {
   clearCrashMarker,
   detectUncleanShutdown,
   installCrashMarker,
-  markShutdownFailure
+  markShutdownFailure,
+  markShutdownStep
 } from './crash-marker'
 import { trackMainEvent } from './track'
 
@@ -237,6 +238,69 @@ describe('crash marker', () => {
       'app_crashed',
       expect.objectContaining({ errorCode: 'SHUTDOWN_TIMEOUT' })
     )
+  })
+
+  // #2522: a process that died mid-shutdown (hard backstop, OS kill during
+  // logout) never reached markShutdownFailure and reported step=unknown.
+  it('names the in-flight step of a shutdown that died before reporting a failure', () => {
+    // #given a shutdown that got as far as closing the vault, then died
+    installCrashMarker('session-1', '1.2.3')
+    markShutdownStep('flush-windows')
+    markShutdownStep('close-vault')
+
+    // #when the next launch detects the leftover marker
+    detectUncleanShutdown()
+
+    // #then the code is unchanged but the message names the real step
+    expect(trackMainEvent).toHaveBeenCalledWith(
+      'app_crashed',
+      expect.objectContaining({
+        errorCode: 'UNCLEAN_SHUTDOWN',
+        error: { message: expect.stringContaining('[step=close-vault]') }
+      })
+    )
+  })
+
+  it('keeps the stamped step when a failure is reported without one', () => {
+    // #given a cleanup chain that rejected inside stop-sync-runtime
+    installCrashMarker('session-1', '1.2.3')
+    markShutdownStep('stop-sync-runtime')
+    markShutdownFailure('cleanup_error')
+
+    // #when the next launch detects it
+    detectUncleanShutdown()
+
+    // #then the failing step survives into the report
+    expect(trackMainEvent).toHaveBeenCalledWith(
+      'app_crashed',
+      expect.objectContaining({
+        errorCode: 'SHUTDOWN_CLEANUP_FAILED',
+        error: { message: expect.stringContaining('[step=stop-sync-runtime]') }
+      })
+    )
+  })
+
+  it('stops the alive tick once shutdown begins so it cannot erase the stamp', () => {
+    vi.useFakeTimers()
+    try {
+      // #given a timed-out shutdown stamped on the marker
+      installCrashMarker('session-1', '1.2.3')
+      markShutdownStep('flush-telemetry')
+      markShutdownFailure('timeout')
+
+      // #when an alive tick would have fired before the process exited
+      vi.advanceTimersByTime(120_000)
+
+      // #then the marker still carries the failure and the step
+      const marker = JSON.parse(fs.readFileSync(markerFile(), 'utf-8')) as {
+        shutdownFailure?: string
+        shutdownStep?: string
+      }
+      expect(marker.shutdownFailure).toBe('timeout')
+      expect(marker.shutdownStep).toBe('flush-telemetry')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('survives an unwritable userData without throwing', () => {

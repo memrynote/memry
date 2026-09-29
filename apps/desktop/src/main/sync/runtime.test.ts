@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SNAPSHOT_BATCH_WINDOW_MS } from '@memry/sync-client/crdt-snapshot-scheduler'
+import { isKeychainUnreadableError } from '../crypto/vault-key-error'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -476,6 +477,14 @@ vi.mock('./vault-account-binding', () => ({
   resetVaultBindingState: vi.fn()
 }))
 
+// The retry/backoff itself is covered by keychain-retry.test.ts; here only the
+// runtime's routing matters, so the mock keeps the real classification.
+const keychainRetryMocks = vi.hoisted(() => ({
+  pauseForKeychain: vi.fn()
+}))
+
+vi.mock('./keychain-retry', () => keychainRetryMocks)
+
 vi.mock('./key-verification', () => ({
   // 'unknown' = account verifier unavailable → runtime proceeds as before.
   checkLocalKeyAgainstAccount: vi.fn().mockResolvedValue('unknown'),
@@ -545,6 +554,9 @@ describe('sync runtime', () => {
     runtimeMocks.getDatabase.mockReturnValue(runtimeMocks.db.db)
     runtimeMocks.getIndexDatabase.mockReturnValue(createIndexDb())
     runtimeMocks.retrieveToken.mockResolvedValue('refresh-token')
+    keychainRetryMocks.pauseForKeychain.mockImplementation((error: unknown) =>
+      isKeychainUnreadableError(error)
+    )
     runtimeMocks.storeGet.mockReturnValue({})
     runtimeMocks.getValidAccessToken.mockResolvedValue('access-token')
     runtimeMocks.getOrInitializeLocalVaultKey.mockResolvedValue(new Uint8Array([1, 2, 3]))
@@ -602,6 +614,56 @@ describe('sync runtime', () => {
       verificationError
     )
     expect(runtime.getSyncEngine()).toBeNull()
+  })
+
+  describe('unreadable keychain (#2521)', () => {
+    it('pauses with a retry, not a recovery prompt, when the master key is unreadable this run', async () => {
+      const unreadable = new Error(
+        'Failed to retrieve key from keychain (master-key): Secret com.memry.sync/master-key exists in the secret store but could not be read this run; refusing to report it as absent'
+      )
+      runtimeMocks.getOrInitializeLocalVaultKey.mockRejectedValueOnce(unreadable)
+      const runtime = await loadRuntime()
+
+      await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+      expect(keychainRetryMocks.pauseForKeychain).toHaveBeenCalledWith(unreadable, {
+        start: runtime.startSyncRuntime,
+        emitStatus: expect.any(Function)
+      })
+      expect(runtimeMocks.logError).not.toHaveBeenCalledWith(
+        'Sync runtime unavailable: vault key verification failed',
+        unreadable
+      )
+      const sentChannels = runtimeMocks.browserSend.mock.calls.map((call) => call[0])
+      expect(sentChannels).not.toContain('sync:vault-recovery-needed')
+      expect(runtimeMocks.SyncEngine.instances).toHaveLength(0)
+    })
+
+    it('pauses with a retry when the refresh token read hits a latched keychain', async () => {
+      const latched = new Error(
+        'Failed to retrieve key from keychain (refresh-token): OS keychain is unavailable until it answers an earlier request (com.memry.sync/refresh-token)'
+      )
+      runtimeMocks.retrieveToken.mockRejectedValueOnce(latched)
+      const runtime = await loadRuntime()
+
+      await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+      expect(keychainRetryMocks.pauseForKeychain).toHaveBeenCalledWith(latched, expect.anything())
+      expect(runtimeMocks.logError).not.toHaveBeenCalledWith(
+        'Failed to start sync runtime',
+        latched
+      )
+    })
+
+    it('still fails loudly on a start error that is not about the keychain', async () => {
+      const boom = new Error('network down')
+      runtimeMocks.retrieveToken.mockRejectedValueOnce(boom)
+      const runtime = await loadRuntime()
+
+      await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+      expect(runtimeMocks.logError).toHaveBeenCalledWith('Failed to start sync runtime', boom)
+    })
   })
 
   it('continues startup with main-thread crypto when the sync worker fails to init', async () => {
@@ -1438,6 +1500,43 @@ describe('sync runtime', () => {
 
     expect(runtimeMocks.crdtProvider.destroy).toHaveBeenCalled()
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  // #2522: the final push retried each note with backoff, one at a time, and
+  // on a slow network outlived the whole quit budget, so the provider flush
+  // and close-vault behind it never ran.
+  it('cuts a hung final snapshot push at its timeout and still tears down', async () => {
+    // #given a running runtime whose final snapshot push never settles
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    let pushSignal: AbortSignal | undefined
+    runtimeMocks.crdtProvider.pushAllSnapshots.mockImplementationOnce((signal?: AbortSignal) => {
+      pushSignal = signal
+      return new Promise<number>(() => {})
+    })
+
+    // #when stopping with a bounded final push
+    await runtime.stopSyncRuntime({ finalSyncTimeoutMs: 20 })
+
+    // #then the walk is told to stop and teardown still reaches the provider
+    expect(pushSignal?.aborted).toBe(true)
+    expect(runtimeMocks.SyncEngine.instances[0].stop).toHaveBeenCalled()
+    expect(runtimeMocks.crdtProvider.destroy).toHaveBeenCalled()
+    expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+    expect(runtimeMocks.logWarn).toHaveBeenCalledWith(
+      'Pre-shutdown CRDT snapshot push cut short; remaining snapshots deferred',
+      { timeoutMs: 20 }
+    )
+  })
+
+  it('skips the final snapshot push when its timeout leaves no time', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+
+    await runtime.stopSyncRuntime({ finalSyncTimeoutMs: 0 })
+
+    expect(runtimeMocks.crdtProvider.pushAllSnapshots).not.toHaveBeenCalled()
+    expect(runtimeMocks.crdtProvider.destroy).toHaveBeenCalled()
   })
 
   it('logs and continues through stop failures', async () => {

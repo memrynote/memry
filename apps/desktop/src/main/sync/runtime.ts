@@ -91,6 +91,7 @@ import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+import { pushFinalSnapshots, type StopSyncRuntimeOptions } from './final-snapshot-push'
 import {
   NoteBodyFlushDeferredError,
   NoteBodyOutbox,
@@ -135,6 +136,7 @@ import {
 } from './vault-account-binding'
 import { store } from '../store'
 import { recordSyncStatusActivity } from './sync-activity'
+import { pauseForKeychain } from './keychain-retry'
 
 const log = createLogger('SyncRuntime')
 
@@ -208,6 +210,9 @@ function emitNoteTooLarge(noteId: string): void {
 function emitLocalOnly(): void {
   emitSyncStatus({ status: 'local_only', pendingCount: 0 })
 }
+
+// Secrets present but unreadable this run (#2521): paused and retried, not failed.
+const keychainDeps = { start: startSyncRuntime, emitStatus: emitSyncStatus }
 
 let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
@@ -407,11 +412,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         startupVaultKey = await getVerifiedVaultKey(db)
         vaultKeyFailureLogged = false
       } catch (error) {
+        if (pauseForKeychain(error, keychainDeps)) return null
         log.error('Sync runtime unavailable: vault key verification failed', error)
         // A persistent mismatch (wrong or missing master key) can't be retried
         // away — prompt the user to recover the correct key instead of leaving
-        // them at a generic "sync unavailable" error. A transient unreadable
-        // secret is NOT surfaced here; it retries on the next healthy run.
+        // them at a generic "sync unavailable" error. An unreadable secret is
+        // never a recovery case: it was handled above as a paused state.
         if (classifyVaultKeyError(error) === 'recovery-needed') {
           emitVaultRecoveryNeeded({ reason: vaultRecoveryReason(error) })
         }
@@ -938,11 +944,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         return crdtProvider.readSyncableState(noteId)
       })
 
-      trackMainEvent('sync_enabled', {
-        surface: 'sync',
-        action: 'enabled',
-        result: 'success'
-      })
+      trackMainEvent('sync_enabled', { surface: 'sync', action: 'enabled', result: 'success' })
 
       seedPromise = seedExistingCrdtDocs(crdtProvider, runtimeAbort.signal).catch((err) => {
         log.warn('Post-engine CRDT seed failed (non-fatal)', err)
@@ -976,7 +978,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       runtime = null
       resetSyncServiceSingletons()
-      log.error('Failed to start sync runtime', error)
+      if (!pauseForKeychain(error, keychainDeps)) log.error('Failed to start sync runtime', error)
       // sync_enabled only fires on success, so a fleet-wide startup regression
       // would show up as an unexplained DROP in sync_enabled — emit the
       // failure counterpart so it spikes instead.
@@ -995,7 +997,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
   return startPromise
 }
 
-export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Promise<void> {
+export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise<void> {
   if (deferredStartTimer) {
     clearTimeout(deferredStartTimer)
     deferredStartTimer = null
@@ -1041,12 +1043,7 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
   active?.snapshotScheduler.stop()
 
   if (active && !options?.skipFinalSync) {
-    try {
-      const pushed = await getCrdtProvider().pushAllSnapshots()
-      if (pushed > 0) log.info(`Pushed ${pushed} CRDT snapshot(s) before shutdown`)
-    } catch (err) {
-      log.warn('Pre-shutdown CRDT snapshot push failed', err)
-    }
+    await pushFinalSnapshots(options?.finalSyncTimeoutMs)
   }
 
   runtime = null

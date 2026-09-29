@@ -175,6 +175,44 @@ export const installCrashMarker = (sessionId: string, appVersion?: string): void
   if (typeof aliveTimer.unref === 'function') aliveTimer.unref()
 }
 
+// The alive tick rewrites the marker from scratch, so a tick landing after a
+// shutdown stamp silently erased it and the next launch reported a bare
+// UNCLEAN_SHUTDOWN with step=unknown (#2522). Liveness stops mattering once a
+// quit has begun, so the first shutdown stamp retires the tick.
+const stopAliveTimer = (): void => {
+  if (aliveTimer) {
+    clearInterval(aliveTimer)
+    aliveTimer = null
+  }
+}
+
+const stampMarker = (update: (marker: SessionMarker) => void): void => {
+  if (!installedThisSession) return
+  stopAliveTimer()
+  try {
+    const marker = parseMarker(fs.readFileSync(markerPath(), 'utf-8'))
+    if (!marker) return
+    update(marker)
+    marker.lastAliveAt = new Date().toISOString()
+    fs.writeFileSync(markerPath(), JSON.stringify(marker), 'utf-8')
+  } catch {
+    // The plain marker still reports UNCLEAN_SHUTDOWN — losing only the detail.
+  }
+}
+
+/**
+ * Record the shutdown step that is starting, before it runs. A process that
+ * dies mid-step — the hard backstop, an OS kill during logout, a native crash
+ * in teardown — never reaches markShutdownFailure, and without this its next
+ * launch reported step=unknown (#2522). The errorCode is unchanged; the step
+ * rides in the message.
+ */
+export const markShutdownStep = (step: string): void => {
+  stampMarker((marker) => {
+    marker.shutdownStep = step
+  })
+}
+
 /**
  * Stamp the marker with the shutdown-failure reason right before a forced
  * exit, so the next launch's app_crashed says "shutdown hung/failed" instead
@@ -185,26 +223,16 @@ export const installCrashMarker = (sessionId: string, appVersion?: string): void
  * "shutdown was slow somewhere" into an answer.
  */
 export const markShutdownFailure = (reason: ShutdownFailureReason, step?: string): void => {
-  if (!installedThisSession) return
-  try {
-    const raw = fs.readFileSync(markerPath(), 'utf-8')
-    const marker = parseMarker(raw)
-    if (!marker) return
+  // Without `step`, the step markShutdownStep already stamped is kept.
+  stampMarker((marker) => {
     marker.shutdownFailure = reason
     if (step) marker.shutdownStep = step
-    marker.lastAliveAt = new Date().toISOString()
-    fs.writeFileSync(markerPath(), JSON.stringify(marker), 'utf-8')
-  } catch {
-    // The plain marker still reports UNCLEAN_SHUTDOWN — losing only the reason.
-  }
+  })
 }
 
 /** Remove the marker on clean shutdown so the next launch reports nothing. */
 export const clearCrashMarker = (): void => {
-  if (aliveTimer) {
-    clearInterval(aliveTimer)
-    aliveTimer = null
-  }
+  stopAliveTimer()
   if (!installedThisSession) return
   installedThisSession = false
   try {

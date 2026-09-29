@@ -1204,7 +1204,11 @@ export class CrdtProvider {
     }
   }
 
-  async pushAllSnapshots(): Promise<number> {
+  /**
+   * Push every open doc's pending snapshot, one note at a time. `signal` stops
+   * the walk before the next note; the push already in flight is not cut.
+   */
+  async pushAllSnapshots(signal?: AbortSignal): Promise<number> {
     if (!this.snapshotPushFn) {
       log.debug('No snapshotPushFn configured, skipping server push')
       return 0
@@ -1212,6 +1216,7 @@ export class CrdtProvider {
 
     let pushed = 0
     for (const [noteId, entry] of this.docs) {
+      if (signal?.aborted) break
       if (entry.localOnly) continue
       if (entry.pendingSnapshotBytes <= 0) continue
       try {

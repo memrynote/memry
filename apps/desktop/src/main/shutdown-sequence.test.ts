@@ -6,10 +6,14 @@ vi.mock('./lib/logger', () => ({
 
 import {
   completeWithin,
+  finalSnapshotPushTimeoutMs,
   runShutdownSequence,
   SHUTDOWN_BUDGET_MS,
+  SHUTDOWN_CLOSE_VAULT_RESERVE_MS,
+  SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS,
   SHUTDOWN_HARD_BACKSTOP_MS,
   SHUTDOWN_LAST_CHANCE_MS,
+  type ShutdownDeadline,
   type ShutdownStep
 } from './shutdown-sequence'
 
@@ -202,6 +206,64 @@ describe('runShutdownSequence', () => {
     // #then the late rejection was absorbed rather than left unhandled while
     // the process is already on its way out
     expect(unhandled).toEqual([])
+  })
+})
+
+describe('runShutdownSequence onStepStart', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  // #2522: the quit path persists each started step, so a process that dies
+  // before the outcome is known still leaves the step behind.
+  it('reports each step as it starts, before its work runs', async () => {
+    // #given a listener and a step that records whether it was already told
+    const started: string[] = []
+    const seenByStep: string[][] = []
+    const steps: ShutdownStep[] = [
+      { name: 'flush-writebacks', run: () => void seenByStep.push([...started]) },
+      { name: 'close-vault', run: () => never() }
+    ]
+
+    // #when the sequence runs until the budget expires on the second step
+    const sequence = runShutdownSequence(steps, {
+      budgetMs: 1000,
+      onStepStart: (name) => started.push(name)
+    })
+    await vi.advanceTimersByTimeAsync(1000)
+    await sequence
+
+    // #then the hung step was reported before it hung
+    expect(seenByStep).toEqual([['flush-writebacks']])
+    expect(started).toEqual(['flush-writebacks', 'close-vault'])
+  })
+})
+
+describe('finalSnapshotPushTimeoutMs', () => {
+  const deadlineWith = (remainingMs: number): ShutdownDeadline => ({
+    remainingMs: () => remainingMs,
+    cap: (preferredMs) => Math.min(preferredMs, remainingMs)
+  })
+
+  it('grants the full push window when the budget has room for close-vault after it', () => {
+    expect(finalSnapshotPushTimeoutMs(deadlineWith(8_000))).toBe(SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS)
+  })
+
+  it('shrinks the push so the close-vault reserve is never spent on it', () => {
+    // #given 2,500ms left in the budget
+    // #then the push gets only what exceeds the reserve
+    expect(finalSnapshotPushTimeoutMs(deadlineWith(2_500))).toBe(
+      2_500 - SHUTDOWN_CLOSE_VAULT_RESERVE_MS
+    )
+  })
+
+  it('skips the push outright when only the reserve is left', () => {
+    expect(finalSnapshotPushTimeoutMs(deadlineWith(SHUTDOWN_CLOSE_VAULT_RESERVE_MS))).toBe(0)
+    expect(finalSnapshotPushTimeoutMs(deadlineWith(0))).toBe(0)
   })
 })
 
