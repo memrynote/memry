@@ -223,6 +223,14 @@ The separate `onCloseAutoFocus` → `preventDefault()` in `components/ui/context
 
 **Testing this needs a moving pointer.** `page.click()` parks the mouse where it clicked, so a spec that clicks a menu item and then asserts is blind to this whole class. `tests/e2e/sidebar-folder-rename.e2e.ts` and `tests/e2e/sidebar-icon-picker-context-menu.e2e.ts` keep the pointer moving for about 150ms after the click (`clickMenuItemAndMoveOn`). jsdom sees it only when a stylesheet gives the menu content an exit `animation-name`, because `Presence` otherwise unmounts the menu in the same commit. `components/icon-picker-button.context-menu.test.tsx` and `components/ui/dropdown-menu.test.tsx` do that.
 
+## A Hidden Vault's Menus Must Hide With It
+
+`VaultStack` in `App.tsx` keeps recently visited vaults mounted inside a hidden `<Activity>`. React hides an Activity by setting `display: none` on its top-level DOM nodes. Before React 19.3 that did not reach portals, and Radix menus, dialogs, and tooltips portal to `<body>`, outside the hidden tree.
+
+That broke switching from the vault menu (#2504). Picking a vault closes the menu with a short exit animation and starts the switch. When the switch landed before the animation ended, the old workspace was hidden and its effects torn down, `Presence` included, so the menu never saw `animationend` and never unmounted. Floating UI lost its anchor and parked the menu in the window's top-left corner. Its rows sat there at opacity 0 and still took clicks, so a click on the rail or on the Settings back button switched to whichever vault's row lay under it.
+
+React 19.3 hides portal contents with their Activity (facebook/react#35091), so keep `react` and `react-dom` at `^19.3.0` or later. A portal container placed outside a workspace's Activity brings the bug back. Regression coverage: `App.test.tsx`, "hides a menu the leaving vault has open along with its workspace, and brings it back".
+
 ## Global Keydown Listeners Must Not Depend on Render State
 
 `useKeyboardShortcuts` (`hooks/use-keyboard-shortcuts-base.ts`), `useChordShortcuts` and `useInboxKeyboard` each bind exactly one `window` `keydown` listener per mount. The handler reads the shortcut list — and the tab/inbox state it acts on — from a ref refreshed after every render, so it always sees fresh values without re-registering.
