@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
   mapCalendarEventToGoogleInput,
   mapGoogleEventToCalendarEventChanges,
-  mapGoogleEventToExternalEventRecord
+  mapGoogleEventToExternalEventRecord,
+  mapGoogleEventToTaskSchedule,
+  mapTaskToGoogleInput
 } from './mappers'
+import { eventToICalendar, icalToRemoteEvent } from '../ical/ical-write'
+import type { tasks } from '@memry/db-schema/schema/tasks'
 import type { GoogleCalendarRemoteEvent } from '../types'
 import type { CalendarEvent } from '@memry/db-schema/schema/calendar-events'
 
@@ -274,5 +278,61 @@ describe('mapCalendarEventToGoogleInput', () => {
     const input = mapCalendarEventToGoogleInput(LOCAL_EVENT_BASE)
 
     expect(input.recurrence).toBeNull()
+  })
+})
+
+describe('all-day task push → CalDAV → pull keeps the due date', () => {
+  const originalTz = process.env.TZ
+  afterEach(() => {
+    process.env.TZ = originalTz
+  })
+
+  function taskRow(dueDate: string, dueTime: string | null): typeof tasks.$inferSelect {
+    return {
+      id: 'task-1',
+      title: 'Buy milk',
+      description: null,
+      dueDate,
+      dueTime
+    } as typeof tasks.$inferSelect
+  }
+
+  function roundTrip(row: typeof tasks.$inferSelect) {
+    const input = mapTaskToGoogleInput(row)
+    const ics = eventToICalendar(
+      { ...input, attendees: null, reminders: null, visibility: null, colorId: null },
+      { uid: 'uid-1', now: new Date('2026-06-01T00:00:00.000Z') }
+    )
+    const remote = icalToRemoteEvent(ics, {
+      href: 'https://dav.example.com/cal/uid-1.ics',
+      calendarId: 'https://dav.example.com/cal/',
+      etag: '"e1"',
+      remoteEventId: 'https://dav.example.com/cal/uid-1.ics'
+    })
+    return { ics, schedule: mapGoogleEventToTaskSchedule(remote) }
+  }
+
+  it.each(['Europe/Berlin', 'Asia/Tokyo', 'America/New_York', 'UTC'])(
+    'writes the task day as the DATE and reads the same day back in %s',
+    (zone) => {
+      process.env.TZ = zone
+      const { ics, schedule } = roundTrip(taskRow('2026-06-11', null))
+
+      expect(ics).toContain('DTSTART;VALUE=DATE:20260611')
+      expect(ics).toContain('DTEND;VALUE=DATE:20260612')
+      expect(schedule).toEqual({ dueDate: '2026-06-11', dueTime: null })
+    }
+  )
+
+  it('reads a Google all-day event as its calendar day regardless of the event zone', () => {
+    const schedule = mapGoogleEventToTaskSchedule({
+      ...BASE_EVENT,
+      startAt: '2026-06-11T00:00:00.000Z',
+      endAt: '2026-06-12T00:00:00.000Z',
+      isAllDay: true,
+      timezone: 'America/Los_Angeles'
+    })
+
+    expect(schedule).toEqual({ dueDate: '2026-06-11', dueTime: null })
   })
 })
