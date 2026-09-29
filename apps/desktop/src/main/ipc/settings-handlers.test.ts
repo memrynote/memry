@@ -1461,6 +1461,7 @@ describe('settings-handlers', () => {
           showProjects: true,
           showTags: true,
           showOrphans: true,
+          showCanvasEdges: true,
           selectedTags: ['work'],
           focusNodeId: null,
           focusDepth: 2,
