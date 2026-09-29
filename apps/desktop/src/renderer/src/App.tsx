@@ -728,6 +728,11 @@ const MAX_KEPT_VAULTS = 2
  * cache cannot hold two vaults). Hidden, a workspace runs no effects: no IPC,
  * no listeners, no shortcuts. Switching back shows the same DOM, tabs, scroll
  * and cached rows at once, while its queries refetch in the background.
+ *
+ * Menus and dialogs portal to <body>, outside the hidden tree. React 19.3 and
+ * later hide portal contents with their Activity. Before 19.3, a vault menu
+ * still closing when the switch landed stayed on screen, invisible, and its
+ * rows switched vaults on click (#2504).
  */
 function VaultStack({ activePath }: { activePath: string | null }): React.JSX.Element {
   const clientsRef = useRef(new Map<string, QueryClient>())
