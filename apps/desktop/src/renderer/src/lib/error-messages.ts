@@ -100,6 +100,7 @@ const SYNC_ERROR_KEYS: Record<SyncErrorCategory, string> = {
   sync_vault_limit_exceeded: 'sync.vaultLimitExceeded',
   certificate_pin_failed: 'sync.certificatePinFailed',
   device_key_mismatch: 'sync.deviceKeyMismatch',
+  keychain_unavailable: 'sync.keychainUnavailable',
   unknown: 'sync.unknown'
 }
 

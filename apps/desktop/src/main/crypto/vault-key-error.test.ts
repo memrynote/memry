@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { classifyVaultKeyError, vaultRecoveryReason } from './vault-key-error'
+import {
+  classifyVaultKeyError,
+  isKeychainUnreadableError,
+  vaultRecoveryReason
+} from './vault-key-error'
 
 describe('classifyVaultKeyError', () => {
   it('flags a master-key/vault mismatch as recovery-needed', () => {
@@ -25,6 +29,34 @@ describe('classifyVaultKeyError', () => {
         )
       )
     ).toBe('transient')
+  })
+
+  it('flags a timed-out or latched OS keychain as transient (#2521)', () => {
+    // keychain.ts re-wraps secret-storage's KeychainUnavailableError messages.
+    const timedOut = new Error(
+      'Failed to retrieve key from keychain (master-key): OS keychain did not answer within 5000ms for com.memry.sync/master-key'
+    )
+    const latched = new Error(
+      'Failed to retrieve key from keychain (refresh-token): OS keychain is unavailable until it answers an earlier request (com.memry.sync/refresh-token)'
+    )
+    // The wording shipped in 2026.928.1, still in flight from older workers/logs.
+    const legacyLatched = new Error(
+      'Failed to retrieve key from keychain (refresh-token): OS keychain is unavailable for the rest of this run (com.memry.sync/refresh-token)'
+    )
+    for (const error of [timedOut, latched, legacyLatched]) {
+      expect(isKeychainUnreadableError(error)).toBe(true)
+      expect(classifyVaultKeyError(error)).toBe('transient')
+    }
+  })
+
+  it('does not call a mismatch or a missing key unreadable', () => {
+    expect(
+      isKeychainUnreadableError(new Error('Current master key does not match this vault'))
+    ).toBe(false)
+    expect(
+      isKeychainUnreadableError(new Error('Vault key verifier exists but master key is missing'))
+    ).toBe(false)
+    expect(isKeychainUnreadableError(new Error('network down'))).toBe(false)
   })
 
   it('treats unrelated errors as other', () => {

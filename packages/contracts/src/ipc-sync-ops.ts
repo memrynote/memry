@@ -56,6 +56,10 @@ export type SyncErrorCategory =
   // (SYNC_INVALID_SIGNATURE) and no retry can ever succeed. Only
   // re-registration fixes it.
   | 'device_key_mismatch'
+  // The refresh token or vault master key exists on this device but could not
+  // be read from the OS keychain / safeStorage this run (locked keyring, Secret
+  // Service not up yet). Sync is paused and retries; nothing was signed out.
+  | 'keychain_unavailable'
   | 'unknown'
 
 export interface GetSyncStatusResult {

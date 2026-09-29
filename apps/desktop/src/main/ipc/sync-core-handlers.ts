@@ -30,6 +30,7 @@ import { createLogger } from '../lib/logger'
 import { withErrorHandler } from './validate'
 import { registerCommand } from './lib/register-command'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
+import { getKeychainUnavailableStatus } from '../sync/keychain-retry'
 import { getCachedEntitlement } from '../billing/entitlement-cache'
 import { teardownSession } from '../sync/session-teardown'
 import { getValidAccessToken, cancelTokenRefresh } from '../sync/token-manager'
@@ -220,6 +221,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(SYNC_CHANNELS.GET_STATUS, () => {
     const engine = resolveSyncEngine()
     if (!engine) {
+      // Sync is paused on an unreadable keychain (#2521); idle would hide it.
+      const keychainUnavailable = getKeychainUnavailableStatus()
+      if (keychainUnavailable) return keychainUnavailable
       const cached = getCachedEntitlement()
       if (cached && !cached.isPaid) {
         return { status: 'local_only', pendingCount: 0 }

@@ -9,7 +9,8 @@ import type { VaultRecoveryNeededEvent } from '@memry/contracts/ipc-events'
  *   must re-derive the correct master key (recovery phrase / re-link). Surface a
  *   recovery prompt.
  * - `transient`: a secret could not be read this run (safeStorage unavailable,
- *   or an undecryptable ciphertext). Do NOT prompt recovery — the read may
+ *   an undecryptable ciphertext, or an OS keychain that timed out). Do NOT
+ *   prompt recovery — the read may
  *   succeed on the next healthy run. See secrets/secret-storage.ts getSecret.
  * - `other`: anything else; treat as a generic sync failure.
  *
@@ -20,11 +21,11 @@ import type { VaultRecoveryNeededEvent } from '@memry/contracts/ipc-events'
 export type VaultKeyErrorKind = 'recovery-needed' | 'transient' | 'other'
 
 export function classifyVaultKeyError(error: unknown): VaultKeyErrorKind {
-  const message = error instanceof Error ? error.message : String(error)
-
-  if (message.includes('could not be read this run')) {
+  if (isKeychainUnreadableError(error)) {
     return 'transient'
   }
+
+  const message = error instanceof Error ? error.message : String(error)
 
   if (
     message.includes('does not match this vault') ||
@@ -38,6 +39,22 @@ export function classifyVaultKeyError(error: unknown): VaultKeyErrorKind {
   }
 
   return 'other'
+}
+
+/**
+ * True when a secret could not be read from this machine's secret storage this
+ * run: the stored copy exists but is unreadable, or the OS keychain timed out
+ * or is still latched from an earlier timeout (secrets/secret-storage.ts). The
+ * secret is not gone, so a later attempt can succeed; nothing may treat it as
+ * absent. keychain.ts re-wraps these as plain Errors, so this matches messages.
+ */
+export function isKeychainUnreadableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return (
+    message.includes('could not be read this run') ||
+    message.includes('OS keychain did not answer within') ||
+    message.includes('OS keychain is unavailable')
+  )
 }
 
 export function vaultRecoveryReason(error: unknown): VaultRecoveryNeededEvent['reason'] {

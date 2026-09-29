@@ -60,6 +60,7 @@ import {
   finalizeKeytarMigration,
   getSecret,
   isSafeStorageAvailable,
+  onKeychainRecovered,
   readLegacySecret,
   resetSecretStorageForTests,
   setSecret,
@@ -298,6 +299,21 @@ describe('secret-storage', () => {
       await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(/could not be read this run/)
     })
 
+    it('names the Linux safeStorage backend when it is why the secret is unreadable (#2521)', async () => {
+      setPlatform('linux')
+      harness.backend = 'gnome_libsecret'
+      await setSecret(SERVICE, ACCOUNT, 'store-value')
+      harness.keytarStore.clear()
+      // Launched before the Secret Service was up: Chromium fell back to basic_text.
+      harness.backend = 'basic_text'
+
+      await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(
+        /could not be read this run.*encryptionAvailable=true backend=basic_text/
+      )
+      // The unreadable entry is kept for a healthy run.
+      expect(readStoreJson().entries[SERVICE]?.[ACCOUNT]).toBeDefined()
+    })
+
     it('throws when the stored ciphertext is undecryptable and no keytar copy remains', async () => {
       fs.mkdirSync(harness.userDataDir, { recursive: true })
       fs.writeFileSync(
@@ -307,7 +323,9 @@ describe('secret-storage', () => {
       )
       harness.keytarStore.clear()
 
-      await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(/could not be read this run/)
+      await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(
+        /could not be read this run.*stored ciphertext did not decrypt/
+      )
     })
 
     it('still returns null for a genuinely fresh secret (nothing in store or keytar)', async () => {
@@ -663,6 +681,59 @@ describe('secret-storage', () => {
       await expect(getSecret(SERVICE, 'other-account')).rejects.toThrow(/keychain/i)
 
       expect(harness.keytarGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('lifts the latch once the timed-out call answers, e.g. after the keyring is unlocked (#2521)', async () => {
+      vi.useFakeTimers()
+      // libsecret blocked on an unlock prompt: the call answers, just late.
+      let answer: (value: string | null) => void = () => {}
+      harness.keytarGet.mockImplementationOnce(
+        () =>
+          new Promise<string | null>((resolve) => {
+            answer = resolve
+          })
+      )
+      const recovered = vi.fn()
+      onKeychainRecovered(recovered)
+
+      const first = getSecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
+      await expect(first).resolves.toBe('KeychainUnavailableError')
+      await expect(getSecret(SERVICE, 'other-account')).rejects.toThrow(
+        /OS keychain is unavailable until it answers/
+      )
+      expect(recovered).not.toHaveBeenCalled()
+
+      harness.keytarStore.set(`${SERVICE}:other-account`, 'kept-value')
+      answer('late-value')
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(recovered).toHaveBeenCalledTimes(1)
+      await expect(readLegacySecret(SERVICE, 'other-account')).resolves.toBe('kept-value')
+      // Recovery only re-opens reads; it never writes or deletes a secret.
+      expect(harness.keytarSet).not.toHaveBeenCalled()
+      expect(harness.keytarDelete).not.toHaveBeenCalled()
+    })
+
+    it('also lifts the latch when the timed-out call answers with an error', async () => {
+      vi.useFakeTimers()
+      let fail: (err: Error) => void = () => {}
+      harness.keytarGet.mockImplementationOnce(
+        () =>
+          new Promise<string | null>((_, reject) => {
+            fail = reject
+          })
+      )
+
+      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
+      await expect(first).resolves.toBe('KeychainUnavailableError')
+
+      fail(new Error('Cannot create an item in a locked collection'))
+      await vi.advanceTimersByTimeAsync(0)
+
+      await expect(readLegacySecret(SERVICE, ACCOUNT)).resolves.toBeNull()
+      expect(harness.keytarGet).toHaveBeenCalledTimes(2)
     })
 
     it('reports a latched keychain as absent only for callers that opted in', async () => {

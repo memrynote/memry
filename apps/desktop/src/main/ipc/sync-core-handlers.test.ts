@@ -141,6 +141,11 @@ vi.mock('../billing/entitlement-cache', () => ({
   getCachedEntitlement: () => mockGetCachedEntitlement()
 }))
 
+const mockGetKeychainUnavailableStatus = vi.fn().mockReturnValue(null)
+vi.mock('../sync/keychain-retry', () => ({
+  getKeychainUnavailableStatus: () => mockGetKeychainUnavailableStatus()
+}))
+
 const mockTeardownSession = vi.fn().mockResolvedValue({ success: true, keychainFailures: [] })
 vi.mock('../sync/session-teardown', () => ({
   teardownSession: (...args: unknown[]) => mockTeardownSession(...args)
@@ -312,6 +317,20 @@ describe('sync IPC handlers', () => {
     const result = await invokeHandler(SYNC_CHANNELS.GET_STATUS)
 
     expect(result).toEqual({ status: 'local_only', pendingCount: 0 })
+  })
+
+  it('GET_STATUS reports sync paused on an unreadable keychain instead of idle (#2521)', async () => {
+    const paused = {
+      status: 'error',
+      pendingCount: 0,
+      error: 'errors:sync.keychainUnavailable',
+      errorCategory: 'keychain_unavailable'
+    }
+    mockGetKeychainUnavailableStatus.mockReturnValueOnce(paused)
+
+    registerSyncHandlers()
+
+    await expect(invokeHandler(SYNC_CHANNELS.GET_STATUS)).resolves.toEqual(paused)
   })
 
   it('delegates core status, sync, queue, pause, resume, quarantine, device, and wipe handlers', async () => {

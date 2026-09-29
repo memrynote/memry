@@ -65,18 +65,53 @@ let loggedPlaintextBackend = false
 // and every blocked call holds one of libuv's four threadpool threads. Enough
 // of them and every fs/promises read in the app stalls behind the keychain:
 // journal entries, file pages, project folders. Bound the read, and once it
-// has timed out stop asking for the rest of the run.
+// has timed out stop asking until the timed-out call itself comes back.
+//
+// On Linux the usual cause is not a dead Secret Service but a LOCKED one: at
+// login-autostart the default collection is still locked, libsecret raises an
+// unlock prompt, and the lookup blocks until the user answers it — well past
+// the deadline. The latch used to hold for the whole run, so a user who
+// unlocked the keyring ten seconds later still had no sync until a relaunch
+// (#2521). The latch now lifts as soon as the timed-out native call settles:
+// that proves the Secret Service answers again AND that its threadpool thread
+// is free, so lifting it can never put a second thread at risk.
 export const KEYCHAIN_READ_TIMEOUT_MS = 5_000
 let keychainTimedOut = false
+const keychainRecoveredListeners = new Set<() => void>()
 
 export class KeychainUnavailableError extends Error {
   constructor(service: string, account: string, cause: 'timeout' | 'latched') {
     super(
       cause === 'timeout'
         ? `OS keychain did not answer within ${KEYCHAIN_READ_TIMEOUT_MS}ms for ${service}/${account}`
-        : `OS keychain is unavailable for the rest of this run (${service}/${account})`
+        : `OS keychain is unavailable until it answers an earlier request (${service}/${account})`
     )
     this.name = 'KeychainUnavailableError'
+  }
+}
+
+/**
+ * Subscribe to the OS keychain coming back after a timed-out call latched it.
+ * Returns the unsubscribe function.
+ */
+export function onKeychainRecovered(listener: () => void): () => void {
+  keychainRecoveredListeners.add(listener)
+  return () => keychainRecoveredListeners.delete(listener)
+}
+
+function liftKeychainLatch(service: string, account: string): void {
+  if (!keychainTimedOut) return
+  keychainTimedOut = false
+  logger.info('OS keychain answered a timed-out call; using the OS keychain again', {
+    service,
+    account
+  })
+  for (const listener of [...keychainRecoveredListeners]) {
+    try {
+      listener()
+    } catch (err) {
+      logger.warn('OS keychain recovery listener failed', { error: err })
+    }
   }
 }
 
@@ -105,14 +140,20 @@ function withKeychainDeadline<T>(
   // Promise.resolve, not the raw return value: unit tests mock keytar with
   // plain vi.fn()s that return undefined.
   const pending = Promise.resolve(call())
+  let timedOut = false
   // We stop waiting; the native call does not. Keep a handler on it so a late
-  // rejection can never surface as an unhandled rejection.
-  void pending.catch(() => {})
+  // rejection can never surface as an unhandled rejection, and lift the latch
+  // this call set once it finally settles either way (see KEYCHAIN_READ_TIMEOUT_MS).
+  const settleLate = (): void => {
+    if (timedOut) liftKeychainLatch(service, account)
+  }
+  void pending.then(settleLate, settleLate)
   let timer: ReturnType<typeof setTimeout> | undefined
   const deadline = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
+      timedOut = true
       keychainTimedOut = true
-      logger.warn('OS keychain call timed out; skipping the OS keychain for the rest of this run', {
+      logger.warn('OS keychain call timed out; skipping the OS keychain until it answers', {
         service,
         account,
         timeoutMs: KEYCHAIN_READ_TIMEOUT_MS
@@ -180,6 +221,7 @@ export function resetSecretStorageForTests(): void {
   keytarMigrationFinalized.clear()
   loggedPlaintextBackend = false
   keychainTimedOut = false
+  keychainRecoveredListeners.clear()
   keytarQueue = Promise.resolve()
   inFlightKeychainReads.clear()
 }
@@ -422,11 +464,37 @@ export async function getSecret(
     }
     throw new Error(
       `Secret ${service}/${account} exists in the secret store but could not be read this run; ` +
-        'refusing to report it as absent'
+        `refusing to report it as absent (${describeUnreadableCause(filePath !== null)})`
     )
   }
 
   return null
+}
+
+/**
+ * Why a stored secret could not be read, for the error that reports it. On Linux
+ * safeStorage's backend is chosen once per process: launched before the Secret
+ * Service is up, or in a session Chromium does not recognise, it falls back to
+ * `basic_text` (which isSafeStorageAvailable refuses) or to no key at all, and
+ * everything written under the real keyring is unreadable until a relaunch.
+ * Names only Electron constants, never secret material.
+ */
+function describeUnreadableCause(safeStorageUsable: boolean): string {
+  if (safeStorageUsable) return 'stored ciphertext did not decrypt'
+  let backend = 'n/a'
+  let encryptionAvailable = false
+  try {
+    encryptionAvailable = isAppReady() && safeStorage.isEncryptionAvailable()
+    if (
+      process.platform === 'linux' &&
+      typeof safeStorage.getSelectedStorageBackend === 'function'
+    ) {
+      backend = safeStorage.getSelectedStorageBackend()
+    }
+  } catch {
+    /* diagnostic only */
+  }
+  return `safeStorage unavailable: encryptionAvailable=${encryptionAvailable} backend=${backend}`
 }
 
 export async function setSecret(service: string, account: string, value: string): Promise<void> {
