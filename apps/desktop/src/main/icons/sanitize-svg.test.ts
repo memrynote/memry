@@ -125,6 +125,13 @@ describe('sanitizeSvg', () => {
     expect(out).toContain('<rect/>')
   })
 
+  it('strips a comment re-formed by removing another one', () => {
+    const out = clean('<svg><!-<!-- x -->- hidden --><rect/></svg>')
+
+    expect(out).not.toContain('<!--')
+    expect(out).toBe('<svg><rect/></svg>')
+  })
+
   it('strips DOCTYPE with an internal subset (billion laughs / XXE)', () => {
     const out = clean(
       '<?xml version="1.0"?>' +
@@ -151,7 +158,9 @@ describe('sanitizeSvg', () => {
   })
 
   it('catches obfuscated expression() in a style attribute', () => {
-    const out = clean('<svg><rect style="width:expr\tession(alert(1))"/><g style="fill:red"/></svg>')
+    const out = clean(
+      '<svg><rect style="width:expr\tession(alert(1))"/><g style="fill:red"/></svg>'
+    )
 
     expect(out).not.toContain('ession(')
     expect(out).toContain('style="fill:red"')
@@ -188,7 +197,9 @@ describe('sanitizeSvg', () => {
   })
 
   it('drops animation elements that retarget a reference', () => {
-    const out = clean('<svg><use href="#a"><animate attributeName="href" to="javascript:x"/></use></svg>')
+    const out = clean(
+      '<svg><use href="#a"><animate attributeName="href" to="javascript:x"/></use></svg>'
+    )
 
     expect(out).not.toMatch(/<animate/i)
     expect(out).toContain('href="#a"')

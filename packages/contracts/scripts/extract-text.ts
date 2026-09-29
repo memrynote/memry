@@ -40,6 +40,20 @@ function headingMarker(node: Y.XmlElement): string {
 }
 
 /**
+ * `Y.XmlText#toString()` wraps formatted runs in `<mark>` tags; drop them.
+ * Until stable, so removing one tag cannot leave another behind.
+ */
+function stripMarkTags(text: string): string {
+  let out = text
+  let previous: string
+  do {
+    previous = out
+    out = out.replace(/<[^>]*>/g, '')
+  } while (out !== previous)
+  return out
+}
+
+/**
  * The concatenated text of a node's own INLINE descendants, marks discarded.
  *
  * Stops at a nested block: that block contributes its own line, and folding it
@@ -48,7 +62,7 @@ function headingMarker(node: Y.XmlElement): string {
 function plainTextOf(node: Y.XmlElement | Y.XmlFragment): string {
   let out = ''
   for (const child of node.toArray()) {
-    if (child instanceof Y.XmlText) out += child.toString().replace(/<[^>]*>/g, '')
+    if (child instanceof Y.XmlText) out += stripMarkTags(child.toString())
     else if (child instanceof Y.XmlElement && isInline(child)) out += plainTextOf(child)
   }
   return out
@@ -84,7 +98,7 @@ function isInline(node: Y.XmlElement): boolean {
 function walk(node: Y.XmlElement | Y.XmlFragment, lines: string[]): void {
   for (const child of node.toArray()) {
     if (child instanceof Y.XmlText) {
-      const text = child.toString().replace(/<[^>]*>/g, '')
+      const text = stripMarkTags(child.toString())
       if (text.length > 0) lines.push(text)
       continue
     }

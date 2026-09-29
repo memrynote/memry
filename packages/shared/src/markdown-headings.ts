@@ -23,6 +23,8 @@
  *   `isBlockReference` in `./wiki-target`.
  */
 
+import { stripHtmlComments } from './html-comments'
+
 export interface MarkdownHeading {
   /** The heading's plain text, in the form the click-side matcher compares. */
   text: string
@@ -67,7 +69,7 @@ export function extractMarkdownHeadings(markdown: string): MarkdownHeading[] {
 
     // `## Heading ##` — a closing sequence must be preceded by whitespace, so
     // `## C#` keeps its `#`.
-    const withoutClosing = (match[2] ?? '').replace(/[ \t]+#+[ \t]*$/, '')
+    const withoutClosing = stripClosingSequence(match[2] ?? '')
     const text = stripInlineMarkdown(withoutClosing)
     if (!text) continue
 
@@ -75,6 +77,23 @@ export function extractMarkdownHeadings(markdown: string): MarkdownHeading[] {
   }
 
   return headings
+}
+
+const isSpaceOrTab = (char: string | undefined): boolean => char === ' ' || char === '\t'
+
+/**
+ * `text.replace(/[ \t]+#+[ \t]*$/, '')` without the regex, which is quadratic
+ * on a long run of tabs that does not end the line.
+ */
+function stripClosingSequence(text: string): string {
+  let end = text.length
+  while (end > 0 && isSpaceOrTab(text[end - 1])) end--
+  let hashes = end
+  while (hashes > 0 && text[hashes - 1] === '#') hashes--
+  if (hashes === end) return text
+  let start = hashes
+  while (start > 0 && isSpaceOrTab(text[start - 1])) start--
+  return start === hashes ? text : text.slice(0, start)
 }
 
 /**
@@ -85,8 +104,7 @@ export function extractMarkdownHeadings(markdown: string): MarkdownHeading[] {
  */
 export function stripInlineMarkdown(text: string): string {
   return (
-    text
-      .replace(/<!--[\s\S]*?-->/g, '')
+    stripHtmlComments(text)
       .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // image: a heading has no inline image node, so it contributes no text
       .replace(/\[\[[^\]|]+\|([^\]]+)\]\]/g, '$1') // wiki link w/ alias → alias
       .replace(/\[\[([^\]]+)\]\]/g, '$1') // wiki link → target

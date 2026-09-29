@@ -134,11 +134,12 @@ describe('fetchIcsFeed against a hostile feed server', () => {
       res.end('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n')
     }
   }
+  const routeByPath = new Map(Object.entries(routes))
 
   beforeAll(async () => {
     server = createServer((req, res) => {
       requests.push(req.url ?? '')
-      const route = routes[req.url ?? '']
+      const route = routeByPath.get(req.url ?? '')
       if (route) {
         route(req, res)
       } else {

@@ -98,7 +98,7 @@ const parseWeekdayList = (rest: string): number[] | null => {
  */
 export const parseRepeatPhrase = (phrase: string, anchor: Date, now: Date): RepeatConfig | null => {
   const normalized = phrase.toLowerCase().replace(/\s+/g, ' ').trim()
-  const everyMatch = /^every\s+(.+)$/.exec(normalized)
+  const everyMatch = /^every (.+)$/.exec(normalized)
   if (!everyMatch) return null
 
   const rest = everyMatch[1]
@@ -136,7 +136,7 @@ export const parseRepeatPhrase = (phrase: string, anchor: Date, now: Date): Repe
   }
 
   // "every monday", "every mon and fri", "every other tuesday".
-  const dayListMatch = /^(?:(\d+|other)\s+)?(.+)$/.exec(rest)
+  const dayListMatch = /^(?:(\d+|other) )?(.+)$/.exec(rest)
   if (dayListMatch) {
     const interval = parseInterval(dayListMatch[1])
     const daysOfWeek = parseWeekdayList(dayListMatch[2])

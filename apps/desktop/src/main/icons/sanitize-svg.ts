@@ -19,6 +19,8 @@
  * @module icons/sanitize-svg
  */
 
+import { stripHtmlComments } from '@memry/shared/html-comments'
+
 /** Elements dropped together with everything inside them. */
 const FORBIDDEN_ELEMENTS = ['script', 'foreignObject', 'iframe', 'embed', 'object', 'handler']
 const FORBIDDEN_LOCAL_NAMES = new Set(FORBIDDEN_ELEMENTS.map((tag) => tag.toLowerCase()))
@@ -54,7 +56,6 @@ function localName(name: string): string {
   return name.replace(/^.*:/, '').toLowerCase()
 }
 
-const COMMENT_RE = /<!--[\s\S]*?-->/g
 /** DOCTYPE, including any internal subset — the billion-laughs / XXE vector. */
 const DOCTYPE_RE = /<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?[^>]*>/gi
 const ENTITY_RE = /<!ENTITY[\s\S]*?>/gi
@@ -164,12 +165,17 @@ function sanitizeAttributes(raw: string, element: string): string {
 export function sanitizeSvg(input: string | Buffer): string | null {
   let svg = typeof input === 'string' ? input : input.toString('utf8')
 
-  svg = svg
-    .replace(COMMENT_RE, '')
-    .replace(DOCTYPE_RE, '')
-    .replace(ENTITY_RE, '')
-    .replace(PI_RE, '')
-    .replace(CDATA_RE, '')
+  // Until stable: removing one construct can re-form another from the text on
+  // either side of it (`<!-<!-- x -->-` leaves `<!--`).
+  let previous: string
+  do {
+    previous = svg
+    svg = stripHtmlComments(svg)
+      .replace(DOCTYPE_RE, '')
+      .replace(ENTITY_RE, '')
+      .replace(PI_RE, '')
+      .replace(CDATA_RE, '')
+  } while (svg !== previous)
 
   svg = stripForbiddenElements(svg)
   svg = stripUnsafeStyleElements(svg)
