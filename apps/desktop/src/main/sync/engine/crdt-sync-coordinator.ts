@@ -29,6 +29,17 @@ import { prefetchWindow } from './prefetch-window'
 const log = createLogger('CrdtSyncCoordinator')
 
 /**
+ * A crdt_updates row's `createdAt` (epoch seconds) as the edit time the
+ * write-back stamps (#2515). Undefined for a missing or malformed value, which
+ * leaves the note's time as it is.
+ */
+export function serverSecondsToMs(createdAt: number | undefined): number | undefined {
+  return typeof createdAt === 'number' && Number.isFinite(createdAt) && createdAt > 0
+    ? createdAt * 1000
+    : undefined
+}
+
+/**
  * The server's cap on the `notes` array of `POST /sync/crdt/updates/batch`
  * (`CrdtBatchPullSchema`, sync-server routes/sync.ts). A protocol fact, not a
  * pacing knob: it bounds the probe, which opens no document and so is not bound
@@ -622,7 +633,13 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           }
 
           // Dropped by a closing doc: not in the doc, and not recorded (b-M3).
-          if (crdtProvider.applyRemoteUpdate(noteId, decryptedUpdates[next++]) === false) {
+          if (
+            crdtProvider.applyRemoteUpdate(
+              noteId,
+              decryptedUpdates[next++],
+              serverSecondsToMs(entry.createdAt)
+            ) === false
+          ) {
             sawUnmerged = true
             skippedUpdate = true
             this.oweDroppedUpdate(noteId)
@@ -1212,7 +1229,13 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
               continue
             }
             // Dropped by a closing doc: not in the doc, and not recorded (b-M3).
-            if (crdtProvider.applyRemoteUpdate(noteId, decryptedUpdates[next++]) === false) {
+            if (
+              crdtProvider.applyRemoteUpdate(
+                noteId,
+                decryptedUpdates[next++],
+                serverSecondsToMs(entry.createdAt)
+              ) === false
+            ) {
               sawUnmerged.add(noteId)
               skippedUpdate.add(noteId)
               this.oweDroppedUpdate(noteId)

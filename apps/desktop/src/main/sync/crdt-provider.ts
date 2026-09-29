@@ -209,6 +209,11 @@ interface ActiveDoc {
 
 export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
+  /**
+   * Server time (ms) of the remote update `applyRemoteUpdate` is merging, for
+   * the write-back its synchronous `update` event arms (#2515).
+   */
+  private applyingRemoteEditedAtMs: number | undefined
   private openLocks = new Map<string, Promise<Y.Doc>>()
   private persistence: CrdtPersistence | null = null
   /** See `storeId`. Minted on every successful open, dropped on `destroy()`. */
@@ -977,8 +982,12 @@ export class CrdtProvider {
    * `false` when the update was dropped (no open doc, or one closing): the
    * caller must not record it as merged (#2297 round 2 b-M3). An update
    * buffered by a compaction is merged when the compaction ends, so `true`.
+   *
+   * `editedAtMs` is the server time of an incremental update, the edit time
+   * the write-back stamps on the note. A snapshot or pack passes none, and
+   * the note keeps its time (#2515).
    */
-  applyRemoteUpdate(noteId: string, update: Uint8Array): boolean {
+  applyRemoteUpdate(noteId: string, update: Uint8Array, editedAtMs?: number): boolean {
     const entry = this.docs.get(noteId)
     if (!entry) {
       log.warn('Received remote update for unopened doc', { noteId })
@@ -1010,7 +1019,12 @@ export class CrdtProvider {
       }
     }
 
-    Y.applyUpdate(entry.doc, update, ORIGIN_NETWORK)
+    this.applyingRemoteEditedAtMs = editedAtMs
+    try {
+      Y.applyUpdate(entry.doc, update, ORIGIN_NETWORK)
+    } finally {
+      this.applyingRemoteEditedAtMs = undefined
+    }
     return true
   }
 
@@ -1031,12 +1045,16 @@ export class CrdtProvider {
    * update is only buffered, in neither the doc nor the store, and a failed or
    * abandoned compaction can drop it, so the caller must owe the note.
    */
-  async mergeRemoteUpdate(noteId: string, update: Uint8Array): Promise<boolean> {
+  async mergeRemoteUpdate(
+    noteId: string,
+    update: Uint8Array,
+    editedAtMs?: number
+  ): Promise<boolean> {
     if (!this.persistence) throw new Error('No CRDT store to hold a change-feed body')
     const entry = this.docs.get(noteId)
     if (!entry || entry.closing) throw new Error('No open doc to merge a change-feed body into')
     if (this.compactingDocs.has(noteId)) {
-      this.applyRemoteUpdate(noteId, update)
+      this.applyRemoteUpdate(noteId, update, editedAtMs)
       return false
     }
     let changed = false
@@ -1045,7 +1063,7 @@ export class CrdtProvider {
     }
     entry.doc.on('update', onUpdate)
     try {
-      this.applyRemoteUpdate(noteId, update)
+      this.applyRemoteUpdate(noteId, update, editedAtMs)
     } finally {
       entry.doc.off('update', onUpdate)
     }
@@ -1692,7 +1710,7 @@ export class CrdtProvider {
     }
 
     if (origin === ORIGIN_NETWORK) {
-      scheduleWriteback(noteId, entry.doc, 'remote')
+      scheduleWriteback(noteId, entry.doc, 'remote', this.applyingRemoteEditedAtMs)
     } else if (isIpcOrigin(origin)) {
       scheduleWriteback(noteId, entry.doc, 'local')
     }

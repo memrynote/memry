@@ -442,6 +442,22 @@ describe('CrdtProvider', () => {
     expect(provider.getOpenNoteIds()).toEqual(['note-2'])
   })
 
+  // #2515: the write-back stamps the remote edit time, not the time it ran.
+  it('hands the server time of a remote update to the write-back it arms, and only to that one', async () => {
+    await provider.open('note-1', undefined, { skipSeed: true })
+    const editedAt = Date.parse('2025-12-20T10:00:00.000Z')
+
+    provider.applyRemoteUpdate('note-1', makeRemoteUpdate('edited elsewhere'), editedAt)
+    await provider.mergeRemoteUpdate('note-1', makeRemoteUpdate('from the feed'), editedAt + 1)
+    provider.applyRemoteUpdate('note-1', makeRemoteUpdate('a snapshot'))
+
+    expect(mocks.scheduleWriteback.mock.calls.map((call) => call[3])).toEqual([
+      editedAt,
+      editedAt + 1,
+      undefined
+    ])
+  })
+
   it('merges a feed update into an open doc, writes it back, and awaits its explicit store write', async () => {
     await provider.open('note-1', undefined, { skipSeed: true })
     const store = mocks.persistenceInstances[0]
@@ -452,7 +468,12 @@ describe('CrdtProvider', () => {
 
     expect(provider.getDoc('note-1')!.getMap('meta').get('title')).toBe('from the feed')
     expect(store.storeUpdate).toHaveBeenCalledWith('note-1', update)
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'remote')
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith(
+      'note-1',
+      expect.any(Y.Doc),
+      'remote',
+      undefined
+    )
     expect(queue.enqueue).not.toHaveBeenCalled()
   })
 
@@ -564,7 +585,12 @@ describe('CrdtProvider', () => {
     expect(mocks.sent).toEqual([])
     expect(queue.enqueue).not.toHaveBeenCalled()
     expect(mocks.recordNetworkUpdate).toHaveBeenCalledWith('note-1')
-    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc), 'remote')
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith(
+      'note-1',
+      expect.any(Y.Doc),
+      'remote',
+      undefined
+    )
 
     await provider.close('note-1')
     expect(mocks.sent[0]).toMatchObject({
@@ -1270,7 +1296,7 @@ describe('CrdtProvider', () => {
       dateAfterRestart: reloaded.getMap('meta').get('date')
     }).toEqual({
       inMemory: 'pulled during compaction',
-      writtenBackDoc: ['note-1', compactedLiveDoc, 'remote'],
+      writtenBackDoc: ['note-1', compactedLiveDoc, 'remote', undefined],
       broadcastToEditor: 'pulled during compaction',
       afterRestart: 'pulled during compaction',
       dateAfterRestart: '2026-01-01'

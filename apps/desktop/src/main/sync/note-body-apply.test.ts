@@ -42,7 +42,7 @@ function fakeProvider(
       }
       return doc
     }),
-    mergeRemoteUpdate: vi.fn(async (noteId: string, update: Uint8Array) => {
+    mergeRemoteUpdate: vi.fn(async (noteId: string, update: Uint8Array, _editedAtMs?: number) => {
       calls.push(`merge:${noteId}:${update.byteLength}`)
       Y.applyUpdate(openDocs.get(noteId)!, update)
       return true
@@ -68,6 +68,16 @@ function deps(
 }
 
 describe('landNoteBody (#2297)', () => {
+  // #2515
+  it('#given updates with server times #then each merges with its own edit time', async () => {
+    const { base, delta } = textUpdates()
+    const provider = fakeProvider(new Map(), new Map([['note-1', base]]))
+
+    await landNoteBody(deps(provider, ['note-1']), 'note-1', [delta, delta], [1000, undefined])
+
+    expect(provider.mergeRemoteUpdate.mock.calls.map((call) => call[2])).toEqual([1000, undefined])
+  })
+
   it('#given a known note with a persisted doc #then it opens without a seed, merges durably and closes', async () => {
     const { base, delta } = textUpdates()
     const provider = fakeProvider(new Map(), new Map([['note-1', base]]))
@@ -167,7 +177,7 @@ describe('landNoteBody (#2297)', () => {
     await expect(landNoteBody(landingDeps, 'note-1', [delta])).resolves.toBe(false)
 
     expect(landingDeps.onMissingBase).toHaveBeenCalledWith('note-1')
-    expect(provider.mergeRemoteUpdate).toHaveBeenCalledWith('note-1', delta)
+    expect(provider.mergeRemoteUpdate).toHaveBeenCalledWith('note-1', delta, undefined)
   })
 
   it('#given a landing that throws #then the doc it opened is still closed', async () => {

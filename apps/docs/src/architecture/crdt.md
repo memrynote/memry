@@ -595,6 +595,14 @@ document to its vault `.md` file and re-indexes it for search.
   sweep per TTL window) rather than scanned on every watcher event, and
   `CrdtProvider.destroy()` clears the maps outright, so no vault's note ids or file paths
   survive into the next one.
+- **Only an edit moves a note's edit time** — the pass re-indexes the note with a
+  `modifiedAt`, which is what Recently Edited and the modified sort read. A pass armed by a
+  local edit stamps now. A remote pass keeps the note's time, moved forward only to the
+  server time (`crdt_updates.created_at`) of the incremental update it merged, never
+  backwards; the CRDT pull and the change feed hand that time to
+  `applyRemoteUpdate`/`mergeRemoteUpdate`. A snapshot, a packed body, or an update with no
+  time carries none, so a re-pull or a body re-serialized for a note nobody touched leaves
+  it where it was in the list.
 
 - **The export path cannot write** — a pass serializes from a detached copy of the Y.Doc,
   never the live one. The BlockNote/Yjs converter answers a node type its schema cannot

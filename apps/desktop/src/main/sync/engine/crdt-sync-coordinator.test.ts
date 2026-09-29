@@ -117,7 +117,9 @@ describe('CrdtSyncCoordinator', () => {
       '/sync/crdt/updates?note_id=note-1&since=0&limit=100',
       'token-1'
     )
-    expect(applyRemoteUpdate).toHaveBeenCalledWith('note-1', new Uint8Array([7, 7, 7]))
+    // The update's server time (epoch seconds) rides along as the edit time the
+    // write-back stamps (#2515).
+    expect(applyRemoteUpdate).toHaveBeenCalledWith('note-1', new Uint8Array([7, 7, 7]), 2000)
     expect(seedFromMarkdownPublic).toHaveBeenCalledWith('note-1')
   })
 
@@ -402,6 +404,13 @@ describe('CrdtSyncCoordinator', () => {
       },
       'token-1'
     )
+    // The snapshot baseline carries no edit time; each update its own (#2515).
+    expect(applyRemoteUpdate.mock.calls.map((call) => call[2])).toEqual([
+      undefined,
+      1000,
+      2000,
+      undefined
+    ])
   })
 
   const createBatchContext = (): {
