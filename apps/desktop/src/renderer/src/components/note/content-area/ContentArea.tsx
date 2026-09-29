@@ -28,6 +28,7 @@ import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { getDiagramSlashMenuItems } from '@blocknote/diagram-block'
 import { CustomAIMenu } from './ai-menu'
+import { aiSuggestionMarksExtension } from './ai-suggestion-marks'
 import { en as aiEn } from '@blocknote/xl-ai/locales'
 import { en as coreEn } from '@blocknote/core/locales'
 
@@ -573,7 +574,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       schema: editorSchema,
       // Syntax highlighting is an extension in BlockNote 0.51+, not a code-block
       // option. Without it a code block renders its text uncoloured.
-      extensions: [memrySyntaxHighlighter],
+      // The AI suggestion marks must be in the schema from the start; the AI
+      // extension itself is registered later and cannot add them (#2527).
+      extensions: [memrySyntaxHighlighter, aiSuggestionMarksExtension],
       setIdAttribute: true,
       // All off by default in BlockNote 0.47. `headers` leaves the table handle
       // menu with no way to make a header row at all — while markdown storage
