@@ -1,17 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
+import type * as Diagnostics from '../telemetry/diagnostics'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
 
-const { searchQueriesMock, trackMainEventMock } = vi.hoisted(() => ({
+const { searchQueriesMock, trackMainEventMock, trackMainWarningMock } = vi.hoisted(() => ({
   searchQueriesMock: {
     searchAll: vi.fn(),
     quickSearch: vi.fn(),
     getSearchStats: vi.fn()
   },
-  trackMainEventMock: vi.fn()
+  trackMainEventMock: vi.fn(),
+  trackMainWarningMock: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -181,6 +183,11 @@ vi.mock('../telemetry/track', () => ({
   trackMainEvent: trackMainEventMock
 }))
 
+vi.mock('../telemetry/diagnostics', async (importOriginal) => ({
+  ...(await importOriginal<typeof Diagnostics>()),
+  trackMainWarning: trackMainWarningMock
+}))
+
 vi.mock('@main/database/fts-rebuild', () => ({
   rebuildAllIndexes: vi.fn()
 }))
@@ -287,6 +294,41 @@ describe('search-handlers: reasons', () => {
           queryTimeMs: 0
         }
       )
+    })
+  })
+
+  // #2525: a non-string `text` threw a raw ZodError that shipped as an
+  // unattributable $exception. It now answers empty and warns with the channel.
+  describe('non-string text', () => {
+    it.each([
+      [SearchChannels.invoke.QUERY, { groups: [], totalCount: 0, queryTimeMs: 0 }],
+      [SearchChannels.invoke.QUICK, { results: [], queryTimeMs: 0 }]
+    ])('%s answers empty and warns with the received type', async (channel, empty) => {
+      for (const [text, textType] of [
+        [undefined, 'undefined'],
+        [null, 'null'],
+        [42, 'number'],
+        [['budget'], 'array']
+      ] as const) {
+        trackMainWarningMock.mockClear()
+        await expect(invokeHandler(channel, { text })).resolves.toEqual(empty)
+        expect(trackMainWarningMock).toHaveBeenCalledTimes(1)
+        const [source, action, error] = trackMainWarningMock.mock.calls[0]
+        expect(source).toBe('ipc')
+        expect(action).toBe(`${channel}:invalid_text`)
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).name).toBe('SearchTextTypeError')
+        expect((error as Error).message).toBe(`${channel} received non-string text (${textType})`)
+      }
+      expect(searchQueriesMock.searchAll).not.toHaveBeenCalled()
+      expect(searchQueriesMock.quickSearch).not.toHaveBeenCalled()
+    })
+
+    it('keeps rejecting other contract violations of a string text', async () => {
+      await expect(
+        invokeHandler(SearchChannels.invoke.QUERY, { text: 'x'.repeat(501) })
+      ).rejects.toThrow(/Validation failed/)
+      expect(trackMainWarningMock).not.toHaveBeenCalled()
     })
   })
 

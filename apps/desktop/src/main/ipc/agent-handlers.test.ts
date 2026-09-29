@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { mockElectron } from '@tests/utils/mock-electron'
+import type * as Diagnostics from '../telemetry/diagnostics'
 
 const mocks = vi.hoisted(() => ({
   runTurn: vi.fn(async () => ({ turnId: 'turn-1' })),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
       snapshot: { mode: 'reference_only', id: 'current' }
     }
   ]),
+  trackMainError: vi.fn(),
   getDisclosureState: vi.fn(() => ({ accepted: false })),
   acceptDisclosure: vi.fn(() => ({ accepted: true })),
   getAgentPreferences: vi.fn(() => ({
@@ -48,8 +50,13 @@ vi.mock('../agent/settings', () => ({
   getAgentPreferences: mocks.getAgentPreferences,
   setAgentPreferences: mocks.setAgentPreferences
 }))
+vi.mock('../telemetry/diagnostics', async (importOriginal) => ({
+  ...(await importOriginal<typeof Diagnostics>()),
+  trackMainError: mocks.trackMainError
+}))
 
 import { AgentChannels } from '@memry/contracts/ipc-agent'
+import { ZodError } from 'zod'
 
 import { broadcastAgentEvent } from '../agent/runtime/event-bus'
 import {
@@ -378,6 +385,35 @@ describe('agent IPC handlers', () => {
       ok: false,
       error: 'There is already a turn in flight for conversation conversation-1'
     })
+    expect(mocks.snapshotAttachments).not.toHaveBeenCalled()
+    expect(mocks.runTurn).not.toHaveBeenCalled()
+  })
+
+  // #2525: a malformed payload threw a raw ZodError out of this bare handler,
+  // which main telemetry could not attribute to a channel.
+  it('answers a malformed payload with the error envelope and reports it against the channel', async () => {
+    registerAgentHandlers(deps)
+
+    const result = await findHandler(AgentChannels.invoke.SEND_TURN)(null, {
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: undefined,
+      attachments: [],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+    })
+
+    expect(result).toEqual({ ok: false, error: expect.any(String) })
+    expect(mocks.trackMainError).toHaveBeenCalledWith(
+      'ipc',
+      AgentChannels.invoke.SEND_TURN,
+      expect.any(ZodError)
+    )
+    const [, , error] = mocks.trackMainError.mock.calls[0] as unknown as [string, string, ZodError]
+    expect(error.issues).toEqual([
+      expect.objectContaining({ code: 'invalid_type', expected: 'string', path: ['text'] })
+    ])
+    const { runtime } = deps as unknown as { runtime: { acquireTurnLock: () => void } }
+    expect(runtime.acquireTurnLock).not.toHaveBeenCalled()
     expect(mocks.snapshotAttachments).not.toHaveBeenCalled()
     expect(mocks.runTurn).not.toHaveBeenCalled()
   })

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
 import {
   SearchQuerySchema,
@@ -7,7 +7,7 @@ import {
 } from '@memry/contracts/search-api'
 import type { SearchReason } from '@memry/contracts/search-api'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler, createHandler } from './validate'
+import { createValidatedHandler, createHandler, setIpcHandlerChannel } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { searchQueries } from '../search/store'
@@ -15,6 +15,7 @@ import { rebuildAllIndexes } from '@main/database/fts-rebuild'
 import { searchReasons } from '@memry/db-schema/schema/search-reasons'
 import { eq, desc, sql, and } from 'drizzle-orm'
 import { trackMainEvent } from '../telemetry/track'
+import { trackMainWarning } from '../telemetry/diagnostics'
 import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:Search')
@@ -25,72 +26,113 @@ const resultBucket = (count: number): string => {
   return 'six_plus'
 }
 
+// The received type of a search payload's `text` when it is not a string, else
+// null. Only the type is reported, never the value: it is the user's query.
+function nonStringSearchTextType(input: unknown): string | null {
+  if (input === null || typeof input !== 'object') return null
+  const text = (input as { text?: unknown }).text
+  if (typeof text === 'string') return null
+  if (text === null) return 'null'
+  return Array.isArray(text) ? 'array' : typeof text
+}
+
+// A non-string `text` used to reach the schema and throw a raw ZodError, which
+// shipped as an error-level $exception with nothing naming the caller (#2525).
+// Answer with the empty result the handler already returns on failure, and
+// record a warning naming the channel and the received type.
+function guardSearchText<TInput, TResult>(
+  channel: string,
+  emptyResult: TResult,
+  validated: (event: IpcMainInvokeEvent, rawInput: TInput) => Promise<TResult>
+): (event: IpcMainInvokeEvent, rawInput: TInput) => Promise<TResult> {
+  // ipcMain.handle labels only the listener it receives (this guard), so the
+  // inner handler is labelled here to keep its other failures attributable.
+  setIpcHandlerChannel(validated, channel)
+  return async (event, rawInput) => {
+    const textType = nonStringSearchTextType(rawInput)
+    if (textType === null) return validated(event, rawInput)
+    const error = new Error(`${channel} received non-string text (${textType})`)
+    error.name = 'SearchTextTypeError'
+    logger.warn(error.message)
+    trackMainWarning('ipc', `${channel}:invalid_text`, error)
+    return emptyResult
+  }
+}
+
 export function registerSearchHandlers(): void {
   ipcMain.handle(
     SearchChannels.invoke.QUERY,
-    createValidatedHandler(SearchQuerySchema, async (input) => {
-      try {
-        const indexDb = getIndexDatabase()
-        const dataDb = getDatabase()
-        const result = searchQueries.searchAll(indexDb, dataDb, input)
-        trackMainEvent('search_performed', {
-          surface: 'search',
-          action: 'queried',
-          result: 'success',
-          metrics: {
-            durationMs: result.queryTimeMs,
-            resultCount: result.totalCount
-          },
-          source: 'global',
-          dimensions: {
-            result_bucket: resultBucket(result.totalCount)
-          }
-        })
-        return result
-      } catch (error) {
-        logger.error('search:query failed:', error)
-        trackMainEvent('search_performed', {
-          surface: 'search',
-          action: 'queried',
-          result: 'failed'
-        })
-        return { groups: [], totalCount: 0, queryTimeMs: 0 }
-      }
-    })
+    guardSearchText(
+      SearchChannels.invoke.QUERY,
+      { groups: [], totalCount: 0, queryTimeMs: 0 },
+      createValidatedHandler(SearchQuerySchema, async (input) => {
+        try {
+          const indexDb = getIndexDatabase()
+          const dataDb = getDatabase()
+          const result = searchQueries.searchAll(indexDb, dataDb, input)
+          trackMainEvent('search_performed', {
+            surface: 'search',
+            action: 'queried',
+            result: 'success',
+            metrics: {
+              durationMs: result.queryTimeMs,
+              resultCount: result.totalCount
+            },
+            source: 'global',
+            dimensions: {
+              result_bucket: resultBucket(result.totalCount)
+            }
+          })
+          return result
+        } catch (error) {
+          logger.error('search:query failed:', error)
+          trackMainEvent('search_performed', {
+            surface: 'search',
+            action: 'queried',
+            result: 'failed'
+          })
+          return { groups: [], totalCount: 0, queryTimeMs: 0 }
+        }
+      })
+    )
   )
 
   ipcMain.handle(
     SearchChannels.invoke.QUICK,
-    createValidatedHandler(QuickSearchInputSchema, async (input) => {
-      try {
-        const indexDb = getIndexDatabase()
-        const dataDb = getDatabase()
-        const result = searchQueries.quickSearch(indexDb, dataDb, input)
-        const totalCount = result.results?.length ?? 0
-        trackMainEvent('search_performed', {
-          surface: 'search',
-          action: 'queried',
-          result: 'success',
-          metrics: {
-            durationMs: result.queryTimeMs,
-            resultCount: totalCount
-          },
-          source: 'quick',
-          dimensions: {
-            result_bucket: resultBucket(totalCount)
-          }
-        })
-        return result
-      } catch (error) {
-        logger.error('search:quick failed:', error)
-        trackMainEvent('search_performed', {
-          surface: 'search',
-          action: 'queried',
-          result: 'failed'
-        })
-        return { results: [], queryTimeMs: 0 }
-      }
-    })
+    guardSearchText(
+      SearchChannels.invoke.QUICK,
+      { results: [], queryTimeMs: 0 },
+      createValidatedHandler(QuickSearchInputSchema, async (input) => {
+        try {
+          const indexDb = getIndexDatabase()
+          const dataDb = getDatabase()
+          const result = searchQueries.quickSearch(indexDb, dataDb, input)
+          const totalCount = result.results?.length ?? 0
+          trackMainEvent('search_performed', {
+            surface: 'search',
+            action: 'queried',
+            result: 'success',
+            metrics: {
+              durationMs: result.queryTimeMs,
+              resultCount: totalCount
+            },
+            source: 'quick',
+            dimensions: {
+              result_bucket: resultBucket(totalCount)
+            }
+          })
+          return result
+        } catch (error) {
+          logger.error('search:quick failed:', error)
+          trackMainEvent('search_performed', {
+            surface: 'search',
+            action: 'queried',
+            result: 'failed'
+          })
+          return { results: [], queryTimeMs: 0 }
+        }
+      })
+    )
   )
 
   ipcMain.handle(

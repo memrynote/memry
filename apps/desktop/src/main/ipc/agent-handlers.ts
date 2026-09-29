@@ -121,7 +121,17 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   })
 
   ipcMain.handle(AgentChannels.invoke.SEND_TURN, async (_event, payload: unknown) => {
-    const request = SendTurnRequestSchema.parse(payload)
+    // A malformed payload used to throw a raw ZodError out of this bare handler:
+    // the composer only saw an opaque rejection, and main telemetry never named
+    // the channel (#2525). Answer with the response envelope the composer already
+    // renders, and report the rejection against this channel.
+    const parsed = SendTurnRequestSchema.safeParse(payload)
+    if (!parsed.success) {
+      logger.error('agent:sendTurn rejected a malformed payload', parsed.error.issues)
+      trackMainError('ipc', AgentChannels.invoke.SEND_TURN, parsed.error)
+      return { ok: false, error: getMainI18n().t('errors:generic.somethingWentWrong') }
+    }
+    const request = parsed.data
     try {
       deps.runtime.acquireTurnLock(request.conversationId)
     } catch (error) {
