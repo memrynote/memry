@@ -53,6 +53,13 @@ If a task points at a status the project no longer has — after the status was 
 
 [Settings → Tasks → Default Project](/user-guide/settings#tasks) sets which project new tasks go to when you quick-add outside any project view. "(No project)" is a valid default.
 
+The same setting decides which project a new Tasks tab opens on. You can also set it without opening Settings:
+
+- In the project dropdown on the Tasks page, hover a project and click the home icon at the end of its row. The current default keeps a filled home icon; click it again to go back to **All projects**. The dropdown stays open and your current view does not change.
+- In a project's edit dialog, turn on **Default project**.
+
+A Tasks tab that already has a project picked keeps it.
+
 ## Project Views
 
 Each project has its own:
