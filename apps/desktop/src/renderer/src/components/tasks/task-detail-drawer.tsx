@@ -308,7 +308,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 <button
                   type="button"
                   onClick={onOpenInTasks}
-                  className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary hover:bg-surface-active/60 transition-all duration-150 ease-out active:scale-90 focus-visible:outline-none"
+                  className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary hover:bg-surface-active/60 transition-[color,background-color,scale] duration-150 ease-out active:scale-90 focus-visible:outline-none"
                   aria-label={t('drawer.openInTasks')}
                   title={t('drawer.openInTasks')}
                 >
