@@ -120,7 +120,7 @@ function fakeProvider(
       open.add(noteId)
     }),
     closeIfInactive: vi.fn(async (noteId: string) => open.delete(noteId)),
-    mergeRemoteUpdate: vi.fn(async (noteId: string, bytes: Uint8Array) => {
+    mergeRemoteUpdate: vi.fn(async (noteId: string, bytes: Uint8Array, _editedAtMs?: number) => {
       if (opts.failStore?.(noteId)) throw new Error('the store refused the write')
       stored.push([noteId, [...bytes]])
       return true
@@ -475,6 +475,36 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
     expect(owedPulls(engine)).toEqual(['note-2'])
     expect(ledgerKeys(engine)).toEqual([])
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
+  })
+
+  // #2515: the write-back stamps a feed body's server time as the note's edit
+  // time. A snapshot is no edit, so it carries none and the note keeps its time.
+  it('lands an update with its server time as the edit time, and a snapshot with none', async () => {
+    const provider = fakeProvider()
+    const engine = engineWith(getDb, provider)
+    await mockServer(
+      [
+        {
+          noteBodies: [
+            { ...update('note-1', 4, A), createdAt: 1_766_000_000 },
+            { ...update('note-2', 5), createdAt: 1_766_000_100 },
+            snapshot('note-3', 6, 'r2')
+          ],
+          nextCursor: 6
+        }
+      ],
+      { updates: { 'note-2': { sequenceNum: 5, data: B } }, snapshots: { 'note-3': C } }
+    )
+
+    await engine.pull()
+
+    expect(
+      provider.mergeRemoteUpdate.mock.calls.map(([noteId, , editedAtMs]) => [noteId, editedAtMs])
+    ).toEqual([
+      ['note-1', 1_766_000_000_000],
+      ['note-2', 1_766_000_100_000],
+      ['note-3', undefined]
+    ])
   })
 
   // #2297, review (B-7, A-M6)

@@ -1048,6 +1048,85 @@ describe('crdt writeback', () => {
       payload: { id: 'note-1', changes: { content: 'updated markdown' }, source: 'sync' }
     })
   })
+
+  // The "Recently edited" widget sorts on this stamp. A remote pass used to
+  // stamp the time it ran, so a note nobody had touched in weeks jumped to the
+  // top whenever sync rewrote its file.
+  describe('the edit time a pass stamps (#2515)', () => {
+    const EDITED_WEEKS_AGO = '2025-12-01T00:00:00.000Z'
+
+    beforeEach(() => {
+      mocks.getNoteCacheById.mockImplementation((_indexDb: unknown, noteId: string) => ({
+        id: noteId,
+        path: noteId.startsWith('j') ? `journal/${noteId.slice(1)}.md` : 'notes/Existing.md',
+        title: 'Existing',
+        contentHash: 'hash:---\ntitle: Existing\n---\nold markdown',
+        createdAt: '2025-11-01T00:00:00.000Z',
+        modifiedAt: EDITED_WEEKS_AGO
+      }))
+    })
+
+    function stampedModifiedAt(): unknown {
+      expect(mocks.syncNoteToCache).toHaveBeenCalledTimes(1)
+      return (mocks.syncNoteToCache.mock.calls[0][1] as { modifiedAt: unknown }).modifiedAt
+    }
+
+    it('keeps the note where it was for a remote body with no edit time (snapshot, pack, older peer)', async () => {
+      scheduleWriteback('note-1', makeDoc('Existing'), 'remote')
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
+      expect(stampedModifiedAt()).toBe(EDITED_WEEKS_AGO)
+    })
+
+    it('stamps the remote edit time of a body edited on another device', async () => {
+      const editedElsewhere = Date.parse('2025-12-20T10:00:00.000Z')
+      scheduleWriteback('note-1', makeDoc('Existing'), 'remote', editedElsewhere)
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(stampedModifiedAt()).toBe('2025-12-20T10:00:00.000Z')
+    })
+
+    it('never moves the edit time backwards for a remote edit older than the note', async () => {
+      scheduleWriteback('note-1', makeDoc('Existing'), 'remote', Date.parse('2025-10-01T00:00:00Z'))
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(stampedModifiedAt()).toBe(EDITED_WEEKS_AGO)
+    })
+
+    it('stamps the latest of the remote edits merged into one pass', async () => {
+      const doc = makeDoc('Existing')
+      scheduleWriteback('note-1', doc, 'remote', Date.parse('2025-12-22T00:00:00.000Z'))
+      scheduleWriteback('note-1', doc, 'remote', Date.parse('2025-12-21T00:00:00.000Z'))
+      scheduleWriteback('note-1', doc, 'remote')
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(stampedModifiedAt()).toBe('2025-12-22T00:00:00.000Z')
+    })
+
+    it('stamps now for a local edit, also when a remote edit shares the pass', async () => {
+      const doc = makeDoc('Existing')
+      scheduleWriteback('note-1', doc, 'remote', Date.parse('2025-12-20T00:00:00.000Z'))
+      scheduleWriteback('note-1', doc, 'local')
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(stampedModifiedAt()).toBe('2026-01-01T00:00:00.000Z')
+    })
+
+    it('keeps the edit time on a post-pull materialize of packed bodies', async () => {
+      const doc = makeDoc('Existing')
+      await writebackNow('note-1', doc)
+
+      expect(stampedModifiedAt()).toBe(EDITED_WEEKS_AGO)
+    })
+
+    it('applies the same rule to a journal', async () => {
+      scheduleWriteback('j2026-01-03', makeDoc('Journal'), 'remote')
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(stampedModifiedAt()).toBe(EDITED_WEEKS_AGO)
+    })
+  })
 })
 
 describe('crdt-writeback per-vault state reset', () => {

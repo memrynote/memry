@@ -11,7 +11,7 @@ import { fetchCrdtSnapshot, getFromServer, NetworkError, SyncServerError } from 
 import { decryptCrdtUpdate } from '../crdt-encrypt'
 import type { CrdtProvider } from '../crdt-provider'
 import { isKnownNote, landNoteBody } from '../note-body-apply'
-import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
+import { serverSecondsToMs, type CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 import {
   NOTE_BODY_ITEM_TYPE,
@@ -40,6 +40,8 @@ export interface FeedBody {
   update: Uint8Array
   /** Set for a snapshot: recorded in the watermark once it landed. */
   snapshot?: { sequenceNum: number; revision: string }
+  /** Server time (ms) of an incremental update: the edit time the write-back stamps (#2515). */
+  editedAtMs?: number
 }
 
 /**
@@ -83,6 +85,7 @@ interface Packed {
   bytes: Uint8Array
   signerDeviceId: string
   snapshot?: FeedBody['snapshot']
+  editedAtMs?: number
 }
 
 type Fetched = Packed | 'skipped' | 'owed' | 'refused'
@@ -353,7 +356,8 @@ export class NoteBodyFeed {
             onMissingBase: (id) => this.deps.crdtSync().addPendingPull(id, 'missing_base')
           },
           noteId,
-          bodies.map((body) => body.update)
+          bodies.map((body) => body.update),
+          bodies.map((body) => body.editedAtMs)
         )
         // A row deleted while the doc opened: dropped like one never there.
         if (!merged && !isKnownNote(this.deps.ctx.deps.db, noteId)) this.dropRowlessBody(noteId)
@@ -475,11 +479,13 @@ export class NoteBodyFeed {
             : {})
         }
       }
+      const editedAtMs = serverSecondsToMs(body.createdAt)
       if (body.data) {
         return {
           noteId: body.noteId,
           bytes: new Uint8Array(Buffer.from(body.data, 'base64')),
-          signerDeviceId: body.signerDeviceId
+          signerDeviceId: body.signerDeviceId,
+          ...(editedAtMs !== undefined ? { editedAtMs } : {})
         }
       }
       if (!spend()) return 'owed'
@@ -499,7 +505,8 @@ export class NoteBodyFeed {
       return {
         noteId: body.noteId,
         bytes: new Uint8Array(Buffer.from(row.data, 'base64')),
-        signerDeviceId: row.signerDeviceId
+        signerDeviceId: row.signerDeviceId,
+        ...(editedAtMs !== undefined ? { editedAtMs } : {})
       }
     } catch (err) {
       if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) throw err
@@ -561,7 +568,12 @@ export class NoteBodyFeed {
         refused.push(p.noteId)
         continue
       }
-      decrypted.push({ noteId: p.noteId, update, ...(p.snapshot ? { snapshot: p.snapshot } : {}) })
+      decrypted.push({
+        noteId: p.noteId,
+        update,
+        ...(p.snapshot ? { snapshot: p.snapshot } : {}),
+        ...(p.editedAtMs !== undefined ? { editedAtMs: p.editedAtMs } : {})
+      })
     }
     return {
       decrypted,

@@ -87,6 +87,8 @@ interface PendingWriteback {
   doc: Y.Doc
   /** Any update since the last pass was a local edit. */
   local: boolean
+  /** Latest server time (ms) of a remote edit merged since the last pass. */
+  remoteEditedAtMs: number | undefined
 }
 
 interface WritebackCost {
@@ -273,21 +275,69 @@ function resolveWritebackDoc(noteId: string, captured: Y.Doc): Y.Doc {
   return live
 }
 
+/**
+ * The edit time a pass stamps on the note (#2515). A local edit happened now.
+ * A remote pass is no edit made here: it keeps the row's time, moved forward
+ * only to the server time of the remote edit it merged, never backwards. A
+ * snapshot, a pack or an older peer's update carries no such time, so a
+ * re-pull or a re-serialized body leaves the note where it was.
+ */
+function writebackModifiedAt(
+  current: string | null | undefined,
+  local: boolean,
+  remoteEditedAtMs: number | undefined
+): string {
+  if (local) return utcNow()
+  const remoteMs =
+    remoteEditedAtMs !== undefined && Number.isFinite(remoteEditedAtMs) && remoteEditedAtMs > 0
+      ? remoteEditedAtMs
+      : undefined
+  const currentMs = current ? Date.parse(current) : NaN
+  if (!current || !Number.isFinite(currentMs)) {
+    return remoteMs !== undefined ? new Date(remoteMs).toISOString() : utcNow()
+  }
+  return remoteMs !== undefined && remoteMs > currentMs ? new Date(remoteMs).toISOString() : current
+}
+
+function laterEditTime(a: number | undefined, b: number | undefined): number | undefined {
+  if (a === undefined) return b
+  if (b === undefined) return a
+  return Math.max(a, b)
+}
+
 /** Runs a pass and records what it cost, which is what paces the next one. */
-async function runWriteback(noteId: string, doc: Y.Doc, local: boolean): Promise<void> {
+async function runWriteback(
+  noteId: string,
+  doc: Y.Doc,
+  local: boolean,
+  remoteEditedAtMs: number | undefined
+): Promise<void> {
   const startedAt = Date.now()
   try {
-    await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local)
+    await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local, remoteEditedAtMs)
   } finally {
     const finishedAt = Date.now()
     lastWritebackCost.set(noteId, { finishedAt, durationMs: finishedAt - startedAt })
   }
 }
 
-export function scheduleWriteback(noteId: string, doc: Y.Doc, source: WritebackSource): void {
+/**
+ * @param remoteEditedAtMs - For a `remote` pass, the server time of the edit
+ * that armed it, when the update carried one.
+ */
+export function scheduleWriteback(
+  noteId: string,
+  doc: Y.Doc,
+  source: WritebackSource,
+  remoteEditedAtMs?: number
+): void {
   const existing = pendingTimers.get(noteId)
   if (existing) clearTimeout(existing.timer)
   const local = source === 'local' || existing?.local === true
+  const pendingRemoteEditedAtMs = laterEditTime(
+    existing?.remoteEditedAtMs,
+    source === 'remote' ? remoteEditedAtMs : undefined
+  )
   updateDebugState(noteId, {
     pending: true,
     scheduledCount: (debugState.get(noteId)?.scheduledCount ?? 0) + 1,
@@ -297,7 +347,7 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc, source: WritebackS
   const timer = setTimeout(() => {
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
-    runWriteback(noteId, doc, local)
+    runWriteback(noteId, doc, local, pendingRemoteEditedAtMs)
       .catch((err) => {
         updateDebugState(noteId, {
           pending: false,
@@ -316,7 +366,7 @@ export function scheduleWriteback(noteId: string, doc: Y.Doc, source: WritebackS
       })
   }, writebackDelayMs(noteId))
 
-  pendingTimers.set(noteId, { timer, doc, local })
+  pendingTimers.set(noteId, { timer, doc, local, remoteEditedAtMs: pendingRemoteEditedAtMs })
 }
 
 /**
@@ -349,7 +399,7 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
   }
   inFlightWritebacks.add(noteId)
   try {
-    await runWriteback(noteId, doc, pending?.local === true)
+    await runWriteback(noteId, doc, pending?.local === true, pending?.remoteEditedAtMs)
   } finally {
     inFlightWritebacks.delete(noteId)
   }
@@ -402,8 +452,8 @@ export async function flushPendingWritebacks(): Promise<void> {
   pendingTimers.clear()
   for (const [, { timer }] of pending) clearTimeout(timer)
   await Promise.all(
-    pending.map(([noteId, { doc, local }]) =>
-      runWriteback(noteId, doc, local).catch((err) => {
+    pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
+      runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err) => {
         log.error('Write-back failed during shutdown flush', { noteId, error: err })
       })
     )
@@ -437,7 +487,12 @@ function resolveFromCanonicalMetadata(
   }
 }
 
-async function performWriteback(noteId: string, doc: Y.Doc, local: boolean): Promise<void> {
+async function performWriteback(
+  noteId: string,
+  doc: Y.Doc,
+  local: boolean,
+  remoteEditedAtMs: number | undefined
+): Promise<void> {
   // Loaded before the note row is read, so the row below is as fresh as it
   // was before the converter became lazy: past this line nothing awaits until
   // the serialization itself.
@@ -522,10 +577,11 @@ async function performWriteback(noteId: string, doc: Y.Doc, local: boolean): Pro
     })
   }
 
+  const modifiedAt = writebackModifiedAt(cached.modifiedAt, local, remoteEditedAtMs)
   if (isJournalId(noteId)) {
-    await writebackJournal(noteId, doc, markdown, cached, indexDb)
+    await writebackJournal(noteId, doc, markdown, cached, indexDb, modifiedAt)
   } else {
-    await writebackExisting(noteId, cached, doc, markdown, indexDb, isLargeFileBody)
+    await writebackExisting(noteId, cached, doc, markdown, indexDb, isLargeFileBody, modifiedAt)
     // The reminders a body's date pills derive belong to every device that
     // holds the body, and each derives its own. Only this device's edit may
     // stamp and push them. A row derived from a remote body stays unclocked,
@@ -569,7 +625,8 @@ async function writebackExisting(
   doc: Y.Doc,
   markdown: string,
   indexDb: ReturnType<typeof getIndexDatabase>,
-  isLargeFileBody: boolean
+  isLargeFileBody: boolean,
+  modifiedAt: string
 ): Promise<void> {
   const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
@@ -676,7 +733,7 @@ async function writebackExisting(
       parsedContent: markdown,
       title: cached.title,
       createdAt: cached.createdAt,
-      modifiedAt: utcNow(),
+      modifiedAt,
       localOnly: cached.localOnly ?? false,
       emoji: cached.emoji ?? null
     },
@@ -707,7 +764,8 @@ async function writebackJournal(
   doc: Y.Doc,
   markdown: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
-  indexDb: ReturnType<typeof getIndexDatabase>
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  modifiedAt: string
 ): Promise<void> {
   const date = journalIdToDate(noteId)
 
@@ -766,7 +824,7 @@ async function writebackJournal(
       parsedContent: markdown,
       title: cached.title,
       createdAt: cached.createdAt,
-      modifiedAt: utcNow(),
+      modifiedAt,
       localOnly: cached.localOnly ?? false,
       emoji: cached.emoji ?? null
     },

@@ -894,7 +894,7 @@ describe('SyncEngine', () => {
       // always-inline pass would have applied.
       expect(bridge.decryptCrdtBatch).toHaveBeenCalledTimes(1)
       expect(decryptSpy).toHaveBeenCalledTimes(1)
-      expect(applyRemoteUpdate).toHaveBeenCalledWith('note-1', new Uint8Array([7]))
+      expect(applyRemoteUpdate).toHaveBeenCalledWith('note-1', new Uint8Array([7]), 1000)
 
       vi.restoreAllMocks()
     })

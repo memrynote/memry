@@ -41,11 +41,15 @@ export interface NoteBodyLandingDeps {
  * - a known note whose doc holds nothing: owed its whole body. A delta merged
  *   into an empty doc can integrate in part and write a partial body over the
  *   file.
+ *
+ * `editedAtMs[i]` is the server time of `updates[i]` when it is an incremental
+ * update, the edit time the write-back stamps (#2515); absent for a snapshot.
  */
 export async function landNoteBody(
   deps: NoteBodyLandingDeps,
   noteId: string,
-  updates: Uint8Array[]
+  updates: Uint8Array[],
+  editedAtMs: ReadonlyArray<number | undefined> = []
 ): Promise<boolean> {
   const { provider } = deps
   if (!deps.isKnownNote(noteId)) return false
@@ -58,9 +62,9 @@ export async function landNoteBody(
       deps.onMissingBase(noteId)
       return false
     }
-    for (const update of updates) {
+    for (const [i, update] of updates.entries()) {
       // A doc compacting only buffers the update (#2299): not landed.
-      if (!(await provider.mergeRemoteUpdate(noteId, update))) {
+      if (!(await provider.mergeRemoteUpdate(noteId, update, editedAtMs[i]))) {
         deps.onMissingBase(noteId)
         return false
       }
