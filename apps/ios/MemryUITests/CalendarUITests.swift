@@ -40,6 +40,8 @@ final class CalendarUITests: XCTestCase {
     func testLaneBSearchOpensTheItemSheet() throws {
         try openCalendar()
         let title = createEvent()
+        // The calendar's own search sits in the title menu.
+        openTitleMenu()
         app.buttons["calendar.search"].firstMatch.tap()
         let field = app.textFields["calendar.search.field"].firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
@@ -179,7 +181,7 @@ final class CalendarUITests: XCTestCase {
         // Names on a shared staging account move; `a|b` accepts either.
         let names = (ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote").split(separator: "|").map(String.init)
         let vault = app.staticTexts.matching(NSPredicate(format: "label IN %@", names)).firstMatch
-        let more = app.buttons["More"].firstMatch
+        let more = app.buttons["Menu"].firstMatch
         let signIn = app.staticTexts["Sign in to Memry"]
         // The first launch of a run opens the vault and syncs: allow it time.
         let deadline = Date().addingTimeInterval(120)
@@ -193,10 +195,16 @@ final class CalendarUITests: XCTestCase {
         }
         XCTAssertTrue(more.waitForExistence(timeout: 5),
                       "the vault did not open: \(app.buttons.allElementsBoundByIndex.prefix(10).map(\.label))")
-        more.tap()
-        let entry = app.buttons["more.calendar"].firstMatch
-        XCTAssertTrue(entry.waitForExistence(timeout: 10))
-        entry.tap()
+        // Calendar sits in the bar or behind Menu, by desktop's rail order.
+        let tab = app.tabBars.buttons["Calendar"].firstMatch
+        if tab.exists {
+            tab.tap()
+        } else {
+            more.tap()
+            let entry = app.buttons["menu.calendar"].firstMatch
+            XCTAssertTrue(entry.waitForExistence(timeout: 10))
+            entry.tap()
+        }
         XCTAssertTrue(element("calendar.screen").waitForExistence(timeout: 15), "the calendar did not open")
         // A first answer to Paper 26 may be pending; decline keeps data private.
         let deny = app.alerts.buttons["Don’t allow"]

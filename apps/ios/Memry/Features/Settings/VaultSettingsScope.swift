@@ -12,9 +12,14 @@ struct VaultSettingsScope<Content: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var context: SettingsContext?
     @State private var browse: VaultBrowseViewModel?
+    @State private var capture: QuickCapture?
+    @Environment(\.inboxStore) private var inboxStore
 
     var body: some View {
         content(context, browse)
+            // The shell's search sheet reads the same browse surface.
+            .environment(\.vaultBrowse, browse)
+            .environment(\.quickCapture, capture)
             .memryAppearance()
             .task(id: tasks?.vaultId) { await make() }
             .onChange(of: scenePhase) { _, phase in
@@ -44,7 +49,9 @@ struct VaultSettingsScope<Content: View>: View {
                 account.syncFinished(succeeded)
                 Task { await store.refreshIfChanged() }
             }
-            browse = VaultBrowseViewModel(vault: vault, executor: .shared, filler: model.filler, store: secureStore)
+            let madeBrowse = VaultBrowseViewModel(vault: vault, executor: .shared, filler: model.filler, store: secureStore)
+            browse = madeBrowse
+            capture = QuickCapture(vault: vault, secureStore: secureStore, tasks: tasks, inbox: inboxStore, browse: madeBrowse)
             context = made
             await store.load()
             await account.load()

@@ -18,11 +18,8 @@ import SwiftUI
 // roles, and reduce-motion branched inside `calmAnimation` on every evaluation
 // rather than read once into a flag.
 //
-// **Read-only, for now and for one reason.** `Notes` exports `folders`,
-// `list` and `read`; the CRUD T126 built in Rust never reached the FFI, so
-// there is no menu, no swipe action and no create button here. It is not a
-// product decision — the calls do not exist — and the affordances land the
-// moment they do.
+// **Writes go through `NotesWriting`** (`VaultWrite.swift`), and every create,
+// rename, move and delete affordance is hidden when `model.writer` is `nil`.
 //
 // **`List`, not a `LazyVStack` in a `ScrollView`.** The list is the screen, so
 // it takes the platform's own container: row recycling for a vault holding
@@ -38,7 +35,6 @@ import SwiftUI
 // `FolderTree.swift`.
 
 struct NotesListView: View {
-    let title: String
     /// T155's switch, preserved. `nil` when the account holds one vault and
     /// there is nothing to switch to.
     let switchVault: (() -> Void)?
@@ -59,20 +55,20 @@ struct NotesListView: View {
     /// Persisted like desktop's Collections sort mode. The raw values are
     /// desktop's mode ids.
     @AppStorage("notes.browseSort") private var sort: BrowseSort = .modifiedNewest
-    @State private var query = ""
+    @State private var isNamingFolder = false
+    @State private var draftFolderName = ""
+    private let notesLinks = NotesLinks.shared
 
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
     /// model minted in `body` would re-read the whole vault on every frame.
     init(
         vault: Vault,
-        title: String,
         executor: CoreExecutor,
         filler: (any VaultFilling)? = nil,
         store: (any SecureStore)? = nil,
         switchVault: (() -> Void)? = nil
     ) {
-        self.title = title
         self.switchVault = switchVault
         _model = State(
             initialValue: VaultBrowseViewModel(
@@ -84,8 +80,7 @@ struct NotesListView: View {
         )
     }
 
-    init(model: VaultBrowseViewModel, title: String, switchVault: (() -> Void)? = nil) {
-        self.title = title
+    init(model: VaultBrowseViewModel, switchVault: (() -> Void)? = nil) {
         self.switchVault = switchVault
         _model = State(initialValue: model)
     }
@@ -97,17 +92,15 @@ struct NotesListView: View {
                 expanded: $expanded,
                 selectedFolder: $selectedFolder,
                 sort: sort,
-                query: query,
                 openFolder: { path.append(FolderRoute(path: $0)) },
                 openNote: { path.append(NoteRoute(id: $0)) }
             )
-                .navigationTitle(title)
-                // The platform's search field: it owns the scroll-edge
-                // treatment, the cancel button and the keyboard, and on this
-                // OS it is glass without anything here asking for it.
-                .searchable(text: $query, prompt: "Search notes")
                 .navigationDestination(for: FolderRoute.self) { route in
-                    FolderScreen(route: route, outline: model.outline)
+                    FolderScreen(
+                        route: route,
+                        model: model,
+                        openNote: { path.append(NoteRoute(id: $0)) }
+                    )
                 }
                 // T157, and the **second and last** registration in this
                 // stack. It is here, on the stack's root content, and not in
@@ -150,23 +143,6 @@ struct NotesListView: View {
                     )
                 }
                 .toolbar {
-                    if model.writer != nil {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            // Shown only where a write can actually happen.
-                            // A device with no identity to write under gets no
-                            // button rather than a button that fails.
-                            Button("New note", systemImage: "square.and.pencil") {
-                                Task {
-                                    if let id = await model.createNote(in: nil) {
-                                        // Straight into the note that was just
-                                        // made: a create that leaves the user
-                                        // hunting for the row did half a job.
-                                        path.append(NoteRoute(id: id))
-                                    }
-                                }
-                            }
-                        }
-                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         // Its own view, and not inline: `body` must stay free
                         // of every iterating container, because that is the
@@ -179,29 +155,75 @@ struct NotesListView: View {
                             Button("Switch vault", systemImage: "lock.square") { switchVault() }
                         }
                     }
+                    GlobalSearchToolbarItem()
+                }
+                // The page's "+", in the bottom trailing slot every page's
+                // "+" uses: tap for a note, hold for a folder. Shown only
+                // where a write can actually happen, and only on the root:
+                // a folder's screen carries its own.
+                .overlay(alignment: .bottomTrailing) {
+                    if model.writer != nil {
+                        NotesCreateButton(
+                            newNote: {
+                                Task {
+                                    // Straight into the note that was just
+                                    // made: a create that leaves the user
+                                    // hunting for the row did half a job.
+                                    if let id = await model.createNote(in: nil) { path.append(NoteRoute(id: id)) }
+                                }
+                            },
+                            newFolder: {
+                                draftFolderName = ""
+                                isNamingFolder = true
+                            }
+                        )
+                        .padding(.horizontal, Tokens.Space.inset)
+                        .padding(.bottom, Tokens.Space.medium)
+                    }
+                }
+                .alert("New folder", isPresented: $isNamingFolder) {
+                    TextField("Name", text: $draftFolderName)
+                    Button("Create") {
+                        let name = draftFolderName
+                        Task { await model.createFolder(named: name, in: nil) }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("At the top of this vault.")
+                }
+                // A search hit or a capture's "View" opens its note here.
+                .onChange(of: notesLinks.pending, initial: true) {
+                    if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
                 }
                 .task { await model.loadIfNeeded() }
                 .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
                 .onAppear { Task { await model.refresh() } }
-                // A failed write is an alert over a screen that still holds
-                // the vault, not a replacement for it: the outline is still
-                // true, only the write did not happen.
-                .alert(
-                    model.writeFailure?.title ?? "",
-                    isPresented: Binding(
-                        get: { model.writeFailure != nil },
-                        set: { if !$0 { model.writeFailure = nil } }
-                    )
-                ) {
-                    Button("OK", role: .cancel) { model.writeFailure = nil }
-                } message: {
-                    // What to do next, when there is something to do. A
-                    // failure with no guidance says only what happened rather
-                    // than inventing a step that does not exist.
-                    if let guidance = model.writeFailure?.guidance {
-                        Text(guidance)
-                    }
-                }
+                .writeFailureAlert(model)
+        }
+    }
+}
+
+extension View {
+    /// A failed write is an alert over a screen that still holds the vault,
+    /// not a replacement for it: the outline is still true, only the write
+    /// did not happen. Attached to every screen in the stack that writes,
+    /// because an alert on a covered screen does not present.
+    func writeFailureAlert(_ model: VaultBrowseViewModel) -> some View {
+        alert(
+            model.writeFailure?.title ?? "",
+            isPresented: Binding(
+                get: { model.writeFailure != nil },
+                set: { if !$0 { model.writeFailure = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { model.writeFailure = nil }
+        } message: {
+            // What to do next, when there is something to do. A failure with
+            // no guidance says only what happened rather than inventing a
+            // step that does not exist.
+            if let guidance = model.writeFailure?.guidance {
+                Text(guidance)
+            }
         }
     }
 }
@@ -232,7 +254,6 @@ private struct VaultBrowseScreen: View {
     @Binding var expanded: Set<String>
     @Binding var selectedFolder: String?
     let sort: BrowseSort
-    let query: String
     let openFolder: (String) -> Void
     let openNote: (String) -> Void
 
@@ -262,7 +283,6 @@ private struct VaultBrowseScreen: View {
                     expanded: $expanded,
                     selectedFolder: $selectedFolder,
                     sort: sort,
-                    query: query,
                     model: model,
                     openFolder: openFolder,
                     openNote: openNote
@@ -275,66 +295,43 @@ private struct VaultBrowseScreen: View {
 }
 
 /// The hierarchy itself, as one flat platform list.
-///
-/// **Searching replaces the tree.** A filtered tree either hides a match whose
-/// parent does not match or keeps parents that match nothing; a flat list of
-/// hits says where the notes are without either lie.
 private struct VaultOutlineList: View {
     let outline: VaultOutline
     @Binding var expanded: Set<String>
     @Binding var selectedFolder: String?
     let sort: BrowseSort
-    let query: String
     /// Carried down for the row actions. The rows are where a rename, a move
     /// or a delete starts, and each one needs the writer behind them.
     let model: VaultBrowseViewModel
     let openFolder: (String) -> Void
     let openNote: (String) -> Void
 
-    private var isSearching: Bool {
-        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
     var body: some View {
         List {
-            if isSearching {
-                // The index answers when it can. It reads bodies as well as
-                // titles, which is the whole point: a vault holding the word
-                // in a note's text used to answer "no results".
-                SearchResultsSection(
-                    query: query,
-                    search: model.search,
-                    outline: outline,
-                    sort: sort,
+            ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
+                BrowseRowView(
+                    row: row,
+                    toggle: toggle,
                     model: model,
-                    toggle: toggle
+                    selectedFolder: selectedFolder,
+                    openFolder: openFolder,
+                    openNote: openNote,
+                    setExpanded: setExpanded
                 )
-            } else {
-                ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
-                    BrowseRowView(
-                        row: row,
-                        toggle: toggle,
-                        model: model,
-                        selectedFolder: selectedFolder,
-                        openFolder: openFolder,
-                        openNote: openNote,
-                        setExpanded: setExpanded
-                    )
-                }
-                if !outline.unplacedNotes.isEmpty {
-                    // Kaan's spec-defect 124 decision, named on screen rather
-                    // than papered over. These notes are real; their folder
-                    // carries no `folder_config` row, so the tree above cannot
-                    // contain them.
-                    Section {
-                        ForEach(outline.unplacedRows(sort: sort)) { row in
-                            BrowseRowView(row: row, toggle: toggle, model: model)
-                        }
-                    } header: {
-                        Text("Outside the folder list")
-                    } footer: {
-                        Text("These notes are in folders this vault has no folder record for.")
+            }
+            if !outline.unplacedNotes.isEmpty {
+                // Kaan's spec-defect 124 decision, named on screen rather
+                // than papered over. These notes are real; their folder
+                // carries no `folder_config` row, so the tree above cannot
+                // contain them.
+                Section {
+                    ForEach(outline.unplacedRows(sort: sort)) { row in
+                        BrowseRowView(row: row, toggle: toggle, model: model)
                     }
+                } header: {
+                    Text("Outside the folder list")
+                } footer: {
+                    Text("These notes are in folders this vault has no folder record for.")
                 }
             }
         }
@@ -343,11 +340,6 @@ private struct VaultOutlineList: View {
         .restoresScroll("notes.root")
         .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
         .calmAnimation(.fast, value: expanded)
-        // Once per screen, before the first query: an index that was never
-        // built answers nothing, and a user cannot tell that from an empty
-        // vault.
-        .task { await model.search?.prepare() }
-        .onChange(of: query) { _, latest in model.search?.run(latest) }
     }
 
     private func toggle(_ path: String) {

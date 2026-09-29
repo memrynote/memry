@@ -80,7 +80,7 @@ struct CalendarNoteSheet: View {
             Button {
                 // The note, opened on the More stack (Notes has no anchor
                 // route; §6 CL052).
-                router.settingsPath.append(NoteRoute(id: item.noteId ?? item.sourceId))
+                router.calendarPath.append(NoteRoute(id: item.noteId ?? item.sourceId))
                 dismiss()
             } label: {
                 Text(CalendarCopy.openNote)

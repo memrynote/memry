@@ -52,8 +52,9 @@ extension View {
     }
 }
 
-/// A screen's floating "+" (Paper "Add · glass prominent", Tasks 01, Inbox
-/// 01): the one primary action, the tint as a fill with an ink glyph.
+/// A screen's floating "+" (Tasks 01, Inbox
+/// 01): the one primary action, on clear Liquid Glass with an ink glyph, like
+/// the tab bar it floats over.
 struct FloatingAddButton: View {
     let label: String
     let hint: String
@@ -64,12 +65,11 @@ struct FloatingAddButton: View {
         Button(action: action) {
             Image(systemName: "plus")
                 .font(Tokens.Typography.sectionTitle.font)
-                .foregroundStyle(Tokens.Tint.foreground.color)
+                .foregroundStyle(Tokens.Text.primary.color)
                 .padding(Tokens.Space.small)
         }
-        .buttonStyle(.glassProminent)
+        .buttonStyle(.glass)
         .buttonBorderShape(.circle)
-        .tint(Tokens.Tint.base.color)
         .accessibilityLabel(label)
         .accessibilityHint(hint)
         .accessibilityIdentifier(identifier)

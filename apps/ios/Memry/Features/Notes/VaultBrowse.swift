@@ -4,12 +4,8 @@ import Observation
 
 // T156, the state half. Reading one opened vault's folders and notes.
 //
-// **Read-only, and that is the whole exported surface.** `Notes` exports
-// `folders()`, `list()` and `read(id:)` and nothing else: T126 built create,
-// rename, move and delete in Rust in Phase 3 and none of it reached the FFI.
-// So there is no context menu, no swipe action and no create affordance
-// anywhere in this feature — not as a policy, but because the call does not
-// exist. T156a is cut.
+// **The read half.** Writes (note and folder create, rename, move, delete)
+// live in `VaultWrite.swift` behind `NotesWriting`.
 //
 // **Every core call here blocks** (`contracts/core-api.md`, the read slice):
 // they are local SQLite reads plus a `yrs` apply, so they go on `CoreExecutor`

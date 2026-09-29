@@ -28,10 +28,14 @@ extension CalendarScreen {
                 Label(CalendarCopy.goToDate, systemImage: "calendar")
             }
             .accessibilityIdentifier("calendar.menu.goto")
+            Button { sheet = .search } label: {
+                Label(CalendarCopy.searchOpen, systemImage: "magnifyingglass")
+            }
+            .accessibilityIdentifier("calendar.search")
         }
         Section {
             Button {
-                router.settingsPath.append(CalendarRoute.settings)
+                router.calendarPath.append(CalendarRoute.settings)
             } label: {
                 Label(CalendarCopy.calendarSettings, systemImage: "gearshape")
             }
@@ -49,11 +53,6 @@ extension CalendarScreen {
     var toolbarItems: some ToolbarContent {
         // Ink glyphs on the glass (00 rule 6: the tint fills, never carries).
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Button { sheet = .search } label: {
-                Image(systemName: "magnifyingglass").foregroundStyle(Tokens.Text.primary.color)
-            }
-                .accessibilityLabel(CalendarCopy.searchOpen)
-                .accessibilityIdentifier("calendar.search")
             if store.state.view == .timeline {
                 CalendarTimelineDisplayMenu(settings: $store.state.timeline)
             } else {
@@ -65,6 +64,9 @@ extension CalendarScreen {
                 .accessibilityIdentifier("calendar.filter")
             }
         }
+        // The vault-wide search keeps the magnifier's slot on every page;
+        // the calendar's own search is in the title menu.
+        GlobalSearchToolbarItem()
     }
 
     private var isFiltered: Bool {
@@ -203,7 +205,7 @@ extension CalendarScreen {
         case .filter:
             CalendarFilterSheet(store: store) {
                 self.sheet = nil
-                router.settingsPath.append(CalendarRoute.settings)
+                router.calendarPath.append(CalendarRoute.settings)
             }
         case .search:
             CalendarSearchSheet(store: store) { item in

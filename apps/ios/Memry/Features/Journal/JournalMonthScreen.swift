@@ -47,6 +47,7 @@ struct JournalMonthScreen: View {
                 Button(JournalCopy.nextMonth, systemImage: "chevron.forward") { step(1) }
                     .accessibilityIdentifier("journal.month.next")
             }
+            GlobalSearchToolbarItem()
         }
         .accessibilityIdentifier("journal.month")
         .task(id: reloadKey) { await store.loadMonth(year: year, month: month) }

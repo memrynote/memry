@@ -149,6 +149,7 @@ struct TaskListScreen: View {
                 filterButton
                 TaskListMoreMenu(store: store) { editMode = .active }
             }
+            GlobalSearchToolbarItem()
         }
     }
 

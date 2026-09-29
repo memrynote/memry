@@ -75,7 +75,7 @@ enum BrowseSort: String, CaseIterable, Identifiable, Sendable {
 
     /// A note with no instant goes last in either direction rather than being
     /// treated as 1970 (data-model §A.6).
-    fileprivate func sorted(_ notes: [NoteSummary]) -> [NoteSummary] {
+    func sorted(_ notes: [NoteSummary]) -> [NoteSummary] {
         switch self {
         case .nameAscending:
             notes.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }

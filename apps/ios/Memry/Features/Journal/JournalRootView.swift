@@ -21,6 +21,8 @@ struct JournalTabContent: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: JournalStore?
     @State private var failure: UserFacingError?
+    @State private var capturing = false
+    @Environment(\.quickCapture) private var capture
 
     var body: some View {
         Group {
@@ -31,9 +33,28 @@ struct JournalTabContent: View {
                     // alive, and each binding its own would present twice.
                     .modifier(JournalSubtaskPrompts(tasks: tasksStore))
                     .overlay(alignment: .bottom) {
-                        JournalToast(store: store)
-                            .padding(.horizontal, Tokens.Space.inset)
-                            .padding(.bottom, Tokens.Space.medium)
+                        HStack(spacing: Tokens.Space.medium) {
+                            JournalToast(store: store)
+                                .frame(maxWidth: .infinity)
+                            // The page's own "+": a line on today's entry,
+                            // through the same sheet Home captures with.
+                            if capture != nil {
+                                FloatingAddButton(
+                                    label: QuickCaptureCopy.addToJournal,
+                                    hint: QuickCaptureCopy.addToJournalHint,
+                                    identifier: "journal.addButton"
+                                ) { capturing = true }
+                            }
+                        }
+                        .padding(.horizontal, Tokens.Space.inset)
+                        .padding(.bottom, Tokens.Space.medium)
+                    }
+                    .sheet(isPresented: $capturing) {
+                        if let capture {
+                            QuickCaptureSheet(kinds: [.journal], capture: capture) { receipt in
+                                router.openDay(receipt.id)
+                            }
+                        }
                     }
             } else if let failure {
                 NavigationStack {
@@ -58,6 +79,10 @@ struct JournalTabContent: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { store?.clock.refresh() }
+        }
+        // A capture wrote today's day outside this store: re-read.
+        .onChange(of: capture?.journalWrites) {
+            Task { await store?.refresh() }
         }
         .onChange(of: router.saved) { _, saved in LaunchSnapshot.shared.setStack("journal", Data(saved.utf8)) }
     }

@@ -49,6 +49,7 @@ struct JournalYearScreen: View {
                 Button(JournalCopy.nextYear, systemImage: "chevron.forward") { router.rootYear = year + 1 }
                     .accessibilityIdentifier("journal.year.next")
             }
+            GlobalSearchToolbarItem()
         }
         .accessibilityIdentifier("journal.year")
         .task(id: reloadKey) { await store.loadYear(year) }

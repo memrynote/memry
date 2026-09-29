@@ -1,5 +1,6 @@
 import Inject
 import SwiftUI
+import TipKit
 import UIKit
 import UserNotifications
 
@@ -28,6 +29,12 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
         CalendarBackgroundRefresh.register()
+        // One-time hints (the Notes "+" hold). A failure only means no tips.
+        do {
+            try Tips.configure()
+        } catch {
+            Log.core.error("tips could not be configured")
+        }
         return true
     }
 }

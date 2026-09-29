@@ -72,7 +72,6 @@ struct VaultListView: View {
                     VaultTabsView(notes: {
                         NotesListView(
                             vault: vault,
-                            title: VaultLabel(summary).text,
                             executor: .shared,
                             filler: filler,
                             // The writes need this device's identity, and the keychain is

@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "paddle-sandbox": {
+      "url": "https://sandbox-mcp.paddle.com/mcp",
+      "headers": { "Authorization": "Bearer ${PADDLE_SANDBOX_API_KEY}" }
+    },
+    "paper": {
+      "url": "http://127.0.0.1:29979/mcp"
+    },
+    "posthog": {
+      "url": "https://mcp.posthog.com/mcp"
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
+    },
+    "cloudflare-api": {
+      "url": "https://mcp.cloudflare.com/mcp"
+    }
+  }
+}

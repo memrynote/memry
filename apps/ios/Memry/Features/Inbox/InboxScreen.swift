@@ -174,6 +174,7 @@ struct InboxScreen: View {
                 }
                 .accessibilityIdentifier("inbox.moreButton")
             }
+            GlobalSearchToolbarItem()
         }
     }
 }

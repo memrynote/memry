@@ -99,6 +99,12 @@ final class SettingsStore {
         accentRaw = general?["accentColor"] as? String
         fontRaw = general?["fontFamily"] as? String
         languageRaw = general?["language"] as? String
+        // Desktop's rail order places the tab bar (`VaultTabLayout`). Read
+        // only: the phone has no rail to drag. Anything but an array of
+        // strings reads as never reordered, as on desktop.
+        let sidebar = object["sidebar"] as? [String: Any]
+        let rail = (sidebar?["railOrder"] as? [Any])?.compactMap { $0 as? String } ?? []
+        VaultTabOrder.shared.update(rail)
     }
 
     // MARK: Writes

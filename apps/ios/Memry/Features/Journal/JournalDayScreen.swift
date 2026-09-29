@@ -109,6 +109,7 @@ struct JournalDayScreen: View {
                 find: { pages.model(for: date)?.finding = true }
             )
         }
+        GlobalSearchToolbarItem()
     }
 
     /// Desktop's day keys (`pages/journal.tsx` keydown): ← / → change the

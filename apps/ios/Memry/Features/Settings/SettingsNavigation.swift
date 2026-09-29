@@ -25,65 +25,80 @@ enum SettingsRoute: Hashable, Sendable {
     }
 }
 
-/// The More tab: Settings, and Inbox once it ships (F1, F9).
+extension EnvironmentValues {
+    /// Which page the shell builds `MoreTabView` for: `.calendar` for the
+    /// Calendar page, anything else for Settings.
+    @Entry var shellPage: VaultTab = .more
+}
+
+/// The pages built over the Settings context: Settings (Menu › Settings,
+/// F1) and Calendar, each on its own stack.
 struct MoreTabView: View {
     let context: SettingsContext?
     let browse: VaultBrowseViewModel?
     @Environment(TasksRouter.self) private var router
     @Environment(\.calendarStore) private var calendarStore
-    @State private var local = LocalSettings.shared
+    @Environment(\.shellPage) private var page
 
     var body: some View {
         @Bindable var router = router
-        NavigationStack(path: $router.settingsPath) {
-            List {
-                Section {
-                    NavigationLink(value: SettingsRoute.root) {
-                        SettingsRowLabel(title: SettingsCopy.title, symbol: "gearshape")
+        if page == .calendar {
+            NavigationStack(path: $router.calendarPath) {
+                CalendarDestination(route: .calendar, store: calendarStore, browse: browse, account: context?.account)
+                    .navigationDestination(for: CalendarRoute.self) { route in
+                        CalendarDestination(route: route, store: calendarStore, browse: browse, account: context?.account)
                     }
-                    .accessibilityIdentifier("more.settings")
-                }
-                if local.isOn(.calendar) {
-                    Section {
-                        NavigationLink(value: CalendarRoute.calendar) {
-                            SettingsRowLabel(title: CalendarCopy.title, symbol: "calendar")
-                        }
-                        .accessibilityIdentifier("more.calendar")
+                    .noteDestinations(browse: browse, path: $router.calendarPath)
+            }
+        } else {
+            NavigationStack(path: $router.settingsPath) {
+                Group {
+                    if let context {
+                        SettingsRootScreen(context: context)
+                    } else {
+                        ProgressView(SettingsCopy.loading)
                     }
                 }
-            }
-            .settingsList()
-            .navigationTitle(SettingsCopy.moreTitle)
-            .navigationDestination(for: SettingsRoute.self) { route in
-                if let context {
-                    SettingsDestination(route: route, context: context)
-                } else {
-                    ProgressView(SettingsCopy.loading)
+                .toolbar { GlobalSearchToolbarItem() }
+                .navigationDestination(for: SettingsRoute.self) { route in
+                    if let context {
+                        SettingsDestination(route: route, context: context)
+                    } else {
+                        ProgressView(SettingsCopy.loading)
+                    }
                 }
+                .noteDestinations(browse: browse, path: $router.settingsPath)
             }
-            .navigationDestination(for: CalendarRoute.self) { route in
-                CalendarDestination(route: route, store: calendarStore, browse: browse, account: context?.account)
+        }
+    }
+}
+
+private extension View {
+    /// The notes and tag lists a Settings or Calendar page opens, pushed on
+    /// that page's own stack.
+    func noteDestinations(
+        browse: VaultBrowseViewModel?,
+        path: Binding<NavigationPath>
+    ) -> some View {
+        navigationDestination(for: NoteRoute.self) { route in
+            if let browse {
+                NoteReadView(
+                    route: route,
+                    reader: browse.reader,
+                    filler: browse.filler,
+                    editor: browse.editor,
+                    metadataWriter: browse.metadataWriter,
+                    writer: browse.writer,
+                    search: browse.searcher,
+                    open: { path.wrappedValue.append($0) },
+                    openTag: { path.wrappedValue.append(TagRoute(name: $0)) },
+                    noteTasks: browse.noteTasks
+                )
             }
-            .navigationDestination(for: NoteRoute.self) { route in
-                if let browse {
-                    NoteReadView(
-                        route: route,
-                        reader: browse.reader,
-                        filler: browse.filler,
-                        editor: browse.editor,
-                        metadataWriter: browse.metadataWriter,
-                        writer: browse.writer,
-                        search: browse.searcher,
-                        open: { router.settingsPath.append($0) },
-                        openTag: { router.settingsPath.append(TagRoute(name: $0)) },
-                        noteTasks: browse.noteTasks
-                    )
-                }
-            }
-            .navigationDestination(for: TagRoute.self) { route in
-                if let browse {
-                    TaggedNotesView(tag: route.name, reader: browse.reader, open: { router.settingsPath.append($0) })
-                }
+        }
+        .navigationDestination(for: TagRoute.self) { route in
+            if let browse {
+                TaggedNotesView(tag: route.name, reader: browse.reader, open: { path.wrappedValue.append($0) })
             }
         }
     }

@@ -1,9 +1,16 @@
 import MemryCore
 import SwiftUI
 
-// The shell an opened vault lives in: Notes, Inbox, Tasks, Journal, More,
-// with the tabs that are not built yet saying so. Inbox, Tasks and Journal hide
-// when turned off in Settings › Features (settings spec ST44).
+// The shell an opened vault lives in: Home, Notes, two pages in the user's
+// desktop rail order, and Menu for Settings and the pages that did not fit
+// (`VaultTabLayout`). A tab that is not built yet says so.
+//
+// **Menu is a tab that opens a sheet.** Tapping it lists the pages behind it
+// and Settings; the pick shows under the Menu tab. `router.selectedTab` stays
+// the page itself, so every existing "open the Journal" route keeps working
+// wherever that page sits.
+//
+// Inbox, Tasks, Journal and Calendar hide when turned off in Settings › Features (settings spec ST44).
 //
 // **A tab that is not built says what is true, and is not removed.** Kaan's
 // call: ship the bar now. `DESIGN.md` forbids a dead control, not an honest
@@ -42,35 +49,53 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     private let calendarLinks = CalendarLinks.shared
     @Environment(\.inboxStore) private var inboxStore
     /// Features (settings spec ST44): a module turned off loses its tab.
-    /// Notes and More are always there.
+    /// Home, Notes and Menu are always there.
     @State private var local = LocalSettings.shared
+    /// Desktop's rail order, read from the synced settings.
+    @State private var order = VaultTabOrder.shared
+    @State private var showsMenu = false
+    @State private var showsSearch = false
+    @Environment(\.vaultBrowse) private var browse
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
 
     var body: some View {
-        TabView(selection: $router.selectedTab) {
-            Tab("Notes", systemImage: "doc.text", value: VaultTab.notes) {
-                notes()
+        // Read here so the layout follows a module toggle and a synced order.
+        let layout = VaultTabLayout(savedOrder: order.saved) { $0.isShown }
+        TabView(selection: Binding(
+            get: { layout.barSelection(for: router.selectedTab) },
+            // Menu never becomes the selection by a tap: it opens the sheet,
+            // which also catches a second tap on an already selected Menu.
+            set: { tab in
+                if tab == .more { showsMenu = true } else { router.selectedTab = tab }
             }
-            if local.isOn(.inbox) {
-                Tab(InboxCopy.title, systemImage: "tray", value: VaultTab.inbox) {
-                    InboxTab(store: inboxStore)
+        )) {
+            ForEach(layout.bar, id: \.self) { page in
+                Tab(page.title, systemImage: page.symbol, value: page) {
+                    content(page)
                 }
             }
-            if local.isOn(.tasks) {
-                Tab("Tasks", systemImage: "checkmark.circle", value: VaultTab.tasks) {
-                    tasks()
-                }
-            }
-            if local.isOn(.journal) {
-                Tab("Journal", systemImage: "book", value: VaultTab.journal) {
-                    journal()
-                }
-            }
-            Tab("More", systemImage: "ellipsis", value: VaultTab.more) {
-                more()
+            Tab(VaultTab.more.title, systemImage: VaultTab.more.symbol, value: VaultTab.more) {
+                content(layout.menuContent(for: router.selectedTab))
             }
         }
+        .sheet(isPresented: $showsMenu) {
+            VaultMenuSheet(pages: layout.menu) { page in
+                router.selectedTab = page
+                showsMenu = false
+            }
+            .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showsSearch) {
+            GlobalSearchSheet(
+                browse: browse,
+                openNote: { openNote($0) },
+                openTask: { router.openTask($0) },
+                openJournalDay: { journalRouter.openDay($0) }
+            )
+            .environment(router)
+        }
+        .environment(\.openGlobalSearch) { showsSearch = true }
         .environment(router)
         .environment(journalRouter)
         // Where the next launch continues (`LaunchSnapshot`).
@@ -112,6 +137,71 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         // Sign out lives on Settings › Account (F1), so the shell stops
         // drawing it over every screen of the vault.
         .preference(key: SignOutHostedKey.self, value: true)
+    }
+
+    /// A note on the Notes page, which takes the request itself.
+    private func openNote(_ id: String) {
+        router.selectedTab = .notes
+        NotesLinks.shared.open(id)
+    }
+
+    /// A capture's "View": the item on its page.
+    private func open(_ receipt: CaptureReceipt) {
+        switch receipt.kind {
+        case .inbox: inboxRouter.openItem(receipt.id, in: router)
+        case .task: router.openTask(receipt.id)
+        case .note: openNote(receipt.id)
+        case .journal: journalRouter.openDay(receipt.id)
+        }
+    }
+
+    /// One page's screen. A page is either in the bar or behind Menu, so each
+    /// is built in one place at a time.
+    @ViewBuilder private func content(_ page: VaultTab) -> some View {
+        switch page {
+        case .home: HomeTab { open($0) }
+        case .notes: notes()
+        case .inbox: InboxTab(store: inboxStore)
+        case .tasks: tasks()
+        case .journal: journal()
+        case .calendar: more().environment(\.shellPage, .calendar)
+        case .more: more().environment(\.shellPage, .more)
+        }
+    }
+}
+
+/// Menu's sheet: the pages that did not fit the bar, then Settings. A pick
+/// shows under the Menu tab; the page behind the sheet does not change until
+/// then.
+private struct VaultMenuSheet: View {
+    let pages: [VaultTab]
+    let select: (VaultTab) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if !pages.isEmpty {
+                    Section {
+                        ForEach(pages, id: \.self) { page in
+                            row(page, title: page.title, symbol: page.symbol)
+                        }
+                    }
+                }
+                Section {
+                    row(.more, title: SettingsCopy.title, symbol: "gearshape")
+                }
+            }
+            .navigationTitle(VaultTab.more.title)
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func row(_ page: VaultTab, title: String, symbol: String) -> some View {
+        Button { select(page) } label: {
+            Label(title, systemImage: symbol)
+                .foregroundStyle(Tokens.Text.primary.color)
+        }
+        .accessibilityIdentifier(page == .more ? "menu.settings" : "menu.\(page.rawValue)")
     }
 }
 

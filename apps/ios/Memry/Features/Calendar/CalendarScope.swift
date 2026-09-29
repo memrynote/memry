@@ -97,11 +97,9 @@ final class CalendarLinks {
 }
 
 extension TasksRouter {
-    /// More › Calendar, the tab selected (D1).
+    /// The Calendar page at its root, in the bar or behind Menu (D1).
     func openCalendar() {
-        selectedTab = .more
-        var path = NavigationPath()
-        path.append(CalendarRoute.calendar)
-        settingsPath = path
+        selectedTab = .calendar
+        calendarPath = NavigationPath()
     }
 }

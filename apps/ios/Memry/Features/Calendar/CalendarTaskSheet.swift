@@ -265,7 +265,7 @@ struct CalendarTaskSheet: View {
     private var moreMenu: some View {
         Menu {
             if let note = task?.sourceNoteId {
-                Button { router.settingsPath.append(NoteRoute(id: note)); dismiss() } label: {
+                Button { router.calendarPath.append(NoteRoute(id: note)); dismiss() } label: {
                     Label(CalendarCopy.sourceNote, systemImage: "doc.text")
                 }
             }

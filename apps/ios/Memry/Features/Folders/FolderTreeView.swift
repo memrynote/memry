@@ -13,8 +13,10 @@ import SwiftUI
 // indentation nobody can hear. Indentation is capped so a deep tree does not
 // push its own titles off the inline edge at the largest Dynamic Type sizes.
 //
-// **Read-only.** No context menu, no swipe action, no create, rename, move or
-// delete — the core exports none of them (see `VaultBrowse.swift`).
+// **Creates from the folder screen's "+"** (`NotesCreateButton`, bottom
+// trailing): tap for a note, hold for a folder. Both go through the same
+// `VaultBrowseViewModel` writes the tree's long-press menu uses, and the
+// button is hidden when the device has no identity to write under.
 
 /// The configured folders, parent before child.
 struct FolderTreeView: View {
@@ -77,13 +79,54 @@ private struct FolderRowLabel: View {
 /// been realised.
 struct FolderScreen: View {
     let route: FolderRoute
-    let outline: VaultOutline?
+    let model: VaultBrowseViewModel
+    let openNote: (String) -> Void
+
+    /// Shared with the vault root, so both screens order notes the same way.
+    @AppStorage("notes.browseSort") private var sort: BrowseSort = .modifiedNewest
+    @AppStorage("notes.folderGrouping") private var grouping: FolderNoteGrouping = .none
+    @State private var isNamingFolder = false
+    @State private var draftName = ""
 
     var body: some View {
         Group {
-            if let node = outline?.node(at: route.path) {
+            if let node = model.outline?.node(at: route.path) {
                 contents(of: node)
                     .navigationTitle(node.title)
+                    .toolbar { toolbar(for: node) }
+                    // Tap for a note in this folder, hold for a folder inside it.
+                    .overlay(alignment: .bottomTrailing) {
+                        if model.writer != nil {
+                            NotesCreateButton(
+                                newNote: {
+                                    Task {
+                                        if let id = await model.createNote(in: route.path) { openNote(id) }
+                                    }
+                                },
+                                newFolder: {
+                                    draftName = ""
+                                    isNamingFolder = true
+                                }
+                            )
+                            .padding(.horizontal, Tokens.Space.inset)
+                            .padding(.bottom, Tokens.Space.medium)
+                        }
+                    }
+                    .alert("New folder", isPresented: $isNamingFolder) {
+                        TextField("Name", text: $draftName)
+                        Button("Create") {
+                            let name = draftName
+                            Task { await model.createFolder(named: name, in: route.path) }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Inside \(node.title).")
+                    }
+            } else if model.phase == .loading {
+                // A write reloads the outline; for that moment the folder is
+                // unknown, not missing.
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 // Not "empty". The folder is not in this vault's outline at
                 // all, which is a different fact and a different sentence.
@@ -95,6 +138,14 @@ struct FolderScreen: View {
             }
         }
         .background(Tokens.Canvas.background.color)
+        .writeFailureAlert(model)
+    }
+
+    @ToolbarContentBuilder
+    private func toolbar(for node: FolderNode) -> some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            FolderViewMenu(sort: $sort, grouping: $grouping)
+        }
     }
 
     @ViewBuilder
@@ -115,12 +166,33 @@ struct FolderScreen: View {
                         BrowseSection(title: "Folders") { FolderTreeView(rows: rows) }
                     }
                     if !node.notes.isEmpty {
-                        BrowseSection(title: "Notes") { NoteRowsView(notes: node.notes) }
+                        FolderNotesView(notes: node.notes, sort: sort, grouping: grouping)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Tokens.Space.screenInline)
                 .padding(.vertical, Tokens.Space.screenBlock)
+            }
+        }
+    }
+}
+
+/// A folder's own notes. The navigation title already names the folder, so
+/// ungrouped notes carry no header; grouped ones carry their date bucket.
+private struct FolderNotesView: View {
+    let notes: [NoteSummary]
+    let sort: BrowseSort
+    let grouping: FolderNoteGrouping
+
+    var body: some View {
+        switch grouping {
+        case .none:
+            NoteRowsView(notes: sort.sorted(notes))
+        case .date:
+            VStack(alignment: .leading, spacing: Tokens.Space.section) {
+                ForEach(FolderNoteGroup.group(notes, sort: sort)) { group in
+                    BrowseSection(title: group.bucket.title) { NoteRowsView(notes: group.notes) }
+                }
             }
         }
     }

@@ -25,16 +25,22 @@ enum TasksRoute: Hashable, Codable, Sendable {
     }
 }
 
-/// The vault shell's tabs, so a route can switch to Tasks.
+/// The vault shell's pages, so a route can switch to one. Raw values match
+/// desktop's rail ids (`sidebar.railOrder`) and the saved launch tab.
 enum VaultTab: String, Hashable, Sendable {
-    case notes, inbox, tasks, journal, more
+    case home, notes, inbox, tasks, journal, calendar
+    /// Menu: Settings, and the pages that did not fit the bar
+    /// (`VaultTabLayout`). The raw value predates the menu and stays, so a
+    /// saved launch tab still reads.
+    case more
 
     @MainActor var isShown: Bool {
         switch self {
-        case .notes, .more: true
+        case .home, .notes, .more: true
         case .inbox: LocalSettings.shared.isOn(.inbox)
         case .tasks: LocalSettings.shared.isOn(.tasks)
         case .journal: LocalSettings.shared.isOn(.journal)
+        case .calendar: LocalSettings.shared.isOn(.calendar)
         }
     }
 }
@@ -45,9 +51,11 @@ enum VaultTab: String, Hashable, Sendable {
 final class TasksRouter {
     var selectedTab: VaultTab = .notes
     var path: [TasksRoute] = []
-    /// The More tab's stack (spec 006 ST20): Settings routes, and the notes
-    /// a Settings page opens.
+    /// Settings' stack (spec 006 ST20): Settings routes, and the notes a
+    /// Settings page opens.
     var settingsPath = NavigationPath()
+    /// The Calendar page's stack, wherever the page sits.
+    var calendarPath = NavigationPath()
 
     /// The router for the vault ``LaunchSnapshot`` has open: the tab and the
     /// Tasks stack the user left.
@@ -59,12 +67,11 @@ final class TasksRouter {
         return router
     }
 
-    /// Every "… › settings" entry point: the More tab, that section, and Back
-    /// returns to the Settings root (flow lane 01).
+    /// Every "… › settings" entry point: Menu › Settings, that section, and
+    /// Back returns to the Settings root (flow lane 01).
     func openSettings(_ route: SettingsRoute) {
         selectedTab = .more
         var path = NavigationPath()
-        path.append(SettingsRoute.root)
         if route != .root { path.append(route) }
         settingsPath = path
     }

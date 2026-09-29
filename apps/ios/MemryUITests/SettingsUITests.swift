@@ -69,11 +69,8 @@ final class SettingsUITests: XCTestCase {
 
     func testATagIsRenamedEverywhereAndDeleted() throws {
         try openTasksAndAdd("[agent] \(run) tag #\(run) @today")
-        app.buttons["More"].firstMatch.tap()
+        try openSettings()
         let tags = app.buttons["settings.row.tags"].firstMatch
-        if !tags.waitForExistence(timeout: 3) {
-            app.buttons["more.settings"].firstMatch.tap()
-        }
         // A lazy list: Tags may sit below the fold and not be in the tree yet.
         var found = tags.waitForExistence(timeout: 5)
         for _ in 0 ..< 4 where !found || !tags.isHittable {
@@ -109,7 +106,7 @@ final class SettingsUITests: XCTestCase {
 
     private func openVault() throws {
         app.launch()
-        let more = app.buttons["More"].firstMatch
+        let more = app.buttons["Menu"].firstMatch
         // The shared staging account can hold several vaults with one name;
         // `TEST_RUNNER_MEMRY_UI_VAULT` picks the one this run uses.
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
@@ -127,14 +124,15 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(more.waitForExistence(timeout: 5), "the vault did not open")
     }
 
+    /// Menu opens its sheet; Settings shows under the Menu tab at its root.
     private func openSettings() throws {
-        try openVault()
-        app.buttons["More"].firstMatch.tap()
-        let back = app.buttons["BackButton"]
-        while back.exists { back.tap() }
-        let settings = app.buttons["more.settings"].firstMatch
+        if !app.buttons["Menu"].firstMatch.exists { try openVault() }
+        app.buttons["Menu"].firstMatch.tap()
+        let settings = app.buttons["menu.settings"].firstMatch
         XCTAssertTrue(settings.waitForExistence(timeout: 10))
         settings.tap()
+        let back = app.buttons["BackButton"]
+        while back.exists { back.tap() }
         XCTAssertTrue(app.buttons["settings.row.account"].firstMatch.waitForExistence(timeout: 10))
     }
 
@@ -147,9 +145,6 @@ final class SettingsUITests: XCTestCase {
         app.typeText(text)
         app.buttons["tasks.composer.send"].firstMatch.tap()
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
-        app.buttons["More"].firstMatch.tap()
-        let back = app.buttons["BackButton"]
-        while back.exists { back.tap() }
         app.buttons["Tasks"].firstMatch.tap()
     }
 
