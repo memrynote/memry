@@ -14,7 +14,10 @@
       "allProjects": "Alle projekter",
       "searchProjects": "Søg efter projekter...",
       "editProject": "Rediger {name}",
-      "unstarSavedFilter": "Fjern stjerne {name}"
+      "unstarSavedFilter": "Fjern stjerne {name}",
+      "openByDefault": "Åbn Opgaver på {name} som standard",
+      "defaultProject": "Standardprojekt",
+      "setAsDefault": "Angiv som standard"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Ikke-gemte ændringer",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Du har ikke-gemte ændringer. Er du sikker på, at du vil kassere dem?",
       "cancel2": "Annuller",
-      "discard": "Kassér"
+      "discard": "Kassér",
+      "defaultProject": "Standardprojekt",
+      "openTasksOnThisProject": "Opgaver åbner på dette projekt"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Vælg projekt",

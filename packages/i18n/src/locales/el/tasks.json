@@ -14,7 +14,10 @@
       "allProjects": "Όλα τα έργα",
       "searchProjects": "Αναζήτηση έργων…",
       "editProject": "Επεξεργασία {name}",
-      "unstarSavedFilter": "Καταργήστε το αστέρι του {name}"
+      "unstarSavedFilter": "Καταργήστε το αστέρι του {name}",
+      "openByDefault": "Άνοιγμα Εργασιών στο {name} από προεπιλογή",
+      "defaultProject": "Προεπιλεγμένο έργο",
+      "setAsDefault": "Ορισμός ως προεπιλογή"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Μη αποθηκευμένες αλλαγές",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Έχετε μη αποθηκευμένες αλλαγές. Είστε βέβαιοι ότι θέλετε να τα απορρίψετε;",
       "cancel2": "Ακύρωση",
-      "discard": "Απορρίψτε"
+      "discard": "Απορρίψτε",
+      "defaultProject": "Προεπιλεγμένο έργο",
+      "openTasksOnThisProject": "Οι Εργασίες ανοίγουν σε αυτό το έργο"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Επιλέξτε έργο",

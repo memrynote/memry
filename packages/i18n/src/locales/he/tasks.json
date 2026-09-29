@@ -14,7 +14,10 @@
       "allProjects": "כל הפרויקטים",
       "searchProjects": "חפש פרויקטים...",
       "editProject": "ערוך את {name}",
-      "unstarSavedFilter": "הסר את הכוכב של {name}"
+      "unstarSavedFilter": "הסר את הכוכב של {name}",
+      "openByDefault": "פתיחת המשימות ב־{name} כברירת מחדל",
+      "defaultProject": "פרויקט ברירת מחדל",
+      "setAsDefault": "הגדרה כברירת מחדל"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "שינויים שלא נשמרו",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "יש לך שינויים שלא נשמרו. האם אתה בטוח שברצונך למחוק אותם?",
       "cancel2": "בטל",
-      "discard": "לזרוק"
+      "discard": "לזרוק",
+      "defaultProject": "פרויקט ברירת מחדל",
+      "openTasksOnThisProject": "המשימות ייפתחו בפרויקט הזה"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "בחר פרויקט",

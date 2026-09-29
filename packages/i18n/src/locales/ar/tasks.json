@@ -14,7 +14,10 @@
       "allProjects": "جميع المشاريع",
       "searchProjects": "مشاريع البحث...",
       "editProject": "تحرير {name}",
-      "unstarSavedFilter": "إلغاء النجمة {name}"
+      "unstarSavedFilter": "إلغاء النجمة {name}",
+      "openByDefault": "فتح المهام على {name} افتراضيًا",
+      "defaultProject": "المشروع الافتراضي",
+      "setAsDefault": "تعيين كافتراضي"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "التغييرات غير المحفوظة",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "لديك تغييرات غير محفوظة. هل أنت متأكد أنك تريد التخلص منها؟",
       "cancel2": "إلغاء",
-      "discard": "تجاهل"
+      "discard": "تجاهل",
+      "defaultProject": "المشروع الافتراضي",
+      "openTasksOnThisProject": "تُفتح المهام على هذا المشروع"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "حدد المشروع",

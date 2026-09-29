@@ -14,7 +14,10 @@
       "allProjects": "Kaikki projektit",
       "searchProjects": "Hae projekteja…",
       "editProject": "Muokkaa {name}",
-      "unstarSavedFilter": "Poista tähti {name}"
+      "unstarSavedFilter": "Poista tähti {name}",
+      "openByDefault": "Avaa Tehtävät oletuksena projektissa {name}",
+      "defaultProject": "Oletusprojekti",
+      "setAsDefault": "Aseta oletukseksi"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Tallentamattomat muutokset",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Sinulla on tallentamattomia muutoksia. Haluatko varmasti hylätä ne?",
       "cancel2": "Peruuta",
-      "discard": "Hävitä"
+      "discard": "Hävitä",
+      "defaultProject": "Oletusprojekti",
+      "openTasksOnThisProject": "Tehtävät avautuu tähän projektiin"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Valitse projekti",

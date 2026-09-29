@@ -17,7 +17,10 @@
       "allProjects": "All projects",
       "searchProjects": "Search projects…",
       "editProject": "Edit {name}",
-      "unstarSavedFilter": "Unstar {name}"
+      "unstarSavedFilter": "Unstar {name}",
+      "openByDefault": "Open Tasks on {name} by default",
+      "defaultProject": "Default project",
+      "setAsDefault": "Set as default"
     }
   },
   "task": {
@@ -696,7 +699,9 @@
       "unsavedChanges": "Unsaved changes",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "You have unsaved changes. Are you sure you want to discard them?",
       "cancel2": "Cancel",
-      "discard": "Discard"
+      "discard": "Discard",
+      "defaultProject": "Default project",
+      "openTasksOnThisProject": "Tasks opens on this project"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Select project",

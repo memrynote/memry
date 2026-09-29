@@ -14,7 +14,10 @@
       "allProjects": "Wszystkie projekty",
       "searchProjects": "Wyszukaj projekty…",
       "editProject": "Edytuj {name}",
-      "unstarSavedFilter": "Usuń gwiazdkę {name}"
+      "unstarSavedFilter": "Usuń gwiazdkę {name}",
+      "openByDefault": "Domyślnie otwieraj Zadania w {name}",
+      "defaultProject": "Domyślny projekt",
+      "setAsDefault": "Ustaw jako domyślny"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Niezapisane zmiany",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
       "cancel2": "Anuluj",
-      "discard": "Odrzuć"
+      "discard": "Odrzuć",
+      "defaultProject": "Domyślny projekt",
+      "openTasksOnThisProject": "Zadania otwierają się w tym projekcie"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Wybierz projekt",

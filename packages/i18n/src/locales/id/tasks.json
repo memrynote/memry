@@ -14,7 +14,10 @@
       "allProjects": "Semua proyek",
       "searchProjects": "Cari proyek…",
       "editProject": "Sunting {name}",
-      "unstarSavedFilter": "Hapus bintang {name}"
+      "unstarSavedFilter": "Hapus bintang {name}",
+      "openByDefault": "Buka Tugas di {name} secara default",
+      "defaultProject": "Proyek default",
+      "setAsDefault": "Jadikan default"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Perubahan yang belum disimpan",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin membuangnya?",
       "cancel2": "Batalkan",
-      "discard": "Buang"
+      "discard": "Buang",
+      "defaultProject": "Proyek default",
+      "openTasksOnThisProject": "Tugas terbuka di proyek ini"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Pilih proyek",

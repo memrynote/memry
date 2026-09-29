@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState, useCallback, useMemo } from 'react'
+import { lazy, Suspense, useState, useCallback, useId, useMemo } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +29,7 @@ import { ColorPicker } from '@/components/tasks/color-picker'
 import { StatusEditor } from '@/components/tasks/status-editor'
 import { DeleteProjectDialog } from '@/components/tasks/delete-project-dialog'
 import { cn } from '@/lib/utils'
+import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import { useT } from '@memry/i18n/renderer'
 import {
   type Project,
@@ -127,6 +130,42 @@ const getProjectDialogKey = (isOpen: boolean, project?: Project | null): string 
     color: project.color,
     statuses: project.statuses
   })
+}
+
+// Writes on toggle, like Settings > Tasks: the default is a task setting, not a
+// project field, so it is not part of the form that Save and Cancel govern.
+const DefaultProjectSwitch = ({ projectId }: { projectId: string }): React.JSX.Element => {
+  const { t: tTasks } = useT('tasks')
+  const { t: tSettings } = useT('settings')
+  const { settings, isLoading, updateSettings } = useTaskPreferences()
+  const switchId = useId()
+
+  const handleCheckedChange = async (checked: boolean): Promise<void> => {
+    const saved = await updateSettings({ defaultProjectId: checked ? projectId : null })
+    if (!saved) toast.error(tSettings('tasks.defaultProject.error'))
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="space-y-1">
+        <label
+          htmlFor={switchId}
+          className="text-xs font-medium uppercase tracking-wide text-text-tertiary"
+        >
+          {tTasks('phaseF.componentsTasksProjectModal.defaultProject')}
+        </label>
+        <p className="text-xs text-text-tertiary">
+          {tTasks('phaseF.componentsTasksProjectModal.openTasksOnThisProject')}
+        </p>
+      </div>
+      <Switch
+        id={switchId}
+        checked={settings.defaultProjectId === projectId}
+        disabled={isLoading}
+        onCheckedChange={(checked) => void handleCheckedChange(checked)}
+      />
+    </div>
+  )
 }
 
 // ============================================================================
@@ -367,6 +406,13 @@ const ProjectModalDialog = ({
             </div>
 
             <Separator />
+
+            {isEditMode && (
+              <>
+                <DefaultProjectSwitch projectId={project.id} />
+                <Separator />
+              </>
+            )}
 
             {/* Statuses Section */}
             <div className="space-y-2">

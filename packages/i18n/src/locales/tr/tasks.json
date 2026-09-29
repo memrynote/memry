@@ -14,7 +14,10 @@
       "allProjects": "Tüm projeler",
       "searchProjects": "Proje ara…",
       "editProject": "Düzenle {name}",
-      "unstarSavedFilter": "Yıldızı kaldır {name}"
+      "unstarSavedFilter": "Yıldızı kaldır {name}",
+      "openByDefault": "Görevler varsayılan olarak {name} ile açılsın",
+      "defaultProject": "Varsayılan proje",
+      "setAsDefault": "Varsayılan yap"
     }
   },
   "task": {
@@ -602,7 +605,9 @@
       "unsavedChanges": "Kaydedilmemiş değişiklikler",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Kaydedilmemiş değişiklikleriniz var. Bunları silmek istediğinizden emin misiniz?",
       "cancel2": "İptal",
-      "discard": "At"
+      "discard": "At",
+      "defaultProject": "Varsayılan proje",
+      "openTasksOnThisProject": "Görevler bu projeyle açılır"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Proje seçin",

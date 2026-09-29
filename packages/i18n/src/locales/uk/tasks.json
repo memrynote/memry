@@ -14,7 +14,10 @@
       "allProjects": "Всі проєкти",
       "searchProjects": "Пошук проєктів...",
       "editProject": "Редагувати {name}",
-      "unstarSavedFilter": "Прибрати з обраного {name}"
+      "unstarSavedFilter": "Прибрати з обраного {name}",
+      "openByDefault": "Відкривати Завдання в {name} за замовчуванням",
+      "defaultProject": "Проєкт за замовчуванням",
+      "setAsDefault": "Зробити типовим"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Незбережені зміни",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "У вас є незбережені зміни. Ви впевнені, що хочете їх скасувати?",
       "cancel2": "Скасувати",
-      "discard": "Відхилити"
+      "discard": "Відхилити",
+      "defaultProject": "Проєкт за замовчуванням",
+      "openTasksOnThisProject": "Завдання відкриваються в цьому проєкті"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Вибрати проєкт",

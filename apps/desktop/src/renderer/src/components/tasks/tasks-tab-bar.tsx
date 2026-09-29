@@ -30,6 +30,8 @@ interface TasksTabBarProps {
   selectedProjectId?: string | null
   onProjectChange?: (projectId: string | null) => void
   onProjectEdit?: (project: Project) => void
+  defaultProjectId?: string | null
+  onDefaultProjectChange?: (projectId: string | null) => void
   savedFilters?: SavedFilter[]
   activeSavedFilterId?: string | null
   onApplySavedFilter?: (filter: SavedFilter) => void
@@ -49,6 +51,8 @@ export const TasksTabBar = ({
   selectedProjectId,
   onProjectChange,
   onProjectEdit,
+  defaultProjectId,
+  onDefaultProjectChange,
   savedFilters = [],
   activeSavedFilterId,
   onApplySavedFilter,
@@ -190,6 +194,8 @@ export const TasksTabBar = ({
           includeAllOption
           searchable
           contentWidth={240}
+          defaultProjectId={defaultProjectId}
+          onDefaultProjectChange={onDefaultProjectChange}
           className="h-auto rounded-[5px] px-2.5 py-1 text-[12px] leading-4 font-medium shadow-none"
           renderItemActions={
             onProjectEdit

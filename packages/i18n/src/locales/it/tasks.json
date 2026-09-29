@@ -14,7 +14,10 @@
       "allProjects": "Tutti i progetti",
       "searchProjects": "Cerca progetti…",
       "editProject": "Modifica {name}",
-      "unstarSavedFilter": "Deseleziona {name}"
+      "unstarSavedFilter": "Deseleziona {name}",
+      "openByDefault": "Apri Attività su {name} per impostazione predefinita",
+      "defaultProject": "Progetto predefinito",
+      "setAsDefault": "Imposta come predefinito"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Modifiche non salvate",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Sono presenti modifiche non salvate. Sei sicuro di volerli scartare?",
       "cancel2": "Annulla",
-      "discard": "Scartare"
+      "discard": "Scartare",
+      "defaultProject": "Progetto predefinito",
+      "openTasksOnThisProject": "Attività si apre su questo progetto"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Seleziona progetto",

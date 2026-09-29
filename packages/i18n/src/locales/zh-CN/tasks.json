@@ -14,7 +14,10 @@
       "allProjects": "所有项目",
       "searchProjects": "搜索项目…",
       "editProject": "编辑 {name}",
-      "unstarSavedFilter": "取消标星 {name}"
+      "unstarSavedFilter": "取消标星 {name}",
+      "openByDefault": "默认在 {name} 中打开任务",
+      "defaultProject": "默认项目",
+      "setAsDefault": "设为默认"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "未保存的更改",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "您有未保存的更改。您确定要放弃它们吗？",
       "cancel2": "取消",
-      "discard": "放弃"
+      "discard": "放弃",
+      "defaultProject": "默认项目",
+      "openTasksOnThisProject": "任务将在此项目中打开"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "选择项目",

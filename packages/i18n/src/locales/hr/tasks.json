@@ -14,7 +14,10 @@
       "allProjects": "Svi projekti",
       "searchProjects": "Pretražite projekte…",
       "editProject": "Uredi {name}",
-      "unstarSavedFilter": "Ukloni zvjezdicu {name}"
+      "unstarSavedFilter": "Ukloni zvjezdicu {name}",
+      "openByDefault": "Zadano otvaraj Zadatke na {name}",
+      "defaultProject": "Zadani projekt",
+      "setAsDefault": "Postavi kao zadano"
     }
   },
   "task": {
@@ -600,7 +603,9 @@
       "unsavedChanges": "Nespremljene promjene",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Imate nespremljene promjene. Jeste li sigurni da ih želite odbaciti?",
       "cancel2": "Odustani",
-      "discard": "Odbaciti"
+      "discard": "Odbaciti",
+      "defaultProject": "Zadani projekt",
+      "openTasksOnThisProject": "Zadaci se otvaraju na ovom projektu"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Odaberite projekt",
