@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Tutup butiran tugas",
+    "openInTasks": "Buka dalam Tugasan",
     "subIssues": "Sub-isu",
     "addSubIssue": "Tambahkan sub-isu",
     "subIssuePlaceholder": "Tambahkan sub-isu…",

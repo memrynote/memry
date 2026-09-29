@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Lukk oppgavedetaljer",
+    "openInTasks": "Åpne i Oppgaver",
     "subIssues": "Underutgaver",
     "addSubIssue": "Legg til underutgave",
     "subIssuePlaceholder": "Legg til underutgave...",

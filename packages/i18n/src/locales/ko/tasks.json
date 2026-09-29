@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "작업 세부정보 닫기",
+    "openInTasks": "작업에서 열기",
     "subIssues": "하위 문제",
     "addSubIssue": "하위 문제 추가",
     "subIssuePlaceholder": "하위 문제 추가…",

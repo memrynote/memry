@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "タスクの詳細を閉じる",
+    "openInTasks": "タスクで開く",
     "subIssues": "サブ問題",
     "addSubIssue": "サブ問題を追加する",
     "subIssuePlaceholder": "サブ問題を追加…",

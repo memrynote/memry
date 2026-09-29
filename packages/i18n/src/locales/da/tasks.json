@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Luk opgavedetaljer",
+    "openInTasks": "Åbn i Opgaver",
     "subIssues": "Underspørgsmål",
     "addSubIssue": "Tilføj undernummer",
     "subIssuePlaceholder": "Tilføj undernummer...",

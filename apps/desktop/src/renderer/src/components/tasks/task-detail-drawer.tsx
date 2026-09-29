@@ -33,7 +33,7 @@ import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
-import { X, Plus, Trash } from '@/lib/icons'
+import { ArrowUpRight, X, Plus, Trash } from '@/lib/icons'
 import { TaskUnarchiveButton } from './task-unarchive-button'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
 import { TaskActivitySection } from '@/components/tasks/task-activity-section'
@@ -61,6 +61,8 @@ export interface TaskDetailDrawerProps {
   onNoteClick?: (noteId: string) => void
   onCanvasClick?: (canvasId: string, title: string | null) => void
   onDeleteTask?: (taskId: string) => void
+  /** Shown where the drawer opens over another surface, to reach the task in Tasks. */
+  onOpenInTasks?: () => void
 }
 
 // ============================================================================
@@ -89,7 +91,8 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onAddSubtask,
   onNoteClick,
   onCanvasClick,
-  onDeleteTask
+  onDeleteTask,
+  onOpenInTasks
 }: TaskDetailDrawerProps): React.JSX.Element | null {
   const { t, i18n } = useT('tasks')
   const { t: tCommon } = useT('common')
@@ -296,6 +299,17 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 placeholder={t('task.namePlaceholder')}
                 aria-label={t('task.namePlaceholder')}
               />
+              {onOpenInTasks && (
+                <button
+                  type="button"
+                  onClick={onOpenInTasks}
+                  className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary hover:bg-surface-active/60 transition-all duration-150 ease-out active:scale-90 focus-visible:outline-none"
+                  aria-label={t('drawer.openInTasks')}
+                  title={t('drawer.openInTasks')}
+                >
+                  <ArrowUpRight size={16} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onClose}

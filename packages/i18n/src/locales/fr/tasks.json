@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Fermer les détails de la tâche",
+    "openInTasks": "Ouvrir dans Tâches",
     "subIssues": "Sous-questions",
     "addSubIssue": "Ajouter un sous-problème",
     "subIssuePlaceholder": "Ajouter un sous-problème…",

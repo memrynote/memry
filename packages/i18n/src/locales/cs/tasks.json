@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Zavřete podrobnosti úkolu",
+    "openInTasks": "Otevřít v Úkolech",
     "subIssues": "Dílčí problémy",
     "addSubIssue": "Přidat dílčí problém",
     "subIssuePlaceholder": "Přidat dílčí problém…",

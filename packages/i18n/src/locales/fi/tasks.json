@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Sulje tehtävän tiedot",
+    "openInTasks": "Avaa Tehtävissä",
     "subIssues": "Alakysymykset",
     "addSubIssue": "Lisää ala-aihe",
     "subIssuePlaceholder": "Lisää ala-aihe…",

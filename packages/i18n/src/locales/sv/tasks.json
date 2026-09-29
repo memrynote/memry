@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Detaljer om slutuppgifter",
+    "openInTasks": "Öppna i Uppgifter",
     "subIssues": "Delnummer",
     "addSubIssue": "Lägg till delutgåva",
     "subIssuePlaceholder": "Lägg till underutgåva...",

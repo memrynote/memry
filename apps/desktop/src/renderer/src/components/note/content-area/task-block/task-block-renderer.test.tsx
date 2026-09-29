@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TaskBlockRenderer, type TaskBlock, type TaskBlockEditor } from './task-block-renderer'
+import { TaskDetailHost } from '@/components/tasks/task-detail-host'
 import type React from 'react'
 
 const mocks = vi.hoisted(() => ({
@@ -21,8 +22,37 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
 }))
 
-vi.mock('@/contexts/tasks', () => ({
-  useTasksOptional: () => ({ projects: mocks.projects })
+vi.mock('@/contexts/tasks', () => {
+  const context = () => ({
+    tasks: [{ id: 'task-1', title: 'Loaded task' }],
+    projects: mocks.projects,
+    addTask: vi.fn(),
+    updateTask: vi.fn(),
+    deleteTask: vi.fn()
+  })
+  return { useTasksOptional: context, useTasksContext: context }
+})
+
+// The real drawer is covered by its own tests; this stands in for what the
+// user sees open over the note.
+vi.mock('@/components/tasks/task-detail-drawer', () => ({
+  TaskDetailDrawer: ({
+    task,
+    isOpen,
+    onClose
+  }: {
+    task: { title: string } | null
+    isOpen: boolean
+    onClose: () => void
+  }) =>
+    isOpen ? (
+      <aside aria-label="Task details">
+        {task?.title}
+        <button type="button" onClick={onClose}>
+          close drawer
+        </button>
+      </aside>
+    ) : null
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -209,7 +239,7 @@ describe('TaskBlockRenderer', () => {
     expect(editor.removeBlocks).toHaveBeenCalledWith([block])
   })
 
-  it('forwards row actions to services and opens the task tab', async () => {
+  it('forwards row actions to services and falls back to the Tasks tab outside a host', async () => {
     const editor = makeEditor()
     const block = makeBlock()
     render(<TaskBlockRenderer block={block} editor={editor} />)
@@ -238,9 +268,40 @@ describe('TaskBlockRenderer', () => {
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'tasks',
-        viewState: expect.objectContaining({ openTaskId: 'task-1', selectedProjectId: 'project-1' })
+        viewState: expect.objectContaining({ openTaskId: 'task-1' })
       })
     )
+  })
+
+  it('opens the task detail drawer over the note from the arrow and Cmd+Enter', async () => {
+    vi.useRealTimers()
+    render(
+      <TaskDetailHost>
+        <TaskBlockRenderer block={makeBlock()} editor={makeEditor()} />
+      </TaskDetailHost>
+    )
+    expect(screen.queryByRole('complementary', { name: 'Task details' })).not.toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByTitle(
+        'phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.openInTaskPanel'
+      )
+    )
+    const drawer = await screen.findByRole('complementary', { name: 'Task details' })
+    expect(drawer).toHaveTextContent('Loaded task')
+    expect(mocks.openTab).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('close drawer'))
+    expect(screen.queryByRole('complementary', { name: 'Task details' })).not.toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByRole('group', { name: 'Loaded task' }), {
+      key: 'Enter',
+      metaKey: true
+    })
+    expect(await screen.findByRole('complementary', { name: 'Task details' })).toHaveTextContent(
+      'Loaded task'
+    )
+    expect(mocks.openTab).not.toHaveBeenCalled()
   })
 
   it('edits titles, creates a following task block, and removes empty drafts', async () => {

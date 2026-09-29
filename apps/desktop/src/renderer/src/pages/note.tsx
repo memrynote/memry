@@ -58,6 +58,7 @@ import {
   backlinkId
 } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
+import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { NoteSimilarNotes, NoteSuggestedTags } from '@/components/note/similar-notes'
 import {
   useNote,
@@ -218,6 +219,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab, saveTabState } = useTabs()
+  const openTaskDetail = useOpenTaskDetail()
   const activeTab = useActiveTab()
   const { openSidebarItem } = useSidebarNavigation()
   const createNoteFromNote = useCreateNoteFromNote()
@@ -894,7 +896,11 @@ export function NotePage({ noteId }: NotePageProps) {
     noteTitle: note?.title ?? '',
     onEditorReady: review.handleEditorReady
   })
-  const { refresh: refreshMindMap, handleEditorReady: mindMapEditorReady } = mindMap
+  const {
+    refresh: refreshMindMap,
+    handleEditorReady: mindMapEditorReady,
+    close: closeMindMap
+  } = mindMap
   // The attachments dialog reads original filenames off the live block tree;
   // the editor is captured here (composed, not replacing the mind map's hook)
   // so the dialog needs no new prop on the content area.
@@ -1431,38 +1437,23 @@ export function NotePage({ noteId }: NotePageProps) {
     [openLinked, backlinks]
   )
 
-  // Handle clicking on a linked task
+  // The drawer sits under the map's overlay, so the map gives the note back first.
   const handleLinkedTaskClick = useCallback(
     (taskId: string) => {
-      const task = linkedTasks.find((t) => t.id === taskId)
-      openTab({
-        type: 'tasks',
-        title: 'Tasks',
-        icon: 'check-square',
-        path: '/tasks',
-        isPinned: false,
-        isModified: false,
-        isPreview: false,
-        isDeleted: false,
-        viewState: {
-          openTaskId: taskId,
-          selectedProjectId: task?.projectId ?? undefined,
-          activeTab: 'all'
-        }
-      })
+      closeMindMap()
+      openTaskDetail(taskId)
     },
-    [openTab, linkedTasks]
+    [closeMindMap, openTaskDetail]
   )
 
   // One handler for the outline panel and for both projections of the map, so
   // a heading click cannot mean two different things depending on what else is
   // on screen. The map closes first; see the hook for why that is not optional.
   //
-  // The two kinds that leave this note are handed the page's OWN handlers —
+  // The note and task kinds are handed the page's OWN handlers —
   // the same `handleInternalLinkClick` a `[[…]]` in the body goes through, and
   // the same `handleLinkedTaskClick` the linked-tasks panel goes through — so
-  // the map invents no tab behaviour of its own and inherits the
-  // open-in-new-tab preference the user already set. Declared here rather than
+  // the map invents no navigation of its own. Declared here rather than
   // beside the map's own state because both of those handlers are defined
   // above it.
   const openLinkedNote = useCallback(

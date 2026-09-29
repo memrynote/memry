@@ -15,6 +15,7 @@ import { TabIdentityProvider } from '@/contexts/tabs/tab-identity'
 import { useTabActions } from '@/contexts/tabs'
 import { useTasksOptional } from '@/contexts/tasks'
 import { TabErrorBoundary } from '@/components/tabs/tab-error-boundary'
+import { TaskDetailHost } from '@/components/tasks/task-detail-host'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
@@ -280,7 +281,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
           key={`${tab.id}:${tab.type}:${tab.entityId ?? ''}`}
           onCloseTab={handleCloseTab}
         >
-          <React.Suspense fallback={null}>{content}</React.Suspense>
+          <TaskDetailHost>
+            <React.Suspense fallback={null}>{content}</React.Suspense>
+          </TaskDetailHost>
         </TabErrorBoundary>
       </TabIdentityProvider>
     </div>

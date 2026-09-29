@@ -11,6 +11,7 @@ import { QuickAddPreview } from './properties/quick-add-preview'
 import { resolvePropertyShortcut, type TaskPropertyId } from './properties/task-property-ids'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
+import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { tasksService } from '@/services/tasks-service'
 import { markTaskRemovalsHandled } from '../task-removal'
 import { toTaskUpdateInput } from '@/features/tasks/task-update-input'
@@ -158,6 +159,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   const { draftProjectId, noteId: hostNoteId, hasActiveReminder } = useTaskPrefetch()
   const tasksCtx = useTasksOptional()
   const { openTab } = useTabActions()
+  const openTaskDetail = useOpenTaskDetail()
   const syncingRef = useRef(false)
 
   const isNewBlockRef = useRef(true)
@@ -708,23 +710,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     editor.removeBlocks([block])
   }, [block, editor])
 
-  const openInTasks = useCallback(() => {
-    openTab({
-      type: 'tasks',
-      title: 'Tasks',
-      icon: 'list-checks',
-      path: '/tasks',
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false,
-      viewState: {
-        openTaskId: taskId,
-        selectedProjectId: task?.projectId ?? undefined,
-        activeTab: 'all'
-      }
-    })
-  }, [openTab, taskId, task?.projectId])
+  const openDetail = useCallback(() => openTaskDetail(taskId), [openTaskDetail, taskId])
 
   const handleOpenRelatedItem = useCallback(
     (ref: RelatedRef, itemTitle: string | null) => {
@@ -741,7 +727,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     () => (
       <button
         type="button"
-        onClick={openInTasks}
+        onClick={openDetail}
         className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-focus/taskblock:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-accent/80"
         title={tPhaseF(
           'phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.openInTaskPanel'
@@ -750,7 +736,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         <ArrowUpRight className="size-3 text-muted-foreground" />
       </button>
     ),
-    [tPhaseF, openInTasks]
+    [tPhaseF, openDetail]
   )
 
   // Keys on the block itself, never on a field inside it or a popover that
@@ -765,7 +751,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       const onBlock = target === e.currentTarget
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
-        openInTasks()
+        openDetail()
         return
       }
       if (onBlock && e.key === 'Enter') {
@@ -784,7 +770,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       e.stopPropagation()
       setOpenProperty(property)
     },
-    [task, openInTasks]
+    [task, openDetail]
   )
 
   // A click on the row's own surface (the gaps between its controls) selects

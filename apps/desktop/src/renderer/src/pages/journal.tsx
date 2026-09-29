@@ -30,6 +30,7 @@ import {
   type JournalViewState
 } from '@/components/journal'
 import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
+import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
 import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
 import {
@@ -162,6 +163,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { t: notesT } = useT('notes')
   const activeTab = useActiveTab()
   const { openTab, state: tabState } = useTabs()
+  const openTaskDetail = useOpenTaskDetail()
   const identity = useTabIdentity()
   const today = useToday()
   const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
@@ -712,7 +714,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     noteTitle: journalNoteTitle,
     onEditorReady: review.handleEditorReady
   })
-  const { refresh: refreshMindMap, handleEditorReady: mindMapEditorReady } = mindMap
+  const {
+    refresh: refreshMindMap,
+    handleEditorReady: mindMapEditorReady,
+    close: closeMindMap
+  } = mindMap
   const isMindMapOpen = isDayView && mindMap.isOpen
   // The attachments dialog reads original filenames off the live block tree.
   const attachmentsEditorRef = useRef<unknown>(null)
@@ -870,21 +876,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [createNote, openTab, t]
   )
 
+  // The drawer sits under the map's overlay, so the map gives the entry back first.
   const handleOpenTask = useCallback(
     (taskId: string) => {
-      openTab({
-        type: 'tasks',
-        title: 'Tasks',
-        icon: 'check-square',
-        path: '/tasks',
-        isPinned: false,
-        isModified: false,
-        isPreview: false,
-        isDeleted: false,
-        viewState: { openTaskId: taskId, activeTab: 'all' }
-      })
+      closeMindMap()
+      openTaskDetail(taskId)
     },
-    [openTab]
+    [closeMindMap, openTaskDetail]
   )
 
   // Mind map navigation. Outline clicks go through it too: with the map closed

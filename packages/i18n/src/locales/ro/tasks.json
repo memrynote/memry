@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Închideți detaliile sarcinii",
+    "openInTasks": "Deschide în Sarcini",
     "subIssues": "Subprobleme",
     "addSubIssue": "Adăugați o problemă secundară",
     "subIssuePlaceholder": "Adăugați o problemă secundară...",

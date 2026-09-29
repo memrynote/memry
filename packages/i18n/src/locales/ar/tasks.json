@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "إغلاق تفاصيل المهمة",
+    "openInTasks": "فتح في المهام",
     "subIssues": "القضايا الفرعية",
     "addSubIssue": "إضافة قضية فرعية",
     "subIssuePlaceholder": "إضافة موضوع فرعي...",

@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "Zárja be a feladat részleteit",
+    "openInTasks": "Megnyitás a Feladatokban",
     "subIssues": "Alkérdések",
     "addSubIssue": "Alkérdés hozzáadása",
     "subIssuePlaceholder": "Alprobléma hozzáadása…",

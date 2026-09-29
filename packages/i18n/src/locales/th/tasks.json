@@ -105,6 +105,7 @@
   },
   "drawer": {
     "close": "ปิดรายละเอียดงาน",
+    "openInTasks": "เปิดในงาน",
     "subIssues": "ประเด็นย่อย",
     "addSubIssue": "เพิ่มประเด็นย่อย",
     "subIssuePlaceholder": "เพิ่มประเด็นย่อย…",
