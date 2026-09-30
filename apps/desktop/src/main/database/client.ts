@@ -89,7 +89,8 @@ export function initIndexDatabase(dbPath: string): IndexDb {
   // WAL mode for better concurrency
   sqliteIndexDb.pragma('journal_mode = WAL')
 
-  // No foreign keys on index database (it's a rebuildable cache)
+  // Foreign keys stay on: better-sqlite3 builds with SQLITE_DEFAULT_FOREIGN_KEYS=1,
+  // so child rows (note_tags, note_properties) need their note_cache row.
 
   // Synchronous mode
   sqliteIndexDb.pragma('synchronous = NORMAL')

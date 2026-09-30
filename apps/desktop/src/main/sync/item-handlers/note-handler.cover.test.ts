@@ -25,6 +25,7 @@ vi.mock('../../database/client', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
+  noteCacheExists: vi.fn(() => true),
   getNoteCacheById: vi.fn(() => undefined),
   getNoteCacheByPath: vi.fn(() => undefined),
   getNoteTags: vi.fn(() => []),
